@@ -157,6 +157,14 @@ function finalOpenLibraryQueryDedupe(value: string): string {
   return dedupeOpenLibraryTerms(cleanOpenLibraryQueryPart(value));
 }
 
+function teenPostFinalRecoveryQueryDedupe(value: unknown): string {
+  return dedupeOpenLibraryTerms(String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim());
+}
+
 function cleanOpenLibraryQueryPart(value: unknown): string {
   const normalized = String(value || "")
     .toLowerCase()
@@ -255,6 +263,27 @@ function isTeenBroadFallbackOpenLibraryQuery(query: string): boolean {
 
 function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
   const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: "open-library-fallback", priority: 0, rationale: [] }];
+  const forcedPostFinalRecoveryQueries = Array.isArray((profile.diagnostics as Record<string, unknown>)?.forceTeenPostFinalEligibilityRecoveryQueries)
+    ? ((profile.diagnostics as Record<string, unknown>).forceTeenPostFinalEligibilityRecoveryQueries as unknown[])
+      .map(teenPostFinalRecoveryQueryDedupe)
+      .filter(Boolean)
+    : [];
+  if (forcedPostFinalRecoveryQueries.length) {
+    const forcedPostFinalRecoveryQueryOffset = Number((profile.diagnostics as Record<string, unknown>)?.forceTeenPostFinalEligibilityRecoveryQueryOffset || 0);
+    return uniqueStrings(forcedPostFinalRecoveryQueries, 3).map((query, index): OpenLibraryQueryPlan => ({
+      query,
+      originalPlannedQuery: teenPostFinalRecoveryQueryDedupe(plannedIntents[index]?.query || plannedIntents[0]?.query || query),
+      queryCascadeIndex: forcedPostFinalRecoveryQueryOffset + index,
+      queryFamily: queryFamilyForOpenLibraryQuery(query),
+      facets: uniqueStrings((plannedIntents[index]?.facets || []).map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart), 6),
+      routingReason: "teen_post_final_eligibility_recovery",
+      routingDominance: {
+        openLibraryPlanner: "teen_post_final_eligibility_recovery",
+        postFinalEligibilityRecovery: true,
+      },
+      profileSpecific: true,
+    }));
+  }
   const originalPlannedQuery = finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ""));
   const genres = uniqueStrings(profile.genreFamily.map((row) => cleanOpenLibraryQueryPart(row.value)).filter(isGenreLikeOpenLibraryPart), 3);
   const plannedGenreFallbacks = uniqueStrings(plannedIntents
@@ -2633,6 +2662,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesDeepDebugActivationSource = debugMiddleGradesDeepTrace
       ? middleGradesDeepDebugActivationSourceRaw && middleGradesDeepDebugActivationSourceRaw !== "none" ? middleGradesDeepDebugActivationSourceRaw : "profile"
       : "none";
+    const forceTeenPostFinalEligibilityRecovery = ageProfile.key === "teen" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceTeenPostFinalEligibilityRecovery);
     const sourceBudgetMs = ageProfile.key === "middleGrades"
       ? debugMiddleGradesDeepTrace
         ? Math.max(plan.timeoutMs, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_TOTAL_BUDGET_MS)
@@ -3694,7 +3724,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       if (fallbackQueries.length > 0) openLibraryTopUpRan = true;
     }
 
-    if (ageProfile.key === "teen" && rawItems.length > 0 && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
+    if (ageProfile.key === "teen" && !forceTeenPostFinalEligibilityRecovery && rawItems.length > 0 && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
       const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
       const recoveryQueries = teenUnderfillRecoveryQueries(queryPlans)
         .filter((query) => !attemptedMainQueries.has(query.toLowerCase()));
@@ -4737,7 +4767,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
     }
 
-    if (ageProfile.key === "teen" && rawItems.length === 0 && !context.signal?.aborted && !teenTimeoutCircuitOpen("delayed_final_retry")) {
+    if (ageProfile.key === "teen" && !forceTeenPostFinalEligibilityRecovery && rawItems.length === 0 && !context.signal?.aborted && !teenTimeoutCircuitOpen("delayed_final_retry")) {
       const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
       const allAttemptedLaneQueriesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
       const delayedRetryQuery = queryPlans[0]?.query || "";

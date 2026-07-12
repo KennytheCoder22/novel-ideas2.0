@@ -63,6 +63,7 @@ function normalizeSourceResults(results) {
                     meaningfulTasteRecovery: row.meaningfulTasteRecovery,
                     meaningfulTasteRecoveryDocumentSignals: row.meaningfulTasteRecoveryDocumentSignals,
                     scoringHandoffStage: row.scoringHandoffStage,
+                    postFinalEligibilityRecovery: row.postFinalEligibilityRecovery,
                     emergencyFallback: row.emergencyFallback,
                     authors: row.authors || row.author_name || row.creators,
                 },

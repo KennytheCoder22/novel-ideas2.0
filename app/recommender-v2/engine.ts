@@ -5,7 +5,7 @@ import { scoreCandidates } from "./score";
 import { selectRecommendations } from "./select";
 import { sourceAdapters } from "./sources";
 import { buildTasteProfile } from "./tasteProfile";
-import type { NormalizedCandidate, RecommendationResultV2, ScoredCandidate, SourceDiagnosticV2, SourcePlan, SourceResult, SourceStatusV2, SwipeSessionV2 } from "./types";
+import type { NormalizedCandidate, RecommendationResultV2, ScoredCandidate, SourceDiagnosticV2, SourcePlan, SourceResult, SourceStatusV2, SwipeSessionV2, TasteProfile } from "./types";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -115,6 +115,190 @@ function mergeSourceItems(primary: unknown[], recovery: unknown[]): unknown[] {
     if (!existing || (row.meaningfulTasteRecovery && !existing.meaningfulTasteRecovery)) byKey.set(key, item);
   }
   return Array.from(byKey.values());
+}
+
+function uniqueStrings(values: unknown[], limit = 80): string[] {
+  const seen = new Set<string>();
+  const strings: string[] = [];
+  for (const value of values) {
+    const text = String(value || "").trim();
+    const key = text.toLowerCase();
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    strings.push(text);
+    if (strings.length >= limit) break;
+  }
+  return strings;
+}
+
+function mergeNumberRecords(primary?: Record<string, number>, secondary?: Record<string, number>): Record<string, number> | undefined {
+  const merged: Record<string, number> = {};
+  for (const [key, value] of Object.entries(primary || {})) merged[key] = Number(merged[key] || 0) + Number(value || 0);
+  for (const [key, value] of Object.entries(secondary || {})) merged[key] = Number(merged[key] || 0) + Number(value || 0);
+  return Object.keys(merged).length ? merged : undefined;
+}
+
+function teenOpenLibraryCleanCount(selection: { rejectedReasons: Record<string, number> }, selected: ScoredCandidate[]): number {
+  const diagnostics = selection.rejectedReasons as Record<string, unknown>;
+  const reported = Number(diagnostics.finalEligibilityCleanCandidateCount);
+  if (Number.isFinite(reported)) return reported;
+  return selected.filter((candidate) => candidate.source === "openLibrary").length;
+}
+
+function hasLikedEvidence(row: { evidence?: string[] }): boolean {
+  return Array.isArray(row.evidence) && row.evidence.some((item) => String(item || "").startsWith("like:"));
+}
+
+function independentLikedWeight(profile: TasteProfile, pattern: RegExp): number {
+  const weightByLikedItem = new Map<string, number>();
+  const rows = [...profile.genreFamily, ...profile.themes, ...profile.characterDynamics, ...profile.tone];
+  for (const row of rows) {
+    const value = String(row.value || "").toLowerCase();
+    if (!pattern.test(value) || !hasLikedEvidence(row)) continue;
+    for (const item of row.evidence) {
+      const key = String(item || "").toLowerCase();
+      if (!key.startsWith("like:")) continue;
+      weightByLikedItem.set(key, Math.max(weightByLikedItem.get(key) || 0, Math.abs(Number(row.weight || 0))));
+    }
+  }
+  return [...weightByLikedItem.values()].reduce((sum, weight) => sum + weight, 0);
+}
+
+function teenOpenLibraryAttemptedQueries(diagnostics: SourceDiagnosticV2): Set<string> {
+  const attempted = new Set<string>();
+  for (const query of Array.isArray(diagnostics.queries) ? diagnostics.queries : []) {
+    const key = String(query || "").trim().toLowerCase();
+    if (key) attempted.add(key);
+  }
+  for (const fetch of Array.isArray(diagnostics.fetches) ? diagnostics.fetches : []) {
+    const key = String(fetch.query || "").trim().toLowerCase();
+    if (key) attempted.add(key);
+  }
+  return attempted;
+}
+
+function teenOpenLibraryPostFinalRecoveryQueries(profile: TasteProfile, diagnostics: SourceDiagnosticV2, limit = 3): string[] {
+  const weights = {
+    fantasy: independentLikedWeight(profile, /\b(fantasy|magic|magical)\b/),
+    paranormal: independentLikedWeight(profile, /\b(paranormal|supernatural)\b/),
+    mystery: independentLikedWeight(profile, /\b(mystery|detective|suspense|thriller|crime)\b/),
+    thriller: independentLikedWeight(profile, /\b(thriller|suspense)\b/),
+    crime: independentLikedWeight(profile, /\b(crime|detective)\b/),
+    contemporary: independentLikedWeight(profile, /\b(contemporary|realistic|coming[-\s]of[-\s]age|school|identity)\b/),
+    romance: independentLikedWeight(profile, /\b(romance|romantic)\b/),
+    dystopian: independentLikedWeight(profile, /\b(dystopia|dystopian)\b/),
+    speculative: independentLikedWeight(profile, /\b(science fiction|sci-fi|speculative|space)\b/),
+    survival: independentLikedWeight(profile, /\b(survival|survive)\b/),
+    historical: independentLikedWeight(profile, /\b(historical|history|period)\b/),
+    adventure: independentLikedWeight(profile, /\b(action|adventure|quest)\b/),
+    horror: independentLikedWeight(profile, /\b(horror)\b/),
+    sports: independentLikedWeight(profile, /\b(sports?|basketball|soccer|football|baseball|volleyball|track|athletic|athlete|competition)\b/),
+    school: independentLikedWeight(profile, /\b(school|academy|campus|boarding school|magic school|magical school)\b/),
+  };
+  const attempted = teenOpenLibraryAttemptedQueries(diagnostics);
+  const candidates: Array<{ query: string; score: number; required: Array<keyof typeof weights> }> = [
+    { query: "young adult fantasy mystery", score: weights.fantasy + weights.mystery, required: ["fantasy", "mystery"] },
+    { query: "young adult paranormal fantasy", score: weights.paranormal + weights.fantasy, required: ["paranormal", "fantasy"] },
+    { query: "young adult paranormal mystery", score: weights.paranormal + weights.mystery, required: ["paranormal", "mystery"] },
+    { query: "young adult contemporary fantasy", score: weights.contemporary + weights.fantasy, required: ["contemporary", "fantasy"] },
+    { query: "young adult dystopian thriller", score: weights.dystopian + Math.max(weights.thriller, weights.survival, weights.mystery), required: ["dystopian"] },
+    { query: "young adult science fiction adventure", score: weights.speculative + weights.adventure, required: ["speculative", "adventure"] },
+    { query: "young adult science fiction thriller", score: weights.speculative + weights.thriller, required: ["speculative", "thriller"] },
+    { query: "young adult historical adventure", score: weights.historical + weights.adventure, required: ["historical", "adventure"] },
+    { query: "young adult school mystery", score: weights.school + weights.mystery, required: ["school", "mystery"] },
+    { query: "young adult mystery thriller", score: weights.mystery + weights.thriller, required: ["mystery", "thriller"] },
+    { query: "young adult contemporary romance", score: weights.contemporary + weights.romance, required: ["contemporary", "romance"] },
+    { query: "young adult fantasy adventure", score: weights.fantasy + weights.adventure, required: ["fantasy", "adventure"] },
+    { query: "young adult horror", score: weights.horror, required: ["horror"] },
+    { query: "young adult sports fiction", score: weights.sports, required: ["sports"] },
+  ];
+  return candidates
+    .filter((candidate) => candidate.required.every((family) => weights[family] > 0))
+    .filter((candidate) => candidate.score > 0)
+    .filter((candidate) => !attempted.has(candidate.query.toLowerCase()))
+    .sort((a, b) => b.score - a.score || a.query.localeCompare(b.query))
+    .map((candidate) => candidate.query)
+    .slice(0, limit);
+}
+
+function primaryAuthorFromRawItem(item: unknown): string {
+  const row = (item || {}) as Record<string, unknown>;
+  const authors = Array.isArray(row.creators)
+    ? row.creators
+    : Array.isArray(row.authors)
+      ? row.authors
+      : Array.isArray(row.author_name)
+        ? row.author_name
+        : [];
+  return normalizedTokenText(String(authors[0] || ""));
+}
+
+function teenRecoverySeriesRootTitle(value: unknown): string {
+  return normalizedTokenText(value)
+    .replace(/\b(book|volume|vol|part|episode|chapter)\s*\d+.*$/g, "")
+    .replace(/\b\d+\b/g, "")
+    .replace(/\b(the|a|an)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function teenRecoverySelectedDedupeKeys(selected: ScoredCandidate[]): {
+  titles: Set<string>;
+  sourceKeys: Set<string>;
+  authors: Set<string>;
+  seriesRoots: Set<string>;
+} {
+  const openLibrarySelected = selected.filter((candidate) => candidate.source === "openLibrary");
+  return {
+    titles: new Set(openLibrarySelected.map((candidate) => normalizedTokenText(candidate.title)).filter(Boolean)),
+    sourceKeys: new Set(openLibrarySelected.map((candidate) => String(candidate.sourceId || candidate.id || "").toLowerCase()).filter(Boolean)),
+    authors: new Set(openLibrarySelected.map((candidate) => normalizedTokenText(candidate.creators[0] || "")).filter(Boolean)),
+    seriesRoots: new Set(openLibrarySelected.map((candidate) => teenRecoverySeriesRootTitle(candidate.title)).filter((root) => root.length >= 4)),
+  };
+}
+
+function filterTeenRecoveryItemsAgainstSelected(rawItems: unknown[], selected: ScoredCandidate[]): unknown[] {
+  const keys = teenRecoverySelectedDedupeKeys(selected);
+  return rawItems.filter((item) => {
+    const row = (item || {}) as Record<string, unknown>;
+    const titleKey = normalizedTokenText(row.title);
+    const sourceKey = String(row.sourceId || row.key || row.id || "").toLowerCase();
+    const authorKey = primaryAuthorFromRawItem(row);
+    const seriesRoot = teenRecoverySeriesRootTitle(row.title);
+    if (titleKey && keys.titles.has(titleKey)) return false;
+    if (sourceKey && keys.sourceKeys.has(sourceKey)) return false;
+    if (authorKey && keys.authors.has(authorKey)) return false;
+    if (seriesRoot.length >= 4 && keys.seriesRoots.has(seriesRoot)) return false;
+    return true;
+  });
+}
+
+function markTeenPostFinalRecoveryItems(rawItems: unknown[], query: string): unknown[] {
+  return rawItems.map((item) => ({
+    ...(item as Record<string, unknown>),
+    postFinalEligibilityRecovery: true,
+    scoringHandoffStage: "teen_post_final_eligibility_recovery",
+    postFinalEligibilityRecoveryQuery: query,
+  }));
+}
+
+function isTeenPostFinalRecoveryCandidate(candidate: ScoredCandidate): boolean {
+  return Boolean(candidate.diagnostics?.postFinalEligibilityRecovery || (candidate.raw as Record<string, unknown> | undefined)?.postFinalEligibilityRecovery);
+}
+
+function teenRecoveryRejectedByReason(scored: ScoredCandidate[], selected: ScoredCandidate[]): Record<string, string[]> {
+  const selectedIds = new Set(selected.map((candidate) => candidate.id));
+  const rejected: Record<string, string[]> = {};
+  for (const candidate of scored) {
+    if (!isTeenPostFinalRecoveryCandidate(candidate) || selectedIds.has(candidate.id)) continue;
+    const reason = String(
+      candidate.diagnostics?.teenOpenLibraryFinalEligibilityReason
+      || candidate.rejectedReasons.find((entry) => entry !== "selected")
+      || "ranked_below_final_selection"
+    );
+    rejected[reason] = [...(rejected[reason] || []), candidate.title];
+  }
+  return rejected;
 }
 
 function normalizedTokenText(value: unknown): string {
@@ -406,6 +590,235 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   const openLibrarySourceIndex = sourceResults.findIndex((result) => result.source === "openLibrary");
   const openLibrarySourceResult = openLibrarySourceIndex >= 0 ? sourceResults[openLibrarySourceIndex] : undefined;
   const scoredOpenLibraryCount = scored.filter((candidate) => candidate.source === "openLibrary").length;
+  const teenPostFinalEligibilityTarget = Math.min(5, session.limit || 10);
+  const initialTeenOpenLibraryCleanCount = teenOpenLibraryCleanCount(selection, selected);
+  const shouldRunTeenPostFinalEligibilityRecovery = tasteProfile.ageBand === "teens"
+    && Boolean(openLibrarySourceResult)
+    && initialTeenOpenLibraryCleanCount < teenPostFinalEligibilityTarget;
+  if (shouldRunTeenPostFinalEligibilityRecovery && openLibrarySourceResult) {
+    const openLibraryPlan = searchPlan.sourcePlans.find((plan) => plan.source === "openLibrary");
+    const adapter = openLibraryPlan ? sourceAdapters[openLibraryPlan.source] : undefined;
+    const diagnostics = openLibrarySourceResult.diagnostics;
+    diagnostics.postFinalEligibilityUnderfillRecoveryTriggered = true;
+    diagnostics.postFinalEligibilityRecoveryTriggerCount = initialTeenOpenLibraryCleanCount;
+    diagnostics.postFinalEligibilityRecoveryQueriesAttempted = [];
+    diagnostics.postFinalEligibilityRecoveryFetchCountByQuery = {};
+    diagnostics.postFinalEligibilityRecoveryConvertedCount = 0;
+    diagnostics.postFinalEligibilityRecoveryEnteredScoringTitles = [];
+    diagnostics.postFinalEligibilityRecoveryAcceptedTitles = [];
+    diagnostics.postFinalEligibilityRecoveryRejectedByReason = {};
+    diagnostics.postFinalEligibilityRecoveryFinalCount = initialTeenOpenLibraryCleanCount;
+    diagnostics.postFinalEligibilityRecoveryStoppedReason = "not_started";
+    diagnostics.meaningfulTasteRecoveryTriggered = true;
+    diagnostics.meaningfulTasteRecoveryTriggerStage = "post_final_eligibility";
+    diagnostics.meaningfulTasteRecoveryQueriesAttempted = [];
+    diagnostics.meaningfulTasteRecoveryAcceptedTitles = [];
+    diagnostics.meaningfulTasteRecoveryFinalCount = 0;
+    diagnostics.recoverySuccessRequiresFinalEligibility = true;
+
+    if (!openLibraryPlan || !adapter) {
+      diagnostics.postFinalEligibilityRecoveryStoppedReason = "openlibrary_plan_missing";
+      diagnostics.meaningfulTasteRecoverySkippedReason = "post_final_eligibility_openlibrary_plan_missing";
+    } else {
+      const recoveryQueries = teenOpenLibraryPostFinalRecoveryQueries(tasteProfile, diagnostics, 3);
+      if (!recoveryQueries.length) {
+        diagnostics.postFinalEligibilityRecoveryStoppedReason = "no_unattempted_liked_family_queries";
+        diagnostics.meaningfulTasteRecoverySkippedReason = "post_final_eligibility_no_unattempted_liked_family_queries";
+      }
+
+      for (const [recoveryIndex, recoveryQuery] of recoveryQueries.entries()) {
+        if (teenOpenLibraryCleanCount(selection, selected) >= teenPostFinalEligibilityTarget) {
+          diagnostics.postFinalEligibilityRecoveryStoppedReason = "reached_five";
+          break;
+        }
+        const previousSourceResults = sourceResults;
+        const previousNormalized = normalized;
+        const previousScored = scored;
+        const previousSelection = selection;
+        const previousSelected = selected;
+        const previousRejectedReasons = rejectedReasons;
+        const previousCleanCount = teenOpenLibraryCleanCount(selection, selected);
+        const previousAcceptedTitles = new Set((((selection.rejectedReasons as Record<string, unknown>).finalEligibilityAcceptedTitles || []) as string[]).map(normalizedTokenText));
+
+        const recoveryPlan: SourcePlan = {
+          ...openLibraryPlan,
+          intents: [{
+            id: `teen-post-final-eligibility-recovery-${recoveryIndex + 1}`,
+            query: recoveryQuery,
+            facets: [],
+            priority: 100 - recoveryIndex,
+            rationale: ["Teen Open Library post-final eligibility recovery"],
+          }],
+        };
+        const recoveryProfile: TasteProfile = {
+          ...tasteProfile,
+          diagnostics: {
+            ...tasteProfile.diagnostics,
+            forceTeenPostFinalEligibilityRecovery: true,
+            forceTeenPostFinalEligibilityRecoveryQueries: [recoveryQuery],
+            forceTeenPostFinalEligibilityRecoveryQueryOffset: (sourceResults[openLibrarySourceIndex]?.diagnostics.fetches || []).filter((fetch) => !fetch.diagnosticOnly).length + recoveryIndex,
+            disableTeenSourceUnderfillRecovery: true,
+          },
+        };
+        const recoveryDiagnostics = sourceResults[openLibrarySourceIndex]?.diagnostics || diagnostics;
+        recoveryDiagnostics.postFinalEligibilityRecoveryQueriesAttempted = uniqueStrings([
+          ...((recoveryDiagnostics.postFinalEligibilityRecoveryQueriesAttempted || []) as string[]),
+          recoveryQuery,
+        ], 3);
+        recoveryDiagnostics.meaningfulTasteRecoveryQueriesAttempted = recoveryDiagnostics.postFinalEligibilityRecoveryQueriesAttempted;
+
+        const recoveryResponse = await runWithTimeout(openLibraryPlan.timeoutMs, (signal) => adapter.search(recoveryPlan, { profile: recoveryProfile, signal }));
+        if (!recoveryResponse.value) {
+          recoveryDiagnostics.postFinalEligibilityRecoveryStoppedReason = recoveryResponse.timedOut ? "query_timed_out" : "query_failed";
+          recoveryDiagnostics.meaningfulTasteRecoverySkippedReason = recoveryResponse.timedOut ? "post_final_eligibility_recovery_timed_out" : "post_final_eligibility_recovery_failed";
+          continue;
+        }
+
+        const recoveryResult = recoveryResponse.value;
+        const fetchedForQuery = (recoveryResult.diagnostics.fetches || [])
+          .filter((fetch) => String(fetch.query || "").toLowerCase() === recoveryQuery.toLowerCase())
+          .reduce((sum, fetch) => sum + Number(fetch.docsReturned || 0), 0)
+          || Number(recoveryResult.diagnostics.rawApiResultCount || 0);
+        const fetchCountByQuery = {
+          ...((recoveryDiagnostics.postFinalEligibilityRecoveryFetchCountByQuery || {}) as Record<string, number>),
+          [recoveryQuery]: fetchedForQuery,
+        };
+        const markedRecoveryItems = markTeenPostFinalRecoveryItems(
+          filterTeenRecoveryItemsAgainstSelected(recoveryResult.rawItems, selected),
+          recoveryQuery,
+        );
+        const sourceRejectedRecoveryByReason = Object.entries(recoveryResult.diagnostics.dropReasons || {})
+          .filter(([, count]) => Number(count || 0) > 0)
+          .reduce<Record<string, string[]>>((acc, [reason, count]) => {
+            acc[reason] = [`${Number(count || 0)} source rows`];
+            return acc;
+          }, {});
+        const currentOpenLibraryResult = sourceResults[openLibrarySourceIndex] || openLibrarySourceResult;
+        const existingKeys = new Set(currentOpenLibraryResult.rawItems.map(sourceItemKey));
+        const recoveryItemsEnteringScoring = markedRecoveryItems.filter((item) => {
+          const key = sourceItemKey(item);
+          return key && !existingKeys.has(key);
+        });
+        const mergedRawItems = mergeSourceItems(currentOpenLibraryResult.rawItems, markedRecoveryItems).slice(0, 20);
+        const enteredTitles = uniqueStrings([
+          ...((recoveryDiagnostics.postFinalEligibilityRecoveryEnteredScoringTitles || []) as string[]),
+          ...recoveryItemsEnteringScoring.map(titleOf),
+        ], 40);
+        const mergedDiagnostics: SourceDiagnosticV2 = {
+          ...currentOpenLibraryResult.diagnostics,
+          status: mergedRawItems.length ? "succeeded" : currentOpenLibraryResult.status,
+          rawCount: mergedRawItems.length,
+          normalizedCount: mergedRawItems.length,
+          usableRowsAfterFiltering: mergedRawItems.length,
+          queries: uniqueStrings([...(currentOpenLibraryResult.diagnostics.queries || []), ...(recoveryResult.diagnostics.queries || [])], 20),
+          rawTitles: uniqueStrings([...(currentOpenLibraryResult.diagnostics.rawTitles || []), ...(recoveryResult.diagnostics.rawTitles || []), ...markedRecoveryItems.map(titleOf)], 80),
+          firstReturnedTitles: uniqueStrings(mergedRawItems.map(titleOf), 5),
+          rawApiResultCount: Number(currentOpenLibraryResult.diagnostics.rawApiResultCount || 0) + Number(recoveryResult.diagnostics.rawApiResultCount || 0),
+          droppedBeforeDocCount: Number(currentOpenLibraryResult.diagnostics.droppedBeforeDocCount || 0) + Number(recoveryResult.diagnostics.droppedBeforeDocCount || 0),
+          dropReasons: mergeNumberRecords(currentOpenLibraryResult.diagnostics.dropReasons, recoveryResult.diagnostics.dropReasons),
+          fetches: [...(currentOpenLibraryResult.diagnostics.fetches || []), ...(recoveryResult.diagnostics.fetches || [])],
+          artifactSuppressedTitles: uniqueStrings([...(currentOpenLibraryResult.diagnostics.artifactSuppressedTitles || []), ...(recoveryResult.diagnostics.artifactSuppressedTitles || [])], 80),
+          seriesSuppressedTitles: uniqueStrings([...(currentOpenLibraryResult.diagnostics.seriesSuppressedTitles || []), ...(recoveryResult.diagnostics.seriesSuppressedTitles || [])], 80),
+          openLibraryDocsFetchedAcrossAllQueriesCount: Number(currentOpenLibraryResult.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0) + Number(recoveryResult.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || recoveryResult.diagnostics.rawApiResultCount || 0),
+          openLibraryDocsEligibleForScoringCount: Number(currentOpenLibraryResult.diagnostics.openLibraryDocsEligibleForScoringCount || currentOpenLibraryResult.rawItems.length) + Number(recoveryResult.diagnostics.openLibraryDocsEligibleForScoringCount || recoveryResult.rawItems.length),
+          openLibraryDocsActuallyHandedToScoringCount: mergedRawItems.length,
+          postFinalEligibilityUnderfillRecoveryTriggered: true,
+          postFinalEligibilityRecoveryTriggerCount: initialTeenOpenLibraryCleanCount,
+          postFinalEligibilityRecoveryQueriesAttempted: recoveryDiagnostics.postFinalEligibilityRecoveryQueriesAttempted,
+          postFinalEligibilityRecoveryFetchCountByQuery: fetchCountByQuery,
+          postFinalEligibilityRecoveryConvertedCount: Number(recoveryDiagnostics.postFinalEligibilityRecoveryConvertedCount || 0) + recoveryResult.rawItems.length,
+          postFinalEligibilityRecoveryEnteredScoringTitles: enteredTitles,
+          postFinalEligibilityRecoveryAcceptedTitles: recoveryDiagnostics.postFinalEligibilityRecoveryAcceptedTitles || [],
+          postFinalEligibilityRecoveryRejectedByReason: {
+            ...((recoveryDiagnostics.postFinalEligibilityRecoveryRejectedByReason || {}) as Record<string, string[]>),
+            ...sourceRejectedRecoveryByReason,
+          },
+          postFinalEligibilityRecoveryFinalCount: teenOpenLibraryCleanCount(selection, selected),
+          postFinalEligibilityRecoveryStoppedReason: "queries_exhausted",
+          meaningfulTasteRecoveryTriggered: true,
+          meaningfulTasteRecoveryTriggerStage: "post_final_eligibility",
+          meaningfulTasteRecoveryQueriesAttempted: recoveryDiagnostics.postFinalEligibilityRecoveryQueriesAttempted,
+          meaningfulTasteRecoveryAcceptedTitles: recoveryDiagnostics.postFinalEligibilityRecoveryAcceptedTitles || [],
+          meaningfulTasteRecoveryFinalCount: Number(recoveryDiagnostics.meaningfulTasteRecoveryFinalCount || 0),
+          recoverySuccessRequiresFinalEligibility: true,
+        };
+        sourceResults = sourceResults.map((result, index) => index === openLibrarySourceIndex
+          ? { ...currentOpenLibraryResult, status: mergedRawItems.length ? "succeeded" : currentOpenLibraryResult.status, rawItems: mergedRawItems, diagnostics: mergedDiagnostics }
+          : result);
+
+        normalized = normalizeSourceResults(sourceResults);
+        scored = scoreCandidates(normalized, tasteProfile);
+        selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
+        selected = selection.selected;
+        rejectedReasons = selection.rejectedReasons;
+
+        const finalAcceptedTitles = new Set((((selection.rejectedReasons as Record<string, unknown>).finalEligibilityAcceptedTitles || []) as string[]).map(normalizedTokenText));
+        const finalCleanCountAfterRecovery = teenOpenLibraryCleanCount(selection, selected);
+        const lostPreviouslyAcceptedTitle = [...previousAcceptedTitles].some((title) => title && !finalAcceptedTitles.has(title));
+        if (previousCleanCount > 0 && (finalCleanCountAfterRecovery < previousCleanCount || lostPreviouslyAcceptedTitle)) {
+          const attemptedDiagnostics = sourceResults[openLibrarySourceIndex]?.diagnostics;
+          sourceResults = previousSourceResults.map((result, index) => index === openLibrarySourceIndex
+            ? {
+              ...result,
+              diagnostics: {
+                ...result.diagnostics,
+                postFinalEligibilityUnderfillRecoveryTriggered: true,
+                postFinalEligibilityRecoveryTriggerCount: initialTeenOpenLibraryCleanCount,
+                postFinalEligibilityRecoveryQueriesAttempted: attemptedDiagnostics?.postFinalEligibilityRecoveryQueriesAttempted || recoveryDiagnostics.postFinalEligibilityRecoveryQueriesAttempted,
+                postFinalEligibilityRecoveryFetchCountByQuery: attemptedDiagnostics?.postFinalEligibilityRecoveryFetchCountByQuery || recoveryDiagnostics.postFinalEligibilityRecoveryFetchCountByQuery,
+                postFinalEligibilityRecoveryConvertedCount: attemptedDiagnostics?.postFinalEligibilityRecoveryConvertedCount || recoveryDiagnostics.postFinalEligibilityRecoveryConvertedCount,
+                postFinalEligibilityRecoveryEnteredScoringTitles: attemptedDiagnostics?.postFinalEligibilityRecoveryEnteredScoringTitles || recoveryDiagnostics.postFinalEligibilityRecoveryEnteredScoringTitles,
+                postFinalEligibilityRecoveryAcceptedTitles: previousSelected.filter(isTeenPostFinalRecoveryCandidate).map((candidate) => candidate.title),
+                postFinalEligibilityRecoveryRejectedByReason: attemptedDiagnostics?.postFinalEligibilityRecoveryRejectedByReason || {},
+                postFinalEligibilityRecoveryFinalCount: previousCleanCount,
+                postFinalEligibilityRecoveryStoppedReason: "recovery_would_reduce_clean_count",
+                meaningfulTasteRecoveryTriggered: true,
+                meaningfulTasteRecoveryTriggerStage: "post_final_eligibility",
+                meaningfulTasteRecoveryQueriesAttempted: attemptedDiagnostics?.postFinalEligibilityRecoveryQueriesAttempted || recoveryDiagnostics.postFinalEligibilityRecoveryQueriesAttempted,
+                meaningfulTasteRecoveryAcceptedTitles: previousSelected.filter(isTeenPostFinalRecoveryCandidate).map((candidate) => candidate.title),
+                meaningfulTasteRecoveryFinalCount: previousSelected.filter(isTeenPostFinalRecoveryCandidate).length,
+                meaningfulTasteRecoverySurvivingFinalCount: previousCleanCount,
+                underfilledAfterMeaningfulTasteRecovery: previousCleanCount < teenPostFinalEligibilityTarget,
+                recoverySuccessRequiresFinalEligibility: true,
+              },
+            }
+            : result);
+          normalized = previousNormalized;
+          scored = previousScored;
+          selection = previousSelection;
+          selected = previousSelected;
+          rejectedReasons = previousRejectedReasons;
+          break;
+        }
+
+        const finalRecoveryDiagnostics = sourceResults[openLibrarySourceIndex]?.diagnostics;
+        if (finalRecoveryDiagnostics) {
+          const recoverySelectedTitles = selected
+            .filter(isTeenPostFinalRecoveryCandidate)
+            .map((candidate) => candidate.title);
+          const recoveryRejectedByReason = {
+            ...sourceRejectedRecoveryByReason,
+            ...teenRecoveryRejectedByReason(scored, selected),
+          };
+          const finalCleanCount = teenOpenLibraryCleanCount(selection, selected);
+          finalRecoveryDiagnostics.postFinalEligibilityRecoveryAcceptedTitles = recoverySelectedTitles;
+          finalRecoveryDiagnostics.postFinalEligibilityRecoveryRejectedByReason = recoveryRejectedByReason;
+          finalRecoveryDiagnostics.postFinalEligibilityRecoveryFinalCount = finalCleanCount;
+          finalRecoveryDiagnostics.postFinalEligibilityRecoveryStoppedReason = finalCleanCount >= teenPostFinalEligibilityTarget ? "reached_five" : "queries_exhausted";
+          finalRecoveryDiagnostics.meaningfulTasteRecoveryAcceptedTitles = recoverySelectedTitles;
+          finalRecoveryDiagnostics.meaningfulTasteRecoveryFinalCount = recoverySelectedTitles.length;
+          finalRecoveryDiagnostics.meaningfulTasteRecoverySurvivingFinalCount = finalCleanCount;
+          finalRecoveryDiagnostics.underfilledAfterMeaningfulTasteRecovery = finalCleanCount < teenPostFinalEligibilityTarget;
+        }
+      }
+    }
+  } else if (tasteProfile.ageBand === "teens" && openLibrarySourceResult) {
+    openLibrarySourceResult.diagnostics.postFinalEligibilityUnderfillRecoveryTriggered = false;
+    openLibrarySourceResult.diagnostics.postFinalEligibilityRecoveryTriggerCount = initialTeenOpenLibraryCleanCount;
+    openLibrarySourceResult.diagnostics.postFinalEligibilityRecoveryFinalCount = initialTeenOpenLibraryCleanCount;
+    openLibrarySourceResult.diagnostics.postFinalEligibilityRecoveryStoppedReason = "not_underfilled";
+  }
+
   const shouldRunPostFinalEligibilityRecovery = middleGradesDeepDebugActive
     && tasteProfile.ageBand === "preteens"
     && Boolean(openLibrarySourceResult?.rawItems.length)

@@ -281,8 +281,15 @@ export interface SourceDiagnosticV2 {
   meaningfulTasteRecoveryFinalCount?: number;
   underfilledAfterMeaningfulTasteRecovery?: boolean;
   postFinalEligibilityUnderfillRecoveryTriggered?: boolean;
+  postFinalEligibilityRecoveryTriggerCount?: number;
+  postFinalEligibilityRecoveryQueriesAttempted?: string[];
+  postFinalEligibilityRecoveryFetchCountByQuery?: Record<string, number>;
+  postFinalEligibilityRecoveryConvertedCount?: number;
+  postFinalEligibilityRecoveryEnteredScoringTitles?: string[];
   postFinalEligibilityRecoveryAcceptedTitles?: string[];
   postFinalEligibilityRecoveryRejectedByReason?: Record<string, string[]>;
+  postFinalEligibilityRecoveryFinalCount?: number;
+  postFinalEligibilityRecoveryStoppedReason?: string;
   meaningfulTasteRecoverySurvivingFinalCount?: number;
   meaningfulTasteRecoveryContinuedAfterRejectedMerge?: boolean;
   meaningfulTasteRecoveryExhaustedQueries?: string[];
