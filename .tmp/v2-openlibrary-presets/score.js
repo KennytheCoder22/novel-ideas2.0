@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.signalPresentInText = signalPresentInText;
 exports.scoreCandidates = scoreCandidates;
 function candidateText(candidate) {
     return [

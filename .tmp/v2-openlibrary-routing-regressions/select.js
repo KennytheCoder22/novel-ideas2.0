@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.selectRecommendations = selectRecommendations;
+const score_1 = require("./score");
 function normalized(value) {
     return String(value || "")
         .normalize("NFD")
@@ -2525,6 +2526,12 @@ function teenOpenLibraryNonTitleMetadataText(candidate) {
         ...asStringList(candidate.formats),
         ...asStringList(candidate.creators),
         candidate.publicationYear,
+        raw.first_publish_year,
+        raw.publish_date,
+        ...asStringList(raw.publisher),
+        ...asStringList(raw.publishers),
+        ...asStringList(raw.audience),
+        ...asStringList(raw.audience_facet),
         candidate.maturityBand,
     ].join(" "));
 }
@@ -2532,8 +2539,7 @@ function teenOpenLibrarySignalSupportedByNonTitleMetadata(signal, metadataText) 
     const value = normalized(signal);
     if (!value)
         return false;
-    const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(`\\b${escaped}\\b`).test(metadataText);
+    return (0, score_1.signalPresentInText)(metadataText, value);
 }
 function teenOpenLibraryMeaningfulTasteEligibility(candidate, profile) {
     if (profile.ageBand !== "teens" || candidate.source !== "openLibrary")
@@ -2573,17 +2579,27 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates, selected, re
     const selectedTitles = new Set(selected.map((candidate) => normalized(candidate.title)));
     const metadataBackedLikedSignalsByTitle = {};
     const metadataBackedDislikedSignalsByTitle = {};
+    const teenOpenLibraryNonTitleLikedSignalsByTitle = {};
+    const documentBackedTasteSignalsByTitle = {};
     const positiveTasteScoreByTitle = {};
     const teenOpenLibraryEligibilityAllowedByTitle = {};
     const teenOpenLibraryEligibilityReasonByTitle = {};
+    const finalEligibilityRejectedTitlesByReason = {};
     const finalScoreComponentsByTitle = {};
     const finalRankingReasonByTitle = {};
     const finalEligibilityAcceptedTitles = [];
+    const meaningfulTasteEligibleTitles = [];
     for (const candidate of rankedCandidates.filter((row) => row.source === "openLibrary")) {
         const eligibility = teenOpenLibraryMeaningfulTasteEligibility(candidate, profile);
         const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
+        const nonTitleMetadataText = teenOpenLibraryNonTitleMetadataText(candidate);
+        const nonTitleDislikedSignals = teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedDislikedSignals")
+            .filter((signal) => !TEEN_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(signal))
+            .filter((signal) => teenOpenLibrarySignalSupportedByNonTitleMetadata(signal, nonTitleMetadataText));
         metadataBackedLikedSignalsByTitle[candidate.title] = eligibility.signals;
         metadataBackedDislikedSignalsByTitle[candidate.title] = teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedDislikedSignals");
+        teenOpenLibraryNonTitleLikedSignalsByTitle[candidate.title] = eligibility.nonTitleSignals;
+        documentBackedTasteSignalsByTitle[candidate.title] = eligibility.nonTitleSignals;
         positiveTasteScoreByTitle[candidate.title] = Math.round(positiveTasteScore * 1000) / 1000;
         teenOpenLibraryEligibilityAllowedByTitle[candidate.title] = eligibility.allowed;
         teenOpenLibraryEligibilityReasonByTitle[candidate.title] = eligibility.allowed
@@ -2603,19 +2619,37 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates, selected, re
         candidate.diagnostics.teenOpenLibraryFinalEligibilityAllowed = eligibility.allowed;
         candidate.diagnostics.teenOpenLibraryFinalEligibilityReason = teenOpenLibraryEligibilityReasonByTitle[candidate.title];
         candidate.diagnostics.teenOpenLibraryNonTitleTasteSignals = eligibility.nonTitleSignals;
+        candidate.diagnostics.teenOpenLibraryNonTitleDislikedSignals = nonTitleDislikedSignals;
         if (eligibility.allowed)
+            meaningfulTasteEligibleTitles.push(candidate.title);
+        else {
+            const reason = eligibility.reason || "teen_openlibrary_no_meaningful_metadata_taste";
+            finalEligibilityRejectedTitlesByReason[reason] = [...(finalEligibilityRejectedTitlesByReason[reason] || []), candidate.title];
+        }
+        if (eligibility.allowed && selectedTitles.has(normalized(candidate.title)))
             finalEligibilityAcceptedTitles.push(candidate.title);
     }
     diagnostics.metadataBackedLikedSignalsByTitle = metadataBackedLikedSignalsByTitle;
     diagnostics.metadataBackedDislikedSignalsByTitle = metadataBackedDislikedSignalsByTitle;
+    diagnostics.teenOpenLibraryNonTitleLikedSignalsByTitle = teenOpenLibraryNonTitleLikedSignalsByTitle;
+    diagnostics.documentBackedTasteSignalsByTitle = documentBackedTasteSignalsByTitle;
     diagnostics.positiveTasteScoreByTitle = positiveTasteScoreByTitle;
     diagnostics.teenOpenLibraryEligibilityAllowedByTitle = teenOpenLibraryEligibilityAllowedByTitle;
     diagnostics.teenOpenLibraryEligibilityReasonByTitle = teenOpenLibraryEligibilityReasonByTitle;
     diagnostics.finalEligibilityAcceptedTitles = finalEligibilityAcceptedTitles;
+    diagnostics.finalEligibilityRejectedTitlesByReason = finalEligibilityRejectedTitlesByReason;
     diagnostics.finalEligibilityCleanCandidateCount = finalEligibilityAcceptedTitles.length;
     diagnostics.candidateTasteMatchScoreByTitle = positiveTasteScoreByTitle;
-    diagnostics.candidateMatchedLikedSignalsByTitle = metadataBackedLikedSignalsByTitle;
-    diagnostics.candidateMatchedDislikedSignalsByTitle = metadataBackedDislikedSignalsByTitle;
+    diagnostics.meaningfulTasteEligibleTitles = meaningfulTasteEligibleTitles;
+    diagnostics.candidateMatchedLikedSignalsByTitle = documentBackedTasteSignalsByTitle;
+    diagnostics.candidateMatchedDislikedSignalsByTitle = Object.fromEntries(rankedCandidates
+        .filter((row) => row.source === "openLibrary")
+        .map((candidate) => {
+        const nonTitleMetadataText = teenOpenLibraryNonTitleMetadataText(candidate);
+        return [candidate.title, teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedDislikedSignals")
+                .filter((signal) => !TEEN_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(signal))
+                .filter((signal) => teenOpenLibrarySignalSupportedByNonTitleMetadata(signal, nonTitleMetadataText))];
+    }));
     diagnostics.finalScoreComponentsByTitle = finalScoreComponentsByTitle;
     diagnostics.finalRankingReasonByTitle = finalRankingReasonByTitle;
     diagnostics.finalEligibilityGateApplied = true;

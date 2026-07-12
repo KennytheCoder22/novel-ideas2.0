@@ -87,7 +87,7 @@ function hasStrongGenreMetadata(text: string): boolean {
   return /\b(dystopian|dystopia|science fiction|horror|thriller|mystery|historical fiction|fantasy|paranormal|survival|adventure)\b/.test(text);
 }
 
-function signalPresentInText(text: string, value: string): boolean {
+export function signalPresentInText(text: string, value: string): boolean {
   if (!value) return false;
   if (text.includes(value)) return true;
   const hasAdventure = /\b(adventures?|quest|quests|journeys?|explor(?:e|es|ing|ation)|survival|expedition)\b/.test(text);
