@@ -181,9 +181,10 @@ function teenOpenLibraryPostFinalRecoveryQueries(profile: TasteProfile, diagnost
   const weights = {
     fantasy: independentLikedWeight(profile, /\b(fantasy|magic|magical)\b/),
     paranormal: independentLikedWeight(profile, /\b(paranormal|supernatural)\b/),
-    mystery: independentLikedWeight(profile, /\b(mystery|detective|suspense|thriller|crime)\b/),
+    mystery: independentLikedWeight(profile, /\b(mystery|detective|suspense|thriller)\b/),
     thriller: independentLikedWeight(profile, /\b(thriller|suspense)\b/),
     crime: independentLikedWeight(profile, /\b(crime|detective)\b/),
+    superhero: independentLikedWeight(profile, /\b(superhero|superheroes|super hero|super-powered|superpowered|dc comics|marvel)\b/),
     contemporary: independentLikedWeight(profile, /\b(contemporary|realistic|coming[-\s]of[-\s]age|school|identity)\b/),
     romance: independentLikedWeight(profile, /\b(romance|romantic)\b/),
     dystopian: independentLikedWeight(profile, /\b(dystopia|dystopian)\b/),
@@ -195,30 +196,87 @@ function teenOpenLibraryPostFinalRecoveryQueries(profile: TasteProfile, diagnost
     sports: independentLikedWeight(profile, /\b(sports?|basketball|soccer|football|baseball|volleyball|track|athletic|athlete|competition)\b/),
     school: independentLikedWeight(profile, /\b(school|academy|campus|boarding school|magic school|magical school)\b/),
   };
+  type TeenRecoveryFamily = keyof typeof weights;
+  type TeenRecoveryCandidate = {
+    query: string;
+    score: number;
+    required: TeenRecoveryFamily[];
+    requiredAny?: TeenRecoveryFamily[];
+    primaryFamily: TeenRecoveryFamily;
+    priority: number;
+  };
   const attempted = teenOpenLibraryAttemptedQueries(diagnostics);
-  const candidates: Array<{ query: string; score: number; required: Array<keyof typeof weights> }> = [
-    { query: "young adult fantasy mystery", score: weights.fantasy + weights.mystery, required: ["fantasy", "mystery"] },
-    { query: "young adult paranormal fantasy", score: weights.paranormal + weights.fantasy, required: ["paranormal", "fantasy"] },
-    { query: "young adult paranormal mystery", score: weights.paranormal + weights.mystery, required: ["paranormal", "mystery"] },
-    { query: "young adult contemporary fantasy", score: weights.contemporary + weights.fantasy, required: ["contemporary", "fantasy"] },
-    { query: "young adult dystopian thriller", score: weights.dystopian + Math.max(weights.thriller, weights.survival, weights.mystery), required: ["dystopian"] },
-    { query: "young adult science fiction adventure", score: weights.speculative + weights.adventure, required: ["speculative", "adventure"] },
-    { query: "young adult science fiction thriller", score: weights.speculative + weights.thriller, required: ["speculative", "thriller"] },
-    { query: "young adult historical adventure", score: weights.historical + weights.adventure, required: ["historical", "adventure"] },
-    { query: "young adult school mystery", score: weights.school + weights.mystery, required: ["school", "mystery"] },
-    { query: "young adult mystery thriller", score: weights.mystery + weights.thriller, required: ["mystery", "thriller"] },
-    { query: "young adult contemporary romance", score: weights.contemporary + weights.romance, required: ["contemporary", "romance"] },
-    { query: "young adult fantasy adventure", score: weights.fantasy + weights.adventure, required: ["fantasy", "adventure"] },
-    { query: "young adult horror", score: weights.horror, required: ["horror"] },
-    { query: "young adult sports fiction", score: weights.sports, required: ["sports"] },
+  const candidates: TeenRecoveryCandidate[] = [
+    { query: "young adult superhero mystery", score: weights.superhero + Math.max(weights.crime, weights.mystery), required: ["superhero"], requiredAny: ["crime", "mystery"], primaryFamily: "superhero", priority: 0 },
+    { query: "young adult superhero fiction", score: weights.superhero, required: ["superhero"], primaryFamily: "superhero", priority: 1 },
+    { query: "young adult crime thriller", score: weights.crime + Math.max(weights.thriller, weights.mystery), required: ["crime"], requiredAny: ["thriller", "mystery"], primaryFamily: "crime", priority: 2 },
+    { query: "young adult fantasy mystery", score: weights.fantasy + weights.mystery, required: ["fantasy", "mystery"], primaryFamily: "fantasy", priority: 3 },
+    { query: "young adult paranormal fantasy", score: weights.paranormal + weights.fantasy, required: ["paranormal", "fantasy"], primaryFamily: "paranormal", priority: 4 },
+    { query: "young adult paranormal mystery", score: weights.paranormal + weights.mystery, required: ["paranormal", "mystery"], primaryFamily: "paranormal", priority: 5 },
+    { query: "young adult contemporary fantasy", score: weights.contemporary + weights.fantasy, required: ["contemporary", "fantasy"], primaryFamily: "contemporary", priority: 6 },
+    { query: "young adult dystopian thriller", score: weights.dystopian + Math.max(weights.thriller, weights.survival, weights.mystery), required: ["dystopian"], primaryFamily: "dystopian", priority: 7 },
+    { query: "young adult science fiction adventure", score: weights.speculative + weights.adventure, required: ["speculative", "adventure"], primaryFamily: "speculative", priority: 8 },
+    { query: "young adult science fiction thriller", score: weights.speculative + weights.thriller, required: ["speculative", "thriller"], primaryFamily: "speculative", priority: 9 },
+    { query: "young adult historical adventure", score: weights.historical + weights.adventure, required: ["historical", "adventure"], primaryFamily: "historical", priority: 10 },
+    { query: "young adult school mystery", score: weights.school + weights.mystery, required: ["school", "mystery"], primaryFamily: "school", priority: 11 },
+    { query: "young adult mystery thriller", score: weights.mystery + weights.thriller, required: ["mystery", "thriller"], primaryFamily: "mystery", priority: 12 },
+    { query: "young adult contemporary romance", score: weights.contemporary + weights.romance, required: ["contemporary", "romance"], primaryFamily: "romance", priority: 13 },
+    { query: "young adult fantasy adventure", score: weights.fantasy + weights.adventure, required: ["fantasy", "adventure"], primaryFamily: "fantasy", priority: 14 },
+    { query: "young adult horror", score: weights.horror, required: ["horror"], primaryFamily: "horror", priority: 15 },
+    { query: "young adult sports fiction", score: weights.sports, required: ["sports"], primaryFamily: "sports", priority: 16 },
   ];
-  return candidates
-    .filter((candidate) => candidate.required.every((family) => weights[family] > 0))
-    .filter((candidate) => candidate.score > 0)
+  const isSupported = (candidate: TeenRecoveryCandidate): boolean => candidate.score > 0
+    && candidate.required.every((family) => weights[family] > 0)
+    && (!candidate.requiredAny || candidate.requiredAny.some((family) => weights[family] > 0));
+  const compareCandidates = (a: TeenRecoveryCandidate, b: TeenRecoveryCandidate): number => b.score - a.score
+    || a.priority - b.priority
+    || a.query.localeCompare(b.query);
+  const supportedCandidates = candidates.filter(isSupported);
+  const removedAsAlreadyAttempted = supportedCandidates.filter((candidate) => attempted.has(candidate.query.toLowerCase()));
+  const viableCandidates = supportedCandidates
     .filter((candidate) => !attempted.has(candidate.query.toLowerCase()))
-    .sort((a, b) => b.score - a.score || a.query.localeCompare(b.query))
-    .map((candidate) => candidate.query)
-    .slice(0, limit);
+    .sort(compareCandidates);
+  const bestByFamily = new Map<TeenRecoveryFamily, TeenRecoveryCandidate>();
+  for (const candidate of viableCandidates) {
+    if (!bestByFamily.has(candidate.primaryFamily)) bestByFamily.set(candidate.primaryFamily, candidate);
+  }
+  const familyRepresentatives = [...bestByFamily.values()].sort(compareCandidates);
+  const selectedCandidates = familyRepresentatives.slice(0, limit);
+  const selectedSet = new Set(selectedCandidates.map((candidate) => candidate.query));
+  const secondaryVariants: TeenRecoveryCandidate[] = [];
+  if (selectedCandidates.length < limit) {
+    for (const candidate of viableCandidates) {
+      if (selectedCandidates.length >= limit) break;
+      if (selectedSet.has(candidate.query)) continue;
+      selectedCandidates.push(candidate);
+      selectedSet.add(candidate.query);
+      secondaryVariants.push(candidate);
+    }
+  }
+  const diagnosticsRecord = diagnostics as unknown as Record<string, unknown>;
+  diagnosticsRecord.teenRecoveryLikedFamilyWeights = weights;
+  diagnosticsRecord.teenRecoveryGeneratedCandidates = candidates.map((candidate) => ({
+    query: candidate.query,
+    score: candidate.score,
+    primaryFamily: candidate.primaryFamily,
+    required: candidate.required,
+    requiredAny: candidate.requiredAny || [],
+    supported: isSupported(candidate),
+    alreadyAttempted: attempted.has(candidate.query.toLowerCase()),
+  }));
+  diagnosticsRecord.teenRecoveryCandidatePrimaryFamily = candidates.reduce<Record<string, string>>((acc, candidate) => {
+    acc[candidate.query] = candidate.primaryFamily;
+    return acc;
+  }, {});
+  diagnosticsRecord.teenRecoveryCandidatesRemovedAsAlreadyAttempted = removedAsAlreadyAttempted.map((candidate) => candidate.query);
+  diagnosticsRecord.teenRecoveryBestQueryByFamily = [...bestByFamily.entries()].reduce<Record<string, string>>((acc, [family, candidate]) => {
+    acc[family] = candidate.query;
+    return acc;
+  }, {});
+  diagnosticsRecord.teenRecoverySelectedDistinctFamilies = Array.from(new Set(selectedCandidates.map((candidate) => candidate.primaryFamily)));
+  diagnosticsRecord.teenRecoverySecondaryVariantsUsed = secondaryVariants.map((candidate) => candidate.query);
+  diagnosticsRecord.teenRecoveryFinalQueries = selectedCandidates.map((candidate) => candidate.query);
+  return selectedCandidates.map((candidate) => candidate.query);
 }
 
 function primaryAuthorFromRawItem(item: unknown): string {
