@@ -2285,6 +2285,13 @@ type TeenOpenLibraryTasteEligibility = {
   topicalAdolescentSignals: string[];
   authorityConflictSignals: string[];
   narrativeEvidenceSignals: string[];
+  meaningfulLikedContentSignals: string[];
+  overlappingDislikedContentSignals: string[];
+  nonOverlappingLikedContentSignals: string[];
+  dislikeOverlapRatio: number;
+  reliableTeenFitSignals: string[];
+  weakTeenFitSignals: string[];
+  adultOrCrossoverShapeReasons: string[];
   likedDislikedOverlapSignals: string[];
   narrativeFictionShape: boolean;
   nonNarrativeShapeReasons: string[];
@@ -2404,6 +2411,60 @@ function teenOpenLibraryAuthoritySignals(metadataValues: string[]): string[] {
   return uniqueSignals([...teenOpenLibraryStrongAuthoritySignals(metadataValues), ...teenOpenLibraryWeakAuthoritySignals(metadataValues)]);
 }
 
+function teenOpenLibraryReliableTeenFitSignals(metadataValues: string[], metadataText: string): string[] {
+  const exactReliableAuthority = teenOpenLibraryExactStrongAuthoritySignals(metadataValues)
+    .filter((signal) => signal !== "young adult");
+  const audienceSignals = teenOpenLibraryFieldLocalSignals(metadataValues, [
+    ["audience ages 12 and up", /\baudience ages? 1[2-8](?: and up)?\b|\bages? 1[2-8](?: and up)?\b/],
+    ["teen grade audience", /\b(grades?|reading level grade) (7|8|9|10|11|12)\b/],
+  ]);
+  const imprintSignals = teenOpenLibraryFieldLocalSignals(metadataValues, [
+    ["tor teen", /\btor teen\b/],
+    ["simon pulse", /\bsimon pulse\b/],
+    ["books for young readers", /\bbooks for young readers\b/],
+    ["young listeners", /\byoung listeners\b/],
+    ["teen imprint", /\b(teen|young adult) (imprint|publisher|publication)\b/],
+  ]);
+  const descriptionSignals: string[] = [];
+  if (/\b(ya|young adult|teen) (debut|novel|fiction|fantasy|romance|thriller|mystery|horror)\b/.test(metadataText)) {
+    descriptionSignals.push("description teen fiction");
+  }
+  return uniqueSignals([...exactReliableAuthority, ...audienceSignals, ...imprintSignals, ...descriptionSignals]);
+}
+
+function teenOpenLibraryWeakTeenFitSignals(metadataValues: string[], metadataText: string): string[] {
+  const signals: string[] = [];
+  if (teenOpenLibraryExactStrongAuthoritySignals(metadataValues).includes("young adult")) signals.push("bare young adult");
+  signals.push(...teenOpenLibraryWeakAuthoritySignals(metadataValues));
+  signals.push(...teenOpenLibraryTopicalAdolescentSignals(metadataValues));
+  if (/\bteenager|teenage protagonist|teenage girl|teenage boy|teenage heroes?\b/.test(metadataText)) signals.push("teenage protagonist");
+  signals.push(...teenOpenLibraryAuthorityConflictSignals(metadataValues));
+  return uniqueSignals(signals);
+}
+
+function teenOpenLibraryAdultOrCrossoverShapeReasons(metadataText: string): string[] {
+  const reasons: string[] = [];
+  if (/\b(adult romance|contemporary adult romance|adult fiction)\b/.test(metadataText) && /\bromance\b/.test(metadataText)) {
+    reasons.push("adult_romance_shape");
+  }
+  if (/\b(dark romance|mafia|underworld|arranged marriage|enemies to lovers)\b/.test(metadataText) && /\bromance\b/.test(metadataText)) {
+    reasons.push("adult_or_crossover_romance_shape");
+  }
+  if (/\b(erotica|erotic|explicit sexual|sexual content|fornicat)\b/.test(metadataText)) {
+    reasons.push("explicit_or_erotic_content_shape");
+  }
+  if (/\b(adult fantasy|adult science fiction|adult sci fi)\b/.test(metadataText)) {
+    reasons.push("adult_genre_classification");
+  }
+  if (/\b(drunk|drunken|getting high|gets high|partying|intoxication|intoxicated)\b/.test(metadataText)) {
+    reasons.push("mature_intoxication_partying_shape");
+  }
+  if (/\b(harlequin|carina press|mills boon)\b/.test(metadataText) && /\bromance\b/.test(metadataText)) {
+    reasons.push("adult_romance_publisher_shape");
+  }
+  return uniqueSignals(reasons);
+}
+
 function teenOpenLibraryNarrativeEvidenceSignals(metadataValues: string[]): string[] {
   return teenOpenLibraryFieldLocalSignals(metadataValues, [
     ["young adult fiction", /\byoung adult fiction\b/],
@@ -2483,7 +2544,7 @@ function teenOpenLibraryNonNarrativeShapeReasons(metadataText: string, hasTeenAu
 
 function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, profile: TasteProfile): TeenOpenLibraryTasteEligibility {
   if (profile.ageBand !== "teens" || candidate.source !== "openLibrary") {
-    return { allowed: true, signals: [], nonTitleSignals: [], contentSignals: [], contextOnlySignals: [], authoritySignals: [], strongAuthoritySignals: [], weakAuthoritySignals: [], exactStrongAuthoritySignals: [], topicalAdolescentSignals: [], authorityConflictSignals: [], narrativeEvidenceSignals: [], likedDislikedOverlapSignals: [], narrativeFictionShape: false, nonNarrativeShapeReasons: [] };
+    return { allowed: true, signals: [], nonTitleSignals: [], contentSignals: [], contextOnlySignals: [], authoritySignals: [], strongAuthoritySignals: [], weakAuthoritySignals: [], exactStrongAuthoritySignals: [], topicalAdolescentSignals: [], authorityConflictSignals: [], narrativeEvidenceSignals: [], meaningfulLikedContentSignals: [], overlappingDislikedContentSignals: [], nonOverlappingLikedContentSignals: [], dislikeOverlapRatio: 0, reliableTeenFitSignals: [], weakTeenFitSignals: [], adultOrCrossoverShapeReasons: [], likedDislikedOverlapSignals: [], narrativeFictionShape: false, nonNarrativeShapeReasons: [] };
   }
   const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
   const likedSignals = teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedLikedSignals");
@@ -2497,9 +2558,12 @@ function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, p
   const weakAuthoritySignals = teenOpenLibraryWeakAuthoritySignals(nonTitleMetadataValues);
   const authoritySignals = uniqueSignals([...strongAuthoritySignals, ...weakAuthoritySignals]);
   const hasTeenAuthority = authoritySignals.length > 0;
-  const hasStrongTeenAuthority = strongAuthoritySignals.length > 0;
   const narrativeEvidenceSignals = teenOpenLibraryNarrativeEvidenceSignals(nonTitleMetadataValues);
   const narrativeFictionShape = teenOpenLibraryNarrativeFictionShape(nonTitleMetadataValues);
+  const reliableTeenFitSignals = teenOpenLibraryReliableTeenFitSignals(nonTitleMetadataValues, nonTitleMetadataText);
+  const weakTeenFitSignals = teenOpenLibraryWeakTeenFitSignals(nonTitleMetadataValues, nonTitleMetadataText);
+  const adultOrCrossoverShapeReasons = teenOpenLibraryAdultOrCrossoverShapeReasons(nonTitleMetadataText);
+  const hasReliableTeenFit = reliableTeenFitSignals.length > 0;
   const nonNarrativeShapeReasons = teenOpenLibraryNonNarrativeShapeReasons(nonTitleMetadataText, hasTeenAuthority);
   const baseResult = {
     signals: likedSignals,
@@ -2513,6 +2577,13 @@ function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, p
     topicalAdolescentSignals,
     authorityConflictSignals,
     narrativeEvidenceSignals,
+    meaningfulLikedContentSignals: [] as string[],
+    overlappingDislikedContentSignals: [] as string[],
+    nonOverlappingLikedContentSignals: [] as string[],
+    dislikeOverlapRatio: 0,
+    reliableTeenFitSignals,
+    weakTeenFitSignals,
+    adultOrCrossoverShapeReasons,
     likedDislikedOverlapSignals: [] as string[],
     narrativeFictionShape,
     nonNarrativeShapeReasons,
@@ -2528,6 +2599,8 @@ function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, p
     .filter((signal) => teenOpenLibrarySignalSupportedByNonTitleMetadata(signal, nonTitleMetadataText)));
   const dislikedContentSignalSet = new Set(dislikedNonTitleSignals);
   const likedDislikedOverlapSignals = contentSignals.filter((signal) => dislikedContentSignalSet.has(signal));
+  const nonOverlappingLikedContentSignals = contentSignals.filter((signal) => !dislikedContentSignalSet.has(signal));
+  const dislikeOverlapRatio = contentSignals.length > 0 ? likedDislikedOverlapSignals.length / contentSignals.length : 0;
   const resultEvidence = {
     signals: likedSignals,
     nonTitleSignals: nonTitleLikedSignals,
@@ -2540,6 +2613,13 @@ function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, p
     topicalAdolescentSignals,
     authorityConflictSignals,
     narrativeEvidenceSignals,
+    meaningfulLikedContentSignals: contentSignals,
+    overlappingDislikedContentSignals: likedDislikedOverlapSignals,
+    nonOverlappingLikedContentSignals,
+    dislikeOverlapRatio,
+    reliableTeenFitSignals,
+    weakTeenFitSignals,
+    adultOrCrossoverShapeReasons,
     likedDislikedOverlapSignals,
     narrativeFictionShape,
     nonNarrativeShapeReasons,
@@ -2549,17 +2629,20 @@ function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, p
   if (contentSignals.length === 1 && likedDislikedOverlapSignals.includes(contentSignals[0])) {
     return { allowed: false, reason: "teen_openlibrary_single_signal_negated_by_dislike", ...resultEvidence };
   }
+  if (contentSignals.length >= 2 && dislikeOverlapRatio >= 0.5 && !hasReliableTeenFit) {
+    return { allowed: false, reason: "teen_openlibrary_multi_signal_mostly_negated_without_reliable_teen_fit", ...resultEvidence };
+  }
 
   const distinctiveSignals = contentSignals.filter((signal) => TEEN_OPENLIBRARY_DISTINCTIVE_TASTE_SIGNAL.test(signal) && (!TEEN_OPENLIBRARY_AUTHORITY_BOUND_TASTE_SIGNAL.test(signal) || (hasTeenAuthority && narrativeFictionShape)));
   const broadSignals = contentSignals.filter((signal) => TEEN_OPENLIBRARY_BROAD_SINGLE_TASTE_SIGNAL.test(signal));
   const authorityBoundSignals = contentSignals.filter((signal) => TEEN_OPENLIBRARY_AUTHORITY_BOUND_TASTE_SIGNAL.test(signal));
   const singleSignalRequiresStrongAuthority = contentSignals.length === 1 && TEEN_OPENLIBRARY_SINGLE_SIGNAL_REQUIRES_STRONG_AUTHORITY.test(contentSignals[0]);
-  if (singleSignalRequiresStrongAuthority && !(narrativeFictionShape && hasStrongTeenAuthority)) {
+  if (singleSignalRequiresStrongAuthority && !(narrativeFictionShape && hasReliableTeenFit)) {
     return { allowed: false, reason: "teen_openlibrary_single_generic_signal_without_strong_authority", ...resultEvidence };
   }
   const hasSingleBroadOrBorderlineAuthorityFallback =
     narrativeFictionShape
-    && hasStrongTeenAuthority
+    && hasReliableTeenFit
     && (
       broadSignals.length >= 1
       || authorityBoundSignals.length >= 1
@@ -2592,6 +2675,13 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
   const teenOpenLibraryAuthorityConflictSignals: Record<string, string[]> = {};
   const teenOpenLibraryLikedDislikedOverlapSignals: Record<string, string[]> = {};
   const teenOpenLibraryNarrativeEvidenceSignals: Record<string, string[]> = {};
+  const teenOpenLibraryMeaningfulLikedContentSignals: Record<string, string[]> = {};
+  const teenOpenLibraryOverlappingDislikedContentSignals: Record<string, string[]> = {};
+  const teenOpenLibraryNonOverlappingLikedContentSignals: Record<string, string[]> = {};
+  const teenOpenLibraryDislikeOverlapRatio: Record<string, number> = {};
+  const teenOpenLibraryReliableTeenFitSignals: Record<string, string[]> = {};
+  const teenOpenLibraryWeakTeenFitSignals: Record<string, string[]> = {};
+  const teenOpenLibraryAdultOrCrossoverShapeReasons: Record<string, string[]> = {};
   const teenOpenLibraryNarrativeFictionShape: Record<string, boolean> = {};
   const teenOpenLibraryNonNarrativeShapeReasons: Record<string, string[]> = {};
   const documentBackedTasteSignalsByTitle: Record<string, string[]> = {};
@@ -2624,6 +2714,13 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
     teenOpenLibraryAuthorityConflictSignals[candidate.title] = eligibility.authorityConflictSignals;
     teenOpenLibraryLikedDislikedOverlapSignals[candidate.title] = eligibility.likedDislikedOverlapSignals;
     teenOpenLibraryNarrativeEvidenceSignals[candidate.title] = eligibility.narrativeEvidenceSignals;
+    teenOpenLibraryMeaningfulLikedContentSignals[candidate.title] = eligibility.meaningfulLikedContentSignals;
+    teenOpenLibraryOverlappingDislikedContentSignals[candidate.title] = eligibility.overlappingDislikedContentSignals;
+    teenOpenLibraryNonOverlappingLikedContentSignals[candidate.title] = eligibility.nonOverlappingLikedContentSignals;
+    teenOpenLibraryDislikeOverlapRatio[candidate.title] = Math.round(eligibility.dislikeOverlapRatio * 1000) / 1000;
+    teenOpenLibraryReliableTeenFitSignals[candidate.title] = eligibility.reliableTeenFitSignals;
+    teenOpenLibraryWeakTeenFitSignals[candidate.title] = eligibility.weakTeenFitSignals;
+    teenOpenLibraryAdultOrCrossoverShapeReasons[candidate.title] = eligibility.adultOrCrossoverShapeReasons;
     teenOpenLibraryNarrativeFictionShape[candidate.title] = eligibility.narrativeFictionShape;
     teenOpenLibraryNonNarrativeShapeReasons[candidate.title] = eligibility.nonNarrativeShapeReasons;
     documentBackedTasteSignalsByTitle[candidate.title] = eligibility.contentSignals;
@@ -2647,6 +2744,10 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
       teenOpenLibraryAuthorityConflictSignalCount: eligibility.authorityConflictSignals.length,
       teenOpenLibraryLikedDislikedOverlapSignalCount: eligibility.likedDislikedOverlapSignals.length,
       teenOpenLibraryNarrativeEvidenceSignalCount: eligibility.narrativeEvidenceSignals.length,
+      teenOpenLibraryDislikeOverlapRatio: Math.round(eligibility.dislikeOverlapRatio * 1000) / 1000,
+      teenOpenLibraryReliableTeenFitSignalCount: eligibility.reliableTeenFitSignals.length,
+      teenOpenLibraryWeakTeenFitSignalCount: eligibility.weakTeenFitSignals.length,
+      teenOpenLibraryAdultOrCrossoverShapeCount: eligibility.adultOrCrossoverShapeReasons.length,
       teenOpenLibraryNarrativeFictionShape: eligibility.narrativeFictionShape ? 1 : 0,
       teenOpenLibraryNonNarrativeShapeCount: eligibility.nonNarrativeShapeReasons.length,
     };
@@ -2666,6 +2767,13 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
     candidate.diagnostics.teenOpenLibraryAuthorityConflictSignals = eligibility.authorityConflictSignals;
     candidate.diagnostics.teenOpenLibraryLikedDislikedOverlapSignals = eligibility.likedDislikedOverlapSignals;
     candidate.diagnostics.teenOpenLibraryNarrativeEvidenceSignals = eligibility.narrativeEvidenceSignals;
+    candidate.diagnostics.teenOpenLibraryMeaningfulLikedContentSignals = eligibility.meaningfulLikedContentSignals;
+    candidate.diagnostics.teenOpenLibraryOverlappingDislikedContentSignals = eligibility.overlappingDislikedContentSignals;
+    candidate.diagnostics.teenOpenLibraryNonOverlappingLikedContentSignals = eligibility.nonOverlappingLikedContentSignals;
+    candidate.diagnostics.teenOpenLibraryDislikeOverlapRatio = eligibility.dislikeOverlapRatio;
+    candidate.diagnostics.teenOpenLibraryReliableTeenFitSignals = eligibility.reliableTeenFitSignals;
+    candidate.diagnostics.teenOpenLibraryWeakTeenFitSignals = eligibility.weakTeenFitSignals;
+    candidate.diagnostics.teenOpenLibraryAdultOrCrossoverShapeReasons = eligibility.adultOrCrossoverShapeReasons;
     candidate.diagnostics.teenOpenLibraryNarrativeFictionShape = eligibility.narrativeFictionShape;
     candidate.diagnostics.teenOpenLibraryNonNarrativeShapeReasons = eligibility.nonNarrativeShapeReasons;
     candidate.diagnostics.teenOpenLibraryNonTitleDislikedSignals = nonTitleDislikedSignals;
@@ -2690,6 +2798,13 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
   diagnostics.teenOpenLibraryAuthorityConflictSignals = teenOpenLibraryAuthorityConflictSignals;
   diagnostics.teenOpenLibraryLikedDislikedOverlapSignals = teenOpenLibraryLikedDislikedOverlapSignals;
   diagnostics.teenOpenLibraryNarrativeEvidenceSignals = teenOpenLibraryNarrativeEvidenceSignals;
+  diagnostics.teenOpenLibraryMeaningfulLikedContentSignals = teenOpenLibraryMeaningfulLikedContentSignals;
+  diagnostics.teenOpenLibraryOverlappingDislikedContentSignals = teenOpenLibraryOverlappingDislikedContentSignals;
+  diagnostics.teenOpenLibraryNonOverlappingLikedContentSignals = teenOpenLibraryNonOverlappingLikedContentSignals;
+  diagnostics.teenOpenLibraryDislikeOverlapRatio = teenOpenLibraryDislikeOverlapRatio;
+  diagnostics.teenOpenLibraryReliableTeenFitSignals = teenOpenLibraryReliableTeenFitSignals;
+  diagnostics.teenOpenLibraryWeakTeenFitSignals = teenOpenLibraryWeakTeenFitSignals;
+  diagnostics.teenOpenLibraryAdultOrCrossoverShapeReasons = teenOpenLibraryAdultOrCrossoverShapeReasons;
   diagnostics.teenOpenLibraryNarrativeFictionShape = teenOpenLibraryNarrativeFictionShape;
   diagnostics.teenOpenLibraryNonNarrativeShapeReasons = teenOpenLibraryNonNarrativeShapeReasons;
   diagnostics.documentBackedTasteSignalsByTitle = documentBackedTasteSignalsByTitle;
