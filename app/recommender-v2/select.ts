@@ -2,6 +2,7 @@ import type { ScoredCandidate, TasteProfile } from "./types";
 import { signalPresentInText } from "./score";
 
 type DeferredCandidate = { candidate: ScoredCandidate; reason: string };
+type TeenOpenLibrarySeriesPositionInfo = { seriesName: string; position: number; source: string };
 
 function normalized(value: unknown): string {
   return String(value || "")
@@ -2334,6 +2335,126 @@ function teenOpenLibraryNonTitleMetadataValues(candidate: ScoredCandidate): stri
   ].map(normalized).filter(Boolean));
 }
 
+function teenOpenLibrarySeriesNumber(value: string): number {
+  const normalizedValue = normalized(value);
+  const wordNumbers: Record<string, number> = {
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12,
+  };
+  if (/^\d{1,2}$/.test(normalizedValue)) return Number(normalizedValue);
+  return wordNumbers[normalizedValue] || 0;
+}
+
+function cleanTeenOpenLibrarySeriesName(value: string, fallback: string): string {
+  const cleaned = normalized(value)
+    .replace(/\b(the|a|an)\b/g, " ")
+    .replace(/\b(series|book|volume|vol|part|number|no)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || rootTitle(fallback);
+}
+
+function teenOpenLibrarySeriesPositionFromText(value: unknown, source: string, fallbackTitle: string): TeenOpenLibrarySeriesPositionInfo | null {
+  const rawText = String(value || "");
+  const text = normalized(value);
+  if (!text) return null;
+  const rawHash = rawText.match(/([A-Za-z][A-Za-z0-9'’:\-\s]{2,70}?)#\s*(\d{1,2})\b/);
+  if (rawHash) {
+    const position = teenOpenLibrarySeriesNumber(rawHash[2]);
+    if (position > 1) return { seriesName: cleanTeenOpenLibrarySeriesName(rawHash[1], fallbackTitle), position, source };
+  }
+  const namedSeries = text.match(/\b(young bond|replica)\s*(?:series\s*)?(?:book\s*)?(?:#|no|number)?\s*(\d{1,2}|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/);
+  if (namedSeries) {
+    const position = teenOpenLibrarySeriesNumber(namedSeries[2]);
+    if (position > 1) return { seriesName: cleanTeenOpenLibrarySeriesName(namedSeries[1], fallbackTitle), position, source };
+  }
+  const marker = text.match(/\b([a-z][a-z0-9 ]{2,70}?)\s*(?:series\s*)?(?:#|no|number|book|volume|vol|part)\s*(\d{1,2}|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/);
+  if (marker) {
+    const position = teenOpenLibrarySeriesNumber(marker[2]);
+    if (position > 1) return { seriesName: cleanTeenOpenLibrarySeriesName(marker[1], fallbackTitle), position, source };
+  }
+  const bareHash = rawText.match(/#\s*(\d{1,2})\b/);
+  if (bareHash) {
+    const position = teenOpenLibrarySeriesNumber(bareHash[1]);
+    if (position > 1) return { seriesName: rootTitle(fallbackTitle), position, source };
+  }
+  if (/\b(in the sequel|sequel to|the sequel to|second installment|second book)\b/.test(text)) {
+    return { seriesName: rootTitle(fallbackTitle), position: 2, source };
+  }
+  return null;
+}
+
+function teenOpenLibrarySeriesPositionInfo(candidate: ScoredCandidate): TeenOpenLibrarySeriesPositionInfo | null {
+  if (candidate.source !== "openLibrary") return null;
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const metadataValues = [
+    ...asStringList(raw.series),
+    ...asStringList(raw.series_name),
+    ...asStringList(raw.series_title),
+    rawOpenLibraryDescription(raw),
+    ...asStringList(raw.first_sentence),
+  ];
+  for (const value of metadataValues) {
+    const info = teenOpenLibrarySeriesPositionFromText(value, "metadata", candidate.title);
+    if (info) return info;
+  }
+  const titleValues: Array<[unknown, string]> = [
+    [candidate.title, "title"],
+    [candidate.subtitle, "subtitle"],
+    [raw.title, "title"],
+    [raw.subtitle, "subtitle"],
+  ];
+  for (const [value, source] of titleValues) {
+    const info = teenOpenLibrarySeriesPositionFromText(value, source, candidate.title);
+    if (info) return info;
+  }
+  return null;
+}
+
+function teenOpenLibraryLaterSeriesWeakReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
+  const eligibility = teenOpenLibraryMeaningfulTasteEligibility(candidate, profile);
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const metadataText = normalized([
+    teenOpenLibraryNonTitleMetadataText(candidate),
+    candidate.subtitle,
+    raw.subtitle,
+    ...asStringList(raw.series),
+  ].filter(Boolean).join(" "));
+  const onlyOneGenericOrBroadSignal = eligibility.contentSignals.length === 1
+    && (
+      TEEN_OPENLIBRARY_SINGLE_SIGNAL_REQUIRES_STRONG_AUTHORITY.test(eligibility.contentSignals[0])
+      || TEEN_OPENLIBRARY_BROAD_SINGLE_TASTE_SIGNAL.test(eligibility.contentSignals[0])
+    );
+  const explicitAdultSeriesShape = /\b(adult series|adult novels?|novels for adults|fiction for adults|adult fantasy|adult science fiction|adult fiction)\b/.test(metadataText);
+  const strongDislikedOverlap = eligibility.overlappingDislikedContentSignals.length > 0 && eligibility.dislikeOverlapRatio >= 0.5;
+  if (
+    onlyOneGenericOrBroadSignal
+    || eligibility.reliableTeenFitSignals.length === 0
+    || eligibility.adultOrCrossoverShapeReasons.length > 0
+    || explicitAdultSeriesShape
+    || strongDislikedOverlap
+    || eligibility.nonNarrativeShapeReasons.length > 0
+  ) {
+    return "teen_openlibrary_later_series_without_strong_independent_fit";
+  }
+  return null;
+}
+
+function annotateTeenOpenLibrarySeriesDiagnostics(candidate: ScoredCandidate, info: TeenOpenLibrarySeriesPositionInfo): void {
+  candidate.diagnostics.teenOpenLibrarySeriesName = info.seriesName;
+  candidate.diagnostics.teenOpenLibrarySeriesPosition = info.position;
+  candidate.diagnostics.teenOpenLibrarySeriesPositionSource = info.source;
+}
+
 function uniqueSignals(values: string[]): string[] {
   return Array.from(new Set(values.map(normalized).filter(Boolean)));
 }
@@ -2684,6 +2805,12 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
   const teenOpenLibraryAdultOrCrossoverShapeReasons: Record<string, string[]> = {};
   const teenOpenLibraryNarrativeFictionShape: Record<string, boolean> = {};
   const teenOpenLibraryNonNarrativeShapeReasons: Record<string, string[]> = {};
+  const teenOpenLibrarySeriesNameByTitle: Record<string, string> = {};
+  const teenOpenLibrarySeriesPositionByTitle: Record<string, number> = {};
+  const teenOpenLibrarySeriesPositionSourceByTitle: Record<string, string> = {};
+  const teenOpenLibraryLaterSeriesDeferredTitles: string[] = [];
+  const teenOpenLibraryLaterSeriesAcceptedAfterUnderfillTitles: string[] = [];
+  const teenOpenLibraryLaterSeriesRejectedByReason: Record<string, string[]> = {};
   const documentBackedTasteSignalsByTitle: Record<string, string[]> = {};
   const positiveTasteScoreByTitle: Record<string, number> = {};
   const teenOpenLibraryEligibilityAllowedByTitle: Record<string, boolean> = {};
@@ -2696,6 +2823,25 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
 
   for (const candidate of rankedCandidates.filter((row) => row.source === "openLibrary")) {
     const eligibility = teenOpenLibraryMeaningfulTasteEligibility(candidate, profile);
+    const seriesPositionInfo = teenOpenLibrarySeriesPositionInfo(candidate);
+    if (seriesPositionInfo) {
+      annotateTeenOpenLibrarySeriesDiagnostics(candidate, seriesPositionInfo);
+      teenOpenLibrarySeriesNameByTitle[candidate.title] = seriesPositionInfo.seriesName;
+      teenOpenLibrarySeriesPositionByTitle[candidate.title] = seriesPositionInfo.position;
+      teenOpenLibrarySeriesPositionSourceByTitle[candidate.title] = seriesPositionInfo.source;
+    }
+    if (candidate.rejectedReasons.includes("teen_openlibrary_later_series_deferred")) {
+      teenOpenLibraryLaterSeriesDeferredTitles.push(candidate.title);
+    }
+    if (candidate.rejectedReasons.includes("teen_openlibrary_later_series_accepted_after_underfill")) {
+      teenOpenLibraryLaterSeriesAcceptedAfterUnderfillTitles.push(candidate.title);
+    }
+    if (candidate.rejectedReasons.includes("teen_openlibrary_later_series_without_strong_independent_fit")) {
+      teenOpenLibraryLaterSeriesRejectedByReason.teen_openlibrary_later_series_without_strong_independent_fit = uniqueSignals([
+        ...(teenOpenLibraryLaterSeriesRejectedByReason.teen_openlibrary_later_series_without_strong_independent_fit || []),
+        candidate.title,
+      ]);
+    }
     const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
     const nonTitleMetadataText = teenOpenLibraryNonTitleMetadataText(candidate);
     const nonTitleDislikedSignals = teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedDislikedSignals")
@@ -2807,6 +2953,12 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
   diagnostics.teenOpenLibraryAdultOrCrossoverShapeReasons = teenOpenLibraryAdultOrCrossoverShapeReasons;
   diagnostics.teenOpenLibraryNarrativeFictionShape = teenOpenLibraryNarrativeFictionShape;
   diagnostics.teenOpenLibraryNonNarrativeShapeReasons = teenOpenLibraryNonNarrativeShapeReasons;
+  diagnostics.teenOpenLibrarySeriesNameByTitle = teenOpenLibrarySeriesNameByTitle;
+  diagnostics.teenOpenLibrarySeriesPositionByTitle = teenOpenLibrarySeriesPositionByTitle;
+  diagnostics.teenOpenLibrarySeriesPositionSourceByTitle = teenOpenLibrarySeriesPositionSourceByTitle;
+  diagnostics.teenOpenLibraryLaterSeriesDeferredTitles = uniqueSignals(teenOpenLibraryLaterSeriesDeferredTitles);
+  diagnostics.teenOpenLibraryLaterSeriesAcceptedAfterUnderfillTitles = uniqueSignals(teenOpenLibraryLaterSeriesAcceptedAfterUnderfillTitles);
+  diagnostics.teenOpenLibraryLaterSeriesRejectedByReason = teenOpenLibraryLaterSeriesRejectedByReason;
   diagnostics.documentBackedTasteSignalsByTitle = documentBackedTasteSignalsByTitle;
   diagnostics.positiveTasteScoreByTitle = positiveTasteScoreByTitle;
   diagnostics.teenOpenLibraryEligibilityAllowedByTitle = teenOpenLibraryEligibilityAllowedByTitle;
@@ -2914,6 +3066,21 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       rejectedReasons.adult_weak_openlibrary_source_quality_deferred = Number(rejectedReasons.adult_weak_openlibrary_source_quality_deferred || 0) + 1;
       continue;
     }
+    const teenLaterSeriesInfo = profile.ageBand === "teens" && candidate.source === "openLibrary"
+      ? teenOpenLibrarySeriesPositionInfo(candidate)
+      : null;
+    if (teenLaterSeriesInfo) {
+      annotateTeenOpenLibrarySeriesDiagnostics(candidate, teenLaterSeriesInfo);
+      const laterSeriesWeakReason = teenOpenLibraryLaterSeriesWeakReason(candidate, profile);
+      if (laterSeriesWeakReason) {
+        recordRejected(candidate, rejectedReasons, laterSeriesWeakReason);
+        continue;
+      }
+      candidate.rejectedReasons.push("teen_openlibrary_later_series_deferred");
+      rejectedReasons.teen_openlibrary_later_series_deferred = Number(rejectedReasons.teen_openlibrary_later_series_deferred || 0) + 1;
+      deferred.push({ candidate, reason: "teen_openlibrary_later_series_deferred" });
+      continue;
+    }
     if (candidate.score <= 0) {
       candidate.rejectedReasons.push("accepted_despite_low_score");
       rejectedReasons.accepted_despite_low_score = Number(rejectedReasons.accepted_despite_low_score || 0) + 1;
@@ -3005,8 +3172,13 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
         rejectedReasons[blockedReason] = Number(rejectedReasons[blockedReason] || 0) + 1;
         continue;
       }
-      row.candidate.rejectedReasons.push(`underfill_relaxed_diversity:${row.reason}`);
-      rejectedReasons.underfill_relaxed_diversity = Number(rejectedReasons.underfill_relaxed_diversity || 0) + 1;
+      if (profile.ageBand === "teens" && row.reason === "teen_openlibrary_later_series_deferred") {
+        row.candidate.rejectedReasons.push("teen_openlibrary_later_series_accepted_after_underfill");
+        rejectedReasons.teen_openlibrary_later_series_accepted_after_underfill = Number(rejectedReasons.teen_openlibrary_later_series_accepted_after_underfill || 0) + 1;
+      } else {
+        row.candidate.rejectedReasons.push(`underfill_relaxed_diversity:${row.reason}`);
+        rejectedReasons.underfill_relaxed_diversity = Number(rejectedReasons.underfill_relaxed_diversity || 0) + 1;
+      }
       seenTitles.add(titleKey);
       selected.push(row.candidate);
       if (selected.length >= underfillTarget) break;
@@ -3030,8 +3202,13 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
         rejectedReasons.teen_openlibrary_underfill_blocked_same_root_variant = Number(rejectedReasons.teen_openlibrary_underfill_blocked_same_root_variant || 0) + 1;
         continue;
       }
-      row.candidate.rejectedReasons.push(`teen_openlibrary_underfill_relaxed_diversity:${row.reason}`);
-      rejectedReasons.teen_openlibrary_underfill_relaxed_diversity = Number(rejectedReasons.teen_openlibrary_underfill_relaxed_diversity || 0) + 1;
+      if (row.reason === "teen_openlibrary_later_series_deferred") {
+        row.candidate.rejectedReasons.push("teen_openlibrary_later_series_accepted_after_underfill");
+        rejectedReasons.teen_openlibrary_later_series_accepted_after_underfill = Number(rejectedReasons.teen_openlibrary_later_series_accepted_after_underfill || 0) + 1;
+      } else {
+        row.candidate.rejectedReasons.push(`teen_openlibrary_underfill_relaxed_diversity:${row.reason}`);
+        rejectedReasons.teen_openlibrary_underfill_relaxed_diversity = Number(rejectedReasons.teen_openlibrary_underfill_relaxed_diversity || 0) + 1;
+      }
       seenTitles.add(titleKey);
       selected.push(row.candidate);
     }
@@ -3040,6 +3217,13 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       if (candidate.source !== "openLibrary") continue;
       if (selected.includes(candidate)) continue;
       if (rejectReason(candidate, profile)) continue;
+      const laterSeriesInfo = teenOpenLibrarySeriesPositionInfo(candidate);
+      if (laterSeriesInfo) {
+        annotateTeenOpenLibrarySeriesDiagnostics(candidate, laterSeriesInfo);
+        candidate.rejectedReasons.push("teen_openlibrary_later_series_requires_deferred_underfill_path");
+        rejectedReasons.teen_openlibrary_later_series_requires_deferred_underfill_path = Number(rejectedReasons.teen_openlibrary_later_series_requires_deferred_underfill_path || 0) + 1;
+        continue;
+      }
       const titleKey = normalized(candidate.title);
       if (seenTitles.has(titleKey)) continue;
       const rootKey = seriesKey(candidate);
