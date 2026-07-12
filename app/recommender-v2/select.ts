@@ -2263,6 +2263,131 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
   diagnostics.lockQualityFailReasons = lockQualityFailReasons;
 }
 
+const TEEN_OPENLIBRARY_GENERIC_TASTE_SIGNAL = /^(teen|teens|young adult|ya|book|books|fiction|novel|novels|story|stories|series)$/;
+const TEEN_OPENLIBRARY_BROAD_SINGLE_TASTE_SIGNAL = /^(action|adventure|mystery|fantasy|drama)$/;
+const TEEN_OPENLIBRARY_DISTINCTIVE_TASTE_SIGNAL = /^(dystopia|dystopian|science fiction|sci fi|thriller|survival|realistic|school|identity|horror|romance|romantic|historical|history|crime|paranormal|psychological|competition|heist|sports?|sport|coming of age)$/;
+
+type TeenOpenLibraryTasteEligibility = { allowed: boolean; reason?: string; signals: string[]; nonTitleSignals: string[] };
+
+function teenOpenLibraryDiagnosticSignals(candidate: ScoredCandidate, field: "metadataBackedMatchedLikedSignals" | "metadataBackedMatchedDislikedSignals"): string[] {
+  const diagnosticSignals = candidate.diagnostics?.[field];
+  if (Array.isArray(diagnosticSignals)) return Array.from(new Set(diagnosticSignals.map(normalized).filter(Boolean)));
+  if (field === "metadataBackedMatchedLikedSignals") return middleGradesDocumentBackedTasteSignals(candidate);
+  return [];
+}
+
+function teenOpenLibraryNonTitleMetadataText(candidate: ScoredCandidate): string {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  return normalized([
+    candidate.description,
+    rawOpenLibraryDescription(raw),
+    ...asStringList(raw.subject),
+    ...asStringList(raw.subjects),
+    ...asStringList(raw.subject_facet),
+    ...asStringList(raw.subject_key),
+    ...asStringList(candidate.genres),
+    ...asStringList(candidate.themes),
+    ...asStringList(candidate.tones),
+    ...asStringList(candidate.characterDynamics),
+    ...asStringList(candidate.formats),
+    ...asStringList(candidate.creators),
+    candidate.publicationYear,
+    candidate.maturityBand,
+  ].join(" "));
+}
+
+function teenOpenLibrarySignalSupportedByNonTitleMetadata(signal: string, metadataText: string): boolean {
+  const value = normalized(signal);
+  if (!value) return false;
+  const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped}\\b`).test(metadataText);
+}
+
+function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, profile: TasteProfile): TeenOpenLibraryTasteEligibility {
+  if (profile.ageBand !== "teens" || candidate.source !== "openLibrary") return { allowed: true, signals: [], nonTitleSignals: [] };
+  const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
+  const likedSignals = teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedLikedSignals");
+  const dislikedSignals = teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedDislikedSignals");
+  if (positiveTasteScore <= 0) return { allowed: false, reason: "teen_openlibrary_no_positive_metadata_taste", signals: likedSignals, nonTitleSignals: [] };
+  if (!likedSignals.length) return { allowed: false, reason: "teen_openlibrary_no_metadata_liked_signals", signals: likedSignals, nonTitleSignals: [] };
+  const meaningfulSignals = likedSignals.filter((signal) => !TEEN_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(signal));
+  if (!meaningfulSignals.length) return { allowed: false, reason: "teen_openlibrary_generic_only_metadata_taste", signals: likedSignals, nonTitleSignals: [] };
+
+  const nonTitleMetadataText = teenOpenLibraryNonTitleMetadataText(candidate);
+  const nonTitleMeaningfulSignals = meaningfulSignals.filter((signal) => teenOpenLibrarySignalSupportedByNonTitleMetadata(signal, nonTitleMetadataText));
+  if (!nonTitleMeaningfulSignals.length) return { allowed: false, reason: "teen_openlibrary_title_only_metadata_taste", signals: likedSignals, nonTitleSignals: [] };
+
+  const distinctiveSignals = nonTitleMeaningfulSignals.filter((signal) => TEEN_OPENLIBRARY_DISTINCTIVE_TASTE_SIGNAL.test(signal));
+  const broadSignals = nonTitleMeaningfulSignals.filter((signal) => TEEN_OPENLIBRARY_BROAD_SINGLE_TASTE_SIGNAL.test(signal));
+  const hasAllowedTasteEvidence = distinctiveSignals.length > 0 || broadSignals.length >= 2;
+  if (!hasAllowedTasteEvidence) return { allowed: false, reason: "teen_openlibrary_single_broad_metadata_taste", signals: likedSignals, nonTitleSignals: nonTitleMeaningfulSignals };
+
+  const dislikedNonTitleSignals = dislikedSignals
+    .filter((signal) => !TEEN_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(signal))
+    .filter((signal) => teenOpenLibrarySignalSupportedByNonTitleMetadata(signal, nonTitleMetadataText));
+  const preciseAvoidMagnitude = Math.abs(Number(candidate.scoreBreakdown?.avoidSignalPenalty || 0));
+  if (dislikedNonTitleSignals.length > 0 && preciseAvoidMagnitude > positiveTasteScore && dislikedNonTitleSignals.length >= nonTitleMeaningfulSignals.length) {
+    return { allowed: false, reason: "teen_openlibrary_disliked_metadata_outweighs_liked", signals: likedSignals, nonTitleSignals: nonTitleMeaningfulSignals };
+  }
+
+  return { allowed: true, signals: likedSignals, nonTitleSignals: nonTitleMeaningfulSignals };
+}
+
+function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "teens" || !rankedCandidates.some((candidate) => candidate.source === "openLibrary")) return;
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const selectedTitles = new Set(selected.map((candidate) => normalized(candidate.title)));
+  const metadataBackedLikedSignalsByTitle: Record<string, string[]> = {};
+  const metadataBackedDislikedSignalsByTitle: Record<string, string[]> = {};
+  const positiveTasteScoreByTitle: Record<string, number> = {};
+  const teenOpenLibraryEligibilityAllowedByTitle: Record<string, boolean> = {};
+  const teenOpenLibraryEligibilityReasonByTitle: Record<string, string> = {};
+  const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
+  const finalRankingReasonByTitle: Record<string, string> = {};
+  const finalEligibilityAcceptedTitles: string[] = [];
+
+  for (const candidate of rankedCandidates.filter((row) => row.source === "openLibrary")) {
+    const eligibility = teenOpenLibraryMeaningfulTasteEligibility(candidate, profile);
+    const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
+    metadataBackedLikedSignalsByTitle[candidate.title] = eligibility.signals;
+    metadataBackedDislikedSignalsByTitle[candidate.title] = teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedDislikedSignals");
+    positiveTasteScoreByTitle[candidate.title] = Math.round(positiveTasteScore * 1000) / 1000;
+    teenOpenLibraryEligibilityAllowedByTitle[candidate.title] = eligibility.allowed;
+    teenOpenLibraryEligibilityReasonByTitle[candidate.title] = eligibility.allowed
+      ? selectedTitles.has(normalized(candidate.title)) ? "selected_clean_teen_openlibrary_candidate" : "eligible_not_selected"
+      : eligibility.reason || "teen_openlibrary_no_meaningful_metadata_taste";
+    finalScoreComponentsByTitle[candidate.title] = {
+      ...candidate.scoreBreakdown,
+      positiveTasteScore,
+      sourceQualityScore: Number(candidate.diagnostics?.sourceQualityScore || candidate.scoreBreakdown?.sourceQualityRelevance || 0),
+      queryRungBonus: Number(candidate.diagnostics?.queryRungBonus || candidate.scoreBreakdown?.queryRungBonus || 0),
+      finalScore: candidate.score,
+      teenOpenLibraryFinalEligible: eligibility.allowed ? 1 : 0,
+    };
+    finalRankingReasonByTitle[candidate.title] = selectedTitles.has(normalized(candidate.title))
+      ? "selected_clean_teen_openlibrary_candidate"
+      : candidate.rejectedReasons.join(",") || teenOpenLibraryEligibilityReasonByTitle[candidate.title] || "ranked_below_final_selection";
+    candidate.diagnostics.teenOpenLibraryFinalEligibilityAllowed = eligibility.allowed;
+    candidate.diagnostics.teenOpenLibraryFinalEligibilityReason = teenOpenLibraryEligibilityReasonByTitle[candidate.title];
+    candidate.diagnostics.teenOpenLibraryNonTitleTasteSignals = eligibility.nonTitleSignals;
+    if (eligibility.allowed) finalEligibilityAcceptedTitles.push(candidate.title);
+  }
+
+  diagnostics.metadataBackedLikedSignalsByTitle = metadataBackedLikedSignalsByTitle;
+  diagnostics.metadataBackedDislikedSignalsByTitle = metadataBackedDislikedSignalsByTitle;
+  diagnostics.positiveTasteScoreByTitle = positiveTasteScoreByTitle;
+  diagnostics.teenOpenLibraryEligibilityAllowedByTitle = teenOpenLibraryEligibilityAllowedByTitle;
+  diagnostics.teenOpenLibraryEligibilityReasonByTitle = teenOpenLibraryEligibilityReasonByTitle;
+  diagnostics.finalEligibilityAcceptedTitles = finalEligibilityAcceptedTitles;
+  diagnostics.finalEligibilityCleanCandidateCount = finalEligibilityAcceptedTitles.length;
+  diagnostics.candidateTasteMatchScoreByTitle = positiveTasteScoreByTitle;
+  diagnostics.candidateMatchedLikedSignalsByTitle = metadataBackedLikedSignalsByTitle;
+  diagnostics.candidateMatchedDislikedSignalsByTitle = metadataBackedDislikedSignalsByTitle;
+  diagnostics.finalScoreComponentsByTitle = finalScoreComponentsByTitle;
+  diagnostics.finalRankingReasonByTitle = finalRankingReasonByTitle;
+  diagnostics.finalEligibilityGateApplied = true;
+}
+
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
   if (profile.ageBand === "kids" && isKidsSuspiciousSelectionCandidate(candidate)) return "k2_suspicious_title_artifact";
@@ -2275,6 +2400,10 @@ function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string
     if (middleGradesNonNarrativeInformationalArtifact(candidate) && !profileExplicitlyRequestsNonfictionReference(profile)) return "middle_grades_non_narrative_informational_artifact";
     const tasteEligibility = middleGradesMeaningfulTasteEligibility(candidate, true);
     if (!tasteEligibility.allowed) return tasteEligibility.reason || "middle_grades_missing_meaningful_taste_evidence";
+  }
+  if (profile.ageBand === "teens" && candidate.source === "openLibrary") {
+    const eligibility = teenOpenLibraryMeaningfulTasteEligibility(candidate, profile);
+    if (!eligibility.allowed) return eligibility.reason || "teen_openlibrary_no_meaningful_metadata_taste";
   }
   if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_score";
   if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand && profile.ageBand !== "adult") return "maturity_band_mismatch";
@@ -2567,6 +2696,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   addMiddleGradesSlateDiagnostics(selected, rejectedReasons, profile);
   addMiddleGradesSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addKidsSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
+  addTeenOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 
   return { selected, rejectedReasons };
