@@ -2281,6 +2281,10 @@ type TeenOpenLibraryTasteEligibility = {
   authoritySignals: string[];
   strongAuthoritySignals: string[];
   weakAuthoritySignals: string[];
+  exactStrongAuthoritySignals: string[];
+  topicalAdolescentSignals: string[];
+  authorityConflictSignals: string[];
+  narrativeEvidenceSignals: string[];
   likedDislikedOverlapSignals: string[];
   narrativeFictionShape: boolean;
   nonNarrativeShapeReasons: string[];
@@ -2294,8 +2298,12 @@ function teenOpenLibraryDiagnosticSignals(candidate: ScoredCandidate, field: "me
 }
 
 function teenOpenLibraryNonTitleMetadataText(candidate: ScoredCandidate): string {
+  return teenOpenLibraryNonTitleMetadataValues(candidate).join(" ");
+}
+
+function teenOpenLibraryNonTitleMetadataValues(candidate: ScoredCandidate): string[] {
   const raw = (candidate.raw || {}) as Record<string, unknown>;
-  return normalized([
+  return uniqueSignals([
     candidate.description,
     rawOpenLibraryDescription(raw),
     ...asStringList(raw.subject),
@@ -2316,7 +2324,7 @@ function teenOpenLibraryNonTitleMetadataText(candidate: ScoredCandidate): string
     ...asStringList(raw.audience),
     ...asStringList(raw.audience_facet),
     candidate.maturityBand,
-  ].join(" "));
+  ].map(normalized).filter(Boolean));
 }
 
 function uniqueSignals(values: string[]): string[] {
@@ -2337,33 +2345,90 @@ function teenOpenLibraryAuthoritySignalsFromChecks(metadataText: string, checks:
   return uniqueSignals(authoritySignals);
 }
 
-function teenOpenLibraryStrongAuthoritySignals(metadataText: string): string[] {
-  return teenOpenLibraryAuthoritySignalsFromChecks(metadataText, [
+function teenOpenLibraryFieldLocalSignals(metadataValues: string[], checks: Array<[string, RegExp]>): string[] {
+  const signals: string[] = [];
+  for (const value of metadataValues) {
+    for (const [label, pattern] of checks) {
+      if (pattern.test(value)) signals.push(label);
+    }
+  }
+  return uniqueSignals(signals);
+}
+
+function teenOpenLibraryAuthorityConflictSignals(metadataValues: string[]): string[] {
+  const hasChildrenYoungAdultCatalog = metadataValues.some((value) => /\bchildren s books young adult\b|\bchildren books young adult\b|\bchildren young adult\b/.test(value));
+  const hasYoungerAudienceMetadata = metadataValues.some((value) => /\b(children grades? 4 6|grades? 4 6|middle grades?|juvenile literature)\b/.test(value));
+  const signals: string[] = [];
+  if (hasChildrenYoungAdultCatalog && hasYoungerAudienceMetadata) signals.push("children_books_young_adult_with_younger_audience");
+  return signals;
+}
+
+function teenOpenLibraryExactStrongAuthoritySignals(metadataValues: string[]): string[] {
+  const authorityConflictSignals = teenOpenLibraryAuthorityConflictSignals(metadataValues);
+  const values = authorityConflictSignals.includes("children_books_young_adult_with_younger_audience")
+    ? metadataValues.filter((value) => !/\bchildren s books young adult\b|\bchildren books young adult\b|\bchildren young adult\b/.test(value))
+    : metadataValues;
+  return teenOpenLibraryFieldLocalSignals(values, [
     ["american young adult fiction", /\bamerican young adult fiction\b/],
     ["young adult fiction", /\byoung adult fiction\b/],
     ["young adult", /\byoung adult(?: literature| books?)?\b/],
     ["teen fiction", /\bteens?(?: fiction| literature| books?)\b|\bteenage(?: fiction| literature| books?)\b/],
-    ["adolescent fiction", /\b(adolescent|adolescence|teenage)\b.{0,40}\b(fiction|novel|story|stories)\b|\b(fiction|novel|story|stories)\b.{0,40}\b(adolescent|adolescence|teenage)\b/],
-    ["high school fiction", /\bhigh school\b.{0,40}\b(fiction|novel|story|stories)\b|\b(fiction|novel|story|stories)\b.{0,40}\bhigh school\b/],
-    ["boarding school fiction", /\b(boarding school|boarding schools|preparatory school|prep school)\b.{0,40}\b(fiction|novel|story|stories)\b|\b(fiction|novel|story|stories)\b.{0,40}\b(boarding school|boarding schools|preparatory school|prep school)\b/],
-    ["school fiction", /\bschool(?:s| students?)?\b.{0,40}\b(fiction|novel|story|stories)\b|\b(fiction|novel|story|stories)\b.{0,40}\bschool(?:s| students?)?\b/],
+    ["adolescent fiction", /\badolescent fiction\b|\bfiction adolescent\b/],
+    ["high school fiction", /\bhigh school fiction\b|\bfiction high school\b/],
+    ["boarding school fiction", /\b(boarding school|boarding schools|preparatory school|prep school) fiction\b|\bfiction (boarding school|boarding schools|preparatory school|prep school)\b/],
+    ["school fiction", /\bschool(?:s| students?)? fiction\b|\bfiction school(?:s| students?)?\b/],
   ]);
 }
 
-function teenOpenLibraryWeakAuthoritySignals(metadataText: string): string[] {
-  return teenOpenLibraryAuthoritySignalsFromChecks(metadataText, [
+function teenOpenLibraryStrongAuthoritySignals(metadataValues: string[]): string[] {
+  return teenOpenLibraryExactStrongAuthoritySignals(metadataValues);
+}
+
+function teenOpenLibraryTopicalAdolescentSignals(metadataValues: string[]): string[] {
+  return teenOpenLibraryFieldLocalSignals(metadataValues, [
+    ["adolescent", /\badolescent\b/],
+    ["adolescence", /\badolescence\b/],
+    ["teenage", /\bteenage\b/],
+  ]).filter((signal) => !teenOpenLibraryExactStrongAuthoritySignals(metadataValues).includes(`${signal} fiction`));
+}
+
+function teenOpenLibraryWeakAuthoritySignals(metadataValues: string[]): string[] {
+  return teenOpenLibraryFieldLocalSignals(metadataValues, [
     ["juvenile fiction", /\bjuvenile fiction\b/],
     ["juvenile literature", /\bjuvenile literature\b/],
     ["children's fiction", /\bchildren s fiction\b|\bchildrens fiction\b|\bchildren fiction\b/],
   ]);
 }
 
-function teenOpenLibraryAuthoritySignals(metadataText: string): string[] {
-  return uniqueSignals([...teenOpenLibraryStrongAuthoritySignals(metadataText), ...teenOpenLibraryWeakAuthoritySignals(metadataText)]);
+function teenOpenLibraryAuthoritySignals(metadataValues: string[]): string[] {
+  return uniqueSignals([...teenOpenLibraryStrongAuthoritySignals(metadataValues), ...teenOpenLibraryWeakAuthoritySignals(metadataValues)]);
 }
 
-function teenOpenLibraryNarrativeFictionShape(metadataText: string): boolean {
-  return /\b(young adult fiction|american young adult fiction|juvenile fiction|teen fiction|adolescent fiction|high school fiction|boarding school fiction|school fiction|fiction|novel|novels|stories|horror stories|horror tales|fantasy fiction|science fiction|romance fiction|mystery fiction|dystopian fiction|thrillers? and suspense)\b/.test(metadataText);
+function teenOpenLibraryNarrativeEvidenceSignals(metadataValues: string[]): string[] {
+  return teenOpenLibraryFieldLocalSignals(metadataValues, [
+    ["young adult fiction", /\byoung adult fiction\b/],
+    ["american young adult fiction", /\bamerican young adult fiction\b/],
+    ["juvenile fiction", /\bjuvenile fiction\b/],
+    ["teen fiction", /\bteen fiction\b/],
+    ["adolescent fiction", /\badolescent fiction\b/],
+    ["high school fiction", /\bhigh school fiction\b/],
+    ["boarding school fiction", /\bboarding school fiction\b/],
+    ["school fiction", /\bschool fiction\b/],
+    ["fiction", /\bfiction\b/],
+    ["novel", /\bnovels?\b/],
+    ["stories", /\bstories\b/],
+    ["horror stories", /\bhorror (stories|tales)\b/],
+    ["fantasy fiction", /\bfantasy fiction\b/],
+    ["science fiction", /\bscience fiction\b/],
+    ["romance fiction", /\bromance fiction\b/],
+    ["mystery fiction", /\bmystery fiction\b/],
+    ["dystopian fiction", /\bdystopian fiction\b/],
+    ["thriller suspense", /\bthrillers? and suspense\b/],
+  ]);
+}
+
+function teenOpenLibraryNarrativeFictionShape(metadataValues: string[]): boolean {
+  return teenOpenLibraryNarrativeEvidenceSignals(metadataValues).length > 0;
 }
 
 function teenOpenLibraryNonNarrativeShapeReasons(metadataText: string, hasTeenAuthority: boolean): string[] {
@@ -2382,9 +2447,30 @@ function teenOpenLibraryNonNarrativeShapeReasons(metadataText: string, hasTeenAu
     ["poetry_collection", /\b(poetry collection|poems|sports poetry|poetry anthology)\b/],
     ["essays", /\b(essays?|essay collections?)\b/],
     ["bibliography", /\bbibliograph(?:y|ies|ic)\b/],
+    ["informational_literature", /\binformational literature\b/],
   ];
   for (const [label, pattern] of checks) {
     if (pattern.test(metadataText)) reasons.push(label);
+  }
+  if (/\b(anecdotes?|facetiae|satire etc)\b/.test(metadataText) && /\bsports?\b/.test(metadataText)) {
+    reasons.push("sports_anecdotes_facetiae_collection");
+  }
+  if (/\bjuvenile literature\b/.test(metadataText) && /\b(sports?)\b/.test(metadataText) && /\b(anecdotes?|facetiae|humou?r|children grades? 4 6|general)\b/.test(metadataText)) {
+    reasons.push("juvenile_sports_informational_literature");
+  }
+  if (/\bjuvenile literature\b/.test(metadataText) && /\b(nature|natural world|history|informational|environmental literature|culture)\b/.test(metadataText)) {
+    reasons.push("juvenile_informational_literature");
+  }
+  const hasCollectionShape = /\b(antholog(?:y|ies)|collections?|collected works|writings|readings|essays?)\b/.test(metadataText);
+  const hasClearNarrativeCollectionShape = /\b(short stories|fiction anthology|fiction collection|story collection|novel|novels|juvenile fiction|young adult fiction|teen fiction)\b/.test(metadataText);
+  if (hasCollectionShape && !hasClearNarrativeCollectionShape) {
+    reasons.push("nonfiction_or_unspecified_collection");
+  }
+  if (/\b(nature writing|natural world|cultural studies|environmental literature)\b/.test(metadataText) && (hasCollectionShape || /\b(nonfiction|non fiction|literature)\b/.test(metadataText))) {
+    reasons.push("nature_culture_nonfiction_collection");
+  }
+  if (!hasTeenAuthority && /\b(classic literature|classics|literary|english literature|open syllabus|penguin popular classics|modern library|viking adult|adult fiction)\b/.test(metadataText) && /\b(fiction|novel|literature)\b/.test(metadataText)) {
+    reasons.push("adult_classic_literary_shape_without_teen_authority");
   }
   if (!hasTeenAuthority && /\b(harlequin|carina press|mills boon|adult fiction|erotica|erotic stories|m m romance|gay romance|contemporary romance)\b/.test(metadataText) && /\bromance\b/.test(metadataText)) {
     reasons.push("adult_romance_shape_without_teen_authority");
@@ -2397,18 +2483,23 @@ function teenOpenLibraryNonNarrativeShapeReasons(metadataText: string, hasTeenAu
 
 function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, profile: TasteProfile): TeenOpenLibraryTasteEligibility {
   if (profile.ageBand !== "teens" || candidate.source !== "openLibrary") {
-    return { allowed: true, signals: [], nonTitleSignals: [], contentSignals: [], contextOnlySignals: [], authoritySignals: [], strongAuthoritySignals: [], weakAuthoritySignals: [], likedDislikedOverlapSignals: [], narrativeFictionShape: false, nonNarrativeShapeReasons: [] };
+    return { allowed: true, signals: [], nonTitleSignals: [], contentSignals: [], contextOnlySignals: [], authoritySignals: [], strongAuthoritySignals: [], weakAuthoritySignals: [], exactStrongAuthoritySignals: [], topicalAdolescentSignals: [], authorityConflictSignals: [], narrativeEvidenceSignals: [], likedDislikedOverlapSignals: [], narrativeFictionShape: false, nonNarrativeShapeReasons: [] };
   }
   const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
   const likedSignals = teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedLikedSignals");
   const dislikedSignals = teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedDislikedSignals");
+  const nonTitleMetadataValues = teenOpenLibraryNonTitleMetadataValues(candidate);
   const nonTitleMetadataText = teenOpenLibraryNonTitleMetadataText(candidate);
-  const strongAuthoritySignals = teenOpenLibraryStrongAuthoritySignals(nonTitleMetadataText);
-  const weakAuthoritySignals = teenOpenLibraryWeakAuthoritySignals(nonTitleMetadataText);
+  const exactStrongAuthoritySignals = teenOpenLibraryExactStrongAuthoritySignals(nonTitleMetadataValues);
+  const topicalAdolescentSignals = teenOpenLibraryTopicalAdolescentSignals(nonTitleMetadataValues);
+  const authorityConflictSignals = teenOpenLibraryAuthorityConflictSignals(nonTitleMetadataValues);
+  const strongAuthoritySignals = teenOpenLibraryStrongAuthoritySignals(nonTitleMetadataValues);
+  const weakAuthoritySignals = teenOpenLibraryWeakAuthoritySignals(nonTitleMetadataValues);
   const authoritySignals = uniqueSignals([...strongAuthoritySignals, ...weakAuthoritySignals]);
   const hasTeenAuthority = authoritySignals.length > 0;
   const hasStrongTeenAuthority = strongAuthoritySignals.length > 0;
-  const narrativeFictionShape = teenOpenLibraryNarrativeFictionShape(nonTitleMetadataText);
+  const narrativeEvidenceSignals = teenOpenLibraryNarrativeEvidenceSignals(nonTitleMetadataValues);
+  const narrativeFictionShape = teenOpenLibraryNarrativeFictionShape(nonTitleMetadataValues);
   const nonNarrativeShapeReasons = teenOpenLibraryNonNarrativeShapeReasons(nonTitleMetadataText, hasTeenAuthority);
   const baseResult = {
     signals: likedSignals,
@@ -2418,6 +2509,10 @@ function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, p
     authoritySignals,
     strongAuthoritySignals,
     weakAuthoritySignals,
+    exactStrongAuthoritySignals,
+    topicalAdolescentSignals,
+    authorityConflictSignals,
+    narrativeEvidenceSignals,
     likedDislikedOverlapSignals: [] as string[],
     narrativeFictionShape,
     nonNarrativeShapeReasons,
@@ -2441,6 +2536,10 @@ function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, p
     authoritySignals,
     strongAuthoritySignals,
     weakAuthoritySignals,
+    exactStrongAuthoritySignals,
+    topicalAdolescentSignals,
+    authorityConflictSignals,
+    narrativeEvidenceSignals,
     likedDislikedOverlapSignals,
     narrativeFictionShape,
     nonNarrativeShapeReasons,
@@ -2488,7 +2587,11 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
   const teenOpenLibraryAuthoritySignals: Record<string, string[]> = {};
   const teenOpenLibraryStrongAuthoritySignals: Record<string, string[]> = {};
   const teenOpenLibraryWeakAuthoritySignals: Record<string, string[]> = {};
+  const teenOpenLibraryExactStrongAuthoritySignals: Record<string, string[]> = {};
+  const teenOpenLibraryTopicalAdolescentSignals: Record<string, string[]> = {};
+  const teenOpenLibraryAuthorityConflictSignals: Record<string, string[]> = {};
   const teenOpenLibraryLikedDislikedOverlapSignals: Record<string, string[]> = {};
+  const teenOpenLibraryNarrativeEvidenceSignals: Record<string, string[]> = {};
   const teenOpenLibraryNarrativeFictionShape: Record<string, boolean> = {};
   const teenOpenLibraryNonNarrativeShapeReasons: Record<string, string[]> = {};
   const documentBackedTasteSignalsByTitle: Record<string, string[]> = {};
@@ -2516,7 +2619,11 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
     teenOpenLibraryAuthoritySignals[candidate.title] = eligibility.authoritySignals;
     teenOpenLibraryStrongAuthoritySignals[candidate.title] = eligibility.strongAuthoritySignals;
     teenOpenLibraryWeakAuthoritySignals[candidate.title] = eligibility.weakAuthoritySignals;
+    teenOpenLibraryExactStrongAuthoritySignals[candidate.title] = eligibility.exactStrongAuthoritySignals;
+    teenOpenLibraryTopicalAdolescentSignals[candidate.title] = eligibility.topicalAdolescentSignals;
+    teenOpenLibraryAuthorityConflictSignals[candidate.title] = eligibility.authorityConflictSignals;
     teenOpenLibraryLikedDislikedOverlapSignals[candidate.title] = eligibility.likedDislikedOverlapSignals;
+    teenOpenLibraryNarrativeEvidenceSignals[candidate.title] = eligibility.narrativeEvidenceSignals;
     teenOpenLibraryNarrativeFictionShape[candidate.title] = eligibility.narrativeFictionShape;
     teenOpenLibraryNonNarrativeShapeReasons[candidate.title] = eligibility.nonNarrativeShapeReasons;
     documentBackedTasteSignalsByTitle[candidate.title] = eligibility.contentSignals;
@@ -2535,7 +2642,11 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
       teenOpenLibraryAuthoritySignalCount: eligibility.authoritySignals.length,
       teenOpenLibraryStrongAuthoritySignalCount: eligibility.strongAuthoritySignals.length,
       teenOpenLibraryWeakAuthoritySignalCount: eligibility.weakAuthoritySignals.length,
+      teenOpenLibraryExactStrongAuthoritySignalCount: eligibility.exactStrongAuthoritySignals.length,
+      teenOpenLibraryTopicalAdolescentSignalCount: eligibility.topicalAdolescentSignals.length,
+      teenOpenLibraryAuthorityConflictSignalCount: eligibility.authorityConflictSignals.length,
       teenOpenLibraryLikedDislikedOverlapSignalCount: eligibility.likedDislikedOverlapSignals.length,
+      teenOpenLibraryNarrativeEvidenceSignalCount: eligibility.narrativeEvidenceSignals.length,
       teenOpenLibraryNarrativeFictionShape: eligibility.narrativeFictionShape ? 1 : 0,
       teenOpenLibraryNonNarrativeShapeCount: eligibility.nonNarrativeShapeReasons.length,
     };
@@ -2550,7 +2661,11 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
     candidate.diagnostics.teenOpenLibraryAuthoritySignals = eligibility.authoritySignals;
     candidate.diagnostics.teenOpenLibraryStrongAuthoritySignals = eligibility.strongAuthoritySignals;
     candidate.diagnostics.teenOpenLibraryWeakAuthoritySignals = eligibility.weakAuthoritySignals;
+    candidate.diagnostics.teenOpenLibraryExactStrongAuthoritySignals = eligibility.exactStrongAuthoritySignals;
+    candidate.diagnostics.teenOpenLibraryTopicalAdolescentSignals = eligibility.topicalAdolescentSignals;
+    candidate.diagnostics.teenOpenLibraryAuthorityConflictSignals = eligibility.authorityConflictSignals;
     candidate.diagnostics.teenOpenLibraryLikedDislikedOverlapSignals = eligibility.likedDislikedOverlapSignals;
+    candidate.diagnostics.teenOpenLibraryNarrativeEvidenceSignals = eligibility.narrativeEvidenceSignals;
     candidate.diagnostics.teenOpenLibraryNarrativeFictionShape = eligibility.narrativeFictionShape;
     candidate.diagnostics.teenOpenLibraryNonNarrativeShapeReasons = eligibility.nonNarrativeShapeReasons;
     candidate.diagnostics.teenOpenLibraryNonTitleDislikedSignals = nonTitleDislikedSignals;
@@ -2570,7 +2685,11 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
   diagnostics.teenOpenLibraryAuthoritySignals = teenOpenLibraryAuthoritySignals;
   diagnostics.teenOpenLibraryStrongAuthoritySignals = teenOpenLibraryStrongAuthoritySignals;
   diagnostics.teenOpenLibraryWeakAuthoritySignals = teenOpenLibraryWeakAuthoritySignals;
+  diagnostics.teenOpenLibraryExactStrongAuthoritySignals = teenOpenLibraryExactStrongAuthoritySignals;
+  diagnostics.teenOpenLibraryTopicalAdolescentSignals = teenOpenLibraryTopicalAdolescentSignals;
+  diagnostics.teenOpenLibraryAuthorityConflictSignals = teenOpenLibraryAuthorityConflictSignals;
   diagnostics.teenOpenLibraryLikedDislikedOverlapSignals = teenOpenLibraryLikedDislikedOverlapSignals;
+  diagnostics.teenOpenLibraryNarrativeEvidenceSignals = teenOpenLibraryNarrativeEvidenceSignals;
   diagnostics.teenOpenLibraryNarrativeFictionShape = teenOpenLibraryNarrativeFictionShape;
   diagnostics.teenOpenLibraryNonNarrativeShapeReasons = teenOpenLibraryNonNarrativeShapeReasons;
   diagnostics.documentBackedTasteSignalsByTitle = documentBackedTasteSignalsByTitle;
