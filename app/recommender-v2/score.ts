@@ -227,8 +227,9 @@ function querySpecificityScore(candidate: NormalizedCandidate): number {
 
 function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: TasteProfile, genreMatches: WeightedSignalV2[], positiveMatches: WeightedSignalV2[]): number {
   const metadataText = candidateMetadataText(candidate);
+  const adultOpenLibrary = candidate.source === "openLibrary" && profile.ageBand === "adult";
   const openLibraryMetadataOnlyEvidence = candidate.source === "openLibrary"
-    && (profile.ageBand === "preteens" || profile.ageBand === "teens");
+    && (profile.ageBand === "preteens" || profile.ageBand === "teens" || profile.ageBand === "adult");
   const text = openLibraryMetadataOnlyEvidence ? metadataText : candidateText(candidate);
   const normalizedTitle = normalized(candidate.title);
   const raw = (candidate.raw || {}) as Record<string, unknown>;
@@ -238,7 +239,7 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   const titleWordCount = normalizedTitle.split(" ").filter(Boolean).length;
   const strongTeenMetadata = hasStrongTeenMetadata(metadataText);
   const strongGenreMetadata = hasStrongGenreMetadata(metadataText);
-  let score = querySpecificityScore(candidate);
+  let score = adultOpenLibrary ? 0 : querySpecificityScore(candidate);
   if (candidate.creators.length > 0) score += 0.4;
   else score -= 1;
   if (candidate.sourceUrl) score += 0.2;
@@ -293,7 +294,8 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const middleGradesOpenLibrary = profile.ageBand === "preteens" && candidate.source === "openLibrary";
     const kidsOpenLibrary = profile.ageBand === "kids" && candidate.source === "openLibrary";
     const teenOpenLibrary = profile.ageBand === "teens" && candidate.source === "openLibrary";
-    const openLibraryMetadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary;
+    const adultOpenLibrary = profile.ageBand === "adult" && candidate.source === "openLibrary";
+    const openLibraryMetadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary || adultOpenLibrary;
     const text = openLibraryMetadataOnlyEvidence ? metadataText : fullText;
     const rawGenreMatches = signalMatches(text, profile.genreFamily);
     const rawThemeMatches = signalMatches(text, profile.themes);
@@ -372,9 +374,15 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
         sourceQualityScore: Number(scoreBreakdown.sourceQualityRelevance || 0),
         queryRungBonus: Number(scoreBreakdown.queryRungBonus || 0),
         totalScore: score,
-        finalRankingReason: teenOpenLibrary ? "teen_openlibrary_ranked_by_metadata_only_document_evidence" : undefined,
+        finalRankingReason: teenOpenLibrary
+          ? "teen_openlibrary_ranked_by_metadata_only_document_evidence"
+          : adultOpenLibrary
+            ? "adult_openlibrary_ranked_by_metadata_only_document_evidence"
+            : undefined,
         teenOpenLibraryMetadataOnlyEvidence: teenOpenLibrary || undefined,
         teenOpenLibraryExcludedRetrievalEvidence: teenOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+        adultOpenLibraryMetadataOnlyEvidence: adultOpenLibrary || undefined,
+        adultOpenLibraryExcludedRetrievalEvidence: adultOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
       },
     };
   }).sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));

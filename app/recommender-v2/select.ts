@@ -125,6 +125,58 @@ function addAdultFamilyDiagnostics(candidates: ScoredCandidate[], selected: Scor
   }
 }
 
+function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "adult" || !rankedCandidates.some((candidate) => candidate.source === "openLibrary")) return;
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const selectedTitles = new Set(selected.map((candidate) => normalized(candidate.title)));
+  const candidateTasteMatchScoreByTitle: Record<string, number> = {};
+  const candidateTastePenaltyByTitle: Record<string, number> = {};
+  const candidateMatchedLikedSignalsByTitle: Record<string, string[]> = {};
+  const candidateMatchedDislikedSignalsByTitle: Record<string, string[]> = {};
+  const metadataBackedLikedSignalsByTitle: Record<string, string[]> = {};
+  const metadataBackedDislikedSignalsByTitle: Record<string, string[]> = {};
+  const positiveTasteScoreByTitle: Record<string, number> = {};
+  const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
+  const finalRankingReasonByTitle: Record<string, string> = {};
+  for (const candidate of rankedCandidates.filter((row) => row.source === "openLibrary")) {
+    const breakdown = candidate.scoreBreakdown || {};
+    const likedSignals = Array.isArray(candidate.diagnostics?.metadataBackedMatchedLikedSignals)
+      ? candidate.diagnostics.metadataBackedMatchedLikedSignals.map(String)
+      : [];
+    const dislikedSignals = Array.isArray(candidate.diagnostics?.metadataBackedMatchedDislikedSignals)
+      ? candidate.diagnostics.metadataBackedMatchedDislikedSignals.map(String)
+      : [];
+    const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(breakdown.genreFacetMatch || 0) + Number(breakdown.positiveTasteMatch || 0)));
+    const tastePenalty = Number(breakdown.avoidSignalPenalty || 0) + Number(breakdown.broadAvoidSignalPenalty || 0);
+    candidateTasteMatchScoreByTitle[candidate.title] = Math.round(positiveTasteScore * 1000) / 1000;
+    candidateTastePenaltyByTitle[candidate.title] = Math.round(tastePenalty * 1000) / 1000;
+    candidateMatchedLikedSignalsByTitle[candidate.title] = likedSignals;
+    candidateMatchedDislikedSignalsByTitle[candidate.title] = dislikedSignals;
+    metadataBackedLikedSignalsByTitle[candidate.title] = likedSignals;
+    metadataBackedDislikedSignalsByTitle[candidate.title] = dislikedSignals;
+    positiveTasteScoreByTitle[candidate.title] = Math.round(positiveTasteScore * 1000) / 1000;
+    finalScoreComponentsByTitle[candidate.title] = {
+      ...breakdown,
+      positiveTasteScore,
+      sourceQualityScore: Number(candidate.diagnostics?.sourceQualityScore || breakdown.sourceQualityRelevance || 0),
+      queryRungBonus: Number(candidate.diagnostics?.queryRungBonus || breakdown.queryRungBonus || 0),
+      finalScore: candidate.score,
+    };
+    finalRankingReasonByTitle[candidate.title] = selectedTitles.has(normalized(candidate.title))
+      ? "selected_adult_openlibrary_candidate"
+      : candidate.rejectedReasons.join(",") || "ranked_below_final_selection";
+  }
+  diagnostics.candidateTasteMatchScoreByTitle = candidateTasteMatchScoreByTitle;
+  diagnostics.candidateTastePenaltyByTitle = candidateTastePenaltyByTitle;
+  diagnostics.candidateMatchedLikedSignalsByTitle = candidateMatchedLikedSignalsByTitle;
+  diagnostics.candidateMatchedDislikedSignalsByTitle = candidateMatchedDislikedSignalsByTitle;
+  diagnostics.metadataBackedLikedSignalsByTitle = metadataBackedLikedSignalsByTitle;
+  diagnostics.metadataBackedDislikedSignalsByTitle = metadataBackedDislikedSignalsByTitle;
+  diagnostics.positiveTasteScoreByTitle = positiveTasteScoreByTitle;
+  diagnostics.finalScoreComponentsByTitle = finalScoreComponentsByTitle;
+  diagnostics.finalRankingReasonByTitle = finalRankingReasonByTitle;
+}
+
 function applyAdultSpeculativeFamilyBalance(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
   const reserveTarget = adultSpeculativeReserveTarget(rankedCandidates, profile);
   if (reserveTarget <= 0) return;
@@ -3325,6 +3377,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   addMiddleGradesSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addKidsSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addTeenOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
+  addAdultOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 
   return { selected, rejectedReasons };
