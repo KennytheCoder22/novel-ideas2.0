@@ -186,6 +186,10 @@ type AdultOpenLibraryTasteEligibility = {
   sparseSingleFamilyBibliographicIdentity: string[];
   sparseSingleFamilyLikedItemCount?: number;
   sparseSingleFamilyNetWeight?: number;
+  sparseExceptionPositiveNetFamily?: string;
+  sparseExceptionIgnoredNonPositiveFamilies: string[];
+  sparseExceptionYouthAudienceSignals: string[];
+  sparseExceptionYouthAudienceBlocked: boolean;
 };
 
 type AdultOpenLibraryFamilyPolarity = {
@@ -413,6 +417,23 @@ function adultOpenLibrarySparseSingleFamilyBibliographicIdentity(candidate: Scor
     qualified: hasSourceIdentifier && hasCreator && (hasPublisher || hasPublicationYear || hasEditionIdentifier),
     signals,
   };
+}
+
+function adultOpenLibrarySparseExceptionYouthAudienceSignals(candidate: ScoredCandidate): string[] {
+  const youthAudiencePattern = /\b(juvenile fiction|young adult fiction|ya fiction|teen fiction|teenage fiction|children s fiction|children s books|books for young readers|middle grade|school fiction|high school fiction)\b/;
+  const gradeAudiencePattern = /\b(?:grade\s*(?:5|6|7|8)|grades?\s*(?:4\s*(?:to|-)?\s*6|5\s*(?:to|-)?\s*8)|ages?\s*(?:8\s*(?:to|-)?\s*12|9\s*(?:to|-)?\s*12|12\s*(?:to|-)?\s*17))\b/;
+  const laterYouthSeriesPattern = /\b(?:young adult|ya|juvenile|middle grade|teen|children s)\b.*\b(?:series|book|volume|vol)\s*(?:[2-9]|\d{2,})\b|\b(?:series|book|volume|vol)\s*(?:[2-9]|\d{2,})\b.*\b(?:young adult|ya|juvenile|middle grade|teen|children s)\b/;
+  const signals: string[] = [];
+  for (const { field, text } of adultOpenLibraryShapeFields(candidate)) {
+    if (field === "title" || field === "subtitle") continue;
+    const audienceMatch = text.match(youthAudiencePattern)?.[0] || text.match(gradeAudiencePattern)?.[0] || "";
+    if (audienceMatch) signals.push(`${field}:${audienceMatch}`);
+    if (field === "series") {
+      const seriesMatch = text.match(laterYouthSeriesPattern)?.[0] || "";
+      if (seriesMatch) signals.push(`${field}:later_youth_series`);
+    }
+  }
+  return uniqueSignals(signals);
 }
 
 function adultOpenLibraryFamilySupportFieldsByFamily(candidate: ScoredCandidate, families: string[]): Record<string, string[]> {
@@ -694,7 +715,7 @@ function adultOpenLibraryNonNarrativeShapeReasons(candidate: ScoredCandidate, me
 
 function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, profile: TasteProfile): AdultOpenLibraryTasteEligibility {
   if (profile.ageBand !== "adult" || candidate.source !== "openLibrary") {
-    return { allowed: true, signals: [], nonTitleSignals: [], rawContentSignals: [], contentSignals: [], contextOnlySignals: [], supplementalSignals: [], meaningfulLikedContentSignals: [], overlappingDislikedContentSignals: [], nonOverlappingLikedContentSignals: [], dislikeOverlapRatio: 0, likedContentFamilies: [], dislikedContentFamilies: [], overlappingDislikedFamilies: [], nonOverlappingLikedFamilies: [], familyDislikeOverlapRatio: 0, likedFamilyWeightByFamily: {}, dislikedFamilyWeightByFamily: {}, netFamilyWeightByFamily: {}, likedItemCountByFamily: {}, dislikedItemCountByFamily: {}, positiveNetFamilies: [], nonPositiveNetFamilies: [], familySupportFieldsByFamily: {}, familySupportEvidenceGroupsByFamily: {}, strongAdultFitSignals: [], narrativeFictionShape: false, narrativeShapeEvidence: [], sparseNarrativeShapeApplied: false, collectionShapeCorroboration: [], puzzleGameShapeReasons: [], nonNarrativeShapeReasons: [], sparseSingleFamilyExceptionConsidered: false, sparseSingleFamilyExceptionAllowed: false, credibleNarrativeGenreSubjectSignals: [], sparseSingleFamilyBibliographicIdentity: [] };
+    return { allowed: true, signals: [], nonTitleSignals: [], rawContentSignals: [], contentSignals: [], contextOnlySignals: [], supplementalSignals: [], meaningfulLikedContentSignals: [], overlappingDislikedContentSignals: [], nonOverlappingLikedContentSignals: [], dislikeOverlapRatio: 0, likedContentFamilies: [], dislikedContentFamilies: [], overlappingDislikedFamilies: [], nonOverlappingLikedFamilies: [], familyDislikeOverlapRatio: 0, likedFamilyWeightByFamily: {}, dislikedFamilyWeightByFamily: {}, netFamilyWeightByFamily: {}, likedItemCountByFamily: {}, dislikedItemCountByFamily: {}, positiveNetFamilies: [], nonPositiveNetFamilies: [], familySupportFieldsByFamily: {}, familySupportEvidenceGroupsByFamily: {}, strongAdultFitSignals: [], narrativeFictionShape: false, narrativeShapeEvidence: [], sparseNarrativeShapeApplied: false, collectionShapeCorroboration: [], puzzleGameShapeReasons: [], nonNarrativeShapeReasons: [], sparseSingleFamilyExceptionConsidered: false, sparseSingleFamilyExceptionAllowed: false, credibleNarrativeGenreSubjectSignals: [], sparseSingleFamilyBibliographicIdentity: [], sparseExceptionIgnoredNonPositiveFamilies: [], sparseExceptionYouthAudienceSignals: [], sparseExceptionYouthAudienceBlocked: false };
   }
 
   const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
@@ -750,6 +771,10 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
     sparseSingleFamilyBibliographicIdentity: [] as string[],
     sparseSingleFamilyLikedItemCount: undefined as number | undefined,
     sparseSingleFamilyNetWeight: undefined as number | undefined,
+    sparseExceptionPositiveNetFamily: undefined as string | undefined,
+    sparseExceptionIgnoredNonPositiveFamilies: [] as string[],
+    sparseExceptionYouthAudienceSignals: [] as string[],
+    sparseExceptionYouthAudienceBlocked: false,
   };
 
   if (positiveTasteScore <= 0) return { allowed: false, reason: "adult_openlibrary_no_positive_metadata_taste", ...baseResult };
@@ -828,6 +853,10 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
     sparseSingleFamilyBibliographicIdentity: [] as string[],
     sparseSingleFamilyLikedItemCount: undefined as number | undefined,
     sparseSingleFamilyNetWeight: undefined as number | undefined,
+    sparseExceptionPositiveNetFamily: undefined as string | undefined,
+    sparseExceptionIgnoredNonPositiveFamilies: [] as string[],
+    sparseExceptionYouthAudienceSignals: [] as string[],
+    sparseExceptionYouthAudienceBlocked: false,
   };
 
   if (nonNarrativeShapeReasons.includes("adult_openlibrary_instructional_writing_artifact")) return { allowed: false, reason: "adult_openlibrary_instructional_writing_artifact", ...resultEvidence };
@@ -853,7 +882,6 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
   const sourceQualityScore = Number(candidate.diagnostics?.sourceQualityScore ?? candidate.scoreBreakdown?.sourceQualityRelevance ?? 0);
   const sparseSingleFamilyExceptionConsidered = Boolean(
     singleFamily
-    && likedContentFamilies.length === 1
     && positiveNetFamilies.length === 1
     && singleFamilySupportEvidenceGroups.length === 1,
   );
@@ -865,6 +893,9 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
   const singleFamilyLikedWeight = Number(familyPolarity.likedFamilyWeightByFamily[singleFamily] || 0);
   const singleFamilyDislikedWeight = Number(familyPolarity.dislikedFamilyWeightByFamily[singleFamily] || 0);
   const singleFamilyNetWeight = Number(familyPolarity.netFamilyWeightByFamily[singleFamily] || 0);
+  const ignoredNonPositiveFamilies = likedContentFamilies.filter((family) => family !== singleFamily && Number(familyPolarity.netFamilyWeightByFamily[family] || 0) <= 0);
+  const youthAudienceSignals = adultOpenLibrarySparseExceptionYouthAudienceSignals(candidate);
+  const youthAudienceBlocked = youthAudienceSignals.length > 0;
   const sparseSingleFamilyEvidence = {
     sparseSingleFamilyExceptionConsidered,
     sparseSingleFamilyExceptionAllowed: false,
@@ -873,6 +904,10 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
     sparseSingleFamilyBibliographicIdentity: bibliographicIdentity.signals,
     sparseSingleFamilyLikedItemCount: singleFamilyLikedItemCount || undefined,
     sparseSingleFamilyNetWeight: singleFamily ? adultOpenLibraryRoundWeight(singleFamilyNetWeight) : undefined,
+    sparseExceptionPositiveNetFamily: sparseSingleFamilyExceptionConsidered ? singleFamily : undefined,
+    sparseExceptionIgnoredNonPositiveFamilies: ignoredNonPositiveFamilies,
+    sparseExceptionYouthAudienceSignals: youthAudienceSignals,
+    sparseExceptionYouthAudienceBlocked: youthAudienceBlocked,
   };
   const strongSingleFamilySupport = narrativeShape.narrativeFictionShape
     && singleFamilySupportEvidenceGroups.length >= 2
@@ -892,7 +927,8 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
     && credibleNarrativeGenreSubjectSignals.length > 0
     && bibliographicIdentity.qualified
     && sourceQualityScore > 0
-    && ageBandSuitability > -2;
+    && ageBandSuitability > -2
+    && !youthAudienceBlocked;
   if (singleFamily && sparseSingleFamilyAllowed) {
     const reason = "adult_openlibrary_sparse_single_family_profile_supported_narrative";
     return {
@@ -907,6 +943,9 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
       sparseSingleFamilyExceptionAllowed: true,
       sparseSingleFamilyExceptionReason: reason,
     };
+  }
+  if (sparseSingleFamilyExceptionConsidered && youthAudienceBlocked) {
+    return { allowed: false, reason: "adult_openlibrary_sparse_exception_youth_audience_blocked", ...resultEvidence, ...sparseSingleFamilyEvidence, sparseSingleFamilyExceptionReason: "adult_openlibrary_sparse_exception_youth_audience_blocked" };
   }
   return { allowed: false, reason: "adult_openlibrary_single_broad_metadata_taste", ...resultEvidence, ...sparseSingleFamilyEvidence };
 }
@@ -959,6 +998,10 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   const adultOpenLibrarySparseSingleFamilyBibliographicIdentityByTitle: Record<string, string[]> = {};
   const adultOpenLibrarySparseSingleFamilyLikedItemCountByTitle: Record<string, number> = {};
   const adultOpenLibrarySparseSingleFamilyNetWeightByTitle: Record<string, number> = {};
+  const adultOpenLibrarySparseExceptionPositiveNetFamilyByTitle: Record<string, string> = {};
+  const adultOpenLibrarySparseExceptionIgnoredNonPositiveFamiliesByTitle: Record<string, string[]> = {};
+  const adultOpenLibrarySparseExceptionYouthAudienceSignalsByTitle: Record<string, string[]> = {};
+  const adultOpenLibrarySparseExceptionYouthAudienceBlockedByTitle: Record<string, boolean> = {};
   const adultOpenLibraryCollectionShapeTriggerByTitle: Record<string, string> = {};
   const adultOpenLibraryCollectionShapeTriggerFieldByTitle: Record<string, string> = {};
   const adultOpenLibraryCollectionShapeCorroborationByTitle: Record<string, string[]> = {};
@@ -1026,6 +1069,10 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
     adultOpenLibrarySparseSingleFamilyBibliographicIdentityByTitle[candidate.title] = eligibility.sparseSingleFamilyBibliographicIdentity;
     if (typeof eligibility.sparseSingleFamilyLikedItemCount === "number") adultOpenLibrarySparseSingleFamilyLikedItemCountByTitle[candidate.title] = eligibility.sparseSingleFamilyLikedItemCount;
     if (typeof eligibility.sparseSingleFamilyNetWeight === "number") adultOpenLibrarySparseSingleFamilyNetWeightByTitle[candidate.title] = eligibility.sparseSingleFamilyNetWeight;
+    if (eligibility.sparseExceptionPositiveNetFamily) adultOpenLibrarySparseExceptionPositiveNetFamilyByTitle[candidate.title] = eligibility.sparseExceptionPositiveNetFamily;
+    adultOpenLibrarySparseExceptionIgnoredNonPositiveFamiliesByTitle[candidate.title] = eligibility.sparseExceptionIgnoredNonPositiveFamilies;
+    adultOpenLibrarySparseExceptionYouthAudienceSignalsByTitle[candidate.title] = eligibility.sparseExceptionYouthAudienceSignals;
+    adultOpenLibrarySparseExceptionYouthAudienceBlockedByTitle[candidate.title] = eligibility.sparseExceptionYouthAudienceBlocked;
     if (eligibility.collectionShapeTrigger) adultOpenLibraryCollectionShapeTriggerByTitle[candidate.title] = eligibility.collectionShapeTrigger;
     if (eligibility.collectionShapeTriggerField) adultOpenLibraryCollectionShapeTriggerFieldByTitle[candidate.title] = eligibility.collectionShapeTriggerField;
     adultOpenLibraryCollectionShapeCorroborationByTitle[candidate.title] = eligibility.collectionShapeCorroboration;
@@ -1055,6 +1102,7 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
       adultOpenLibrarySparseNarrativeShapeApplied: eligibility.sparseNarrativeShapeApplied ? 1 : 0,
       adultOpenLibrarySparseSingleFamilyExceptionConsidered: eligibility.sparseSingleFamilyExceptionConsidered ? 1 : 0,
       adultOpenLibrarySparseSingleFamilyExceptionAllowed: eligibility.sparseSingleFamilyExceptionAllowed ? 1 : 0,
+      adultOpenLibrarySparseExceptionYouthAudienceBlocked: eligibility.sparseExceptionYouthAudienceBlocked ? 1 : 0,
       adultOpenLibraryNonNarrativeShapeCount: eligibility.nonNarrativeShapeReasons.length,
     };
     finalRankingReasonByTitle[candidate.title] = selectedTitles.has(normalized(candidate.title))
@@ -1097,6 +1145,10 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
     candidate.diagnostics.adultOpenLibrarySparseSingleFamilyBibliographicIdentity = eligibility.sparseSingleFamilyBibliographicIdentity;
     candidate.diagnostics.adultOpenLibrarySparseSingleFamilyLikedItemCount = eligibility.sparseSingleFamilyLikedItemCount;
     candidate.diagnostics.adultOpenLibrarySparseSingleFamilyNetWeight = eligibility.sparseSingleFamilyNetWeight;
+    candidate.diagnostics.adultOpenLibrarySparseExceptionPositiveNetFamily = eligibility.sparseExceptionPositiveNetFamily;
+    candidate.diagnostics.adultOpenLibrarySparseExceptionIgnoredNonPositiveFamilies = eligibility.sparseExceptionIgnoredNonPositiveFamilies;
+    candidate.diagnostics.adultOpenLibrarySparseExceptionYouthAudienceSignals = eligibility.sparseExceptionYouthAudienceSignals;
+    candidate.diagnostics.adultOpenLibrarySparseExceptionYouthAudienceBlocked = eligibility.sparseExceptionYouthAudienceBlocked;
     candidate.diagnostics.adultOpenLibraryCollectionShapeTrigger = eligibility.collectionShapeTrigger;
     candidate.diagnostics.adultOpenLibraryCollectionShapeTriggerField = eligibility.collectionShapeTriggerField;
     candidate.diagnostics.adultOpenLibraryCollectionShapeCorroboration = eligibility.collectionShapeCorroboration;
@@ -1151,6 +1203,10 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultOpenLibrarySparseSingleFamilyBibliographicIdentityByTitle = adultOpenLibrarySparseSingleFamilyBibliographicIdentityByTitle;
   diagnostics.adultOpenLibrarySparseSingleFamilyLikedItemCountByTitle = adultOpenLibrarySparseSingleFamilyLikedItemCountByTitle;
   diagnostics.adultOpenLibrarySparseSingleFamilyNetWeightByTitle = adultOpenLibrarySparseSingleFamilyNetWeightByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionPositiveNetFamilyByTitle = adultOpenLibrarySparseExceptionPositiveNetFamilyByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionIgnoredNonPositiveFamiliesByTitle = adultOpenLibrarySparseExceptionIgnoredNonPositiveFamiliesByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionYouthAudienceSignalsByTitle = adultOpenLibrarySparseExceptionYouthAudienceSignalsByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionYouthAudienceBlockedByTitle = adultOpenLibrarySparseExceptionYouthAudienceBlockedByTitle;
   diagnostics.adultOpenLibraryCollectionShapeTriggerByTitle = adultOpenLibraryCollectionShapeTriggerByTitle;
   diagnostics.adultOpenLibraryCollectionShapeTriggerFieldByTitle = adultOpenLibraryCollectionShapeTriggerFieldByTitle;
   diagnostics.adultOpenLibraryCollectionShapeCorroborationByTitle = adultOpenLibraryCollectionShapeCorroborationByTitle;
