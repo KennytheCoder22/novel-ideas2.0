@@ -160,10 +160,27 @@ type AdultOpenLibraryTasteEligibility = {
   overlappingDislikedFamilies: string[];
   nonOverlappingLikedFamilies: string[];
   familyDislikeOverlapRatio: number;
+  likedFamilyWeightByFamily: Record<string, number>;
+  dislikedFamilyWeightByFamily: Record<string, number>;
+  netFamilyWeightByFamily: Record<string, number>;
+  likedItemCountByFamily: Record<string, number>;
+  dislikedItemCountByFamily: Record<string, number>;
+  positiveNetFamilies: string[];
+  nonPositiveNetFamilies: string[];
   familySupportFieldsByFamily: Record<string, string[]>;
   strongAdultFitSignals: string[];
   narrativeFictionShape: boolean;
   nonNarrativeShapeReasons: string[];
+};
+
+type AdultOpenLibraryFamilyPolarity = {
+  likedFamilyWeightByFamily: Record<string, number>;
+  dislikedFamilyWeightByFamily: Record<string, number>;
+  netFamilyWeightByFamily: Record<string, number>;
+  likedItemCountByFamily: Record<string, number>;
+  dislikedItemCountByFamily: Record<string, number>;
+  positiveNetFamilies: string[];
+  nonPositiveNetFamilies: string[];
 };
 
 function adultOpenLibraryDiagnosticSignals(candidate: ScoredCandidate, field: "metadataBackedMatchedLikedSignals" | "metadataBackedMatchedDislikedSignals"): string[] {
@@ -314,7 +331,100 @@ function adultOpenLibraryNarrativeFictionShape(metadataText: string, nonNarrativ
   return /\b(fiction|novel|novels|literary fiction|fantasy|science fiction|sci fi|sci-fi|mystery|thriller|horror|romance|adventure fiction|historical fiction)\b/.test(metadataText);
 }
 
-function adultOpenLibraryNonNarrativeShapeReasons(metadataText: string): string[] {
+function adultOpenLibraryFamilyEvidenceKey(value: unknown, action: "like" | "dislike"): string {
+  const raw = String(value || "").toLowerCase().trim();
+  const prefix = `${action}:`;
+  if (!raw.startsWith(prefix)) return "";
+  return normalized(raw.slice(prefix.length));
+}
+
+function adultOpenLibraryRoundWeight(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+function adultOpenLibraryWeightTotalsByFamily(itemsByFamily: Record<string, Record<string, number>>): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(itemsByFamily).map(([family, itemWeights]) => [
+      family,
+      adultOpenLibraryRoundWeight(Object.values(itemWeights).reduce((sum, weight) => sum + weight, 0)),
+    ]),
+  );
+}
+
+function adultOpenLibraryItemCountsByFamily(itemsByFamily: Record<string, Record<string, number>>): Record<string, number> {
+  return Object.fromEntries(Object.entries(itemsByFamily).map(([family, itemWeights]) => [family, Object.keys(itemWeights).length]));
+}
+
+function adultOpenLibraryAddFamilyEvidence(itemsByFamily: Record<string, Record<string, number>>, family: string, itemKey: string, weight: number): void {
+  if (!family || !itemKey || weight <= 0) return;
+  itemsByFamily[family] = itemsByFamily[family] || {};
+  itemsByFamily[family][itemKey] = Math.max(Number(itemsByFamily[family][itemKey] || 0), weight);
+}
+
+function adultOpenLibraryProfileSignalRows(profile: TasteProfile): Array<{ value: string; weight: number; evidence: string[] }> {
+  return [
+    ...profile.genreFamily,
+    ...profile.themes,
+    ...profile.tone,
+    ...profile.characterDynamics,
+    ...profile.formatPreference,
+    ...profile.avoidSignals,
+  ].map((row) => ({
+    value: String(row.value || ""),
+    weight: Number(row.weight || 0),
+    evidence: Array.isArray(row.evidence) ? row.evidence.map(String) : [],
+  }));
+}
+
+function adultOpenLibraryFamilyPolarity(profile: TasteProfile, metadataText: string): AdultOpenLibraryFamilyPolarity {
+  const likedItemsByFamily: Record<string, Record<string, number>> = {};
+  const dislikedItemsByFamily: Record<string, Record<string, number>> = {};
+
+  for (const row of adultOpenLibraryProfileSignalRows(profile)) {
+    const family = adultOpenLibraryPrimaryContentFamily(row.value);
+    if (!family || !adultOpenLibraryFamilySupportedByText(family, metadataText)) continue;
+    const weight = Math.abs(Number(row.weight || 0));
+    if (!Number.isFinite(weight) || weight <= 0) continue;
+    for (const evidence of row.evidence) {
+      const likedKey = adultOpenLibraryFamilyEvidenceKey(evidence, "like");
+      if (likedKey) adultOpenLibraryAddFamilyEvidence(likedItemsByFamily, family, likedKey, weight);
+      const dislikedKey = adultOpenLibraryFamilyEvidenceKey(evidence, "dislike");
+      if (dislikedKey) adultOpenLibraryAddFamilyEvidence(dislikedItemsByFamily, family, dislikedKey, weight);
+    }
+  }
+
+  const likedFamilyWeightByFamily = adultOpenLibraryWeightTotalsByFamily(likedItemsByFamily);
+  const dislikedFamilyWeightByFamily = adultOpenLibraryWeightTotalsByFamily(dislikedItemsByFamily);
+  const likedItemCountByFamily = adultOpenLibraryItemCountsByFamily(likedItemsByFamily);
+  const dislikedItemCountByFamily = adultOpenLibraryItemCountsByFamily(dislikedItemsByFamily);
+  const families = uniqueSignals([...Object.keys(likedFamilyWeightByFamily), ...Object.keys(dislikedFamilyWeightByFamily)]);
+  const netFamilyWeightByFamily: Record<string, number> = {};
+  for (const family of families) {
+    netFamilyWeightByFamily[family] = adultOpenLibraryRoundWeight(Number(likedFamilyWeightByFamily[family] || 0) - Number(dislikedFamilyWeightByFamily[family] || 0));
+  }
+  return {
+    likedFamilyWeightByFamily,
+    dislikedFamilyWeightByFamily,
+    netFamilyWeightByFamily,
+    likedItemCountByFamily,
+    dislikedItemCountByFamily,
+    positiveNetFamilies: families.filter((family) => Number(netFamilyWeightByFamily[family] || 0) > 0),
+    nonPositiveNetFamilies: families.filter((family) => Number(netFamilyWeightByFamily[family] || 0) <= 0),
+  };
+}
+
+function adultOpenLibraryInstructionalWritingShapeReasons(candidate: ScoredCandidate, metadataText: string): string[] {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const titleText = normalized([candidate.title, candidate.subtitle, raw.subtitle].filter(Boolean).join(" "));
+  const instructionalWritingPattern = /\b(how to write|writing fiction|writing historical fiction|fiction writing|creative writing|writer s guide|writers guide|writing guide|handbook for writers|craft of fiction|writing manual|novel writing|plotting a novel|character development guide|guide to writing)\b/;
+  const craftContextPattern = /\b(authorship|creative writing|writing|writers?|craft|guide|handbook|manual|plotting|character development|publishing|composition)\b/;
+  const reasons: string[] = [];
+  if (instructionalWritingPattern.test(metadataText) && craftContextPattern.test(metadataText)) reasons.push("adult_openlibrary_instructional_writing_artifact");
+  if (instructionalWritingPattern.test(titleText) && craftContextPattern.test(metadataText)) reasons.push("adult_openlibrary_instructional_writing_artifact");
+  return uniqueSignals(reasons);
+}
+
+function adultOpenLibraryNonNarrativeShapeReasons(candidate: ScoredCandidate, metadataText: string): string[] {
   const reasons: string[] = [];
   const packagedCollectionShape = /\b(anthology|anthologies|collected stories|collected works|complete works|masterpieces|best of|selected stories|selected works|short stories|short story collections?|story collections?|fiction collections?|poetry collections?|omnibus)\b/.test(metadataText);
   const criticismOrInstructionShape = /\b(essays|criticism|critical essays|analysis|study|studies|study guide|reader s guide|bibliography|workbook|activity book|puzzle book|game book|teacher guide|curriculum)\b/.test(metadataText);
@@ -322,12 +432,13 @@ function adultOpenLibraryNonNarrativeShapeReasons(metadataText: string): string[
     && /\b(short stories|stories|tales|works|poems|poetry|essays|literature|masterpieces|selected|collected|anthology|anthologies)\b/.test(metadataText);
   if (packagedCollectionShape || collectionMarkerWithPackageContext) reasons.push("packaged_collection_or_anthology_shape");
   if (criticismOrInstructionShape) reasons.push("criticism_instruction_or_activity_shape");
+  reasons.push(...adultOpenLibraryInstructionalWritingShapeReasons(candidate, metadataText));
   return uniqueSignals(reasons);
 }
 
 function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, profile: TasteProfile): AdultOpenLibraryTasteEligibility {
   if (profile.ageBand !== "adult" || candidate.source !== "openLibrary") {
-    return { allowed: true, signals: [], nonTitleSignals: [], rawContentSignals: [], contentSignals: [], contextOnlySignals: [], supplementalSignals: [], meaningfulLikedContentSignals: [], overlappingDislikedContentSignals: [], nonOverlappingLikedContentSignals: [], dislikeOverlapRatio: 0, likedContentFamilies: [], dislikedContentFamilies: [], overlappingDislikedFamilies: [], nonOverlappingLikedFamilies: [], familyDislikeOverlapRatio: 0, familySupportFieldsByFamily: {}, strongAdultFitSignals: [], narrativeFictionShape: false, nonNarrativeShapeReasons: [] };
+    return { allowed: true, signals: [], nonTitleSignals: [], rawContentSignals: [], contentSignals: [], contextOnlySignals: [], supplementalSignals: [], meaningfulLikedContentSignals: [], overlappingDislikedContentSignals: [], nonOverlappingLikedContentSignals: [], dislikeOverlapRatio: 0, likedContentFamilies: [], dislikedContentFamilies: [], overlappingDislikedFamilies: [], nonOverlappingLikedFamilies: [], familyDislikeOverlapRatio: 0, likedFamilyWeightByFamily: {}, dislikedFamilyWeightByFamily: {}, netFamilyWeightByFamily: {}, likedItemCountByFamily: {}, dislikedItemCountByFamily: {}, positiveNetFamilies: [], nonPositiveNetFamilies: [], familySupportFieldsByFamily: {}, strongAdultFitSignals: [], narrativeFictionShape: false, nonNarrativeShapeReasons: [] };
   }
 
   const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
@@ -336,9 +447,10 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
   const ageBandSuitability = Number(candidate.scoreBreakdown?.ageBandSuitability ?? candidate.scoreBreakdown?.ageTeenSuitability ?? 0);
   const nonTitleMetadataValues = adultOpenLibraryNonTitleMetadataValues(candidate);
   const nonTitleMetadataText = adultOpenLibraryNonTitleMetadataText(candidate);
-  const nonNarrativeShapeReasons = adultOpenLibraryNonNarrativeShapeReasons(nonTitleMetadataText);
+  const nonNarrativeShapeReasons = adultOpenLibraryNonNarrativeShapeReasons(candidate, nonTitleMetadataText);
   const strongAdultFitSignals = adultOpenLibraryStrongAdultFitSignals(nonTitleMetadataValues);
   const narrativeFictionShape = adultOpenLibraryNarrativeFictionShape(nonTitleMetadataText, nonNarrativeShapeReasons);
+  const familyPolarity = adultOpenLibraryFamilyPolarity(profile, nonTitleMetadataText);
   const baseResult = {
     signals: likedSignals,
     nonTitleSignals: [] as string[],
@@ -355,6 +467,13 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
     overlappingDislikedFamilies: [] as string[],
     nonOverlappingLikedFamilies: [] as string[],
     familyDislikeOverlapRatio: 0,
+    likedFamilyWeightByFamily: familyPolarity.likedFamilyWeightByFamily,
+    dislikedFamilyWeightByFamily: familyPolarity.dislikedFamilyWeightByFamily,
+    netFamilyWeightByFamily: familyPolarity.netFamilyWeightByFamily,
+    likedItemCountByFamily: familyPolarity.likedItemCountByFamily,
+    dislikedItemCountByFamily: familyPolarity.dislikedItemCountByFamily,
+    positiveNetFamilies: [] as string[],
+    nonPositiveNetFamilies: [] as string[],
     familySupportFieldsByFamily: {} as Record<string, string[]>,
     strongAdultFitSignals,
     narrativeFictionShape,
@@ -391,6 +510,8 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
   const nonOverlappingLikedFamilies = likedContentFamilies.filter((family) => !dislikedContentFamilySet.has(family));
   const familyDislikeOverlapRatio = likedContentFamilies.length > 0 ? overlappingDislikedFamilies.length / likedContentFamilies.length : 0;
   const familySupportFieldsByFamily = adultOpenLibraryFamilySupportFieldsByFamily(candidate, likedContentFamilies);
+  const positiveNetFamilies = likedContentFamilies.filter((family) => Number(familyPolarity.netFamilyWeightByFamily[family] || 0) > 0);
+  const nonPositiveNetFamilies = likedContentFamilies.filter((family) => Number(familyPolarity.netFamilyWeightByFamily[family] || 0) <= 0);
   const resultEvidence = {
     signals: likedSignals,
     nonTitleSignals: nonTitleLikedSignals,
@@ -407,34 +528,45 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
     overlappingDislikedFamilies,
     nonOverlappingLikedFamilies,
     familyDislikeOverlapRatio,
+    likedFamilyWeightByFamily: familyPolarity.likedFamilyWeightByFamily,
+    dislikedFamilyWeightByFamily: familyPolarity.dislikedFamilyWeightByFamily,
+    netFamilyWeightByFamily: familyPolarity.netFamilyWeightByFamily,
+    likedItemCountByFamily: familyPolarity.likedItemCountByFamily,
+    dislikedItemCountByFamily: familyPolarity.dislikedItemCountByFamily,
+    positiveNetFamilies,
+    nonPositiveNetFamilies,
     familySupportFieldsByFamily,
     strongAdultFitSignals,
     narrativeFictionShape,
     nonNarrativeShapeReasons,
   };
 
+  if (nonNarrativeShapeReasons.includes("adult_openlibrary_instructional_writing_artifact")) return { allowed: false, reason: "adult_openlibrary_instructional_writing_artifact", ...resultEvidence };
   if (nonNarrativeShapeReasons.length > 0) return { allowed: false, reason: "adult_openlibrary_non_narrative_or_collection_artifact", ...resultEvidence };
   if (ageBandSuitability <= -2 && strongAdultFitSignals.length === 0) return { allowed: false, reason: "adult_openlibrary_strongly_juvenile_without_adult_fit", ...resultEvidence };
   if (!rawContentSignals.length) return { allowed: false, reason: nonTitleLikedSignals.length ? "adult_openlibrary_context_or_generic_only_metadata_taste" : "adult_openlibrary_title_only_metadata_taste", ...resultEvidence };
-  if (likedContentFamilies.length === 1 && overlappingDislikedFamilies.length > 0) {
-    return { allowed: false, reason: "adult_openlibrary_single_signal_negated_by_dislike", ...resultEvidence };
+  if (likedContentFamilies.length === 1) {
+    const family = likedContentFamilies[0];
+    if (Number(familyPolarity.dislikedFamilyWeightByFamily[family] || 0) >= Number(familyPolarity.likedFamilyWeightByFamily[family] || 0)) {
+      return { allowed: false, reason: "adult_openlibrary_single_family_nonpositive_net_support", ...resultEvidence };
+    }
+  }
+  if (likedContentFamilies.length >= 2 && positiveNetFamilies.length === 0) {
+    return { allowed: false, reason: "adult_openlibrary_no_positive_net_family_support", ...resultEvidence };
   }
 
   const distinctiveFamilies = adultOpenLibraryContentFamilies(rawContentSignals.filter((signal) => ADULT_OPENLIBRARY_DISTINCTIVE_RAW_SIGNAL.test(signal)));
-  const nonOverlappingDistinctiveFamilies = adultOpenLibraryContentFamilies(nonOverlappingLikedContentSignals.filter((signal) => ADULT_OPENLIBRARY_DISTINCTIVE_RAW_SIGNAL.test(signal)));
-  const hasSubstantialNonOverlappingPositiveEvidence = nonOverlappingDistinctiveFamilies.length > 0 || nonOverlappingLikedFamilies.length >= 2;
-  if (likedContentFamilies.length >= 2 && familyDislikeOverlapRatio >= 0.5 && !hasSubstantialNonOverlappingPositiveEvidence) {
-    return { allowed: false, reason: "adult_openlibrary_multi_signal_mostly_negated", ...resultEvidence };
-  }
+  const positiveDistinctiveFamilies = distinctiveFamilies.filter((family) => positiveNetFamilies.includes(family));
 
-  if (distinctiveFamilies.length > 0 || likedContentFamilies.length >= 2) return { allowed: true, ...resultEvidence };
-  const singleFamily = likedContentFamilies[0] || "";
+  if (positiveDistinctiveFamilies.length > 0 || positiveNetFamilies.length >= 2) return { allowed: true, ...resultEvidence };
+  const singleFamily = positiveNetFamilies[0] || likedContentFamilies[0] || "";
   const singleFamilySupportFields = familySupportFieldsByFamily[singleFamily] || [];
   const strongSingleFamilySupport = narrativeFictionShape
     && singleFamilySupportFields.length >= 2
     && singleFamilySupportFields.some((field) => field !== "publication")
     && ageBandSuitability > -2
-    && overlappingDislikedFamilies.length === 0;
+    && Number(familyPolarity.netFamilyWeightByFamily[singleFamily] || 0) > 0
+    && !overlappingDislikedFamilies.includes(singleFamily);
   if (singleFamily && strongSingleFamilySupport) {
     return { allowed: true, allowedReason: "adult_openlibrary_single_family_strong_multifield_support", ...resultEvidence };
   }
@@ -469,8 +601,16 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   const adultOpenLibraryNonOverlappingLikedFamilies: Record<string, string[]> = {};
   const adultOpenLibraryDislikeOverlapRatio: Record<string, number> = {};
   const adultOpenLibraryFamilyDislikeOverlapRatio: Record<string, number> = {};
+  const adultOpenLibraryLikedFamilyWeightByFamily: Record<string, Record<string, number>> = {};
+  const adultOpenLibraryDislikedFamilyWeightByFamily: Record<string, Record<string, number>> = {};
+  const adultOpenLibraryNetFamilyWeightByFamily: Record<string, Record<string, number>> = {};
+  const adultOpenLibraryLikedItemCountByFamily: Record<string, Record<string, number>> = {};
+  const adultOpenLibraryDislikedItemCountByFamily: Record<string, Record<string, number>> = {};
+  const adultOpenLibraryPositiveNetFamilies: Record<string, string[]> = {};
+  const adultOpenLibraryNonPositiveNetFamilies: Record<string, string[]> = {};
   const adultOpenLibraryFamilySupportFieldsByFamily: Record<string, Record<string, string[]>> = {};
   const adultOpenLibraryStrongAdultFitSignals: Record<string, string[]> = {};
+  const adultOpenLibraryInstructionalShapeReasons: Record<string, string[]> = {};
   const adultOpenLibraryNonNarrativeShapeReasons: Record<string, string[]> = {};
   const adultOpenLibraryEligibilityAllowedByTitle: Record<string, boolean> = {};
   const adultOpenLibraryEligibilityReasonByTitle: Record<string, string> = {};
@@ -513,8 +653,16 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
     adultOpenLibraryNonOverlappingLikedFamilies[candidate.title] = eligibility.nonOverlappingLikedFamilies;
     adultOpenLibraryDislikeOverlapRatio[candidate.title] = Math.round(eligibility.dislikeOverlapRatio * 1000) / 1000;
     adultOpenLibraryFamilyDislikeOverlapRatio[candidate.title] = Math.round(eligibility.familyDislikeOverlapRatio * 1000) / 1000;
+    adultOpenLibraryLikedFamilyWeightByFamily[candidate.title] = eligibility.likedFamilyWeightByFamily;
+    adultOpenLibraryDislikedFamilyWeightByFamily[candidate.title] = eligibility.dislikedFamilyWeightByFamily;
+    adultOpenLibraryNetFamilyWeightByFamily[candidate.title] = eligibility.netFamilyWeightByFamily;
+    adultOpenLibraryLikedItemCountByFamily[candidate.title] = eligibility.likedItemCountByFamily;
+    adultOpenLibraryDislikedItemCountByFamily[candidate.title] = eligibility.dislikedItemCountByFamily;
+    adultOpenLibraryPositiveNetFamilies[candidate.title] = eligibility.positiveNetFamilies;
+    adultOpenLibraryNonPositiveNetFamilies[candidate.title] = eligibility.nonPositiveNetFamilies;
     adultOpenLibraryFamilySupportFieldsByFamily[candidate.title] = eligibility.familySupportFieldsByFamily;
     adultOpenLibraryStrongAdultFitSignals[candidate.title] = eligibility.strongAdultFitSignals;
+    adultOpenLibraryInstructionalShapeReasons[candidate.title] = eligibility.nonNarrativeShapeReasons.filter((reason) => reason === "adult_openlibrary_instructional_writing_artifact");
     adultOpenLibraryNonNarrativeShapeReasons[candidate.title] = eligibility.nonNarrativeShapeReasons;
     adultOpenLibraryEligibilityAllowedByTitle[candidate.title] = eligibility.allowed;
     adultOpenLibraryEligibilityReasonByTitle[candidate.title] = eligibility.allowed
@@ -532,6 +680,8 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
       adultOpenLibraryContextOnlySignalCount: eligibility.contextOnlySignals.length,
       adultOpenLibraryDislikeOverlapRatio: Math.round(eligibility.dislikeOverlapRatio * 1000) / 1000,
       adultOpenLibraryFamilyDislikeOverlapRatio: Math.round(eligibility.familyDislikeOverlapRatio * 1000) / 1000,
+      adultOpenLibraryPositiveNetFamilyCount: eligibility.positiveNetFamilies.length,
+      adultOpenLibraryNonPositiveNetFamilyCount: eligibility.nonPositiveNetFamilies.length,
       adultOpenLibraryStrongAdultFitSignalCount: eligibility.strongAdultFitSignals.length,
       adultOpenLibraryNarrativeFictionShape: eligibility.narrativeFictionShape ? 1 : 0,
       adultOpenLibraryNonNarrativeShapeCount: eligibility.nonNarrativeShapeReasons.length,
@@ -554,8 +704,16 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
     candidate.diagnostics.adultOpenLibraryNonOverlappingLikedFamilies = eligibility.nonOverlappingLikedFamilies;
     candidate.diagnostics.adultOpenLibraryDislikeOverlapRatio = eligibility.dislikeOverlapRatio;
     candidate.diagnostics.adultOpenLibraryFamilyDislikeOverlapRatio = eligibility.familyDislikeOverlapRatio;
+    candidate.diagnostics.adultOpenLibraryLikedFamilyWeightByFamily = eligibility.likedFamilyWeightByFamily;
+    candidate.diagnostics.adultOpenLibraryDislikedFamilyWeightByFamily = eligibility.dislikedFamilyWeightByFamily;
+    candidate.diagnostics.adultOpenLibraryNetFamilyWeightByFamily = eligibility.netFamilyWeightByFamily;
+    candidate.diagnostics.adultOpenLibraryLikedItemCountByFamily = eligibility.likedItemCountByFamily;
+    candidate.diagnostics.adultOpenLibraryDislikedItemCountByFamily = eligibility.dislikedItemCountByFamily;
+    candidate.diagnostics.adultOpenLibraryPositiveNetFamilies = eligibility.positiveNetFamilies;
+    candidate.diagnostics.adultOpenLibraryNonPositiveNetFamilies = eligibility.nonPositiveNetFamilies;
     candidate.diagnostics.adultOpenLibraryFamilySupportFieldsByFamily = eligibility.familySupportFieldsByFamily;
     candidate.diagnostics.adultOpenLibraryStrongAdultFitSignals = eligibility.strongAdultFitSignals;
+    candidate.diagnostics.adultOpenLibraryInstructionalShapeReasons = adultOpenLibraryInstructionalShapeReasons[candidate.title];
     candidate.diagnostics.adultOpenLibraryNarrativeFictionShape = eligibility.narrativeFictionShape;
     candidate.diagnostics.adultOpenLibraryNonNarrativeShapeReasons = eligibility.nonNarrativeShapeReasons;
     if (eligibility.allowed) meaningfulTasteEligibleTitles.push(candidate.title);
@@ -587,8 +745,16 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultOpenLibraryNonOverlappingLikedFamilies = adultOpenLibraryNonOverlappingLikedFamilies;
   diagnostics.adultOpenLibraryDislikeOverlapRatio = adultOpenLibraryDislikeOverlapRatio;
   diagnostics.adultOpenLibraryFamilyDislikeOverlapRatio = adultOpenLibraryFamilyDislikeOverlapRatio;
+  diagnostics.adultOpenLibraryLikedFamilyWeightByFamily = adultOpenLibraryLikedFamilyWeightByFamily;
+  diagnostics.adultOpenLibraryDislikedFamilyWeightByFamily = adultOpenLibraryDislikedFamilyWeightByFamily;
+  diagnostics.adultOpenLibraryNetFamilyWeightByFamily = adultOpenLibraryNetFamilyWeightByFamily;
+  diagnostics.adultOpenLibraryLikedItemCountByFamily = adultOpenLibraryLikedItemCountByFamily;
+  diagnostics.adultOpenLibraryDislikedItemCountByFamily = adultOpenLibraryDislikedItemCountByFamily;
+  diagnostics.adultOpenLibraryPositiveNetFamilies = adultOpenLibraryPositiveNetFamilies;
+  diagnostics.adultOpenLibraryNonPositiveNetFamilies = adultOpenLibraryNonPositiveNetFamilies;
   diagnostics.adultOpenLibraryFamilySupportFieldsByFamily = adultOpenLibraryFamilySupportFieldsByFamily;
   diagnostics.adultOpenLibraryStrongAdultFitSignals = adultOpenLibraryStrongAdultFitSignals;
+  diagnostics.adultOpenLibraryInstructionalShapeReasons = adultOpenLibraryInstructionalShapeReasons;
   diagnostics.adultOpenLibraryNonNarrativeShapeReasons = adultOpenLibraryNonNarrativeShapeReasons;
   diagnostics.adultOpenLibraryEligibilityAllowedByTitle = adultOpenLibraryEligibilityAllowedByTitle;
   diagnostics.adultOpenLibraryEligibilityReasonByTitle = adultOpenLibraryEligibilityReasonByTitle;
