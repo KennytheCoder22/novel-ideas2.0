@@ -242,7 +242,11 @@ function adultOpenLibraryPrimaryContentFamily(signal: string): AdultOpenLibraryC
 }
 
 function adultOpenLibraryContentFamilies(signals: string[]): string[] {
-  return uniqueSignals(signals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean));
+  return Array.from(new Set(signals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean)));
+}
+
+function adultOpenLibraryUniqueFamilies(families: string[]): string[] {
+  return Array.from(new Set(families.filter(Boolean)));
 }
 
 function adultOpenLibraryFamilySupportedByText(family: string, text: string): boolean {
@@ -397,7 +401,7 @@ function adultOpenLibraryFamilyPolarity(profile: TasteProfile, metadataText: str
   const dislikedFamilyWeightByFamily = adultOpenLibraryWeightTotalsByFamily(dislikedItemsByFamily);
   const likedItemCountByFamily = adultOpenLibraryItemCountsByFamily(likedItemsByFamily);
   const dislikedItemCountByFamily = adultOpenLibraryItemCountsByFamily(dislikedItemsByFamily);
-  const families = uniqueSignals([...Object.keys(likedFamilyWeightByFamily), ...Object.keys(dislikedFamilyWeightByFamily)]);
+  const families = adultOpenLibraryUniqueFamilies([...Object.keys(likedFamilyWeightByFamily), ...Object.keys(dislikedFamilyWeightByFamily)]);
   const netFamilyWeightByFamily: Record<string, number> = {};
   for (const family of families) {
     netFamilyWeightByFamily[family] = adultOpenLibraryRoundWeight(Number(likedFamilyWeightByFamily[family] || 0) - Number(dislikedFamilyWeightByFamily[family] || 0));
