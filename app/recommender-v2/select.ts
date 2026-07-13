@@ -174,6 +174,10 @@ type AdultOpenLibraryTasteEligibility = {
   narrativeShapeEvidence: string[];
   sparseNarrativeShapeApplied: boolean;
   sparseNarrativeShapeReason?: string;
+  collectionShapeTrigger?: string;
+  collectionShapeTriggerField?: string;
+  collectionShapeCorroboration: string[];
+  puzzleGameShapeReasons: string[];
   nonNarrativeShapeReasons: string[];
 };
 
@@ -528,13 +532,95 @@ function adultOpenLibraryInstructionalWritingShapeReasons(candidate: ScoredCandi
   return uniqueSignals(reasons);
 }
 
-function adultOpenLibraryNonNarrativeShapeReasons(candidate: ScoredCandidate, metadataText: string): string[] {
+type AdultOpenLibraryShapeField = { field: string; text: string };
+type AdultOpenLibraryCollectionShapeEvidence = {
+  reason?: string;
+  trigger?: string;
+  triggerField?: string;
+  corroboration: string[];
+};
+
+function adultOpenLibraryShapeFields(candidate: ScoredCandidate): AdultOpenLibraryShapeField[] {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const normalizedField = (field: string, values: unknown[]): AdultOpenLibraryShapeField => ({
+    field,
+    text: uniqueSignals(values.flatMap(asStringList).map(normalized).filter(Boolean)).join(" "),
+  });
+  return [
+    normalizedField("title", [candidate.title]),
+    normalizedField("subtitle", [candidate.subtitle, raw.subtitle]),
+    normalizedField("description", [candidate.description, rawOpenLibraryDescription(raw)]),
+    normalizedField("first_sentence", [raw.first_sentence]),
+    normalizedField("subjects", [raw.subject, raw.subjects]),
+    normalizedField("subject_facets", [raw.subject_facet]),
+    normalizedField("subject_keys", [raw.subject_key]),
+    normalizedField("normalized", [candidate.genres, candidate.themes, candidate.tones, candidate.characterDynamics, candidate.formats]),
+    normalizedField("notes", [raw.notes, raw.note, raw.edition_notes, raw.work_notes]),
+    normalizedField("publisher", [raw.publisher, raw.publishers]),
+    normalizedField("creator", [candidate.creators, raw.authors, raw.author_name, raw.creators, raw.editor, raw.editors, raw.compiler, raw.compilers]),
+    normalizedField("series", [raw.series]),
+  ].filter((item) => item.text);
+}
+
+function adultOpenLibraryCollectionShapeEvidence(candidate: ScoredCandidate): AdultOpenLibraryCollectionShapeEvidence {
+  const fields = adultOpenLibraryShapeFields(candidate);
+  const strongPackagePattern = /\b(anthology|anthologies|collected stories|collected works|collected papers|complete stories|complete works|selected stories|selected works|selected papers|collection of stories|collection of short stories|short story collections?|fiction collections?|essay collections?|poetry collections?|omnibus)\b/;
+  const titlePackagePattern = /\b(masterpieces|best of|year s best|years best|collected|complete works|selected stories|anthology|anthologies|omnibus)\b/;
+  const genericCollectionContext = /\b(library collections?|special collections?|collection development|archival collections?|publisher collections?|museum collections?)\b/;
+  const corroborationPattern = /\b(short stories|story collections?|fiction collections?|essay collections?|poetry collections?|multiple works|anthology|anthologies|collections?|editor|edited by|compiler|compiled by|collected works|collected stories|selected stories|complete stories)\b/;
+
+  for (const { field, text } of fields) {
+    if ((field === "title" || field === "subtitle") || genericCollectionContext.test(text)) continue;
+    const match = text.match(strongPackagePattern);
+    if (match) {
+      return {
+        reason: "packaged_collection_or_anthology_shape",
+        trigger: match[0],
+        triggerField: field,
+        corroboration: [],
+      };
+    }
+  }
+
+  const titleField = fields.find((item) => item.field === "title");
+  const subtitleField = fields.find((item) => item.field === "subtitle");
+  const titleTrigger = [titleField, subtitleField].find((item) => item && titlePackagePattern.test(item.text));
+  if (titleTrigger) {
+    const corroboration = fields
+      .filter((item) => item.field !== "title" && item.field !== "subtitle" && !genericCollectionContext.test(item.text) && corroborationPattern.test(item.text))
+      .map((item) => `${item.field}:${item.text.match(corroborationPattern)?.[0] || "package_evidence"}`);
+    if (candidate.creators.length > 1) corroboration.push("creator:multiple_authors");
+    if (corroboration.length > 0) {
+      return {
+        reason: "packaged_collection_or_anthology_shape",
+        trigger: titleTrigger.text.match(titlePackagePattern)?.[0],
+        triggerField: titleTrigger.field,
+        corroboration: uniqueSignals(corroboration),
+      };
+    }
+  }
+
+  return { corroboration: [] };
+}
+
+function adultOpenLibraryPuzzleGameShapeReasons(candidate: ScoredCandidate): string[] {
   const reasons: string[] = [];
-  const packagedCollectionShape = /\b(anthology|anthologies|collected stories|collected works|complete works|masterpieces|best of|selected stories|selected works|short stories|short story collections?|story collections?|fiction collections?|poetry collections?|omnibus)\b/.test(metadataText);
-  const criticismOrInstructionShape = /\b(essays|criticism|critical essays|analysis|study|studies|study guide|reader s guide|bibliography|workbook|activity book|puzzle book|game book|teacher guide|curriculum)\b/.test(metadataText);
-  const collectionMarkerWithPackageContext = /\b(collection|collections)\b/.test(metadataText)
-    && /\b(short stories|stories|tales|works|poems|poetry|essays|literature|masterpieces|selected|collected|anthology|anthologies)\b/.test(metadataText);
-  if (packagedCollectionShape || collectionMarkerWithPackageContext) reasons.push("packaged_collection_or_anthology_shape");
+  const fields = adultOpenLibraryShapeFields(candidate);
+  const directPuzzleGamePattern = /\b(adventure games?|puzzle adventures?|picture puzzles?|interactive fiction|interactive adventures?|gamebooks?|game books?|activity books?|activity adventure|choose your path|choose your own adventure|solve the mystery|solve the mysteries|solve-the-mystery|juvenile recreation|children s puzzle book|puzzle books?|maze books?|quiz books?|brain games?|role playing game guide|role-playing game guide|game guides?)\b/;
+  for (const { text } of fields) {
+    if (directPuzzleGamePattern.test(text)) reasons.push("adult_openlibrary_juvenile_puzzle_or_game_book_artifact");
+    if (/\bpuzzles?\b/.test(text) && /\b(activities|activity)\b/.test(text)) reasons.push("adult_openlibrary_juvenile_puzzle_or_game_book_artifact");
+    if (/\badventure games?\b/.test(text) && /\b(juvenile|children|childrens|children s)\b/.test(text)) reasons.push("adult_openlibrary_juvenile_puzzle_or_game_book_artifact");
+    if (/\bsolve (?:the )?mysteries?\b/.test(text) && /\b(activity|activities|puzzles?)\b/.test(text)) reasons.push("adult_openlibrary_juvenile_puzzle_or_game_book_artifact");
+  }
+  return uniqueSignals(reasons);
+}
+
+function adultOpenLibraryNonNarrativeShapeReasons(candidate: ScoredCandidate, metadataText: string, collectionShape: AdultOpenLibraryCollectionShapeEvidence, puzzleGameShapeReasons: string[]): string[] {
+  const reasons: string[] = [];
+  const criticismOrInstructionShape = /\b(essays|criticism|critical essays|analysis|study|studies|study guide|reader s guide|bibliography|workbook|teacher guide|curriculum)\b/.test(metadataText);
+  if (collectionShape.reason) reasons.push(collectionShape.reason);
+  reasons.push(...puzzleGameShapeReasons);
   if (criticismOrInstructionShape) reasons.push("criticism_instruction_or_activity_shape");
   reasons.push(...adultOpenLibraryInstructionalWritingShapeReasons(candidate, metadataText));
   return uniqueSignals(reasons);
@@ -542,7 +628,7 @@ function adultOpenLibraryNonNarrativeShapeReasons(candidate: ScoredCandidate, me
 
 function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, profile: TasteProfile): AdultOpenLibraryTasteEligibility {
   if (profile.ageBand !== "adult" || candidate.source !== "openLibrary") {
-    return { allowed: true, signals: [], nonTitleSignals: [], rawContentSignals: [], contentSignals: [], contextOnlySignals: [], supplementalSignals: [], meaningfulLikedContentSignals: [], overlappingDislikedContentSignals: [], nonOverlappingLikedContentSignals: [], dislikeOverlapRatio: 0, likedContentFamilies: [], dislikedContentFamilies: [], overlappingDislikedFamilies: [], nonOverlappingLikedFamilies: [], familyDislikeOverlapRatio: 0, likedFamilyWeightByFamily: {}, dislikedFamilyWeightByFamily: {}, netFamilyWeightByFamily: {}, likedItemCountByFamily: {}, dislikedItemCountByFamily: {}, positiveNetFamilies: [], nonPositiveNetFamilies: [], familySupportFieldsByFamily: {}, familySupportEvidenceGroupsByFamily: {}, strongAdultFitSignals: [], narrativeFictionShape: false, narrativeShapeEvidence: [], sparseNarrativeShapeApplied: false, nonNarrativeShapeReasons: [] };
+    return { allowed: true, signals: [], nonTitleSignals: [], rawContentSignals: [], contentSignals: [], contextOnlySignals: [], supplementalSignals: [], meaningfulLikedContentSignals: [], overlappingDislikedContentSignals: [], nonOverlappingLikedContentSignals: [], dislikeOverlapRatio: 0, likedContentFamilies: [], dislikedContentFamilies: [], overlappingDislikedFamilies: [], nonOverlappingLikedFamilies: [], familyDislikeOverlapRatio: 0, likedFamilyWeightByFamily: {}, dislikedFamilyWeightByFamily: {}, netFamilyWeightByFamily: {}, likedItemCountByFamily: {}, dislikedItemCountByFamily: {}, positiveNetFamilies: [], nonPositiveNetFamilies: [], familySupportFieldsByFamily: {}, familySupportEvidenceGroupsByFamily: {}, strongAdultFitSignals: [], narrativeFictionShape: false, narrativeShapeEvidence: [], sparseNarrativeShapeApplied: false, collectionShapeCorroboration: [], puzzleGameShapeReasons: [], nonNarrativeShapeReasons: [] };
   }
 
   const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
@@ -551,7 +637,9 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
   const ageBandSuitability = Number(candidate.scoreBreakdown?.ageBandSuitability ?? candidate.scoreBreakdown?.ageTeenSuitability ?? 0);
   const nonTitleMetadataValues = adultOpenLibraryNonTitleMetadataValues(candidate);
   const nonTitleMetadataText = adultOpenLibraryNonTitleMetadataText(candidate);
-  const nonNarrativeShapeReasons = adultOpenLibraryNonNarrativeShapeReasons(candidate, nonTitleMetadataText);
+  const collectionShape = adultOpenLibraryCollectionShapeEvidence(candidate);
+  const puzzleGameShapeReasons = adultOpenLibraryPuzzleGameShapeReasons(candidate);
+  const nonNarrativeShapeReasons = adultOpenLibraryNonNarrativeShapeReasons(candidate, nonTitleMetadataText, collectionShape, puzzleGameShapeReasons);
   const strongAdultFitSignals = adultOpenLibraryStrongAdultFitSignals(nonTitleMetadataValues);
   const familyPolarity = adultOpenLibraryFamilyPolarity(profile, nonTitleMetadataText);
   const baseResult = {
@@ -584,6 +672,10 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
     narrativeShapeEvidence: [] as string[],
     sparseNarrativeShapeApplied: false,
     sparseNarrativeShapeReason: undefined as string | undefined,
+    collectionShapeTrigger: collectionShape.trigger,
+    collectionShapeTriggerField: collectionShape.triggerField,
+    collectionShapeCorroboration: collectionShape.corroboration,
+    puzzleGameShapeReasons,
     nonNarrativeShapeReasons,
   };
 
@@ -651,6 +743,10 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
     narrativeShapeEvidence: narrativeShape.narrativeShapeEvidence,
     sparseNarrativeShapeApplied: narrativeShape.sparseNarrativeShapeApplied,
     sparseNarrativeShapeReason: narrativeShape.sparseNarrativeShapeReason,
+    collectionShapeTrigger: collectionShape.trigger,
+    collectionShapeTriggerField: collectionShape.triggerField,
+    collectionShapeCorroboration: collectionShape.corroboration,
+    puzzleGameShapeReasons,
     nonNarrativeShapeReasons,
   };
 
@@ -727,6 +823,10 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   const adultOpenLibraryNarrativeShapeEvidence: Record<string, string[]> = {};
   const adultOpenLibrarySparseNarrativeShapeApplied: Record<string, boolean> = {};
   const adultOpenLibrarySparseNarrativeShapeReason: Record<string, string> = {};
+  const adultOpenLibraryCollectionShapeTriggerByTitle: Record<string, string> = {};
+  const adultOpenLibraryCollectionShapeTriggerFieldByTitle: Record<string, string> = {};
+  const adultOpenLibraryCollectionShapeCorroborationByTitle: Record<string, string[]> = {};
+  const adultOpenLibraryPuzzleGameShapeReasons: Record<string, string[]> = {};
   const adultOpenLibraryInstructionalShapeReasons: Record<string, string[]> = {};
   const adultOpenLibraryNonNarrativeShapeReasons: Record<string, string[]> = {};
   const adultOpenLibraryEligibilityAllowedByTitle: Record<string, boolean> = {};
@@ -783,6 +883,10 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
     adultOpenLibraryNarrativeShapeEvidence[candidate.title] = eligibility.narrativeShapeEvidence;
     adultOpenLibrarySparseNarrativeShapeApplied[candidate.title] = eligibility.sparseNarrativeShapeApplied;
     if (eligibility.sparseNarrativeShapeReason) adultOpenLibrarySparseNarrativeShapeReason[candidate.title] = eligibility.sparseNarrativeShapeReason;
+    if (eligibility.collectionShapeTrigger) adultOpenLibraryCollectionShapeTriggerByTitle[candidate.title] = eligibility.collectionShapeTrigger;
+    if (eligibility.collectionShapeTriggerField) adultOpenLibraryCollectionShapeTriggerFieldByTitle[candidate.title] = eligibility.collectionShapeTriggerField;
+    adultOpenLibraryCollectionShapeCorroborationByTitle[candidate.title] = eligibility.collectionShapeCorroboration;
+    adultOpenLibraryPuzzleGameShapeReasons[candidate.title] = eligibility.puzzleGameShapeReasons;
     adultOpenLibraryInstructionalShapeReasons[candidate.title] = eligibility.nonNarrativeShapeReasons.filter((reason) => reason === "adult_openlibrary_instructional_writing_artifact");
     adultOpenLibraryNonNarrativeShapeReasons[candidate.title] = eligibility.nonNarrativeShapeReasons;
     adultOpenLibraryEligibilityAllowedByTitle[candidate.title] = eligibility.allowed;
@@ -841,6 +945,10 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
     candidate.diagnostics.adultOpenLibraryNarrativeShapeEvidence = eligibility.narrativeShapeEvidence;
     candidate.diagnostics.adultOpenLibrarySparseNarrativeShapeApplied = eligibility.sparseNarrativeShapeApplied;
     candidate.diagnostics.adultOpenLibrarySparseNarrativeShapeReason = eligibility.sparseNarrativeShapeReason;
+    candidate.diagnostics.adultOpenLibraryCollectionShapeTrigger = eligibility.collectionShapeTrigger;
+    candidate.diagnostics.adultOpenLibraryCollectionShapeTriggerField = eligibility.collectionShapeTriggerField;
+    candidate.diagnostics.adultOpenLibraryCollectionShapeCorroboration = eligibility.collectionShapeCorroboration;
+    candidate.diagnostics.adultOpenLibraryPuzzleGameShapeReasons = eligibility.puzzleGameShapeReasons;
     candidate.diagnostics.adultOpenLibraryNonNarrativeShapeReasons = eligibility.nonNarrativeShapeReasons;
     if (eligibility.allowed) meaningfulTasteEligibleTitles.push(candidate.title);
     else {
@@ -884,6 +992,10 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultOpenLibraryNarrativeShapeEvidence = adultOpenLibraryNarrativeShapeEvidence;
   diagnostics.adultOpenLibrarySparseNarrativeShapeApplied = adultOpenLibrarySparseNarrativeShapeApplied;
   diagnostics.adultOpenLibrarySparseNarrativeShapeReason = adultOpenLibrarySparseNarrativeShapeReason;
+  diagnostics.adultOpenLibraryCollectionShapeTriggerByTitle = adultOpenLibraryCollectionShapeTriggerByTitle;
+  diagnostics.adultOpenLibraryCollectionShapeTriggerFieldByTitle = adultOpenLibraryCollectionShapeTriggerFieldByTitle;
+  diagnostics.adultOpenLibraryCollectionShapeCorroborationByTitle = adultOpenLibraryCollectionShapeCorroborationByTitle;
+  diagnostics.adultOpenLibraryPuzzleGameShapeReasons = adultOpenLibraryPuzzleGameShapeReasons;
   diagnostics.adultOpenLibraryInstructionalShapeReasons = adultOpenLibraryInstructionalShapeReasons;
   diagnostics.adultOpenLibraryNonNarrativeShapeReasons = adultOpenLibraryNonNarrativeShapeReasons;
   diagnostics.adultOpenLibraryEligibilityAllowedByTitle = adultOpenLibraryEligibilityAllowedByTitle;
