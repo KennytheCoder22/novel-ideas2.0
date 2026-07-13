@@ -127,20 +127,42 @@ function addAdultFamilyDiagnostics(candidates: ScoredCandidate[], selected: Scor
 
 const ADULT_OPENLIBRARY_GENERIC_TASTE_SIGNAL = /^(adult|adults|fiction|novel|novels|story|stories)$/;
 const ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL = /^(book|books|ebook|ebooks|audiobook|audiobooks|series|movie|movies|film|films|tv|television|game|games|podcast|podcasts|anime|manga|comic|comics|graphic novel|graphic novels)$/;
-const ADULT_OPENLIBRARY_BROAD_TASTE_SIGNAL = /^(fantasy|adventure|mystery|horror|science fiction|sci fi|sci-fi|historical|history|romance|romantic|drama|crime|thriller|comedy|humor|funny|dark|epic)$/;
-const ADULT_OPENLIBRARY_DISTINCTIVE_TASTE_SIGNAL = /^(dystopia|dystopian|gothic|gothic horror|psychological horror|paranormal|mythology|mythological|survival|speculative|historical crime|science fiction thriller|sci fi thriller|sci-fi thriller|dark fantasy|supernatural|weird|occult)$/;
+const ADULT_OPENLIBRARY_SUPPLEMENTAL_TASTE_SIGNAL = /^(dark|epic|weird|fast paced|fast-paced|atmospheric|identity|hopeful|authority|rebellion|ai|nonfiction|non fiction)$/;
+const ADULT_OPENLIBRARY_DISTINCTIVE_RAW_SIGNAL = /^(dystopia|dystopian|gothic|psychological horror|paranormal|mythology|mythological|survival|speculative|historical crime|science fiction thriller|sci fi thriller|sci-fi thriller|dark fantasy|supernatural|occult)$/;
+
+type AdultOpenLibraryContentFamily =
+  | "fantasy"
+  | "science_fiction"
+  | "mystery_crime_thriller"
+  | "horror_paranormal"
+  | "historical"
+  | "romance"
+  | "drama_contemporary"
+  | "adventure_action"
+  | "comedy";
 
 type AdultOpenLibraryTasteEligibility = {
   allowed: boolean;
   reason?: string;
+  allowedReason?: string;
   signals: string[];
   nonTitleSignals: string[];
+  rawContentSignals: string[];
   contentSignals: string[];
   contextOnlySignals: string[];
+  supplementalSignals: string[];
   meaningfulLikedContentSignals: string[];
   overlappingDislikedContentSignals: string[];
   nonOverlappingLikedContentSignals: string[];
   dislikeOverlapRatio: number;
+  likedContentFamilies: string[];
+  dislikedContentFamilies: string[];
+  overlappingDislikedFamilies: string[];
+  nonOverlappingLikedFamilies: string[];
+  familyDislikeOverlapRatio: number;
+  familySupportFieldsByFamily: Record<string, string[]>;
+  strongAdultFitSignals: string[];
+  narrativeFictionShape: boolean;
   nonNarrativeShapeReasons: string[];
 };
 
@@ -182,23 +204,114 @@ function adultOpenLibraryNonTitleMetadataText(candidate: ScoredCandidate): strin
 
 function adultOpenLibrarySignalSupportedByNonTitleMetadata(signal: string, metadataText: string): boolean {
   const value = normalized(signal);
-  return !!value && signalPresentInText(metadataText, value);
+  if (!value) return false;
+  if (value === "ai") return /\b(artificial intelligence|machine intelligence|robots?|robotics|androids?|sentient computer|a i)\b/.test(metadataText);
+  return signalPresentInText(metadataText, value);
 }
 
-function adultOpenLibraryContentFamily(signal: string): string {
+function adultOpenLibraryPrimaryContentFamily(signal: string): AdultOpenLibraryContentFamily | "" {
   const value = normalized(signal);
-  if (/\b(science fiction|sci fi|sci-fi)\b/.test(value)) return "science fiction";
+  if (!value || ADULT_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(value) || ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(value) || ADULT_OPENLIBRARY_SUPPLEMENTAL_TASTE_SIGNAL.test(value)) return "";
+  if (/\b(fantasy|magic|magical|mythology|mythological|dark fantasy|fantasy adventure|dragon|dragons)\b/.test(value)) return "fantasy";
+  if (/\b(science fiction|sci fi|sci-fi|speculative|dystopia|dystopian|robot|robots|robotics|artificial intelligence|machine intelligence|android|androids|sentient computer)\b/.test(value)) return "science_fiction";
+  if (/\b(mystery|crime|detective|thriller|suspense|noir|science fiction thriller|sci fi thriller|sci-fi thriller|historical crime)\b/.test(value)) return "mystery_crime_thriller";
+  if (/\b(horror|gothic|paranormal|supernatural|psychological horror|occult)\b/.test(value)) return "horror_paranormal";
   if (/\b(history|historical)\b/.test(value)) return "historical";
   if (/\b(romance|romantic)\b/.test(value)) return "romance";
+  if (/\b(drama|contemporary|realistic|literary)\b/.test(value)) return "drama_contemporary";
+  if (/\b(adventure|action|survival|quest)\b/.test(value)) return "adventure_action";
   if (/\b(comedy|humor|funny)\b/.test(value)) return "comedy";
-  if (/\b(gothic horror|psychological horror)\b/.test(value)) return value;
-  if (/\b(dystopia|dystopian)\b/.test(value)) return "dystopian";
-  if (/\b(mythology|mythological)\b/.test(value)) return "mythology";
-  return value;
+  return "";
 }
 
 function adultOpenLibraryContentFamilies(signals: string[]): string[] {
-  return uniqueSignals(signals.map(adultOpenLibraryContentFamily));
+  return uniqueSignals(signals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean));
+}
+
+function adultOpenLibraryFamilySupportedByText(family: string, text: string): boolean {
+  switch (family) {
+    case "fantasy":
+      return /\b(fantasy|magic|magical|mythology|mythological|myths?|legends?|wizard|witch|witches|dragon|dragons|kingdom|spell|enchanted)\b/.test(text);
+    case "science_fiction":
+      return /\b(science fiction|sci fi|sci-fi|speculative fiction|dystopia|dystopian|space|robots?|robotics|androids?|artificial intelligence|machine intelligence|sentient computer|technology)\b/.test(text);
+    case "mystery_crime_thriller":
+      return /\b(mystery|mysteries|crime|criminal|detective|thriller|suspense|noir|investigation|investigations|case|cases)\b/.test(text);
+    case "horror_paranormal":
+      return /\b(horror|gothic|paranormal|supernatural|psychological horror|occult|ghosts?|haunted|terror)\b/.test(text);
+    case "historical":
+      return /\b(history|historical|period fiction|historical fiction)\b/.test(text);
+    case "romance":
+      return /\b(romance|romantic|love stories|love story)\b/.test(text);
+    case "drama_contemporary":
+      return /\b(drama|contemporary|realistic|literary fiction|domestic fiction)\b/.test(text);
+    case "adventure_action":
+      return /\b(adventure|adventures|action|quest|quests|survival|expedition)\b/.test(text);
+    case "comedy":
+      return /\b(comedy|humor|humour|funny|comic|satire|satirical)\b/.test(text);
+    default:
+      return false;
+  }
+}
+
+function adultOpenLibraryMetadataFieldGroups(candidate: ScoredCandidate): Record<string, string> {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  return {
+    description: uniqueSignals([
+      candidate.description,
+      rawOpenLibraryDescription(raw),
+      ...asStringList(raw.first_sentence),
+    ].map(normalized).filter(Boolean)).join(" "),
+    subjects: uniqueSignals([
+      ...asStringList(raw.subject),
+      ...asStringList(raw.subjects),
+      ...asStringList(raw.subject_facet),
+      ...asStringList(raw.subject_key),
+    ].map(normalized).filter(Boolean)).join(" "),
+    normalized: uniqueSignals([
+      ...asStringList(candidate.genres),
+      ...asStringList(candidate.themes),
+      ...asStringList(candidate.tones),
+      ...asStringList(candidate.characterDynamics),
+      ...asStringList(candidate.formats),
+    ].map(normalized).filter(Boolean)).join(" "),
+    publication: uniqueSignals([
+      candidate.publicationYear,
+      raw.first_publish_year,
+      raw.publish_date,
+      ...asStringList(raw.publisher),
+      ...asStringList(raw.publishers),
+      ...asStringList(raw.audience),
+      ...asStringList(raw.audience_facet),
+      candidate.maturityBand,
+    ].map(normalized).filter(Boolean)).join(" "),
+  };
+}
+
+function adultOpenLibraryFamilySupportFieldsByFamily(candidate: ScoredCandidate, families: string[]): Record<string, string[]> {
+  const groups = adultOpenLibraryMetadataFieldGroups(candidate);
+  const support: Record<string, string[]> = {};
+  for (const family of families) {
+    support[family] = Object.entries(groups)
+      .filter(([, text]) => adultOpenLibraryFamilySupportedByText(family, text))
+      .map(([field]) => field);
+  }
+  return support;
+}
+
+function adultOpenLibraryStrongAdultFitSignals(metadataValues: string[]): string[] {
+  const signals: string[] = [];
+  for (const value of metadataValues) {
+    if (/\b(adult fiction|fiction for adults|adult fantasy|adult science fiction|adult sci fi|adult audience|general adult readership|adult readership|for adults)\b/.test(value)) {
+      signals.push(value);
+    }
+  }
+  return uniqueSignals(signals);
+}
+
+function adultOpenLibraryNarrativeFictionShape(metadataText: string, nonNarrativeShapeReasons: string[]): boolean {
+  if (nonNarrativeShapeReasons.length > 0) return false;
+  if (/\b(nonfiction|non fiction|biography|bibliography|reference|guide|manual|workbook|activity book|puzzle book|game book|criticism|analysis|study|studies|essays)\b/.test(metadataText)) return false;
+  return /\b(fiction|novel|novels|literary fiction|fantasy|science fiction|sci fi|sci-fi|mystery|thriller|horror|romance|adventure fiction|historical fiction)\b/.test(metadataText);
 }
 
 function adultOpenLibraryNonNarrativeShapeReasons(metadataText: string): string[] {
@@ -214,23 +327,37 @@ function adultOpenLibraryNonNarrativeShapeReasons(metadataText: string): string[
 
 function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, profile: TasteProfile): AdultOpenLibraryTasteEligibility {
   if (profile.ageBand !== "adult" || candidate.source !== "openLibrary") {
-    return { allowed: true, signals: [], nonTitleSignals: [], contentSignals: [], contextOnlySignals: [], meaningfulLikedContentSignals: [], overlappingDislikedContentSignals: [], nonOverlappingLikedContentSignals: [], dislikeOverlapRatio: 0, nonNarrativeShapeReasons: [] };
+    return { allowed: true, signals: [], nonTitleSignals: [], rawContentSignals: [], contentSignals: [], contextOnlySignals: [], supplementalSignals: [], meaningfulLikedContentSignals: [], overlappingDislikedContentSignals: [], nonOverlappingLikedContentSignals: [], dislikeOverlapRatio: 0, likedContentFamilies: [], dislikedContentFamilies: [], overlappingDislikedFamilies: [], nonOverlappingLikedFamilies: [], familyDislikeOverlapRatio: 0, familySupportFieldsByFamily: {}, strongAdultFitSignals: [], narrativeFictionShape: false, nonNarrativeShapeReasons: [] };
   }
 
   const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
   const likedSignals = adultOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedLikedSignals");
   const dislikedSignals = adultOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedDislikedSignals");
+  const ageBandSuitability = Number(candidate.scoreBreakdown?.ageBandSuitability ?? candidate.scoreBreakdown?.ageTeenSuitability ?? 0);
+  const nonTitleMetadataValues = adultOpenLibraryNonTitleMetadataValues(candidate);
   const nonTitleMetadataText = adultOpenLibraryNonTitleMetadataText(candidate);
   const nonNarrativeShapeReasons = adultOpenLibraryNonNarrativeShapeReasons(nonTitleMetadataText);
+  const strongAdultFitSignals = adultOpenLibraryStrongAdultFitSignals(nonTitleMetadataValues);
+  const narrativeFictionShape = adultOpenLibraryNarrativeFictionShape(nonTitleMetadataText, nonNarrativeShapeReasons);
   const baseResult = {
     signals: likedSignals,
     nonTitleSignals: [] as string[],
+    rawContentSignals: [] as string[],
     contentSignals: [] as string[],
     contextOnlySignals: [] as string[],
+    supplementalSignals: [] as string[],
     meaningfulLikedContentSignals: [] as string[],
     overlappingDislikedContentSignals: [] as string[],
     nonOverlappingLikedContentSignals: [] as string[],
     dislikeOverlapRatio: 0,
+    likedContentFamilies: [] as string[],
+    dislikedContentFamilies: [] as string[],
+    overlappingDislikedFamilies: [] as string[],
+    nonOverlappingLikedFamilies: [] as string[],
+    familyDislikeOverlapRatio: 0,
+    familySupportFieldsByFamily: {} as Record<string, string[]>,
+    strongAdultFitSignals,
+    narrativeFictionShape,
     nonNarrativeShapeReasons,
   };
 
@@ -239,44 +366,78 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
 
   const nonTitleLikedSignals = uniqueSignals(likedSignals.filter((signal) => adultOpenLibrarySignalSupportedByNonTitleMetadata(signal, nonTitleMetadataText)));
   const contextOnlySignals = nonTitleLikedSignals.filter((signal) => ADULT_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(signal) || ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(signal));
-  const contentSignals = nonTitleLikedSignals.filter((signal) => !ADULT_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(signal) && !ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(signal));
+  const supplementalSignals = nonTitleLikedSignals.filter((signal) => {
+    const value = normalized(signal);
+    return !ADULT_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(value)
+      && !ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(value)
+      && !adultOpenLibraryPrimaryContentFamily(value);
+  });
+  const rawContentSignals = nonTitleLikedSignals.filter((signal) => !!adultOpenLibraryPrimaryContentFamily(signal));
+  const likedContentFamilies = adultOpenLibraryContentFamilies(rawContentSignals);
   const dislikedNonTitleSignals = uniqueSignals(dislikedSignals
     .filter((signal) => !ADULT_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(signal) && !ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(signal))
     .filter((signal) => adultOpenLibrarySignalSupportedByNonTitleMetadata(signal, nonTitleMetadataText)));
-  const dislikedContentFamilies = new Set(adultOpenLibraryContentFamilies(dislikedNonTitleSignals));
-  const likedContentFamilies = adultOpenLibraryContentFamilies(contentSignals);
-  const overlappingDislikedContentSignals = contentSignals.filter((signal) => dislikedContentFamilies.has(adultOpenLibraryContentFamily(signal)));
-  const nonOverlappingLikedContentSignals = contentSignals.filter((signal) => !dislikedContentFamilies.has(adultOpenLibraryContentFamily(signal)));
-  const overlappingFamilies = new Set(overlappingDislikedContentSignals.map(adultOpenLibraryContentFamily));
-  const dislikeOverlapRatio = likedContentFamilies.length > 0 ? overlappingFamilies.size / likedContentFamilies.length : 0;
+  const dislikedContentFamilies = adultOpenLibraryContentFamilies(dislikedNonTitleSignals);
+  const dislikedContentFamilySet = new Set(dislikedContentFamilies);
+  const overlappingDislikedContentSignals = rawContentSignals.filter((signal) => {
+    const family = adultOpenLibraryPrimaryContentFamily(signal);
+    return !!family && dislikedContentFamilySet.has(family);
+  });
+  const nonOverlappingLikedContentSignals = rawContentSignals.filter((signal) => {
+    const family = adultOpenLibraryPrimaryContentFamily(signal);
+    return !!family && !dislikedContentFamilySet.has(family);
+  });
+  const overlappingDislikedFamilies = likedContentFamilies.filter((family) => dislikedContentFamilySet.has(family));
+  const nonOverlappingLikedFamilies = likedContentFamilies.filter((family) => !dislikedContentFamilySet.has(family));
+  const familyDislikeOverlapRatio = likedContentFamilies.length > 0 ? overlappingDislikedFamilies.length / likedContentFamilies.length : 0;
+  const familySupportFieldsByFamily = adultOpenLibraryFamilySupportFieldsByFamily(candidate, likedContentFamilies);
   const resultEvidence = {
     signals: likedSignals,
     nonTitleSignals: nonTitleLikedSignals,
-    contentSignals,
+    rawContentSignals,
+    contentSignals: rawContentSignals,
     contextOnlySignals,
-    meaningfulLikedContentSignals: contentSignals,
+    supplementalSignals,
+    meaningfulLikedContentSignals: rawContentSignals,
     overlappingDislikedContentSignals,
     nonOverlappingLikedContentSignals,
-    dislikeOverlapRatio,
+    dislikeOverlapRatio: familyDislikeOverlapRatio,
+    likedContentFamilies,
+    dislikedContentFamilies,
+    overlappingDislikedFamilies,
+    nonOverlappingLikedFamilies,
+    familyDislikeOverlapRatio,
+    familySupportFieldsByFamily,
+    strongAdultFitSignals,
+    narrativeFictionShape,
     nonNarrativeShapeReasons,
   };
 
   if (nonNarrativeShapeReasons.length > 0) return { allowed: false, reason: "adult_openlibrary_non_narrative_or_collection_artifact", ...resultEvidence };
-  if (!contentSignals.length) return { allowed: false, reason: nonTitleLikedSignals.length ? "adult_openlibrary_context_or_generic_only_metadata_taste" : "adult_openlibrary_title_only_metadata_taste", ...resultEvidence };
-  if (likedContentFamilies.length === 1 && overlappingDislikedContentSignals.length > 0) {
+  if (ageBandSuitability <= -2 && strongAdultFitSignals.length === 0) return { allowed: false, reason: "adult_openlibrary_strongly_juvenile_without_adult_fit", ...resultEvidence };
+  if (!rawContentSignals.length) return { allowed: false, reason: nonTitleLikedSignals.length ? "adult_openlibrary_context_or_generic_only_metadata_taste" : "adult_openlibrary_title_only_metadata_taste", ...resultEvidence };
+  if (likedContentFamilies.length === 1 && overlappingDislikedFamilies.length > 0) {
     return { allowed: false, reason: "adult_openlibrary_single_signal_negated_by_dislike", ...resultEvidence };
   }
 
-  const distinctiveSignals = contentSignals.filter((signal) => ADULT_OPENLIBRARY_DISTINCTIVE_TASTE_SIGNAL.test(signal));
-  const broadFamilies = adultOpenLibraryContentFamilies(contentSignals.filter((signal) => ADULT_OPENLIBRARY_BROAD_TASTE_SIGNAL.test(signal)));
-  const nonOverlappingDistinctiveSignals = nonOverlappingLikedContentSignals.filter((signal) => ADULT_OPENLIBRARY_DISTINCTIVE_TASTE_SIGNAL.test(signal));
-  const nonOverlappingBroadFamilies = adultOpenLibraryContentFamilies(nonOverlappingLikedContentSignals.filter((signal) => ADULT_OPENLIBRARY_BROAD_TASTE_SIGNAL.test(signal)));
-  const hasSubstantialNonOverlappingPositiveEvidence = nonOverlappingDistinctiveSignals.length > 0 || nonOverlappingBroadFamilies.length >= 2;
-  if (likedContentFamilies.length >= 2 && dislikeOverlapRatio >= 0.5 && !hasSubstantialNonOverlappingPositiveEvidence) {
+  const distinctiveFamilies = adultOpenLibraryContentFamilies(rawContentSignals.filter((signal) => ADULT_OPENLIBRARY_DISTINCTIVE_RAW_SIGNAL.test(signal)));
+  const nonOverlappingDistinctiveFamilies = adultOpenLibraryContentFamilies(nonOverlappingLikedContentSignals.filter((signal) => ADULT_OPENLIBRARY_DISTINCTIVE_RAW_SIGNAL.test(signal)));
+  const hasSubstantialNonOverlappingPositiveEvidence = nonOverlappingDistinctiveFamilies.length > 0 || nonOverlappingLikedFamilies.length >= 2;
+  if (likedContentFamilies.length >= 2 && familyDislikeOverlapRatio >= 0.5 && !hasSubstantialNonOverlappingPositiveEvidence) {
     return { allowed: false, reason: "adult_openlibrary_multi_signal_mostly_negated", ...resultEvidence };
   }
 
-  if (distinctiveSignals.length > 0 || broadFamilies.length >= 2) return { allowed: true, ...resultEvidence };
+  if (distinctiveFamilies.length > 0 || likedContentFamilies.length >= 2) return { allowed: true, ...resultEvidence };
+  const singleFamily = likedContentFamilies[0] || "";
+  const singleFamilySupportFields = familySupportFieldsByFamily[singleFamily] || [];
+  const strongSingleFamilySupport = narrativeFictionShape
+    && singleFamilySupportFields.length >= 2
+    && singleFamilySupportFields.some((field) => field !== "publication")
+    && ageBandSuitability > -2
+    && overlappingDislikedFamilies.length === 0;
+  if (singleFamily && strongSingleFamilySupport) {
+    return { allowed: true, allowedReason: "adult_openlibrary_single_family_strong_multifield_support", ...resultEvidence };
+  }
   return { allowed: false, reason: "adult_openlibrary_single_broad_metadata_taste", ...resultEvidence };
 }
 
@@ -294,13 +455,22 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
   const finalRankingReasonByTitle: Record<string, string> = {};
   const documentBackedTasteSignalsByTitle: Record<string, string[]> = {};
+  const adultOpenLibraryRawContentSignals: Record<string, string[]> = {};
   const adultOpenLibraryContentSignals: Record<string, string[]> = {};
   const adultOpenLibraryContextOnlySignals: Record<string, string[]> = {};
+  const adultOpenLibrarySupplementalSignals: Record<string, string[]> = {};
   const adultOpenLibraryNonTitleLikedSignalsByTitle: Record<string, string[]> = {};
   const adultOpenLibraryNonTitleDislikedSignalsByTitle: Record<string, string[]> = {};
+  const adultOpenLibraryLikedContentFamilies: Record<string, string[]> = {};
+  const adultOpenLibraryDislikedContentFamilies: Record<string, string[]> = {};
   const adultOpenLibraryOverlappingDislikedContentSignals: Record<string, string[]> = {};
   const adultOpenLibraryNonOverlappingLikedContentSignals: Record<string, string[]> = {};
+  const adultOpenLibraryOverlappingDislikedFamilies: Record<string, string[]> = {};
+  const adultOpenLibraryNonOverlappingLikedFamilies: Record<string, string[]> = {};
   const adultOpenLibraryDislikeOverlapRatio: Record<string, number> = {};
+  const adultOpenLibraryFamilyDislikeOverlapRatio: Record<string, number> = {};
+  const adultOpenLibraryFamilySupportFieldsByFamily: Record<string, Record<string, string[]>> = {};
+  const adultOpenLibraryStrongAdultFitSignals: Record<string, string[]> = {};
   const adultOpenLibraryNonNarrativeShapeReasons: Record<string, string[]> = {};
   const adultOpenLibraryEligibilityAllowedByTitle: Record<string, boolean> = {};
   const adultOpenLibraryEligibilityReasonByTitle: Record<string, string> = {};
@@ -327,19 +497,28 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
     metadataBackedDislikedSignalsByTitle[candidate.title] = dislikedSignals;
     positiveTasteScoreByTitle[candidate.title] = Math.round(positiveTasteScore * 1000) / 1000;
     documentBackedTasteSignalsByTitle[candidate.title] = eligibility.contentSignals;
+    adultOpenLibraryRawContentSignals[candidate.title] = eligibility.rawContentSignals;
     adultOpenLibraryContentSignals[candidate.title] = eligibility.contentSignals;
     adultOpenLibraryContextOnlySignals[candidate.title] = eligibility.contextOnlySignals;
+    adultOpenLibrarySupplementalSignals[candidate.title] = eligibility.supplementalSignals;
     adultOpenLibraryNonTitleLikedSignalsByTitle[candidate.title] = eligibility.nonTitleSignals;
     adultOpenLibraryNonTitleDislikedSignalsByTitle[candidate.title] = adultOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedDislikedSignals")
       .filter((signal) => !ADULT_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(signal) && !ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(signal))
       .filter((signal) => adultOpenLibrarySignalSupportedByNonTitleMetadata(signal, nonTitleMetadataText));
+    adultOpenLibraryLikedContentFamilies[candidate.title] = eligibility.likedContentFamilies;
+    adultOpenLibraryDislikedContentFamilies[candidate.title] = eligibility.dislikedContentFamilies;
     adultOpenLibraryOverlappingDislikedContentSignals[candidate.title] = eligibility.overlappingDislikedContentSignals;
     adultOpenLibraryNonOverlappingLikedContentSignals[candidate.title] = eligibility.nonOverlappingLikedContentSignals;
+    adultOpenLibraryOverlappingDislikedFamilies[candidate.title] = eligibility.overlappingDislikedFamilies;
+    adultOpenLibraryNonOverlappingLikedFamilies[candidate.title] = eligibility.nonOverlappingLikedFamilies;
     adultOpenLibraryDislikeOverlapRatio[candidate.title] = Math.round(eligibility.dislikeOverlapRatio * 1000) / 1000;
+    adultOpenLibraryFamilyDislikeOverlapRatio[candidate.title] = Math.round(eligibility.familyDislikeOverlapRatio * 1000) / 1000;
+    adultOpenLibraryFamilySupportFieldsByFamily[candidate.title] = eligibility.familySupportFieldsByFamily;
+    adultOpenLibraryStrongAdultFitSignals[candidate.title] = eligibility.strongAdultFitSignals;
     adultOpenLibraryNonNarrativeShapeReasons[candidate.title] = eligibility.nonNarrativeShapeReasons;
     adultOpenLibraryEligibilityAllowedByTitle[candidate.title] = eligibility.allowed;
     adultOpenLibraryEligibilityReasonByTitle[candidate.title] = eligibility.allowed
-      ? selectedTitles.has(normalized(candidate.title)) ? "selected_clean_adult_openlibrary_candidate" : "eligible_not_selected"
+      ? eligibility.allowedReason || (selectedTitles.has(normalized(candidate.title)) ? "selected_clean_adult_openlibrary_candidate" : "eligible_not_selected")
       : eligibility.reason || "adult_openlibrary_no_meaningful_metadata_taste";
     finalScoreComponentsByTitle[candidate.title] = {
       ...breakdown,
@@ -349,8 +528,12 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
       finalScore: candidate.score,
       adultOpenLibraryFinalEligible: eligibility.allowed ? 1 : 0,
       adultOpenLibraryContentSignalCount: eligibility.contentSignals.length,
+      adultOpenLibraryLikedContentFamilyCount: eligibility.likedContentFamilies.length,
       adultOpenLibraryContextOnlySignalCount: eligibility.contextOnlySignals.length,
       adultOpenLibraryDislikeOverlapRatio: Math.round(eligibility.dislikeOverlapRatio * 1000) / 1000,
+      adultOpenLibraryFamilyDislikeOverlapRatio: Math.round(eligibility.familyDislikeOverlapRatio * 1000) / 1000,
+      adultOpenLibraryStrongAdultFitSignalCount: eligibility.strongAdultFitSignals.length,
+      adultOpenLibraryNarrativeFictionShape: eligibility.narrativeFictionShape ? 1 : 0,
       adultOpenLibraryNonNarrativeShapeCount: eligibility.nonNarrativeShapeReasons.length,
     };
     finalRankingReasonByTitle[candidate.title] = selectedTitles.has(normalized(candidate.title))
@@ -359,11 +542,21 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
     candidate.diagnostics.adultOpenLibraryFinalEligibilityAllowed = eligibility.allowed;
     candidate.diagnostics.adultOpenLibraryFinalEligibilityReason = adultOpenLibraryEligibilityReasonByTitle[candidate.title];
     candidate.diagnostics.adultOpenLibraryNonTitleTasteSignals = eligibility.nonTitleSignals;
+    candidate.diagnostics.adultOpenLibraryRawContentSignals = eligibility.rawContentSignals;
     candidate.diagnostics.adultOpenLibraryContentSignals = eligibility.contentSignals;
     candidate.diagnostics.adultOpenLibraryContextOnlySignals = eligibility.contextOnlySignals;
+    candidate.diagnostics.adultOpenLibrarySupplementalSignals = eligibility.supplementalSignals;
+    candidate.diagnostics.adultOpenLibraryLikedContentFamilies = eligibility.likedContentFamilies;
+    candidate.diagnostics.adultOpenLibraryDislikedContentFamilies = eligibility.dislikedContentFamilies;
     candidate.diagnostics.adultOpenLibraryOverlappingDislikedContentSignals = eligibility.overlappingDislikedContentSignals;
     candidate.diagnostics.adultOpenLibraryNonOverlappingLikedContentSignals = eligibility.nonOverlappingLikedContentSignals;
+    candidate.diagnostics.adultOpenLibraryOverlappingDislikedFamilies = eligibility.overlappingDislikedFamilies;
+    candidate.diagnostics.adultOpenLibraryNonOverlappingLikedFamilies = eligibility.nonOverlappingLikedFamilies;
     candidate.diagnostics.adultOpenLibraryDislikeOverlapRatio = eligibility.dislikeOverlapRatio;
+    candidate.diagnostics.adultOpenLibraryFamilyDislikeOverlapRatio = eligibility.familyDislikeOverlapRatio;
+    candidate.diagnostics.adultOpenLibraryFamilySupportFieldsByFamily = eligibility.familySupportFieldsByFamily;
+    candidate.diagnostics.adultOpenLibraryStrongAdultFitSignals = eligibility.strongAdultFitSignals;
+    candidate.diagnostics.adultOpenLibraryNarrativeFictionShape = eligibility.narrativeFictionShape;
     candidate.diagnostics.adultOpenLibraryNonNarrativeShapeReasons = eligibility.nonNarrativeShapeReasons;
     if (eligibility.allowed) meaningfulTasteEligibleTitles.push(candidate.title);
     else {
@@ -380,13 +573,22 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.metadataBackedDislikedSignalsByTitle = metadataBackedDislikedSignalsByTitle;
   diagnostics.positiveTasteScoreByTitle = positiveTasteScoreByTitle;
   diagnostics.documentBackedTasteSignalsByTitle = documentBackedTasteSignalsByTitle;
+  diagnostics.adultOpenLibraryRawContentSignals = adultOpenLibraryRawContentSignals;
   diagnostics.adultOpenLibraryContentSignals = adultOpenLibraryContentSignals;
   diagnostics.adultOpenLibraryContextOnlySignals = adultOpenLibraryContextOnlySignals;
+  diagnostics.adultOpenLibrarySupplementalSignals = adultOpenLibrarySupplementalSignals;
   diagnostics.adultOpenLibraryNonTitleLikedSignalsByTitle = adultOpenLibraryNonTitleLikedSignalsByTitle;
   diagnostics.adultOpenLibraryNonTitleDislikedSignalsByTitle = adultOpenLibraryNonTitleDislikedSignalsByTitle;
+  diagnostics.adultOpenLibraryLikedContentFamilies = adultOpenLibraryLikedContentFamilies;
+  diagnostics.adultOpenLibraryDislikedContentFamilies = adultOpenLibraryDislikedContentFamilies;
   diagnostics.adultOpenLibraryOverlappingDislikedContentSignals = adultOpenLibraryOverlappingDislikedContentSignals;
   diagnostics.adultOpenLibraryNonOverlappingLikedContentSignals = adultOpenLibraryNonOverlappingLikedContentSignals;
+  diagnostics.adultOpenLibraryOverlappingDislikedFamilies = adultOpenLibraryOverlappingDislikedFamilies;
+  diagnostics.adultOpenLibraryNonOverlappingLikedFamilies = adultOpenLibraryNonOverlappingLikedFamilies;
   diagnostics.adultOpenLibraryDislikeOverlapRatio = adultOpenLibraryDislikeOverlapRatio;
+  diagnostics.adultOpenLibraryFamilyDislikeOverlapRatio = adultOpenLibraryFamilyDislikeOverlapRatio;
+  diagnostics.adultOpenLibraryFamilySupportFieldsByFamily = adultOpenLibraryFamilySupportFieldsByFamily;
+  diagnostics.adultOpenLibraryStrongAdultFitSignals = adultOpenLibraryStrongAdultFitSignals;
   diagnostics.adultOpenLibraryNonNarrativeShapeReasons = adultOpenLibraryNonNarrativeShapeReasons;
   diagnostics.adultOpenLibraryEligibilityAllowedByTitle = adultOpenLibraryEligibilityAllowedByTitle;
   diagnostics.adultOpenLibraryEligibilityReasonByTitle = adultOpenLibraryEligibilityReasonByTitle;
@@ -397,6 +599,7 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.finalScoreComponentsByTitle = finalScoreComponentsByTitle;
   diagnostics.finalRankingReasonByTitle = finalRankingReasonByTitle;
   diagnostics.finalEligibilityGateApplied = true;
+  diagnostics.selectionFinalEligibilityGateApplied = true;
 }
 
 function applyAdultSpeculativeFamilyBalance(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
