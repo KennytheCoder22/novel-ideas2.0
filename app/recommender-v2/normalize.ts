@@ -65,6 +65,8 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           meaningfulTasteRecoveryDocumentSignals: row.meaningfulTasteRecoveryDocumentSignals,
           scoringHandoffStage: row.scoringHandoffStage,
           postFinalEligibilityRecovery: row.postFinalEligibilityRecovery,
+          adultPostFinalEligibilityRecovery: row.adultPostFinalEligibilityRecovery,
+          adultPostFinalEligibilityRecoveryQuery: row.adultPostFinalEligibilityRecoveryQuery,
           emergencyFallback: row.emergencyFallback,
           authors: row.authors || row.author_name || row.creators,
         },

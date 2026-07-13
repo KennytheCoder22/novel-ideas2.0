@@ -165,6 +165,14 @@ function teenPostFinalRecoveryQueryDedupe(value: unknown): string {
     .trim());
 }
 
+function adultPostFinalRecoveryQueryDedupe(value: unknown): string {
+  return dedupeOpenLibraryTerms(String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim());
+}
+
 function cleanOpenLibraryQueryPart(value: unknown): string {
   const normalized = String(value || "")
     .toLowerCase()
@@ -724,6 +732,27 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
 
 function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
   const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: "adult-open-library-fallback", priority: 0, rationale: [] }];
+  const forcedPostFinalRecoveryQueries = Array.isArray((profile.diagnostics as Record<string, unknown>)?.forceAdultPostFinalEligibilityRecoveryQueries)
+    ? ((profile.diagnostics as Record<string, unknown>).forceAdultPostFinalEligibilityRecoveryQueries as unknown[])
+      .map(adultPostFinalRecoveryQueryDedupe)
+      .filter(Boolean)
+    : [];
+  if (forcedPostFinalRecoveryQueries.length) {
+    const forcedPostFinalRecoveryQueryOffset = Number((profile.diagnostics as Record<string, unknown>)?.forceAdultPostFinalEligibilityRecoveryQueryOffset || 0);
+    return uniqueStrings(forcedPostFinalRecoveryQueries, 3).map((query, index): OpenLibraryQueryPlan => ({
+      query,
+      originalPlannedQuery: adultPostFinalRecoveryQueryDedupe(plannedIntents[index]?.query || plannedIntents[0]?.query || query),
+      queryCascadeIndex: forcedPostFinalRecoveryQueryOffset + index,
+      queryFamily: queryFamilyForOpenLibraryQuery(query),
+      facets: uniqueStrings((plannedIntents[index]?.facets || []).map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart), 6),
+      routingReason: "adult_post_final_eligibility_recovery",
+      routingDominance: {
+        openLibraryPlanner: "adult_post_final_eligibility_recovery",
+        postFinalEligibilityRecovery: true,
+      },
+      profileSpecific: true,
+    }));
+  }
   const originalPlannedQuery = finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ageProfile.diagnosticProbeQuery));
   const profileText = [
     ...profile.genreFamily.map((row) => row.value),
@@ -1212,6 +1241,8 @@ function normalizeOpenLibraryDoc(doc: any, queryPlan: OpenLibraryQueryPlan) {
     emergencyFallback: Boolean(queryPlan.emergencyFallback),
     fallbackAlignment: queryPlan.fallbackAlignment,
     profileSpecific: queryPlan.profileSpecific,
+    adultPostFinalEligibilityRecovery: queryPlan.routingReason === "adult_post_final_eligibility_recovery" || undefined,
+    adultPostFinalEligibilityRecoveryQuery: queryPlan.routingReason === "adult_post_final_eligibility_recovery" ? query : undefined,
     rawOpenLibraryDoc: doc,
   };
 }
@@ -2663,6 +2694,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       ? middleGradesDeepDebugActivationSourceRaw && middleGradesDeepDebugActivationSourceRaw !== "none" ? middleGradesDeepDebugActivationSourceRaw : "profile"
       : "none";
     const forceTeenPostFinalEligibilityRecovery = ageProfile.key === "teen" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceTeenPostFinalEligibilityRecovery);
+    const forceAdultPostFinalEligibilityRecovery = ageProfile.key === "adult" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceAdultPostFinalEligibilityRecovery);
     const sourceBudgetMs = ageProfile.key === "middleGrades"
       ? debugMiddleGradesDeepTrace
         ? Math.max(plan.timeoutMs, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_TOTAL_BUDGET_MS)
@@ -4634,7 +4666,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     }
 
     const adultUnderfillRecoveryTarget = Math.min(ageProfile.docLimit, 8);
-    if (ageProfile.key === "adult" && rawItems.length > 0 && (rawItems.length < 5 || (!adultPrimaryQueryTimedOutTwice && rawItems.length < adultUnderfillRecoveryTarget)) && !context.signal?.aborted) {
+    if (ageProfile.key === "adult" && !forceAdultPostFinalEligibilityRecovery && rawItems.length > 0 && (rawItems.length < 5 || (!adultPrimaryQueryTimedOutTwice && rawItems.length < adultUnderfillRecoveryTarget)) && !context.signal?.aborted) {
       const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
       const recoveryQueries = adultUnderfillRecoveryQueries(queryPlans)
         .filter((query) => !attemptedMainQueries.has(query.toLowerCase()));
@@ -4704,7 +4736,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
     }
 
-    if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
+    if (ageProfile.key === "adult" && !forceAdultPostFinalEligibilityRecovery && adultPrimaryQueryTimedOutTwice && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
       const delayedRetryQuery = queryPlans[0]?.query || adultUnderfillRecoveryQueries(queryPlans)[0] || "";
       if (delayedRetryQuery) {
         const delayedRetryPlan: OpenLibraryQueryPlan = {
@@ -4890,7 +4922,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
 
     const teenMainQueryTimedOutDuringRun = ageProfile.key === "teen" && fetches.some((fetch) => !fetch.diagnosticOnly && fetch.timedOut);
     const middleGradesAllRealFetchesTimedOutDuringRun = ageProfile.key === "middleGrades" && fetches.some((fetch) => !fetch.diagnosticOnly) && fetches.filter((fetch) => !fetch.diagnosticOnly).every((fetch) => fetch.timedOut);
-    if (!rawItems.length && !forceMiddleGradesCleanCandidateShortfallExpansion && !context.signal?.aborted && !teenMainQueryTimedOutDuringRun && !middleGradesAllRealFetchesTimedOutDuringRun) {
+    if (!rawItems.length && !forceMiddleGradesCleanCandidateShortfallExpansion && !forceAdultPostFinalEligibilityRecovery && !context.signal?.aborted && !teenMainQueryTimedOutDuringRun && !middleGradesAllRealFetchesTimedOutDuringRun) {
       const probeQuery = context.profile.ageBand === "adult"
         ? (queryPlans[0]?.routingReason === "adult_scifi"
           ? "science fiction thriller"
