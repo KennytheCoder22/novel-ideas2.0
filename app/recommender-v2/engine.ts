@@ -564,6 +564,17 @@ function adultRecoveryRejectedByReason(scored: ScoredCandidate[], selected: Scor
   return rejected;
 }
 
+function capAdultRecoverySelection(selected: ScoredCandidate[], capLimit: number): ScoredCandidate[] {
+  const protectedInitial = selected.filter(
+    (candidate) => candidate.source === "openLibrary" && !isAdultPostFinalRecoveryCandidate(candidate),
+  );
+
+  const protectedIds = new Set(protectedInitial.map((c) => c.id));
+  const remaining = selected.filter((candidate) => !protectedIds.has(candidate.id));
+
+  return [...protectedInitial, ...remaining].slice(0, capLimit);
+}
+
 function normalizedTokenText(value: unknown): string {
   return String(value || "")
     .normalize("NFD")
@@ -1282,6 +1293,13 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;
+
+        // Cap Adult recovery selection to min(5, session.limit) after each merge/rescore/reselect iteration
+        const cappedSelected = capAdultRecoverySelection(selected, Math.min(5, session.limit || 10));
+        if (cappedSelected.length !== selected.length) {
+          selected = cappedSelected;
+          selection.selected = cappedSelected;
+        }
 
         const finalAcceptedTitleValues = (((selection.rejectedReasons as Record<string, unknown>).finalEligibilityAcceptedTitles || []) as string[]);
         const finalAcceptedTitles = new Set(finalAcceptedTitleValues.map(normalizedTokenText));
