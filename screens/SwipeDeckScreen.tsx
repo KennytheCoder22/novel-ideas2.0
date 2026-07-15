@@ -3789,6 +3789,7 @@ function handleLeft() {
       exhausted: Boolean(lastResultForExport?.openLibraryFallbackQueriesExhausted || openLibraryDiagnosticsForExport.openLibraryFallbackQueriesExhausted),
       usableRowsAfterFiltering: openLibraryUsableRowsExport,
     };
+    const rejectedReasonsForReport = (v2DiagnosticsForReport?.rejectedReasons || {}) as Record<string, unknown>;
     const v2DiagnosticLines = v2DiagnosticsForReport
       ? [
           `engineVersion:${String(lastResultForExport?.engineVersion || v2DebugResult?.engineVersion || "recommender-v2-openlibrary-baseline")}`,
@@ -3807,7 +3808,22 @@ function handleLeft() {
           `openLibraryCrossSessionRepeatedRoots:${JSON.stringify(lastResultForExport?.openLibraryCrossSessionRepeatedRoots || [])}`,
           `normalizedCount:${String((lastRecommendationResult as any)?.normalizedCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "normalized")?.counts?.normalized ?? 0))}`,
           `scoredCount:${String((lastRecommendationResult as any)?.scoredCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "scored")?.counts?.scored ?? 0))}`,
-          `rejectedReasons:${JSON.stringify(v2DiagnosticsForReport.rejectedReasons || {})}`,
+          `rejectedReasons:${JSON.stringify(rejectedReasonsForReport)}`,
+          `adultOpenLibrarySparseExceptionFailedConditionsByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionFailedConditionsByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionSupportEvidenceGroupsByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionSupportEvidenceGroupsByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionLikedItemCountByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionLikedItemCountByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionDislikedItemCountByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionDislikedItemCountByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionLikedWeightByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionLikedWeightByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionDislikedWeightByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionDislikedWeightByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionNetWeightByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionNetWeightByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionProfileSupportPassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionProfileSupportPassedByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionCredibleSubjectPassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionCredibleSubjectPassedByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionBibliographicIdentityPassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionBibliographicIdentityPassedByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionSourceQualityPassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionSourceQualityPassedByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionAgeSuitabilityPassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionAgeSuitabilityPassedByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionYouthAudiencePassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionYouthAudiencePassedByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionNarrativeShapePassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionNarrativeShapePassedByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionArtifactPassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionArtifactPassedByTitle || {})}`,
           `finalSelectedTitles:${JSON.stringify(v2DiagnosticsForReport.finalSelectionTitles || [])}`,
         ]
       : [`status:${v2DebugLoading ? "running" : v2DebugError ? "error" : "not_run"}`, `error:${v2DebugError || "(none)"}`];
