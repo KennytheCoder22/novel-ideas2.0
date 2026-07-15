@@ -1560,6 +1560,131 @@ function collectHybridSignalText(input: RecommenderInput, bucketPlan: any): stri
 }
 
 
+function routeFamilyPolarityContributions(rawKeyText: string, key: string, numeric: number): Partial<Record<RouterFamilyKey, number>> {
+  const magnitude = Math.abs(Number(numeric || 0));
+  if (!Number.isFinite(magnitude) || magnitude <= 0) return {};
+  const out: Partial<Record<RouterFamilyKey, number>> = {};
+
+  if (/science fiction|sci-fi|sci fi|dystopian|space opera|\bai\b|artificial intelligence|robot|android|alien|time travel|interstellar/.test(key)) {
+    out.science_fiction = magnitude * 1.35;
+  }
+  if (/mystery|detective|investigation|crime|case|murder|whodunit|private investigator|cold case/.test(key)) {
+    out.mystery = magnitude * 1.3;
+  }
+  if (/thriller|suspense|serial killer|psychological|missing person|abduction|manhunt|fugitive/.test(key)) {
+    out.thriller = magnitude * 1.25;
+  }
+  if (/horror|spooky|haunted|ghost|supernatural|gothic|occult|possession|monster|terror|dread/.test(key)) {
+    out.horror = magnitude * 1.2;
+  }
+  if (/fantasy|magic|wizard|witch|dragon|fae|mythic|quest|kingdom|sorcery/.test(key)) {
+    out.fantasy = magnitude * 1.2;
+  }
+  if (/^genre:romance$/.test(rawKeyText) || /\bromance\b|\bromance novel\b|\bromantic fiction\b|\bregency romance\b/.test(key)) {
+    out.romance = magnitude;
+  }
+  if (/^genre:historical$/.test(rawKeyText) || /\bhistorical\b|\bhistorical fiction\b|\bhistorical novel\b|\bperiod fiction\b|\bgilded age\b|\bcivil war historical\b|\b19th century\b/.test(key)) {
+    out.historical = magnitude * 1.15;
+  }
+
+  return out;
+}
+
+function buildAdultRoutePolarityDiagnostics(input: RecommenderInput): {
+  likedWeightByFamily: Record<string, number>;
+  dislikedWeightByFamily: Record<string, number>;
+  netWeightByFamily: Record<string, number>;
+  positiveFamilies: string[];
+  suppressedConflictedFamilies: string[];
+} {
+  const families: RouterFamilyKey[] = [
+    "fantasy",
+    "horror",
+    "mystery",
+    "thriller",
+    "science_fiction",
+    "romance",
+    "historical",
+  ];
+  const likedWeightByFamily = Object.fromEntries(families.map((family) => [family, 0])) as Record<string, number>;
+  const dislikedWeightByFamily = Object.fromEntries(families.map((family) => [family, 0])) as Record<string, number>;
+  const sourceCandidates = [
+    (input as any)?.tagCounts,
+    (input as any)?.tasteProfile?.runningTagCounts,
+    (input as any)?.tasteProfile?.tagCounts,
+  ].filter((value) => value && typeof value === "object" && !Array.isArray(value)) as Array<Record<string, unknown>>;
+  const authoritativeSource = sourceCandidates.find((source) => Object.keys(source).length > 0) || {};
+
+  for (const [rawKey, rawValue] of Object.entries(authoritativeSource)) {
+    const numeric = Number(rawValue);
+    if (!Number.isFinite(numeric) || numeric === 0) continue;
+    const rawKeyText = String(rawKey || "").toLowerCase().trim();
+    const key = rawKeyText.replace(/^genre:/, "").trim();
+    const contributions = routeFamilyPolarityContributions(rawKeyText, key, numeric);
+    for (const [family, weight] of Object.entries(contributions)) {
+      if (!Number.isFinite(Number(weight)) || Number(weight) <= 0) continue;
+      if (numeric > 0) likedWeightByFamily[family] = Number(likedWeightByFamily[family] || 0) + Number(weight);
+      else dislikedWeightByFamily[family] = Number(dislikedWeightByFamily[family] || 0) + Number(weight);
+    }
+  }
+
+  const netWeightByFamily = Object.fromEntries(
+    Object.keys(likedWeightByFamily).map((family) => [
+      family,
+      Number((Number(likedWeightByFamily[family] || 0) - Number(dislikedWeightByFamily[family] || 0)).toFixed(3)),
+    ]),
+  ) as Record<string, number>;
+  const positiveFamilies = Object.entries(netWeightByFamily)
+    .filter(([, weight]) => Number(weight) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .map(([family]) => family);
+  const suppressedConflictedFamilies = Object.keys(netWeightByFamily)
+    .filter((family) => Number(likedWeightByFamily[family] || 0) > 0 && Number(dislikedWeightByFamily[family] || 0) > 0)
+    .filter((family) => Number(netWeightByFamily[family] || 0) <= 0);
+
+  return {
+    likedWeightByFamily,
+    dislikedWeightByFamily,
+    netWeightByFamily,
+    positiveFamilies,
+    suppressedConflictedFamilies,
+  };
+}
+
+function buildPositiveNetLaneWeights(netWeightByFamily: Record<string, number>): Record<string, number> {
+  const ranked = Object.entries(netWeightByFamily || {})
+    .filter(([, weight]) => Number(weight) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 3);
+  if (!ranked.length) return {};
+  const total = ranked.reduce((sum, [, weight]) => sum + Number(weight), 0) || 1;
+  const out: Record<string, number> = {};
+  for (const [family, weight] of ranked) out[family] = Number((Number(weight) / total).toFixed(3));
+  return out;
+}
+
+function restrictAdultHybridLaneWeightsToPositiveFamilies(
+  laneWeights: Record<string, number>,
+  positiveFamilies: string[],
+  positiveNetEvidenceLaneWeights: Record<string, number>,
+): Record<string, number> {
+  if (!Object.keys(laneWeights || {}).length) return laneWeights;
+  if (!Array.isArray(positiveFamilies) || positiveFamilies.length === 0) return laneWeights;
+  const positiveSet = new Set(positiveFamilies.map((family) => String(family || "").toLowerCase().trim()));
+  const kept = Object.entries(laneWeights || {})
+    .map(([family, weight]) => [normalizeRouterFamilyValue(family), Number(weight)] as [RouterFamilyKey | null, number])
+    .filter(([family, weight]) => Boolean(family) && Number.isFinite(weight) && weight > 0)
+    .filter(([family]) => positiveSet.has(String(family)));
+  if (!kept.length) {
+    if (Object.keys(positiveNetEvidenceLaneWeights || {}).length > 0) return positiveNetEvidenceLaneWeights;
+    return laneWeights;
+  }
+  const total = kept.reduce((sum, [, weight]) => sum + weight, 0) || 1;
+  const out: Record<string, number> = {};
+  for (const [family, weight] of kept) out[String(family)] = Number((weight / total).toFixed(3));
+  return out;
+}
+
 function buildDirectEvidenceLaneWeights(input: RecommenderInput): Record<string, number> {
   const scores: Record<string, number> = {
     fantasy: 0,
@@ -1587,7 +1712,7 @@ function buildDirectEvidenceLaneWeights(input: RecommenderInput): Record<string,
 
       // Direct swipe evidence only. Do not let generated query text, fallback rungs,
       // or broad literary/drama wording manufacture the primary lane.
-      if (/science fiction|sci-fi|sci fi|dystopian|space opera|ai|artificial intelligence|robot|android|alien|time travel|interstellar/.test(key)) {
+      if (/science fiction|sci-fi|sci fi|dystopian|space opera|\bai\b|artificial intelligence|robot|android|alien|time travel|interstellar/.test(key)) {
         scores.science_fiction += numeric * 1.35;
       }
       if (/mystery|detective|investigation|crime|case|murder|whodunit|private investigator|cold case/.test(key)) {
@@ -2721,6 +2846,13 @@ export async function getRecommendations(
   let baseBucketPlan: any;
   let generatedHybridLaneWeights: any;
   let evidenceLaneWeights: any;
+  let adultRouteLikedWeightByFamily: Record<string, number> = {};
+  let adultRouteDislikedWeightByFamily: Record<string, number> = {};
+  let adultRouteNetWeightByFamily: Record<string, number> = {};
+  let adultRoutePositiveFamilies: string[] = [];
+  let adultRouteSuppressedConflictedFamilies: string[] = [];
+  let adultPositiveNetEvidenceLaneWeights: Record<string, number> = {};
+  let adultRouteSelectionReason = "non_adult_router_flow";
   let affinityMultipliers: any;
   let hybridLaneWeights: any;
   let routerFamily: any;
@@ -2738,16 +2870,46 @@ export async function getRecommendations(
         baseBucketPlan = buildRouterBucketPlan(routingInput);
         generatedHybridLaneWeights = buildHybridLaneWeights(routingInput, baseBucketPlan);
         evidenceLaneWeights = buildDirectEvidenceLaneWeights(routingInput);
+        if (routingInput.deckKey === "adult") {
+          const adultRoutePolarityDiagnostics = buildAdultRoutePolarityDiagnostics(routingInput);
+          adultRouteLikedWeightByFamily = adultRoutePolarityDiagnostics.likedWeightByFamily;
+          adultRouteDislikedWeightByFamily = adultRoutePolarityDiagnostics.dislikedWeightByFamily;
+          adultRouteNetWeightByFamily = adultRoutePolarityDiagnostics.netWeightByFamily;
+          adultRoutePositiveFamilies = adultRoutePolarityDiagnostics.positiveFamilies;
+          adultRouteSuppressedConflictedFamilies = adultRoutePolarityDiagnostics.suppressedConflictedFamilies;
+          const positiveNetEvidenceLaneWeights = buildPositiveNetLaneWeights(adultRouteNetWeightByFamily);
+          adultPositiveNetEvidenceLaneWeights = positiveNetEvidenceLaneWeights;
+          if (Object.keys(positiveNetEvidenceLaneWeights).length > 0) {
+            evidenceLaneWeights = positiveNetEvidenceLaneWeights;
+            adultRouteSelectionReason = "adult_net_positive_evidence_lane_weights";
+          } else {
+            adultRouteSelectionReason = "adult_no_positive_net_evidence_fallback";
+          }
+        }
         affinityMultipliers = buildUserAffinityLaneMultipliers(input);
         hybridLaneWeights = applyLaneAffinityMultipliers(
           mergeEvidenceLaneWeights(generatedHybridLaneWeights, evidenceLaneWeights),
           affinityMultipliers
         );
+        if (routingInput.deckKey === "adult") {
+          const positiveFamilyFilteredWeights = restrictAdultHybridLaneWeightsToPositiveFamilies(
+            hybridLaneWeights,
+            adultRoutePositiveFamilies,
+            adultPositiveNetEvidenceLaneWeights
+          );
+          if (Object.keys(positiveFamilyFilteredWeights).length > 0) {
+            hybridLaneWeights = positiveFamilyFilteredWeights;
+            adultRouteSelectionReason += "+positive_family_filter";
+          }
+        }
         routerFamily = choosePrimaryRouterFamilyFromWeights(
           inferRouterFamily(baseBucketPlan),
           hybridLaneWeights,
           routingInput
         );
+        if (routingInput.deckKey === "adult") {
+          adultRouteSelectionReason += `:selected_${String(routerFamily || "general")}`;
+        }
         rankedLaneWeights = Object.entries(hybridLaneWeights || {})
           .map(([family, weight]) => ({ family: normalizeRouterFamilyValue(family), weight: Number(weight || 0) }))
           .filter((entry) => entry.family && entry.weight > 0)
@@ -16398,6 +16560,13 @@ const normalizedCandidatesRaw = [
       .map((q: any) => collapseRepeatedQueryPhrases(String(q || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim()))
       .filter(Boolean))).slice(0, 60),
     routerFamily,
+    adultRouteLikedWeightByFamily: routingInput.deckKey === "adult" ? adultRouteLikedWeightByFamily : {},
+    adultRouteDislikedWeightByFamily: routingInput.deckKey === "adult" ? adultRouteDislikedWeightByFamily : {},
+    adultRouteNetWeightByFamily: routingInput.deckKey === "adult" ? adultRouteNetWeightByFamily : {},
+    adultRoutePositiveFamilies: routingInput.deckKey === "adult" ? adultRoutePositiveFamilies : [],
+    adultRouteSuppressedConflictedFamilies: routingInput.deckKey === "adult" ? adultRouteSuppressedConflictedFamilies : [],
+    adultRouteSelectedFamily: routingInput.deckKey === "adult" ? String(routerFamily || "general") : "",
+    adultRouteSelectionReason: routingInput.deckKey === "adult" ? adultRouteSelectionReason : "non_adult_router_flow",
     rungCount: Array.isArray(rungs) ? rungs.length : 0,
     sourceFetchAttemptedBySource,
     sourceFetchTimeoutBySource: {
