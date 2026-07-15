@@ -3789,7 +3789,8 @@ function handleLeft() {
       exhausted: Boolean(lastResultForExport?.openLibraryFallbackQueriesExhausted || openLibraryDiagnosticsForExport.openLibraryFallbackQueriesExhausted),
       usableRowsAfterFiltering: openLibraryUsableRowsExport,
     };
-    const rejectedReasonsForReport = (v2DiagnosticsForReport?.rejectedReasons || {}) as Record<string, unknown>;
+    const selectedStageRejectedReasonsForReport = ((v2DiagnosticsForReport?.stages || []).find((stage: any) => stage?.stage === "selected")?.details as any)?.rejectedReasons;
+    const rejectedReasonsForReport = (v2DiagnosticsForReport?.rejectedReasons || selectedStageRejectedReasonsForReport || {}) as Record<string, unknown>;
     const v2DiagnosticLines = v2DiagnosticsForReport
       ? [
           `engineVersion:${String(lastResultForExport?.engineVersion || v2DebugResult?.engineVersion || "recommender-v2-openlibrary-baseline")}`,
@@ -3808,14 +3809,15 @@ function handleLeft() {
           `openLibraryCrossSessionRepeatedRoots:${JSON.stringify(lastResultForExport?.openLibraryCrossSessionRepeatedRoots || [])}`,
           `normalizedCount:${String((lastRecommendationResult as any)?.normalizedCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "normalized")?.counts?.normalized ?? 0))}`,
           `scoredCount:${String((lastRecommendationResult as any)?.scoredCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "scored")?.counts?.scored ?? 0))}`,
+          `adultOpenLibrarySparseDiagnosticsExportVersion:v1`,
           `rejectedReasons:${JSON.stringify(rejectedReasonsForReport)}`,
           `adultOpenLibrarySparseExceptionFailedConditionsByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionFailedConditionsByTitle || {})}`,
           `adultOpenLibrarySparseExceptionSupportEvidenceGroupsByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionSupportEvidenceGroupsByTitle || {})}`,
-          `adultOpenLibrarySparseExceptionLikedItemCountByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionLikedItemCountByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionLikedItemCountByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionLikedItemCountByTitle || rejectedReasonsForReport.adultOpenLibrarySparseSingleFamilyLikedItemCountByTitle || {})}`,
           `adultOpenLibrarySparseExceptionDislikedItemCountByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionDislikedItemCountByTitle || {})}`,
           `adultOpenLibrarySparseExceptionLikedWeightByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionLikedWeightByTitle || {})}`,
           `adultOpenLibrarySparseExceptionDislikedWeightByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionDislikedWeightByTitle || {})}`,
-          `adultOpenLibrarySparseExceptionNetWeightByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionNetWeightByTitle || {})}`,
+          `adultOpenLibrarySparseExceptionNetWeightByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionNetWeightByTitle || rejectedReasonsForReport.adultOpenLibrarySparseSingleFamilyNetWeightByTitle || {})}`,
           `adultOpenLibrarySparseExceptionProfileSupportPassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionProfileSupportPassedByTitle || {})}`,
           `adultOpenLibrarySparseExceptionCredibleSubjectPassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionCredibleSubjectPassedByTitle || {})}`,
           `adultOpenLibrarySparseExceptionBibliographicIdentityPassedByTitle:${JSON.stringify(rejectedReasonsForReport.adultOpenLibrarySparseExceptionBibliographicIdentityPassedByTitle || {})}`,
