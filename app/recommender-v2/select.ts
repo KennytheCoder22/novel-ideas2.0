@@ -190,6 +190,23 @@ type AdultOpenLibraryTasteEligibility = {
   sparseExceptionIgnoredNonPositiveFamilies: string[];
   sparseExceptionYouthAudienceSignals: string[];
   sparseExceptionYouthAudienceBlocked: boolean;
+  adultOpenLibrarySparseExceptionSupportEvidenceGroups?: string[];
+  adultOpenLibrarySparseExceptionDislikedItemCount?: number;
+  adultOpenLibrarySparseExceptionLikedWeight?: number;
+  adultOpenLibrarySparseExceptionDislikedWeight?: number;
+  adultOpenLibrarySparseExceptionProfileSupportPassed?: boolean;
+  adultOpenLibrarySparseExceptionCredibleSubjectPassed?: boolean;
+  adultOpenLibrarySparseExceptionBibliographicIdentityPassed?: boolean;
+  adultOpenLibrarySparseExceptionSourceQualityScore?: number;
+  adultOpenLibrarySparseExceptionSourceQualityPassed?: boolean;
+  adultOpenLibrarySparseExceptionAgeSuitability?: number;
+  adultOpenLibrarySparseExceptionAgeSuitabilityPassed?: boolean;
+  adultOpenLibrarySparseExceptionYouthAudiencePassed?: boolean;
+  adultOpenLibrarySparseExceptionNarrativeShape?: boolean;
+  adultOpenLibrarySparseExceptionNarrativeShapePassed?: boolean;
+  adultOpenLibrarySparseExceptionArtifactReasons?: string[];
+  adultOpenLibrarySparseExceptionArtifactPassed?: boolean;
+  adultOpenLibrarySparseExceptionFailedConditions?: string[];
 };
 
 type AdultOpenLibraryFamilyPolarity = {
@@ -775,6 +792,23 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
     sparseExceptionIgnoredNonPositiveFamilies: [] as string[],
     sparseExceptionYouthAudienceSignals: [] as string[],
     sparseExceptionYouthAudienceBlocked: false,
+    adultOpenLibrarySparseExceptionSupportEvidenceGroups: undefined as string[] | undefined,
+    adultOpenLibrarySparseExceptionDislikedItemCount: undefined as number | undefined,
+    adultOpenLibrarySparseExceptionLikedWeight: undefined as number | undefined,
+    adultOpenLibrarySparseExceptionDislikedWeight: undefined as number | undefined,
+    adultOpenLibrarySparseExceptionProfileSupportPassed: undefined as boolean | undefined,
+    adultOpenLibrarySparseExceptionCredibleSubjectPassed: undefined as boolean | undefined,
+    adultOpenLibrarySparseExceptionBibliographicIdentityPassed: undefined as boolean | undefined,
+    adultOpenLibrarySparseExceptionSourceQualityScore: undefined as number | undefined,
+    adultOpenLibrarySparseExceptionSourceQualityPassed: undefined as boolean | undefined,
+    adultOpenLibrarySparseExceptionAgeSuitability: undefined as number | undefined,
+    adultOpenLibrarySparseExceptionAgeSuitabilityPassed: undefined as boolean | undefined,
+    adultOpenLibrarySparseExceptionYouthAudiencePassed: undefined as boolean | undefined,
+    adultOpenLibrarySparseExceptionNarrativeShape: undefined as boolean | undefined,
+    adultOpenLibrarySparseExceptionNarrativeShapePassed: undefined as boolean | undefined,
+    adultOpenLibrarySparseExceptionArtifactReasons: undefined as string[] | undefined,
+    adultOpenLibrarySparseExceptionArtifactPassed: undefined as boolean | undefined,
+    adultOpenLibrarySparseExceptionFailedConditions: undefined as string[] | undefined,
   };
 
   if (positiveTasteScore <= 0) return { allowed: false, reason: "adult_openlibrary_no_positive_metadata_taste", ...baseResult };
@@ -883,19 +917,60 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
   const sparseSingleFamilyExceptionConsidered = Boolean(
     singleFamily
     && positiveNetFamilies.length === 1
-    && singleFamilySupportEvidenceGroups.length === 1,
+    && singleFamilySupportEvidenceGroups.length >= 1
+    && singleFamilySupportEvidenceGroups.includes("subject_derived"),
   );
   const credibleNarrativeGenreSubjectSignals = singleFamily
     ? adultOpenLibraryCredibleNarrativeGenreSubjectSignals(candidate, singleFamily)
     : [];
   const bibliographicIdentity = adultOpenLibrarySparseSingleFamilyBibliographicIdentity(candidate);
   const singleFamilyLikedItemCount = Number(familyPolarity.likedItemCountByFamily[singleFamily] || 0);
+  const singleFamilyDislikedItemCount = Number(familyPolarity.dislikedItemCountByFamily[singleFamily] || 0);
   const singleFamilyLikedWeight = Number(familyPolarity.likedFamilyWeightByFamily[singleFamily] || 0);
   const singleFamilyDislikedWeight = Number(familyPolarity.dislikedFamilyWeightByFamily[singleFamily] || 0);
   const singleFamilyNetWeight = Number(familyPolarity.netFamilyWeightByFamily[singleFamily] || 0);
   const ignoredNonPositiveFamilies = likedContentFamilies.filter((family) => family !== singleFamily && Number(familyPolarity.netFamilyWeightByFamily[family] || 0) <= 0);
   const youthAudienceSignals = adultOpenLibrarySparseExceptionYouthAudienceSignals(candidate);
   const youthAudienceBlocked = youthAudienceSignals.length > 0;
+  
+  const sparseSingleFamilyProfileSupported = singleFamilyLikedItemCount >= 2
+    && singleFamilyNetWeight >= 1
+    && singleFamilyLikedWeight > singleFamilyDislikedWeight;
+  
+  const failedConditions: string[] = [];
+  
+  if (sparseSingleFamilyExceptionConsidered) {
+    if (!singleFamilySupportEvidenceGroups.includes("subject_derived")) {
+      failedConditions.push("missing_subject_derived_support");
+    }
+    if (!sparseSingleFamilyProfileSupported) {
+      if (singleFamilyLikedItemCount < 2) failedConditions.push("liked_item_count_below_two");
+      if (singleFamilyNetWeight < 1) failedConditions.push("net_family_weight_below_one");
+      if (singleFamilyLikedWeight <= singleFamilyDislikedWeight) failedConditions.push("liked_weight_not_greater_than_disliked");
+    }
+    if (credibleNarrativeGenreSubjectSignals.length === 0) {
+      failedConditions.push("missing_credible_narrative_subject");
+    }
+    if (!bibliographicIdentity.qualified) {
+      failedConditions.push("bibliographic_identity_incomplete");
+    }
+    if (sourceQualityScore <= 0) {
+      failedConditions.push("source_quality_not_positive");
+    }
+    if (ageBandSuitability <= -2) {
+      failedConditions.push("strongly_juvenile");
+    }
+    if (youthAudienceBlocked) {
+      failedConditions.push("youth_audience_blocked");
+    }
+    if (!narrativeShape.narrativeFictionShape) {
+      failedConditions.push("narrative_shape_failed");
+    }
+  }
+  
+  const artifactReasons = [...nonNarrativeShapeReasons.filter((r) => r.includes("artifact") || r.includes("collection") || r.includes("instructional") || r.includes("puzzle"))];
+  const artifactPassed = artifactReasons.length === 0;
+  
   const sparseSingleFamilyEvidence = {
     sparseSingleFamilyExceptionConsidered,
     sparseSingleFamilyExceptionAllowed: false,
@@ -908,6 +983,23 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
     sparseExceptionIgnoredNonPositiveFamilies: ignoredNonPositiveFamilies,
     sparseExceptionYouthAudienceSignals: youthAudienceSignals,
     sparseExceptionYouthAudienceBlocked: youthAudienceBlocked,
+    adultOpenLibrarySparseExceptionSupportEvidenceGroups: sparseSingleFamilyExceptionConsidered ? singleFamilySupportEvidenceGroups : undefined,
+    adultOpenLibrarySparseExceptionDislikedItemCount: sparseSingleFamilyExceptionConsidered ? singleFamilyDislikedItemCount || undefined : undefined,
+    adultOpenLibrarySparseExceptionLikedWeight: sparseSingleFamilyExceptionConsidered ? adultOpenLibraryRoundWeight(singleFamilyLikedWeight) : undefined,
+    adultOpenLibrarySparseExceptionDislikedWeight: sparseSingleFamilyExceptionConsidered ? adultOpenLibraryRoundWeight(singleFamilyDislikedWeight) : undefined,
+    adultOpenLibrarySparseExceptionProfileSupportPassed: sparseSingleFamilyExceptionConsidered ? sparseSingleFamilyProfileSupported : undefined,
+    adultOpenLibrarySparseExceptionCredibleSubjectPassed: sparseSingleFamilyExceptionConsidered ? credibleNarrativeGenreSubjectSignals.length > 0 : undefined,
+    adultOpenLibrarySparseExceptionBibliographicIdentityPassed: sparseSingleFamilyExceptionConsidered ? bibliographicIdentity.qualified : undefined,
+    adultOpenLibrarySparseExceptionSourceQualityScore: sparseSingleFamilyExceptionConsidered ? adultOpenLibraryRoundWeight(sourceQualityScore) : undefined,
+    adultOpenLibrarySparseExceptionSourceQualityPassed: sparseSingleFamilyExceptionConsidered ? sourceQualityScore > 0 : undefined,
+    adultOpenLibrarySparseExceptionAgeSuitability: sparseSingleFamilyExceptionConsidered ? ageBandSuitability : undefined,
+    adultOpenLibrarySparseExceptionAgeSuitabilityPassed: sparseSingleFamilyExceptionConsidered ? ageBandSuitability > -2 : undefined,
+    adultOpenLibrarySparseExceptionYouthAudiencePassed: sparseSingleFamilyExceptionConsidered ? !youthAudienceBlocked : undefined,
+    adultOpenLibrarySparseExceptionNarrativeShape: sparseSingleFamilyExceptionConsidered ? narrativeShape.narrativeFictionShape : undefined,
+    adultOpenLibrarySparseExceptionNarrativeShapePassed: sparseSingleFamilyExceptionConsidered ? narrativeShape.narrativeFictionShape : undefined,
+    adultOpenLibrarySparseExceptionArtifactReasons: sparseSingleFamilyExceptionConsidered ? artifactReasons : undefined,
+    adultOpenLibrarySparseExceptionArtifactPassed: sparseSingleFamilyExceptionConsidered ? artifactPassed : undefined,
+    adultOpenLibrarySparseExceptionFailedConditions: sparseSingleFamilyExceptionConsidered && failedConditions.length > 0 ? failedConditions : undefined,
   };
   const strongSingleFamilySupport = narrativeShape.narrativeFictionShape
     && singleFamilySupportEvidenceGroups.length >= 2
@@ -918,11 +1010,8 @@ function adultOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, 
   if (singleFamily && strongSingleFamilySupport) {
     return { allowed: true, allowedReason: "adult_openlibrary_single_family_strong_multifield_support", ...resultEvidence };
   }
-  const sparseSingleFamilyProfileSupported = singleFamilyLikedItemCount >= 2
-    && singleFamilyNetWeight >= 1
-    && singleFamilyLikedWeight > singleFamilyDislikedWeight;
   const sparseSingleFamilyAllowed = sparseSingleFamilyExceptionConsidered
-    && singleFamilySupportEvidenceGroups[0] === "subject_derived"
+    && singleFamilySupportEvidenceGroups.includes("subject_derived")
     && sparseSingleFamilyProfileSupported
     && credibleNarrativeGenreSubjectSignals.length > 0
     && bibliographicIdentity.qualified
@@ -1002,6 +1091,23 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   const adultOpenLibrarySparseExceptionIgnoredNonPositiveFamiliesByTitle: Record<string, string[]> = {};
   const adultOpenLibrarySparseExceptionYouthAudienceSignalsByTitle: Record<string, string[]> = {};
   const adultOpenLibrarySparseExceptionYouthAudienceBlockedByTitle: Record<string, boolean> = {};
+  const adultOpenLibrarySparseExceptionSupportEvidenceGroupsByTitle: Record<string, string[]> = {};
+  const adultOpenLibrarySparseExceptionDislikedItemCountByTitle: Record<string, number> = {};
+  const adultOpenLibrarySparseExceptionLikedWeightByTitle: Record<string, number> = {};
+  const adultOpenLibrarySparseExceptionDislikedWeightByTitle: Record<string, number> = {};
+  const adultOpenLibrarySparseExceptionProfileSupportPassedByTitle: Record<string, boolean> = {};
+  const adultOpenLibrarySparseExceptionCredibleSubjectPassedByTitle: Record<string, boolean> = {};
+  const adultOpenLibrarySparseExceptionBibliographicIdentityPassedByTitle: Record<string, boolean> = {};
+  const adultOpenLibrarySparseExceptionSourceQualityScoreByTitle: Record<string, number> = {};
+  const adultOpenLibrarySparseExceptionSourceQualityPassedByTitle: Record<string, boolean> = {};
+  const adultOpenLibrarySparseExceptionAgeSuitabilityByTitle: Record<string, number> = {};
+  const adultOpenLibrarySparseExceptionAgeSuitabilityPassedByTitle: Record<string, boolean> = {};
+  const adultOpenLibrarySparseExceptionYouthAudiencePassedByTitle: Record<string, boolean> = {};
+  const adultOpenLibrarySparseExceptionNarrativeShapeByTitle: Record<string, boolean> = {};
+  const adultOpenLibrarySparseExceptionNarrativeShapePassedByTitle: Record<string, boolean> = {};
+  const adultOpenLibrarySparseExceptionArtifactReasonsbyTitle: Record<string, string[]> = {};
+  const adultOpenLibrarySparseExceptionArtifactPassedByTitle: Record<string, boolean> = {};
+  const adultOpenLibrarySparseExceptionFailedConditionsByTitle: Record<string, string[]> = {};
   const adultOpenLibraryCollectionShapeTriggerByTitle: Record<string, string> = {};
   const adultOpenLibraryCollectionShapeTriggerFieldByTitle: Record<string, string> = {};
   const adultOpenLibraryCollectionShapeCorroborationByTitle: Record<string, string[]> = {};
@@ -1073,6 +1179,23 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
     adultOpenLibrarySparseExceptionIgnoredNonPositiveFamiliesByTitle[candidate.title] = eligibility.sparseExceptionIgnoredNonPositiveFamilies;
     adultOpenLibrarySparseExceptionYouthAudienceSignalsByTitle[candidate.title] = eligibility.sparseExceptionYouthAudienceSignals;
     adultOpenLibrarySparseExceptionYouthAudienceBlockedByTitle[candidate.title] = eligibility.sparseExceptionYouthAudienceBlocked;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionSupportEvidenceGroups !== "undefined") adultOpenLibrarySparseExceptionSupportEvidenceGroupsByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionSupportEvidenceGroups || [];
+    if (typeof eligibility.adultOpenLibrarySparseExceptionDislikedItemCount === "number") adultOpenLibrarySparseExceptionDislikedItemCountByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionDislikedItemCount;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionLikedWeight === "number") adultOpenLibrarySparseExceptionLikedWeightByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionLikedWeight;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionDislikedWeight === "number") adultOpenLibrarySparseExceptionDislikedWeightByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionDislikedWeight;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionProfileSupportPassed === "boolean") adultOpenLibrarySparseExceptionProfileSupportPassedByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionProfileSupportPassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionCredibleSubjectPassed === "boolean") adultOpenLibrarySparseExceptionCredibleSubjectPassedByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionCredibleSubjectPassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionBibliographicIdentityPassed === "boolean") adultOpenLibrarySparseExceptionBibliographicIdentityPassedByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionBibliographicIdentityPassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionSourceQualityScore === "number") adultOpenLibrarySparseExceptionSourceQualityScoreByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionSourceQualityScore;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionSourceQualityPassed === "boolean") adultOpenLibrarySparseExceptionSourceQualityPassedByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionSourceQualityPassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionAgeSuitability === "number") adultOpenLibrarySparseExceptionAgeSuitabilityByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionAgeSuitability;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionAgeSuitabilityPassed === "boolean") adultOpenLibrarySparseExceptionAgeSuitabilityPassedByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionAgeSuitabilityPassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionYouthAudiencePassed === "boolean") adultOpenLibrarySparseExceptionYouthAudiencePassedByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionYouthAudiencePassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionNarrativeShape === "boolean") adultOpenLibrarySparseExceptionNarrativeShapeByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionNarrativeShape;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionNarrativeShapePassed === "boolean") adultOpenLibrarySparseExceptionNarrativeShapePassedByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionNarrativeShapePassed;
+    if (Array.isArray(eligibility.adultOpenLibrarySparseExceptionArtifactReasons) && eligibility.adultOpenLibrarySparseExceptionArtifactReasons.length > 0) adultOpenLibrarySparseExceptionArtifactReasonsbyTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionArtifactReasons;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionArtifactPassed === "boolean") adultOpenLibrarySparseExceptionArtifactPassedByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionArtifactPassed;
+    if (Array.isArray(eligibility.adultOpenLibrarySparseExceptionFailedConditions) && eligibility.adultOpenLibrarySparseExceptionFailedConditions.length > 0) adultOpenLibrarySparseExceptionFailedConditionsByTitle[candidate.title] = eligibility.adultOpenLibrarySparseExceptionFailedConditions;
     if (eligibility.collectionShapeTrigger) adultOpenLibraryCollectionShapeTriggerByTitle[candidate.title] = eligibility.collectionShapeTrigger;
     if (eligibility.collectionShapeTriggerField) adultOpenLibraryCollectionShapeTriggerFieldByTitle[candidate.title] = eligibility.collectionShapeTriggerField;
     adultOpenLibraryCollectionShapeCorroborationByTitle[candidate.title] = eligibility.collectionShapeCorroboration;
@@ -1149,6 +1272,23 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
     candidate.diagnostics.adultOpenLibrarySparseExceptionIgnoredNonPositiveFamilies = eligibility.sparseExceptionIgnoredNonPositiveFamilies;
     candidate.diagnostics.adultOpenLibrarySparseExceptionYouthAudienceSignals = eligibility.sparseExceptionYouthAudienceSignals;
     candidate.diagnostics.adultOpenLibrarySparseExceptionYouthAudienceBlocked = eligibility.sparseExceptionYouthAudienceBlocked;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionSupportEvidenceGroups !== "undefined") candidate.diagnostics.adultOpenLibrarySparseExceptionSupportEvidenceGroups = eligibility.adultOpenLibrarySparseExceptionSupportEvidenceGroups;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionDislikedItemCount === "number") candidate.diagnostics.adultOpenLibrarySparseExceptionDislikedItemCount = eligibility.adultOpenLibrarySparseExceptionDislikedItemCount;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionLikedWeight === "number") candidate.diagnostics.adultOpenLibrarySparseExceptionLikedWeight = eligibility.adultOpenLibrarySparseExceptionLikedWeight;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionDislikedWeight === "number") candidate.diagnostics.adultOpenLibrarySparseExceptionDislikedWeight = eligibility.adultOpenLibrarySparseExceptionDislikedWeight;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionProfileSupportPassed === "boolean") candidate.diagnostics.adultOpenLibrarySparseExceptionProfileSupportPassed = eligibility.adultOpenLibrarySparseExceptionProfileSupportPassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionCredibleSubjectPassed === "boolean") candidate.diagnostics.adultOpenLibrarySparseExceptionCredibleSubjectPassed = eligibility.adultOpenLibrarySparseExceptionCredibleSubjectPassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionBibliographicIdentityPassed === "boolean") candidate.diagnostics.adultOpenLibrarySparseExceptionBibliographicIdentityPassed = eligibility.adultOpenLibrarySparseExceptionBibliographicIdentityPassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionSourceQualityScore === "number") candidate.diagnostics.adultOpenLibrarySparseExceptionSourceQualityScore = eligibility.adultOpenLibrarySparseExceptionSourceQualityScore;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionSourceQualityPassed === "boolean") candidate.diagnostics.adultOpenLibrarySparseExceptionSourceQualityPassed = eligibility.adultOpenLibrarySparseExceptionSourceQualityPassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionAgeSuitability === "number") candidate.diagnostics.adultOpenLibrarySparseExceptionAgeSuitability = eligibility.adultOpenLibrarySparseExceptionAgeSuitability;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionAgeSuitabilityPassed === "boolean") candidate.diagnostics.adultOpenLibrarySparseExceptionAgeSuitabilityPassed = eligibility.adultOpenLibrarySparseExceptionAgeSuitabilityPassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionYouthAudiencePassed === "boolean") candidate.diagnostics.adultOpenLibrarySparseExceptionYouthAudiencePassed = eligibility.adultOpenLibrarySparseExceptionYouthAudiencePassed;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionNarrativeShape === "boolean") candidate.diagnostics.adultOpenLibrarySparseExceptionNarrativeShape = eligibility.adultOpenLibrarySparseExceptionNarrativeShape;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionNarrativeShapePassed === "boolean") candidate.diagnostics.adultOpenLibrarySparseExceptionNarrativeShapePassed = eligibility.adultOpenLibrarySparseExceptionNarrativeShapePassed;
+    if (Array.isArray(eligibility.adultOpenLibrarySparseExceptionArtifactReasons)) candidate.diagnostics.adultOpenLibrarySparseExceptionArtifactReasons = eligibility.adultOpenLibrarySparseExceptionArtifactReasons;
+    if (typeof eligibility.adultOpenLibrarySparseExceptionArtifactPassed === "boolean") candidate.diagnostics.adultOpenLibrarySparseExceptionArtifactPassed = eligibility.adultOpenLibrarySparseExceptionArtifactPassed;
+    if (Array.isArray(eligibility.adultOpenLibrarySparseExceptionFailedConditions)) candidate.diagnostics.adultOpenLibrarySparseExceptionFailedConditions = eligibility.adultOpenLibrarySparseExceptionFailedConditions;
     candidate.diagnostics.adultOpenLibraryCollectionShapeTrigger = eligibility.collectionShapeTrigger;
     candidate.diagnostics.adultOpenLibraryCollectionShapeTriggerField = eligibility.collectionShapeTriggerField;
     candidate.diagnostics.adultOpenLibraryCollectionShapeCorroboration = eligibility.collectionShapeCorroboration;
@@ -1207,6 +1347,23 @@ function addAdultOpenLibrarySelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultOpenLibrarySparseExceptionIgnoredNonPositiveFamiliesByTitle = adultOpenLibrarySparseExceptionIgnoredNonPositiveFamiliesByTitle;
   diagnostics.adultOpenLibrarySparseExceptionYouthAudienceSignalsByTitle = adultOpenLibrarySparseExceptionYouthAudienceSignalsByTitle;
   diagnostics.adultOpenLibrarySparseExceptionYouthAudienceBlockedByTitle = adultOpenLibrarySparseExceptionYouthAudienceBlockedByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionSupportEvidenceGroupsByTitle = adultOpenLibrarySparseExceptionSupportEvidenceGroupsByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionDislikedItemCountByTitle = adultOpenLibrarySparseExceptionDislikedItemCountByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionLikedWeightByTitle = adultOpenLibrarySparseExceptionLikedWeightByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionDislikedWeightByTitle = adultOpenLibrarySparseExceptionDislikedWeightByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionProfileSupportPassedByTitle = adultOpenLibrarySparseExceptionProfileSupportPassedByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionCredibleSubjectPassedByTitle = adultOpenLibrarySparseExceptionCredibleSubjectPassedByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionBibliographicIdentityPassedByTitle = adultOpenLibrarySparseExceptionBibliographicIdentityPassedByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionSourceQualityScoreByTitle = adultOpenLibrarySparseExceptionSourceQualityScoreByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionSourceQualityPassedByTitle = adultOpenLibrarySparseExceptionSourceQualityPassedByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionAgeSuitabilityByTitle = adultOpenLibrarySparseExceptionAgeSuitabilityByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionAgeSuitabilityPassedByTitle = adultOpenLibrarySparseExceptionAgeSuitabilityPassedByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionYouthAudiencePassedByTitle = adultOpenLibrarySparseExceptionYouthAudiencePassedByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionNarrativeShapeByTitle = adultOpenLibrarySparseExceptionNarrativeShapeByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionNarrativeShapePassedByTitle = adultOpenLibrarySparseExceptionNarrativeShapePassedByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionArtifactReasonsbyTitle = adultOpenLibrarySparseExceptionArtifactReasonsbyTitle;
+  diagnostics.adultOpenLibrarySparseExceptionArtifactPassedByTitle = adultOpenLibrarySparseExceptionArtifactPassedByTitle;
+  diagnostics.adultOpenLibrarySparseExceptionFailedConditionsByTitle = adultOpenLibrarySparseExceptionFailedConditionsByTitle;
   diagnostics.adultOpenLibraryCollectionShapeTriggerByTitle = adultOpenLibraryCollectionShapeTriggerByTitle;
   diagnostics.adultOpenLibraryCollectionShapeTriggerFieldByTitle = adultOpenLibraryCollectionShapeTriggerFieldByTitle;
   diagnostics.adultOpenLibraryCollectionShapeCorroborationByTitle = adultOpenLibraryCollectionShapeCorroborationByTitle;
