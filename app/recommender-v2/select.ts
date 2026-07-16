@@ -4247,6 +4247,7 @@ type AdultGoogleBooksEligibility = {
   artifactReasons: string[];
   narrativeEvidence: string[];
   credibleFictionSignals: string[];
+  workIdentitySignals: string[];
 };
 
 function adultGoogleBooksMetadataFields(candidate: ScoredCandidate): { title: string; subtitle: string; description: string; categories: string; genres: string; combined: string } {
@@ -4266,6 +4267,15 @@ function adultGoogleBooksMetadataFields(candidate: ScoredCandidate): { title: st
   const genres = normalized((candidate.genres || []).join(" "));
   const combined = normalized([title, subtitle, description, categories, genres].filter(Boolean).join(" "));
   return { title, subtitle, description, categories: normalized(categories), genres, combined };
+}
+
+function adultGoogleBooksFirstClassFictionCategories(candidate: ScoredCandidate): string[] {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const volumeInfo = (raw.volumeInfo && typeof raw.volumeInfo === "object") ? (raw.volumeInfo as Record<string, unknown>) : {};
+  const cats = Array.isArray(volumeInfo.categories) ? volumeInfo.categories.map(String) : [];
+  // A first-class fiction category starts with a recognized fiction genre label.
+  // "Literary Criticism / Science Fiction" is NOT first-class; "Fiction / Fantasy" IS.
+  return cats.filter((c) => /^(?:fiction\b|detective and mystery|mystery stories?|horror tales?|adventure stories?|crime fiction|romance\b|thriller\b|fantasy\b|science fiction\b|speculative fiction\b)/i.test(c.trim()));
 }
 
 function adultGoogleBooksArtifactReasons(candidate: ScoredCandidate): string[] {
@@ -4290,6 +4300,34 @@ function adultGoogleBooksArtifactReasons(candidate: ScoredCandidate): string[] {
   if (/\b(proceedings of|conference proceedings|teacher resources?|teacher'?s guide|study guide|workbook|textbook|directory|bibliograph(?:y|ies)|reference books?)\b/.test(fields.combined)) {
     reasons.push("adult_googlebooks_artifact_instructional_reference");
   }
+  // Reject when Google Books itself classifies the work under Literary Criticism.
+  if (/\bliterary criticism\b/.test(fields.categories)) {
+    reasons.push("adult_googlebooks_artifact_literary_criticism_category");
+  }
+  // Reject academic/critical titles whose subject framing is in the title itself.
+  if (
+    /\bthrough\s+(?:(?:\w+\s+){0,5})(?:literature|fiction)\b/.test(fields.title)
+    || /\b(?:understanding|exploring|examining|study\s+of|analysis\s+of)\s+(?:(?:\w+\s+){0,5})(?:through|in|via)\b/.test(fields.title)
+    || /\b(?:understanding|exploring|examining)\s+(?:(?:\w+\s+){0,5})(?:literature|fiction)\b/.test(fields.title)
+  ) {
+    reasons.push("adult_googlebooks_artifact_academic_criticism_title");
+  }
+  // Reject periodicals and magazine issues.
+  if (
+    /\bmagazine\b/.test(fields.title)
+    || /\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}\b/.test(fields.title)
+    || /\b(?:issue|vol(?:ume)?)\s*\d+\b/.test(fields.title)
+  ) {
+    reasons.push("adult_googlebooks_artifact_periodical");
+  }
+  // Reject writer/author directories when no first-class fiction category corroborates novel identity.
+  const firstClassFictionForArtifact = adultGoogleBooksFirstClassFictionCategories(candidate);
+  if (
+    firstClassFictionForArtifact.length === 0
+    && /\b(?:fantasy|science[- ]fiction|horror|mystery|thriller|romance)\s+writers?\b/.test(fields.title)
+  ) {
+    reasons.push("adult_googlebooks_artifact_writer_directory");
+  }
   return Array.from(new Set(reasons));
 }
 
@@ -4299,7 +4337,8 @@ function adultGoogleBooksNarrativeEvidence(candidate: ScoredCandidate): string[]
   if (/\b(follows|story of|tells the story|centers on|must survive|must uncover|must confront|must choose|must save|protagonist|heroine|hero|detective|character|characters|family saga)\b/.test(fields.description)) {
     signals.push("narrative_description_shape");
   }
-  if (/\b(novel|fiction|thriller|mystery|fantasy|romance|science fiction|historical fiction|horror|saga)\b/.test(`${fields.subtitle} ${fields.description}`)) {
+  const hasAcademicFraming = /\b(?:this (?:book|text|study|work|volume|anthology|collection|guide|reference)|examines?|explores? the|analysis of|study of|in this (?:volume|collection|anthology|survey)|scholarship|scholarly|literary criticism|critical (?:study|analysis|essays?)|this anthology|this collection)\b/.test(fields.description);
+  if (!hasAcademicFraming && /\b(novel|fiction|thriller|mystery|fantasy|romance|science fiction|historical fiction|horror|saga)\b/.test(`${fields.subtitle} ${fields.description}`)) {
     signals.push("narrative_subtitle_or_description_marker");
   }
   return Array.from(new Set(signals));
@@ -4308,14 +4347,13 @@ function adultGoogleBooksNarrativeEvidence(candidate: ScoredCandidate): string[]
 function adultGoogleBooksCredibleFictionSignals(candidate: ScoredCandidate): string[] {
   const fields = adultGoogleBooksMetadataFields(candidate);
   const signals: string[] = [];
-  if (/\b(fiction|novel|stories|detective and mystery|mystery|thriller|fantasy|science fiction|historical fiction|romance fiction|horror tales|adventure stories|speculative)\b/.test(`${fields.categories} ${fields.genres}`)) {
+  // Only count first-class fiction categories — not Literary Criticism categories that merely mention fiction topics.
+  const firstClassFiction = adultGoogleBooksFirstClassFictionCategories(candidate);
+  if (firstClassFiction.length > 0) {
     signals.push("fiction_category_or_genre");
   }
   if (/\b(a novel|novel|fiction|thriller|mystery|fantasy|romance|science fiction|historical fiction|horror)\b/.test(fields.subtitle)) {
     signals.push("fiction_subtitle");
-  }
-  if (/\b(novel|fiction|story|thriller|mystery|fantasy|romance|science fiction|historical fiction)\b/.test(fields.description)) {
-    signals.push("fiction_description");
   }
   return Array.from(new Set(signals));
 }
@@ -4332,21 +4370,42 @@ function adultGoogleBooksStrongIncompatibility(candidate: ScoredCandidate): stri
   return Array.from(new Set(incompatibilities));
 }
 
+function adultGoogleBooksWorkIdentitySignals(candidate: ScoredCandidate): string[] {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const signals: string[] = [];
+  // Signal 1: first-class fiction category (not Literary Criticism about fiction).
+  const firstClassFiction = adultGoogleBooksFirstClassFictionCategories(candidate);
+  if (firstClassFiction.length > 0) signals.push("first_class_fiction_category");
+  // Signal 2: subtitle identifies the work as a novel.
+  if (/\ba novel\b/.test(fields.subtitle) || /\ba (?:fantasy|horror|thriller|mystery|romance|science fiction|historical) novel\b/.test(fields.subtitle)) {
+    signals.push("subtitle_identifies_as_novel");
+  }
+  // Signal 3: title contains "a novel".
+  if (/\ba novel\b/.test(fields.title)) signals.push("title_identifies_as_novel");
+  // Signal 4: character/event-centered synopsis with no academic or collection framing.
+  const hasAcademicOrCollectionFraming = /\b(?:this (?:book|text|study|work|volume|anthology|collection|guide|reference)|examines?|explores? the|analysis of|study of|in this (?:volume|collection|anthology|survey)|scholarship|scholarly|literary criticism|critical (?:study|analysis|essays?)|this anthology|this collection)\b/.test(fields.description);
+  const hasNarrativeSynopsis = /\b(?:follows|story of|tells the story|centers on|must survive|must uncover|must confront|must choose|must save|protagonist|heroine|hero|detective|characters?|family saga)\b/.test(fields.description);
+  if (hasNarrativeSynopsis && !hasAcademicOrCollectionFraming) signals.push("character_event_synopsis_without_academic_framing");
+  return Array.from(new Set(signals));
+}
+
 function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: TasteProfile): AdultGoogleBooksEligibility {
   if (profile.ageBand !== "adult" || candidate.source !== "googleBooks") {
-    return { allowed: true, reason: "not_adult_googlebooks_candidate", artifactReasons: [], narrativeEvidence: [], credibleFictionSignals: [] };
+    return { allowed: true, reason: "not_adult_googlebooks_candidate", artifactReasons: [], narrativeEvidence: [], credibleFictionSignals: [], workIdentitySignals: [] };
   }
   const artifactReasons = adultGoogleBooksArtifactReasons(candidate);
   const narrativeEvidence = adultGoogleBooksNarrativeEvidence(candidate);
   const credibleFictionSignals = adultGoogleBooksCredibleFictionSignals(candidate);
   const incompatibilities = adultGoogleBooksStrongIncompatibility(candidate);
+  const workIdentitySignals = adultGoogleBooksWorkIdentitySignals(candidate);
   const sourceQuality = Number(candidate.scoreBreakdown?.sourceQualityRelevance || 0);
-  if (artifactReasons.length > 0) return { allowed: false, reason: "adult_googlebooks_artifact_or_reference_shape", artifactReasons, narrativeEvidence, credibleFictionSignals };
-  if (sourceQuality <= 0) return { allowed: false, reason: "adult_googlebooks_source_quality_not_positive", artifactReasons, narrativeEvidence, credibleFictionSignals };
-  if (credibleFictionSignals.length === 0) return { allowed: false, reason: "adult_googlebooks_missing_credible_fiction_signal", artifactReasons, narrativeEvidence, credibleFictionSignals };
-  if (narrativeEvidence.length === 0) return { allowed: false, reason: "adult_googlebooks_missing_narrative_metadata_evidence", artifactReasons, narrativeEvidence, credibleFictionSignals };
-  if (incompatibilities.length > 0) return { allowed: false, reason: "adult_googlebooks_strong_juvenile_or_reference_incompatibility", artifactReasons: [...artifactReasons, ...incompatibilities], narrativeEvidence, credibleFictionSignals };
-  return { allowed: true, reason: "adult_googlebooks_minimal_final_gate_passed", artifactReasons, narrativeEvidence, credibleFictionSignals };
+  if (artifactReasons.length > 0) return { allowed: false, reason: "adult_googlebooks_artifact_or_reference_shape", artifactReasons, narrativeEvidence, credibleFictionSignals, workIdentitySignals };
+  if (sourceQuality <= 0) return { allowed: false, reason: "adult_googlebooks_source_quality_not_positive", artifactReasons, narrativeEvidence, credibleFictionSignals, workIdentitySignals };
+  if (credibleFictionSignals.length === 0) return { allowed: false, reason: "adult_googlebooks_missing_credible_fiction_signal", artifactReasons, narrativeEvidence, credibleFictionSignals, workIdentitySignals };
+  if (narrativeEvidence.length === 0) return { allowed: false, reason: "adult_googlebooks_missing_narrative_metadata_evidence", artifactReasons, narrativeEvidence, credibleFictionSignals, workIdentitySignals };
+  if (incompatibilities.length > 0) return { allowed: false, reason: "adult_googlebooks_strong_juvenile_or_reference_incompatibility", artifactReasons: [...artifactReasons, ...incompatibilities], narrativeEvidence, credibleFictionSignals, workIdentitySignals };
+  if (workIdentitySignals.length === 0) return { allowed: false, reason: "adult_googlebooks_missing_work_identity_signal", artifactReasons, narrativeEvidence, credibleFictionSignals, workIdentitySignals };
+  return { allowed: true, reason: "adult_googlebooks_minimal_final_gate_passed", artifactReasons, narrativeEvidence, credibleFictionSignals, workIdentitySignals };
 }
 
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
@@ -4416,6 +4475,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const artifactReasonsByTitle: Record<string, string[]> = {};
   const narrativeEvidenceByTitle: Record<string, string[]> = {};
   const credibleFictionSignalsByTitle: Record<string, string[]> = {};
+  const workIdentitySignalsByTitle: Record<string, string[]> = {};
   const rejectedTitlesByReason: Record<string, string[]> = {};
   const acceptedTitles: string[] = [];
   if (profile.ageBand !== "adult") {
@@ -4424,6 +4484,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksArtifactReasonsByTitle = {};
     diagnostics.adultGoogleBooksNarrativeEvidenceByTitle = {};
     diagnostics.adultGoogleBooksCredibleFictionSignalsByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeWorkIdentitySignalsByTitle = {};
     diagnostics.adultGoogleBooksRejectedTitlesByReason = {};
     diagnostics.adultGoogleBooksAcceptedTitles = [];
     return;
@@ -4436,6 +4497,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     artifactReasonsByTitle[candidate.title] = eligibility.artifactReasons;
     narrativeEvidenceByTitle[candidate.title] = eligibility.narrativeEvidence;
     credibleFictionSignalsByTitle[candidate.title] = eligibility.credibleFictionSignals;
+    workIdentitySignalsByTitle[candidate.title] = adultGoogleBooksWorkIdentitySignals(candidate);
     if (eligibility.allowed && selectedTitleSet.has(normalized(candidate.title))) {
       acceptedTitles.push(candidate.title);
     } else if (!eligibility.allowed) {
@@ -4448,6 +4510,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksArtifactReasonsByTitle = artifactReasonsByTitle;
   diagnostics.adultGoogleBooksNarrativeEvidenceByTitle = narrativeEvidenceByTitle;
   diagnostics.adultGoogleBooksCredibleFictionSignalsByTitle = credibleFictionSignalsByTitle;
+  diagnostics.adultGoogleBooksNarrativeWorkIdentitySignalsByTitle = workIdentitySignalsByTitle;
   diagnostics.adultGoogleBooksRejectedTitlesByReason = rejectedTitlesByReason;
   diagnostics.adultGoogleBooksAcceptedTitles = acceptedTitles;
 }

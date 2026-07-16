@@ -1,7 +1,7 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
 
 const GOOGLE_BOOKS_API_BASE = "https://www.googleapis.com/books/v1/volumes";
-const GOOGLE_BOOKS_ADAPTER_VERSION = "v2";
+const GOOGLE_BOOKS_ADAPTER_VERSION = "v3";
 const GOOGLE_BOOKS_RESPONSE_BODY_PREFIX_LIMIT = 240;
 const GOOGLE_BOOKS_MAX_RESULTS_PER_QUERY = 10;
 
@@ -121,6 +121,26 @@ function googleBooksArtifactReasons(title: string, subtitle: string, description
   }
   if (/\b(proceedings of|conference proceedings|government report|technical report|directory of|teacher resource|lesson plans?|classroom resource|for classroom use)\b/.test(combined)) {
     reasons.push("artifact_instructional_non_narrative");
+  }
+  // Reject academic/critical titles whose critical framing appears in the title itself.
+  if (
+    /\bthrough\s+(?:(?:\w+\s+){0,5})(?:literature|fiction)\b/.test(titleText)
+    || /\b(?:understanding|exploring|examining|study\s+of|analysis\s+of)\s+(?:(?:\w+\s+){0,5})(?:through|in|via)\b/.test(titleText)
+    || /\b(?:understanding|exploring|examining)\s+(?:(?:\w+\s+){0,5})(?:literature|fiction)\b/.test(titleText)
+  ) {
+    reasons.push("artifact_academic_criticism_title");
+  }
+  // Reject periodicals and magazine issues.
+  if (
+    /\bmagazine\b/.test(titleText)
+    || /\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}\b/.test(titleText)
+    || /\b(?:issue|vol(?:ume)?)\s*\d+\b/.test(titleText)
+  ) {
+    reasons.push("artifact_periodical");
+  }
+  // Reject writer/author directories when no fiction category corroborates novel identity.
+  if (!fictionEvidence && /\b(?:fantasy|science[- ]fiction|horror|mystery|thriller|romance)\s+writers?\b/.test(titleText)) {
+    reasons.push("artifact_writer_directory");
   }
   if (!fictionEvidence
     && /\b(nonfiction|non-fiction|biography|autobiography|memoir|essays?|history|philosophy|reference|business|language arts|education|study aids?|travel|self-help|psychology|political science|social science|science|medical|technology|computers?)\b/.test(categoriesText)
