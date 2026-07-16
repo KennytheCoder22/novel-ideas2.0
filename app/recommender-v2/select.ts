@@ -4420,6 +4420,8 @@ function adultGoogleBooksMeaningfulTasteEligibility(candidate: ScoredCandidate):
   dislikedSignals: string[];
   positiveNetTasteFamilies: string[];
 } {
+  const contextOnlySignal = /^(family|families|relationship|relationships|friends?|friendship|domestic)$/;
+  const broadToneSignal = /^(dark|hopeful|weird|spooky|realistic|atmospheric|epic|gritty|moody)$/;
   const likedSignals = adultGoogleBooksDocumentBackedSignals(candidate, "metadataBackedMatchedLikedSignals")
     .filter((signal) => {
       const value = normalized(signal);
@@ -4454,10 +4456,36 @@ function adultGoogleBooksMeaningfulTasteEligibility(candidate: ScoredCandidate):
 
   const nonFamilyLikedSignals = likedSignals.filter((signal) => !adultOpenLibraryPrimaryContentFamily(signal));
   const nonFamilyDislikedSignals = dislikedSignals.filter((signal) => !adultOpenLibraryPrimaryContentFamily(signal));
-  if (nonFamilyLikedSignals.length > 0 && nonFamilyLikedSignals.length > nonFamilyDislikedSignals.length) {
+  const contextOnlyLikedSignals = nonFamilyLikedSignals.filter((signal) => contextOnlySignal.test(normalized(signal)));
+  const broadToneLikedSignals = nonFamilyLikedSignals.filter((signal) => broadToneSignal.test(normalized(signal)));
+  const specificToneThemeLikedSignals = nonFamilyLikedSignals
+    .filter((signal) => !contextOnlySignal.test(normalized(signal)) && !broadToneSignal.test(normalized(signal)));
+  const specificToneThemeDislikedSignals = nonFamilyDislikedSignals
+    .filter((signal) => !contextOnlySignal.test(normalized(signal)) && !broadToneSignal.test(normalized(signal)));
+
+  if (contextOnlyLikedSignals.length > 0 && specificToneThemeLikedSignals.length === 0 && positiveNetTasteFamilies.length === 0) {
+    return { passed: false, reason: "context_only_signal_not_meaningful", likedSignals, dislikedSignals, positiveNetTasteFamilies };
+  }
+
+  if (
+    broadToneLikedSignals.length === 1
+    && specificToneThemeLikedSignals.length === 0
+    && positiveNetTasteFamilies.length === 0
+    && Number(candidate.scoreBreakdown?.genreFacetMatch || 0) <= 0
+  ) {
+    return { passed: false, reason: "broad_tone_without_content_family_corroboration", likedSignals, dislikedSignals, positiveNetTasteFamilies };
+  }
+
+  if (specificToneThemeLikedSignals.length >= 2 && specificToneThemeLikedSignals.length > specificToneThemeDislikedSignals.length) {
     return { passed: true, reason: "specific_liked_tone_theme_document_backed", likedSignals, dislikedSignals, positiveNetTasteFamilies };
   }
-  if (likedSignals.length >= 2 && likedSignals.length > dislikedSignals.length) {
+  if (specificToneThemeLikedSignals.length >= 1 && positiveNetTasteFamilies.length > 0) {
+    return { passed: true, reason: "specific_tone_theme_with_content_family_corroboration", likedSignals, dislikedSignals, positiveNetTasteFamilies };
+  }
+
+  const weakerLikedSignals = [...specificToneThemeLikedSignals, ...broadToneLikedSignals];
+  const weakerDislikedSignals = nonFamilyDislikedSignals.filter((signal) => !contextOnlySignal.test(normalized(signal)));
+  if (weakerLikedSignals.length >= 2 && weakerLikedSignals.length > weakerDislikedSignals.length && specificToneThemeLikedSignals.length > 0) {
     return { passed: true, reason: "multi_signal_document_backed_positive_support", likedSignals, dislikedSignals, positiveNetTasteFamilies };
   }
   return { passed: false, reason: likedSignals.length === 0 ? "no_document_backed_liked_signals" : "no_positive_net_document_backed_taste_support", likedSignals, dislikedSignals, positiveNetTasteFamilies };
@@ -4833,6 +4861,12 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const positiveNetTasteFamiliesByTitle: Record<string, string[]> = {};
   const meaningfulTastePassedByTitle: Record<string, boolean> = {};
   const meaningfulTasteFailureReasonByTitle: Record<string, string> = {};
+  const broadToneOnlyRejectedByTitle: Record<string, boolean> = {};
+  const plannedQueries = new Set<string>();
+  const queriesAttempted = new Set<string>();
+  const rawCountByQuery: Record<string, number> = {};
+  const acceptedCountByQuery: Record<string, number> = {};
+  const rejectedCountByQueryAndReason: Record<string, Record<string, number>> = {};
   const rejectedTitlesByReason: Record<string, string[]> = {};
   const acceptedTitles: string[] = [];
   if (profile.ageBand !== "adult") {
@@ -4854,6 +4888,13 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle = {};
     diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle = {};
     diagnostics.adultGoogleBooksMeaningfulTasteFailureReasonByTitle = {};
+    diagnostics.adultGoogleBooksBroadToneOnlyRejectedByTitle = {};
+    diagnostics.googleBooksPlannedQueries = [];
+    diagnostics.googleBooksQueriesAttempted = [];
+    diagnostics.googleBooksRawCountByQuery = {};
+    diagnostics.googleBooksAcceptedCountByQuery = {};
+    diagnostics.googleBooksRejectedCountByQueryAndReason = {};
+    diagnostics.googleBooksRetrievalUnderfillReason = undefined;
     diagnostics.adultGoogleBooksRejectedTitlesByReason = {};
     diagnostics.adultGoogleBooksAcceptedTitles = [];
     return;
@@ -4861,6 +4902,12 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
 
   const selectedTitleSet = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalized(candidate.title)));
   for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
+    const plannedQuery = String(candidate.diagnostics?.originalPlannedQuery || candidate.diagnostics?.queryText || "").trim();
+    const attemptedQuery = String(candidate.diagnostics?.queryText || candidate.diagnostics?.originalPlannedQuery || "").trim();
+    if (plannedQuery) plannedQueries.add(plannedQuery);
+    if (attemptedQuery) queriesAttempted.add(attemptedQuery);
+    if (attemptedQuery) rawCountByQuery[attemptedQuery] = Number(rawCountByQuery[attemptedQuery] || 0) + 1;
+
     const eligibility = adultGoogleBooksFinalEligibility(candidate, profile);
     eligibilityReasonByTitle[candidate.title] = eligibility.reason;
     artifactReasonsByTitle[candidate.title] = eligibility.artifactReasons;
@@ -4879,10 +4926,16 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     positiveNetTasteFamiliesByTitle[candidate.title] = eligibility.positiveNetTasteFamilies;
     meaningfulTastePassedByTitle[candidate.title] = eligibility.meaningfulTastePassed;
     meaningfulTasteFailureReasonByTitle[candidate.title] = eligibility.meaningfulTasteFailureReason;
+    broadToneOnlyRejectedByTitle[candidate.title] = eligibility.meaningfulTasteFailureReason === "broad_tone_without_content_family_corroboration";
     if (eligibility.allowed && selectedTitleSet.has(normalized(candidate.title))) {
       acceptedTitles.push(candidate.title);
+      if (attemptedQuery) acceptedCountByQuery[attemptedQuery] = Number(acceptedCountByQuery[attemptedQuery] || 0) + 1;
     } else if (!eligibility.allowed) {
       rejectedTitlesByReason[eligibility.reason] = [...(rejectedTitlesByReason[eligibility.reason] || []), candidate.title];
+      if (attemptedQuery) {
+        if (!rejectedCountByQueryAndReason[attemptedQuery]) rejectedCountByQueryAndReason[attemptedQuery] = {};
+        rejectedCountByQueryAndReason[attemptedQuery][eligibility.reason] = Number(rejectedCountByQueryAndReason[attemptedQuery][eligibility.reason] || 0) + 1;
+      }
     }
   }
 
@@ -4904,6 +4957,13 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle = positiveNetTasteFamiliesByTitle;
   diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle = meaningfulTastePassedByTitle;
   diagnostics.adultGoogleBooksMeaningfulTasteFailureReasonByTitle = meaningfulTasteFailureReasonByTitle;
+  diagnostics.adultGoogleBooksBroadToneOnlyRejectedByTitle = broadToneOnlyRejectedByTitle;
+  diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
+  diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
+  diagnostics.googleBooksRawCountByQuery = rawCountByQuery;
+  diagnostics.googleBooksAcceptedCountByQuery = acceptedCountByQuery;
+  diagnostics.googleBooksRejectedCountByQueryAndReason = rejectedCountByQueryAndReason;
+  diagnostics.googleBooksRetrievalUnderfillReason = acceptedTitles.length === 0 ? "no_googlebooks_candidates_passed_final_eligibility" : undefined;
   diagnostics.adultGoogleBooksRejectedTitlesByReason = rejectedTitlesByReason;
   diagnostics.adultGoogleBooksAcceptedTitles = acceptedTitles;
 }

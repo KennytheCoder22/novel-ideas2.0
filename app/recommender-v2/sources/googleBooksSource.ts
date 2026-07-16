@@ -1,9 +1,9 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
 
 const GOOGLE_BOOKS_API_BASE = "https://www.googleapis.com/books/v1/volumes";
-const GOOGLE_BOOKS_ADAPTER_VERSION = "v4";
+const GOOGLE_BOOKS_ADAPTER_VERSION = "v5";
 const GOOGLE_BOOKS_RESPONSE_BODY_PREFIX_LIMIT = 240;
-const GOOGLE_BOOKS_MAX_RESULTS_PER_QUERY = 10;
+const GOOGLE_BOOKS_MAX_RESULTS_PER_QUERY = 16;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -172,22 +172,13 @@ function googleBooksArtifactDropReason(title: string, subtitle: string, descript
 function buildGoogleBooksFetchQuery(query: string): string {
   const normalized = normalizeQuery(query);
   if (!normalized) return normalized;
+  // Keep exclusions focused; long negative tails can weaken useful retrieval terms.
   const negatives = [
     '-"writer\'s market"',
-    '-"writers\' handbook"',
     '-"guide to literary agents"',
-    '-"children\'s writer\'s and illustrator\'s market"',
-    '-catalog',
-    '-catalogue',
-    '-bibliography',
-    '-directory',
     '-"literary criticism"',
-    '-textbook',
     '-"study guide"',
-    '-"teacher resource"',
-    '-"teacher resources"',
     '-"conference proceedings"',
-    '-"government report"',
   ];
   return `${normalized} ${negatives.join(" ")}`.replace(/\s+/g, " ").trim();
 }
@@ -285,6 +276,12 @@ function emptyDiagnostics(
     elapsedMs: Date.parse(finishedAt) - Date.parse(startedAt),
     rawCount: 0,
     queries: plan.intents.map((intent) => String(intent.query || "")),
+    googleBooksPlannedQueries: plan.intents.map((intent) => String(intent.query || "")),
+    googleBooksQueriesAttempted: [],
+    googleBooksRawCountByQuery: {},
+    googleBooksAcceptedCountByQuery: {},
+    googleBooksRejectedCountByQueryAndReason: {},
+    googleBooksRetrievalUnderfillReason: status === "empty" ? "no_usable_rows" : undefined,
     googleBooksSourceQueries: plan.intents.map((intent) => String(intent.query || "")),
     googleBooksSourceFetchDiagnostics: [],
     googleBooksSourceRawApiResultCount: 0,
@@ -319,6 +316,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         const originalPlannedQuery = String(intent.query || "").trim();
         const fetchQuery = buildGoogleBooksFetchQuery(originalPlannedQuery);
         return {
+          intentId: String(intent.id || ""),
           fetchQuery,
           originalPlannedQuery,
           queryFamily: queryFamilyFromQuery(originalPlannedQuery),
@@ -348,16 +346,24 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const rawItems: unknown[] = [];
     const rawTitles: string[] = [];
     const dropReasons: Record<string, number> = {};
+    const rawCountByQuery: Record<string, number> = {};
+    const queriesAttempted: string[] = [];
     const fetches: SourceFetchDiagnosticV2[] = [];
     const seenVolumeIds = new Set<string>();
     let rawApiResultCount = 0;
     let droppedBeforeNormalization = 0;
     let failedReason = "";
 
+    const primaryQueries = queries.filter((intent) => intent.intentId !== "fallback-fiction-broad");
+    const fallbackQueries = queries.filter((intent) => intent.intentId === "fallback-fiction-broad");
+    const queryExecutionOrder = primaryQueries.length > 0 ? [...primaryQueries] : [...fallbackQueries];
     const perQueryTimeoutMs = Math.max(1_000, Math.floor(Math.max(plan.timeoutMs, 1_000) / Math.max(1, queries.length)));
-    for (let index = 0; index < queries.length; index += 1) {
-      const plannedIntent = queries[index];
+    let fallbackExecuted = false;
+    for (let index = 0; index < queryExecutionOrder.length; index += 1) {
+      const plannedIntent = queryExecutionOrder[index];
       const query = plannedIntent.fetchQuery;
+      const originalQuery = plannedIntent.originalPlannedQuery;
+      queriesAttempted.push(originalQuery);
       const fetchStartedAt = nowIso();
       const fetched = await fetchGoogleBooksJson(query, perQueryTimeoutMs, context.signal);
       const fetchFinishedAt = nowIso();
@@ -384,6 +390,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
 
       const json = (fetched.json || {}) as Record<string, unknown>;
       const items = Array.isArray(json.items) ? json.items : null;
+      rawCountByQuery[originalQuery] = Number(rawCountByQuery[originalQuery] || 0) + (items ? items.length : 0);
       if (!items) {
         dropReasons.non_book_response_shape = Number(dropReasons.non_book_response_shape || 0) + 1;
         droppedBeforeNormalization += 1;
@@ -501,6 +508,15 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         rawItems.push(rawRow);
         if (rawTitles.length < 40) rawTitles.push(title);
       }
+
+      const shouldRunFallback = !fallbackExecuted
+        && fallbackQueries.length > 0
+        && index === primaryQueries.length - 1
+        && rawItems.length < 3;
+      if (shouldRunFallback) {
+        queryExecutionOrder.push(...fallbackQueries);
+        fallbackExecuted = true;
+      }
     }
 
     const finishedAt = nowIso();
@@ -522,6 +538,14 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       elapsedMs: Date.parse(finishedAt) - Date.parse(startedAt),
       rawCount: rawItems.length,
       queries: queries.map((intent) => intent.fetchQuery),
+      googleBooksPlannedQueries: plannedQueries.map((intent) => intent.originalPlannedQuery),
+      googleBooksQueriesAttempted: queriesAttempted,
+      googleBooksRawCountByQuery: rawCountByQuery,
+      googleBooksAcceptedCountByQuery: {},
+      googleBooksRejectedCountByQueryAndReason: {},
+      googleBooksRetrievalUnderfillReason: rawItems.length < 3
+        ? (fallbackExecuted ? "fallback_exhausted_with_low_usable_rows" : "primary_queries_returned_low_usable_rows")
+        : undefined,
       rawTitles,
       firstReturnedTitles: rawTitles.slice(0, 10),
       rawApiResultCount,
