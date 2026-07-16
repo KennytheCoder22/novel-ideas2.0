@@ -4241,6 +4241,114 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
   diagnostics.finalEligibilityGateApplied = true;
 }
 
+type AdultGoogleBooksEligibility = {
+  allowed: boolean;
+  reason: string;
+  artifactReasons: string[];
+  narrativeEvidence: string[];
+  credibleFictionSignals: string[];
+};
+
+function adultGoogleBooksMetadataFields(candidate: ScoredCandidate): { title: string; subtitle: string; description: string; categories: string; genres: string; combined: string } {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const volumeInfo = (raw.volumeInfo && typeof raw.volumeInfo === "object") ? (raw.volumeInfo as Record<string, unknown>) : {};
+  const categories = Array.isArray(volumeInfo.categories) ? volumeInfo.categories.map(String).join(" ") : "";
+  const title = normalized(candidate.title);
+  const subtitle = normalized(candidate.subtitle);
+  const rawDescription = typeof raw.description === "string"
+    ? raw.description
+    : typeof (raw.description as { value?: unknown } | undefined)?.value === "string"
+      ? String((raw.description as { value: string }).value)
+      : typeof volumeInfo.description === "string"
+        ? String(volumeInfo.description)
+        : "";
+  const description = normalized(candidate.description || rawDescription || "");
+  const genres = normalized((candidate.genres || []).join(" "));
+  const combined = normalized([title, subtitle, description, categories, genres].filter(Boolean).join(" "));
+  return { title, subtitle, description, categories: normalized(categories), genres, combined };
+}
+
+function adultGoogleBooksArtifactReasons(candidate: ScoredCandidate): string[] {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const reasons: string[] = [];
+  const annualAnthologyPhrase = /\b(year'?s best|years best|best of the year|annual (?:collection|antholog(?:y|ies))|(?:\d{1,2}(?:st|nd|rd|th)\s+)?annual collection)\b/;
+  const anthologyMarker = /\b(antholog(?:y|ies)|edited collection)\b/;
+  const anthologyCorroboration = /\b(annual|year'?s best|years best|best of the year|edited by|editor(?:ial)?|selected by)\b/;
+  if (
+    annualAnthologyPhrase.test(fields.title)
+    || annualAnthologyPhrase.test(fields.subtitle)
+    || ((anthologyMarker.test(fields.title) || anthologyMarker.test(fields.subtitle)) && anthologyCorroboration.test(`${fields.subtitle} ${fields.categories} ${fields.description}`))
+  ) {
+    reasons.push("adult_googlebooks_artifact_annual_anthology_collection");
+  }
+  if (/\b(writer'?s market|writers'? handbook|guide to literary agents|children'?s writer'?s and illustrator'?s market|places to sell manuscripts?|markets?\s+for\s+writ(?:er|ers)|manuscript markets?|publishing opportunities|literary agents?\s+guide|writer directory|submission guide)\b/.test(fields.combined)) {
+    reasons.push("adult_googlebooks_artifact_writer_reference");
+  }
+  if (/\b(history of(?: [a-z-]+){0,4} literature|history of literature|literary history|criticism and interpretation|critical studies?|critical study|companion to|presenting young adult fiction|presenting young adult horror fiction|authors and artists for young adults|book reviews? of fiction|reviews? of fiction)\b/.test(fields.combined)) {
+    reasons.push("adult_googlebooks_artifact_literary_criticism_reference");
+  }
+  if (/\b(proceedings of|conference proceedings|teacher resources?|teacher'?s guide|study guide|workbook|textbook|directory|bibliograph(?:y|ies)|reference books?)\b/.test(fields.combined)) {
+    reasons.push("adult_googlebooks_artifact_instructional_reference");
+  }
+  return Array.from(new Set(reasons));
+}
+
+function adultGoogleBooksNarrativeEvidence(candidate: ScoredCandidate): string[] {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const signals: string[] = [];
+  if (/\b(follows|story of|tells the story|centers on|must survive|must uncover|must confront|must choose|must save|protagonist|heroine|hero|detective|character|characters|family saga)\b/.test(fields.description)) {
+    signals.push("narrative_description_shape");
+  }
+  if (/\b(novel|fiction|thriller|mystery|fantasy|romance|science fiction|historical fiction|horror|saga)\b/.test(`${fields.subtitle} ${fields.description}`)) {
+    signals.push("narrative_subtitle_or_description_marker");
+  }
+  return Array.from(new Set(signals));
+}
+
+function adultGoogleBooksCredibleFictionSignals(candidate: ScoredCandidate): string[] {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const signals: string[] = [];
+  if (/\b(fiction|novel|stories|detective and mystery|mystery|thriller|fantasy|science fiction|historical fiction|romance fiction|horror tales|adventure stories|speculative)\b/.test(`${fields.categories} ${fields.genres}`)) {
+    signals.push("fiction_category_or_genre");
+  }
+  if (/\b(a novel|novel|fiction|thriller|mystery|fantasy|romance|science fiction|historical fiction|horror)\b/.test(fields.subtitle)) {
+    signals.push("fiction_subtitle");
+  }
+  if (/\b(novel|fiction|story|thriller|mystery|fantasy|romance|science fiction|historical fiction)\b/.test(fields.description)) {
+    signals.push("fiction_description");
+  }
+  return Array.from(new Set(signals));
+}
+
+function adultGoogleBooksStrongIncompatibility(candidate: ScoredCandidate): string[] {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const incompatibilities: string[] = [];
+  if (/\b(young adult reference|for young adults|juvenile fiction|children'?s books?|middle grade|ages?\s*(?:8|9|10|11|12|13|14|15|16|17)\b)\b/.test(fields.combined)) {
+    incompatibilities.push("juvenile_or_ya_reference_incompatibility");
+  }
+  if (/\b(history of(?: [a-z-]+){0,4} literature|history of literature|literary history|criticism and interpretation|critical studies?|critical study|history and criticism|companion to|authors and artists for young adults|book reviews? of fiction|reviews? of fiction|places to sell manuscripts?|markets?\s+for\s+writ(?:er|ers)|manuscript markets?|writer directory|submission guide)\b/.test(fields.combined)) {
+    incompatibilities.push("reference_or_criticism_incompatibility");
+  }
+  return Array.from(new Set(incompatibilities));
+}
+
+function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: TasteProfile): AdultGoogleBooksEligibility {
+  if (profile.ageBand !== "adult" || candidate.source !== "googleBooks") {
+    return { allowed: true, reason: "not_adult_googlebooks_candidate", artifactReasons: [], narrativeEvidence: [], credibleFictionSignals: [] };
+  }
+  const artifactReasons = adultGoogleBooksArtifactReasons(candidate);
+  const narrativeEvidence = adultGoogleBooksNarrativeEvidence(candidate);
+  const credibleFictionSignals = adultGoogleBooksCredibleFictionSignals(candidate);
+  const incompatibilities = adultGoogleBooksStrongIncompatibility(candidate);
+  const sourceQuality = Number(candidate.scoreBreakdown?.sourceQualityRelevance || 0);
+  if (artifactReasons.length > 0) return { allowed: false, reason: "adult_googlebooks_artifact_or_reference_shape", artifactReasons, narrativeEvidence, credibleFictionSignals };
+  if (sourceQuality <= 0) return { allowed: false, reason: "adult_googlebooks_source_quality_not_positive", artifactReasons, narrativeEvidence, credibleFictionSignals };
+  if (credibleFictionSignals.length === 0) return { allowed: false, reason: "adult_googlebooks_missing_credible_fiction_signal", artifactReasons, narrativeEvidence, credibleFictionSignals };
+  if (narrativeEvidence.length === 0) return { allowed: false, reason: "adult_googlebooks_missing_narrative_metadata_evidence", artifactReasons, narrativeEvidence, credibleFictionSignals };
+  if (incompatibilities.length > 0) return { allowed: false, reason: "adult_googlebooks_strong_juvenile_or_reference_incompatibility", artifactReasons: [...artifactReasons, ...incompatibilities], narrativeEvidence, credibleFictionSignals };
+  return { allowed: true, reason: "adult_googlebooks_minimal_final_gate_passed", artifactReasons, narrativeEvidence, credibleFictionSignals };
+}
+
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
   if (profile.ageBand === "kids" && isKidsSuspiciousSelectionCandidate(candidate)) return "k2_suspicious_title_artifact";
@@ -4261,6 +4369,10 @@ function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string
   if (profile.ageBand === "adult" && candidate.source === "openLibrary") {
     const eligibility = adultOpenLibraryMeaningfulTasteEligibility(candidate, profile);
     if (!eligibility.allowed) return eligibility.reason || "adult_openlibrary_no_meaningful_metadata_taste";
+  }
+  if (profile.ageBand === "adult" && candidate.source === "googleBooks") {
+    const eligibility = adultGoogleBooksFinalEligibility(candidate, profile);
+    if (!eligibility.allowed) return eligibility.reason;
   }
   if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_score";
   if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand && profile.ageBand !== "adult") return "maturity_band_mismatch";
@@ -4296,6 +4408,48 @@ function isLowScoreRescueCandidate(candidate: ScoredCandidate): boolean {
 function recordRejected(candidate: ScoredCandidate, rejectedReasons: Record<string, number>, reason: string): void {
   candidate.rejectedReasons.push(reason);
   rejectedReasons[reason] = Number(rejectedReasons[reason] || 0) + 1;
+}
+
+function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const eligibilityReasonByTitle: Record<string, string> = {};
+  const artifactReasonsByTitle: Record<string, string[]> = {};
+  const narrativeEvidenceByTitle: Record<string, string[]> = {};
+  const credibleFictionSignalsByTitle: Record<string, string[]> = {};
+  const rejectedTitlesByReason: Record<string, string[]> = {};
+  const acceptedTitles: string[] = [];
+  if (profile.ageBand !== "adult") {
+    diagnostics.adultGoogleBooksFinalGateApplied = false;
+    diagnostics.adultGoogleBooksEligibilityReasonByTitle = {};
+    diagnostics.adultGoogleBooksArtifactReasonsByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeEvidenceByTitle = {};
+    diagnostics.adultGoogleBooksCredibleFictionSignalsByTitle = {};
+    diagnostics.adultGoogleBooksRejectedTitlesByReason = {};
+    diagnostics.adultGoogleBooksAcceptedTitles = [];
+    return;
+  }
+
+  const selectedTitleSet = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalized(candidate.title)));
+  for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
+    const eligibility = adultGoogleBooksFinalEligibility(candidate, profile);
+    eligibilityReasonByTitle[candidate.title] = eligibility.reason;
+    artifactReasonsByTitle[candidate.title] = eligibility.artifactReasons;
+    narrativeEvidenceByTitle[candidate.title] = eligibility.narrativeEvidence;
+    credibleFictionSignalsByTitle[candidate.title] = eligibility.credibleFictionSignals;
+    if (eligibility.allowed && selectedTitleSet.has(normalized(candidate.title))) {
+      acceptedTitles.push(candidate.title);
+    } else if (!eligibility.allowed) {
+      rejectedTitlesByReason[eligibility.reason] = [...(rejectedTitlesByReason[eligibility.reason] || []), candidate.title];
+    }
+  }
+
+  diagnostics.adultGoogleBooksFinalGateApplied = true;
+  diagnostics.adultGoogleBooksEligibilityReasonByTitle = eligibilityReasonByTitle;
+  diagnostics.adultGoogleBooksArtifactReasonsByTitle = artifactReasonsByTitle;
+  diagnostics.adultGoogleBooksNarrativeEvidenceByTitle = narrativeEvidenceByTitle;
+  diagnostics.adultGoogleBooksCredibleFictionSignalsByTitle = credibleFictionSignalsByTitle;
+  diagnostics.adultGoogleBooksRejectedTitlesByReason = rejectedTitlesByReason;
+  diagnostics.adultGoogleBooksAcceptedTitles = acceptedTitles;
 }
 
 export function selectRecommendations(candidates: ScoredCandidate[], profile: TasteProfile, limit = 10): { selected: ScoredCandidate[]; rejectedReasons: Record<string, number> } {
@@ -4587,6 +4741,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   addKidsSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addTeenOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
+  addAdultGoogleBooksSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 
   return { selected, rejectedReasons };

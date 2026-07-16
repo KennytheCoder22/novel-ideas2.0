@@ -74,8 +74,10 @@ function hasFictionPublisherEvidence(publisher: string): boolean {
   return /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/.test(text);
 }
 
-function googleBooksArtifactDropReason(title: string, subtitle: string, description: string, categories: string[], publisher: string): string | undefined {
+function googleBooksArtifactReasons(title: string, subtitle: string, description: string, categories: string[], publisher: string): string[] {
+  const reasons: string[] = [];
   const titleText = normalizeText([title, subtitle].filter(Boolean).join(" "));
+  const subtitleText = normalizeText(subtitle);
   const normalizedDescription = normalizeText(description);
   const normalizedPublisher = normalizeText(publisher);
   const categoriesText = categoryText(categories);
@@ -85,29 +87,55 @@ function googleBooksArtifactDropReason(title: string, subtitle: string, descript
     || /\b(novel|fiction|story|thriller|mystery|fantasy|romance|science fiction|historical fiction)\b/.test(titleText)
     || hasFictionPublisherEvidence(publisher);
 
-  if (/\b(writer'?s market|writers'? handbook|guide to literary agents|children'?s writer'?s and illustrator'?s market)\b/.test(combined)) {
-    return "artifact_writer_reference";
+  const annualAnthologyPhrase = /\b(year'?s best|years best|best of the year|annual (?:collection|antholog(?:y|ies))|(?:\d{1,2}(?:st|nd|rd|th)\s+)?annual collection)\b/;
+  const anthologyMarker = /\b(antholog(?:y|ies)|edited collection)\b/;
+  const anthologyCorroboration = /\b(annual|year'?s best|years best|best of the year|edited by|editor(?:ial)?|selected by)\b/;
+  if (
+    annualAnthologyPhrase.test(titleText)
+    || annualAnthologyPhrase.test(subtitleText)
+    || ((anthologyMarker.test(titleText) || anthologyMarker.test(subtitleText)) && anthologyCorroboration.test(`${subtitleText} ${categoriesText} ${normalizedDescription}`))
+  ) {
+    reasons.push("artifact_annual_anthology_collection");
   }
-  if (/\b(catalog(?:ue)?|bibliograph(?:y|ies)|directory|encyclopedia|dictionary|almanac|index)\b/.test(titleText)
-    || /\b(reference|bibliographies? and indexes|catalogs?|directories)\b/.test(categoriesText)) {
-    return "artifact_reference_material";
+
+  if (
+    /\b(writer'?s market|writers'? handbook|guide to literary agents|children'?s writer'?s and illustrator'?s market|places to sell manuscripts?|markets?\s+for\s+writ(?:er|ers)|manuscript markets?|publishing opportunities|literary agents?\s+guide|writer directory|submission guide)\b/.test(combined)
+  ) {
+    reasons.push("artifact_writer_reference");
+  }
+
+  if (
+    /\b(history of(?: [a-z-]+){0,4} literature|history of literature|literary history|criticism and interpretation|critical studies?|critical study|companion to|presenting young adult fiction|presenting young adult horror fiction|authors and artists for young adults|book reviews? of fiction|reviews? of fiction)\b/.test(combined)
+  ) {
+    reasons.push("artifact_literary_criticism_reference");
+  }
+
+  if (
+    /\b(catalog(?:ue)?|bibliograph(?:y|ies)|directory|encyclopedia|dictionary|almanac|index)\b/.test(titleText)
+    || /\b(reference|bibliographies? and indexes|catalogs?|directories)\b/.test(categoriesText)
+  ) {
+    reasons.push("artifact_reference_material");
   }
   if (/\b(literary criticism|history and criticism|criticism|critical essays?|study aids?|teacher resources?|teacher'?s guide|study guide|conference proceedings?|government reports?|textbook|textbooks|reference books?)\b/.test(categoriesText)) {
-    return "artifact_academic_reference";
+    reasons.push("artifact_academic_reference");
   }
   if (/\b(proceedings of|conference proceedings|government report|technical report|directory of|teacher resource|lesson plans?|classroom resource|for classroom use)\b/.test(combined)) {
-    return "artifact_instructional_non_narrative";
+    reasons.push("artifact_instructional_non_narrative");
   }
   if (!fictionEvidence
     && /\b(nonfiction|non-fiction|biography|autobiography|memoir|essays?|history|philosophy|reference|business|language arts|education|study aids?|travel|self-help|psychology|political science|social science|science|medical|technology|computers?)\b/.test(categoriesText)
     && !/\b(true crime|narrative nonfiction)\b/.test(categoriesText)) {
-    return "non_narrative_nonfiction";
+    reasons.push("non_narrative_nonfiction");
   }
   if (!fictionEvidence
     && /\b(this (?:book|text|guide|reference|handbook)|an introduction to|a guide to|teaches readers|provides exercises|offers lesson plans|includes bibliographical references|course text|for students|for teachers)\b/.test(normalizedDescription)) {
-    return "non_narrative_description_shape";
+    reasons.push("non_narrative_description_shape");
   }
-  return undefined;
+  return Array.from(new Set(reasons));
+}
+
+function googleBooksArtifactDropReason(title: string, subtitle: string, description: string, categories: string[], publisher: string): string | undefined {
+  return googleBooksArtifactReasons(title, subtitle, description, categories, publisher)[0];
 }
 
 function buildGoogleBooksFetchQuery(query: string): string {
