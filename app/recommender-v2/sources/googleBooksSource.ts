@@ -1,7 +1,7 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
 
 const GOOGLE_BOOKS_API_BASE = "https://www.googleapis.com/books/v1/volumes";
-const GOOGLE_BOOKS_ADAPTER_VERSION = "v1";
+const GOOGLE_BOOKS_ADAPTER_VERSION = "v2";
 const GOOGLE_BOOKS_RESPONSE_BODY_PREFIX_LIMIT = 240;
 const GOOGLE_BOOKS_MAX_RESULTS_PER_QUERY = 10;
 
@@ -23,6 +23,13 @@ function normalizeQuery(value: unknown): string {
     .trim();
 }
 
+function normalizeText(value: unknown): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function queryFamilyFromQuery(query: string): string {
   const normalized = normalizeQuery(query);
   if (/\b(thriller|suspense|conspiracy|manhunt|abduction)\b/.test(normalized)) return "thriller";
@@ -38,6 +45,92 @@ function queryFamilyFromQuery(query: string): string {
 function stringArray(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
   return values.map((item) => String(item || "").trim()).filter(Boolean);
+}
+
+function descriptionFromVolume(row: Record<string, unknown>, volumeInfo: Record<string, unknown>): string {
+  if (typeof volumeInfo.description === "string") return volumeInfo.description;
+  if (typeof (row.searchInfo as Record<string, unknown> | undefined)?.textSnippet === "string") {
+    return String((row.searchInfo as Record<string, unknown>).textSnippet);
+  }
+  return "";
+}
+
+function categoryText(categories: string[]): string {
+  return categories.map((value) => normalizeText(value)).filter(Boolean).join(" | ");
+}
+
+function hasFictionCategoryEvidence(categories: string[]): boolean {
+  return /\b(fiction|novel|stories|detective and mystery|mystery|thriller|fantasy|science fiction|historical fiction|romance fiction|horror tales|adventure stories|speculative)\b/i.test(categoryText(categories));
+}
+
+function hasNarrativeDescriptionEvidence(description: string): boolean {
+  const text = normalizeText(description);
+  if (text.length < 80) return false;
+  return /\b(follows|story of|tells the story|centers on|must survive|must uncover|must confront|must choose|must save|when\b|after\b|before\b|protagonist|heroine|hero|detective|character|characters|sisters?|brothers?|family saga)\b/.test(text);
+}
+
+function hasFictionPublisherEvidence(publisher: string): boolean {
+  const text = normalizeText(publisher);
+  return /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/.test(text);
+}
+
+function googleBooksArtifactDropReason(title: string, subtitle: string, description: string, categories: string[], publisher: string): string | undefined {
+  const titleText = normalizeText([title, subtitle].filter(Boolean).join(" "));
+  const normalizedDescription = normalizeText(description);
+  const normalizedPublisher = normalizeText(publisher);
+  const categoriesText = categoryText(categories);
+  const combined = [titleText, normalizedDescription, categoriesText, normalizedPublisher].filter(Boolean).join(" | ");
+  const fictionEvidence = hasFictionCategoryEvidence(categories)
+    || hasNarrativeDescriptionEvidence(description)
+    || /\b(novel|fiction|story|thriller|mystery|fantasy|romance|science fiction|historical fiction)\b/.test(titleText)
+    || hasFictionPublisherEvidence(publisher);
+
+  if (/\b(writer'?s market|writers'? handbook|guide to literary agents|children'?s writer'?s and illustrator'?s market)\b/.test(combined)) {
+    return "artifact_writer_reference";
+  }
+  if (/\b(catalog(?:ue)?|bibliograph(?:y|ies)|directory|encyclopedia|dictionary|almanac|index)\b/.test(titleText)
+    || /\b(reference|bibliographies? and indexes|catalogs?|directories)\b/.test(categoriesText)) {
+    return "artifact_reference_material";
+  }
+  if (/\b(literary criticism|history and criticism|criticism|critical essays?|study aids?|teacher resources?|teacher'?s guide|study guide|conference proceedings?|government reports?|textbook|textbooks|reference books?)\b/.test(categoriesText)) {
+    return "artifact_academic_reference";
+  }
+  if (/\b(proceedings of|conference proceedings|government report|technical report|directory of|teacher resource|lesson plans?|classroom resource|for classroom use)\b/.test(combined)) {
+    return "artifact_instructional_non_narrative";
+  }
+  if (!fictionEvidence
+    && /\b(nonfiction|non-fiction|biography|autobiography|memoir|essays?|history|philosophy|reference|business|language arts|education|study aids?|travel|self-help|psychology|political science|social science|science|medical|technology|computers?)\b/.test(categoriesText)
+    && !/\b(true crime|narrative nonfiction)\b/.test(categoriesText)) {
+    return "non_narrative_nonfiction";
+  }
+  if (!fictionEvidence
+    && /\b(this (?:book|text|guide|reference|handbook)|an introduction to|a guide to|teaches readers|provides exercises|offers lesson plans|includes bibliographical references|course text|for students|for teachers)\b/.test(normalizedDescription)) {
+    return "non_narrative_description_shape";
+  }
+  return undefined;
+}
+
+function buildGoogleBooksFetchQuery(query: string): string {
+  const normalized = normalizeQuery(query);
+  if (!normalized) return normalized;
+  const negatives = [
+    '-"writer\'s market"',
+    '-"writers\' handbook"',
+    '-"guide to literary agents"',
+    '-"children\'s writer\'s and illustrator\'s market"',
+    '-catalog',
+    '-catalogue',
+    '-bibliography',
+    '-directory',
+    '-"literary criticism"',
+    '-textbook',
+    '-"study guide"',
+    '-"teacher resource"',
+    '-"teacher resources"',
+    '-"conference proceedings"',
+    '-"government report"',
+  ];
+  return `${normalized} ${negatives.join(" ")}`.replace(/\s+/g, " ").trim();
 }
 
 function getGoogleBooksApiKey(): string {
@@ -163,9 +256,24 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     }
 
     const plannedQueries = plan.intents
-      .map((intent) => normalizeQuery(intent.query))
-      .filter(Boolean);
-    const queries = Array.from(new Set(plannedQueries));
+      .map((intent, index) => {
+        const originalPlannedQuery = String(intent.query || "").trim();
+        const fetchQuery = buildGoogleBooksFetchQuery(originalPlannedQuery);
+        return {
+          fetchQuery,
+          originalPlannedQuery,
+          queryFamily: queryFamilyFromQuery(originalPlannedQuery),
+          queryCascadeIndex: index,
+          facets: Array.isArray(intent.facets) ? intent.facets.map((facet) => String(facet || "")).filter(Boolean) : [],
+        };
+      })
+      .filter((intent) => Boolean(intent.fetchQuery));
+    const seenQueries = new Set<string>();
+    const queries = plannedQueries.filter((intent) => {
+      if (seenQueries.has(intent.fetchQuery)) return false;
+      seenQueries.add(intent.fetchQuery);
+      return true;
+    });
     if (!queries.length) {
       return {
         source: "googleBooks",
@@ -189,8 +297,8 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
 
     const perQueryTimeoutMs = Math.max(1_000, Math.floor(Math.max(plan.timeoutMs, 1_000) / Math.max(1, queries.length)));
     for (let index = 0; index < queries.length; index += 1) {
-      const query = queries[index];
-      const plannedIntent = plan.intents[index] || plan.intents[0];
+      const plannedIntent = queries[index];
+      const query = plannedIntent.fetchQuery;
       const fetchStartedAt = nowIso();
       const fetched = await fetchGoogleBooksJson(query, perQueryTimeoutMs, context.signal);
       const fetchFinishedAt = nowIso();
@@ -203,6 +311,10 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         httpStatus: fetched.status,
         responseBodyPrefix: fetched.bodyPrefix,
         failedReason: fetched.failedReason,
+        originalPlannedQuery: plannedIntent.originalPlannedQuery,
+        queryCascadeIndex: plannedIntent.queryCascadeIndex,
+        queryFamily: plannedIntent.queryFamily,
+        facets: plannedIntent.facets,
       };
       fetches.push(fetchDiagnostic);
 
@@ -261,6 +373,14 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
 
         seenVolumeIds.add(volumeId);
         const categories = stringArray(volumeInfo.categories);
+        const publisher = String(volumeInfo.publisher || "").trim();
+        const description = descriptionFromVolume(row, volumeInfo);
+        const artifactDropReason = googleBooksArtifactDropReason(title, String(volumeInfo.subtitle || "").trim(), description, categories, publisher);
+        if (artifactDropReason) {
+          dropReasons[artifactDropReason] = Number(dropReasons[artifactDropReason] || 0) + 1;
+          droppedBeforeNormalization += 1;
+          continue;
+        }
         const imageLinks = (volumeInfo.imageLinks && typeof volumeInfo.imageLinks === "object")
           ? (volumeInfo.imageLinks as Record<string, unknown>)
           : {};
@@ -269,8 +389,8 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           : [];
         const isbn13 = industryIdentifiers.find((identifier: any) => String(identifier?.type || "").toUpperCase() === "ISBN_13");
         const isbn10 = industryIdentifiers.find((identifier: any) => String(identifier?.type || "").toUpperCase() === "ISBN_10");
-        const queryText = query;
-        const queryFamily = queryFamilyFromQuery(queryText);
+        const queryText = plannedIntent.originalPlannedQuery;
+        const queryFamily = plannedIntent.queryFamily;
         const publishedDate = String(volumeInfo.publishedDate || "").trim() || undefined;
         const publicationYear = parsePublicationYear(volumeInfo.publishedDate);
         const maturityRating = String(volumeInfo.maturityRating || "").trim() || undefined;
@@ -282,19 +402,17 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           title,
           subtitle: String(volumeInfo.subtitle || "").trim() || undefined,
           creators: authors,
-          description: typeof volumeInfo.description === "string"
-            ? volumeInfo.description
-            : typeof (row.searchInfo as Record<string, unknown> | undefined)?.textSnippet === "string"
-              ? String((row.searchInfo as Record<string, unknown>).textSnippet)
-              : undefined,
+          description: description || undefined,
           genres: categories,
           themes: [],
           tones: [],
           characterDynamics: [],
           formats: ["book"],
-          publisher: String(volumeInfo.publisher || "").trim() || undefined,
+          publisher: publisher || undefined,
           publishedDate,
           publicationYear,
+          pageCount: Number.isFinite(Number(volumeInfo.pageCount)) ? Number(volumeInfo.pageCount) : undefined,
+          ratingsCount: Number.isFinite(Number(volumeInfo.ratingsCount)) ? Number(volumeInfo.ratingsCount) : undefined,
           language: String(volumeInfo.language || "").trim() || undefined,
           maturityBand: maturityRating,
           maturityRating,
@@ -315,10 +433,10 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           // Query provenance is diagnostics-only in V2 normalization.
           queryText,
           queryFamily,
-          queryRung: index,
-          originalPlannedQuery: String(plannedIntent?.query || "").trim(),
-          queryCascadeIndex: index,
-          facets: Array.isArray(plannedIntent?.facets) ? plannedIntent.facets.map((facet) => String(facet || "")).filter(Boolean) : [],
+          queryRung: plannedIntent.queryCascadeIndex,
+          originalPlannedQuery: plannedIntent.originalPlannedQuery,
+          queryCascadeIndex: plannedIntent.queryCascadeIndex,
+          facets: plannedIntent.facets,
         };
 
         rawItems.push(rawRow);
@@ -344,7 +462,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       finishedAt,
       elapsedMs: Date.parse(finishedAt) - Date.parse(startedAt),
       rawCount: rawItems.length,
-      queries,
+      queries: queries.map((intent) => intent.fetchQuery),
       rawTitles,
       firstReturnedTitles: rawTitles.slice(0, 10),
       rawApiResultCount,
@@ -353,7 +471,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       fetches,
       rawItemPreview: rawItems.slice(0, 15).map((item) => item as Record<string, unknown>),
 
-      googleBooksSourceQueries: queries,
+      googleBooksSourceQueries: queries.map((intent) => intent.fetchQuery),
       googleBooksSourceFetchDiagnostics: fetches,
       googleBooksSourceRawApiResultCount: rawApiResultCount,
       googleBooksSourceNormalizedRowCount: rawItems.length,

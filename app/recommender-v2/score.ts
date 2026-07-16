@@ -87,6 +87,60 @@ function hasStrongGenreMetadata(text: string): boolean {
   return /\b(dystopian|dystopia|science fiction|horror|thriller|mystery|historical fiction|fantasy|paranormal|survival|adventure)\b/.test(text);
 }
 
+function hasMainstreamFictionPublisher(text: string): boolean {
+  return /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/.test(text);
+}
+
+function adultGoogleBooksNarrativeEvidence(candidate: NormalizedCandidate): { score: number; signals: string[] } {
+  if (candidate.source !== "googleBooks") return { score: 0, signals: [] };
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const publisherText = normalized(String(raw.publisher || ""));
+  const categoryText = normalized(candidate.genres.join(" "));
+  const descriptionText = normalized(candidate.description || "");
+  const titleText = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  const signals: string[] = [];
+  let score = 0;
+
+  const fictionCategory = /\b(fiction|novel|stories|detective and mystery|mystery|thriller|fantasy|science fiction|historical fiction|romance fiction|horror tales|adventure stories|speculative)\b/.test(categoryText);
+  const novelDescriptor = /\b(novel|fiction|thriller|mystery|fantasy|romance|science fiction|historical fiction|horror|saga)\b/.test(`${titleText} ${descriptionText}`);
+  const narrativeSummary = descriptionText.length >= 80
+    && /\b(follows|story of|tells the story|centers on|must survive|must uncover|must confront|must choose|must save|when\b|after\b|before\b|protagonist|heroine|hero|detective|character|characters|sisters?|brothers?|family saga)\b/.test(descriptionText);
+  const fictionPublisher = hasMainstreamFictionPublisher(publisherText);
+  const artifactShape = /\b(writer'?s market|writers'? handbook|guide to literary agents|catalog(?:ue)?|bibliograph(?:y|ies)|literary criticism|study guide|teacher'?s guide|conference proceedings?|government reports?|directory|textbook|reference|handbook|manual)\b/.test(`${titleText} ${categoryText} ${descriptionText}`);
+  const nonNarrativeCategory = /\b(nonfiction|non-fiction|biography|autobiography|memoir|essays?|history|philosophy|reference|business|language arts|education|study aids?|travel|self-help|psychology|political science|social science|science|medical|technology|computers?)\b/.test(categoryText)
+    && !/\b(true crime|narrative nonfiction)\b/.test(categoryText);
+
+  if (fictionCategory) {
+    score += 1.2;
+    signals.push("fictionCategory");
+  }
+  if (novelDescriptor) {
+    score += 0.65;
+    signals.push("novelDescriptor");
+  }
+  if (narrativeSummary) {
+    score += 0.9;
+    signals.push("narrativeSummary");
+  }
+  if (fictionPublisher) {
+    score += 0.35;
+    signals.push("fictionPublisher");
+  }
+  if (candidate.publicationYear && candidate.publicationYear >= 1980) {
+    score += 0.15;
+    signals.push("modernPublication");
+  }
+  if (artifactShape && !(fictionCategory || narrativeSummary)) {
+    score -= 5;
+    signals.push("artifactShape");
+  }
+  if (nonNarrativeCategory && !(fictionCategory || narrativeSummary)) {
+    score -= 3.5;
+    signals.push("nonNarrativeCategory");
+  }
+  return { score, signals };
+}
+
 export function signalPresentInText(text: string, value: string): boolean {
   if (!value) return false;
   if (text.includes(value)) return true;
@@ -230,7 +284,8 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   const adultOpenLibrary = candidate.source === "openLibrary" && profile.ageBand === "adult";
   const openLibraryMetadataOnlyEvidence = candidate.source === "openLibrary"
     && (profile.ageBand === "preteens" || profile.ageBand === "teens" || profile.ageBand === "adult");
-  const text = openLibraryMetadataOnlyEvidence ? metadataText : candidateText(candidate);
+  const adultGoogleBooksMetadataOnlyEvidence = candidate.source === "googleBooks" && profile.ageBand === "adult";
+  const text = openLibraryMetadataOnlyEvidence || adultGoogleBooksMetadataOnlyEvidence ? metadataText : candidateText(candidate);
   const normalizedTitle = normalized(candidate.title);
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const metadataCount = candidate.genres.length + candidate.themes.length;
@@ -295,8 +350,9 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const kidsOpenLibrary = profile.ageBand === "kids" && candidate.source === "openLibrary";
     const teenOpenLibrary = profile.ageBand === "teens" && candidate.source === "openLibrary";
     const adultOpenLibrary = profile.ageBand === "adult" && candidate.source === "openLibrary";
-    const openLibraryMetadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary || adultOpenLibrary;
-    const text = openLibraryMetadataOnlyEvidence ? metadataText : fullText;
+    const adultGoogleBooks = profile.ageBand === "adult" && candidate.source === "googleBooks";
+    const metadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary || adultOpenLibrary || adultGoogleBooks;
+    const text = metadataOnlyEvidence ? metadataText : fullText;
     const rawGenreMatches = signalMatches(text, profile.genreFamily);
     const rawThemeMatches = signalMatches(text, profile.themes);
     const rawToneMatches = signalMatches(text, profile.tone);
@@ -322,7 +378,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const fullPositiveMatches = [...signalMatches(fullText, profile.themes), ...signalMatches(fullText, profile.tone), ...signalMatches(fullText, profile.characterDynamics), ...signalMatches(fullText, profile.formatPreference)];
     const rawTasteMatchCount = rawGenreMatches.length + rawThemeMatches.length + rawToneMatches.length + rawCharacterMatches.length + rawFormatMatches.length;
     const genericOnlyTasteMatch = (middleGradesOpenLibrary || kidsOpenLibrary) && rawTasteMatchCount > 0 && genreMatches.length + positiveMatches.length === 0;
-    const removedQueryTextSignals = openLibraryMetadataOnlyEvidence
+    const removedQueryTextSignals = metadataOnlyEvidence
       ? [...signalMatches(fullText, profile.genreFamily), ...fullPositiveMatches]
         .filter((signal) => ![...genreMatches, ...positiveMatches].some((kept) => normalized(kept.value) === normalized(signal.value)))
         .filter((signal) => middleGradesOpenLibrary
@@ -332,6 +388,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
             : true)
         .map((signal) => signal.value)
       : [];
+    const googleBooksNarrativeEvidence = adultGoogleBooks ? adultGoogleBooksNarrativeEvidence(candidate) : { score: 0, signals: [] };
 
     const allPositiveMatches = [...genreMatches, ...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
     const kidsNarrativeEvidence = kidsOpenLibrary ? kidsNarrativeSemanticEvidence(candidate, allPositiveMatches) : { score: 0, signals: [] };
@@ -348,6 +405,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     scoreBreakdown.ageBandSuitability = suitabilityScore;
     scoreBreakdown.sourceQualityRelevance = sourceQualityRelevanceScore(candidate, profile, genreMatches, positiveMatches);
     scoreBreakdown.queryRungBonus = queryRungBonus(candidate);
+    if (googleBooksNarrativeEvidence.score) scoreBreakdown.googleBooksNarrativePreference = googleBooksNarrativeEvidence.score;
     if (genericOnlyTasteMatch) scoreBreakdown.genericOnlyTasteMatchPenalty = kidsOpenLibrary ? -1.25 : -0.9;
 
     const score = Object.entries(scoreBreakdown).reduce((sum, [key, value]) => sum + (key === "ageBandSuitability" ? 0 : Number(value || 0)), 0);
@@ -368,6 +426,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
         genericOnlyTasteMatch,
         documentBackedTasteSignals: metadataBackedMatchedLikedSignals,
         narrativeSemanticSignals: kidsNarrativeEvidence.signals,
+        googleBooksNarrativeSignals: googleBooksNarrativeEvidence.signals,
         metadataBackedMatchedLikedSignals,
         metadataBackedMatchedDislikedSignals,
         positiveTasteScore,
@@ -378,11 +437,15 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
           ? "teen_openlibrary_ranked_by_metadata_only_document_evidence"
           : adultOpenLibrary
             ? "adult_openlibrary_ranked_by_metadata_only_document_evidence"
+            : adultGoogleBooks
+             ? "adult_googlebooks_ranked_by_document_metadata"
             : undefined,
         teenOpenLibraryMetadataOnlyEvidence: teenOpenLibrary || undefined,
         teenOpenLibraryExcludedRetrievalEvidence: teenOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
         adultOpenLibraryMetadataOnlyEvidence: adultOpenLibrary || undefined,
         adultOpenLibraryExcludedRetrievalEvidence: adultOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+        adultGoogleBooksMetadataOnlyEvidence: adultGoogleBooks || undefined,
+        adultGoogleBooksExcludedRetrievalEvidence: adultGoogleBooks ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
       },
     };
   }).sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
