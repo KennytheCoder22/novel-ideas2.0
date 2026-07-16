@@ -1,7 +1,7 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
 
 const GOOGLE_BOOKS_API_BASE = "https://www.googleapis.com/books/v1/volumes";
-const GOOGLE_BOOKS_ADAPTER_VERSION = "v2";
+const GOOGLE_BOOKS_ADAPTER_VERSION = "v4";
 const GOOGLE_BOOKS_RESPONSE_BODY_PREFIX_LIMIT = 240;
 const GOOGLE_BOOKS_MAX_RESULTS_PER_QUERY = 10;
 
@@ -74,6 +74,19 @@ function hasFictionPublisherEvidence(publisher: string): boolean {
   return /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/.test(text);
 }
 
+function googleBooksPeriodicalCorroboration(titleText: string, subtitleText: string, normalizedDescription: string, categoriesText: string, combined: string): string[] {
+  const text = [titleText, subtitleText].join(" ").trim();
+  const signals: string[] = [];
+  if (/\bmagazine\b/.test(text)) signals.push("title_magazine");
+  if (/\bjournal\b/.test(text)) signals.push("title_journal");
+  if (/\bissue\b/.test(text)) signals.push("title_issue");
+  if (/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}\b/.test(text)) signals.push("title_month_year");
+  if (/\b(periodicals?|serial publications?|magazines?|journals?)\b/.test(categoriesText)) signals.push("category_periodical");
+  if (/\b(?:monthly|bimonthly|quarterly|special issue|annual issue)\b/.test(normalizedDescription)) signals.push("description_periodical_shape");
+  if (/\bissn\b/.test(combined)) signals.push("issn_marker");
+  return Array.from(new Set(signals));
+}
+
 function googleBooksArtifactReasons(title: string, subtitle: string, description: string, categories: string[], publisher: string): string[] {
   const reasons: string[] = [];
   const titleText = normalizeText([title, subtitle].filter(Boolean).join(" "));
@@ -121,6 +134,24 @@ function googleBooksArtifactReasons(title: string, subtitle: string, description
   }
   if (/\b(proceedings of|conference proceedings|government report|technical report|directory of|teacher resource|lesson plans?|classroom resource|for classroom use)\b/.test(combined)) {
     reasons.push("artifact_instructional_non_narrative");
+  }
+  // Reject academic/critical titles whose critical framing appears in the title itself.
+  if (
+    /\bthrough\s+(?:(?:\w+\s+){0,5})(?:literature|fiction)\b/.test(titleText)
+    || /\b(?:understanding|exploring|examining|study\s+of|analysis\s+of)\s+(?:(?:\w+\s+){0,5})(?:through|in|via)\b/.test(titleText)
+    || /\b(?:understanding|exploring|examining)\s+(?:(?:\w+\s+){0,5})(?:literature|fiction)\b/.test(titleText)
+  ) {
+    reasons.push("artifact_academic_criticism_title");
+  }
+  // Reject periodicals and magazine issues.
+  // A bare "Vol. N" is not sufficient by itself (e.g., numbered fiction series volumes).
+  const periodicalCorroboration = googleBooksPeriodicalCorroboration(titleText, subtitleText, normalizedDescription, categoriesText, combined);
+  if (periodicalCorroboration.length > 0) {
+    reasons.push("artifact_periodical");
+  }
+  // Reject writer/author directories when no fiction category corroborates novel identity.
+  if (!fictionEvidence && /\b(?:fantasy|science[- ]fiction|horror|mystery|thriller|romance)\s+writers?\b/.test(titleText)) {
+    reasons.push("artifact_writer_directory");
   }
   if (!fictionEvidence
     && /\b(nonfiction|non-fiction|biography|autobiography|memoir|essays?|history|philosophy|reference|business|language arts|education|study aids?|travel|self-help|psychology|political science|social science|science|medical|technology|computers?)\b/.test(categoriesText)
