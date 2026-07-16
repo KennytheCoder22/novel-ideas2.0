@@ -70,52 +70,81 @@ function googleBooksAdjacentGenre(primary?: string): string | undefined {
   return "fiction";
 }
 
+function googleBooksAdultNarrativeQuery(genre?: string, descriptor?: string): string {
+  const normalizedGenre = normalizedTerm(genre || "");
+  const normalizedDescriptor = normalizedTerm(descriptor || "");
+  const descriptorPrefix = normalizedDescriptor ? [normalizedDescriptor] : [];
+  if (normalizedGenre) {
+    return uniqueTerms([...descriptorPrefix, normalizedGenre, "novel"], 4).join(" ");
+  }
+  return uniqueTerms([...descriptorPrefix, "literary", "fiction", "novel"], 4).join(" ");
+}
+
 function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones: string[], themes: string[], formats: string[]): SearchIntentV2[] {
   const agePrefix = googleBooksAgePrefix(profile.ageBand);
+  const useAgePrefix = profile.ageBand !== "adult";
   const genreAnchors = uniqueTerms(genres.map(googleBooksGenreAnchor).filter(Boolean) as string[], 2);
   const descriptors = uniqueTerms([...tones, ...themes].map(googleBooksDescriptor).filter(Boolean) as string[], 1);
+  const primaryDescriptor = descriptors[0];
   const primaryGenre = genreAnchors[0];
   const secondaryGenre = genreAnchors[1];
   const adjacentGenre = googleBooksAdjacentGenre(primaryGenre);
   const primaryQuery = uniqueTerms([
-    agePrefix,
-    ...(primaryGenre ? [primaryGenre] : []),
-    "fiction",
-    "novel",
+    ...(useAgePrefix ? [agePrefix] : []),
+    ...(profile.ageBand === "adult"
+      ? [googleBooksAdultNarrativeQuery(primaryGenre, primaryDescriptor)]
+      : [
+        ...(primaryGenre ? [primaryGenre] : []),
+        "fiction",
+        "novel",
+      ]),
   ]).join(" ");
   const adjacentOrToneQuery = uniqueTerms([
-    agePrefix,
-    ...(secondaryGenre && secondaryGenre !== primaryGenre ? [secondaryGenre] : []),
-    ...(secondaryGenre || !adjacentGenre ? [] : [adjacentGenre]),
-    ...descriptors,
-    "fiction",
-    "novel",
+    ...(useAgePrefix ? [agePrefix] : []),
+    ...(profile.ageBand === "adult"
+      ? [googleBooksAdultNarrativeQuery(
+        secondaryGenre && secondaryGenre !== primaryGenre ? secondaryGenre : adjacentGenre,
+        primaryDescriptor,
+      )]
+      : [
+        ...(secondaryGenre && secondaryGenre !== primaryGenre ? [secondaryGenre] : []),
+        ...(secondaryGenre || !adjacentGenre ? [] : [adjacentGenre]),
+        ...descriptors,
+        "fiction",
+        "novel",
+      ]),
   ]).join(" ");
   const fallbackQuery = uniqueTerms([
-    agePrefix,
-    ...(primaryGenre ? [primaryGenre] : []),
-    "contemporary",
-    "fiction",
-    "novel",
+    ...(useAgePrefix ? [agePrefix] : []),
+    ...(profile.ageBand === "adult"
+      ? [googleBooksAdultNarrativeQuery(primaryGenre || "fiction", "literary")]
+      : [
+        ...(primaryGenre ? [primaryGenre] : []),
+        "contemporary",
+        "fiction",
+        "novel",
+      ]),
   ]).join(" ");
   return [
     {
       id: "family-fiction-primary",
-      query: primaryQuery || `${agePrefix} fiction novel`,
+      query: primaryQuery || (useAgePrefix ? `${agePrefix} fiction novel` : "fiction novel"),
       facets: [...genres, ...tones, ...themes].filter(Boolean),
       priority: 1,
       rationale: ["built_from_top_taste_profile_signals", "google_books_narrative_query"],
     },
     {
       id: "adjacent-or-tone-fiction",
-      query: adjacentOrToneQuery || [agePrefix, primaryGenre || "fiction", "novel"].filter(Boolean).join(" "),
+      query: adjacentOrToneQuery || (useAgePrefix
+        ? [agePrefix, primaryGenre || "fiction", "novel"].filter(Boolean).join(" ")
+        : [primaryGenre || "fiction", "novel"].filter(Boolean).join(" ")),
       facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
       priority: 0.85,
       rationale: ["adjacent_family_or_tone_expansion", "google_books_narrative_query"],
     },
     {
       id: "fallback-fiction-broad",
-      query: fallbackQuery || [agePrefix, "fiction", "novel"].filter(Boolean).join(" "),
+      query: fallbackQuery || (useAgePrefix ? [agePrefix, "fiction", "novel"].filter(Boolean).join(" ") : "literary fiction novel"),
       facets: [profile.maturityBand, ...formats, ...genres.slice(0, 1)].filter(Boolean),
       priority: 0.55,
       rationale: ["broad_fallback_when_underfilled", "google_books_narrative_query"],
