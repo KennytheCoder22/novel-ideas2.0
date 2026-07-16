@@ -4245,6 +4245,7 @@ type AdultGoogleBooksEligibility = {
   allowed: boolean;
   reason: string;
   artifactReasons: string[];
+  instructionalCraftReasons: string[];
   narrativeEvidence: string[];
   credibleFictionSignals: string[];
   workIdentitySignals: string[];
@@ -4346,6 +4347,24 @@ function adultGoogleBooksArtifactReasons(candidate: ScoredCandidate): string[] {
   return Array.from(new Set(reasons));
 }
 
+function adultGoogleBooksInstructionalCraftReasons(candidate: ScoredCandidate): string[] {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const reasons: string[] = [];
+  const titleSubtitle = `${fields.title} ${fields.subtitle}`.trim();
+  const categoryText = fields.categories;
+  const descriptionText = fields.description;
+  const craftTitlePhrase = /\b(?:technique(?:s)? of (?:the )?(?:mystery story|fiction|fiction writing|novel(?: writing)?|storytelling|narrative)|art of fiction writing|craft of fiction|how to write (?:mysteries?|fiction|novels?|suspense|romance|science fiction)|writing (?:the )?(?:mystery novel|fiction|novels?|suspense|romance|science fiction)|guide to writing|handbook for writers?|plotting the novel|creating characters?|storytelling techniques?|narrative techniques?|history of (?:the )?mystery story|analysis of (?:the )?mystery story)\b/;
+  if (craftTitlePhrase.test(titleSubtitle)) {
+    reasons.push("adult_googlebooks_instructional_craft_title_shape");
+  }
+  const craftMetadataCorroboration = /\b(?:creative writing|authorship|language arts|composition|reference|study aids?|literary criticism|criticism and interpretation|history and criticism|education|teaching)\b/.test(categoryText)
+    && /\b(?:how to|guide|handbook|teaches|teaching|learn to|step by step|explains|instruction|workbook|for writers?|writing craft|story craft|narrative technique|plot development|character creation)\b/.test(descriptionText);
+  if (craftMetadataCorroboration) {
+    reasons.push("adult_googlebooks_instructional_craft_metadata_shape");
+  }
+  return Array.from(new Set(reasons));
+}
+
 function adultGoogleBooksNarrativeEvidence(candidate: ScoredCandidate): string[] {
   const fields = adultGoogleBooksMetadataFields(candidate);
   const signals: string[] = [];
@@ -4398,7 +4417,7 @@ function adultGoogleBooksWorkIdentitySignals(candidate: ScoredCandidate): string
   // Signal 3: title contains "a novel".
   if (/\ba novel\b/.test(fields.title)) signals.push("title_identifies_as_novel");
   // Signal 4: character/event-centered synopsis with no academic or collection framing.
-  const hasAcademicOrCollectionFraming = /\b(?:this (?:book|text|study|work|volume|anthology|collection|guide|reference)|examines?|explores? the|analysis of|study of|in this (?:volume|collection|anthology|survey)|scholarship|scholarly|literary criticism|critical (?:study|analysis|essays?)|this anthology|this collection)\b/.test(fields.description);
+  const hasAcademicOrCollectionFraming = /\b(?:this (?:book|text|study|work|volume|anthology|collection|guide|reference|manual|handbook)|examines?|explores? the|analysis of|study of|in this (?:volume|collection|anthology|survey)|scholarship|scholarly|literary criticism|critical (?:study|analysis|essays?)|this anthology|this collection|how to|guide to writing|for writers?|writing craft|story craft|narrative technique|plot development|character creation)\b/.test(fields.description);
   const hasNarrativeSynopsis = /\b(?:follows|story of|tells the story|centers on|must survive|must uncover|must confront|must choose|must save|protagonist|heroine|hero|detective|characters?|family saga)\b/.test(fields.description);
   if (hasNarrativeSynopsis && !hasAcademicOrCollectionFraming) signals.push("character_event_synopsis_without_academic_framing");
   return Array.from(new Set(signals));
@@ -4410,6 +4429,7 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       allowed: true,
       reason: "not_adult_googlebooks_candidate",
       artifactReasons: [],
+      instructionalCraftReasons: [],
       narrativeEvidence: [],
       credibleFictionSignals: [],
       workIdentitySignals: [],
@@ -4419,7 +4439,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       periodicalCorroboration: [],
     };
   }
-  const artifactReasons = adultGoogleBooksArtifactReasons(candidate);
+  const instructionalCraftReasons = adultGoogleBooksInstructionalCraftReasons(candidate);
+  const artifactReasons = [...adultGoogleBooksArtifactReasons(candidate), ...instructionalCraftReasons];
   const narrativeEvidence = adultGoogleBooksNarrativeEvidence(candidate);
   const credibleFictionSignals = adultGoogleBooksCredibleFictionSignals(candidate);
   const incompatibilities = adultGoogleBooksStrongIncompatibility(candidate);
@@ -4443,6 +4464,7 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       allowed: false,
       reason: "adult_googlebooks_artifact_or_reference_shape",
       artifactReasons,
+      instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
       workIdentitySignals,
@@ -4457,6 +4479,7 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       allowed: false,
       reason: "adult_googlebooks_strong_juvenile_or_reference_incompatibility",
       artifactReasons: [...artifactReasons, ...incompatibilities],
+      instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
       workIdentitySignals,
@@ -4478,6 +4501,7 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         allowed: false,
         reason: "adult_googlebooks_source_quality_not_positive",
         artifactReasons,
+        instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
         workIdentitySignals,
@@ -4491,6 +4515,7 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       allowed: true,
       reason: "adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override",
       artifactReasons,
+      instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
       workIdentitySignals,
@@ -4508,6 +4533,7 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         allowed: false,
         reason: "adult_googlebooks_missing_credible_fiction_signal",
         artifactReasons,
+        instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
         workIdentitySignals,
@@ -4522,6 +4548,7 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         allowed: false,
         reason: "adult_googlebooks_missing_narrative_metadata_evidence",
         artifactReasons,
+        instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
         workIdentitySignals,
@@ -4536,6 +4563,7 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
     allowed: true,
     reason: "adult_googlebooks_minimal_final_gate_passed",
     artifactReasons,
+    instructionalCraftReasons,
     narrativeEvidence,
     credibleFictionSignals,
     workIdentitySignals,
@@ -4618,6 +4646,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const sourceQualityFailureReasonsByTitle: Record<string, string[]> = {};
   const strongNarrativeOverrideAppliedByTitle: Record<string, boolean> = {};
   const periodicalCorroborationByTitle: Record<string, string[]> = {};
+  const instructionalCraftReasonsByTitle: Record<string, string[]> = {};
   const rejectedTitlesByReason: Record<string, string[]> = {};
   const acceptedTitles: string[] = [];
   if (profile.ageBand !== "adult") {
@@ -4631,6 +4660,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksSourceQualityFailureReasonsByTitle = {};
     diagnostics.adultGoogleBooksStrongNarrativeOverrideAppliedByTitle = {};
     diagnostics.adultGoogleBooksPeriodicalCorroborationByTitle = {};
+    diagnostics.adultGoogleBooksInstructionalCraftReasonsByTitle = {};
     diagnostics.adultGoogleBooksRejectedTitlesByReason = {};
     diagnostics.adultGoogleBooksAcceptedTitles = [];
     return;
@@ -4648,6 +4678,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     sourceQualityFailureReasonsByTitle[candidate.title] = eligibility.sourceQualityFailureReasons;
     strongNarrativeOverrideAppliedByTitle[candidate.title] = eligibility.strongNarrativeOverrideApplied;
     periodicalCorroborationByTitle[candidate.title] = eligibility.periodicalCorroboration;
+    instructionalCraftReasonsByTitle[candidate.title] = eligibility.instructionalCraftReasons;
     if (eligibility.allowed && selectedTitleSet.has(normalized(candidate.title))) {
       acceptedTitles.push(candidate.title);
     } else if (!eligibility.allowed) {
@@ -4665,6 +4696,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksSourceQualityFailureReasonsByTitle = sourceQualityFailureReasonsByTitle;
   diagnostics.adultGoogleBooksStrongNarrativeOverrideAppliedByTitle = strongNarrativeOverrideAppliedByTitle;
   diagnostics.adultGoogleBooksPeriodicalCorroborationByTitle = periodicalCorroborationByTitle;
+  diagnostics.adultGoogleBooksInstructionalCraftReasonsByTitle = instructionalCraftReasonsByTitle;
   diagnostics.adultGoogleBooksRejectedTitlesByReason = rejectedTitlesByReason;
   diagnostics.adultGoogleBooksAcceptedTitles = acceptedTitles;
 }
