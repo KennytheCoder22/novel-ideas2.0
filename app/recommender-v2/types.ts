@@ -272,6 +272,12 @@ export interface SourceDiagnosticV2 {
   googleBooksSourceDropReasons?: Record<string, number>;
   googleBooksSourceStatus?: string;
   googleBooksSourceAdapterVersion?: string;
+  googleBooksPlannedQueries?: string[];
+  googleBooksQueriesAttempted?: string[];
+  googleBooksRawCountByQuery?: Record<string, number>;
+  googleBooksAcceptedCountByQuery?: Record<string, number>;
+  googleBooksRejectedCountByQueryAndReason?: Record<string, Record<string, number>>;
+  googleBooksRetrievalUnderfillReason?: string;
   middleGradesExpandedPoolHandoffFailed?: boolean;
   middleGradesExpandedPoolFailureReason?: string;
   mediumStrongEvidenceTargetCount?: number;
