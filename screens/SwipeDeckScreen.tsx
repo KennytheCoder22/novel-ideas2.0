@@ -3828,6 +3828,16 @@ function handleLeft() {
         ]
       : [`status:${v2DebugLoading ? "running" : v2DebugError ? "error" : "not_run"}`, `error:${v2DebugError || "(none)"}`];
 
+    const adultRoutePolarityExportLines = [
+      `adultRoutePolarityDiagnosticsExportVersion:v1`,
+      `adultRouteLikedWeightByFamily:${JSON.stringify(lastResultForExport?.adultRouteLikedWeightByFamily || {})}`,
+      `adultRouteDislikedWeightByFamily:${JSON.stringify(lastResultForExport?.adultRouteDislikedWeightByFamily || {})}`,
+      `adultRouteNetWeightByFamily:${JSON.stringify(lastResultForExport?.adultRouteNetWeightByFamily || {})}`,
+      `adultRoutePositiveFamilies:${JSON.stringify(lastResultForExport?.adultRoutePositiveFamilies || [])}`,
+      `adultRouteSuppressedConflictedFamilies:${JSON.stringify(lastResultForExport?.adultRouteSuppressedConflictedFamilies || [])}`,
+      `adultRouteSelectedFamily:${String(lastResultForExport?.adultRouteSelectedFamily || "")}`,
+      `adultRouteSelectionReason:${String(lastResultForExport?.adultRouteSelectionReason || "")}`,
+    ];
 
     const rungQueryMap = new Map<string, string>();
     for (const row of rawPoolRows) {
@@ -4300,6 +4310,7 @@ function handleLeft() {
       "",
       "RECOMMENDER V2 DEBUG",
       ...v2DiagnosticLines,
+      ...adultRoutePolarityExportLines,
       "",
       "RAW POOL SUMMARY",
       `count:${rawPoolRows.length}`,
