@@ -264,6 +264,14 @@ export interface SourceDiagnosticV2 {
   openLibraryScoringHandoffLimitedToSourceFinal?: boolean;
   openLibraryScoringHandoffSuppressedTitles?: string[];
   openLibraryScoringHandoffSource?: "source_final_5" | "expanded_debug_pool" | "production_pool";
+  googleBooksSourceQueries?: string[];
+  googleBooksSourceFetchDiagnostics?: SourceFetchDiagnosticV2[];
+  googleBooksSourceRawApiResultCount?: number;
+  googleBooksSourceNormalizedRowCount?: number;
+  googleBooksSourceDroppedBeforeNormalization?: number;
+  googleBooksSourceDropReasons?: Record<string, number>;
+  googleBooksSourceStatus?: string;
+  googleBooksSourceAdapterVersion?: string;
   middleGradesExpandedPoolHandoffFailed?: boolean;
   middleGradesExpandedPoolFailureReason?: string;
   mediumStrongEvidenceTargetCount?: number;
