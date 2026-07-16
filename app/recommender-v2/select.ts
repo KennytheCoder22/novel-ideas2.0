@@ -4246,6 +4246,8 @@ type AdultGoogleBooksEligibility = {
   reason: string;
   artifactReasons: string[];
   referenceSurveyReasons: string[];
+  encyclopediaReferenceReasons: string[];
+  multiVolumeReferenceCorroboration: string[];
   instructionalCraftReasons: string[];
   narrativeEvidence: string[];
   credibleFictionSignals: string[];
@@ -4388,6 +4390,60 @@ function adultGoogleBooksReferenceSurveyReasons(candidate: ScoredCandidate): str
     reasons.push("adult_googlebooks_reference_survey_best_books_shape");
   }
   return Array.from(new Set(reasons));
+}
+
+function adultGoogleBooksEncyclopediaReferenceSignals(candidate: ScoredCandidate): { reasons: string[]; multiVolumeCorroboration: string[] } {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const reasons: string[] = [];
+  const titleSubtitle = `${fields.title} ${fields.subtitle}`.trim();
+  const corroboration = `${fields.categories} ${fields.description}`.trim();
+  const combined = `${titleSubtitle} ${corroboration}`.trim();
+  const genreScope = /\b(?:science fiction|fantasy|speculative fiction|mystery|thriller|horror|romance)\b/;
+  const referenceShape = /\b(?:reference|encyclop(?:a)?edia|encyclopedic|survey|handbook|guide|dictionary|directory|bibliograph(?:y|ies)|compendium|contributors?|entries|alphabetical)\b/;
+  const multiVolumeMarker = /\b(?:\[\s*\d+\s*volumes?\s*\]|\d+\s*-\s*volumes?|\d+\s+volumes?)\b/;
+  const alphaRangeMarker = /\b(?:a\s*-\s*z|p\s*-\s*z|[a-z]\s*-\s*[a-z])\b/;
+  const multiVolumeCorroboration: string[] = [];
+
+  if (/\b(?:encyclop(?:a)?edia|encyclopedic)\b/.test(titleSubtitle) && (genreScope.test(combined) || referenceShape.test(corroboration))) {
+    reasons.push("adult_googlebooks_reference_survey_encyclopedia_shape");
+  }
+  if (
+    /\b(?:encyclop(?:a)?edia of|reference encyclop(?:a)?edia|encyclopedic reference)\b/.test(titleSubtitle)
+    && (genreScope.test(combined) || referenceShape.test(corroboration))
+  ) {
+    reasons.push("adult_googlebooks_reference_survey_reference_encyclopedia_shape");
+  }
+  if (
+    /\b(?:compendium|dictionary|directory|handbook|reference guide|guide to)\b/.test(titleSubtitle)
+    && /\b(?:science fiction|fantasy|speculative fiction|mystery|thriller|horror|romance)\b/.test(combined)
+    && referenceShape.test(corroboration)
+  ) {
+    reasons.push("adult_googlebooks_reference_survey_compendium_dictionary_shape");
+  }
+  if (
+    /\b(?:authors?|writers?|movements?|themes?|history|scholarship|studies)\b/.test(titleSubtitle)
+    && /\b(?:science fiction|fantasy|speculative fiction)\b/.test(titleSubtitle)
+    && /\b(?:reference|survey|overview|scholar|study|studies|bibliograph|guide|companion|history)\b/.test(corroboration)
+  ) {
+    reasons.push("adult_googlebooks_reference_survey_broad_scholarship_shape");
+  }
+
+  if (multiVolumeMarker.test(titleSubtitle)) multiVolumeCorroboration.push("multi_volume_marker");
+  if (alphaRangeMarker.test(titleSubtitle)) multiVolumeCorroboration.push("alphabetical_or_range_marker");
+  if (referenceShape.test(corroboration)) multiVolumeCorroboration.push("reference_metadata");
+  if (/\b(?:contributors?|entries|alphabetical|a-z|p-z)\b/.test(corroboration)) multiVolumeCorroboration.push("entry_or_contributor_metadata");
+  if (/\b(?:women|men|authors?|writers?)\s+in\s+(?:science fiction|fantasy|speculative fiction)\b/.test(titleSubtitle)) {
+    multiVolumeCorroboration.push("survey_subject_group_title_shape");
+  }
+  if (
+    multiVolumeMarker.test(titleSubtitle)
+    && multiVolumeCorroboration.length > 1
+    && (genreScope.test(combined) || referenceShape.test(corroboration))
+  ) {
+    reasons.push("adult_googlebooks_reference_survey_multi_volume_reference_shape");
+  }
+
+  return { reasons: Array.from(new Set(reasons)), multiVolumeCorroboration: Array.from(new Set(multiVolumeCorroboration)) };
 }
 
 function adultGoogleBooksInstructionalCraftReasons(candidate: ScoredCandidate): string[] {
@@ -4556,6 +4612,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       reason: "not_adult_googlebooks_candidate",
       artifactReasons: [],
       referenceSurveyReasons: [],
+      encyclopediaReferenceReasons: [],
+      multiVolumeReferenceCorroboration: [],
       instructionalCraftReasons: [],
       narrativeEvidence: [],
       credibleFictionSignals: [],
@@ -4572,7 +4630,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       periodicalCorroboration: [],
     };
   }
-  const referenceSurveyReasons = adultGoogleBooksReferenceSurveyReasons(candidate);
+  const encyclopediaReference = adultGoogleBooksEncyclopediaReferenceSignals(candidate);
+  const referenceSurveyReasons = [...adultGoogleBooksReferenceSurveyReasons(candidate), ...encyclopediaReference.reasons];
   const instructionalCraftReasons = adultGoogleBooksInstructionalCraftReasons(candidate);
   const artifactReasons = [...adultGoogleBooksArtifactReasons(candidate), ...referenceSurveyReasons, ...instructionalCraftReasons];
   const narrativeEvidence = adultGoogleBooksNarrativeEvidence(candidate);
@@ -4600,6 +4659,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       reason: "adult_googlebooks_artifact_or_reference_shape",
       artifactReasons,
       referenceSurveyReasons,
+      encyclopediaReferenceReasons: encyclopediaReference.reasons,
+      multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
@@ -4622,6 +4683,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       reason: "adult_googlebooks_strong_juvenile_or_reference_incompatibility",
       artifactReasons: [...artifactReasons, ...incompatibilities],
       referenceSurveyReasons,
+      encyclopediaReferenceReasons: encyclopediaReference.reasons,
+      multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
@@ -4644,6 +4707,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       reason: "adult_googlebooks_missing_meaningful_document_taste_alignment",
       artifactReasons,
       referenceSurveyReasons,
+      encyclopediaReferenceReasons: encyclopediaReference.reasons,
+      multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
@@ -4674,6 +4739,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         reason: "adult_googlebooks_source_quality_not_positive",
         artifactReasons,
         referenceSurveyReasons,
+        encyclopediaReferenceReasons: encyclopediaReference.reasons,
+        multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
         instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
@@ -4695,6 +4762,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       reason: "adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override",
       artifactReasons,
       referenceSurveyReasons,
+      encyclopediaReferenceReasons: encyclopediaReference.reasons,
+      multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
@@ -4720,6 +4789,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         reason: "adult_googlebooks_missing_credible_fiction_signal",
         artifactReasons,
         referenceSurveyReasons,
+        encyclopediaReferenceReasons: encyclopediaReference.reasons,
+        multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
         instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
@@ -4742,6 +4813,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         reason: "adult_googlebooks_missing_narrative_metadata_evidence",
         artifactReasons,
         referenceSurveyReasons,
+        encyclopediaReferenceReasons: encyclopediaReference.reasons,
+        multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
         instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
@@ -4764,6 +4837,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
     reason: "adult_googlebooks_minimal_final_gate_passed",
     artifactReasons,
     referenceSurveyReasons,
+    encyclopediaReferenceReasons: encyclopediaReference.reasons,
+    multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
     instructionalCraftReasons,
     narrativeEvidence,
     credibleFictionSignals,
@@ -4856,6 +4931,8 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const periodicalCorroborationByTitle: Record<string, string[]> = {};
   const instructionalCraftReasonsByTitle: Record<string, string[]> = {};
   const referenceSurveyReasonsByTitle: Record<string, string[]> = {};
+  const encyclopediaReferenceReasonsByTitle: Record<string, string[]> = {};
+  const multiVolumeReferenceCorroborationByTitle: Record<string, string[]> = {};
   const documentBackedLikedSignalsByTitle: Record<string, string[]> = {};
   const documentBackedDislikedSignalsByTitle: Record<string, string[]> = {};
   const positiveNetTasteFamiliesByTitle: Record<string, string[]> = {};
@@ -4883,6 +4960,8 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksPeriodicalCorroborationByTitle = {};
     diagnostics.adultGoogleBooksInstructionalCraftReasonsByTitle = {};
     diagnostics.adultGoogleBooksReferenceSurveyReasonsByTitle = {};
+    diagnostics.adultGoogleBooksEncyclopediaReferenceReasonsByTitle = {};
+    diagnostics.adultGoogleBooksMultiVolumeReferenceCorroborationByTitle = {};
     diagnostics.adultGoogleBooksDocumentBackedLikedSignalsByTitle = {};
     diagnostics.adultGoogleBooksDocumentBackedDislikedSignalsByTitle = {};
     diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle = {};
@@ -4921,6 +5000,8 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     periodicalCorroborationByTitle[candidate.title] = eligibility.periodicalCorroboration;
     instructionalCraftReasonsByTitle[candidate.title] = eligibility.instructionalCraftReasons;
     referenceSurveyReasonsByTitle[candidate.title] = eligibility.referenceSurveyReasons;
+    encyclopediaReferenceReasonsByTitle[candidate.title] = eligibility.encyclopediaReferenceReasons;
+    multiVolumeReferenceCorroborationByTitle[candidate.title] = eligibility.multiVolumeReferenceCorroboration;
     documentBackedLikedSignalsByTitle[candidate.title] = eligibility.documentBackedLikedSignals;
     documentBackedDislikedSignalsByTitle[candidate.title] = eligibility.documentBackedDislikedSignals;
     positiveNetTasteFamiliesByTitle[candidate.title] = eligibility.positiveNetTasteFamilies;
@@ -4952,6 +5033,8 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksPeriodicalCorroborationByTitle = periodicalCorroborationByTitle;
   diagnostics.adultGoogleBooksInstructionalCraftReasonsByTitle = instructionalCraftReasonsByTitle;
   diagnostics.adultGoogleBooksReferenceSurveyReasonsByTitle = referenceSurveyReasonsByTitle;
+  diagnostics.adultGoogleBooksEncyclopediaReferenceReasonsByTitle = encyclopediaReferenceReasonsByTitle;
+  diagnostics.adultGoogleBooksMultiVolumeReferenceCorroborationByTitle = multiVolumeReferenceCorroborationByTitle;
   diagnostics.adultGoogleBooksDocumentBackedLikedSignalsByTitle = documentBackedLikedSignalsByTitle;
   diagnostics.adultGoogleBooksDocumentBackedDislikedSignalsByTitle = documentBackedDislikedSignalsByTitle;
   diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle = positiveNetTasteFamiliesByTitle;
