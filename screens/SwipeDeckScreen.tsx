@@ -1725,7 +1725,32 @@ function handleLeft() {
         author_name: candidate.creators.length ? candidate.creators : ["Recommender V2"],
         source: candidate.source,
         description: candidate.description,
-        first_publish_year: undefined,
+        first_publish_year: (candidate.publicationYear as number | undefined) ?? ((candidate.raw as any)?.first_publish_year as number | undefined),
+        cover_i:
+          (candidate.raw as any)?.cover_i ??
+          (candidate.raw as any)?.coverId ??
+          (candidate.raw as any)?.rawOpenLibraryDoc?.cover_i,
+        coverId:
+          (candidate.raw as any)?.coverId ??
+          (candidate.raw as any)?.cover_i ??
+          (candidate.raw as any)?.rawOpenLibraryDoc?.cover_i,
+        imageUrl:
+          (candidate.raw as any)?.imageUrl ??
+          (candidate.raw as any)?.coverImageUrl ??
+          (candidate.raw as any)?.thumbnail ??
+          (candidate.raw as any)?.imageLinks?.thumbnail ??
+          (candidate.raw as any)?.imageLinks?.smallThumbnail ??
+          (candidate.raw as any)?.volumeInfo?.imageLinks?.thumbnail ??
+          (candidate.raw as any)?.volumeInfo?.imageLinks?.smallThumbnail,
+        coverImageUrl:
+          (candidate.raw as any)?.coverImageUrl ??
+          (candidate.raw as any)?.imageUrl ??
+          (candidate.raw as any)?.thumbnail ??
+          (candidate.raw as any)?.imageLinks?.thumbnail ??
+          (candidate.raw as any)?.volumeInfo?.imageLinks?.thumbnail,
+        imageLinks:
+          (candidate.raw as any)?.imageLinks ??
+          (candidate.raw as any)?.volumeInfo?.imageLinks,
         diagnostics: {
           engine: "v2",
           source: candidate.source,
