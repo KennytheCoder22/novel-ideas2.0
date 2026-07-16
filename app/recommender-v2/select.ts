@@ -4245,10 +4245,17 @@ type AdultGoogleBooksEligibility = {
   allowed: boolean;
   reason: string;
   artifactReasons: string[];
+  referenceSurveyReasons: string[];
   instructionalCraftReasons: string[];
   narrativeEvidence: string[];
   credibleFictionSignals: string[];
   workIdentitySignals: string[];
+  documentBackedLikedSignals: string[];
+  documentBackedDislikedSignals: string[];
+  positiveNetTasteFamilies: string[];
+  meaningfulTastePassed: boolean;
+  meaningfulTasteFailureReason: string;
+  strongNarrativeOverrideBlockedByTaste: boolean;
   sourceQualityScore: number;
   sourceQualityFailureReasons: string[];
   strongNarrativeOverrideApplied: boolean;
@@ -4347,6 +4354,42 @@ function adultGoogleBooksArtifactReasons(candidate: ScoredCandidate): string[] {
   return Array.from(new Set(reasons));
 }
 
+function adultGoogleBooksReferenceSurveyReasons(candidate: ScoredCandidate): string[] {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const reasons: string[] = [];
+  const titleSubtitle = `${fields.title} ${fields.subtitle}`.trim();
+  const corroboration = `${fields.categories} ${fields.description}`.trim();
+  if (/\b(?:book reviews?|reviews? of|review of)\b/.test(titleSubtitle)) {
+    reasons.push("adult_googlebooks_reference_survey_review_shape");
+  }
+  if (
+    /\b(?:genre (?:guide|reference|survey)|critical overview|encyclopedic overview|overview of (?:science fiction|fantasy|mystery|thriller|horror|speculative fiction)|reader'?s guide|critical guide|companion to)\b/.test(titleSubtitle)
+    && /\b(?:reference|survey|overview|criticism|history|scholar|study|studies|bibliograph|guide|companion)\b/.test(corroboration)
+  ) {
+    reasons.push("adult_googlebooks_reference_survey_guide_overview_shape");
+  }
+  if (
+    /\bmasterpieces? of (?:science fiction|fantasy|mystery|thriller|horror|speculative fiction|enchantment)\b/.test(titleSubtitle)
+    && /\b(?:antholog|edited|collection|survey|reference|criticism|history|companion|guide|overview|selected by|editor)\b/.test(corroboration)
+  ) {
+    reasons.push("adult_googlebooks_reference_survey_masterpieces_collection_shape");
+  }
+  if (
+    /\b(?:nordic|scandinavian|canadian|american|british|european|french|german|japanese|latin american|african|australian|irish|scottish|regional|national)\s+speculative fiction\b/.test(titleSubtitle)
+    && /\b(?:criticism|history|survey|scholar|bibliograph|edited|studies|reference|antholog|companion|guide|overview)\b/.test(corroboration)
+  ) {
+    reasons.push("adult_googlebooks_reference_survey_regional_speculative_shape");
+  }
+  if (
+    /\b(?:top|best)\s+\d+\s+(?:science fiction|fantasy|mystery|thriller|horror|speculative fiction)?\s*(?:books?|novels?)\b/.test(titleSubtitle)
+    || (/\b(?:best|top)\s+(?:science fiction|fantasy|mystery|thriller|horror|speculative fiction)\s+(?:books?|novels?)\b/.test(titleSubtitle)
+      && /\b(?:guide|ranking|ranked|list|overview|survey|reference)\b/.test(corroboration))
+  ) {
+    reasons.push("adult_googlebooks_reference_survey_best_books_shape");
+  }
+  return Array.from(new Set(reasons));
+}
+
 function adultGoogleBooksInstructionalCraftReasons(candidate: ScoredCandidate): string[] {
   const fields = adultGoogleBooksMetadataFields(candidate);
   const reasons: string[] = [];
@@ -4363,6 +4406,61 @@ function adultGoogleBooksInstructionalCraftReasons(candidate: ScoredCandidate): 
     reasons.push("adult_googlebooks_instructional_craft_metadata_shape");
   }
   return Array.from(new Set(reasons));
+}
+
+function adultGoogleBooksDocumentBackedSignals(candidate: ScoredCandidate, field: "metadataBackedMatchedLikedSignals" | "metadataBackedMatchedDislikedSignals"): string[] {
+  const values = candidate.diagnostics?.[field];
+  return Array.isArray(values) ? uniqueSignals(values.map(String)) : [];
+}
+
+function adultGoogleBooksMeaningfulTasteEligibility(candidate: ScoredCandidate): {
+  passed: boolean;
+  reason: string;
+  likedSignals: string[];
+  dislikedSignals: string[];
+  positiveNetTasteFamilies: string[];
+} {
+  const likedSignals = adultGoogleBooksDocumentBackedSignals(candidate, "metadataBackedMatchedLikedSignals")
+    .filter((signal) => {
+      const value = normalized(signal);
+      return value
+        && !ADULT_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(value)
+        && !ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(value)
+        && value !== "literature";
+    });
+  const dislikedSignals = adultGoogleBooksDocumentBackedSignals(candidate, "metadataBackedMatchedDislikedSignals")
+    .filter((signal) => {
+      const value = normalized(signal);
+      return value
+        && !ADULT_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(value)
+        && !ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(value)
+        && value !== "literature";
+    });
+
+  const likedFamilies = likedSignals
+    .map((signal) => adultOpenLibraryPrimaryContentFamily(signal))
+    .filter(Boolean);
+  const dislikedFamilies = dislikedSignals
+    .map((signal) => adultOpenLibraryPrimaryContentFamily(signal))
+    .filter(Boolean);
+  const families = Array.from(new Set([...likedFamilies, ...dislikedFamilies]));
+  const positiveNetTasteFamilies = families
+    .filter((family) => likedFamilies.filter((v) => v === family).length > dislikedFamilies.filter((v) => v === family).length)
+    .map(String);
+
+  if (positiveNetTasteFamilies.length > 0) {
+    return { passed: true, reason: "positive_net_liked_family_document_backed", likedSignals, dislikedSignals, positiveNetTasteFamilies };
+  }
+
+  const nonFamilyLikedSignals = likedSignals.filter((signal) => !adultOpenLibraryPrimaryContentFamily(signal));
+  const nonFamilyDislikedSignals = dislikedSignals.filter((signal) => !adultOpenLibraryPrimaryContentFamily(signal));
+  if (nonFamilyLikedSignals.length > 0 && nonFamilyLikedSignals.length > nonFamilyDislikedSignals.length) {
+    return { passed: true, reason: "specific_liked_tone_theme_document_backed", likedSignals, dislikedSignals, positiveNetTasteFamilies };
+  }
+  if (likedSignals.length >= 2 && likedSignals.length > dislikedSignals.length) {
+    return { passed: true, reason: "multi_signal_document_backed_positive_support", likedSignals, dislikedSignals, positiveNetTasteFamilies };
+  }
+  return { passed: false, reason: likedSignals.length === 0 ? "no_document_backed_liked_signals" : "no_positive_net_document_backed_taste_support", likedSignals, dislikedSignals, positiveNetTasteFamilies };
 }
 
 function adultGoogleBooksNarrativeEvidence(candidate: ScoredCandidate): string[] {
@@ -4429,22 +4527,31 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       allowed: true,
       reason: "not_adult_googlebooks_candidate",
       artifactReasons: [],
+      referenceSurveyReasons: [],
       instructionalCraftReasons: [],
       narrativeEvidence: [],
       credibleFictionSignals: [],
       workIdentitySignals: [],
+      documentBackedLikedSignals: [],
+      documentBackedDislikedSignals: [],
+      positiveNetTasteFamilies: [],
+      meaningfulTastePassed: true,
+      meaningfulTasteFailureReason: "not_applicable",
+      strongNarrativeOverrideBlockedByTaste: false,
       sourceQualityScore: Number(candidate.scoreBreakdown?.sourceQualityRelevance || 0),
       sourceQualityFailureReasons: [],
       strongNarrativeOverrideApplied: false,
       periodicalCorroboration: [],
     };
   }
+  const referenceSurveyReasons = adultGoogleBooksReferenceSurveyReasons(candidate);
   const instructionalCraftReasons = adultGoogleBooksInstructionalCraftReasons(candidate);
-  const artifactReasons = [...adultGoogleBooksArtifactReasons(candidate), ...instructionalCraftReasons];
+  const artifactReasons = [...adultGoogleBooksArtifactReasons(candidate), ...referenceSurveyReasons, ...instructionalCraftReasons];
   const narrativeEvidence = adultGoogleBooksNarrativeEvidence(candidate);
   const credibleFictionSignals = adultGoogleBooksCredibleFictionSignals(candidate);
   const incompatibilities = adultGoogleBooksStrongIncompatibility(candidate);
   const workIdentitySignals = adultGoogleBooksWorkIdentitySignals(candidate);
+  const meaningfulTaste = adultGoogleBooksMeaningfulTasteEligibility(candidate);
   const periodicalCorroboration = adultGoogleBooksPeriodicalCorroboration(candidate);
   const sourceQuality = Number(candidate.scoreBreakdown?.sourceQualityRelevance || 0);
   const strongWorkIdentity = workIdentitySignals.length > 0;
@@ -4464,10 +4571,17 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       allowed: false,
       reason: "adult_googlebooks_artifact_or_reference_shape",
       artifactReasons,
+      referenceSurveyReasons,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
       workIdentitySignals,
+      documentBackedLikedSignals: meaningfulTaste.likedSignals,
+      documentBackedDislikedSignals: meaningfulTaste.dislikedSignals,
+      positiveNetTasteFamilies: meaningfulTaste.positiveNetTasteFamilies,
+      meaningfulTastePassed: meaningfulTaste.passed,
+      meaningfulTasteFailureReason: meaningfulTaste.reason,
+      strongNarrativeOverrideBlockedByTaste: false,
       sourceQualityScore: sourceQuality,
       sourceQualityFailureReasons,
       strongNarrativeOverrideApplied: false,
@@ -4479,10 +4593,39 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       allowed: false,
       reason: "adult_googlebooks_strong_juvenile_or_reference_incompatibility",
       artifactReasons: [...artifactReasons, ...incompatibilities],
+      referenceSurveyReasons,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
       workIdentitySignals,
+      documentBackedLikedSignals: meaningfulTaste.likedSignals,
+      documentBackedDislikedSignals: meaningfulTaste.dislikedSignals,
+      positiveNetTasteFamilies: meaningfulTaste.positiveNetTasteFamilies,
+      meaningfulTastePassed: meaningfulTaste.passed,
+      meaningfulTasteFailureReason: meaningfulTaste.reason,
+      strongNarrativeOverrideBlockedByTaste: false,
+      sourceQualityScore: sourceQuality,
+      sourceQualityFailureReasons,
+      strongNarrativeOverrideApplied: false,
+      periodicalCorroboration,
+    };
+  }
+  if (!meaningfulTaste.passed) {
+    return {
+      allowed: false,
+      reason: "adult_googlebooks_missing_meaningful_document_taste_alignment",
+      artifactReasons,
+      referenceSurveyReasons,
+      instructionalCraftReasons,
+      narrativeEvidence,
+      credibleFictionSignals,
+      workIdentitySignals,
+      documentBackedLikedSignals: meaningfulTaste.likedSignals,
+      documentBackedDislikedSignals: meaningfulTaste.dislikedSignals,
+      positiveNetTasteFamilies: meaningfulTaste.positiveNetTasteFamilies,
+      meaningfulTastePassed: false,
+      meaningfulTasteFailureReason: meaningfulTaste.reason,
+      strongNarrativeOverrideBlockedByTaste: true,
       sourceQualityScore: sourceQuality,
       sourceQualityFailureReasons,
       strongNarrativeOverrideApplied: false,
@@ -4495,16 +4638,24 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       && hasUsableTitle
       && hasUsableAuthor
       && hasAdultCompatibleMetadata
-      && hasNonNegativeTotalScore;
+      && hasNonNegativeTotalScore
+      && meaningfulTaste.passed;
     if (!strongNarrativeOverride) {
       return {
         allowed: false,
         reason: "adult_googlebooks_source_quality_not_positive",
         artifactReasons,
+        referenceSurveyReasons,
         instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
         workIdentitySignals,
+        documentBackedLikedSignals: meaningfulTaste.likedSignals,
+        documentBackedDislikedSignals: meaningfulTaste.dislikedSignals,
+        positiveNetTasteFamilies: meaningfulTaste.positiveNetTasteFamilies,
+        meaningfulTastePassed: meaningfulTaste.passed,
+        meaningfulTasteFailureReason: meaningfulTaste.reason,
+        strongNarrativeOverrideBlockedByTaste: meaningfulTaste.passed ? false : true,
         sourceQualityScore: sourceQuality,
         sourceQualityFailureReasons,
         strongNarrativeOverrideApplied: false,
@@ -4515,10 +4666,17 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       allowed: true,
       reason: "adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override",
       artifactReasons,
+      referenceSurveyReasons,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
       workIdentitySignals,
+      documentBackedLikedSignals: meaningfulTaste.likedSignals,
+      documentBackedDislikedSignals: meaningfulTaste.dislikedSignals,
+      positiveNetTasteFamilies: meaningfulTaste.positiveNetTasteFamilies,
+      meaningfulTastePassed: meaningfulTaste.passed,
+      meaningfulTasteFailureReason: meaningfulTaste.reason,
+      strongNarrativeOverrideBlockedByTaste: false,
       sourceQualityScore: sourceQuality,
       sourceQualityFailureReasons,
       strongNarrativeOverrideApplied: true,
@@ -4533,10 +4691,17 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         allowed: false,
         reason: "adult_googlebooks_missing_credible_fiction_signal",
         artifactReasons,
+        referenceSurveyReasons,
         instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
         workIdentitySignals,
+        documentBackedLikedSignals: meaningfulTaste.likedSignals,
+        documentBackedDislikedSignals: meaningfulTaste.dislikedSignals,
+        positiveNetTasteFamilies: meaningfulTaste.positiveNetTasteFamilies,
+        meaningfulTastePassed: meaningfulTaste.passed,
+        meaningfulTasteFailureReason: meaningfulTaste.reason,
+        strongNarrativeOverrideBlockedByTaste: false,
         sourceQualityScore: sourceQuality,
         sourceQualityFailureReasons,
         strongNarrativeOverrideApplied: false,
@@ -4548,10 +4713,17 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         allowed: false,
         reason: "adult_googlebooks_missing_narrative_metadata_evidence",
         artifactReasons,
+        referenceSurveyReasons,
         instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
         workIdentitySignals,
+        documentBackedLikedSignals: meaningfulTaste.likedSignals,
+        documentBackedDislikedSignals: meaningfulTaste.dislikedSignals,
+        positiveNetTasteFamilies: meaningfulTaste.positiveNetTasteFamilies,
+        meaningfulTastePassed: meaningfulTaste.passed,
+        meaningfulTasteFailureReason: meaningfulTaste.reason,
+        strongNarrativeOverrideBlockedByTaste: false,
         sourceQualityScore: sourceQuality,
         sourceQualityFailureReasons,
         strongNarrativeOverrideApplied: false,
@@ -4563,10 +4735,17 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
     allowed: true,
     reason: "adult_googlebooks_minimal_final_gate_passed",
     artifactReasons,
+    referenceSurveyReasons,
     instructionalCraftReasons,
     narrativeEvidence,
     credibleFictionSignals,
     workIdentitySignals,
+    documentBackedLikedSignals: meaningfulTaste.likedSignals,
+    documentBackedDislikedSignals: meaningfulTaste.dislikedSignals,
+    positiveNetTasteFamilies: meaningfulTaste.positiveNetTasteFamilies,
+    meaningfulTastePassed: meaningfulTaste.passed,
+    meaningfulTasteFailureReason: meaningfulTaste.reason,
+    strongNarrativeOverrideBlockedByTaste: false,
     sourceQualityScore: sourceQuality,
     sourceQualityFailureReasons,
     strongNarrativeOverrideApplied: false,
@@ -4645,8 +4824,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const sourceQualityScoreByTitle: Record<string, number> = {};
   const sourceQualityFailureReasonsByTitle: Record<string, string[]> = {};
   const strongNarrativeOverrideAppliedByTitle: Record<string, boolean> = {};
+  const strongNarrativeOverrideBlockedByTasteByTitle: Record<string, boolean> = {};
   const periodicalCorroborationByTitle: Record<string, string[]> = {};
   const instructionalCraftReasonsByTitle: Record<string, string[]> = {};
+  const referenceSurveyReasonsByTitle: Record<string, string[]> = {};
+  const documentBackedLikedSignalsByTitle: Record<string, string[]> = {};
+  const documentBackedDislikedSignalsByTitle: Record<string, string[]> = {};
+  const positiveNetTasteFamiliesByTitle: Record<string, string[]> = {};
+  const meaningfulTastePassedByTitle: Record<string, boolean> = {};
+  const meaningfulTasteFailureReasonByTitle: Record<string, string> = {};
   const rejectedTitlesByReason: Record<string, string[]> = {};
   const acceptedTitles: string[] = [];
   if (profile.ageBand !== "adult") {
@@ -4659,8 +4845,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksSourceQualityScoreByTitle = {};
     diagnostics.adultGoogleBooksSourceQualityFailureReasonsByTitle = {};
     diagnostics.adultGoogleBooksStrongNarrativeOverrideAppliedByTitle = {};
+    diagnostics.adultGoogleBooksStrongNarrativeOverrideBlockedByTasteByTitle = {};
     diagnostics.adultGoogleBooksPeriodicalCorroborationByTitle = {};
     diagnostics.adultGoogleBooksInstructionalCraftReasonsByTitle = {};
+    diagnostics.adultGoogleBooksReferenceSurveyReasonsByTitle = {};
+    diagnostics.adultGoogleBooksDocumentBackedLikedSignalsByTitle = {};
+    diagnostics.adultGoogleBooksDocumentBackedDislikedSignalsByTitle = {};
+    diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle = {};
+    diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle = {};
+    diagnostics.adultGoogleBooksMeaningfulTasteFailureReasonByTitle = {};
     diagnostics.adultGoogleBooksRejectedTitlesByReason = {};
     diagnostics.adultGoogleBooksAcceptedTitles = [];
     return;
@@ -4677,8 +4870,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     sourceQualityScoreByTitle[candidate.title] = eligibility.sourceQualityScore;
     sourceQualityFailureReasonsByTitle[candidate.title] = eligibility.sourceQualityFailureReasons;
     strongNarrativeOverrideAppliedByTitle[candidate.title] = eligibility.strongNarrativeOverrideApplied;
+    strongNarrativeOverrideBlockedByTasteByTitle[candidate.title] = eligibility.strongNarrativeOverrideBlockedByTaste;
     periodicalCorroborationByTitle[candidate.title] = eligibility.periodicalCorroboration;
     instructionalCraftReasonsByTitle[candidate.title] = eligibility.instructionalCraftReasons;
+    referenceSurveyReasonsByTitle[candidate.title] = eligibility.referenceSurveyReasons;
+    documentBackedLikedSignalsByTitle[candidate.title] = eligibility.documentBackedLikedSignals;
+    documentBackedDislikedSignalsByTitle[candidate.title] = eligibility.documentBackedDislikedSignals;
+    positiveNetTasteFamiliesByTitle[candidate.title] = eligibility.positiveNetTasteFamilies;
+    meaningfulTastePassedByTitle[candidate.title] = eligibility.meaningfulTastePassed;
+    meaningfulTasteFailureReasonByTitle[candidate.title] = eligibility.meaningfulTasteFailureReason;
     if (eligibility.allowed && selectedTitleSet.has(normalized(candidate.title))) {
       acceptedTitles.push(candidate.title);
     } else if (!eligibility.allowed) {
@@ -4695,8 +4895,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksSourceQualityScoreByTitle = sourceQualityScoreByTitle;
   diagnostics.adultGoogleBooksSourceQualityFailureReasonsByTitle = sourceQualityFailureReasonsByTitle;
   diagnostics.adultGoogleBooksStrongNarrativeOverrideAppliedByTitle = strongNarrativeOverrideAppliedByTitle;
+  diagnostics.adultGoogleBooksStrongNarrativeOverrideBlockedByTasteByTitle = strongNarrativeOverrideBlockedByTasteByTitle;
   diagnostics.adultGoogleBooksPeriodicalCorroborationByTitle = periodicalCorroborationByTitle;
   diagnostics.adultGoogleBooksInstructionalCraftReasonsByTitle = instructionalCraftReasonsByTitle;
+  diagnostics.adultGoogleBooksReferenceSurveyReasonsByTitle = referenceSurveyReasonsByTitle;
+  diagnostics.adultGoogleBooksDocumentBackedLikedSignalsByTitle = documentBackedLikedSignalsByTitle;
+  diagnostics.adultGoogleBooksDocumentBackedDislikedSignalsByTitle = documentBackedDislikedSignalsByTitle;
+  diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle = positiveNetTasteFamiliesByTitle;
+  diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle = meaningfulTastePassedByTitle;
+  diagnostics.adultGoogleBooksMeaningfulTasteFailureReasonByTitle = meaningfulTasteFailureReasonByTitle;
   diagnostics.adultGoogleBooksRejectedTitlesByReason = rejectedTitlesByReason;
   diagnostics.adultGoogleBooksAcceptedTitles = acceptedTitles;
 }
