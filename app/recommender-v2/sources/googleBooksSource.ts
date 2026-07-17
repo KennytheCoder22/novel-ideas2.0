@@ -5,6 +5,53 @@ const GOOGLE_BOOKS_ADAPTER_VERSION = "v5";
 const GOOGLE_BOOKS_RESPONSE_BODY_PREFIX_LIMIT = 240;
 const GOOGLE_BOOKS_MAX_RESULTS_PER_QUERY = 24;
 
+type GoogleBooksPublicationShape =
+  | "novel"
+  | "series_installment"
+  | "story_collection"
+  | "anthology"
+  | "essay_collection"
+  | "reference"
+  | "critical_study"
+  | "academic_text"
+  | "interview_collection"
+  | "author_commentary"
+  | "writing_guide"
+  | "readers_advisory"
+  | "genre_survey"
+  | "literary_history"
+  | "public_domain_compilation"
+  | "nonfiction"
+  | "unknown";
+
+type GoogleBooksPublicationShapeAnalysis = {
+  shape: GoogleBooksPublicationShape;
+  narrativeConfidence: number;
+  evidence: string[];
+  narrativePriorityAdjustment: number;
+};
+
+const GOOGLE_BOOKS_NON_NARRATIVE_SHAPES = new Set<GoogleBooksPublicationShape>([
+  "reference",
+  "critical_study",
+  "academic_text",
+  "interview_collection",
+  "author_commentary",
+  "writing_guide",
+  "readers_advisory",
+  "genre_survey",
+  "literary_history",
+  "public_domain_compilation",
+  "nonfiction",
+]);
+
+const GOOGLE_BOOKS_MAINSTREAM_FICTION_PUBLISHER_PATTERN = /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/;
+const GOOGLE_BOOKS_ACADEMIC_PUBLISHER_PATTERN = /\b(university press|cambridge university|oxford university|routledge|palgrave|springer|bloomsbury academic|brill|de gruyter|mcfarland|greenwood|scarecrow press|rowman\s*&?\s*littlefield|edinburgh university|duke university|yale university|harvard university|princeton university)\b/;
+
+function clampShapeScore(value: number): number {
+  return Math.max(-12, Math.min(8, Math.round(value * 100) / 100));
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -72,6 +119,155 @@ function hasNarrativeDescriptionEvidence(description: string): boolean {
 function hasFictionPublisherEvidence(publisher: string): boolean {
   const text = normalizeText(publisher);
   return /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/.test(text);
+}
+
+function googleBooksPublicationShapeDropReason(analysis: GoogleBooksPublicationShapeAnalysis): string | undefined {
+  if (GOOGLE_BOOKS_NON_NARRATIVE_SHAPES.has(analysis.shape)) return `publication_shape_${analysis.shape}`;
+  if (analysis.shape === "anthology" || analysis.shape === "essay_collection") return `publication_shape_${analysis.shape}`;
+  return undefined;
+}
+
+function inferGoogleBooksPublicationShape(params: {
+  title: string;
+  subtitle?: string;
+  description?: string;
+  categories: string[];
+  publisher?: string;
+  authors: string[];
+  publicationYear?: number;
+  isbnPresent?: boolean;
+  pageCount?: number;
+}): GoogleBooksPublicationShapeAnalysis {
+  const titleText = normalizeText([params.title, params.subtitle].filter(Boolean).join(" "));
+  const descriptionText = normalizeText(params.description || "");
+  const categoryBlob = categoryText(params.categories);
+  const publisherText = normalizeText(params.publisher || "");
+  const authorText = normalizeText(params.authors.join(" "));
+  const allText = [titleText, descriptionText, categoryBlob, publisherText, authorText].filter(Boolean).join(" | ");
+  const evidence: string[] = [];
+  let narrativeConfidence = 0;
+
+  const fictionCategory = /\b(fiction|novels?|stories|detective and mystery|mystery|thriller|fantasy|science fiction|historical fiction|romance fiction|horror tales|adventure stories|speculative fiction|suspense fiction)\b/.test(categoryBlob)
+    && !/\b(literary criticism|history and criticism|bibliograph(?:y|ies)|reference|study aids?|education|language arts)\b/.test(categoryBlob);
+  const narrativeDescription = hasNarrativeDescriptionEvidence(params.description || "");
+  const novelIdentity = /\b(a novel|novel)\b/.test(titleText) || /\b(a novel|novel)\b/.test(descriptionText);
+  const mainstreamFictionPublisher = GOOGLE_BOOKS_MAINSTREAM_FICTION_PUBLISHER_PATTERN.test(publisherText);
+  const academicPublisher = GOOGLE_BOOKS_ACADEMIC_PUBLISHER_PATTERN.test(publisherText);
+
+  if (fictionCategory) {
+    evidence.push("fiction_category");
+    narrativeConfidence += 2;
+  }
+  if (narrativeDescription) {
+    evidence.push("narrative_synopsis_description");
+    narrativeConfidence += 3;
+  }
+  if (novelIdentity) {
+    evidence.push("novel_identity_marker");
+    narrativeConfidence += 2;
+  }
+  if (mainstreamFictionPublisher && (fictionCategory || narrativeDescription || novelIdentity)) {
+    evidence.push("mainstream_fiction_publisher");
+    narrativeConfidence += 1;
+  }
+  if (params.isbnPresent && (fictionCategory || narrativeDescription || novelIdentity)) {
+    evidence.push("isbn_backed_fiction_record");
+    narrativeConfidence += 0.75;
+  }
+  if (Number.isFinite(Number(params.pageCount)) && Number(params.pageCount) >= 140 && (fictionCategory || narrativeDescription || novelIdentity)) {
+    evidence.push("book_length_fiction_shape");
+    narrativeConfidence += 0.5;
+  }
+
+  const referenceShape = /\b(encyclop(?:a)?edia|dictionary|directory|catalog(?:ue)?|bibliograph(?:y|ies)|index|almanac|companion to|reader'?s companion|reference guide)\b/.test(allText)
+    || /\b(reference|bibliographies? and indexes|catalogs?|directories)\b/.test(categoryBlob);
+  const writingGuideShape = /\b(how to write|writing fiction|creative writing|writer'?s guide|writing guide|handbook for writers|craft of fiction|plotting|character development guide|writer'?s market|guide to literary agents?)\b/.test(allText);
+  const readersAdvisoryShape = /\b(readers'? advisory|reader'?s advisory|recommended reads?|what do i read next|genreflecting|library advisory|book reviews? of fiction)\b/.test(allText);
+  const interviewShape = /\b(conversations with|interviews? with|interview collection|talks with)\b/.test(titleText) || /\b(interviews?|conversations)\b/.test(categoryBlob);
+  const commentaryShape = /\b(?:about|on)\s+(?:the\s+)?(?:author|works?|novels?|fiction)\b/.test(titleText)
+    || /\b(author commentary|companion to|critical companion|casebook)\b/.test(allText);
+  const criticismShape = /\b(literary criticism|history and criticism|criticism and interpretation|critical (?:study|analysis|essays?)|critical studies|studies in|readings in|analysis of|scholarship|theory|theoretical|posthumanist|cultural study)\b/.test(allText);
+  const genreSurveyShape = /\b(history of (?:mystery|crime|horror|fantasy|science fiction|romance|gothic|detective)|survey of (?:mystery|crime|horror|fantasy|science fiction|romance)|genre studies?|genre survey|books about (?:horror|mystery|crime|fantasy|science fiction|romance))\b/.test(allText);
+  const literaryHistoryShape = /\b(history of literature|literary history|history of (?:american|english|british|world) literature|literature and culture)\b/.test(allText);
+  const anthologyShape = /\b(antholog(?:y|ies)|omnibus|collected stories|selected stories|complete stories|great short stories|great tales|masterpieces of|best of the year|year'?s best|annual collection|edited by|selected by)\b/.test(allText);
+  const essayCollectionShape = /\b(essay collection|critical essays?|essays on|collected essays)\b/.test(allText)
+    || (/\bessays?\b/.test(titleText) && !novelIdentity);
+  const publicDomainCompilationShape = (Number.isFinite(Number(params.publicationYear)) && Number(params.publicationYear) < 1950)
+    && (/\b(complete works?|collected works?|selected works?|library edition|public domain|masterpieces|omnibus|volume\s+\d+)\b/.test(titleText)
+      || /\b(literary criticism|history and criticism|bibliograph(?:y|ies)|reference)\b/.test(categoryBlob)
+      || (!params.isbnPresent && !narrativeDescription));
+  const nonfictionShape = /\b(nonfiction|non-fiction|biography|autobiography|memoir|essays?|history|philosophy|reference|business|language arts|education|study aids?|travel|self-help|psychology|political science|social science|science|medical|technology|computers?)\b/.test(categoryBlob)
+    && !fictionCategory
+    && !/\b(true crime|narrative nonfiction)\b/.test(categoryBlob);
+
+  let shape: GoogleBooksPublicationShape = "unknown";
+  if (readersAdvisoryShape) {
+    shape = "readers_advisory";
+    evidence.push("readers_advisory_publication_shape");
+  } else if (writingGuideShape) {
+    shape = "writing_guide";
+    evidence.push("writing_instruction_publication_shape");
+  } else if (referenceShape) {
+    shape = "reference";
+    evidence.push("reference_publication_shape");
+  } else if (criticismShape && academicPublisher) {
+    shape = "academic_text";
+    evidence.push("academic_publisher_criticism_shape");
+  } else if (criticismShape) {
+    shape = "critical_study";
+    evidence.push("criticism_or_scholarship_shape");
+  } else if (interviewShape) {
+    shape = "interview_collection";
+    evidence.push("interview_collection_shape");
+  } else if (commentaryShape && !fictionCategory) {
+    shape = "author_commentary";
+    evidence.push("author_or_work_commentary_shape");
+  } else if (genreSurveyShape) {
+    shape = "genre_survey";
+    evidence.push("genre_survey_shape");
+  } else if (literaryHistoryShape) {
+    shape = "literary_history";
+    evidence.push("literary_history_shape");
+  } else if (publicDomainCompilationShape) {
+    shape = "public_domain_compilation";
+    evidence.push("public_domain_compilation_shape");
+  } else if (essayCollectionShape) {
+    shape = "essay_collection";
+    evidence.push("essay_collection_shape");
+  } else if (anthologyShape) {
+    shape = "anthology";
+    evidence.push("anthology_or_omnibus_shape");
+  } else if (nonfictionShape) {
+    shape = "nonfiction";
+    evidence.push("nonfiction_category_without_fiction_shape");
+  } else if (/\b(?:book|volume|vol\.?|part|#)\s*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/.test(titleText) && narrativeConfidence > 0) {
+    shape = "series_installment";
+    evidence.push("numbered_series_installment_shape");
+    narrativeConfidence += 1;
+  } else if (/\b(short stories|stories)\b/.test(titleText) && narrativeConfidence > 0) {
+    shape = "story_collection";
+    evidence.push("story_collection_shape");
+    narrativeConfidence += 0.5;
+  } else if (narrativeConfidence >= 2) {
+    shape = "novel";
+    evidence.push("novel_or_narrative_fiction_shape");
+  }
+
+  let narrativePriorityAdjustment = 0;
+  if (shape === "novel") narrativePriorityAdjustment += 5;
+  else if (shape === "series_installment") narrativePriorityAdjustment += 3;
+  else if (shape === "story_collection") narrativePriorityAdjustment -= 2;
+  else if (shape === "anthology" || shape === "essay_collection") narrativePriorityAdjustment -= 6;
+  else if (GOOGLE_BOOKS_NON_NARRATIVE_SHAPES.has(shape)) narrativePriorityAdjustment -= 10;
+  if (narrativeConfidence >= 5) narrativePriorityAdjustment += 1;
+  if (narrativeConfidence <= 0) narrativePriorityAdjustment -= 1;
+
+  return {
+    shape,
+    narrativeConfidence: clampShapeScore(narrativeConfidence),
+    evidence: Array.from(new Set(evidence)).slice(0, 12),
+    narrativePriorityAdjustment: clampShapeScore(narrativePriorityAdjustment),
+  };
 }
 
 function googleBooksPeriodicalCorroboration(titleText: string, subtitleText: string, normalizedDescription: string, categoriesText: string, combined: string): string[] {
@@ -302,6 +498,11 @@ function emptyDiagnostics(
     googleBooksSourceDropReasons: {},
     googleBooksSourceStatus: status,
     googleBooksSourceAdapterVersion: GOOGLE_BOOKS_ADAPTER_VERSION,
+    googleBooksPublicationShapeByTitle: {},
+    googleBooksNarrativeConfidenceByTitle: {},
+    googleBooksPublicationShapeEvidenceByTitle: {},
+    googleBooksNarrativePriorityAdjustmentByTitle: {},
+    googleBooksPublicationShapeRejectedBeforeRankingByTitle: {},
     ...overrides,
   };
 }
@@ -370,6 +571,11 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const printTypeByTitle: Record<string, string> = {};
     const languageByTitle: Record<string, string> = {};
     const maturityRatingByTitle: Record<string, string> = {};
+    const publicationShapeByTitle: Record<string, string> = {};
+    const narrativeConfidenceByTitle: Record<string, number> = {};
+    const publicationShapeEvidenceByTitle: Record<string, string[]> = {};
+    const narrativePriorityAdjustmentByTitle: Record<string, number> = {};
+    const publicationShapeRejectedBeforeRankingByTitle: Record<string, string> = {};
     const perQueryQuality: Record<string, {
       query: string;
       rawResultCount: number;
@@ -499,12 +705,6 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         const categories = stringArray(volumeInfo.categories);
         const publisher = String(volumeInfo.publisher || "").trim();
         const description = descriptionFromVolume(row, volumeInfo);
-        const artifactDropReason = googleBooksArtifactDropReason(title, String(volumeInfo.subtitle || "").trim(), description, categories, publisher);
-        if (artifactDropReason) {
-          dropReasons[artifactDropReason] = Number(dropReasons[artifactDropReason] || 0) + 1;
-          droppedBeforeNormalization += 1;
-          continue;
-        }
         const imageLinks = (volumeInfo.imageLinks && typeof volumeInfo.imageLinks === "object")
           ? (volumeInfo.imageLinks as Record<string, unknown>)
           : {};
@@ -527,6 +727,31 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         );
         const averageRating = Number.isFinite(Number(volumeInfo.averageRating)) ? Number(volumeInfo.averageRating) : undefined;
         const ratingsCount = Number.isFinite(Number(volumeInfo.ratingsCount)) ? Number(volumeInfo.ratingsCount) : 0;
+        const pageCount = Number.isFinite(Number(volumeInfo.pageCount)) ? Number(volumeInfo.pageCount) : undefined;
+        const shapeAnalysis = inferGoogleBooksPublicationShape({
+          title,
+          subtitle: String(volumeInfo.subtitle || "").trim() || undefined,
+          description,
+          categories,
+          publisher,
+          authors,
+          publicationYear,
+          isbnPresent: hasIsbn,
+          pageCount,
+        });
+        publicationShapeByTitle[title] = shapeAnalysis.shape;
+        narrativeConfidenceByTitle[title] = shapeAnalysis.narrativeConfidence;
+        publicationShapeEvidenceByTitle[title] = shapeAnalysis.evidence;
+        narrativePriorityAdjustmentByTitle[title] = shapeAnalysis.narrativePriorityAdjustment;
+        const publicationShapeDropReason = googleBooksPublicationShapeDropReason(shapeAnalysis);
+        const artifactDropReason = googleBooksArtifactDropReason(title, String(volumeInfo.subtitle || "").trim(), description, categories, publisher);
+        const dropReason = publicationShapeDropReason || artifactDropReason;
+        if (dropReason) {
+          dropReasons[dropReason] = Number(dropReasons[dropReason] || 0) + 1;
+          if (publicationShapeDropReason) publicationShapeRejectedBeforeRankingByTitle[title] = publicationShapeDropReason;
+          droppedBeforeNormalization += 1;
+          continue;
+        }
 
         const rawRow = {
           id: `googleBooks:${volumeId}`,
@@ -544,7 +769,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           publisher: publisher || undefined,
           publishedDate,
           publicationYear,
-          pageCount: Number.isFinite(Number(volumeInfo.pageCount)) ? Number(volumeInfo.pageCount) : undefined,
+          pageCount,
           ratingsCount: Number.isFinite(Number(volumeInfo.ratingsCount)) ? Number(volumeInfo.ratingsCount) : undefined,
           averageRating,
           language: String(volumeInfo.language || "").trim() || undefined,
@@ -571,6 +796,10 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           originalPlannedQuery: plannedIntent.originalPlannedQuery,
           queryCascadeIndex: plannedIntent.queryCascadeIndex,
           facets: plannedIntent.facets,
+          googleBooksPublicationShape: shapeAnalysis.shape,
+          googleBooksNarrativeConfidence: shapeAnalysis.narrativeConfidence,
+          googleBooksPublicationShapeEvidence: shapeAnalysis.evidence,
+          googleBooksNarrativePriorityAdjustment: shapeAnalysis.narrativePriorityAdjustment,
         };
 
         rawItems.push(rawRow);
@@ -664,6 +893,11 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       googleBooksPrintTypeByTitle: printTypeByTitle,
       googleBooksMaturityRatingByTitle: maturityRatingByTitle,
       googleBooksQueryByTitle: queryByTitle,
+      googleBooksPublicationShapeByTitle: publicationShapeByTitle,
+      googleBooksNarrativeConfidenceByTitle: narrativeConfidenceByTitle,
+      googleBooksPublicationShapeEvidenceByTitle: publicationShapeEvidenceByTitle,
+      googleBooksNarrativePriorityAdjustmentByTitle: narrativePriorityAdjustmentByTitle,
+      googleBooksPublicationShapeRejectedBeforeRankingByTitle: publicationShapeRejectedBeforeRankingByTitle,
       googleBooksModernNarrativeCountByQuery: modernNarrativeCountByQuery,
       googleBooksPublicDomainCatalogShapeCountByQuery: publicDomainCatalogShapeCountByQuery,
       googleBooksQueryResultQualityByQuery: perQueryQuality,

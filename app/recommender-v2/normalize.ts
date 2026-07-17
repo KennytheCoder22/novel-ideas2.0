@@ -68,6 +68,10 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           adultPostFinalEligibilityRecovery: row.adultPostFinalEligibilityRecovery,
           adultPostFinalEligibilityRecoveryQuery: row.adultPostFinalEligibilityRecoveryQuery,
           emergencyFallback: row.emergencyFallback,
+          googleBooksPublicationShape: row.googleBooksPublicationShape,
+          googleBooksNarrativeConfidence: row.googleBooksNarrativeConfidence,
+          googleBooksPublicationShapeEvidence: row.googleBooksPublicationShapeEvidence,
+          googleBooksNarrativePriorityAdjustment: row.googleBooksNarrativePriorityAdjustment,
           authors: row.authors || row.author_name || row.creators,
         },
       });
