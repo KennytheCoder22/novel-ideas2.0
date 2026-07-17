@@ -1877,7 +1877,7 @@ function handleLeft() {
       "rendererOutput",
     ];
     const stageSetByName: Record<string, Set<string>> = Object.fromEntries(
-      Object.entries(stages).map(([stage, titles]) => [stage, new Set((titles || []).map((title) => String(title || "").trim().toLowerCase()).filter(Boolean)]),
+      Object.entries(stages).map(([stage, titles]) => [stage, new Set((titles || []).map((title) => String(title || "").trim().toLowerCase()).filter(Boolean))]),
     );
     const allTitles = uniqueTitles(stageOrder.flatMap((stage) => stages[stage] || []));
     const droppedStageByTitle: Record<string, string> = {};
