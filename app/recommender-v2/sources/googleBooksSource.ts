@@ -230,6 +230,25 @@ function googleBooksSubjectOfStudyTitleEvidence(titleText: string): string[] {
   return Array.from(new Set(evidence));
 }
 
+function googleBooksBundledPublicationEvidence(titleText: string, descriptionText: string, categoryBlob: string): string[] {
+  const evidence: string[] = [];
+  if (!/\bmegapack\b/.test(titleText)) return evidence;
+  const text = [titleText, descriptionText, categoryBlob].filter(Boolean).join(" | ");
+  if (/\b\d+\s+(?:classic\s+)?(?:novels?|stories|tales|books?|works?)\b/.test(text)) {
+    evidence.push("megapack_multiple_works_count");
+  }
+  if (/\b(?:stories|tales|short stories|collection|antholog(?:y|ies)|omnibus|bundle|boxed set|collected works?)\b/.test(text)) {
+    evidence.push("megapack_collection_or_omnibus_framing");
+  }
+  if (/\b(?:fantasy|science fiction|sci fi|speculative|mystery|thriller|horror|romance|western|adventure)\b/.test(titleText)) {
+    evidence.push("megapack_genre_collection_title");
+  }
+  if (/\b(?:[a-z]\.?\s*){1,4}[a-z]{2,}\s+(?:fantasy|science fiction|sci fi|speculative|mystery|thriller|horror|romance|western|adventure)\s+(?:and\s+)?(?:fantasy|science fiction|sci fi|speculative|mystery|thriller|horror|romance|western|adventure)?\s*megapack\b/.test(titleText)) {
+    evidence.push("megapack_author_genre_collection_title");
+  }
+  return Array.from(new Set(evidence));
+}
+
 function googleBooksCuratedBookGuideEvidence(titleText: string, descriptionText: string, categoryBlob: string): string[] {
   const evidence: string[] = [];
   const normalized = normalizeText(titleText)
@@ -412,6 +431,11 @@ function inferGoogleBooksPublicationShape(params: {
   const subjectOfStudyTitle = subjectOfStudyEvidence.length > 0;
   const craftGuideTitleShape = /\b(?:the\s+)?art\s+(?:&|and)\s+practice\s+of\b/.test(titleText)
     || /\b(?:craft|practice|technique|manual)\s+of\s+(?:writing|fiction|novels?)\b/.test(titleText);
+  const techniqueInstructionalEvidence = /\b(?:the\s+)?technique\s+of\s+(?:the\s+)?(?:mystery|detective|thriller|suspense|horror|fantasy|science fiction|sci fi|romance|story|novel|fiction)\b/.test(titleText)
+    && (/\b(?:writing|writers?|authorship|language arts|literary criticism|history and criticism|study aids?|reference|education)\b/.test(categoryBlob)
+      || /\b(?:technique|craft|writing|writer|plot|plotting|story structure|narrative structure|analysis|study|criticism|theory|storytelling|story-telling|how to)\b/.test(descriptionText));
+  const howGenreWorksEvidence = /\bhow\s+(?:the\s+)?(?:mystery|detective|thriller|suspense|horror|fantasy|science fiction|sci fi|romance|story|novel|fiction)\s+works\b/.test(titleText)
+    && /\b(?:writing|craft|analysis|study|criticism|genre|form|structure|theory)\b/.test([descriptionText, categoryBlob].join(" "));
   const studyTitleShape = /\b(comparison of|analysis of|a study of|study of|study guide|teaching|understanding|interpretation of|themes in|systems of|methods to|methods of)\b/.test(titleText);
   const readingStudyShape = /\breading\s+[a-z0-9][a-z0-9' -]{2,80}\b/.test(titleText)
     && (/\b(literary criticism|history and criticism|study aids?|education|language arts|bibliograph(?:y|ies)|criticism)\b/.test(categoryBlob)
@@ -427,7 +451,9 @@ function inferGoogleBooksPublicationShape(params: {
   const genreSurveyShape = /\b(history of (?:mystery|crime|horror|fantasy|science fiction|romance|gothic|detective)|survey of (?:mystery|crime|horror|fantasy|science fiction|romance)|genre studies?|genre survey|books about (?:horror|mystery|crime|fantasy|science fiction|romance))\b/.test(allText)
     || (ambiguousNovelFormTitle && !/\ba novel\b/.test(titleText));
   const literaryHistoryShape = /\b(history of literature|literary history|history of (?:american|english|british|world) literature|literature and culture)\b/.test(allText);
-  const anthologyShape = /\b(antholog(?:y|ies)|omnibus|collected stories|selected stories|complete stories|great short stories|great tales|masterpieces of|best of the year|year'?s best|annual collection|edited by|selected by)\b/.test(allText);
+  const bundledPublicationEvidence = googleBooksBundledPublicationEvidence(titleText, descriptionText, categoryBlob);
+  const anthologyShape = bundledPublicationEvidence.length > 0
+    || /\b(antholog(?:y|ies)|omnibus|collected stories|selected stories|complete stories|great short stories|great tales|masterpieces of|best of the year|year'?s best|annual collection|edited by|selected by)\b/.test(allText);
   const essayCollectionShape = /\b(essay collection|critical essays?|essays on|collected essays)\b/.test(allText)
     || (/\bessays?\b/.test(titleText) && !novelIdentity);
   const publicDomainCompilationShape = (Number.isFinite(Number(params.publicationYear)) && Number(params.publicationYear) < 1950)
@@ -440,7 +466,7 @@ function inferGoogleBooksPublicationShape(params: {
 
   const explicitShapeCandidates: Array<{ shape: GoogleBooksPublicationShape; evidence: string[]; decision: string }> = [];
   if (periodicalShape) explicitShapeCandidates.push({ shape: "periodical", evidence: periodicalIdentityEvidence, decision: periodicalIdentityDecision });
-  if (writingGuideShape || craftGuideTitleShape) explicitShapeCandidates.push({ shape: "writing_guide", evidence: [craftGuideTitleShape ? "craft_or_art_practice_title_shape" : "writing_instruction_publication_shape"], decision: "writing_guide_identity_overrides_narrative_signals" });
+  if (writingGuideShape || craftGuideTitleShape || techniqueInstructionalEvidence || howGenreWorksEvidence) explicitShapeCandidates.push({ shape: "writing_guide", evidence: [techniqueInstructionalEvidence ? "technique_or_craft_instruction_title_shape" : howGenreWorksEvidence ? "how_genre_form_works_instruction_title_shape" : craftGuideTitleShape ? "craft_or_art_practice_title_shape" : "writing_instruction_publication_shape"], decision: "writing_guide_identity_overrides_narrative_signals" });
   if (readersAdvisoryShape) explicitShapeCandidates.push({ shape: "readers_advisory", evidence: curatedBookGuideIdentity ? curatedBookGuideEvidence : ["readers_advisory_publication_shape"], decision: "readers_advisory_identity_overrides_narrative_signals" });
   if (genericCategoryTitle) explicitShapeCandidates.push({ shape: "generic_category_catalog", evidence: genericCategoryEvidence, decision: "generic_category_title_overrides_narrative_signals" });
   if (referenceShape) explicitShapeCandidates.push({ shape: "reference", evidence: ["reference_publication_shape"], decision: "reference_identity_overrides_narrative_signals" });
@@ -452,7 +478,7 @@ function inferGoogleBooksPublicationShape(params: {
   if (commentaryShape) explicitShapeCandidates.push({ shape: "author_commentary", evidence: ["author_or_work_commentary_shape"], decision: "commentary_about_work_or_author_overrides_narrative_signals" });
   if (genreSurveyShape) explicitShapeCandidates.push({ shape: "genre_survey", evidence: ["genre_survey_shape"], decision: "genre_survey_identity_overrides_narrative_signals" });
   if (literaryHistoryShape) explicitShapeCandidates.push({ shape: "literary_history", evidence: ["literary_history_shape"], decision: "literary_history_identity_overrides_narrative_signals" });
-  if (anthologyShape) explicitShapeCandidates.push({ shape: "anthology", evidence: ["anthology_or_omnibus_shape"], decision: "anthology_identity_overrides_narrative_signals" });
+  if (anthologyShape) explicitShapeCandidates.push({ shape: "anthology", evidence: bundledPublicationEvidence.length ? bundledPublicationEvidence : ["anthology_or_omnibus_shape"], decision: "anthology_identity_overrides_narrative_signals" });
   if (essayCollectionShape) explicitShapeCandidates.push({ shape: "essay_collection", evidence: ["essay_collection_shape"], decision: "essay_collection_identity_overrides_narrative_signals" });
   if (miscellanyShape) explicitShapeCandidates.push({ shape: "miscellany", evidence: ["miscellany_or_digest_shape"], decision: "miscellany_identity_overrides_narrative_signals" });
   if (publicDomainCompilationShape) explicitShapeCandidates.push({ shape: "public_domain_compilation", evidence: ["public_domain_compilation_shape"], decision: "public_domain_compilation_identity_overrides_narrative_signals" });

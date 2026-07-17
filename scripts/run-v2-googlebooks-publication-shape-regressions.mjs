@@ -74,6 +74,34 @@ const fixtures = [
     "Readers Advisory Press",
   ),
   googleBook(
+    "megapack-science-fantasy",
+    "The Science-Fantasy MEGAPACK\u00ae: 4 Classic Novels",
+    "A bundled MEGAPACK collection of four classic novels of science-fantasy adventure by multiple authors.",
+    ["Fiction / Science Fiction / Collections & Anthologies", "Fiction / Fantasy / Collections & Anthologies"],
+    "Wildside Press",
+  ),
+  googleBook(
+    "megapack-price",
+    "The E. Hoffmann Price Fantasy & Science Fiction MEGAPACK\u00ae",
+    "A genre MEGAPACK collecting fantasy and science fiction stories, tales, and short fiction by E. Hoffmann Price.",
+    ["Fiction / Science Fiction / Collections & Anthologies", "Fiction / Fantasy / Collections & Anthologies"],
+    "Wildside Press",
+  ),
+  googleBook(
+    "megapack-ardath",
+    "The Second Ardath Mayhar MEGAPACK\u00ae: 27 Science Fiction & Fantasy Tales",
+    "An omnibus MEGAPACK collection of 27 science fiction and fantasy tales, stories, and short works.",
+    ["Fiction / Science Fiction / Collections & Anthologies", "Fiction / Fantasy / Collections & Anthologies"],
+    "Wildside Press",
+  ),
+  googleBook(
+    "technique-mystery",
+    "The Technique of the Mystery Story",
+    "A craft and writing study examining mystery story technique, plotting, structure, criticism, and methods for writers.",
+    ["Language Arts & Disciplines / Writing", "Literary Criticism / Mystery & Detective"],
+    "Writer Craft Press",
+  ),
+  googleBook(
     "writing-guide",
     "How to Write a Mystery Thriller",
     "This writing guide teaches plotting, character development, suspense structure, and revision exercises for writers.",
@@ -133,6 +161,14 @@ for (const [, title] of ellaDarkTitles) {
 
 assertEqual(shapes["The Guide to the Top 100 Mystery & Thriller Books"], "readers_advisory", "curated guide should classify as readers advisory");
 assertEqual(rejectedBeforeRanking["The Guide to the Top 100 Mystery & Thriller Books"], "publication_shape_readers_advisory", "curated guide should reject before ranking");
+assertEqual(shapes["The Science-Fantasy MEGAPACK\u00ae: 4 Classic Novels"], "anthology", "science-fantasy MEGAPACK should classify as anthology");
+assertEqual(rejectedBeforeRanking["The Science-Fantasy MEGAPACK\u00ae: 4 Classic Novels"], "publication_shape_anthology", "science-fantasy MEGAPACK should reject before ranking");
+assertEqual(shapes["The E. Hoffmann Price Fantasy & Science Fiction MEGAPACK\u00ae"], "anthology", "author/genre MEGAPACK should classify as anthology");
+assertEqual(rejectedBeforeRanking["The E. Hoffmann Price Fantasy & Science Fiction MEGAPACK\u00ae"], "publication_shape_anthology", "author/genre MEGAPACK should reject before ranking");
+assertEqual(shapes["The Second Ardath Mayhar MEGAPACK\u00ae: 27 Science Fiction & Fantasy Tales"], "anthology", "tales MEGAPACK should classify as anthology");
+assertEqual(rejectedBeforeRanking["The Second Ardath Mayhar MEGAPACK\u00ae: 27 Science Fiction & Fantasy Tales"], "publication_shape_anthology", "tales MEGAPACK should reject before ranking");
+assertEqual(shapes["The Technique of the Mystery Story"], "writing_guide", "technique title should classify as writing guide");
+assertEqual(rejectedBeforeRanking["The Technique of the Mystery Story"], "publication_shape_writing_guide", "technique title should reject before ranking");
 assertEqual(shapes["How to Write a Mystery Thriller"], "writing_guide", "writing guide should classify as writing guide");
 assertEqual(rejectedBeforeRanking["How to Write a Mystery Thriller"], "publication_shape_writing_guide", "writing guide should reject before ranking");
 assertEqual(shapes["Studies in Detective Fiction"], "critical_study", "literary study should classify as critical study");
