@@ -303,6 +303,13 @@ export interface SourceDiagnosticV2 {
   googleBooksUnknownShapeEligibilityByTitle?: Record<string, boolean>;
   googleBooksUnknownShapeEvidenceByTitle?: Record<string, string[]>;
   googleBooksUnknownShapeRejectedReasonByTitle?: Record<string, string>;
+  googleBooksUnknownStoryEvidenceCountByTitle?: Record<string, number>;
+  googleBooksUnknownStoryEvidenceFamiliesByTitle?: Record<string, string[]>;
+  googleBooksUnknownNarrativeCorroborationByTitle?: Record<string, string[]>;
+  googleBooksUnknownEligibilityThresholdDecisionByTitle?: Record<string, string>;
+  googleBooksSubjectOfStudyTitleByTitle?: Record<string, boolean>;
+  googleBooksSubjectOfStudyEvidenceByTitle?: Record<string, string[]>;
+  googleBooksSubjectOfStudyRejectedBeforeRankingByTitle?: Record<string, string>;
   googleBooksModernNarrativeCountByQuery?: Record<string, number>;
   googleBooksPublicDomainCatalogShapeCountByQuery?: Record<string, number>;
   googleBooksRankedCandidateTitles?: string[];

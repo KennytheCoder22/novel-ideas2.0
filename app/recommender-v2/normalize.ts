@@ -82,6 +82,12 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           googleBooksUnknownShapeEligibility: row.googleBooksUnknownShapeEligibility,
           googleBooksUnknownShapeEvidence: row.googleBooksUnknownShapeEvidence,
           googleBooksUnknownShapeRejectedReason: row.googleBooksUnknownShapeRejectedReason,
+          googleBooksUnknownStoryEvidenceCount: row.googleBooksUnknownStoryEvidenceCount,
+          googleBooksUnknownStoryEvidenceFamilies: row.googleBooksUnknownStoryEvidenceFamilies,
+          googleBooksUnknownNarrativeCorroboration: row.googleBooksUnknownNarrativeCorroboration,
+          googleBooksUnknownEligibilityThresholdDecision: row.googleBooksUnknownEligibilityThresholdDecision,
+          googleBooksSubjectOfStudyTitle: row.googleBooksSubjectOfStudyTitle,
+          googleBooksSubjectOfStudyEvidence: row.googleBooksSubjectOfStudyEvidence,
           authors: row.authors || row.author_name || row.creators,
         },
       });
