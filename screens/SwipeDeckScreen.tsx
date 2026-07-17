@@ -2501,6 +2501,12 @@ function handleLeft() {
       }
       const sourceProbeTimeoutMs = 10_000;
       const sourceProbeStatus: Record<string, string> = {};
+      const googleBooksHealthProbeUrl = (() => {
+        const params = new URLSearchParams({ q: "novel", maxResults: "1" });
+        const apiKey = (process as any)?.env?.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
+        if (typeof apiKey === "string" && apiKey.trim()) params.set("key", apiKey.trim());
+        return `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
+      })();
       const probe = async (phaseBefore: string, phaseAfter: string, label: string, url: string) => {
         markPhase(phaseBefore);
         try {
@@ -2514,7 +2520,7 @@ function handleLeft() {
         }
         markPhase(phaseAfter);
       };
-      if (sourceEnabled.googleBooks) await probe("before_google_books_fetch", "after_google_books_fetch", "google_books", "https://www.googleapis.com/books/v1/volumes?q=novel&maxResults=1");
+      if (sourceEnabled.googleBooks) await probe("before_google_books_fetch", "after_google_books_fetch", "google_books", googleBooksHealthProbeUrl);
       if (sourceEnabled.openLibrary) await probe("before_open_library_fetch", "after_open_library_fetch", "open_library", "/api/openlibrary?health=1");
       if (sourceEnabled.kitsu) await probe("before_kitsu_fetch", "after_kitsu_fetch", "kitsu", `${KITSU_API_BASE}/manga?page[limit]=1`);
       if (sourceEnabled.nyt) await probe("before_nyt_fetch", "after_nyt_fetch", "nyt", "/api/nyt-books?health=1");
