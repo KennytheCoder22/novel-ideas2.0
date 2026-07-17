@@ -72,6 +72,11 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           googleBooksNarrativeConfidence: row.googleBooksNarrativeConfidence,
           googleBooksPublicationShapeEvidence: row.googleBooksPublicationShapeEvidence,
           googleBooksNarrativePriorityAdjustment: row.googleBooksNarrativePriorityAdjustment,
+          googleBooksDominantPublicationShapeEvidence: row.googleBooksDominantPublicationShapeEvidence,
+          googleBooksOverriddenNarrativeEvidence: row.googleBooksOverriddenNarrativeEvidence,
+          googleBooksPublicationShapePrecedenceDecision: row.googleBooksPublicationShapePrecedenceDecision,
+          googleBooksExplicitNonNarrativeIdentity: row.googleBooksExplicitNonNarrativeIdentity,
+          googleBooksStoryLevelNarrativeEvidence: row.googleBooksStoryLevelNarrativeEvidence,
           authors: row.authors || row.author_name || row.creators,
         },
       });
