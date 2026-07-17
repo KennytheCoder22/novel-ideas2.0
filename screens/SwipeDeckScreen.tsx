@@ -1791,6 +1791,80 @@ function handleLeft() {
     }));
   }
 
+  function uniqueTitles(titles: Array<string | undefined | null>): string[] {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const title of titles) {
+      const value = String(title || "").trim();
+      if (!value) continue;
+      const key = value.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(value);
+    }
+    return result;
+  }
+
+  function googleBooksTitlesFromV2Candidates(candidates: RecommendationResultV2["items"]): string[] {
+    return uniqueTitles(
+      (Array.isArray(candidates) ? candidates : [])
+        .filter((candidate) => String(candidate?.source || "") === "googleBooks")
+        .map((candidate) => String(candidate?.title || "")),
+    );
+  }
+
+  function googleBooksTitlesFromRecItems(items: RecItem[]): string[] {
+    return uniqueTitles(
+      (Array.isArray(items) ? items : [])
+        .map((item) => {
+          if (!item || item.kind !== "open_library") return "";
+          const source = String((item.doc as any)?.source || "");
+          if (source !== "googleBooks") return "";
+          return String(item.doc?.title || "");
+        }),
+    );
+  }
+
+  function googleBooksTitlesFromDiagnosticItems(items: any[]): string[] {
+    return uniqueTitles(
+      (Array.isArray(items) ? items : [])
+        .map((item) => {
+          const source = String(item?.doc?.source || item?.source || "");
+          if (source !== "googleBooks") return "";
+          return String(item?.doc?.title || item?.title || "");
+        }),
+    );
+  }
+
+  function computeGoogleBooksDropDiagnostics(stages: Record<string, string[]>) {
+    const stageOrder = [
+      "normalizedCandidate",
+      "rankedCandidate",
+      "finalEligibility",
+      "finalAcceptedDocs",
+      "wrapperInput",
+      "wrapperOutput",
+      "rendererInput",
+      "rendererOutput",
+    ];
+    let droppedStage = "";
+    for (let i = 1; i < stageOrder.length; i += 1) {
+      const previous = stages[stageOrder[i - 1]] || [];
+      const current = stages[stageOrder[i]] || [];
+      if (previous.length > 0 && current.length === 0) {
+        droppedStage = stageOrder[i];
+        break;
+      }
+    }
+    let droppedReason = "";
+    if (droppedStage) {
+      droppedReason = "googlebooks_titles_missing_after_previous_stage";
+      if (droppedStage === "wrapperOutput") droppedReason = "wrapper_removed_googlebooks_titles";
+      if (droppedStage === "rendererOutput") droppedReason = "renderer_output_missing_googlebooks_titles";
+    }
+    return { droppedStage, droppedReason };
+  }
+
   function buildV2RecommendationResultForDiagnostics(v2Result: RecommendationResultV2, normalizedItems: RecItem[], inputWithHistory: RecommenderInput) {
     const diagnostics = v2Result.diagnostics;
     const openLibrarySourceDiagnostics = diagnostics.sources.find((source) => source.source === "openLibrary") as any;
@@ -1863,6 +1937,40 @@ function handleLeft() {
       finalSelectionId: v2ReturnedItemsFailClosed ? "" : title,
       bypassedScoring: scoredCount === 0,
     }));
+    const rankedDocsTitles = Array.isArray(selectionDiagnostics?.rankedDocsTitles) ? selectionDiagnostics.rankedDocsTitles.map((title: any) => String(title || "").trim()).filter(Boolean) : [];
+    const googleBooksKnownTitleSet = new Set(Object.keys((selectionDiagnostics?.adultGoogleBooksEligibilityReasonByTitle || {}) as Record<string, unknown>).map((title) => String(title || "").toLowerCase()));
+    const normalizedCandidateTitles = uniqueTitles(Object.keys((selectionDiagnostics?.adultGoogleBooksEligibilityReasonByTitle || {}) as Record<string, unknown>));
+    const rankedCandidateTitles = uniqueTitles(
+      rankedDocsTitles.filter((title: string) => googleBooksKnownTitleSet.has(String(title || "").toLowerCase())),
+    );
+    const finalEligibilityTitles = uniqueTitles(
+      Object.entries((selectionDiagnostics?.adultGoogleBooksEligibilityReasonByTitle || {}) as Record<string, unknown>)
+        .filter(([, reason]) => String(reason || "") === "adult_googlebooks_minimal_final_gate_passed")
+        .map(([title]) => title),
+    );
+    const finalAcceptedTitles = uniqueTitles(Array.isArray(selectionDiagnostics?.adultGoogleBooksAcceptedTitles) ? selectionDiagnostics.adultGoogleBooksAcceptedTitles : []);
+    const googleBooksWrapperInputTitles = googleBooksTitlesFromV2Candidates(v2Result.items);
+    const googleBooksWrapperOutputTitles = googleBooksTitlesFromDiagnosticItems(diagnosticReturnedItems as any[]);
+    const googleBooksRendererInputTitles = [...googleBooksWrapperOutputTitles];
+    const googleBooksRendererOutputTitles = [...googleBooksWrapperOutputTitles];
+    const googleBooksAcceptedTitlesByStage = {
+      normalizedCandidate: normalizedCandidateTitles,
+      rankedCandidate: rankedCandidateTitles,
+      finalEligibility: finalEligibilityTitles,
+      finalAcceptedDocs: finalAcceptedTitles,
+      wrapperInput: googleBooksWrapperInputTitles,
+      wrapperOutput: googleBooksWrapperOutputTitles,
+      returnedItems: googleBooksWrapperOutputTitles,
+      renderedRecommendations: googleBooksRendererOutputTitles,
+      rendererInput: googleBooksRendererInputTitles,
+      rendererOutput: googleBooksRendererOutputTitles,
+    };
+    const dropped = computeGoogleBooksDropDiagnostics(googleBooksAcceptedTitlesByStage as Record<string, string[]>);
+    const placeholderReplacementReason = finalAcceptedTitles.length > 0
+      && googleBooksWrapperOutputTitles.length === 0
+      && returnedItemsTitlesBeforeV2FailClosed.length > 0
+      ? "googlebooks_titles_missing_from_wrapper_output_while_non_googlebooks_items_present"
+      : "";
     return {
       engineSelected: "v2",
       engineActuallyUsed: "v2",
@@ -2045,7 +2153,17 @@ function handleLeft() {
       scoredCount,
       finalItemsLength: diagnosticReturnedItems.length,
       returnedItemsLength: diagnosticReturnedItems.length,
+      renderedTopRecommendationsLength: normalizedItems.length,
+      renderedTopRecommendationsTitles: normalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean),
       deckKey: inputWithHistory.deckKey,
+      googleBooksAcceptedTitlesByStage,
+      googleBooksDroppedStage: dropped.droppedStage,
+      googleBooksDroppedReason: dropped.droppedReason,
+      googleBooksWrapperInputTitles,
+      googleBooksWrapperOutputTitles,
+      googleBooksRendererInputTitles,
+      googleBooksRendererOutputTitles,
+      googleBooksPlaceholderReplacementReason: placeholderReplacementReason,
     };
   }
 
@@ -2226,6 +2344,21 @@ function handleLeft() {
         const guardedNormalizedItems = Array.isArray((diagnosticResult as any).items) && (diagnosticResult as any).items.length === 0
           ? []
           : normalizedItems;
+        const rendererTitles = googleBooksTitlesFromRecItems(guardedNormalizedItems);
+        const stageTitles = {
+          ...(((diagnosticResult as any).googleBooksAcceptedTitlesByStage || {}) as Record<string, string[]>),
+          rendererInput: rendererTitles,
+          rendererOutput: rendererTitles,
+          renderedRecommendations: rendererTitles,
+        };
+        const dropped = computeGoogleBooksDropDiagnostics(stageTitles);
+        (diagnosticResult as any).googleBooksAcceptedTitlesByStage = stageTitles;
+        (diagnosticResult as any).googleBooksRendererInputTitles = rendererTitles;
+        (diagnosticResult as any).googleBooksRendererOutputTitles = rendererTitles;
+        (diagnosticResult as any).googleBooksDroppedStage = dropped.droppedStage;
+        (diagnosticResult as any).googleBooksDroppedReason = dropped.droppedReason;
+        (diagnosticResult as any).renderedTopRecommendationsLength = guardedNormalizedItems.length;
+        (diagnosticResult as any).renderedTopRecommendationsTitles = guardedNormalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean);
         if (guardedNormalizedItems.length > 0) {
           rememberRecommendations(input.deckKey, guardedNormalizedItems);
           setRecommendationResultWasPersisted(true);
@@ -3920,6 +4053,14 @@ function handleLeft() {
       `routerResultKeys:${lastRouterResultKeys.length ? lastRouterResultKeys.join(", ") : "(none)"}`,
       `finalAcceptedDocsLength:${Number((lastRecommendationResult as any)?.finalAcceptedDocsLength || 0)}`,
       `renderedTopRecommendationsLength:${Number((lastRecommendationResult as any)?.renderedTopRecommendationsLength || 0)}`,
+      `googleBooksAcceptedTitlesByStage:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAcceptedTitlesByStage || {})}`,
+      `googleBooksDroppedStage:${String((lastRecommendationResult as any)?.googleBooksDroppedStage || "")}`,
+      `googleBooksDroppedReason:${String((lastRecommendationResult as any)?.googleBooksDroppedReason || "")}`,
+      `googleBooksWrapperInputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksWrapperInputTitles) && (lastRecommendationResult as any).googleBooksWrapperInputTitles.length ? (lastRecommendationResult as any).googleBooksWrapperInputTitles.join(" | ") : "(none)"}`,
+      `googleBooksWrapperOutputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksWrapperOutputTitles) && (lastRecommendationResult as any).googleBooksWrapperOutputTitles.length ? (lastRecommendationResult as any).googleBooksWrapperOutputTitles.join(" | ") : "(none)"}`,
+      `googleBooksRendererInputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksRendererInputTitles) && (lastRecommendationResult as any).googleBooksRendererInputTitles.length ? (lastRecommendationResult as any).googleBooksRendererInputTitles.join(" | ") : "(none)"}`,
+      `googleBooksRendererOutputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksRendererOutputTitles) && (lastRecommendationResult as any).googleBooksRendererOutputTitles.length ? (lastRecommendationResult as any).googleBooksRendererOutputTitles.join(" | ") : "(none)"}`,
+      `googleBooksPlaceholderReplacementReason:${String((lastRecommendationResult as any)?.googleBooksPlaceholderReplacementReason || "")}`,
       `teenPostPassInputLength:${Number((lastRecommendationResult as any)?.teenPostPassInputLength || 0)}`,
       `teenPostPassOutputLength:${Number((lastRecommendationResult as any)?.teenPostPassOutputLength || 0)}`,
       `teenPostPassOutputTitles:${Array.isArray((lastRecommendationResult as any)?.teenPostPassOutputTitles) && (lastRecommendationResult as any).teenPostPassOutputTitles.length ? (lastRecommendationResult as any).teenPostPassOutputTitles.join(" | ") : "(none)"}`,
