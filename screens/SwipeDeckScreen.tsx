@@ -1865,9 +1865,51 @@ function handleLeft() {
     return { droppedStage, droppedReason };
   }
 
+  function computeGoogleBooksDropDiagnosticsByTitle(stages: Record<string, string[]>) {
+    const stageOrder = [
+      "normalizedCandidate",
+      "rankedCandidate",
+      "finalEligibility",
+      "finalAcceptedDocs",
+      "wrapperInput",
+      "wrapperOutput",
+      "rendererInput",
+      "rendererOutput",
+    ];
+    const stageSetByName: Record<string, Set<string>> = Object.fromEntries(
+      Object.entries(stages).map(([stage, titles]) => [stage, new Set((titles || []).map((title) => String(title || "").trim().toLowerCase()).filter(Boolean)]),
+    );
+    const allTitles = uniqueTitles(stageOrder.flatMap((stage) => stages[stage] || []));
+    const droppedStageByTitle: Record<string, string> = {};
+    const droppedReasonByTitle: Record<string, string> = {};
+    for (const title of allTitles) {
+      const key = String(title || "").trim().toLowerCase();
+      for (let i = 1; i < stageOrder.length; i += 1) {
+        const previousStage = stageOrder[i - 1];
+        const currentStage = stageOrder[i];
+        const inPrevious = Boolean(stageSetByName[previousStage]?.has(key));
+        const inCurrent = Boolean(stageSetByName[currentStage]?.has(key));
+        if (!inPrevious || inCurrent) continue;
+        droppedStageByTitle[title] = currentStage;
+        droppedReasonByTitle[title] = currentStage === "wrapperOutput"
+          ? "wrapper_removed_googlebooks_title"
+          : currentStage === "rendererOutput"
+            ? "renderer_output_missing_googlebooks_title"
+            : "missing_in_next_googlebooks_stage";
+        break;
+      }
+      if (!droppedStageByTitle[title]) {
+        droppedStageByTitle[title] = "";
+        droppedReasonByTitle[title] = "";
+      }
+    }
+    return { droppedStageByTitle, droppedReasonByTitle };
+  }
+
   function buildV2RecommendationResultForDiagnostics(v2Result: RecommendationResultV2, normalizedItems: RecItem[], inputWithHistory: RecommenderInput) {
     const diagnostics = v2Result.diagnostics;
     const openLibrarySourceDiagnostics = diagnostics.sources.find((source) => source.source === "openLibrary") as any;
+    const googleBooksSourceDiagnostics = diagnostics.sources.find((source) => source.source === "googleBooks") as any;
     const openLibrarySourceFetchDiagnostics = Array.isArray(openLibrarySourceDiagnostics?.fetches)
       ? openLibrarySourceDiagnostics.fetches.map((fetch: any) => ({
           query: String(fetch?.query || ""),
@@ -1937,15 +1979,11 @@ function handleLeft() {
       finalSelectionId: v2ReturnedItemsFailClosed ? "" : title,
       bypassedScoring: scoredCount === 0,
     }));
-    const rankedDocsTitles = Array.isArray(selectionDiagnostics?.rankedDocsTitles) ? selectionDiagnostics.rankedDocsTitles.map((title: any) => String(title || "").trim()).filter(Boolean) : [];
-    const googleBooksKnownTitleSet = new Set(Object.keys((selectionDiagnostics?.adultGoogleBooksEligibilityReasonByTitle || {}) as Record<string, unknown>).map((title) => String(title || "").toLowerCase()));
-    const normalizedCandidateTitles = uniqueTitles(Object.keys((selectionDiagnostics?.adultGoogleBooksEligibilityReasonByTitle || {}) as Record<string, unknown>));
-    const rankedCandidateTitles = uniqueTitles(
-      rankedDocsTitles.filter((title: string) => googleBooksKnownTitleSet.has(String(title || "").toLowerCase())),
-    );
+    const normalizedCandidateTitles = uniqueTitles(Object.keys((selectionDiagnostics?.googleBooksNormalizationEligibilityByTitle || {}) as Record<string, unknown>));
+    const rankedCandidateTitles = uniqueTitles(Array.isArray(selectionDiagnostics?.googleBooksRankedCandidateTitles) ? selectionDiagnostics.googleBooksRankedCandidateTitles : []);
     const finalEligibilityTitles = uniqueTitles(
       Object.entries((selectionDiagnostics?.adultGoogleBooksEligibilityReasonByTitle || {}) as Record<string, unknown>)
-        .filter(([, reason]) => String(reason || "") === "adult_googlebooks_minimal_final_gate_passed")
+        .filter(([, reason]) => String(reason || "").startsWith("adult_googlebooks_minimal_final_gate_passed"))
         .map(([title]) => title),
     );
     const finalAcceptedTitles = uniqueTitles(Array.isArray(selectionDiagnostics?.adultGoogleBooksAcceptedTitles) ? selectionDiagnostics.adultGoogleBooksAcceptedTitles : []);
@@ -1956,6 +1994,7 @@ function handleLeft() {
     const googleBooksAcceptedTitlesByStage = {
       normalizedCandidate: normalizedCandidateTitles,
       rankedCandidate: rankedCandidateTitles,
+      googleBooksRankedCandidateTitles: rankedCandidateTitles,
       finalEligibility: finalEligibilityTitles,
       finalAcceptedDocs: finalAcceptedTitles,
       wrapperInput: googleBooksWrapperInputTitles,
@@ -1966,6 +2005,7 @@ function handleLeft() {
       rendererOutput: googleBooksRendererOutputTitles,
     };
     const dropped = computeGoogleBooksDropDiagnostics(googleBooksAcceptedTitlesByStage as Record<string, string[]>);
+    const droppedByTitle = computeGoogleBooksDropDiagnosticsByTitle(googleBooksAcceptedTitlesByStage as Record<string, string[]>);
     const placeholderReplacementReason = finalAcceptedTitles.length > 0
       && googleBooksWrapperOutputTitles.length === 0
       && returnedItemsTitlesBeforeV2FailClosed.length > 0
@@ -2157,13 +2197,24 @@ function handleLeft() {
       renderedTopRecommendationsTitles: normalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean),
       deckKey: inputWithHistory.deckKey,
       googleBooksAcceptedTitlesByStage,
+      googleBooksRankedCandidateTitles: rankedCandidateTitles,
       googleBooksDroppedStage: dropped.droppedStage,
       googleBooksDroppedReason: dropped.droppedReason,
+      googleBooksDroppedStageByTitle: droppedByTitle.droppedStageByTitle,
+      googleBooksDroppedReasonByTitle: droppedByTitle.droppedReasonByTitle,
       googleBooksWrapperInputTitles,
       googleBooksWrapperOutputTitles,
       googleBooksRendererInputTitles,
       googleBooksRendererOutputTitles,
       googleBooksPlaceholderReplacementReason: placeholderReplacementReason,
+      googleBooksRejectedBeforeRankingReason: selectionDiagnostics?.googleBooksRejectedBeforeRankingReason || {},
+      googleBooksPublicationYearByTitle: googleBooksSourceDiagnostics?.googleBooksPublicationYearByTitle || {},
+      googleBooksDescriptionPresentByTitle: googleBooksSourceDiagnostics?.googleBooksDescriptionPresentByTitle || {},
+      googleBooksIsbnPresentByTitle: googleBooksSourceDiagnostics?.googleBooksIsbnPresentByTitle || {},
+      googleBooksRatingsCountByTitle: googleBooksSourceDiagnostics?.googleBooksRatingsCountByTitle || {},
+      googleBooksQueryResultQualityByQuery: googleBooksSourceDiagnostics?.googleBooksQueryResultQualityByQuery || {},
+      googleBooksModernNarrativeCountByQuery: googleBooksSourceDiagnostics?.googleBooksModernNarrativeCountByQuery || {},
+      googleBooksPublicDomainCatalogShapeCountByQuery: googleBooksSourceDiagnostics?.googleBooksPublicDomainCatalogShapeCountByQuery || {},
     };
   }
 
@@ -2352,11 +2403,14 @@ function handleLeft() {
           renderedRecommendations: rendererTitles,
         };
         const dropped = computeGoogleBooksDropDiagnostics(stageTitles);
+        const droppedByTitle = computeGoogleBooksDropDiagnosticsByTitle(stageTitles);
         (diagnosticResult as any).googleBooksAcceptedTitlesByStage = stageTitles;
         (diagnosticResult as any).googleBooksRendererInputTitles = rendererTitles;
         (diagnosticResult as any).googleBooksRendererOutputTitles = rendererTitles;
         (diagnosticResult as any).googleBooksDroppedStage = dropped.droppedStage;
         (diagnosticResult as any).googleBooksDroppedReason = dropped.droppedReason;
+        (diagnosticResult as any).googleBooksDroppedStageByTitle = droppedByTitle.droppedStageByTitle;
+        (diagnosticResult as any).googleBooksDroppedReasonByTitle = droppedByTitle.droppedReasonByTitle;
         (diagnosticResult as any).renderedTopRecommendationsLength = guardedNormalizedItems.length;
         (diagnosticResult as any).renderedTopRecommendationsTitles = guardedNormalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean);
         if (guardedNormalizedItems.length > 0) {
@@ -4044,13 +4098,24 @@ function handleLeft() {
       `finalAcceptedDocsLength:${Number((lastRecommendationResult as any)?.finalAcceptedDocsLength || 0)}`,
       `renderedTopRecommendationsLength:${Number((lastRecommendationResult as any)?.renderedTopRecommendationsLength || 0)}`,
       `googleBooksAcceptedTitlesByStage:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAcceptedTitlesByStage || {})}`,
+      `googleBooksRankedCandidateTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksAcceptedTitlesByStage?.googleBooksRankedCandidateTitles) && (lastRecommendationResult as any).googleBooksAcceptedTitlesByStage.googleBooksRankedCandidateTitles.length ? (lastRecommendationResult as any).googleBooksAcceptedTitlesByStage.googleBooksRankedCandidateTitles.join(" | ") : "(none)"}`,
       `googleBooksDroppedStage:${String((lastRecommendationResult as any)?.googleBooksDroppedStage || "")}`,
       `googleBooksDroppedReason:${String((lastRecommendationResult as any)?.googleBooksDroppedReason || "")}`,
+      `googleBooksDroppedStageByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksDroppedStageByTitle || {})}`,
+      `googleBooksDroppedReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksDroppedReasonByTitle || {})}`,
       `googleBooksWrapperInputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksWrapperInputTitles) && (lastRecommendationResult as any).googleBooksWrapperInputTitles.length ? (lastRecommendationResult as any).googleBooksWrapperInputTitles.join(" | ") : "(none)"}`,
       `googleBooksWrapperOutputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksWrapperOutputTitles) && (lastRecommendationResult as any).googleBooksWrapperOutputTitles.length ? (lastRecommendationResult as any).googleBooksWrapperOutputTitles.join(" | ") : "(none)"}`,
       `googleBooksRendererInputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksRendererInputTitles) && (lastRecommendationResult as any).googleBooksRendererInputTitles.length ? (lastRecommendationResult as any).googleBooksRendererInputTitles.join(" | ") : "(none)"}`,
       `googleBooksRendererOutputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksRendererOutputTitles) && (lastRecommendationResult as any).googleBooksRendererOutputTitles.length ? (lastRecommendationResult as any).googleBooksRendererOutputTitles.join(" | ") : "(none)"}`,
       `googleBooksPlaceholderReplacementReason:${String((lastRecommendationResult as any)?.googleBooksPlaceholderReplacementReason || "")}`,
+      `googleBooksRejectedBeforeRankingReason:${JSON.stringify((lastRecommendationResult as any)?.googleBooksRejectedBeforeRankingReason || {})}`,
+      `googleBooksPublicationYearByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksPublicationYearByTitle || {})}`,
+      `googleBooksDescriptionPresentByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksDescriptionPresentByTitle || {})}`,
+      `googleBooksIsbnPresentByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksIsbnPresentByTitle || {})}`,
+      `googleBooksRatingsCountByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksRatingsCountByTitle || {})}`,
+      `googleBooksQueryResultQualityByQuery:${JSON.stringify((lastRecommendationResult as any)?.googleBooksQueryResultQualityByQuery || {})}`,
+      `googleBooksModernNarrativeCountByQuery:${JSON.stringify((lastRecommendationResult as any)?.googleBooksModernNarrativeCountByQuery || {})}`,
+      `googleBooksPublicDomainCatalogShapeCountByQuery:${JSON.stringify((lastRecommendationResult as any)?.googleBooksPublicDomainCatalogShapeCountByQuery || {})}`,
       `teenPostPassInputLength:${Number((lastRecommendationResult as any)?.teenPostPassInputLength || 0)}`,
       `teenPostPassOutputLength:${Number((lastRecommendationResult as any)?.teenPostPassOutputLength || 0)}`,
       `teenPostPassOutputTitles:${Array.isArray((lastRecommendationResult as any)?.teenPostPassOutputTitles) && (lastRecommendationResult as any).teenPostPassOutputTitles.length ? (lastRecommendationResult as any).teenPostPassOutputTitles.join(" | ") : "(none)"}`,

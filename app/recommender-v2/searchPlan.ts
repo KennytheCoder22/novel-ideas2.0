@@ -80,6 +80,17 @@ function googleBooksAdultNarrativeQuery(genre?: string, descriptor?: string): st
   return uniqueTerms([...descriptorPrefix, "literary", "fiction", "novel"], 4).join(" ");
 }
 
+function googleBooksAdultPairedNarrativeQuery(primaryGenre?: string, secondaryGenre?: string, descriptor?: string): string {
+  const primary = normalizedTerm(primaryGenre || "");
+  const secondary = normalizedTerm(secondaryGenre || "");
+  const tone = normalizedTerm(descriptor || "");
+  const pair = uniqueTerms([primary, secondary].filter(Boolean), 2);
+  if (pair.length >= 2) {
+    return uniqueTerms([pair[0], pair[1], "novel"], 4).join(" ");
+  }
+  return googleBooksAdultNarrativeQuery(primary || secondary || undefined, tone || undefined);
+}
+
 function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones: string[], themes: string[], formats: string[]): SearchIntentV2[] {
   const agePrefix = googleBooksAgePrefix(profile.ageBand);
   const useAgePrefix = profile.ageBand !== "adult";
@@ -102,7 +113,8 @@ function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones:
   const adjacentOrToneQuery = uniqueTerms([
     ...(useAgePrefix ? [agePrefix] : []),
     ...(profile.ageBand === "adult"
-      ? [googleBooksAdultNarrativeQuery(
+      ? [googleBooksAdultPairedNarrativeQuery(
+        primaryGenre,
         secondaryGenre && secondaryGenre !== primaryGenre ? secondaryGenre : adjacentGenre,
         primaryDescriptor,
       )]
@@ -117,7 +129,7 @@ function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones:
   const fallbackQuery = uniqueTerms([
     ...(useAgePrefix ? [agePrefix] : []),
     ...(profile.ageBand === "adult"
-      ? [googleBooksAdultNarrativeQuery(primaryGenre || "fiction", "literary")]
+      ? [googleBooksAdultPairedNarrativeQuery(primaryGenre || "fiction", adjacentGenre, "literary")]
       : [
         ...(primaryGenre ? [primaryGenre] : []),
         "contemporary",

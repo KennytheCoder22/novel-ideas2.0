@@ -2056,6 +2056,48 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   markPipelineObjects(scored, "scored", requestId);
   stages.push(stageDiagnostic("scored", { scored: scored.length }));
 
+  const googleBooksRankedCandidateTitles = uniqueStrings(
+    scored
+      .filter((candidate) => candidate.source === "googleBooks")
+      .map((candidate) => candidate.title),
+    120,
+  );
+  const googleBooksEligibilityReasonByTitle = ((rejectedReasons as Record<string, unknown>).adultGoogleBooksEligibilityReasonByTitle || {}) as Record<string, unknown>;
+  const googleBooksFinalEligibilityTitles = uniqueStrings(
+    Object.entries(googleBooksEligibilityReasonByTitle)
+      .filter(([, reason]) => String(reason || "").startsWith("adult_googlebooks_minimal_final_gate_passed"))
+      .map(([title]) => title),
+    120,
+  );
+  const googleBooksSourceResultForDiagnostics = sourceResults.find((result) => result.source === "googleBooks");
+  if (googleBooksSourceResultForDiagnostics) {
+    const sourceDiagnostics = googleBooksSourceResultForDiagnostics.diagnostics as Record<string, unknown>;
+    const queryByTitle = (sourceDiagnostics.googleBooksQueryByTitle || {}) as Record<string, string>;
+    const queryResultQualityByQuery = { ...((sourceDiagnostics.googleBooksQueryResultQualityByQuery || {}) as Record<string, Record<string, unknown>>) };
+    const rankedSet = new Set(googleBooksRankedCandidateTitles.map((title) => normalizedTokenText(title)));
+    const finalEligibilitySet = new Set(googleBooksFinalEligibilityTitles.map((title) => normalizedTokenText(title)));
+    for (const [title, query] of Object.entries(queryByTitle)) {
+      const normalizedTitle = normalizedTokenText(title);
+      const queryKey = String(query || "");
+      if (!queryKey) continue;
+      const row = (queryResultQualityByQuery[queryKey] || { query: queryKey }) as Record<string, unknown>;
+      const enteredRankingTitles = uniqueStrings([
+        ...(((row.enteredRankingTitles || []) as string[])),
+        ...(rankedSet.has(normalizedTitle) ? [title] : []),
+      ], 120);
+      const enteredFinalEligibilityTitles = uniqueStrings([
+        ...(((row.enteredFinalEligibilityTitles || []) as string[])),
+        ...(finalEligibilitySet.has(normalizedTitle) ? [title] : []),
+      ], 120);
+      row.enteredRankingTitles = enteredRankingTitles;
+      row.enteredFinalEligibilityTitles = enteredFinalEligibilityTitles;
+      queryResultQualityByQuery[queryKey] = row;
+    }
+    sourceDiagnostics.googleBooksQueryResultQualityByQuery = queryResultQualityByQuery;
+    sourceDiagnostics.googleBooksRankedCandidateTitles = googleBooksRankedCandidateTitles;
+    sourceDiagnostics.googleBooksFinalEligibilityTitles = googleBooksFinalEligibilityTitles;
+  }
+
   const rejectedReasonsWithGoogleBooksNormalization = rejectedReasons as Record<string, unknown>;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksNormalizedRejectReasonByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksNormalizedRejectReasonByTitle;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksNormalizationEligibilityByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksNormalizationEligibilityByTitle;
@@ -2063,6 +2105,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   rejectedReasonsWithGoogleBooksNormalization.googleBooksAnthologyEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksAnthologyEvidenceByTitle;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksReferenceEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksReferenceEvidenceByTitle;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksPublisherEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksPublisherEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksRankedCandidateTitles = googleBooksRankedCandidateTitles;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksEnteredRanking = adultGoogleBooksNormalizationDiagnostics.googleBooksEnteredRanking;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksRejectedBeforeRankingReason = adultGoogleBooksNormalizationDiagnostics.googleBooksRejectedBeforeRankingReason;
 
