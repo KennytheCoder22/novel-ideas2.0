@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "populate:swipe-images": "node scripts/populateSwipeCardFallbackImages.mjs",
     "trace:comicvine:contract": "npx tsx scripts/run-comicvine-contract-traces.ts",
+    "test:v2:googlebooks-publication-shape": "node scripts/run-v2-googlebooks-publication-shape-regressions.mjs",
     "test:v2:openlibrary-presets": "node scripts/run-v2-openlibrary-presets.mjs",
     "test:v2:openlibrary-routing-regressions": "node scripts/run-v2-openlibrary-routing-regressions.mjs"
   },

@@ -395,11 +395,14 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
     const referenceEvidence = adultGoogleBooksReferenceEvidenceFromNormalized(candidate);
     const publisherEvidence = adultGoogleBooksPublisherEvidenceFromNormalized(candidate);
     const shapeDiagnostics = adultGoogleBooksShapeDiagnostics(candidate);
+    const confirmedNarrativeSeriesInstallment = shapeDiagnostics.shape === "series_installment"
+      && shapeDiagnostics.storyLevelNarrativeEvidence.length > 0
+      && shapeDiagnostics.explicitNonNarrativeIdentity.length === 0;
     const publicationShapeRejectReason = adultGoogleBooksPublicationShapeRejectReason(shapeDiagnostics);
     let rejectReason = "";
     if (publicationShapeRejectReason) rejectReason = publicationShapeRejectReason;
     else if (anthologyEvidence.length > 0) rejectReason = "anthology_or_best_of_reference_shape";
-    else if (referenceEvidence.length > 0) rejectReason = "reference_or_scholarship_shape";
+    else if (referenceEvidence.length > 0 && !confirmedNarrativeSeriesInstallment) rejectReason = "reference_or_scholarship_shape";
     else if (publisherEvidence.length > 0 && narrativeEvidence.length === 0) rejectReason = "publisher_identity_without_narrative_evidence";
 
     const eligible = !rejectReason;
