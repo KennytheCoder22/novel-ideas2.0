@@ -58,6 +58,36 @@ function primaryAuthor(candidate: ScoredCandidate): string {
   return normalized(candidate.creators[0] || "");
 }
 
+function adultGoogleBooksSeriesRoot(candidate: ScoredCandidate): string {
+  if (candidate.source !== "googleBooks") return "";
+  const text = normalized([candidate.subtitle, candidate.title].filter(Boolean).join(" "));
+  const seriesToken = "(?:book|volume|vol|part)";
+  const numberToken = "(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)";
+  const prefixWithNumber = text.match(new RegExp(`\\b(.+?)\\s+${seriesToken}\\s+${numberToken}\\b`));
+  if (prefixWithNumber && prefixWithNumber[1]) {
+    return normalized(prefixWithNumber[1]).replace(/\b(?:an|a|the)\b/g, " ").replace(/\s+/g, " ").trim();
+  }
+  const explicitSeries = text.match(/\b(.+?)\s+(?:series|saga|chronicles)\b/);
+  if (explicitSeries && explicitSeries[1]) {
+    return normalized(explicitSeries[1]).replace(/\b(?:an|a|the)\b/g, " ").replace(/\s+/g, " ").trim();
+  }
+  const titledSeries = normalized(candidate.title).match(new RegExp(`\\b(.+?)\\s+${seriesToken}\\s+${numberToken}\\b`));
+  if (titledSeries && titledSeries[1]) return normalized(titledSeries[1]);
+  return seriesKey(candidate);
+}
+
+function adultGoogleBooksClusterKey(candidate: ScoredCandidate): string {
+  if (candidate.source !== "googleBooks") return "";
+  const text = normalized([candidate.subtitle, candidate.description, candidate.title].filter(Boolean).join(" "));
+  const franchisePhrase = text.match(/\b([a-z]{3,}(?:\s+[a-z]{3,}){0,4}\s+(?:fbi|cia|detective|inspector|agent)\s+(?:suspense|thriller|mystery))\b/);
+  if (franchisePhrase && franchisePhrase[1]) return franchisePhrase[1];
+  const titleCluster = normalized(candidate.title).match(/^(girl|boy|woman|man)\s+[a-z]{3,}\b/);
+  if (titleCluster && /\b(?:suspense|thriller|mystery|fbi|detective)\b/.test(text)) {
+    return `${titleCluster[1]}_title_cluster_${(franchisePhrase && franchisePhrase[1]) ? franchisePhrase[1] : "crime"}`;
+  }
+  return "";
+}
+
 function recurringOpenLibraryClusterKey(candidate: ScoredCandidate): string {
   if (candidate.source !== "openLibrary") return "";
   const text = normalized([candidate.title, candidate.subtitle, (candidate.creators || []).join(" ")].filter(Boolean).join(" "));
@@ -4248,6 +4278,8 @@ type AdultGoogleBooksEligibility = {
   referenceSurveyReasons: string[];
   encyclopediaReferenceReasons: string[];
   multiVolumeReferenceCorroboration: string[];
+  annualAnthologyReasons: string[];
+  anthologyCorroboration: string[];
   instructionalCraftReasons: string[];
   narrativeEvidence: string[];
   credibleFictionSignals: string[];
@@ -4446,6 +4478,29 @@ function adultGoogleBooksEncyclopediaReferenceSignals(candidate: ScoredCandidate
   return { reasons: Array.from(new Set(reasons)), multiVolumeCorroboration: Array.from(new Set(multiVolumeCorroboration)) };
 }
 
+function adultGoogleBooksAnnualAnthologySignals(candidate: ScoredCandidate): { reasons: string[]; corroboration: string[] } {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const titleSubtitle = `${fields.title} ${fields.subtitle}`.trim();
+  const metadata = `${fields.categories} ${fields.description}`.trim();
+  const reasons: string[] = [];
+  const corroboration: string[] = [];
+  const annualTitleShape = /\b(?:best\s+(?:science fiction(?: and fantasy)?|fantasy|horror|mystery(?: stories)?)\s+of\s+the\s+year|year'?s\s+best(?:\s+stories?)?|best\s+of\s+the\s+year|annual\s+antholog(?:y|ies)|antholog(?:y|ies)\s+volume|annual\s+collection)\b/;
+  const anthologyMetadataShape = /\b(?:antholog(?:y|ies)|collection|edited by|editor(?:ial)?|stories from multiple authors|multiple authors|contributors?|annual|yearbook|selected by)\b/;
+  const genreScope = /\b(?:science fiction|fantasy|speculative fiction|horror|mystery|thriller|crime)\b/;
+
+  if (annualTitleShape.test(titleSubtitle)) corroboration.push("annual_or_best_of_title_shape");
+  if (anthologyMetadataShape.test(metadata)) corroboration.push("anthology_or_edited_metadata");
+  if (genreScope.test(`${titleSubtitle} ${metadata}`)) corroboration.push("genre_scope_metadata");
+  if (/\b(?:\d+\s*#?\s*\d+|#\s*\d+)\b/.test(titleSubtitle)) corroboration.push("numbered_annual_issue_shape");
+
+  if (annualTitleShape.test(titleSubtitle) && (genreScope.test(titleSubtitle) || anthologyMetadataShape.test(metadata))) {
+    reasons.push("adult_googlebooks_artifact_annual_best_of_anthology");
+  } else if (anthologyMetadataShape.test(metadata) && /\b(?:best|year'?s best|best of the year|annual)\b/.test(`${titleSubtitle} ${metadata}`) && genreScope.test(`${titleSubtitle} ${metadata}`)) {
+    reasons.push("adult_googlebooks_artifact_annual_best_of_anthology");
+  }
+  return { reasons: Array.from(new Set(reasons)), corroboration: Array.from(new Set(corroboration)) };
+}
+
 function adultGoogleBooksInstructionalCraftReasons(candidate: ScoredCandidate): string[] {
   const fields = adultGoogleBooksMetadataFields(candidate);
   const reasons: string[] = [];
@@ -4614,6 +4669,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       referenceSurveyReasons: [],
       encyclopediaReferenceReasons: [],
       multiVolumeReferenceCorroboration: [],
+      annualAnthologyReasons: [],
+      anthologyCorroboration: [],
       instructionalCraftReasons: [],
       narrativeEvidence: [],
       credibleFictionSignals: [],
@@ -4631,9 +4688,10 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
     };
   }
   const encyclopediaReference = adultGoogleBooksEncyclopediaReferenceSignals(candidate);
+  const annualAnthology = adultGoogleBooksAnnualAnthologySignals(candidate);
   const referenceSurveyReasons = [...adultGoogleBooksReferenceSurveyReasons(candidate), ...encyclopediaReference.reasons];
   const instructionalCraftReasons = adultGoogleBooksInstructionalCraftReasons(candidate);
-  const artifactReasons = [...adultGoogleBooksArtifactReasons(candidate), ...referenceSurveyReasons, ...instructionalCraftReasons];
+  const artifactReasons = [...adultGoogleBooksArtifactReasons(candidate), ...referenceSurveyReasons, ...annualAnthology.reasons, ...instructionalCraftReasons];
   const narrativeEvidence = adultGoogleBooksNarrativeEvidence(candidate);
   const credibleFictionSignals = adultGoogleBooksCredibleFictionSignals(candidate);
   const incompatibilities = adultGoogleBooksStrongIncompatibility(candidate);
@@ -4661,6 +4719,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       referenceSurveyReasons,
       encyclopediaReferenceReasons: encyclopediaReference.reasons,
       multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
+      annualAnthologyReasons: annualAnthology.reasons,
+      anthologyCorroboration: annualAnthology.corroboration,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
@@ -4685,6 +4745,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       referenceSurveyReasons,
       encyclopediaReferenceReasons: encyclopediaReference.reasons,
       multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
+      annualAnthologyReasons: annualAnthology.reasons,
+      anthologyCorroboration: annualAnthology.corroboration,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
@@ -4709,6 +4771,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       referenceSurveyReasons,
       encyclopediaReferenceReasons: encyclopediaReference.reasons,
       multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
+      annualAnthologyReasons: annualAnthology.reasons,
+      anthologyCorroboration: annualAnthology.corroboration,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
@@ -4741,6 +4805,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         referenceSurveyReasons,
         encyclopediaReferenceReasons: encyclopediaReference.reasons,
         multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
+        annualAnthologyReasons: annualAnthology.reasons,
+        anthologyCorroboration: annualAnthology.corroboration,
         instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
@@ -4764,6 +4830,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       referenceSurveyReasons,
       encyclopediaReferenceReasons: encyclopediaReference.reasons,
       multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
+      annualAnthologyReasons: annualAnthology.reasons,
+      anthologyCorroboration: annualAnthology.corroboration,
       instructionalCraftReasons,
       narrativeEvidence,
       credibleFictionSignals,
@@ -4791,6 +4859,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         referenceSurveyReasons,
         encyclopediaReferenceReasons: encyclopediaReference.reasons,
         multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
+        annualAnthologyReasons: annualAnthology.reasons,
+        anthologyCorroboration: annualAnthology.corroboration,
         instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
@@ -4815,6 +4885,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
         referenceSurveyReasons,
         encyclopediaReferenceReasons: encyclopediaReference.reasons,
         multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
+        annualAnthologyReasons: annualAnthology.reasons,
+        anthologyCorroboration: annualAnthology.corroboration,
         instructionalCraftReasons,
         narrativeEvidence,
         credibleFictionSignals,
@@ -4839,6 +4911,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
     referenceSurveyReasons,
     encyclopediaReferenceReasons: encyclopediaReference.reasons,
     multiVolumeReferenceCorroboration: encyclopediaReference.multiVolumeCorroboration,
+    annualAnthologyReasons: annualAnthology.reasons,
+    anthologyCorroboration: annualAnthology.corroboration,
     instructionalCraftReasons,
     narrativeEvidence,
     credibleFictionSignals,
@@ -4933,6 +5007,11 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const referenceSurveyReasonsByTitle: Record<string, string[]> = {};
   const encyclopediaReferenceReasonsByTitle: Record<string, string[]> = {};
   const multiVolumeReferenceCorroborationByTitle: Record<string, string[]> = {};
+  const annualAnthologyReasonsByTitle: Record<string, string[]> = {};
+  const anthologyCorroborationByTitle: Record<string, string[]> = {};
+  const authorCapAppliedByTitle: Record<string, boolean> = {};
+  const seriesCapAppliedByTitle: Record<string, boolean> = {};
+  const normalizedSeriesRootByTitle: Record<string, string> = {};
   const documentBackedLikedSignalsByTitle: Record<string, string[]> = {};
   const documentBackedDislikedSignalsByTitle: Record<string, string[]> = {};
   const positiveNetTasteFamiliesByTitle: Record<string, string[]> = {};
@@ -4962,6 +5041,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksReferenceSurveyReasonsByTitle = {};
     diagnostics.adultGoogleBooksEncyclopediaReferenceReasonsByTitle = {};
     diagnostics.adultGoogleBooksMultiVolumeReferenceCorroborationByTitle = {};
+    diagnostics.adultGoogleBooksAnnualAnthologyReasonsByTitle = {};
+    diagnostics.adultGoogleBooksAnthologyCorroborationByTitle = {};
+    diagnostics.adultGoogleBooksAuthorCapAppliedByTitle = {};
+    diagnostics.adultGoogleBooksSeriesCapAppliedByTitle = {};
+    diagnostics.adultGoogleBooksNormalizedSeriesRootByTitle = {};
+    diagnostics.adultGoogleBooksDeferredForAuthorDiversityTitles = [];
+    diagnostics.adultGoogleBooksDeferredForSeriesDiversityTitles = [];
+    diagnostics.adultGoogleBooksDistinctAuthorCount = 0;
+    diagnostics.adultGoogleBooksDistinctSeriesRootCount = 0;
     diagnostics.adultGoogleBooksDocumentBackedLikedSignalsByTitle = {};
     diagnostics.adultGoogleBooksDocumentBackedDislikedSignalsByTitle = {};
     diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle = {};
@@ -5002,6 +5090,11 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     referenceSurveyReasonsByTitle[candidate.title] = eligibility.referenceSurveyReasons;
     encyclopediaReferenceReasonsByTitle[candidate.title] = eligibility.encyclopediaReferenceReasons;
     multiVolumeReferenceCorroborationByTitle[candidate.title] = eligibility.multiVolumeReferenceCorroboration;
+    annualAnthologyReasonsByTitle[candidate.title] = eligibility.annualAnthologyReasons;
+    anthologyCorroborationByTitle[candidate.title] = eligibility.anthologyCorroboration;
+    authorCapAppliedByTitle[candidate.title] = candidate.rejectedReasons.includes("same_author_deferred") || candidate.rejectedReasons.includes("underfill_blocked_same_author_variant");
+    seriesCapAppliedByTitle[candidate.title] = candidate.rejectedReasons.includes("same_series_or_root_deferred") || candidate.rejectedReasons.includes("underfill_blocked_same_root_variant");
+    normalizedSeriesRootByTitle[candidate.title] = adultGoogleBooksSeriesRoot(candidate);
     documentBackedLikedSignalsByTitle[candidate.title] = eligibility.documentBackedLikedSignals;
     documentBackedDislikedSignalsByTitle[candidate.title] = eligibility.documentBackedDislikedSignals;
     positiveNetTasteFamiliesByTitle[candidate.title] = eligibility.positiveNetTasteFamilies;
@@ -5035,6 +5128,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksReferenceSurveyReasonsByTitle = referenceSurveyReasonsByTitle;
   diagnostics.adultGoogleBooksEncyclopediaReferenceReasonsByTitle = encyclopediaReferenceReasonsByTitle;
   diagnostics.adultGoogleBooksMultiVolumeReferenceCorroborationByTitle = multiVolumeReferenceCorroborationByTitle;
+  diagnostics.adultGoogleBooksAnnualAnthologyReasonsByTitle = annualAnthologyReasonsByTitle;
+  diagnostics.adultGoogleBooksAnthologyCorroborationByTitle = anthologyCorroborationByTitle;
+  diagnostics.adultGoogleBooksAuthorCapAppliedByTitle = authorCapAppliedByTitle;
+  diagnostics.adultGoogleBooksSeriesCapAppliedByTitle = seriesCapAppliedByTitle;
+  diagnostics.adultGoogleBooksNormalizedSeriesRootByTitle = normalizedSeriesRootByTitle;
+  diagnostics.adultGoogleBooksDeferredForAuthorDiversityTitles = Object.entries(authorCapAppliedByTitle).filter(([, applied]) => applied).map(([title]) => title);
+  diagnostics.adultGoogleBooksDeferredForSeriesDiversityTitles = Object.entries(seriesCapAppliedByTitle).filter(([, applied]) => applied).map(([title]) => title);
+  diagnostics.adultGoogleBooksDistinctAuthorCount = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => primaryAuthor(candidate)).filter(Boolean)).size;
+  diagnostics.adultGoogleBooksDistinctSeriesRootCount = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => adultGoogleBooksSeriesRoot(candidate)).filter(Boolean)).size;
   diagnostics.adultGoogleBooksDocumentBackedLikedSignalsByTitle = documentBackedLikedSignalsByTitle;
   diagnostics.adultGoogleBooksDocumentBackedDislikedSignalsByTitle = documentBackedDislikedSignalsByTitle;
   diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle = positiveNetTasteFamiliesByTitle;
@@ -5061,6 +5163,8 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   const seenAuthors = new Set<string>();
   const seenSeries = new Set<string>();
   const seenRecurringOpenLibraryClusters = new Set<string>();
+  const seenAdultGoogleBooksClusterCounts: Record<string, number> = {};
+  const seenAdultGoogleBooksClusterAuthors: Record<string, Set<string>> = {};
 
   applyMiddleGradesQueryOnlyScoreCaps(candidates, profile, rejectedReasons);
   const rankedCandidates = [...candidates].sort((a, b) => compareForInitialSelection(a, b, profile));
@@ -5109,10 +5213,23 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       deferred.push({ candidate, reason: "same_author_deferred" });
       continue;
     }
-    const rootKey = seriesKey(candidate);
+    const rootKey = profile.ageBand === "adult" && candidate.source === "googleBooks"
+      ? adultGoogleBooksSeriesRoot(candidate)
+      : seriesKey(candidate);
     if (rootKey && seenSeries.has(rootKey)) {
       deferred.push({ candidate, reason: "same_series_or_root_deferred" });
       continue;
+    }
+    const adultGoogleBooksCluster = profile.ageBand === "adult" && candidate.source === "googleBooks"
+      ? adultGoogleBooksClusterKey(candidate)
+      : "";
+    if (adultGoogleBooksCluster) {
+      const clusterCount = Number(seenAdultGoogleBooksClusterCounts[adultGoogleBooksCluster] || 0);
+      const clusterAuthors = seenAdultGoogleBooksClusterAuthors[adultGoogleBooksCluster] || new Set<string>();
+      if (clusterCount >= 2 || (authorKey && clusterAuthors.has(authorKey))) {
+        deferred.push({ candidate, reason: "same_googlebooks_cluster_deferred" });
+        continue;
+      }
     }
     const recurringClusterKey = recurringOpenLibraryClusterKey(candidate);
     if (recurringClusterKey && (selected.length > 0 || seenRecurringOpenLibraryClusters.has(recurringClusterKey))) {
@@ -5122,6 +5239,11 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     seenTitles.add(titleKey);
     if (authorKey) seenAuthors.add(authorKey);
     if (rootKey) seenSeries.add(rootKey);
+    if (adultGoogleBooksCluster) {
+      seenAdultGoogleBooksClusterCounts[adultGoogleBooksCluster] = Number(seenAdultGoogleBooksClusterCounts[adultGoogleBooksCluster] || 0) + 1;
+      if (!seenAdultGoogleBooksClusterAuthors[adultGoogleBooksCluster]) seenAdultGoogleBooksClusterAuthors[adultGoogleBooksCluster] = new Set<string>();
+      if (authorKey) seenAdultGoogleBooksClusterAuthors[adultGoogleBooksCluster].add(authorKey);
+    }
     if (recurringClusterKey) seenRecurringOpenLibraryClusters.add(recurringClusterKey);
     selected.push(candidate);
     if (selected.length >= limit) break;
@@ -5132,14 +5254,29 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     for (const candidate of lowScoreRescue.sort((a, b) => b.score - a.score)) {
       const titleKey = normalized(candidate.title);
       const authorKey = primaryAuthor(candidate);
-      const rootKey = seriesKey(candidate);
+      const rootKey = profile.ageBand === "adult" && candidate.source === "googleBooks"
+        ? adultGoogleBooksSeriesRoot(candidate)
+        : seriesKey(candidate);
+      const adultGoogleBooksCluster = profile.ageBand === "adult" && candidate.source === "googleBooks"
+        ? adultGoogleBooksClusterKey(candidate)
+        : "";
       const recurringClusterKey = recurringOpenLibraryClusterKey(candidate);
       if (seenTitles.has(titleKey) || (authorKey && seenAuthors.has(authorKey)) || (rootKey && seenSeries.has(rootKey)) || (recurringClusterKey && seenRecurringOpenLibraryClusters.has(recurringClusterKey))) continue;
+      if (adultGoogleBooksCluster) {
+        const clusterCount = Number(seenAdultGoogleBooksClusterCounts[adultGoogleBooksCluster] || 0);
+        const clusterAuthors = seenAdultGoogleBooksClusterAuthors[adultGoogleBooksCluster] || new Set<string>();
+        if (clusterCount >= 2 || (authorKey && clusterAuthors.has(authorKey))) continue;
+      }
       candidate.rejectedReasons.push("accepted_low_score_rescue_source_quality_or_query_alignment");
       rejectedReasons.accepted_low_score_rescue = Number(rejectedReasons.accepted_low_score_rescue || 0) + 1;
       seenTitles.add(titleKey);
       if (authorKey) seenAuthors.add(authorKey);
       if (rootKey) seenSeries.add(rootKey);
+      if (adultGoogleBooksCluster) {
+        seenAdultGoogleBooksClusterCounts[adultGoogleBooksCluster] = Number(seenAdultGoogleBooksClusterCounts[adultGoogleBooksCluster] || 0) + 1;
+        if (!seenAdultGoogleBooksClusterAuthors[adultGoogleBooksCluster]) seenAdultGoogleBooksClusterAuthors[adultGoogleBooksCluster] = new Set<string>();
+        if (authorKey) seenAdultGoogleBooksClusterAuthors[adultGoogleBooksCluster].add(authorKey);
+      }
       if (recurringClusterKey) seenRecurringOpenLibraryClusters.add(recurringClusterKey);
       selected.push(candidate);
       if (selected.length >= Math.min(5, Math.max(3, lowScoreRescue.length))) break;
@@ -5180,10 +5317,20 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     for (const row of deferred) {
       const titleKey = normalized(row.candidate.title);
       if (seenTitles.has(titleKey)) continue;
+      if (profile.ageBand === "adult" && row.candidate.source === "googleBooks" && row.reason === "same_author_deferred") {
+        row.candidate.rejectedReasons.push("underfill_blocked_same_author_variant");
+        rejectedReasons.underfill_blocked_same_author_variant = Number(rejectedReasons.underfill_blocked_same_author_variant || 0) + 1;
+        continue;
+      }
       if (row.reason === "recurring_openlibrary_cluster_deferred" || row.reason === "same_series_or_root_deferred") {
         const blockedReason = row.reason === "same_series_or_root_deferred" ? "underfill_blocked_same_root_variant" : "underfill_blocked_recurring_openlibrary_cluster";
         row.candidate.rejectedReasons.push(blockedReason);
         rejectedReasons[blockedReason] = Number(rejectedReasons[blockedReason] || 0) + 1;
+        continue;
+      }
+      if (profile.ageBand === "adult" && row.candidate.source === "googleBooks" && row.reason === "same_googlebooks_cluster_deferred") {
+        row.candidate.rejectedReasons.push("underfill_blocked_googlebooks_cluster_concentration");
+        rejectedReasons.underfill_blocked_googlebooks_cluster_concentration = Number(rejectedReasons.underfill_blocked_googlebooks_cluster_concentration || 0) + 1;
         continue;
       }
       if (profile.ageBand === "teens" && row.reason === "teen_openlibrary_later_series_deferred") {
@@ -5194,6 +5341,18 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
         rejectedReasons.underfill_relaxed_diversity = Number(rejectedReasons.underfill_relaxed_diversity || 0) + 1;
       }
       seenTitles.add(titleKey);
+      if (profile.ageBand === "adult" && row.candidate.source === "googleBooks") {
+        const authorKey = primaryAuthor(row.candidate);
+        const rootKey = adultGoogleBooksSeriesRoot(row.candidate);
+        const clusterKey = adultGoogleBooksClusterKey(row.candidate);
+        if (authorKey) seenAuthors.add(authorKey);
+        if (rootKey) seenSeries.add(rootKey);
+        if (clusterKey) {
+          seenAdultGoogleBooksClusterCounts[clusterKey] = Number(seenAdultGoogleBooksClusterCounts[clusterKey] || 0) + 1;
+          if (!seenAdultGoogleBooksClusterAuthors[clusterKey]) seenAdultGoogleBooksClusterAuthors[clusterKey] = new Set<string>();
+          if (authorKey) seenAdultGoogleBooksClusterAuthors[clusterKey].add(authorKey);
+        }
+      }
       selected.push(row.candidate);
       if (selected.length >= underfillTarget) break;
     }
