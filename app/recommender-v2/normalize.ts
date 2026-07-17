@@ -77,6 +77,11 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           googleBooksPublicationShapePrecedenceDecision: row.googleBooksPublicationShapePrecedenceDecision,
           googleBooksExplicitNonNarrativeIdentity: row.googleBooksExplicitNonNarrativeIdentity,
           googleBooksStoryLevelNarrativeEvidence: row.googleBooksStoryLevelNarrativeEvidence,
+          googleBooksGenericCategoryTitle: row.googleBooksGenericCategoryTitle,
+          googleBooksGenericCategoryEvidence: row.googleBooksGenericCategoryEvidence,
+          googleBooksUnknownShapeEligibility: row.googleBooksUnknownShapeEligibility,
+          googleBooksUnknownShapeEvidence: row.googleBooksUnknownShapeEvidence,
+          googleBooksUnknownShapeRejectedReason: row.googleBooksUnknownShapeRejectedReason,
           authors: row.authors || row.author_name || row.creators,
         },
       });

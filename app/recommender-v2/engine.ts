@@ -148,6 +148,12 @@ type AdultGoogleBooksNormalizationDiagnostics = {
   googleBooksPublicationShapePrecedenceDecisionByTitle: Record<string, string>;
   googleBooksExplicitNonNarrativeIdentityByTitle: Record<string, string[]>;
   googleBooksStoryLevelNarrativeEvidenceByTitle: Record<string, string[]>;
+  googleBooksGenericCategoryTitleByTitle: Record<string, boolean>;
+  googleBooksGenericCategoryEvidenceByTitle: Record<string, string[]>;
+  googleBooksGenericCategoryRejectedBeforeRankingByTitle: Record<string, string>;
+  googleBooksUnknownShapeEligibilityByTitle: Record<string, boolean>;
+  googleBooksUnknownShapeEvidenceByTitle: Record<string, string[]>;
+  googleBooksUnknownShapeRejectedReasonByTitle: Record<string, string>;
   googleBooksEnteredRanking: string[];
   googleBooksRejectedBeforeRankingReason: Record<string, string>;
 };
@@ -239,6 +245,7 @@ const ADULT_GOOGLE_BOOKS_NON_NARRATIVE_PUBLICATION_SHAPES = new Set([
   "periodical",
   "production_history",
   "miscellany",
+  "generic_category_catalog",
 ]);
 
 function adultGoogleBooksShapeDiagnostics(candidate: NormalizedCandidate): {
@@ -251,6 +258,11 @@ function adultGoogleBooksShapeDiagnostics(candidate: NormalizedCandidate): {
   publicationShapePrecedenceDecision: string;
   explicitNonNarrativeIdentity: string[];
   storyLevelNarrativeEvidence: string[];
+  genericCategoryTitle: boolean;
+  genericCategoryEvidence: string[];
+  unknownShapeEligibility: boolean;
+  unknownShapeEvidence: string[];
+  unknownShapeRejectedReason: string;
 } {
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const diagnostics = candidate.diagnostics || {};
@@ -263,6 +275,8 @@ function adultGoogleBooksShapeDiagnostics(candidate: NormalizedCandidate): {
   const overriddenEvidenceValue = diagnostics.googleBooksOverriddenNarrativeEvidence || raw.googleBooksOverriddenNarrativeEvidence;
   const explicitIdentityValue = diagnostics.googleBooksExplicitNonNarrativeIdentity || raw.googleBooksExplicitNonNarrativeIdentity;
   const storyEvidenceValue = diagnostics.googleBooksStoryLevelNarrativeEvidence || raw.googleBooksStoryLevelNarrativeEvidence;
+  const genericEvidenceValue = diagnostics.googleBooksGenericCategoryEvidence || raw.googleBooksGenericCategoryEvidence;
+  const unknownEvidenceValue = diagnostics.googleBooksUnknownShapeEvidence || raw.googleBooksUnknownShapeEvidence;
   return {
     shape,
     narrativeConfidence: Number.isFinite(narrativeConfidence) ? narrativeConfidence : 0,
@@ -273,13 +287,22 @@ function adultGoogleBooksShapeDiagnostics(candidate: NormalizedCandidate): {
     publicationShapePrecedenceDecision: String(diagnostics.googleBooksPublicationShapePrecedenceDecision || raw.googleBooksPublicationShapePrecedenceDecision || ""),
     explicitNonNarrativeIdentity: Array.isArray(explicitIdentityValue) ? explicitIdentityValue.map((item) => String(item || "")).filter(Boolean) : [],
     storyLevelNarrativeEvidence: Array.isArray(storyEvidenceValue) ? storyEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    genericCategoryTitle: Boolean(diagnostics.googleBooksGenericCategoryTitle ?? raw.googleBooksGenericCategoryTitle),
+    genericCategoryEvidence: Array.isArray(genericEvidenceValue) ? genericEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    unknownShapeEligibility: Boolean(diagnostics.googleBooksUnknownShapeEligibility ?? raw.googleBooksUnknownShapeEligibility),
+    unknownShapeEvidence: Array.isArray(unknownEvidenceValue) ? unknownEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    unknownShapeRejectedReason: String(diagnostics.googleBooksUnknownShapeRejectedReason || raw.googleBooksUnknownShapeRejectedReason || ""),
   };
 }
 
-function adultGoogleBooksPublicationShapeRejectReason(shape: string): string {
-  return ADULT_GOOGLE_BOOKS_NON_NARRATIVE_PUBLICATION_SHAPES.has(shape)
-    ? `publication_shape_${shape}`
-    : "";
+function adultGoogleBooksPublicationShapeRejectReason(shapeDiagnostics: ReturnType<typeof adultGoogleBooksShapeDiagnostics>): string {
+  if (ADULT_GOOGLE_BOOKS_NON_NARRATIVE_PUBLICATION_SHAPES.has(shapeDiagnostics.shape)) {
+    return `publication_shape_${shapeDiagnostics.shape}`;
+  }
+  if (shapeDiagnostics.shape === "unknown" && !shapeDiagnostics.unknownShapeEligibility) {
+    return shapeDiagnostics.unknownShapeRejectedReason || "publication_shape_unknown_insufficient_narrative_identity";
+  }
+  return "";
 }
 
 function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[], profile: TasteProfile): { candidates: NormalizedCandidate[]; diagnostics: AdultGoogleBooksNormalizationDiagnostics } {
@@ -300,6 +323,12 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
     googleBooksPublicationShapePrecedenceDecisionByTitle: {},
     googleBooksExplicitNonNarrativeIdentityByTitle: {},
     googleBooksStoryLevelNarrativeEvidenceByTitle: {},
+    googleBooksGenericCategoryTitleByTitle: {},
+    googleBooksGenericCategoryEvidenceByTitle: {},
+    googleBooksGenericCategoryRejectedBeforeRankingByTitle: {},
+    googleBooksUnknownShapeEligibilityByTitle: {},
+    googleBooksUnknownShapeEvidenceByTitle: {},
+    googleBooksUnknownShapeRejectedReasonByTitle: {},
     googleBooksEnteredRanking: [],
     googleBooksRejectedBeforeRankingReason: {},
   };
@@ -319,7 +348,7 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
     const referenceEvidence = adultGoogleBooksReferenceEvidenceFromNormalized(candidate);
     const publisherEvidence = adultGoogleBooksPublisherEvidenceFromNormalized(candidate);
     const shapeDiagnostics = adultGoogleBooksShapeDiagnostics(candidate);
-    const publicationShapeRejectReason = adultGoogleBooksPublicationShapeRejectReason(shapeDiagnostics.shape);
+    const publicationShapeRejectReason = adultGoogleBooksPublicationShapeRejectReason(shapeDiagnostics);
     let rejectReason = "";
     if (publicationShapeRejectReason) rejectReason = publicationShapeRejectReason;
     else if (anthologyEvidence.length > 0) rejectReason = "anthology_or_best_of_reference_shape";
@@ -341,6 +370,11 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
     diagnostics.googleBooksPublicationShapePrecedenceDecisionByTitle[title] = shapeDiagnostics.publicationShapePrecedenceDecision;
     diagnostics.googleBooksExplicitNonNarrativeIdentityByTitle[title] = shapeDiagnostics.explicitNonNarrativeIdentity;
     diagnostics.googleBooksStoryLevelNarrativeEvidenceByTitle[title] = shapeDiagnostics.storyLevelNarrativeEvidence;
+    diagnostics.googleBooksGenericCategoryTitleByTitle[title] = shapeDiagnostics.genericCategoryTitle;
+    diagnostics.googleBooksGenericCategoryEvidenceByTitle[title] = shapeDiagnostics.genericCategoryEvidence;
+    diagnostics.googleBooksUnknownShapeEligibilityByTitle[title] = shapeDiagnostics.unknownShapeEligibility;
+    diagnostics.googleBooksUnknownShapeEvidenceByTitle[title] = shapeDiagnostics.unknownShapeEvidence;
+    if (shapeDiagnostics.unknownShapeRejectedReason) diagnostics.googleBooksUnknownShapeRejectedReasonByTitle[title] = shapeDiagnostics.unknownShapeRejectedReason;
     diagnostics.googleBooksNormalizedRejectReasonByTitle[title] = eligible ? "entered_ranking" : rejectReason;
     if (eligible) {
       diagnostics.googleBooksEnteredRanking.push(title);
@@ -348,6 +382,7 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
     } else {
       diagnostics.googleBooksRejectedBeforeRankingReason[title] = rejectReason;
       if (publicationShapeRejectReason) diagnostics.googleBooksPublicationShapeRejectedBeforeRankingByTitle[title] = publicationShapeRejectReason;
+      if (publicationShapeRejectReason === "publication_shape_generic_category_catalog") diagnostics.googleBooksGenericCategoryRejectedBeforeRankingByTitle[title] = publicationShapeRejectReason;
     }
   }
   diagnostics.googleBooksEnteredRanking = uniqueStrings(diagnostics.googleBooksEnteredRanking, 80);
@@ -1096,6 +1131,12 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     googleBooksPublicationShapePrecedenceDecisionByTitle: {},
     googleBooksExplicitNonNarrativeIdentityByTitle: {},
     googleBooksStoryLevelNarrativeEvidenceByTitle: {},
+    googleBooksGenericCategoryTitleByTitle: {},
+    googleBooksGenericCategoryEvidenceByTitle: {},
+    googleBooksGenericCategoryRejectedBeforeRankingByTitle: {},
+    googleBooksUnknownShapeEligibilityByTitle: {},
+    googleBooksUnknownShapeEvidenceByTitle: {},
+    googleBooksUnknownShapeRejectedReasonByTitle: {},
     googleBooksEnteredRanking: [],
     googleBooksRejectedBeforeRankingReason: {},
   };
@@ -2218,6 +2259,12 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   rejectedReasonsWithGoogleBooksNormalization.googleBooksPublicationShapePrecedenceDecisionByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksPublicationShapePrecedenceDecisionByTitle;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksExplicitNonNarrativeIdentityByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksExplicitNonNarrativeIdentityByTitle;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksStoryLevelNarrativeEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksStoryLevelNarrativeEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksGenericCategoryTitleByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksGenericCategoryTitleByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksGenericCategoryEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksGenericCategoryEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksGenericCategoryRejectedBeforeRankingByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksGenericCategoryRejectedBeforeRankingByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksUnknownShapeEligibilityByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksUnknownShapeEligibilityByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksUnknownShapeEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksUnknownShapeEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksUnknownShapeRejectedReasonByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksUnknownShapeRejectedReasonByTitle;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksRankedCandidateTitles = googleBooksRankedCandidateTitles;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksEnteredRanking = adultGoogleBooksNormalizationDiagnostics.googleBooksEnteredRanking;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksRejectedBeforeRankingReason = adultGoogleBooksNormalizationDiagnostics.googleBooksRejectedBeforeRankingReason;
