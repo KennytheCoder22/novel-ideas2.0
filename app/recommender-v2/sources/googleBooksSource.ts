@@ -3,7 +3,7 @@ import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, Sour
 const GOOGLE_BOOKS_API_BASE = "https://www.googleapis.com/books/v1/volumes";
 const GOOGLE_BOOKS_ADAPTER_VERSION = "v5";
 const GOOGLE_BOOKS_RESPONSE_BODY_PREFIX_LIMIT = 240;
-const GOOGLE_BOOKS_MAX_RESULTS_PER_QUERY = 16;
+const GOOGLE_BOOKS_MAX_RESULTS_PER_QUERY = 24;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -171,16 +171,27 @@ function googleBooksArtifactDropReason(title: string, subtitle: string, descript
 
 function buildGoogleBooksFetchQuery(query: string): string {
   const normalized = normalizeQuery(query);
-  if (!normalized) return normalized;
-  // Keep exclusions focused; long negative tails can weaken useful retrieval terms.
-  const negatives = [
-    '-"writer\'s market"',
-    '-"guide to literary agents"',
-    '-"literary criticism"',
-    '-"study guide"',
-    '-"conference proceedings"',
-  ];
-  return `${normalized} ${negatives.join(" ")}`.replace(/\s+/g, " ").trim();
+  return normalized;
+}
+
+function isPublicDomainCatalogShape(title: string, publicationYear: number | undefined, description: string, categories: string[]): boolean {
+  const normalizedTitle = normalizeText(title);
+  const normalizedDescription = normalizeText(description);
+  const categoryBlob = categoryText(categories);
+  const oldPublication = Number.isFinite(Number(publicationYear)) && Number(publicationYear) > 0 && Number(publicationYear) < 1950;
+  const catalogSignals = /\b(complete works|collected works|library edition|everyman|victoria|catalog|catalogue|bibliograph(?:y|ies)|index|archive|public domain)\b/.test(normalizedTitle)
+    || /\b(reference|history and criticism|literary criticism|bibliographies? and indexes|catalogs?|directories)\b/.test(categoryBlob)
+    || (oldPublication && normalizedDescription.length < 80);
+  return Boolean(catalogSignals || oldPublication && /\b(vol(?:ume)?\s*\d+|edition)\b/.test(normalizedTitle));
+}
+
+function isModernNarrativeRecord(title: string, publicationYear: number | undefined, description: string, categories: string[], isbnPresent: boolean): boolean {
+  const normalizedDescription = normalizeText(description);
+  const normalizedTitle = normalizeText(title);
+  const hasNarrativeLanguage = /\b(follows|story of|tells the story|centers on|must survive|must uncover|must confront|must choose|must save|protagonist|heroine|hero|detective|characters?)\b/.test(normalizedDescription)
+    || /\b(novel|fiction|thriller|mystery|fantasy|romance|science fiction|historical fiction|horror)\b/.test(`${normalizedTitle} ${categoryText(categories)}`);
+  const modernYear = Number.isFinite(Number(publicationYear)) && Number(publicationYear) >= 1975;
+  return Boolean(hasNarrativeLanguage && (modernYear || isbnPresent));
 }
 
 function getGoogleBooksApiKey(): string {
@@ -210,6 +221,7 @@ async function fetchGoogleBooksJson(
       maxResults: String(GOOGLE_BOOKS_MAX_RESULTS_PER_QUERY),
       orderBy: "relevance",
       printType: "books",
+      filter: "partial",
       projection: "full",
       langRestrict: "en",
     });
@@ -349,6 +361,33 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const rawCountByQuery: Record<string, number> = {};
     const queriesAttempted: string[] = [];
     const fetches: SourceFetchDiagnosticV2[] = [];
+    const publicationYearByTitle: Record<string, number> = {};
+    const descriptionPresentByTitle: Record<string, boolean> = {};
+    const isbnPresentByTitle: Record<string, boolean> = {};
+    const ratingsCountByTitle: Record<string, number> = {};
+    const ratingsAverageByTitle: Record<string, number> = {};
+    const queryByTitle: Record<string, string> = {};
+    const printTypeByTitle: Record<string, string> = {};
+    const languageByTitle: Record<string, string> = {};
+    const maturityRatingByTitle: Record<string, string> = {};
+    const perQueryQuality: Record<string, {
+      query: string;
+      rawResultCount: number;
+      titles: string[];
+      publicationYearByTitle: Record<string, number>;
+      languageByTitle: Record<string, string>;
+      printTypeByTitle: Record<string, string>;
+      maturityRatingByTitle: Record<string, string>;
+      descriptionPresentByTitle: Record<string, boolean>;
+      isbnPresentByTitle: Record<string, boolean>;
+      averageRatingByTitle: Record<string, number>;
+      ratingsCountByTitle: Record<string, number>;
+      enteredNormalizationTitles: string[];
+      enteredRankingTitles: string[];
+      enteredFinalEligibilityTitles: string[];
+    }> = {};
+    const modernNarrativeCountByQuery: Record<string, number> = {};
+    const publicDomainCatalogShapeCountByQuery: Record<string, number> = {};
     const seenVolumeIds = new Set<string>();
     let rawApiResultCount = 0;
     let droppedBeforeNormalization = 0;
@@ -364,6 +403,24 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       const query = plannedIntent.fetchQuery;
       const originalQuery = plannedIntent.originalPlannedQuery;
       queriesAttempted.push(originalQuery);
+      if (!perQueryQuality[originalQuery]) {
+        perQueryQuality[originalQuery] = {
+          query: originalQuery,
+          rawResultCount: 0,
+          titles: [],
+          publicationYearByTitle: {},
+          languageByTitle: {},
+          printTypeByTitle: {},
+          maturityRatingByTitle: {},
+          descriptionPresentByTitle: {},
+          isbnPresentByTitle: {},
+          averageRatingByTitle: {},
+          ratingsCountByTitle: {},
+          enteredNormalizationTitles: [],
+          enteredRankingTitles: [],
+          enteredFinalEligibilityTitles: [],
+        };
+      }
       const fetchStartedAt = nowIso();
       const fetched = await fetchGoogleBooksJson(query, perQueryTimeoutMs, context.signal);
       const fetchFinishedAt = nowIso();
@@ -391,6 +448,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       const json = (fetched.json || {}) as Record<string, unknown>;
       const items = Array.isArray(json.items) ? json.items : null;
       rawCountByQuery[originalQuery] = Number(rawCountByQuery[originalQuery] || 0) + (items ? items.length : 0);
+      perQueryQuality[originalQuery].rawResultCount = Number(rawCountByQuery[originalQuery] || 0);
       if (!items) {
         dropReasons.non_book_response_shape = Number(dropReasons.non_book_response_shape || 0) + 1;
         droppedBeforeNormalization += 1;
@@ -460,6 +518,15 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         const publishedDate = String(volumeInfo.publishedDate || "").trim() || undefined;
         const publicationYear = parsePublicationYear(volumeInfo.publishedDate);
         const maturityRating = String(volumeInfo.maturityRating || "").trim() || undefined;
+        const printType = String(volumeInfo.printType || "BOOK").trim() || "BOOK";
+        const language = String(volumeInfo.language || "").trim() || "";
+        const hasDescription = Boolean(String(description || "").trim());
+        const hasIsbn = Boolean(
+          (isbn13 && String((isbn13 as any).identifier || "").trim())
+          || (isbn10 && String((isbn10 as any).identifier || "").trim()),
+        );
+        const averageRating = Number.isFinite(Number(volumeInfo.averageRating)) ? Number(volumeInfo.averageRating) : undefined;
+        const ratingsCount = Number.isFinite(Number(volumeInfo.ratingsCount)) ? Number(volumeInfo.ratingsCount) : 0;
 
         const rawRow = {
           id: `googleBooks:${volumeId}`,
@@ -479,6 +546,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           publicationYear,
           pageCount: Number.isFinite(Number(volumeInfo.pageCount)) ? Number(volumeInfo.pageCount) : undefined,
           ratingsCount: Number.isFinite(Number(volumeInfo.ratingsCount)) ? Number(volumeInfo.ratingsCount) : undefined,
+          averageRating,
           language: String(volumeInfo.language || "").trim() || undefined,
           maturityBand: maturityRating,
           maturityRating,
@@ -507,6 +575,31 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
 
         rawItems.push(rawRow);
         if (rawTitles.length < 40) rawTitles.push(title);
+        queryByTitle[title] = originalQuery;
+        if (Number.isFinite(Number(publicationYear))) publicationYearByTitle[title] = Number(publicationYear);
+        descriptionPresentByTitle[title] = hasDescription;
+        isbnPresentByTitle[title] = hasIsbn;
+        ratingsCountByTitle[title] = ratingsCount;
+        if (typeof averageRating === "number" && Number.isFinite(averageRating)) ratingsAverageByTitle[title] = averageRating;
+        printTypeByTitle[title] = printType;
+        languageByTitle[title] = language;
+        maturityRatingByTitle[title] = maturityRating || "";
+        perQueryQuality[originalQuery].titles.push(title);
+        if (Number.isFinite(Number(publicationYear))) perQueryQuality[originalQuery].publicationYearByTitle[title] = Number(publicationYear);
+        perQueryQuality[originalQuery].languageByTitle[title] = language;
+        perQueryQuality[originalQuery].printTypeByTitle[title] = printType;
+        perQueryQuality[originalQuery].maturityRatingByTitle[title] = maturityRating || "";
+        perQueryQuality[originalQuery].descriptionPresentByTitle[title] = hasDescription;
+        perQueryQuality[originalQuery].isbnPresentByTitle[title] = hasIsbn;
+        if (typeof averageRating === "number" && Number.isFinite(averageRating)) perQueryQuality[originalQuery].averageRatingByTitle[title] = averageRating;
+        perQueryQuality[originalQuery].ratingsCountByTitle[title] = ratingsCount;
+        perQueryQuality[originalQuery].enteredNormalizationTitles.push(title);
+        if (isModernNarrativeRecord(title, publicationYear, description, categories, hasIsbn)) {
+          modernNarrativeCountByQuery[originalQuery] = Number(modernNarrativeCountByQuery[originalQuery] || 0) + 1;
+        }
+        if (isPublicDomainCatalogShape(title, publicationYear, description, categories)) {
+          publicDomainCatalogShapeCountByQuery[originalQuery] = Number(publicDomainCatalogShapeCountByQuery[originalQuery] || 0) + 1;
+        }
       }
 
       const shouldRunFallback = !fallbackExecuted
@@ -562,6 +655,18 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       googleBooksSourceDropReasons: dropReasons,
       googleBooksSourceStatus: status,
       googleBooksSourceAdapterVersion: GOOGLE_BOOKS_ADAPTER_VERSION,
+      googleBooksPublicationYearByTitle: publicationYearByTitle,
+      googleBooksDescriptionPresentByTitle: descriptionPresentByTitle,
+      googleBooksIsbnPresentByTitle: isbnPresentByTitle,
+      googleBooksRatingsCountByTitle: ratingsCountByTitle,
+      googleBooksAverageRatingByTitle: ratingsAverageByTitle,
+      googleBooksLanguageByTitle: languageByTitle,
+      googleBooksPrintTypeByTitle: printTypeByTitle,
+      googleBooksMaturityRatingByTitle: maturityRatingByTitle,
+      googleBooksQueryByTitle: queryByTitle,
+      googleBooksModernNarrativeCountByQuery: modernNarrativeCountByQuery,
+      googleBooksPublicDomainCatalogShapeCountByQuery: publicDomainCatalogShapeCountByQuery,
+      googleBooksQueryResultQualityByQuery: perQueryQuality,
     };
 
     return {

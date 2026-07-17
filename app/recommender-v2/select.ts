@@ -5025,6 +5025,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const rejectedCountByQueryAndReason: Record<string, Record<string, number>> = {};
   const rejectedTitlesByReason: Record<string, string[]> = {};
   const acceptedTitles: string[] = [];
+  const rankedCandidateTitles: string[] = [];
   if (profile.ageBand !== "adult") {
     diagnostics.adultGoogleBooksFinalGateApplied = false;
     diagnostics.adultGoogleBooksEligibilityReasonByTitle = {};
@@ -5069,6 +5070,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
 
   const selectedTitleSet = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalized(candidate.title)));
   for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
+    rankedCandidateTitles.push(candidate.title);
     const plannedQuery = String(candidate.diagnostics?.originalPlannedQuery || candidate.diagnostics?.queryText || "").trim();
     const attemptedQuery = String(candidate.diagnostics?.queryText || candidate.diagnostics?.originalPlannedQuery || "").trim();
     if (plannedQuery) plannedQueries.add(plannedQuery);
@@ -5145,6 +5147,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksBroadToneOnlyRejectedByTitle = broadToneOnlyRejectedByTitle;
   diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
   diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
+  diagnostics.googleBooksRankedCandidateTitles = uniqueSignals(rankedCandidateTitles);
   diagnostics.googleBooksRawCountByQuery = rawCountByQuery;
   diagnostics.googleBooksAcceptedCountByQuery = acceptedCountByQuery;
   diagnostics.googleBooksRejectedCountByQueryAndReason = rejectedCountByQueryAndReason;
