@@ -49,6 +49,10 @@ type GoogleBooksPublicationShapeAnalysis = {
   unknownEligibilityThresholdDecision: string;
   subjectOfStudyTitle: boolean;
   subjectOfStudyEvidence: string[];
+  curatedBookGuideIdentity: boolean;
+  curatedBookGuideEvidence: string[];
+  periodicalIdentityEvidence: string[];
+  periodicalIdentityDecision: string;
 };
 
 const GOOGLE_BOOKS_NON_NARRATIVE_SHAPES = new Set<GoogleBooksPublicationShape>([
@@ -226,6 +230,83 @@ function googleBooksSubjectOfStudyTitleEvidence(titleText: string): string[] {
   return Array.from(new Set(evidence));
 }
 
+function googleBooksCuratedBookGuideEvidence(titleText: string, descriptionText: string, categoryBlob: string): string[] {
+  const evidence: string[] = [];
+  const normalized = normalizeText(titleText)
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const bookContainer = "(?:books?|novels?|fiction|stories|reads|literature)";
+  if (new RegExp(`^(?:the\\s+)?guide\\s+to\\s+(?:the\\s+)?top\\s+\\d+\\s+.+\\b${bookContainer}$`).test(normalized)) {
+    evidence.push("guide_to_top_books_title_shape");
+  }
+  if (new RegExp(`^(?:the\\s+)?top\\s+\\d+\\s+.+\\b${bookContainer}$`).test(normalized)) {
+    evidence.push("top_books_curated_list_title_shape");
+  }
+  if (new RegExp(`^(?:a\\s+|the\\s+)?guide\\s+to\\s+(?:the\\s+)?(?:best|essential|must\\s+read|top)\\s+.+\\b${bookContainer}$`).test(normalized)) {
+    evidence.push("guide_to_best_books_title_shape");
+  }
+  if (new RegExp(`^(?:best|essential|must\\s+read)\\s+.+\\b${bookContainer}$`).test(normalized)) {
+    evidence.push("best_or_essential_books_title_shape");
+  }
+  if (evidence.length > 0 && /\b(readers'? advisory|recommended reads?|book recommendations?|rank(?:ed|ing)|curated|guide|survey|best books?|top\s+\d+)\b/.test(descriptionText)) {
+    evidence.push("curated_book_guide_description_framing");
+  }
+  if (evidence.length > 0 && /\b(reference|bibliographies? and indexes|book reviews?|literature|literary criticism|history and criticism)\b/.test(categoryBlob)) {
+    evidence.push("curated_book_guide_category_framing");
+  }
+  return Array.from(new Set(evidence));
+}
+
+function googleBooksPeriodicalIdentityEvidence(
+  titleText: string,
+  subtitleText: string,
+  normalizedDescription: string,
+  categoriesText: string,
+  publisherText: string,
+  combined: string,
+): string[] {
+  const titleSubtitle = normalizeText([titleText, subtitleText].filter(Boolean).join(" "));
+  const titleSignals: string[] = [];
+  const corroboration: string[] = [];
+
+  if (/\bmagazine\b/.test(titleSubtitle)) titleSignals.push("title_magazine_term");
+  if (/\bjournal\b/.test(titleSubtitle)) titleSignals.push("title_journal_term");
+  if (/\bbulletin\b/.test(titleSubtitle)) titleSignals.push("title_bulletin_term");
+  if (/\bquarterly\b/.test(titleSubtitle)) titleSignals.push("title_quarterly_term");
+  if (/\bgazette\b/.test(titleSubtitle)) titleSignals.push("title_gazette_term");
+  if (/\breview\b/.test(titleSubtitle)) titleSignals.push("title_review_term");
+  if (/\bmercury\b/.test(titleSubtitle)) titleSignals.push("title_mercury_periodical_style_term");
+  if (/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}\b/.test(titleSubtitle)) {
+    titleSignals.push("title_month_year_issue_framing");
+  }
+  if (/\b(?:vol(?:ume)?\.?|no\.?|issue)\s*\d+\b/.test(titleSubtitle)) {
+    titleSignals.push("title_volume_issue_framing");
+  }
+
+  if (/\b(periodicals?|serial publications?|magazines?|journals?)\b/.test(categoriesText)) {
+    corroboration.push("category_periodical");
+  }
+  if (/\b(?:periodical|serial publication|magazine|journal|weekly|monthly|bimonthly|quarterly|special issue|annual issue|issue of|volume of|published as a serial|articles?|contributors?|editorials?|reviews?|essays?)\b/.test(normalizedDescription)) {
+    corroboration.push("description_periodical_or_issue_framing");
+  }
+  if (/\b(?:periodical|magazine|journal|review|quarterly|gazette|mercury)\b/.test(publisherText)) {
+    corroboration.push("publisher_periodical_framing");
+  }
+  if (/\bissn\b/.test(combined)) {
+    corroboration.push("issn_marker");
+  }
+
+  const explicitIssueTitle = titleSignals.some((signal) => /issue|month_year|volume/.test(signal));
+  const explicitPeriodicalCategory = corroboration.includes("category_periodical");
+  const explicitPeriodicalTitle = titleSignals.some((signal) => /magazine|bulletin|quarterly/.test(signal));
+  if (explicitPeriodicalCategory || (titleSignals.length > 0 && corroboration.length > 0) || (explicitIssueTitle && explicitPeriodicalTitle)) {
+    return Array.from(new Set([...titleSignals, ...corroboration]));
+  }
+  return [];
+}
+
 function googleBooksPublicationShapeDropReason(analysis: GoogleBooksPublicationShapeAnalysis): string | undefined {
   if (GOOGLE_BOOKS_NON_NARRATIVE_SHAPES.has(analysis.shape)) return `publication_shape_${analysis.shape}`;
   if (analysis.shape === "anthology" || analysis.shape === "essay_collection") return `publication_shape_${analysis.shape}`;
@@ -306,13 +387,18 @@ function inferGoogleBooksPublicationShape(params: {
     narrativeConfidence += 1;
   }
 
+  const curatedBookGuideEvidence = googleBooksCuratedBookGuideEvidence(titleText, descriptionText, categoryBlob);
+  const curatedBookGuideIdentity = curatedBookGuideEvidence.length > 0;
+  const periodicalIdentityEvidence = googleBooksPeriodicalIdentityEvidence(titleText, "", descriptionText, categoryBlob, publisherText, allText);
+  const periodicalIdentityDecision = periodicalIdentityEvidence.length > 0
+    ? "periodical_identity_overrides_narrative_signals"
+    : "no_corroborated_periodical_identity";
   const referenceShape = /\b(encyclop(?:a)?edia|dictionary|directory|catalog(?:ue)?|bibliograph(?:y|ies)|index|almanac|companion to|reader'?s companion|reference guide)\b/.test(allText)
     || /\b(reference|bibliographies? and indexes|catalogs?|directories)\b/.test(categoryBlob);
   const writingGuideShape = /\b(how to write|writing fiction|creative writing|writer'?s guide|writing guide|handbook for writers|craft of fiction|plotting|character development guide|writer'?s market|guide to literary agents?)\b/.test(allText);
-  const readersAdvisoryShape = /\b(readers'? advisory|reader'?s advisory|recommended reads?|what do i read next|genreflecting|library advisory|book reviews? of fiction)\b/.test(allText);
-  const periodicalShape = /\b(magazine|journal|bulletin|periodical|monthly|quarterly)\b/.test(titleText)
-    || /\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}\b/.test(titleText)
-    || /\b(periodicals?|serial publications?|magazines?|journals?)\b/.test(categoryBlob);
+  const readersAdvisoryShape = curatedBookGuideIdentity
+    || /\b(readers'? advisory|reader'?s advisory|recommended reads?|what do i read next|genreflecting|library advisory|book reviews? of fiction)\b/.test(allText);
+  const periodicalShape = periodicalIdentityEvidence.length > 0;
   const miscellanyShape = /\b(bathroom reader|uncle john'?s|reader plunges|miscellany|miscellaneous|trivia|fact book|fun facts|digest)\b/.test(allText);
   const interviewShape = /\b(conversations with|interviews? with|interview collection|talks with)\b/.test(titleText) || /\b(interviews?|conversations)\b/.test(categoryBlob);
   const genericCategoryEvidence = googleBooksGenericCategoryTitleEvidence(titleText);
@@ -353,9 +439,9 @@ function inferGoogleBooksPublicationShape(params: {
     && !/\b(true crime|narrative nonfiction)\b/.test(categoryBlob);
 
   const explicitShapeCandidates: Array<{ shape: GoogleBooksPublicationShape; evidence: string[]; decision: string }> = [];
-  if (periodicalShape) explicitShapeCandidates.push({ shape: "periodical", evidence: ["periodical_magazine_journal_identity"], decision: "periodical_identity_overrides_narrative_signals" });
+  if (periodicalShape) explicitShapeCandidates.push({ shape: "periodical", evidence: periodicalIdentityEvidence, decision: periodicalIdentityDecision });
   if (writingGuideShape || craftGuideTitleShape) explicitShapeCandidates.push({ shape: "writing_guide", evidence: [craftGuideTitleShape ? "craft_or_art_practice_title_shape" : "writing_instruction_publication_shape"], decision: "writing_guide_identity_overrides_narrative_signals" });
-  if (readersAdvisoryShape) explicitShapeCandidates.push({ shape: "readers_advisory", evidence: ["readers_advisory_publication_shape"], decision: "readers_advisory_identity_overrides_narrative_signals" });
+  if (readersAdvisoryShape) explicitShapeCandidates.push({ shape: "readers_advisory", evidence: curatedBookGuideIdentity ? curatedBookGuideEvidence : ["readers_advisory_publication_shape"], decision: "readers_advisory_identity_overrides_narrative_signals" });
   if (genericCategoryTitle) explicitShapeCandidates.push({ shape: "generic_category_catalog", evidence: genericCategoryEvidence, decision: "generic_category_title_overrides_narrative_signals" });
   if (referenceShape) explicitShapeCandidates.push({ shape: "reference", evidence: ["reference_publication_shape"], decision: "reference_identity_overrides_narrative_signals" });
   if (productionHistoryShape) explicitShapeCandidates.push({ shape: "production_history", evidence: ["making_of_or_production_history_shape"], decision: "production_history_identity_overrides_narrative_signals" });
@@ -468,20 +554,15 @@ function inferGoogleBooksPublicationShape(params: {
     unknownEligibilityThresholdDecision,
     subjectOfStudyTitle,
     subjectOfStudyEvidence,
+    curatedBookGuideIdentity,
+    curatedBookGuideEvidence,
+    periodicalIdentityEvidence,
+    periodicalIdentityDecision,
   };
 }
 
 function googleBooksPeriodicalCorroboration(titleText: string, subtitleText: string, normalizedDescription: string, categoriesText: string, combined: string): string[] {
-  const text = [titleText, subtitleText].join(" ").trim();
-  const signals: string[] = [];
-  if (/\bmagazine\b/.test(text)) signals.push("title_magazine");
-  if (/\bjournal\b/.test(text)) signals.push("title_journal");
-  if (/\bissue\b/.test(text)) signals.push("title_issue");
-  if (/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}\b/.test(text)) signals.push("title_month_year");
-  if (/\b(periodicals?|serial publications?|magazines?|journals?)\b/.test(categoriesText)) signals.push("category_periodical");
-  if (/\b(?:monthly|bimonthly|quarterly|special issue|annual issue)\b/.test(normalizedDescription)) signals.push("description_periodical_shape");
-  if (/\bissn\b/.test(combined)) signals.push("issn_marker");
-  return Array.from(new Set(signals));
+  return googleBooksPeriodicalIdentityEvidence(titleText, subtitleText, normalizedDescription, categoriesText, "", combined);
 }
 
 function googleBooksArtifactReasons(title: string, subtitle: string, description: string, categories: string[], publisher: string): string[] {
@@ -722,6 +803,10 @@ function emptyDiagnostics(
     googleBooksSubjectOfStudyTitleByTitle: {},
     googleBooksSubjectOfStudyEvidenceByTitle: {},
     googleBooksSubjectOfStudyRejectedBeforeRankingByTitle: {},
+    googleBooksCuratedBookGuideIdentityByTitle: {},
+    googleBooksCuratedBookGuideEvidenceByTitle: {},
+    googleBooksPeriodicalIdentityEvidenceByTitle: {},
+    googleBooksPeriodicalIdentityDecisionByTitle: {},
     ...overrides,
   };
 }
@@ -813,6 +898,10 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const subjectOfStudyTitleByTitle: Record<string, boolean> = {};
     const subjectOfStudyEvidenceByTitle: Record<string, string[]> = {};
     const subjectOfStudyRejectedBeforeRankingByTitle: Record<string, string> = {};
+    const curatedBookGuideIdentityByTitle: Record<string, boolean> = {};
+    const curatedBookGuideEvidenceByTitle: Record<string, string[]> = {};
+    const periodicalIdentityEvidenceByTitle: Record<string, string[]> = {};
+    const periodicalIdentityDecisionByTitle: Record<string, string> = {};
     const perQueryQuality: Record<string, {
       query: string;
       rawResultCount: number;
@@ -996,6 +1085,10 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         unknownEligibilityThresholdDecisionByTitle[title] = shapeAnalysis.unknownEligibilityThresholdDecision;
         subjectOfStudyTitleByTitle[title] = shapeAnalysis.subjectOfStudyTitle;
         subjectOfStudyEvidenceByTitle[title] = shapeAnalysis.subjectOfStudyEvidence;
+        curatedBookGuideIdentityByTitle[title] = shapeAnalysis.curatedBookGuideIdentity;
+        curatedBookGuideEvidenceByTitle[title] = shapeAnalysis.curatedBookGuideEvidence;
+        periodicalIdentityEvidenceByTitle[title] = shapeAnalysis.periodicalIdentityEvidence;
+        periodicalIdentityDecisionByTitle[title] = shapeAnalysis.periodicalIdentityDecision;
         const publicationShapeDropReason = googleBooksPublicationShapeDropReason(shapeAnalysis);
         const artifactDropReason = googleBooksArtifactDropReason(title, String(volumeInfo.subtitle || "").trim(), description, categories, publisher);
         const dropReason = publicationShapeDropReason || artifactDropReason;
@@ -1071,6 +1164,10 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           googleBooksUnknownEligibilityThresholdDecision: shapeAnalysis.unknownEligibilityThresholdDecision,
           googleBooksSubjectOfStudyTitle: shapeAnalysis.subjectOfStudyTitle,
           googleBooksSubjectOfStudyEvidence: shapeAnalysis.subjectOfStudyEvidence,
+          googleBooksCuratedBookGuideIdentity: shapeAnalysis.curatedBookGuideIdentity,
+          googleBooksCuratedBookGuideEvidence: shapeAnalysis.curatedBookGuideEvidence,
+          googleBooksPeriodicalIdentityEvidence: shapeAnalysis.periodicalIdentityEvidence,
+          googleBooksPeriodicalIdentityDecision: shapeAnalysis.periodicalIdentityDecision,
         };
 
         rawItems.push(rawRow);
@@ -1187,6 +1284,10 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       googleBooksSubjectOfStudyTitleByTitle: subjectOfStudyTitleByTitle,
       googleBooksSubjectOfStudyEvidenceByTitle: subjectOfStudyEvidenceByTitle,
       googleBooksSubjectOfStudyRejectedBeforeRankingByTitle: subjectOfStudyRejectedBeforeRankingByTitle,
+      googleBooksCuratedBookGuideIdentityByTitle: curatedBookGuideIdentityByTitle,
+      googleBooksCuratedBookGuideEvidenceByTitle: curatedBookGuideEvidenceByTitle,
+      googleBooksPeriodicalIdentityEvidenceByTitle: periodicalIdentityEvidenceByTitle,
+      googleBooksPeriodicalIdentityDecisionByTitle: periodicalIdentityDecisionByTitle,
       googleBooksModernNarrativeCountByQuery: modernNarrativeCountByQuery,
       googleBooksPublicDomainCatalogShapeCountByQuery: publicDomainCatalogShapeCountByQuery,
       googleBooksQueryResultQualityByQuery: perQueryQuality,

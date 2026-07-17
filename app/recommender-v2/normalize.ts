@@ -88,6 +88,10 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           googleBooksUnknownEligibilityThresholdDecision: row.googleBooksUnknownEligibilityThresholdDecision,
           googleBooksSubjectOfStudyTitle: row.googleBooksSubjectOfStudyTitle,
           googleBooksSubjectOfStudyEvidence: row.googleBooksSubjectOfStudyEvidence,
+          googleBooksCuratedBookGuideIdentity: row.googleBooksCuratedBookGuideIdentity,
+          googleBooksCuratedBookGuideEvidence: row.googleBooksCuratedBookGuideEvidence,
+          googleBooksPeriodicalIdentityEvidence: row.googleBooksPeriodicalIdentityEvidence,
+          googleBooksPeriodicalIdentityDecision: row.googleBooksPeriodicalIdentityDecision,
           authors: row.authors || row.author_name || row.creators,
         },
       });

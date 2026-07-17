@@ -310,6 +310,10 @@ export interface SourceDiagnosticV2 {
   googleBooksSubjectOfStudyTitleByTitle?: Record<string, boolean>;
   googleBooksSubjectOfStudyEvidenceByTitle?: Record<string, string[]>;
   googleBooksSubjectOfStudyRejectedBeforeRankingByTitle?: Record<string, string>;
+  googleBooksCuratedBookGuideIdentityByTitle?: Record<string, boolean>;
+  googleBooksCuratedBookGuideEvidenceByTitle?: Record<string, string[]>;
+  googleBooksPeriodicalIdentityEvidenceByTitle?: Record<string, string[]>;
+  googleBooksPeriodicalIdentityDecisionByTitle?: Record<string, string>;
   googleBooksModernNarrativeCountByQuery?: Record<string, number>;
   googleBooksPublicDomainCatalogShapeCountByQuery?: Record<string, number>;
   googleBooksRankedCandidateTitles?: string[];
