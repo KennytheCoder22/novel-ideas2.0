@@ -325,6 +325,11 @@ export interface SourceDiagnosticV2 {
   googleBooksRankedCandidateTitles?: string[];
   googleBooksFinalEligibilityTitles?: string[];
   googleBooksQueryResultQualityByQuery?: Record<string, Record<string, unknown>>;
+  adultGoogleBooksQueryQualityByQuery?: Record<string, Record<string, unknown>>;
+  adultGoogleBooksPublicationShapeHistogramByQuery?: Record<string, Record<string, number>>;
+  adultGoogleBooksRejectedShapeHistogramByQuery?: Record<string, Record<string, number>>;
+  adultGoogleBooksNarrativeYieldByQuery?: Record<string, number>;
+  adultGoogleBooksNarrativeEfficiencyByQuery?: Record<string, number>;
   middleGradesExpandedPoolHandoffFailed?: boolean;
   middleGradesExpandedPoolFailureReason?: string;
   mediumStrongEvidenceTargetCount?: number;
