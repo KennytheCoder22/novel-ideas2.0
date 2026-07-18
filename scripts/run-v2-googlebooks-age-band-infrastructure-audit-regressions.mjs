@@ -251,10 +251,12 @@ for (const ageBand of ["kids", "preteens", "teens"]) {
 
 {
   const title = "Maturity Mismatch Candidate";
-  const run = runInfrastructureFlow("kids", [rawGoogleBook("kids", title, { maturityBand: "NOT_MATURE" })]);
-  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "maturity_band_mismatch", "Google Books maturityRating-as-maturityBand mismatch should be visible");
-  assertEqual(run.diagnostics.googleBooksAgeBandDropStageByTitle[title], "age_suitability_rejection", "maturity mismatch should classify as age-suitability rejection");
-  console.log("PASS failure: age-suitability rejection");
+  const run = runInfrastructureFlow("kids", [rawGoogleBook("kids", title, { maturityBand: "NOT_MATURE", maturityRating: "NOT_MATURE" })]);
+  assertEqual(run.normalized[0].maturityBand, "kids", "Google Books NOT_MATURE should not overwrite Kids deck identity");
+  assertEqual(run.diagnostics.googleBooksContentMaturityByTitle[title], "not_mature", "Google Books NOT_MATURE should be reported as content maturity");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Google Books NOT_MATURE should not cause maturity-band mismatch");
+  assertEqual(run.diagnostics.googleBooksAudienceMaturityMismatchTitles.length, 0, "Google Books content maturity should not be reported as an age-band mismatch");
+  console.log("PASS separation: Google Books NOT_MATURE is content maturity, not an age-band mismatch");
 }
 
 {

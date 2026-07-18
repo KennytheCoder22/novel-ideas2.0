@@ -157,6 +157,15 @@ type GoogleBooksAgeBandInfrastructureDiagnostics = {
   googleBooksAgeBandDropReasonByTitle: Record<string, string>;
   googleBooksAgeBandInfrastructureGaps: Record<string, string[]>;
   googleBooksAgeBandInfrastructureSummary: Record<string, unknown>;
+  googleBooksAudienceBandByTitle: Record<string, string>;
+  googleBooksContentMaturityByTitle: Record<string, string>;
+  googleBooksSourceMaturityRatingByTitle: Record<string, string>;
+  googleBooksRequestedDeckByTitle: Record<string, string>;
+  googleBooksAgeSuitabilityDecisionByTitle: Record<string, string>;
+  googleBooksMaturityDecisionByTitle: Record<string, string>;
+  googleBooksAudienceMaturityComparisonByTitle: Record<string, unknown>;
+  googleBooksAudienceMaturityMismatchTitles: string[];
+  googleBooksAudienceMaturitySemanticChanges: string[];
 };
 
 const GOOGLE_BOOKS_NON_ADULT_AGE_BANDS: GoogleBooksNonAdultAgeBand[] = ["kids", "preteens", "teens"];
@@ -347,6 +356,24 @@ function googleBooksSelectedTitleSet(selected: ScoredCandidate[]): Set<string> {
   return new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalizedTokenText(candidate.title)));
 }
 
+function googleBooksSourceMaturityRatingFromRow(row: Record<string, unknown>): string {
+  const explicit = String(row.sourceMaturityRating || row.maturityRating || "").trim();
+  if (explicit) return explicit;
+  const maturityBand = String(row.maturityBand || row.maturity || "").trim();
+  return /^(?:NOT_MATURE|MATURE|EXPLICIT_MATURE)$/i.test(maturityBand) ? maturityBand : "";
+}
+
+function googleBooksContentMaturityFromRating(value: unknown): "mature" | "not_mature" | "unknown" {
+  const raw = String(value || "").trim().toUpperCase();
+  if (raw === "MATURE" || raw === "EXPLICIT_MATURE") return "mature";
+  if (raw === "NOT_MATURE") return "not_mature";
+  return "unknown";
+}
+
+function googleBooksAudienceBandFromRow(row: Record<string, unknown>): string {
+  return String(row.audienceBand || row.ageBand || "").trim();
+}
+
 export function buildGoogleBooksAgeBandInfrastructureDiagnostics(input: {
   profile: TasteProfile;
   searchPlan: SearchPlan;
@@ -370,6 +397,80 @@ export function buildGoogleBooksAgeBandInfrastructureDiagnostics(input: {
   const renderedTitlesByDeck: Record<string, string[]> = {};
   const dropStageByTitle: Record<string, string> = {};
   const dropReasonByTitle: Record<string, string> = {};
+  const audienceBandByTitle: Record<string, string> = {};
+  const contentMaturityByTitle: Record<string, string> = {};
+  const sourceMaturityRatingByTitle: Record<string, string> = {};
+  const requestedDeckByTitle: Record<string, string> = {};
+  const ageSuitabilityDecisionByTitle: Record<string, string> = {};
+  const maturityDecisionByTitle: Record<string, string> = {};
+  const audienceMaturityComparisonByTitle: Record<string, unknown> = {};
+  const audienceMaturityMismatchTitles: string[] = [];
+  const selectedGoogleBooksTitleSet = googleBooksSelectedTitleSet(input.selectedCandidates);
+
+  const recordGoogleBooksAudienceMaturity = (title: string, row: Record<string, unknown>, candidate?: ScoredCandidate | NormalizedCandidate): void => {
+    if (!title) return;
+    const diagnostics = (candidate?.diagnostics || {}) as Record<string, unknown>;
+    const sourceMaturityRating = String(diagnostics.googleBooksSourceMaturityRating || googleBooksSourceMaturityRatingFromRow(row)).trim();
+    const contentMaturity = String(diagnostics.googleBooksContentMaturity || row.contentMaturity || googleBooksContentMaturityFromRating(sourceMaturityRating));
+    const audienceBand = String(diagnostics.googleBooksAudienceBand || googleBooksAudienceBandFromRow(row)).trim();
+    const candidateMaturityBand = String(candidate?.maturityBand || row.normalizedMaturityBand || "").trim();
+    audienceBandByTitle[title] = audienceBand || "(none)";
+    contentMaturityByTitle[title] = contentMaturity || "unknown";
+    sourceMaturityRatingByTitle[title] = sourceMaturityRating || "(none)";
+    requestedDeckByTitle[title] = currentAgeBand;
+    audienceMaturityComparisonByTitle[title] = {
+      requestedDeck: currentAgeBand,
+      sourceAudienceBand: audienceBand || "(none)",
+      normalizedCandidateMaturityBand: candidateMaturityBand || "(none)",
+      contentMaturity: contentMaturity || "unknown",
+      sourceMaturityRating: sourceMaturityRating || "(none)",
+      semanticComparison: "requested_deck_and_source_audience_are_separate_from_content_maturity",
+    };
+    const scoredCandidate = candidate && "scoreBreakdown" in candidate ? candidate as ScoredCandidate : undefined;
+    if (scoredCandidate) {
+      const reason = scoredCandidate.rejectedReasons.find((entry) => entry !== "selected") || "";
+      const selected = selectedGoogleBooksTitleSet.has(normalizedTokenText(title));
+      const ageScore = Number(scoredCandidate.scoreBreakdown?.ageTeenSuitability ?? scoredCandidate.scoreBreakdown?.ageBandSuitability ?? 0);
+      ageSuitabilityDecisionByTitle[title] = selected
+        ? `selected_with_age_suitability=${Number.isFinite(ageScore) ? ageScore : 0}`
+        : reason
+          ? `not_selected:${reason}:age_suitability=${Number.isFinite(ageScore) ? ageScore : 0}`
+          : `ranked_below_final_selection:age_suitability=${Number.isFinite(ageScore) ? ageScore : 0}`;
+      if (reason === "maturity_band_mismatch") audienceMaturityMismatchTitles.push(title);
+      if (contentMaturity === "mature" && (currentAgeBand === "kids" || currentAgeBand === "preteens")) {
+        maturityDecisionByTitle[title] = /^googlebooks_mature_content_not_allowed/.test(reason)
+          ? `explicit_mature_content_rejected_for_${currentAgeBand}`
+          : `explicit_mature_content_requires_${currentAgeBand}_policy_review`;
+      } else if (contentMaturity === "mature" && currentAgeBand === "teens") {
+        maturityDecisionByTitle[title] = "explicit_mature_content_tracked_separately_for_teens";
+      } else if (contentMaturity === "mature" && currentAgeBand === "adult") {
+        maturityDecisionByTitle[title] = "explicit_mature_content_allowed_for_adult_deck";
+      } else if (contentMaturity === "not_mature") {
+        maturityDecisionByTitle[title] = `not_mature_content_allowed_for_${currentAgeBand}_deck`;
+      } else {
+        maturityDecisionByTitle[title] = "unknown_maturity_preserved_without_deck_inference";
+      }
+    } else {
+      ageSuitabilityDecisionByTitle[title] = "not_scored";
+      maturityDecisionByTitle[title] = contentMaturity === "not_mature"
+        ? `not_mature_content_allowed_for_${currentAgeBand}_deck`
+        : contentMaturity === "mature"
+          ? `explicit_mature_content_observed_for_${currentAgeBand}_deck`
+          : "unknown_maturity_preserved_without_deck_inference";
+    }
+  };
+
+  const googleBooksResultForMaturity = input.sourceResults.find((result) => result.source === "googleBooks");
+  for (const item of googleBooksResultForMaturity?.rawItems || []) {
+    const row = (item || {}) as Record<string, unknown>;
+    recordGoogleBooksAudienceMaturity(titleOf(row), row);
+  }
+  for (const candidate of input.normalizedCandidates.filter((candidate) => candidate.source === "googleBooks")) {
+    recordGoogleBooksAudienceMaturity(candidate.title, (candidate.raw || {}) as Record<string, unknown>, candidate);
+  }
+  for (const candidate of input.scoredCandidates.filter((candidate) => candidate.source === "googleBooks")) {
+    recordGoogleBooksAudienceMaturity(candidate.title, (candidate.raw || {}) as Record<string, unknown>, candidate);
+  }
 
   for (const ageBand of GOOGLE_BOOKS_NON_ADULT_AGE_BANDS) {
     queryPlanningByDeck[ageBand] = emptyGoogleBooksAgeBandRuntimeRow(ageBand, currentAgeBand);
@@ -453,7 +554,9 @@ export function buildGoogleBooksAgeBandInfrastructureDiagnostics(input: {
       ageBandLabelsPreservedInRawRows: sourceAgeLabels.length === 0 || sourceAgeLabels.every((label) => label === currentDeck),
       rawAgeBandLabels: sourceAgeLabels,
       normalizedMaturityBandValues: maturityBandValues,
-      note: "V2 normalization retains source row ageBand on candidate.raw; top-level maturityBand comes from source metadata when present.",
+      normalizedContentMaturityValues: uniqueStrings(normalizedGoogleBooks.map((candidate) => candidate.diagnostics?.googleBooksContentMaturity), 20),
+      sourceMaturityRatingValues: uniqueStrings(normalizedGoogleBooks.map((candidate) => candidate.diagnostics?.googleBooksSourceMaturityRating), 20),
+      note: "V2 normalization keeps Google Books source maturityRating as content maturity and does not compare NOT_MATURE to requested age-band labels.",
     };
     scoringHandoffByDeck[currentDeck] = {
       ...googleBooksHandoffStatus(normalizedCount, scoredCount, "scoring_handoff_failure"),
@@ -543,6 +646,21 @@ export function buildGoogleBooksAgeBandInfrastructureDiagnostics(input: {
         "Only after those audits, design Kids, Pre-Teen, or Teen Google Books final eligibility gates independently.",
       ],
     },
+    googleBooksAudienceBandByTitle: audienceBandByTitle,
+    googleBooksContentMaturityByTitle: contentMaturityByTitle,
+    googleBooksSourceMaturityRatingByTitle: sourceMaturityRatingByTitle,
+    googleBooksRequestedDeckByTitle: requestedDeckByTitle,
+    googleBooksAgeSuitabilityDecisionByTitle: ageSuitabilityDecisionByTitle,
+    googleBooksMaturityDecisionByTitle: maturityDecisionByTitle,
+    googleBooksAudienceMaturityComparisonByTitle: audienceMaturityComparisonByTitle,
+    googleBooksAudienceMaturityMismatchTitles: Array.from(new Set(audienceMaturityMismatchTitles)),
+    googleBooksAudienceMaturitySemanticChanges: [
+      "google_books_maturity_rating_preserved_as_source_maturity_rating",
+      "google_books_not_mature_mapped_to_content_maturity_not_age_band",
+      "requested_deck_age_band_kept_separate_from_content_maturity",
+      "explicit_mature_google_books_content_rejected_for_kids_and_preteens",
+      "unknown_google_books_maturity_is_not_treated_as_mature_or_as_a_deck_label",
+    ],
   };
 }
 

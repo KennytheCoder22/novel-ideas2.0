@@ -14,6 +14,32 @@ function normalized(value: unknown): string {
     .trim();
 }
 
+function googleBooksContentMaturity(candidate: ScoredCandidate): "mature" | "not_mature" | "unknown" {
+  if (candidate.source !== "googleBooks") return "unknown";
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const diagnostics = candidate.diagnostics || {};
+  const explicit = String(diagnostics.googleBooksContentMaturity || raw.contentMaturity || "").trim().toLowerCase();
+  if (explicit === "mature" || explicit === "not_mature") return explicit;
+  const sourceRating = String(
+    diagnostics.googleBooksSourceMaturityRating
+    || raw.sourceMaturityRating
+    || raw.maturityRating
+    || raw.maturityBand
+    || "",
+  ).trim().toUpperCase();
+  if (sourceRating === "MATURE" || sourceRating === "EXPLICIT_MATURE") return "mature";
+  if (sourceRating === "NOT_MATURE") return "not_mature";
+  return "unknown";
+}
+
+function googleBooksMaturityRejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
+  if (candidate.source !== "googleBooks") return null;
+  if (googleBooksContentMaturity(candidate) !== "mature") return null;
+  if (profile.ageBand === "kids") return "googlebooks_mature_content_not_allowed_for_kids";
+  if (profile.ageBand === "preteens") return "googlebooks_mature_content_not_allowed_for_preteens";
+  return null;
+}
+
 function rootTitle(title: string): string {
   return normalized(title)
     .replace(/\b(illustrated|annotated|unabridged|abridged|complete|collector'?s?|deluxe|special|critical|revised|updated|movie tie in|tie in|edition|editions|version|versions|translation|translated|spanish|french|german|italian|romanian|penguin|oxford|cambridge|modern library|classics?|classic)\b/g, " ")
@@ -6829,6 +6855,8 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
 
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
+  const googleBooksMaturityReason = googleBooksMaturityRejectReason(candidate, profile);
+  if (googleBooksMaturityReason) return googleBooksMaturityReason;
   if (profile.ageBand === "kids" && isKidsSuspiciousSelectionCandidate(candidate)) return "k2_suspicious_title_artifact";
   if (profile.ageBand === "kids" && kidsNonNarrativeInformationalArtifact(candidate) && !profileExplicitlyRequestsNonfictionReference(profile)) return "k2_non_narrative_informational_artifact";
   if (profile.ageBand === "kids" && !isKidsCleanFinalCandidate(candidate)) return "k2_missing_story_picture_reader_relevance";

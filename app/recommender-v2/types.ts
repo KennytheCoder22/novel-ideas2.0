@@ -286,6 +286,15 @@ export interface SourceDiagnosticV2 {
   googleBooksLanguageByTitle?: Record<string, string>;
   googleBooksPrintTypeByTitle?: Record<string, string>;
   googleBooksMaturityRatingByTitle?: Record<string, string>;
+  googleBooksAudienceBandByTitle?: Record<string, string>;
+  googleBooksContentMaturityByTitle?: Record<string, string>;
+  googleBooksSourceMaturityRatingByTitle?: Record<string, string>;
+  googleBooksRequestedDeckByTitle?: Record<string, string>;
+  googleBooksAgeSuitabilityDecisionByTitle?: Record<string, string>;
+  googleBooksMaturityDecisionByTitle?: Record<string, string>;
+  googleBooksAudienceMaturityComparisonByTitle?: Record<string, unknown>;
+  googleBooksAudienceMaturityMismatchTitles?: string[];
+  googleBooksAudienceMaturitySemanticChanges?: string[];
   googleBooksQueryByTitle?: Record<string, string>;
   googleBooksPublicationShapeByTitle?: Record<string, string>;
   googleBooksNarrativeConfidenceByTitle?: Record<string, number>;

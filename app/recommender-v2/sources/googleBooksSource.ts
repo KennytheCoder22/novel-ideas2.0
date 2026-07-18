@@ -95,6 +95,13 @@ function clampShapeScore(value: number): number {
   return Math.max(-12, Math.min(8, Math.round(value * 100) / 100));
 }
 
+function googleBooksContentMaturityFromRating(value: unknown): "mature" | "not_mature" | "unknown" {
+  const raw = String(value || "").trim().toUpperCase();
+  if (raw === "MATURE" || raw === "EXPLICIT_MATURE") return "mature";
+  if (raw === "NOT_MATURE") return "not_mature";
+  return "unknown";
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -995,6 +1002,9 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const printTypeByTitle: Record<string, string> = {};
     const languageByTitle: Record<string, string> = {};
     const maturityRatingByTitle: Record<string, string> = {};
+    const audienceBandByTitle: Record<string, string> = {};
+    const contentMaturityByTitle: Record<string, string> = {};
+    const sourceMaturityRatingByTitle: Record<string, string> = {};
     const publicationShapeByTitle: Record<string, string> = {};
     const narrativeConfidenceByTitle: Record<string, number> = {};
     const publicationShapeEvidenceByTitle: Record<string, string[]> = {};
@@ -1203,6 +1213,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         const publishedDate = String(volumeInfo.publishedDate || "").trim() || undefined;
         const publicationYear = parsePublicationYear(volumeInfo.publishedDate);
         const maturityRating = String(volumeInfo.maturityRating || "").trim() || undefined;
+        const contentMaturity = googleBooksContentMaturityFromRating(maturityRating);
         const printType = String(volumeInfo.printType || "BOOK").trim() || "BOOK";
         const language = String(volumeInfo.language || "").trim() || "";
         const hasDescription = Boolean(String(description || "").trim());
@@ -1290,6 +1301,9 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           language: String(volumeInfo.language || "").trim() || undefined,
           maturityBand: maturityRating,
           maturityRating,
+          sourceMaturityRating: maturityRating,
+          contentMaturity,
+          audienceBand: ageBand,
           industryIdentifiers,
           isbn13: isbn13 ? String((isbn13 as any).identifier || "").trim() || undefined : undefined,
           isbn10: isbn10 ? String((isbn10 as any).identifier || "").trim() || undefined : undefined,
@@ -1348,6 +1362,9 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         printTypeByTitle[title] = printType;
         languageByTitle[title] = language;
         maturityRatingByTitle[title] = maturityRating || "";
+        audienceBandByTitle[title] = ageBand;
+        contentMaturityByTitle[title] = contentMaturity;
+        sourceMaturityRatingByTitle[title] = maturityRating || "";
         perQueryQuality[originalQuery].titles.push(title);
         if (Number.isFinite(Number(publicationYear))) perQueryQuality[originalQuery].publicationYearByTitle[title] = Number(publicationYear);
         perQueryQuality[originalQuery].languageByTitle[title] = language;
@@ -1448,6 +1465,9 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       googleBooksLanguageByTitle: languageByTitle,
       googleBooksPrintTypeByTitle: printTypeByTitle,
       googleBooksMaturityRatingByTitle: maturityRatingByTitle,
+      googleBooksAudienceBandByTitle: audienceBandByTitle,
+      googleBooksContentMaturityByTitle: contentMaturityByTitle,
+      googleBooksSourceMaturityRatingByTitle: sourceMaturityRatingByTitle,
       googleBooksQueryByTitle: queryByTitle,
       googleBooksPublicationShapeByTitle: publicationShapeByTitle,
       googleBooksNarrativeConfidenceByTitle: narrativeConfidenceByTitle,
