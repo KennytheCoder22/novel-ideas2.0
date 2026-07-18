@@ -1865,7 +1865,7 @@ function handleLeft() {
     return { droppedStage, droppedReason };
   }
 
-  function computeGoogleBooksDropDiagnosticsByTitle(stages: Record<string, string[]>, eligibilityReasonByTitle: Record<string, string> = {}, selectionDecisionByTitle: Record<string, string> = {}) {
+  function computeGoogleBooksDropDiagnosticsByTitle(stages: Record<string, string[]>, eligibilityReasonByTitle: Record<string, string> = {}, selectionDecisionByTitle: Record<string, string> = {}, rejectedBeforeRankingReasonByTitle: Record<string, string> = {}) {
     const stageOrder = [
       "normalizedCandidate",
       "rankedCandidate",
@@ -1892,7 +1892,9 @@ function handleLeft() {
         if (!inPrevious || inCurrent) continue;
         droppedStageByTitle[title] = currentStage;
         // Use the real rejection reason when available instead of a generic lineage message.
-        if (currentStage === "wrapperOutput") {
+        if (currentStage === "rankedCandidate" && rejectedBeforeRankingReasonByTitle[title]) {
+          droppedReasonByTitle[title] = rejectedBeforeRankingReasonByTitle[title];
+        } else if (currentStage === "wrapperOutput") {
           droppedReasonByTitle[title] = "wrapper_removed_googlebooks_title";
         } else if (currentStage === "rendererOutput") {
           droppedReasonByTitle[title] = "renderer_output_missing_googlebooks_title";
@@ -2013,8 +2015,9 @@ function handleLeft() {
     };
     const gbEligibilityReasonByTitle = (selectionDiagnostics?.googleBooksFinalEligibilityReasonByTitle || selectionDiagnostics?.adultGoogleBooksEligibilityReasonByTitle || {}) as Record<string, string>;
     const gbSelectionDecisionByTitle = (selectionDiagnostics?.googleBooksFinalSelectionDecisionByTitle || {}) as Record<string, string>;
+    const gbRejectedBeforeRankingReason = (selectionDiagnostics?.googleBooksRejectedBeforeRankingReason || googleBooksSourceDiagnostics?.googleBooksRejectedBeforeRankingReason || {}) as Record<string, string>;
     const dropped = computeGoogleBooksDropDiagnostics(googleBooksAcceptedTitlesByStage as Record<string, string[]>);
-    const droppedByTitle = computeGoogleBooksDropDiagnosticsByTitle(googleBooksAcceptedTitlesByStage as Record<string, string[]>, gbEligibilityReasonByTitle, gbSelectionDecisionByTitle);
+    const droppedByTitle = computeGoogleBooksDropDiagnosticsByTitle(googleBooksAcceptedTitlesByStage as Record<string, string[]>, gbEligibilityReasonByTitle, gbSelectionDecisionByTitle, gbRejectedBeforeRankingReason);
     const placeholderReplacementReason = finalAcceptedTitles.length > 0
       && googleBooksWrapperOutputTitles.length === 0
       && returnedItemsTitlesBeforeV2FailClosed.length > 0
@@ -2264,6 +2267,13 @@ function handleLeft() {
       googleBooksFinalSelectionDecisionByTitle: gbSelectionDecisionByTitle,
       googleBooksFinalSelectionExclusionReasonByTitle: (selectionDiagnostics?.googleBooksFinalSelectionExclusionReasonByTitle || {}) as Record<string, string>,
       googleBooksCapDroppedTitles: (selectionDiagnostics?.googleBooksCapDroppedTitles || []) as string[],
+      adultGoogleBooksCandidateTasteFamiliesByTitle: (selectionDiagnostics?.adultGoogleBooksCandidateTasteFamiliesByTitle || {}) as Record<string, string[]>,
+      adultGoogleBooksProfileLikedFamilies: (selectionDiagnostics?.adultGoogleBooksProfileLikedFamilies || []) as string[],
+      adultGoogleBooksProfileAvoidFamilies: (selectionDiagnostics?.adultGoogleBooksProfileAvoidFamilies || []) as string[],
+      adultGoogleBooksNegativeNetTasteFamiliesByTitle: (selectionDiagnostics?.adultGoogleBooksNegativeNetTasteFamiliesByTitle || {}) as Record<string, string[]>,
+      adultGoogleBooksTasteEvidenceSourceByTitle: (selectionDiagnostics?.adultGoogleBooksTasteEvidenceSourceByTitle || {}) as Record<string, string>,
+      adultGoogleBooksMeaningfulAlignmentScoreByTitle: (selectionDiagnostics?.adultGoogleBooksMeaningfulAlignmentScoreByTitle || {}) as Record<string, number>,
+      adultGoogleBooksMeaningfulAlignmentThresholdByTitle: (selectionDiagnostics?.adultGoogleBooksMeaningfulAlignmentThresholdByTitle || {}) as Record<string, string>,
     };
   }
 
@@ -2454,7 +2464,8 @@ function handleLeft() {
         const dropped = computeGoogleBooksDropDiagnostics(stageTitles);
         const gbEligibilityReasonMap = ((diagnosticResult as any).googleBooksFinalEligibilityReasonByTitle || {}) as Record<string, string>;
         const gbSelectionDecisionMap = ((diagnosticResult as any).googleBooksFinalSelectionDecisionByTitle || {}) as Record<string, string>;
-        const droppedByTitle = computeGoogleBooksDropDiagnosticsByTitle(stageTitles, gbEligibilityReasonMap, gbSelectionDecisionMap);
+        const gbRejectedBeforeRankingMap = ((diagnosticResult as any).googleBooksRejectedBeforeRankingReason || {}) as Record<string, string>;
+        const droppedByTitle = computeGoogleBooksDropDiagnosticsByTitle(stageTitles, gbEligibilityReasonMap, gbSelectionDecisionMap, gbRejectedBeforeRankingMap);
         (diagnosticResult as any).googleBooksAcceptedTitlesByStage = stageTitles;
         (diagnosticResult as any).googleBooksRendererInputTitles = rendererTitles;
         (diagnosticResult as any).googleBooksRendererOutputTitles = rendererTitles;
@@ -4183,6 +4194,13 @@ function handleLeft() {
       `googleBooksFinalSelectionDecisionByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksFinalSelectionDecisionByTitle || {})}`,
       `googleBooksFinalSelectionExclusionReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksFinalSelectionExclusionReasonByTitle || {})}`,
       `googleBooksCapDroppedTitles:${JSON.stringify((lastRecommendationResult as any)?.googleBooksCapDroppedTitles || [])}`,
+      `adultGoogleBooksProfileLikedFamilies:${JSON.stringify((lastRecommendationResult as any)?.adultGoogleBooksProfileLikedFamilies || [])}`,
+      `adultGoogleBooksProfileAvoidFamilies:${JSON.stringify((lastRecommendationResult as any)?.adultGoogleBooksProfileAvoidFamilies || [])}`,
+      `adultGoogleBooksCandidateTasteFamiliesByTitle:${JSON.stringify((lastRecommendationResult as any)?.adultGoogleBooksCandidateTasteFamiliesByTitle || {})}`,
+      `adultGoogleBooksNegativeNetTasteFamiliesByTitle:${JSON.stringify((lastRecommendationResult as any)?.adultGoogleBooksNegativeNetTasteFamiliesByTitle || {})}`,
+      `adultGoogleBooksTasteEvidenceSourceByTitle:${JSON.stringify((lastRecommendationResult as any)?.adultGoogleBooksTasteEvidenceSourceByTitle || {})}`,
+      `adultGoogleBooksMeaningfulAlignmentScoreByTitle:${JSON.stringify((lastRecommendationResult as any)?.adultGoogleBooksMeaningfulAlignmentScoreByTitle || {})}`,
+      `adultGoogleBooksMeaningfulAlignmentThresholdByTitle:${JSON.stringify((lastRecommendationResult as any)?.adultGoogleBooksMeaningfulAlignmentThresholdByTitle || {})}`,
       `googleBooksWrapperInputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksWrapperInputTitles) && (lastRecommendationResult as any).googleBooksWrapperInputTitles.length ? (lastRecommendationResult as any).googleBooksWrapperInputTitles.join(" | ") : "(none)"}`,
       `googleBooksWrapperOutputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksWrapperOutputTitles) && (lastRecommendationResult as any).googleBooksWrapperOutputTitles.length ? (lastRecommendationResult as any).googleBooksWrapperOutputTitles.join(" | ") : "(none)"}`,
       `googleBooksRendererInputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksRendererInputTitles) && (lastRecommendationResult as any).googleBooksRendererInputTitles.length ? (lastRecommendationResult as any).googleBooksRendererInputTitles.join(" | ") : "(none)"}`,
