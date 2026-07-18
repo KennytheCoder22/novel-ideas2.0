@@ -4573,6 +4573,14 @@ type AdultGoogleBooksFinalSlateIdentityAuditResult = {
   summary: Record<string, unknown>;
 };
 
+type AdultGoogleBooksIdentityEnforcementDecision = "accepted" | "rejected" | "unchanged";
+
+type AdultGoogleBooksIdentityEnforcementResult = {
+  identity: AdultGoogleBooksFinalSlateIdentity;
+  decision: AdultGoogleBooksIdentityEnforcementDecision;
+  reason: string;
+};
+
 function adultGoogleBooksCandidateVolumeInfo(candidate: ScoredCandidate): Record<string, unknown> {
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   return raw.volumeInfo && typeof raw.volumeInfo === "object" ? raw.volumeInfo as Record<string, unknown> : {};
@@ -4834,6 +4842,43 @@ export function adultGoogleBooksFinalSlateIdentityAudit(
       evidenceFields: evidence,
     },
   };
+}
+
+function adultGoogleBooksIdentityEnforcementForIdentity(identity: AdultGoogleBooksFinalSlateIdentity): AdultGoogleBooksIdentityEnforcementResult {
+  if (identity === "individual_narrative_work" || identity === "narrative_series_volume") {
+    return {
+      identity,
+      decision: "accepted",
+      reason: `adult_googlebooks_identity_accepted_${identity}`,
+    };
+  }
+
+  if (
+    identity === "omnibus_or_boxed_collection"
+    || identity === "best_of_or_annual_collection"
+    || identity === "literary_criticism_or_subject_study"
+  ) {
+    return {
+      identity,
+      decision: "rejected",
+      reason: `adult_googlebooks_identity_rejected_${identity}`,
+    };
+  }
+
+  return {
+    identity,
+    decision: "unchanged",
+    reason: `adult_googlebooks_identity_unenforced_${identity}`,
+  };
+}
+
+export function adultGoogleBooksIdentityEnforcement(candidate: ScoredCandidate, eligibility?: AdultGoogleBooksEligibility): AdultGoogleBooksIdentityEnforcementResult {
+  const audit = adultGoogleBooksFinalSlateIdentityAudit(candidate, {
+    eligibility,
+    finalEligibilityDecision: eligibility ? eligibility.allowed ? "accepted" : "rejected" : "",
+    finalEligibilityReason: eligibility?.reason || "",
+  });
+  return adultGoogleBooksIdentityEnforcementForIdentity(audit.identity);
 }
 
 function adultGoogleBooksDocumentBackedSignals(candidate: ScoredCandidate, field: "metadataBackedMatchedLikedSignals" | "metadataBackedMatchedDislikedSignals"): string[] {
@@ -6667,6 +6712,8 @@ function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string
   if (profile.ageBand === "adult" && candidate.source === "googleBooks") {
     const eligibility = adultGoogleBooksFinalEligibility(candidate, profile);
     if (!eligibility.allowed) return eligibility.reason;
+    const identityEnforcement = adultGoogleBooksIdentityEnforcement(candidate, eligibility);
+    if (identityEnforcement.decision === "rejected") return identityEnforcement.reason;
   }
   if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_score";
   if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand && profile.ageBand !== "adult") return "maturity_band_mismatch";
@@ -6820,6 +6867,12 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const renderedIdentityAudit: Record<string, unknown> = {};
   const finalSlateIdentityRootCauseHistogram: Record<string, number> = {};
   const finalSlateIdentityFlaggedDetailsByTitle: Record<string, unknown> = {};
+  const identityEnforcementDecisionByTitle: Record<string, string> = {};
+  const identityEnforcementReasonByTitle: Record<string, string> = {};
+  const identityRejectedTitles: string[] = [];
+  const identityAcceptedTitles: string[] = [];
+  const identityEnforcementHistogram: Record<string, number> = {};
+  const identityBehaviorChanges: Record<string, unknown> = {};
   let profileLikedFamilies: string[] = [];
   let profileAvoidFamilies: string[] = [];
   if (profile.ageBand === "adult") {
@@ -6974,6 +7027,12 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksFinalSlateIdentityRootCauseHistogram = {};
     diagnostics.adultGoogleBooksFinalSlateIdentityAuditSummary = "";
     diagnostics.adultGoogleBooksFinalSlateIdentityFlaggedDetailsByTitle = {};
+    diagnostics.adultGoogleBooksIdentityEnforcementDecisionByTitle = {};
+    diagnostics.adultGoogleBooksIdentityEnforcementReasonByTitle = {};
+    diagnostics.adultGoogleBooksIdentityRejectedTitles = [];
+    diagnostics.adultGoogleBooksIdentityAcceptedTitles = [];
+    diagnostics.adultGoogleBooksIdentityEnforcementHistogram = {};
+    diagnostics.adultGoogleBooksIdentityBehaviorChanges = {};
     diagnostics.googleBooksPlannedQueries = [];
     diagnostics.googleBooksQueriesAttempted = [];
     diagnostics.googleBooksRawCountByQuery = {};
@@ -7333,12 +7392,29 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
       finalSelectionDecision: finalSelectionDecisionByTitle[candidate.title],
       rendered: selectedTitleSet.has(normalized(candidate.title)),
     });
+    const identityEnforcement = adultGoogleBooksIdentityEnforcementForIdentity(identityAudit.identity);
     finalSlateIdentityByTitle[candidate.title] = identityAudit.identity;
     finalSlateIdentityEvidenceByTitle[candidate.title] = identityAudit.evidence;
     finalSlateIdentityConfidenceByTitle[candidate.title] = identityAudit.confidence;
     finalSlateIdentityAgreementByTitle[candidate.title] = identityAudit.agreement;
     finalSlateIdentityHistogram[identityAudit.identity] = Number(finalSlateIdentityHistogram[identityAudit.identity] || 0) + 1;
     finalSlateIdentityRootCauseHistogram[identityAudit.rootCause] = Number(finalSlateIdentityRootCauseHistogram[identityAudit.rootCause] || 0) + 1;
+    identityEnforcementDecisionByTitle[candidate.title] = identityEnforcement.decision;
+    identityEnforcementReasonByTitle[candidate.title] = identityEnforcement.reason;
+    identityEnforcementHistogram[identityEnforcement.reason] = Number(identityEnforcementHistogram[identityEnforcement.reason] || 0) + 1;
+    if (identityEnforcement.decision === "rejected") {
+      identityRejectedTitles.push(candidate.title);
+      if (eligibility.allowed) {
+        identityBehaviorChanges[candidate.title] = {
+          identity: identityAudit.identity,
+          before: `accepted:${eligibility.reason}`,
+          after: `rejected:${identityEnforcement.reason}`,
+          reason: identityEnforcement.reason,
+        };
+      }
+    } else if (identityEnforcement.decision === "accepted") {
+      identityAcceptedTitles.push(candidate.title);
+    }
     if (identityAudit.agreement === "likely_non_narrative_false_accept") {
       likelyNonNarrativeFalseAcceptedTitles.push(candidate.title);
       finalSlateIdentityFlaggedDetailsByTitle[candidate.title] = identityAudit.summary;
@@ -7355,14 +7431,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
       renderedIdentityAudit[candidate.title] = identityAudit.summary;
     }
 
-    if (eligibility.allowed && selectedTitleSet.has(normalized(candidate.title))) {
+    if (eligibility.allowed && identityEnforcement.decision !== "rejected" && selectedTitleSet.has(normalized(candidate.title))) {
       acceptedTitles.push(candidate.title);
       if (attemptedQuery) acceptedCountByQuery[attemptedQuery] = Number(acceptedCountByQuery[attemptedQuery] || 0) + 1;
-    } else if (!eligibility.allowed) {
-      rejectedTitlesByReason[eligibility.reason] = [...(rejectedTitlesByReason[eligibility.reason] || []), candidate.title];
+    } else if (!eligibility.allowed || identityEnforcement.decision === "rejected") {
+      const rejectedReason = identityEnforcement.decision === "rejected" ? identityEnforcement.reason : eligibility.reason;
+      rejectedTitlesByReason[rejectedReason] = [...(rejectedTitlesByReason[rejectedReason] || []), candidate.title];
       if (attemptedQuery) {
         if (!rejectedCountByQueryAndReason[attemptedQuery]) rejectedCountByQueryAndReason[attemptedQuery] = {};
-        rejectedCountByQueryAndReason[attemptedQuery][eligibility.reason] = Number(rejectedCountByQueryAndReason[attemptedQuery][eligibility.reason] || 0) + 1;
+        rejectedCountByQueryAndReason[attemptedQuery][rejectedReason] = Number(rejectedCountByQueryAndReason[attemptedQuery][rejectedReason] || 0) + 1;
       }
     }
   }
@@ -7527,6 +7604,12 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksFinalSlateIdentityRootCauseHistogram = finalSlateIdentityRootCauseHistogram;
   diagnostics.adultGoogleBooksFinalSlateIdentityAuditSummary = finalSlateIdentityAuditSummary;
   diagnostics.adultGoogleBooksFinalSlateIdentityFlaggedDetailsByTitle = finalSlateIdentityFlaggedDetailsByTitle;
+  diagnostics.adultGoogleBooksIdentityEnforcementDecisionByTitle = identityEnforcementDecisionByTitle;
+  diagnostics.adultGoogleBooksIdentityEnforcementReasonByTitle = identityEnforcementReasonByTitle;
+  diagnostics.adultGoogleBooksIdentityRejectedTitles = Array.from(new Set(identityRejectedTitles));
+  diagnostics.adultGoogleBooksIdentityAcceptedTitles = Array.from(new Set(identityAcceptedTitles));
+  diagnostics.adultGoogleBooksIdentityEnforcementHistogram = identityEnforcementHistogram;
+  diagnostics.adultGoogleBooksIdentityBehaviorChanges = identityBehaviorChanges;
   diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
   diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
   diagnostics.googleBooksRankedCandidateTitles = uniqueSignals(rankedCandidateTitles);
