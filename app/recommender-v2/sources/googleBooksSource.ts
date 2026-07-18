@@ -1,4 +1,5 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
+import { classifyGoogleBooksYoungerAgePublicationArtifact } from "../googleBooksYoungerAgePublicationArtifactAudit";
 
 const GOOGLE_BOOKS_API_BASE = "https://www.googleapis.com/books/v1/volumes";
 const GOOGLE_BOOKS_ADAPTER_VERSION = "v5";
@@ -929,6 +930,24 @@ function emptyDiagnostics(
     googleBooksCuratedBookGuideEvidenceByTitle: {},
     googleBooksPeriodicalIdentityEvidenceByTitle: {},
     googleBooksPeriodicalIdentityDecisionByTitle: {},
+    googleBooksYoungerAgePublicationIdentityByTitle: {},
+    googleBooksYoungerAgePublicationIdentityConfidenceByTitle: {},
+    googleBooksYoungerAgePublicationEvidenceByTitle: {},
+    googleBooksYoungerAgeArtifactTypeByTitle: {},
+    googleBooksYoungerAgeArtifactEvidenceByTitle: {},
+    googleBooksYoungerAgeHardArtifactTitles: [],
+    googleBooksYoungerAgeProbableArtifactTitles: [],
+    googleBooksYoungerAgeNarrativeTitles: [],
+    googleBooksYoungerAgeAmbiguousTitles: [],
+    googleBooksYoungerAgeRejectedBeforeAcceptanceByTitle: {},
+    googleBooksYoungerAgeRejectedBeforeAcceptanceReasonByTitle: {},
+    googleBooksYoungerAgeRawRecordCountByQuery: {},
+    googleBooksYoungerAgeAcceptedRecordCountByQuery: {},
+    googleBooksYoungerAgeRejectionHistogramByQuery: {},
+    googleBooksYoungerAgePublicationHistogramByDeck: {},
+    googleBooksYoungerAgeCurrentProductionDecisionByTitle: {},
+    googleBooksYoungerAgeRecommendedFuturePolicyByTitle: {},
+    googleBooksYoungerAgeArtifactAuditSummary: "",
     adultGoogleBooksQueryQualityByQuery: {},
     adultGoogleBooksPublicationShapeHistogramByQuery: {},
     adultGoogleBooksRejectedShapeHistogramByQuery: {},
