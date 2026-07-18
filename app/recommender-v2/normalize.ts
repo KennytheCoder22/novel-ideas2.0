@@ -1,4 +1,7 @@
-import type { CandidateFormatV2, NormalizedCandidate, SourceIdV2, SourceResult } from "./types";
+import type { AgeBandV2, CandidateFormatV2, NormalizedCandidate, SourceIdV2, SourceResult } from "./types";
+
+const AGE_BAND_VALUES = new Set<AgeBandV2>(["kids", "preteens", "teens", "adult"]);
+const GOOGLE_BOOKS_MATURITY_RATINGS = new Set(["MATURE", "NOT_MATURE"]);
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item || "").trim()).filter(Boolean) : [];
@@ -7,6 +10,37 @@ function asStringArray(value: unknown): string[] {
 function normalizeFormat(value: unknown): CandidateFormatV2 {
   const raw = String(value || "unknown").trim() as CandidateFormatV2;
   return ["book", "manga", "comic", "graphicNovel", "anime", "unknown"].includes(raw) ? raw : "unknown";
+}
+
+function ageBandValue(value: unknown): AgeBandV2 | undefined {
+  const raw = String(value || "").trim();
+  return AGE_BAND_VALUES.has(raw as AgeBandV2) ? raw as AgeBandV2 : undefined;
+}
+
+function googleBooksSourceMaturityRating(row: Record<string, unknown>): string {
+  const explicit = String(row.sourceMaturityRating || row.maturityRating || "").trim();
+  if (explicit) return explicit;
+  const maturityBand = String(row.maturityBand || row.maturity || "").trim();
+  return GOOGLE_BOOKS_MATURITY_RATINGS.has(maturityBand.toUpperCase()) ? maturityBand : "";
+}
+
+function googleBooksContentMaturityFromRating(value: unknown): "mature" | "not_mature" | "unknown" {
+  const raw = String(value || "").trim().toUpperCase();
+  if (raw === "MATURE" || raw === "EXPLICIT_MATURE") return "mature";
+  if (raw === "NOT_MATURE") return "not_mature";
+  return "unknown";
+}
+
+function normalizeMaturityBand(source: SourceIdV2, row: Record<string, unknown>): string | undefined {
+  const rawMaturityBand = String(row.maturityBand || row.maturity || "").trim();
+  if (source !== "googleBooks") return rawMaturityBand || undefined;
+
+  const sourceAudienceBand = ageBandValue(row.audienceBand) || ageBandValue(row.ageBand);
+  const sourceMaturityBand = ageBandValue(rawMaturityBand);
+  if (sourceAudienceBand === "adult") {
+    return rawMaturityBand || undefined;
+  }
+  return sourceMaturityBand || sourceAudienceBand || undefined;
 }
 
 function normalizeDescription(row: Record<string, unknown>): string | undefined {
@@ -35,6 +69,7 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
       if (!title) continue;
       const source = result.source as SourceIdV2;
       const id = String(row.id || row.sourceId || `${source}:${title}`).trim();
+      const sourceMaturityRating = source === "googleBooks" ? googleBooksSourceMaturityRating(row) : "";
       candidates.push({
         id,
         source,
@@ -48,7 +83,7 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
         themes: Array.from(new Set([...asStringArray(row.themes), ...asStringArray(row.meaningfulTasteRecoveryDocumentSignals)])),
         tones: asStringArray(row.tones),
         characterDynamics: asStringArray(row.characterDynamics),
-        maturityBand: String(row.maturityBand || row.maturity || "").trim() || undefined,
+        maturityBand: normalizeMaturityBand(source, row),
         publicationYear: Number.isFinite(Number(row.publicationYear || row.first_publish_year)) ? Number(row.publicationYear || row.first_publish_year) : undefined,
         sourceUrl: String(row.sourceUrl || row.url || "").trim() || undefined,
         raw,
@@ -92,6 +127,9 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           googleBooksCuratedBookGuideEvidence: row.googleBooksCuratedBookGuideEvidence,
           googleBooksPeriodicalIdentityEvidence: row.googleBooksPeriodicalIdentityEvidence,
           googleBooksPeriodicalIdentityDecision: row.googleBooksPeriodicalIdentityDecision,
+          googleBooksAudienceBand: source === "googleBooks" ? (String(row.audienceBand || row.ageBand || "").trim() || undefined) : undefined,
+          googleBooksContentMaturity: source === "googleBooks" ? String(row.contentMaturity || googleBooksContentMaturityFromRating(sourceMaturityRating)) : undefined,
+          googleBooksSourceMaturityRating: source === "googleBooks" ? (sourceMaturityRating || undefined) : undefined,
           authors: row.authors || row.author_name || row.creators,
         },
       });
