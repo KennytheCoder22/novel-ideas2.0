@@ -564,7 +564,7 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   console.log("PASS T29: non-Adult skip contribution remains unchanged");
 }
 
-// --- T30: Narrative family extraction diagnostics expose unmapped description cues ---
+// --- T30: Canonical narrative family extraction promotes missing description cues ---
 {
   const candidate = makeScoredCandidate({
     title: "Unmapped Detective Description",
@@ -574,30 +574,31 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
     categories: ["Fiction / Mystery & Detective / General"],
   });
   const diagnostics = runSelection([candidate], adultProfile);
-  assertFalsy(
+  assertTruthy(
     diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Unmapped Detective Description"],
-    "T30: diagnostics must not change final taste eligibility",
+    "T30: canonical detective/murder cues should now create positive mystery family evidence",
   );
-  const evidence = diagnostics.adultGoogleBooksExpectedVsExtractedFamilyEvidenceByTitle?.["Unmapped Detective Description"] || {};
+  const before = diagnostics.adultGoogleBooksCanonicalMissingFamilyBeforeByTitle?.["Unmapped Detective Description"] || [];
+  const after = diagnostics.adultGoogleBooksCanonicalMissingFamilyAfterByTitle?.["Unmapped Detective Description"] || [];
   assertIncludes(
-    evidence.missingExpectedFamilies || [],
+    before.map((row) => row?.family),
     "mystery_crime_thriller",
-    "T30: visible detective/murder prose should be reported as missing mystery family evidence",
+    "T30: before map should show the missing mystery family",
   );
-  const unmapped = diagnostics.adultGoogleBooksUnmappedNarrativeCuesByTitle?.["Unmapped Detective Description"] || [];
-  assertTruthy(
-    unmapped.some((row) => row?.phrase === "detective" && row?.family === "mystery_crime_thriller"),
-    "T30: detective should be listed as an unmapped narrative cue",
-  );
-  assertTruthy(
-    Number(diagnostics.adultGoogleBooksUnmappedNarrativePhraseHistogram?.detective || 0) > 0,
-    "T30: unmapped phrase histogram should count detective",
+  assertNotIncludes(
+    after.map((row) => row?.family),
+    "mystery_crime_thriller",
+    "T30: after map should resolve the missing mystery family",
   );
   assertTruthy(
-    Number(diagnostics.adultGoogleBooksNarrativeParserConfidenceByTitle?.["Unmapped Detective Description"] ?? 1) < 1,
-    "T30: parser confidence should drop when expected cues are not extracted",
+    (diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle?.["Unmapped Detective Description"] || []).includes("mystery_crime_thriller"),
+    "T30: promotion diagnostics should record the mystery family",
   );
-  console.log("PASS T30: narrative extraction diagnostics expose ignored mystery cues without changing eligibility");
+  assertTruthy(
+    (diagnostics.adultGoogleBooksCanonicalMissingFamilyResolvedTitles || []).includes("Unmapped Detective Description"),
+    "T30: resolved title list should include the promoted candidate",
+  );
+  console.log("PASS T30: canonical narrative extraction promotes missing mystery cues");
 }
 
 // --- T31: Narrative cue classification separates extraction gaps from polarity outcomes ---
@@ -700,10 +701,14 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
     diagnostics,
     "Romantic Missing Cue",
     "romantic",
-    "canonical_cue_missing_expected_family",
-    "T31e: romantic is already canonical and should be an extraction gap, not an alias",
+    "canonical_cue_mapped_negative",
+    "T31e: romantic should be promoted to romance but remain negative under the current avoid profile",
   );
   assertNoGenuineAlias(diagnostics, "Romantic Missing Cue", "romantic", "T31e: recognized romantic cue must not be proposed as alias");
+  assertFalsy(
+    diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Romantic Missing Cue"],
+    "T31e: disliked romance promotion must not force acceptance",
+  );
 
   const serialKiller = makeScoredCandidate({
     title: "Serial Killer Alias Cue",
@@ -743,6 +748,188 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   assertNoGenuineAlias(diagnostics, "Promotional Blurb Cue", "gripping", "T31g: promotional copy must not become an alias");
 
   console.log("PASS T31: narrative cue classification separates mapped, missing, alias, and ambiguous states");
+}
+
+// --- T32: Canonical narrative family extraction changes only missing canonical family evidence ---
+{
+  const mysteryProfile = adultPolarityProfile([
+    { title: "Liked Mystery", action: "like", genres: ["Mystery / Thriller"], tags: ["mystery", "thriller"], source: "mock", format: "book" },
+  ]);
+  const horrorProfile = adultPolarityProfile([
+    { title: "Liked Horror", action: "like", genres: ["Horror"], tags: ["horror"], source: "mock", format: "book" },
+  ]);
+  const adventureProfile = adultPolarityProfile([
+    { title: "Liked Adventure", action: "like", genres: ["Adventure"], tags: ["adventure"], source: "mock", format: "book" },
+  ]);
+  const mixedAdventureProfile = adultPolarityProfile([
+    { title: "Liked Adventure", action: "like", genres: ["Adventure"], tags: ["adventure"], source: "mock", format: "book" },
+    { title: "Disliked Adventure", action: "dislike", genres: ["Adventure"], tags: ["adventure"], source: "mock", format: "book" },
+  ]);
+
+  let candidate = makeScoredCandidate({
+    title: "Psychological Suspense Novel",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A psychological suspense novel about a missing witness and a hidden murder.",
+    categories: ["Fiction / Thrillers / Suspense"],
+  });
+  let diagnostics = runSelection([candidate], mysteryProfile);
+  assertTruthy(
+    diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Psychological Suspense Novel"],
+    "T32a: psychological suspense novel should promote mystery_crime_thriller",
+  );
+  assertIncludes(
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle?.["Psychological Suspense Novel"] || [],
+    "mystery_crime_thriller",
+    "T32a: suspense promotion family should be recorded",
+  );
+
+  candidate = makeScoredCandidate({
+    title: "Detective Investigation",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A detective investigates a murder in a remote hotel.",
+    categories: ["Fiction"],
+  });
+  diagnostics = runSelection([candidate], mysteryProfile);
+  assertIncludes(
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle?.["Detective Investigation"] || [],
+    "mystery_crime_thriller",
+    "T32b: detective investigates should promote mystery_crime_thriller",
+  );
+
+  candidate = makeScoredCandidate({
+    title: "Romantic Story",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A romantic story about two rivals learning to trust each other.",
+    categories: ["Fiction / Romance"],
+  });
+  diagnostics = runSelection([candidate], adultProfile);
+  assertIncludes(
+    diagnostics.adultGoogleBooksCandidateTasteFamiliesByTitle?.["Romantic Story"] || [],
+    "romance",
+    "T32c: romantic story should extract romance family evidence",
+  );
+  assertFalsy(
+    diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Romantic Story"],
+    "T32c: romance remains rejected when profile treats romance as avoid evidence",
+  );
+
+  candidate = makeScoredCandidate({
+    title: "Ghost Haunting",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A ghost haunts an old house after a supernatural pact is broken.",
+    categories: ["Fiction / Horror"],
+  });
+  diagnostics = runSelection([candidate], horrorProfile);
+  assertIncludes(
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle?.["Ghost Haunting"] || [],
+    "horror_paranormal",
+    "T32d: ghost haunts should promote horror_paranormal",
+  );
+
+  candidate = makeScoredCandidate({
+    title: "Survival Journey",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A survival journey across a frozen wilderness becomes a dangerous quest.",
+    categories: ["Fiction / Action & Adventure"],
+  });
+  diagnostics = runSelection([candidate], adventureProfile);
+  assertIncludes(
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle?.["Survival Journey"] || [],
+    "adventure_action",
+    "T32e: survival journey should promote adventure_action",
+  );
+
+  candidate = makeScoredCandidate({
+    title: "Already Mapped Suspense",
+    likedSignals: ["suspense"],
+    dislikedSignals: [],
+    description: "A suspense novel about a detective.",
+    categories: ["Fiction / Thrillers / Suspense"],
+  });
+  diagnostics = runSelection([candidate], mysteryProfile);
+  const alreadyMappedSignals = diagnostics.adultGoogleBooksDocumentBackedLikedSignalsByTitle?.["Already Mapped Suspense"] || [];
+  assertEqual(
+    alreadyMappedSignals.filter((signal) => signal === "suspense").length,
+    1,
+    "T32f: already mapped suspense should not duplicate or inflate liked signals",
+  );
+  assertTruthy(
+    (diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionDecisionByTitle?.["Already Mapped Suspense"] || []).some((row) => row?.decision === "not_promoted_family_already_extracted"),
+    "T32f: already mapped family should be reported as not promoted",
+  );
+
+  candidate = makeScoredCandidate({
+    title: "Mixed Neutral Survival",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A survival adventure about two explorers.",
+    categories: ["Fiction / Action & Adventure"],
+  });
+  diagnostics = runSelection([candidate], mixedAdventureProfile);
+  assertCueState(
+    diagnostics,
+    "Mixed Neutral Survival",
+    "survival",
+    "canonical_cue_mapped_mixed_neutral",
+    "T32g: promoted survival should remain mixed-neutral when profile polarity is mixed-neutral",
+  );
+  assertFalsy(
+    diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Mixed Neutral Survival"],
+    "T32g: mixed-neutral promoted family must not force acceptance",
+  );
+
+  candidate = makeScoredCandidate({
+    title: "Review Only Blurb",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "For fans of a thriller author, critics call this a thrilling achievement.",
+    categories: ["Fiction"],
+  });
+  diagnostics = runSelection([candidate], mysteryProfile);
+  assertFalsy(
+    (diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle?.["Review Only Blurb"] || []).includes("mystery_crime_thriller"),
+    "T32h: fans-of/review language should not promote thriller evidence",
+  );
+
+  candidate = makeScoredCandidate({
+    title: "Monster Ambiguity",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A monster follows a family through a strange town.",
+    categories: ["Fiction"],
+  });
+  diagnostics = runSelection([candidate], horrorProfile);
+  assertFalsy(
+    (diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle?.["Monster Ambiguity"] || []).includes("horror_paranormal"),
+    "T32i: monster must remain diagnostic-only and not become a broad horror alias",
+  );
+
+  const teenProfile = {
+    ...adultProfile,
+    ageBand: "teens",
+    maturityBand: "mshs",
+  };
+  diagnostics = runSelection([
+    makeScoredCandidate({
+      title: "Teen Detective Description",
+      likedSignals: [],
+      dislikedSignals: [],
+      description: "A detective investigates a murder.",
+      categories: ["Fiction / Mystery"],
+    }),
+  ], teenProfile);
+  assertEqual(
+    Object.keys(diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionHistogram || {}).length,
+    0,
+    "T32j: non-Adult runs must not populate Adult Google Books canonical promotion diagnostics",
+  );
+
+  console.log("PASS T32: canonical narrative family extraction promotes only missing canonical cues and preserves polarity");
 }
 
 console.log("\nAll taste-alignment diagnostic regression tests passed.");

@@ -4304,6 +4304,9 @@ type AdultGoogleBooksEligibility = {
   broadToneLikedSignals: string[];
   contextOnlyLikedSignals: string[];
   productionDecisionReason: string;
+  canonicalNarrativeFamilyPromotions: AdultGoogleBooksCanonicalNarrativeFamilyPromotion[];
+  canonicalMissingFamilyBefore: { phrase: string; family: AdultOpenLibraryContentFamily; fields: string[] }[];
+  canonicalMissingFamilyAfter: { phrase: string; family: AdultOpenLibraryContentFamily; fields: string[] }[];
 };
 
 function adultGoogleBooksMetadataFields(candidate: ScoredCandidate): { title: string; subtitle: string; description: string; categories: string; genres: string; combined: string } {
@@ -4605,7 +4608,11 @@ function adultGoogleBooksProductionResolvedFamilies(profile: TasteProfile | unde
   };
 }
 
-function adultGoogleBooksMeaningfulTasteEligibility(candidate: ScoredCandidate, profile?: TasteProfile): {
+function adultGoogleBooksMeaningfulTasteEligibility(
+  candidate: ScoredCandidate,
+  profile?: TasteProfile,
+  canonicalPromotions: AdultGoogleBooksCanonicalNarrativeFamilyPromotion[] = [],
+): {
   passed: boolean;
   reason: string;
   likedSignals: string[];
@@ -4623,7 +4630,19 @@ function adultGoogleBooksMeaningfulTasteEligibility(candidate: ScoredCandidate, 
 } {
   const contextOnlySignal = /^(family|families|relationship|relationships|friends?|friendship|domestic)$/;
   const broadToneSignal = /^(dark|hopeful|weird|spooky|realistic|atmospheric|epic|gritty|moody)$/;
-  const likedSignals = adultGoogleBooksDocumentBackedSignals(candidate, "metadataBackedMatchedLikedSignals")
+  const promotedLikedSignals = canonicalPromotions
+    .filter((promotion) => promotion.applied && (promotion.promotedAs === "liked" || promotion.promotedAs === "liked_and_disliked"))
+    .map((promotion) => promotion.phrase);
+  const promotedDislikedSignals = canonicalPromotions
+    .filter((promotion) => promotion.applied && (promotion.promotedAs === "disliked" || promotion.promotedAs === "liked_and_disliked"))
+    .map((promotion) => promotion.phrase);
+  const promotedCandidateFamilies = canonicalPromotions
+    .filter((promotion) => promotion.applied)
+    .map((promotion) => promotion.expectedFamily);
+  const likedSignals = uniqueSignals([
+    ...adultGoogleBooksDocumentBackedSignals(candidate, "metadataBackedMatchedLikedSignals"),
+    ...promotedLikedSignals,
+  ])
     .filter((signal) => {
       const value = normalized(signal);
       return value
@@ -4631,7 +4650,10 @@ function adultGoogleBooksMeaningfulTasteEligibility(candidate: ScoredCandidate, 
         && !ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(value)
         && value !== "literature";
     });
-  const dislikedSignals = adultGoogleBooksDocumentBackedSignals(candidate, "metadataBackedMatchedDislikedSignals")
+  const dislikedSignals = uniqueSignals([
+    ...adultGoogleBooksDocumentBackedSignals(candidate, "metadataBackedMatchedDislikedSignals"),
+    ...promotedDislikedSignals,
+  ])
     .filter((signal) => {
       const value = normalized(signal);
       return value
@@ -4650,7 +4672,7 @@ function adultGoogleBooksMeaningfulTasteEligibility(candidate: ScoredCandidate, 
   const positiveNetTasteFamilies = productionFamilyResolution.positiveNetTasteFamilies;
   const negativeNetTasteFamilies = productionFamilyResolution.negativeNetTasteFamilies;
   const productionDecisionReason = productionFamilyResolution.productionDecisionReason;
-  const allCandidateTasteFamilies = Array.from(new Set([...likedFamilies, ...dislikedFamilies]));
+  const allCandidateTasteFamilies = Array.from(new Set([...likedFamilies, ...dislikedFamilies, ...promotedCandidateFamilies]));
   const likedSignalCount = likedSignals.length;
 
   // Classify non-family signals up front so every return path can report them.
@@ -4902,6 +4924,23 @@ type AdultGoogleBooksNarrativeCueEvidence = {
   fields: string[];
 };
 
+type AdultGoogleBooksCanonicalNarrativeFamilyPromotion = {
+  phrase: string;
+  field: string;
+  expectedFamily: AdultOpenLibraryContentFamily;
+  canonicalRule: string;
+  matchedText: string;
+  familyAlreadyExisted: boolean;
+  applied: boolean;
+  promotedAs: "liked" | "disliked" | "liked_and_disliked" | "none";
+  productionPolarity: string;
+  decision: string;
+  meaningfulAlignmentBefore: string;
+  meaningfulAlignmentAfter?: string;
+  finalEligibilityBefore?: string;
+  finalEligibilityAfter?: string;
+};
+
 type AdultGoogleBooksAmbiguousCueEvidence = {
   phrase: string;
   fields: string[];
@@ -5071,6 +5110,43 @@ function adultGoogleBooksNarrativeCueEvidence(candidate: ScoredCandidate): Adult
     .filter((row): row is AdultGoogleBooksNarrativeCueEvidence => Boolean(row));
 }
 
+function adultGoogleBooksDescriptionPromotionSegments(candidate: ScoredCandidate): string[] {
+  const rawDescription = adultGoogleBooksRawNarrativeDescription(candidate);
+  const segments = rawDescription
+    .split(/[.!?;]\s+/)
+    .map((segment) => normalized(segment))
+    .filter(Boolean);
+  const excludedFraming = /\b(?:fans of|for fans|perfect for readers|readers who love|readers of|praise for|reviewers?|critics?|bestselling|best selling|award winning|author of|interviews?|essays?|guide|study|analysis|criticism|scholarship|this book examines|this volume|this collection|anthology|publisher|marketing)\b/;
+  const narrativeFraming = /\b(?:novel|story|stories|tale|follows|centers on|must|journey|investigates?|haunts?|surviv(?:al|e|es|ed|ing)|romance|romantic|detectives?|murders?|crime|thrillers?|suspense|ghosts?|horror|adventures?|action|quests?|science fiction|sci fi|historical|period setting|magic|magical|witch(?:es)?|realm|family saga|grief|contemporary|literary|drama)\b/;
+  return segments.filter((segment) => !excludedFraming.test(segment) && narrativeFraming.test(segment));
+}
+
+function adultGoogleBooksCanonicalPromotionFieldRows(candidate: ScoredCandidate): { field: string; text: string }[] {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  return [
+    { field: "title", text: fields.title },
+    { field: "subtitle", text: fields.subtitle },
+    { field: "categories", text: fields.categories },
+    { field: "genres", text: fields.genres },
+    ...adultGoogleBooksDescriptionPromotionSegments(candidate).map((text) => ({ field: "description", text })),
+  ].filter((row) => row.text);
+}
+
+function adultGoogleBooksCanonicalCuePromotionEvidence(candidate: ScoredCandidate): AdultGoogleBooksNarrativeCueEvidence[] {
+  const metadataFields = adultGoogleBooksCanonicalPromotionFieldRows(candidate);
+  return ADULT_GOOGLEBOOKS_NARRATIVE_CUES
+    .filter((cue) => adultGoogleBooksCueIsCanonical({ family: cue.family, phrase: cue.phrase, fields: [] }))
+    .map((cue) => {
+      const matchedFields = metadataFields
+        .filter((row) => cue.pattern.test(row.text))
+        .map((row) => row.field);
+      return matchedFields.length > 0
+        ? { family: cue.family, phrase: cue.phrase, fields: uniqueSignals(matchedFields) }
+        : undefined;
+    })
+    .filter((row): row is AdultGoogleBooksNarrativeCueEvidence => Boolean(row));
+}
+
 function adultGoogleBooksAmbiguousCueEvidence(candidate: ScoredCandidate): AdultGoogleBooksAmbiguousCueEvidence[] {
   const fields = adultGoogleBooksMetadataFields(candidate);
   const metadataFields = [
@@ -5125,6 +5201,117 @@ function adultGoogleBooksCueIsApprovedAlias(cue: AdultGoogleBooksNarrativeCueEvi
     && adultOpenLibraryFamilySupportedByText(cue.family, phrase);
 }
 
+function adultGoogleBooksMeaningfulTasteFamilies(meaningfulTaste: ReturnType<typeof adultGoogleBooksMeaningfulTasteEligibility>): string[] {
+  return adultOpenLibraryUniqueFamilies([
+    ...meaningfulTaste.allCandidateTasteFamilies,
+    ...meaningfulTaste.likedSignals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean),
+    ...meaningfulTaste.dislikedSignals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean),
+  ]);
+}
+
+function adultGoogleBooksCanonicalMissingFamilyRows(
+  candidate: ScoredCandidate,
+  meaningfulTaste: ReturnType<typeof adultGoogleBooksMeaningfulTasteEligibility>,
+): { phrase: string; family: AdultOpenLibraryContentFamily; fields: string[] }[] {
+  const extractedFamilies = adultGoogleBooksMeaningfulTasteFamilies(meaningfulTaste);
+  return adultGoogleBooksCanonicalCuePromotionEvidence(candidate)
+    .filter((cue) => !extractedFamilies.includes(cue.family))
+    .map((cue) => ({
+      phrase: cue.phrase,
+      family: cue.family,
+      fields: cue.fields,
+    }));
+}
+
+function adultGoogleBooksCanonicalPromotionTarget(
+  profile: TasteProfile | undefined,
+  family: AdultOpenLibraryContentFamily,
+): { promotedAs: AdultGoogleBooksCanonicalNarrativeFamilyPromotion["promotedAs"]; productionPolarity: string } {
+  const production = adultTasteProductionPolarity(profile)[family];
+  const decision = String(production?.decision || "");
+  if (["strongly_liked", "weakly_liked", "mixed_positive"].includes(decision)) {
+    return { promotedAs: "liked", productionPolarity: decision };
+  }
+  if (decision === "true_avoid") {
+    return { promotedAs: "disliked", productionPolarity: decision };
+  }
+  if (decision === "mixed_neutral" || decision === "mixed_negative") {
+    return { promotedAs: "liked_and_disliked", productionPolarity: decision };
+  }
+
+  const likedSignals = [
+    ...(profile?.genreFamily || []).map((row) => String(row.value || "")),
+    ...(profile?.tone || []).map((row) => String(row.value || "")),
+    ...(profile?.themes || []).map((row) => String(row.value || "")),
+  ];
+  const avoidSignals = (profile?.avoidSignals || []).map((row) => String(row.value || ""));
+  const liked = adultOpenLibraryContentFamilies(likedSignals).includes(family);
+  const avoided = adultOpenLibraryContentFamilies(avoidSignals).includes(family);
+  if (liked && avoided) return { promotedAs: "liked_and_disliked", productionPolarity: "binary_liked_and_avoid" };
+  if (liked) return { promotedAs: "liked", productionPolarity: "binary_liked" };
+  if (avoided) return { promotedAs: "disliked", productionPolarity: "binary_avoid" };
+  return { promotedAs: "none", productionPolarity: "not_profile_family" };
+}
+
+function adultGoogleBooksMatchedTextForCue(candidate: ScoredCandidate, cue: AdultGoogleBooksNarrativeCueEvidence, field: string): string {
+  const row = adultGoogleBooksCanonicalPromotionFieldRows(candidate).find((entry) =>
+    entry.field === field
+    && ADULT_GOOGLEBOOKS_NARRATIVE_CUES.some((candidateCue) =>
+      candidateCue.phrase === cue.phrase
+      && candidateCue.family === cue.family
+      && candidateCue.pattern.test(entry.text),
+    ),
+  );
+  return adultGoogleBooksTruncateDiagnosticText(row?.text || cue.phrase, 180);
+}
+
+function adultGoogleBooksCanonicalNarrativeFamilyPromotions(
+  candidate: ScoredCandidate,
+  profile: TasteProfile | undefined,
+  meaningfulTasteBefore: ReturnType<typeof adultGoogleBooksMeaningfulTasteEligibility>,
+): AdultGoogleBooksCanonicalNarrativeFamilyPromotion[] {
+  if (candidate.source !== "googleBooks" || profile?.ageBand !== "adult") return [];
+  const existingFamilies = adultGoogleBooksMeaningfulTasteFamilies(meaningfulTasteBefore);
+  const alreadyPromotedFamilies = new Set<string>();
+  const meaningfulAlignmentBefore = meaningfulTasteBefore.passed
+    ? `passed:${meaningfulTasteBefore.reason}`
+    : `failed:${meaningfulTasteBefore.reason}`;
+
+  return adultGoogleBooksCanonicalCuePromotionEvidence(candidate)
+    .flatMap((cue) => cue.fields.map((field) => ({ cue, field })))
+    .map(({ cue, field }) => {
+      const phrase = normalized(cue.phrase);
+      const familyAlreadyExisted = existingFamilies.includes(cue.family);
+      const { promotedAs, productionPolarity } = adultGoogleBooksCanonicalPromotionTarget(profile, cue.family);
+      const duplicatePromotion = alreadyPromotedFamilies.has(cue.family);
+      const applied = !familyAlreadyExisted && !duplicatePromotion;
+      if (applied) alreadyPromotedFamilies.add(cue.family);
+      const decision = familyAlreadyExisted
+        ? "not_promoted_family_already_extracted"
+        : duplicatePromotion
+          ? "not_promoted_family_already_promoted_by_another_cue"
+          : promotedAs === "none"
+            ? "promoted_candidate_family_without_profile_polarity"
+            : "promoted_canonical_narrative_family";
+      return {
+        phrase: cue.phrase,
+        field,
+        expectedFamily: cue.family,
+        canonicalRule: `canonical_cue:${phrase}->${cue.family}`,
+        matchedText: adultGoogleBooksMatchedTextForCue(candidate, cue, field),
+        familyAlreadyExisted,
+        applied,
+        promotedAs,
+        productionPolarity,
+        decision,
+        meaningfulAlignmentBefore,
+        finalEligibilityBefore: meaningfulTasteBefore.passed
+          ? "not_blocked_by_meaningful_alignment_before_promotion"
+          : "rejected:adult_googlebooks_missing_meaningful_document_taste_alignment",
+      };
+    });
+}
+
 function adultGoogleBooksCueClassification(
   cue: AdultGoogleBooksNarrativeCueEvidence,
   meaningfulTaste: ReturnType<typeof adultGoogleBooksMeaningfulTasteEligibility>,
@@ -5150,7 +5337,10 @@ function adultGoogleBooksCueClassification(
   let finalDiagnosticState: AdultGoogleBooksNarrativeCueClassificationState;
   let explanation = "";
 
-  if (familyExtracted) {
+  if (!canonical && !approvedAlias && ADULT_GOOGLEBOOKS_GENUINE_ALIAS_CUE_PHRASES.has(phrase)) {
+    finalDiagnosticState = "genuine_alias_candidate";
+    explanation = "Phrase is not currently canonical for this family but strongly and unambiguously implies it.";
+  } else if (familyExtracted) {
     if (contextOnly) {
       finalDiagnosticState = "canonical_cue_mapped_context_only";
       explanation = "Cue-like evidence was recognized but the meaningful-alignment gate classified it as context-only evidence.";
@@ -5177,9 +5367,6 @@ function adultGoogleBooksCueClassification(
   } else if (canonical || approvedAlias) {
     finalDiagnosticState = "canonical_cue_missing_expected_family";
     explanation = "Known canonical or approved-alias cue exists in narrative metadata, but the expected family was not produced anywhere in extracted family evidence.";
-  } else if (ADULT_GOOGLEBOOKS_GENUINE_ALIAS_CUE_PHRASES.has(phrase)) {
-    finalDiagnosticState = "genuine_alias_candidate";
-    explanation = "Phrase is not currently canonical for this family but strongly and unambiguously implies it.";
   } else {
     finalDiagnosticState = "ambiguous_or_nonactionable";
     explanation = "Phrase is too broad, contextual, promotional, or ambiguous to become a safe semantic alias.";
@@ -5529,6 +5716,9 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
       broadToneLikedSignals: [],
       contextOnlyLikedSignals: [],
       productionDecisionReason: "not_applicable",
+      canonicalNarrativeFamilyPromotions: [],
+      canonicalMissingFamilyBefore: [],
+      canonicalMissingFamilyAfter: [],
     };
   }
   const encyclopediaReference = adultGoogleBooksEncyclopediaReferenceSignals(candidate);
@@ -5540,7 +5730,17 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
   const credibleFictionSignals = adultGoogleBooksCredibleFictionSignals(candidate);
   const incompatibilities = adultGoogleBooksStrongIncompatibility(candidate);
   const workIdentitySignals = adultGoogleBooksWorkIdentitySignals(candidate);
-  const meaningfulTaste = adultGoogleBooksMeaningfulTasteEligibility(candidate, profile);
+  const meaningfulTasteBeforePromotion = adultGoogleBooksMeaningfulTasteEligibility(candidate, profile);
+  const canonicalPromotions = adultGoogleBooksCanonicalNarrativeFamilyPromotions(candidate, profile, meaningfulTasteBeforePromotion);
+  const meaningfulTaste = adultGoogleBooksMeaningfulTasteEligibility(candidate, profile, canonicalPromotions);
+  const canonicalMissingFamilyBefore = adultGoogleBooksCanonicalMissingFamilyRows(candidate, meaningfulTasteBeforePromotion);
+  const canonicalMissingFamilyAfter = adultGoogleBooksCanonicalMissingFamilyRows(candidate, meaningfulTaste);
+  const canonicalPromotionDiagnostics = canonicalPromotions.map((promotion) => ({
+    ...promotion,
+    meaningfulAlignmentAfter: meaningfulTaste.passed
+      ? `passed:${meaningfulTaste.reason}`
+      : `failed:${meaningfulTaste.reason}`,
+  }));
   const periodicalCorroboration = adultGoogleBooksPeriodicalCorroboration(candidate);
   // Collect all taste-diagnostic fields once so every return object below can spread them without repetition.
   const tasteDiagnosticFields = {
@@ -5553,6 +5753,9 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
     broadToneLikedSignals: meaningfulTaste.broadToneLikedSignals,
     contextOnlyLikedSignals: meaningfulTaste.contextOnlyLikedSignals,
     productionDecisionReason: meaningfulTaste.productionDecisionReason,
+    canonicalNarrativeFamilyPromotions: canonicalPromotionDiagnostics,
+    canonicalMissingFamilyBefore,
+    canonicalMissingFamilyAfter,
   };
   const sourceQuality = Number(candidate.scoreBreakdown?.sourceQualityRelevance || 0);
   const strongWorkIdentity = workIdentitySignals.length > 0;
@@ -5932,6 +6135,17 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const genuineAliasCandidateHistogram: Record<string, number> = {};
   const narrativeCuePolarityOutcomeByTitle: Record<string, unknown[]> = {};
   const narrativeCueFalseUnmappedSuppressedByTitle: Record<string, unknown[]> = {};
+  const canonicalNarrativeFamilyPromotionsByTitle: Record<string, string[]> = {};
+  const canonicalNarrativeFamilyPromotionEvidenceByTitle: Record<string, unknown[]> = {};
+  const canonicalNarrativeFamilyPromotionFieldByTitle: Record<string, string[]> = {};
+  const canonicalNarrativeFamilyPromotionPhraseByTitle: Record<string, string[]> = {};
+  const canonicalNarrativeFamilyPromotionDecisionByTitle: Record<string, unknown[]> = {};
+  const canonicalMissingFamilyBeforeByTitle: Record<string, unknown[]> = {};
+  const canonicalMissingFamilyAfterByTitle: Record<string, unknown[]> = {};
+  const canonicalMissingFamilyResolvedTitles: string[] = [];
+  const canonicalMissingFamilyUnresolvedTitles: string[] = [];
+  const canonicalNarrativeFamilyPromotionHistogram: Record<string, number> = {};
+  const canonicalNarrativeFamilyPromotionEligibilityChanges: Record<string, unknown> = {};
   let profileLikedFamilies: string[] = [];
   let profileAvoidFamilies: string[] = [];
   if (profile.ageBand === "adult") {
@@ -6046,6 +6260,17 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksNarrativeCuePolarityOutcomeByTitle = {};
     diagnostics.adultGoogleBooksNarrativeCueFalseUnmappedSuppressedByTitle = {};
     diagnostics.adultGoogleBooksNarrativeExtractionDiagnosticSummary = "";
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle = {};
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionEvidenceByTitle = {};
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionFieldByTitle = {};
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionPhraseByTitle = {};
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionDecisionByTitle = {};
+    diagnostics.adultGoogleBooksCanonicalMissingFamilyBeforeByTitle = {};
+    diagnostics.adultGoogleBooksCanonicalMissingFamilyAfterByTitle = {};
+    diagnostics.adultGoogleBooksCanonicalMissingFamilyResolvedTitles = [];
+    diagnostics.adultGoogleBooksCanonicalMissingFamilyUnresolvedTitles = [];
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionHistogram = {};
+    diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionEligibilityChanges = {};
     diagnostics.googleBooksPlannedQueries = [];
     diagnostics.googleBooksQueriesAttempted = [];
     diagnostics.googleBooksRawCountByQuery = {};
@@ -6074,7 +6299,9 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     if (attemptedQuery) rawCountByQuery[attemptedQuery] = Number(rawCountByQuery[attemptedQuery] || 0) + 1;
 
     const binaryMeaningfulTaste = adultGoogleBooksMeaningfulTasteEligibility(candidate);
-    const profileMeaningfulTaste = adultGoogleBooksMeaningfulTasteEligibility(candidate, profile);
+    const profileMeaningfulTasteBeforePromotion = adultGoogleBooksMeaningfulTasteEligibility(candidate, profile);
+    const profileCanonicalPromotions = adultGoogleBooksCanonicalNarrativeFamilyPromotions(candidate, profile, profileMeaningfulTasteBeforePromotion);
+    const profileMeaningfulTaste = adultGoogleBooksMeaningfulTasteEligibility(candidate, profile, profileCanonicalPromotions);
     const eligibility = adultGoogleBooksFinalEligibility(candidate, profile);
     const weightedCounterfactual = adultGoogleBooksWeightedCounterfactualDecision(profile, binaryMeaningfulTaste, profileLikedFamilies, profileAvoidFamilies);
     eligibilityReasonByTitle[candidate.title] = eligibility.reason;
@@ -6178,6 +6405,48 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     narrativeCueFalseUnmappedSuppressedByTitle[candidate.title] = Array.isArray(narrativeExtraction.falseUnmappedSuppressed)
       ? narrativeExtraction.falseUnmappedSuppressed as unknown[]
       : [];
+    const promotionEvidence = (eligibility.canonicalNarrativeFamilyPromotions || []).map((promotion) => ({
+      ...promotion,
+      finalEligibilityAfter: eligibility.allowed ? `accepted:${eligibility.reason}` : `rejected:${eligibility.reason}`,
+    }));
+    canonicalNarrativeFamilyPromotionsByTitle[candidate.title] = Array.from(new Set(
+      promotionEvidence
+        .filter((promotion) => promotion.applied)
+        .map((promotion) => String(promotion.expectedFamily || "")),
+    ));
+    canonicalNarrativeFamilyPromotionEvidenceByTitle[candidate.title] = promotionEvidence;
+    canonicalNarrativeFamilyPromotionFieldByTitle[candidate.title] = uniqueSignals(promotionEvidence.map((promotion) => String(promotion.field || "")).filter(Boolean));
+    canonicalNarrativeFamilyPromotionPhraseByTitle[candidate.title] = uniqueSignals(promotionEvidence.map((promotion) => String(promotion.phrase || "")).filter(Boolean));
+    canonicalNarrativeFamilyPromotionDecisionByTitle[candidate.title] = promotionEvidence.map((promotion) => ({
+      phrase: promotion.phrase,
+      expectedFamily: promotion.expectedFamily,
+      promotedAs: promotion.promotedAs,
+      productionPolarity: promotion.productionPolarity,
+      applied: promotion.applied,
+      decision: promotion.decision,
+      meaningfulAlignmentBefore: promotion.meaningfulAlignmentBefore,
+      meaningfulAlignmentAfter: promotion.meaningfulAlignmentAfter,
+      finalEligibilityBefore: promotion.finalEligibilityBefore,
+      finalEligibilityAfter: promotion.finalEligibilityAfter,
+    }));
+    canonicalMissingFamilyBeforeByTitle[candidate.title] = eligibility.canonicalMissingFamilyBefore;
+    canonicalMissingFamilyAfterByTitle[candidate.title] = eligibility.canonicalMissingFamilyAfter;
+    const missingBeforeKeys = new Set((eligibility.canonicalMissingFamilyBefore || []).map((row) => `${row.family}:${row.phrase}`));
+    const missingAfterKeys = new Set((eligibility.canonicalMissingFamilyAfter || []).map((row) => `${row.family}:${row.phrase}`));
+    if ([...missingBeforeKeys].some((key) => !missingAfterKeys.has(key))) canonicalMissingFamilyResolvedTitles.push(candidate.title);
+    if (missingAfterKeys.size > 0) canonicalMissingFamilyUnresolvedTitles.push(candidate.title);
+    for (const promotion of promotionEvidence.filter((row) => row.applied)) {
+      adultGoogleBooksIncrementCounter(canonicalNarrativeFamilyPromotionHistogram, `${promotion.expectedFamily}:${promotion.phrase}`);
+    }
+    if (promotionEvidence.some((promotion) => promotion.applied)) {
+      canonicalNarrativeFamilyPromotionEligibilityChanges[candidate.title] = {
+        before: promotionEvidence[0]?.finalEligibilityBefore || "",
+        after: promotionEvidence[0]?.finalEligibilityAfter || "",
+        meaningfulAlignmentBefore: promotionEvidence[0]?.meaningfulAlignmentBefore || "",
+        meaningfulAlignmentAfter: promotionEvidence[0]?.meaningfulAlignmentAfter || "",
+        appliedFamilies: canonicalNarrativeFamilyPromotionsByTitle[candidate.title],
+      };
+    }
     for (const row of narrativeCueClassificationByTitle[candidate.title]) {
       const state = String((row as Record<string, unknown>)?.finalDiagnosticState || "");
       adultGoogleBooksIncrementCounter(narrativeCueClassificationHistogram, state);
@@ -6410,6 +6679,17 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksNarrativeCuePolarityOutcomeByTitle = narrativeCuePolarityOutcomeByTitle;
   diagnostics.adultGoogleBooksNarrativeCueFalseUnmappedSuppressedByTitle = narrativeCueFalseUnmappedSuppressedByTitle;
   diagnostics.adultGoogleBooksNarrativeExtractionDiagnosticSummary = narrativeExtractionDiagnosticSummary;
+  diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle = canonicalNarrativeFamilyPromotionsByTitle;
+  diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionEvidenceByTitle = canonicalNarrativeFamilyPromotionEvidenceByTitle;
+  diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionFieldByTitle = canonicalNarrativeFamilyPromotionFieldByTitle;
+  diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionPhraseByTitle = canonicalNarrativeFamilyPromotionPhraseByTitle;
+  diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionDecisionByTitle = canonicalNarrativeFamilyPromotionDecisionByTitle;
+  diagnostics.adultGoogleBooksCanonicalMissingFamilyBeforeByTitle = canonicalMissingFamilyBeforeByTitle;
+  diagnostics.adultGoogleBooksCanonicalMissingFamilyAfterByTitle = canonicalMissingFamilyAfterByTitle;
+  diagnostics.adultGoogleBooksCanonicalMissingFamilyResolvedTitles = Array.from(new Set(canonicalMissingFamilyResolvedTitles));
+  diagnostics.adultGoogleBooksCanonicalMissingFamilyUnresolvedTitles = Array.from(new Set(canonicalMissingFamilyUnresolvedTitles));
+  diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionHistogram = canonicalNarrativeFamilyPromotionHistogram;
+  diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionEligibilityChanges = canonicalNarrativeFamilyPromotionEligibilityChanges;
   diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
   diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
   diagnostics.googleBooksRankedCandidateTitles = uniqueSignals(rankedCandidateTitles);
