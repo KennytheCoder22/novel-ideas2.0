@@ -100,8 +100,8 @@ function makeScoredCandidate({
     },
     scoreBreakdown: {
       genreFacetMatch,
-      ...scoreBreakdown,
       sourceQualityRelevance: 1,
+      ...scoreBreakdown,
     },
     rejectedReasons: [],
     raw: {
@@ -497,13 +497,13 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   assertEqual(explanation?.remainingNetScore, 0, "T23: mixed-neutral explanation should expose zero net");
   assertEqual(explanation?.finalProductionPolarity, "neutral", "T23: mixed-neutral explanation should show neutral production polarity");
   assertTruthy(
-    (diagnostics.adultGoogleBooksProductionSuppressionRuleHistogram?.mixed_neutral_overlap_treated_as_neither_positive_proof_nor_hard_avoid || 0) >= 1,
-    "T23: mixed-neutral production rule should appear in suppression histogram",
+    (diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceRuleHistogram?.mixed_neutral_overlap_treated_as_neither_positive_proof_nor_hard_avoid || 0) >= 1,
+    "T23: mixed-neutral production rule should appear in non-positive family presence histogram",
   );
   assertIncludes(
-    diagnostics.adultGoogleBooksProductionSuppressedFamiliesByTitle?.["Neutral Mystery"] || [],
+    diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceFamiliesByTitle?.["Neutral Mystery"] || [],
     "mystery_crime_thriller",
-    "T23: candidate-level suppression diagnostics should name the neutral family",
+    "T23: non-positive family presence diagnostics should name the neutral family",
   );
   console.log("PASS T23: equal mystery evidence remains mixed-neutral");
 }
@@ -551,7 +551,13 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
     { title: "Disliked Fantasy Two", action: "dislike", genres: ["Fantasy"], tags: ["quest"], source: "mock", format: "book" },
   ]);
   assertAdultFamilyDecision(profile, "fantasy", "mixed_negative", "T27: fantasy should be mixed-negative, not true avoid");
-  const candidate = makeScoredCandidate({ title: "Mixed Negative With Sci-Fi", likedSignals: ["fantasy", "science fiction"], dislikedSignals: ["fantasy"] });
+  const candidate = makeScoredCandidate({
+    title: "Mixed Negative With Sci-Fi",
+    likedSignals: ["fantasy", "science fiction"],
+    dislikedSignals: ["fantasy"],
+    description: "A scientist must cross a magical city before an ancient machine awakens.",
+    categories: ["Fiction / Science Fiction / General"],
+  });
   const diagnostics = runSelection([candidate], profile);
   assertTruthy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Mixed Negative With Sci-Fi"], "T27: another positive family should still pass");
   assertIncludes(diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle?.["Mixed Negative With Sci-Fi"] || [], "science_fiction", "T27: sci-fi should be the positive passing family");
@@ -559,10 +565,134 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   assertEqual(explanation?.finalProductionPolarity, "neutral", "T27: mixed-negative explanation should show soft-neutral production polarity");
   assertEqual(explanation?.remainingNetScore, -1, "T27: mixed-negative explanation should expose negative net score");
   assertTruthy(
-    (diagnostics.adultGoogleBooksProductionSuppressionRuleHistogram?.mixed_negative_overlap_treated_as_soft_negative_without_hard_block || 0) >= 1,
-    "T27: mixed-negative production rule should appear in suppression histogram",
+    (diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceRuleHistogram?.mixed_negative_overlap_treated_as_soft_negative_without_hard_block || 0) >= 1,
+    "T27: mixed-negative production rule should appear in non-positive family presence histogram",
   );
+  const nondecisive = diagnostics.adultGoogleBooksPolarityNondecisiveEffectsByTitle?.["Mixed Negative With Sci-Fi"] || [];
+  assertIncludes(nondecisive.map((row) => row?.state), "family_soft_negative_nondecisive", "T27: accepted mixed-negative family should be nondecisive");
+  assertFalsy(diagnostics.adultGoogleBooksPolarityCausalityStateByTitle?.["Mixed Negative With Sci-Fi"], "T27: accepted title should not receive rejection-causality state");
   console.log("PASS T27: mixed-negative overlap does not hard-reject other positive evidence");
+}
+
+// --- T27b: Mixed-neutral family on an accepted candidate is nondecisive, not causal rejection ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Liked Mystery One", action: "like", genres: ["Mystery"], tags: ["mystery"], source: "mock", format: "book" },
+    { title: "Disliked Mystery One", action: "dislike", genres: ["Mystery"], tags: ["mystery"], source: "mock", format: "book" },
+    { title: "Liked Science Fiction", action: "like", genres: ["Science Fiction"], tags: ["science fiction"], source: "mock", format: "book" },
+  ]);
+  const candidate = makeScoredCandidate({
+    title: "Neutral Mystery With Sci-Fi",
+    likedSignals: ["mystery", "science fiction"],
+    dislikedSignals: ["mystery"],
+    description: "A scientist follows a dangerous signal through a mystery that threatens a city.",
+    categories: ["Fiction / Science Fiction / General"],
+  });
+  const diagnostics = runSelection([candidate], profile);
+  assertTruthy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Neutral Mystery With Sci-Fi"], "T27b: sci-fi should let the candidate pass");
+  const nondecisive = diagnostics.adultGoogleBooksPolarityNondecisiveEffectsByTitle?.["Neutral Mystery With Sci-Fi"] || [];
+  assertIncludes(nondecisive.map((row) => row?.state), "family_neutral_nondecisive", "T27b: mixed-neutral family should be nondecisive when another family passes");
+  assertFalsy(diagnostics.adultGoogleBooksPolarityCausalityStateByTitle?.["Neutral Mystery With Sci-Fi"], "T27b: accepted title should not be counted as rejection-causal");
+  console.log("PASS T27b: accepted mixed-neutral family is nondecisive");
+}
+
+// --- T27c: Rejected mixed-neutral single-family candidate is decisive only when neutral-to-positive passes final eligibility ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Liked Mystery", action: "like", genres: ["Mystery"], tags: ["mystery"], source: "mock", format: "book" },
+    { title: "Disliked Mystery", action: "dislike", genres: ["Mystery"], tags: ["mystery"], source: "mock", format: "book" },
+  ]);
+  const candidate = makeScoredCandidate({
+    title: "Decisive Neutral Mystery",
+    likedSignals: ["mystery"],
+    dislikedSignals: ["mystery"],
+    description: "A detective follows a missing witness through a dangerous case.",
+    categories: ["Fiction / Mystery & Detective / General"],
+  });
+  const diagnostics = runSelection([candidate], profile);
+  assertEqual(diagnostics.adultGoogleBooksPolarityCausalityStateByTitle?.["Decisive Neutral Mystery"], "candidate_rejection_decisive_neutral", "T27c: neutral-to-positive counterfactual should be decisive");
+  assertIncludes(diagnostics.adultGoogleBooksPolarityCounterfactualPassTitles || [], "Decisive Neutral Mystery", "T27c: decisive neutral title should be listed as counterfactual pass");
+  console.log("PASS T27c: mixed-neutral rejection causality is counterfactual-gated");
+}
+
+// --- T27d: Rejected mixed-negative single-family candidate is decisive only when soft-negative-to-positive passes ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Liked Fantasy", action: "like", genres: ["Fantasy"], tags: ["fantasy"], source: "mock", format: "book" },
+    { title: "Disliked Fantasy One", action: "dislike", genres: ["Fantasy"], tags: ["fantasy"], source: "mock", format: "book" },
+    { title: "Disliked Fantasy Two", action: "dislike", genres: ["Fantasy"], tags: ["magic"], source: "mock", format: "book" },
+  ]);
+  const candidate = makeScoredCandidate({
+    title: "Decisive Soft Negative Fantasy",
+    likedSignals: ["fantasy"],
+    dislikedSignals: ["fantasy"],
+    description: "A mage must confront an ancient curse before the kingdom falls.",
+    categories: ["Fiction / Fantasy / General"],
+  });
+  const diagnostics = runSelection([candidate], profile);
+  assertEqual(diagnostics.adultGoogleBooksPolarityCausalityStateByTitle?.["Decisive Soft Negative Fantasy"], "candidate_rejection_decisive_soft_negative", "T27d: soft-negative-to-positive counterfactual should be decisive");
+  const counterfactuals = diagnostics.adultGoogleBooksPolarityCounterfactualsByTitle?.["Decisive Soft Negative Fantasy"] || [];
+  assertIncludes(counterfactuals.map((row) => row?.counterfactual), "soft_negative_to_neutral_counterfactual", "T27d: soft-negative neutral counterfactual should be reported");
+  assertIncludes(counterfactuals.map((row) => row?.counterfactual), "soft_negative_to_positive_counterfactual", "T27d: soft-negative positive counterfactual should be reported");
+  console.log("PASS T27d: mixed-negative rejection causality is counterfactual-gated");
+}
+
+// --- T27e: Candidate that still fails after one-family counterfactual is multi-factor ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Liked Mystery", action: "like", genres: ["Mystery"], tags: ["mystery"], source: "mock", format: "book" },
+    { title: "Disliked Mystery", action: "dislike", genres: ["Mystery"], tags: ["mystery"], source: "mock", format: "book" },
+  ]);
+  const candidate = makeScoredCandidate({
+    title: "Neutral Mystery With Source Failure",
+    likedSignals: ["mystery"],
+    dislikedSignals: ["mystery"],
+    description: "A sparse catalog record with little narrative metadata.",
+    categories: [],
+  });
+  const diagnostics = runSelection([candidate], profile);
+  assertEqual(diagnostics.adultGoogleBooksPolarityCausalityStateByTitle?.["Neutral Mystery With Source Failure"], "candidate_rejection_multi_factor", "T27e: one-family counterfactual still failing should be multi-factor");
+  assertIncludes(diagnostics.adultGoogleBooksPolarityCounterfactualStillFailTitles || [], "Neutral Mystery With Source Failure", "T27e: multi-factor title should be listed as still failing");
+  console.log("PASS T27e: still-failing counterfactual is multi-factor");
+}
+
+// --- T27f: Candidate rejected for source quality is unrelated to polarity ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Liked Mystery", action: "like", genres: ["Mystery"], tags: ["mystery"], source: "mock", format: "book" },
+  ]);
+  const candidate = makeScoredCandidate({
+    title: "Source Quality Failure",
+    likedSignals: ["mystery"],
+    dislikedSignals: [],
+    description: "A generic record.",
+    categories: [],
+    scoreBreakdown: { sourceQualityRelevance: 0 },
+  });
+  const diagnostics = runSelection([candidate], profile);
+  assertEqual(diagnostics.adultGoogleBooksEligibilityReasonByTitle?.["Source Quality Failure"], "adult_googlebooks_source_quality_not_positive", "T27f: fixture should fail source quality");
+  assertEqual(diagnostics.adultGoogleBooksPolarityCausalityStateByTitle?.["Source Quality Failure"], "candidate_rejection_unrelated_to_polarity", "T27f: source-quality rejection should be unrelated to polarity");
+  console.log("PASS T27f: source-quality rejection is unrelated to polarity");
+}
+
+// --- T27g: Selection output remains unchanged while diagnostics are added ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Liked Science Fiction", action: "like", genres: ["Science Fiction"], tags: ["science fiction"], source: "mock", format: "book" },
+    { title: "Liked Fantasy", action: "like", genres: ["Fantasy"], tags: ["fantasy"], source: "mock", format: "book" },
+    { title: "Disliked Fantasy One", action: "dislike", genres: ["Fantasy"], tags: ["magic"], source: "mock", format: "book" },
+    { title: "Disliked Fantasy Two", action: "dislike", genres: ["Fantasy"], tags: ["quest"], source: "mock", format: "book" },
+  ]);
+  const candidate = makeScoredCandidate({
+    title: "Stable Output Candidate",
+    likedSignals: ["fantasy", "science fiction"],
+    dislikedSignals: ["fantasy"],
+    description: "A scientist must cross a magical city before an ancient machine awakens.",
+    categories: ["Fiction / Science Fiction / General"],
+  });
+  const { selected } = selectRecommendations([candidate], profile, 10);
+  assertEqual(selected.map((item) => item.title).join("|"), "Stable Output Candidate", "T27g: diagnostic additions must not alter selected output");
+  console.log("PASS T27g: recommendation output remains stable");
 }
 
 // --- T28: Sparse candidate stays rejected even with mixed-positive routed profile family ---

@@ -4564,7 +4564,7 @@ function adultTasteProductionPolarityExplanations(profile?: TasteProfile): Recor
     : {};
 }
 
-function adultGoogleBooksProductionSuppressionRule(explanation: Record<string, unknown> | undefined): string {
+function adultGoogleBooksProductionNonPositiveFamilyPresenceRule(explanation: Record<string, unknown> | undefined): string {
   if (!explanation) return "";
   const decision = String(explanation.decision || "");
   const rule = String(explanation.productionRule || "");
@@ -4574,6 +4574,324 @@ function adultGoogleBooksProductionSuppressionRule(explanation: Record<string, u
     return rule || decision;
   }
   return "";
+}
+
+type AdultGoogleBooksPolarityCounterfactualKind =
+  | "neutral_to_positive_counterfactual"
+  | "soft_negative_to_neutral_counterfactual"
+  | "soft_negative_to_positive_counterfactual"
+  | "clear_avoid_removed_counterfactual";
+
+type AdultGoogleBooksPolarityCausalityState =
+  | "family_positive_support"
+  | "family_positive_support_suppressed"
+  | "family_soft_negative_nondecisive"
+  | "family_neutral_nondecisive"
+  | "family_clear_avoid_nondecisive"
+  | "candidate_rejection_decisive_neutral"
+  | "candidate_rejection_decisive_soft_negative"
+  | "candidate_rejection_decisive_clear_avoid"
+  | "candidate_rejection_multi_factor"
+  | "candidate_rejection_unrelated_to_polarity";
+
+function adultGoogleBooksFamilySignalsForEligibility(eligibility: AdultGoogleBooksEligibility, family: string, polarity: "liked" | "disliked"): string[] {
+  const signals = polarity === "liked" ? eligibility.documentBackedLikedSignals : eligibility.documentBackedDislikedSignals;
+  return signals.filter((signal) => adultOpenLibraryPrimaryContentFamily(signal) === family);
+}
+
+function adultGoogleBooksProfileWithCounterfactualFamily(
+  profile: TasteProfile,
+  family: string,
+  kind: AdultGoogleBooksPolarityCounterfactualKind,
+): TasteProfile {
+  const polarity = adultTasteProductionPolarity(profile);
+  const explanations = adultTasteProductionPolarityExplanations(profile);
+  const current = polarity[family] || {};
+  const currentExplanation = explanations[family] || {};
+  const positiveContribution = Number(currentExplanation.positiveContribution || current.positiveWeight || 0);
+  let decision = String(current.decision || currentExplanation.decision || "");
+  let productionLiked = Boolean(current.productionLiked);
+  let productionAvoid = Boolean(current.productionAvoid);
+  let finalProductionPolarity = String(currentExplanation.finalProductionPolarity || "");
+
+  if (kind === "neutral_to_positive_counterfactual" || kind === "soft_negative_to_positive_counterfactual") {
+    decision = "mixed_positive";
+    productionLiked = true;
+    productionAvoid = false;
+    finalProductionPolarity = "liked";
+  } else if (kind === "soft_negative_to_neutral_counterfactual") {
+    decision = "mixed_neutral";
+    productionLiked = false;
+    productionAvoid = false;
+    finalProductionPolarity = "neutral";
+  } else if (kind === "clear_avoid_removed_counterfactual") {
+    decision = positiveContribution > 0 ? "weakly_liked" : "insufficient_evidence";
+    productionLiked = positiveContribution > 0;
+    productionAvoid = false;
+    finalProductionPolarity = positiveContribution > 0 ? "liked" : "neutral";
+  }
+
+  const updatedPolarity = {
+    ...polarity,
+    [family]: {
+      ...current,
+      decision,
+      overlap: kind === "clear_avoid_removed_counterfactual" ? positiveContribution > 0 : true,
+      productionLiked,
+      productionAvoid,
+      reason: kind,
+    },
+  };
+  const updatedExplanations = {
+    ...explanations,
+    [family]: {
+      ...currentExplanation,
+      family,
+      decision,
+      productionRule: kind,
+      finalProductionPolarity,
+      productionLiked,
+      productionAvoid,
+    },
+  };
+
+  return {
+    ...profile,
+    diagnostics: {
+      ...(profile.diagnostics || {}),
+      adultTasteProductionPolarityByFamily: updatedPolarity,
+      adultTasteProductionPolarityExplanationByFamily: updatedExplanations,
+    },
+  };
+}
+
+function adultGoogleBooksCandidateWithoutDislikedFamily(candidate: ScoredCandidate, family: string): ScoredCandidate {
+  const diagnostics = { ...(candidate.diagnostics || {}) };
+  const dislikedSignals = Array.isArray(diagnostics.metadataBackedMatchedDislikedSignals)
+    ? diagnostics.metadataBackedMatchedDislikedSignals.map(String)
+    : [];
+  diagnostics.metadataBackedMatchedDislikedSignals = dislikedSignals
+    .filter((signal) => adultOpenLibraryPrimaryContentFamily(signal) !== family);
+  return {
+    ...candidate,
+    diagnostics,
+  };
+}
+
+function adultGoogleBooksOtherCounterfactualFailureReasons(eligibility: AdultGoogleBooksEligibility): string[] {
+  return Array.from(new Set([
+    eligibility.reason,
+    eligibility.meaningfulTasteFailureReason,
+    ...eligibility.sourceQualityFailureReasons,
+    ...eligibility.artifactReasons,
+    ...eligibility.referenceSurveyReasons,
+    ...eligibility.instructionalCraftReasons,
+  ].map(String).filter((reason) => reason && reason !== "not_applicable")));
+}
+
+function adultGoogleBooksCounterfactualKindsForDecision(decision: string): AdultGoogleBooksPolarityCounterfactualKind[] {
+  if (decision === "mixed_neutral") return ["neutral_to_positive_counterfactual"];
+  if (decision === "mixed_negative") return ["soft_negative_to_neutral_counterfactual", "soft_negative_to_positive_counterfactual"];
+  if (decision === "true_avoid") return ["clear_avoid_removed_counterfactual"];
+  return [];
+}
+
+function adultGoogleBooksPolarityCausalityForCandidate(
+  candidate: ScoredCandidate,
+  profile: TasteProfile,
+  eligibility: AdultGoogleBooksEligibility,
+  productionPolarityExplanations: Record<string, Record<string, unknown>>,
+): {
+  familyEffects: Record<string, unknown>[];
+  positiveSupportSuppressed: Record<string, unknown>[];
+  nondecisiveEffects: Record<string, unknown>[];
+  decisiveRejection?: Record<string, unknown>;
+  multiFactorRejection?: Record<string, unknown>;
+  unrelatedRejection?: Record<string, unknown>;
+  causalityState?: AdultGoogleBooksPolarityCausalityState | "accepted_not_rejected";
+  counterfactuals: Record<string, unknown>[];
+  counterfactualPass: boolean;
+  counterfactualStillFail: boolean;
+  decisiveRule?: string;
+} {
+  const familyKeys = Array.from(new Set(eligibility.allCandidateTasteFamilies.map(String).filter(Boolean)));
+  const positiveFamilySet = new Set(eligibility.positiveNetTasteFamilies);
+  const counterfactuals: Record<string, unknown>[] = [];
+  const familyEffects: Record<string, unknown>[] = [];
+  const positiveSupportSuppressed: Record<string, unknown>[] = [];
+  const nondecisiveEffects: Record<string, unknown>[] = [];
+  const decisiveCandidates: Record<string, unknown>[] = [];
+  const isMissingMeaningfulTaste = !eligibility.allowed && eligibility.reason === "adult_googlebooks_missing_meaningful_document_taste_alignment";
+
+  for (const family of familyKeys) {
+    const explanation = productionPolarityExplanations[family] || {};
+    const decision = String(explanation.decision || "");
+    const productionRule = String(explanation.productionRule || "");
+    const likedSignals = adultGoogleBooksFamilySignalsForEligibility(eligibility, family, "liked");
+    const dislikedSignals = adultGoogleBooksFamilySignalsForEligibility(eligibility, family, "disliked");
+    let familyEffectState: AdultGoogleBooksPolarityCausalityState = positiveFamilySet.has(family)
+      ? "family_positive_support"
+      : likedSignals.length > 0
+        ? "family_positive_support_suppressed"
+        : "candidate_rejection_unrelated_to_polarity";
+    if (positiveFamilySet.has(family)) {
+      familyEffectState = "family_positive_support";
+    } else if (eligibility.allowed && decision === "mixed_neutral") {
+      familyEffectState = "family_neutral_nondecisive";
+    } else if (eligibility.allowed && decision === "mixed_negative") {
+      familyEffectState = "family_soft_negative_nondecisive";
+    } else if (eligibility.allowed && decision === "true_avoid") {
+      familyEffectState = "family_clear_avoid_nondecisive";
+    }
+
+    const counterfactualKinds = isMissingMeaningfulTaste
+      ? adultGoogleBooksCounterfactualKindsForDecision(decision)
+      : [];
+    for (const kind of counterfactualKinds) {
+      const counterProfile = adultGoogleBooksProfileWithCounterfactualFamily(profile, family, kind);
+      const counterCandidate = kind === "clear_avoid_removed_counterfactual"
+        ? adultGoogleBooksCandidateWithoutDislikedFamily(candidate, family)
+        : candidate;
+      const counterEligibility = adultGoogleBooksFinalEligibility(counterCandidate, counterProfile);
+      const decisive = !eligibility.allowed && counterEligibility.allowed;
+      const row = {
+        family,
+        counterfactual: kind,
+        originalFamilyPolarity: decision,
+        counterfactualPolarity: kind === "soft_negative_to_neutral_counterfactual"
+          ? "neutral"
+          : kind === "clear_avoid_removed_counterfactual"
+            ? "avoid_removed"
+            : "positive",
+        originalMeaningfulAlignmentDecision: eligibility.meaningfulTastePassed ? "passed" : `failed:${eligibility.meaningfulTasteFailureReason}`,
+        counterfactualMeaningfulAlignmentDecision: counterEligibility.meaningfulTastePassed ? "passed" : `failed:${counterEligibility.meaningfulTasteFailureReason}`,
+        originalFinalEligibilityDecision: eligibility.allowed ? `accepted:${eligibility.reason}` : `rejected:${eligibility.reason}`,
+        counterfactualFinalEligibilityDecision: counterEligibility.allowed ? `accepted:${counterEligibility.reason}` : `rejected:${counterEligibility.reason}`,
+        familyChangeAloneDecisive: decisive,
+        otherRemainingFailureReasons: decisive ? [] : adultGoogleBooksOtherCounterfactualFailureReasons(counterEligibility),
+        productionRule,
+        likedSignals,
+        dislikedSignals,
+      };
+      counterfactuals.push(row);
+      if (decisive) decisiveCandidates.push(row);
+    }
+
+    const effectRow = {
+      family,
+      state: familyEffectState,
+      familyEffectState,
+      weightedDecision: decision || "not_profile_family",
+      productionRule,
+      finalProductionPolarity: String(explanation.finalProductionPolarity || ""),
+      positiveContribution: Number(explanation.positiveContribution || 0),
+      negativeContribution: Number(explanation.negativeContribution || 0),
+      cancellationAmount: Number(explanation.cancellationAmount || 0),
+      remainingNetScore: Number(explanation.remainingNetScore || 0),
+      thresholdComparison: String(explanation.thresholdComparison || ""),
+      candidateLikedSignals: likedSignals,
+      candidateDislikedSignals: dislikedSignals,
+      positiveNetFamily: positiveFamilySet.has(family),
+    };
+    familyEffects.push(effectRow);
+    if (familyEffectState === "family_positive_support_suppressed") positiveSupportSuppressed.push(effectRow);
+    if (
+      familyEffectState === "family_soft_negative_nondecisive"
+      || familyEffectState === "family_neutral_nondecisive"
+      || familyEffectState === "family_clear_avoid_nondecisive"
+    ) {
+      nondecisiveEffects.push(effectRow);
+    }
+  }
+
+  if (eligibility.allowed) {
+    return {
+      familyEffects,
+      positiveSupportSuppressed,
+      nondecisiveEffects,
+      causalityState: "accepted_not_rejected",
+      counterfactuals,
+      counterfactualPass: false,
+      counterfactualStillFail: false,
+    };
+  }
+  if (!isMissingMeaningfulTaste) {
+    return {
+      familyEffects,
+      positiveSupportSuppressed,
+      nondecisiveEffects,
+      unrelatedRejection: {
+        state: "candidate_rejection_unrelated_to_polarity",
+        reason: eligibility.reason,
+        remainingFailureReasons: adultGoogleBooksOtherCounterfactualFailureReasons(eligibility),
+      },
+      causalityState: "candidate_rejection_unrelated_to_polarity",
+      counterfactuals,
+      counterfactualPass: false,
+      counterfactualStillFail: false,
+    };
+  }
+
+  const decisive = decisiveCandidates.find((row) => row.counterfactual === "neutral_to_positive_counterfactual")
+    || decisiveCandidates.find((row) => row.counterfactual === "soft_negative_to_positive_counterfactual")
+    || decisiveCandidates.find((row) => row.counterfactual === "clear_avoid_removed_counterfactual");
+  if (decisive) {
+    const counterfactual = String(decisive.counterfactual || "");
+    const state: AdultGoogleBooksPolarityCausalityState = counterfactual === "neutral_to_positive_counterfactual"
+      ? "candidate_rejection_decisive_neutral"
+      : counterfactual === "clear_avoid_removed_counterfactual"
+        ? "candidate_rejection_decisive_clear_avoid"
+        : "candidate_rejection_decisive_soft_negative";
+    return {
+      familyEffects,
+      positiveSupportSuppressed,
+      nondecisiveEffects,
+      decisiveRejection: {
+        ...decisive,
+        state,
+      },
+      causalityState: state,
+      counterfactuals,
+      counterfactualPass: true,
+      counterfactualStillFail: false,
+      decisiveRule: String(decisive.productionRule || decisive.counterfactual || ""),
+    };
+  }
+
+  if (counterfactuals.length > 0 || familyKeys.length > 0) {
+    return {
+      familyEffects,
+      positiveSupportSuppressed,
+      nondecisiveEffects,
+      multiFactorRejection: {
+        state: "candidate_rejection_multi_factor",
+        reason: eligibility.reason,
+        counterfactualsConsidered: counterfactuals.map((row) => row.counterfactual),
+        remainingFailureReasons: Array.from(new Set(counterfactuals.flatMap((row) =>
+          Array.isArray(row.otherRemainingFailureReasons) ? row.otherRemainingFailureReasons.map(String) : [],
+        ))),
+      },
+      causalityState: "candidate_rejection_multi_factor",
+      counterfactuals,
+      counterfactualPass: false,
+      counterfactualStillFail: counterfactuals.length > 0,
+    };
+  }
+
+  return {
+    familyEffects,
+    positiveSupportSuppressed,
+    nondecisiveEffects,
+    unrelatedRejection: {
+      state: "candidate_rejection_unrelated_to_polarity",
+      reason: eligibility.reason,
+      remainingFailureReasons: adultGoogleBooksOtherCounterfactualFailureReasons(eligibility),
+    },
+    causalityState: "candidate_rejection_unrelated_to_polarity",
+    counterfactuals,
+    counterfactualPass: false,
+    counterfactualStillFail: false,
+  };
 }
 
 function adultGoogleBooksFamilyCounts(families: string[]): Record<string, number> {
@@ -6129,10 +6447,23 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const weightedProductionNewPassTitles: string[] = [];
   const weightedProductionNewFailTitles: string[] = [];
   const overlapAffectedCandidateTitlesByFamily: Record<string, string[]> = {};
-  const productionSuppressionRuleHistogram: Record<string, number> = {};
-  const productionSuppressedCandidatesByRule: Record<string, string[]> = {};
-  const productionSuppressedFamiliesByTitle: Record<string, string[]> = {};
-  const productionSuppressionDetailsByTitle: Record<string, unknown[]> = {};
+  const productionNonPositiveFamilyPresenceRuleHistogram: Record<string, number> = {};
+  const productionNonPositiveFamilyPresenceCandidatesByRule: Record<string, string[]> = {};
+  const productionNonPositiveFamilyPresenceFamiliesByTitle: Record<string, string[]> = {};
+  const productionNonPositiveFamilyPresenceDetailsByTitle: Record<string, unknown[]> = {};
+  const polarityFamilyEffectByTitle: Record<string, unknown[]> = {};
+  const polarityFamilyEffectHistogram: Record<string, number> = {};
+  const polarityFamilyPositiveSupportSuppressedByTitle: Record<string, unknown[]> = {};
+  const polarityNondecisiveEffectsByTitle: Record<string, unknown[]> = {};
+  const polarityDecisiveRejectionByTitle: Record<string, unknown> = {};
+  const polarityMultiFactorRejectionByTitle: Record<string, unknown> = {};
+  const polarityUnrelatedRejectionByTitle: Record<string, unknown> = {};
+  const polarityCausalityStateByTitle: Record<string, string> = {};
+  const polarityCausalityHistogram: Record<string, number> = {};
+  const polarityCounterfactualsByTitle: Record<string, unknown[]> = {};
+  const polarityCounterfactualPassTitles: string[] = [];
+  const polarityCounterfactualStillFailTitles: string[] = [];
+  const polarityDecisiveRuleHistogram: Record<string, number> = {};
   const signalMatchTraceByTitle: Record<string, unknown[]> = {};
   const signalMatchedFieldByTitle: Record<string, Record<string, string[]>> = {};
   const signalMatchedTextByTitle: Record<string, Record<string, string[]>> = {};
@@ -6254,10 +6585,23 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultTasteWeightedProductionNewPassTitles = [];
     diagnostics.adultTasteWeightedProductionNewFailTitles = [];
     diagnostics.adultTasteOverlapAffectedCandidateTitlesByFamily = {};
-    diagnostics.adultGoogleBooksProductionSuppressionRuleHistogram = {};
-    diagnostics.adultGoogleBooksProductionSuppressedCandidatesByRule = {};
-    diagnostics.adultGoogleBooksProductionSuppressedFamiliesByTitle = {};
-    diagnostics.adultGoogleBooksProductionSuppressionDetailsByTitle = {};
+    diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceRuleHistogram = {};
+    diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceCandidatesByRule = {};
+    diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceFamiliesByTitle = {};
+    diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceDetailsByTitle = {};
+    diagnostics.adultGoogleBooksFamilyPolarityEffectByTitle = {};
+    diagnostics.adultGoogleBooksFamilyPolarityEffectHistogram = {};
+    diagnostics.adultGoogleBooksFamilyPositiveSupportSuppressedByTitle = {};
+    diagnostics.adultGoogleBooksPolarityNondecisiveEffectsByTitle = {};
+    diagnostics.adultGoogleBooksPolarityDecisiveRejectionByTitle = {};
+    diagnostics.adultGoogleBooksPolarityMultiFactorRejectionByTitle = {};
+    diagnostics.adultGoogleBooksPolarityUnrelatedRejectionByTitle = {};
+    diagnostics.adultGoogleBooksPolarityCausalityStateByTitle = {};
+    diagnostics.adultGoogleBooksPolarityCausalityHistogram = {};
+    diagnostics.adultGoogleBooksPolarityCounterfactualsByTitle = {};
+    diagnostics.adultGoogleBooksPolarityCounterfactualPassTitles = [];
+    diagnostics.adultGoogleBooksPolarityCounterfactualStillFailTitles = [];
+    diagnostics.adultGoogleBooksPolarityDecisiveRuleHistogram = {};
     diagnostics.adultGoogleBooksSignalMatchTraceByTitle = {};
     diagnostics.adultGoogleBooksSignalMatchedFieldByTitle = {};
     diagnostics.adultGoogleBooksSignalMatchedTextByTitle = {};
@@ -6385,11 +6729,11 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     if (!binaryMeaningfulTaste.passed && eligibility.meaningfulTastePassed) weightedProductionNewPassTitles.push(candidate.title);
     if (binaryMeaningfulTaste.passed && !eligibility.meaningfulTastePassed) weightedProductionNewFailTitles.push(candidate.title);
     const positiveFamilySet = new Set(eligibility.positiveNetTasteFamilies);
-    const suppressedDetails = Array.from(new Set(eligibility.allCandidateTasteFamilies.map(String).filter(Boolean)))
+    const nonPositiveFamilyDetails = Array.from(new Set(eligibility.allCandidateTasteFamilies.map(String).filter(Boolean)))
       .filter((family) => !positiveFamilySet.has(family))
       .map((family) => {
         const explanation = productionPolarityExplanations[family];
-        const rule = adultGoogleBooksProductionSuppressionRule(explanation);
+        const rule = adultGoogleBooksProductionNonPositiveFamilyPresenceRule(explanation);
         if (!rule) return null;
         return {
           family,
@@ -6406,17 +6750,49 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
         };
       })
       .filter(Boolean) as Record<string, unknown>[];
-    if (suppressedDetails.length > 0) {
-      productionSuppressionDetailsByTitle[candidate.title] = suppressedDetails;
-      productionSuppressedFamiliesByTitle[candidate.title] = Array.from(new Set(suppressedDetails.map((row) => String(row.family || "")).filter(Boolean)));
-      for (const detail of suppressedDetails) {
+    if (nonPositiveFamilyDetails.length > 0) {
+      productionNonPositiveFamilyPresenceDetailsByTitle[candidate.title] = nonPositiveFamilyDetails;
+      productionNonPositiveFamilyPresenceFamiliesByTitle[candidate.title] = Array.from(new Set(nonPositiveFamilyDetails.map((row) => String(row.family || "")).filter(Boolean)));
+      for (const detail of nonPositiveFamilyDetails) {
         const rule = String(detail.rule || "unknown_production_rule");
-        adultGoogleBooksIncrementCounter(productionSuppressionRuleHistogram, rule);
-        productionSuppressedCandidatesByRule[rule] = Array.from(new Set([
-          ...(productionSuppressedCandidatesByRule[rule] || []),
+        adultGoogleBooksIncrementCounter(productionNonPositiveFamilyPresenceRuleHistogram, rule);
+        productionNonPositiveFamilyPresenceCandidatesByRule[rule] = Array.from(new Set([
+          ...(productionNonPositiveFamilyPresenceCandidatesByRule[rule] || []),
           candidate.title,
         ])).slice(0, 12);
       }
+    }
+    const polarityCausality = adultGoogleBooksPolarityCausalityForCandidate(candidate, profile, eligibility, productionPolarityExplanations);
+    polarityFamilyEffectByTitle[candidate.title] = polarityCausality.familyEffects;
+    for (const row of polarityCausality.familyEffects) {
+      adultGoogleBooksIncrementCounter(polarityFamilyEffectHistogram, String(row.state || "unknown_family_polarity_effect"));
+    }
+    if (polarityCausality.positiveSupportSuppressed.length > 0) {
+      polarityFamilyPositiveSupportSuppressedByTitle[candidate.title] = polarityCausality.positiveSupportSuppressed;
+    }
+    if (polarityCausality.nondecisiveEffects.length > 0) {
+      polarityNondecisiveEffectsByTitle[candidate.title] = polarityCausality.nondecisiveEffects;
+    }
+    if (polarityCausality.decisiveRejection) {
+      polarityDecisiveRejectionByTitle[candidate.title] = polarityCausality.decisiveRejection;
+    }
+    if (polarityCausality.multiFactorRejection) {
+      polarityMultiFactorRejectionByTitle[candidate.title] = polarityCausality.multiFactorRejection;
+    }
+    if (polarityCausality.unrelatedRejection) {
+      polarityUnrelatedRejectionByTitle[candidate.title] = polarityCausality.unrelatedRejection;
+    }
+    if (polarityCausality.causalityState && polarityCausality.causalityState !== "accepted_not_rejected") {
+      polarityCausalityStateByTitle[candidate.title] = polarityCausality.causalityState;
+      adultGoogleBooksIncrementCounter(polarityCausalityHistogram, polarityCausality.causalityState);
+    }
+    if (polarityCausality.counterfactuals.length > 0) {
+      polarityCounterfactualsByTitle[candidate.title] = polarityCausality.counterfactuals;
+      if (polarityCausality.counterfactualPass) polarityCounterfactualPassTitles.push(candidate.title);
+      if (polarityCausality.counterfactualStillFail) polarityCounterfactualStillFailTitles.push(candidate.title);
+    }
+    if (polarityCausality.decisiveRule) {
+      adultGoogleBooksIncrementCounter(polarityDecisiveRuleHistogram, polarityCausality.decisiveRule);
     }
     signalMatchTraceByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.adultGoogleBooksSignalMatchTrace)
       ? candidate.diagnostics.adultGoogleBooksSignalMatchTrace as unknown[]
@@ -6712,10 +7088,24 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultTasteWeightedProductionNewPassTitles = Array.from(new Set(weightedProductionNewPassTitles));
   diagnostics.adultTasteWeightedProductionNewFailTitles = Array.from(new Set(weightedProductionNewFailTitles));
   diagnostics.adultTasteOverlapAffectedCandidateTitlesByFamily = overlapAffectedCandidateTitlesByFamily;
-  diagnostics.adultGoogleBooksProductionSuppressionRuleHistogram = productionSuppressionRuleHistogram;
-  diagnostics.adultGoogleBooksProductionSuppressedCandidatesByRule = productionSuppressedCandidatesByRule;
-  diagnostics.adultGoogleBooksProductionSuppressedFamiliesByTitle = productionSuppressedFamiliesByTitle;
-  diagnostics.adultGoogleBooksProductionSuppressionDetailsByTitle = productionSuppressionDetailsByTitle;
+  diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceRuleHistogram = productionNonPositiveFamilyPresenceRuleHistogram;
+  diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceCandidatesByRule = productionNonPositiveFamilyPresenceCandidatesByRule;
+  diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceFamiliesByTitle = productionNonPositiveFamilyPresenceFamiliesByTitle;
+  diagnostics.adultGoogleBooksProductionNonPositiveFamilyPresenceDetailsByTitle = productionNonPositiveFamilyPresenceDetailsByTitle;
+  diagnostics.adultGoogleBooksProductionSuppressionDiagnosticsDeprecated = "renamed_to_polarity_causality_fields_to_avoid_conflating_family_non_support_with_rejection_causality";
+  diagnostics.adultGoogleBooksFamilyPolarityEffectByTitle = polarityFamilyEffectByTitle;
+  diagnostics.adultGoogleBooksFamilyPolarityEffectHistogram = polarityFamilyEffectHistogram;
+  diagnostics.adultGoogleBooksFamilyPositiveSupportSuppressedByTitle = polarityFamilyPositiveSupportSuppressedByTitle;
+  diagnostics.adultGoogleBooksPolarityNondecisiveEffectsByTitle = polarityNondecisiveEffectsByTitle;
+  diagnostics.adultGoogleBooksPolarityDecisiveRejectionByTitle = polarityDecisiveRejectionByTitle;
+  diagnostics.adultGoogleBooksPolarityMultiFactorRejectionByTitle = polarityMultiFactorRejectionByTitle;
+  diagnostics.adultGoogleBooksPolarityUnrelatedRejectionByTitle = polarityUnrelatedRejectionByTitle;
+  diagnostics.adultGoogleBooksPolarityCausalityStateByTitle = polarityCausalityStateByTitle;
+  diagnostics.adultGoogleBooksPolarityCausalityHistogram = polarityCausalityHistogram;
+  diagnostics.adultGoogleBooksPolarityCounterfactualsByTitle = polarityCounterfactualsByTitle;
+  diagnostics.adultGoogleBooksPolarityCounterfactualPassTitles = Array.from(new Set(polarityCounterfactualPassTitles));
+  diagnostics.adultGoogleBooksPolarityCounterfactualStillFailTitles = Array.from(new Set(polarityCounterfactualStillFailTitles));
+  diagnostics.adultGoogleBooksPolarityDecisiveRuleHistogram = polarityDecisiveRuleHistogram;
   diagnostics.adultGoogleBooksSignalMatchTraceByTitle = signalMatchTraceByTitle;
   diagnostics.adultGoogleBooksSignalMatchedFieldByTitle = signalMatchedFieldByTitle;
   diagnostics.adultGoogleBooksSignalMatchedTextByTitle = signalMatchedTextByTitle;
