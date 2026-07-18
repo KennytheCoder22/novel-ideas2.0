@@ -12,6 +12,7 @@ export type PreteenGoogleBooksPublicationIdentity =
   | "excerpt"
   | "promotional_material"
   | "school_publication"
+  | "institutional_library_list"
   | "catalog"
   | "classroom_material"
   | "study_guide"
@@ -151,6 +152,14 @@ export function preteenGoogleBooksPublicationIdentityAudit(candidate: ScoredCand
   pushIf(artifactEvidence, /\bexclusive excerpt\b|\bexcerpted from\b|\bchapter excerpt\b|\bpreview chapters?\b/.test(fields.combined), "excerpt_identity");
   pushIf(artifactEvidence, /\bpromotional\b|\bpreview issue\b|\bfree comic book day\b/.test(fields.combined), "promotional_material_identity");
   pushIf(artifactEvidence, /\bschool publications?\b/.test(titleSubtitle) || /\bschool publications?\b/.test(fields.categories), "school_publication_identity");
+  pushIf(
+    artifactEvidence,
+    /\blist of books for (?:high[-\s]?school|school) libraries\b/.test(titleSubtitle)
+      || /\b(?:school|high[-\s]?school)[-\s]librar(?:y|ies)\s+(?:book\s+list|catalog(?:ue)?|list)\b/.test(titleSubtitle)
+      || /\b(?:book\s+list|catalog(?:ue)?|list\s+of\s+books)\s+(?:for|of)\s+.*\b(?:school|high[-\s]?school)[-\s]librar(?:y|ies)\b/.test(titleSubtitle)
+      || /\binstitutional librar(?:y|ies)\s+(?:book\s+list|catalog(?:ue)?|list)\b/.test(titleSubtitle),
+    "institutional_school_library_book_list_identity",
+  );
   pushIf(artifactEvidence, /\bteacher'?s? guide\b|\beducator guide\b|\blesson plans?\b|\bclassroom resources?\b|\bcurriculum\b|\bfor teachers\b/.test(fields.combined), "teacher_or_classroom_material_identity");
   pushIf(artifactEvidence, /\bstudy guide\b|\bchapter summaries?\b|\bteaching unit\b|\breading guide\b/.test(fields.combined), "study_guide_identity");
   pushIf(artifactEvidence, /\bworkbooks?\b|\bpractice book\b|\btest prep\b|\bexam prep\b/.test(fields.combined), "workbook_identity");
@@ -161,6 +170,7 @@ export function preteenGoogleBooksPublicationIdentityAudit(candidate: ScoredCand
 
   let identity: PreteenGoogleBooksPublicationIdentity = "unknown";
   if (artifactEvidence.includes("school_publication_identity")) identity = "school_publication";
+  else if (artifactEvidence.includes("institutional_school_library_book_list_identity")) identity = "institutional_library_list";
   else if (artifactEvidence.some((item) => item.includes("sampler"))) identity = "sampler";
   else if (artifactEvidence.includes("sneak_preview_identity")) identity = "sneak_preview";
   else if (artifactEvidence.includes("excerpt_identity")) identity = "excerpt";
@@ -185,6 +195,7 @@ export function preteenGoogleBooksPublicationIdentityAudit(candidate: ScoredCand
     "excerpt",
     "promotional_material",
     "school_publication",
+    "institutional_library_list",
     "catalog",
     "classroom_material",
     "study_guide",

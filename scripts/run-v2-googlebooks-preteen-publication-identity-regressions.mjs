@@ -139,6 +139,33 @@ const narrativeSamplerName = googleBookCandidate(
   ["Juvenile Fiction / Fantasy & Magic", "Juvenile Fiction / Action & Adventure"],
   { score: 11 },
 );
+const stateSchoolLibraryList = googleBookCandidate(
+  "List of Books for School Libraries in the State of Wisconsin",
+  "An institutional list of recommended books for school libraries, prepared for educators and library collections across the state.",
+  ["Education / Library & Information Science", "Reference / Bibliographies"],
+  { publisher: "Wisconsin Department of Public Instruction", pageCount: 128, score: 16 },
+);
+
+const highSchoolLibraryList = googleBookCandidate(
+  "List of Books for High School Libraries of the State of Wisconsin",
+  "A state school-library book list for high school library collections, classroom selection, and institutional purchasing.",
+  ["Education / Secondary", "Reference / Bibliographies"],
+  { publisher: "State Library Commission", pageCount: 144, score: 15 },
+);
+
+const narrativeSchoolTitle = googleBookCandidate(
+  "The School of Hidden Stars",
+  "A middle grade fantasy novel follows Lina through a mysterious school where she must solve a magical puzzle and save her friends.",
+  ["Juvenile Fiction / Fantasy & Magic", "Juvenile Fiction / Action & Adventure"],
+  { score: 10 },
+);
+
+const narrativeLibraryTitle = googleBookCandidate(
+  "The Library at Moonlit Lake",
+  "A middle grade adventure story follows two friends who discover a secret library, face a dangerous riddle, and protect a hidden world.",
+  ["Juvenile Fiction / Action & Adventure", "Juvenile Fiction / Fantasy & Magic"],
+  { score: 11 },
+);
 
 {
   const schoolAudit = preteenGoogleBooksPublicationIdentityAudit(schoolPublication);
@@ -154,6 +181,21 @@ const narrativeSamplerName = googleBookCandidate(
 
   const narrativeAudit = preteenGoogleBooksPublicationIdentityAudit(narrativeSamplerName);
   assertEqual(narrativeAudit.allowed, true, "Narrative title containing Sampler's should not be rejected as a sampler");
+  const stateLibraryListAudit = preteenGoogleBooksPublicationIdentityAudit(stateSchoolLibraryList);
+  assertEqual(stateLibraryListAudit.identity, "institutional_library_list", "State school-library book list should be identified as institutional library list");
+  assertEqual(stateLibraryListAudit.allowed, false, "State school-library book list should be rejected by Pre-Teen Google Books identity");
+  assertIncludes(stateLibraryListAudit.artifactEvidence, "institutional_school_library_book_list_identity", "State school-library book list should expose institutional list evidence");
+
+  const highSchoolLibraryListAudit = preteenGoogleBooksPublicationIdentityAudit(highSchoolLibraryList);
+  assertEqual(highSchoolLibraryListAudit.identity, "institutional_library_list", "High-school library book list should be identified as institutional library list");
+  assertEqual(highSchoolLibraryListAudit.allowed, false, "High-school library book list should be rejected by Pre-Teen Google Books identity");
+  assertIncludes(highSchoolLibraryListAudit.artifactEvidence, "institutional_school_library_book_list_identity", "High-school library book list should expose institutional list evidence");
+
+  const schoolNarrativeAudit = preteenGoogleBooksPublicationIdentityAudit(narrativeSchoolTitle);
+  assertEqual(schoolNarrativeAudit.allowed, true, "Narrative title containing school should not be rejected as a school-library list");
+
+  const libraryNarrativeAudit = preteenGoogleBooksPublicationIdentityAudit(narrativeLibraryTitle);
+  assertEqual(libraryNarrativeAudit.allowed, true, "Narrative title containing library should not be rejected as a school-library list");
   console.log("PASS: Pre-Teen Google Books publication identity classifier explains artifact and narrative evidence");
 }
 
@@ -161,14 +203,20 @@ const narrativeSamplerName = googleBookCandidate(
   const selection = selectRecommendations([
     schoolPublication,
     middleGradeSampler,
+    stateSchoolLibraryList,
+    highSchoolLibraryList,
     genuineNovel,
     narrativeSamplerName,
+    narrativeSchoolTitle,
+    narrativeLibraryTitle,
   ], profile, 5);
   const selectedTitles = selection.selected.map((candidate) => candidate.title);
   assertIncludes(selectedTitles, "The Clockwork Cave", "Genuine middle-grade novel should remain selectable");
   assertIncludes(selectedTitles, "The Sampler's Quest", "Narrative title containing Sampler's should remain selectable");
   assertNotIncludes(selectedTitles, "School Publication", "School Publication should not reach the final Pre-Teen slate");
   assertNotIncludes(selectedTitles, "Awesome Adventures for Kids Middle Grade Sampler", "Promotional sampler should not reach the final Pre-Teen slate");
+  assertNotIncludes(selectedTitles, "List of Books for School Libraries in the State of Wisconsin", "School-library book list should not reach the final Pre-Teen slate");
+  assertNotIncludes(selectedTitles, "List of Books for High School Libraries of the State of Wisconsin", "High-school library book list should not reach the final Pre-Teen slate");
 
   const diagnostics = selection.rejectedReasons;
   assertEqual(
@@ -187,10 +235,29 @@ const narrativeSamplerName = googleBookCandidate(
     "Sampler should expose stable rejection reason",
   );
   assertEqual(
+    diagnostics.preteenGoogleBooksPublicationReasonByTitle?.["List of Books for School Libraries in the State of Wisconsin"],
+    "preteen_googlebooks_publication_identity_rejected_institutional_library_list",
+    "School-library book list should expose stable rejection reason",
+  );
+  assertEqual(
+    diagnostics.preteenGoogleBooksPublicationReasonByTitle?.["List of Books for High School Libraries of the State of Wisconsin"],
+    "preteen_googlebooks_publication_identity_rejected_institutional_library_list",
+    "High-school library book list should expose stable rejection reason",
+  );
+  assertEqual(
     diagnostics.preteenGoogleBooksPublicationDecisionByTitle?.["The Clockwork Cave"],
     "selected",
     "Genuine middle-grade novel should have selected diagnostics",
   );
+  const schoolControlSelection = selectRecommendations([schoolPublication, narrativeSchoolTitle], profile, 5);
+  const schoolControlTitles = schoolControlSelection.selected.map((candidate) => candidate.title);
+  assertIncludes(schoolControlTitles, "The School of Hidden Stars", "Narrative title containing school should remain selectable");
+  assertNotIncludes(schoolControlTitles, "School Publication", "School Publication should still reject in the school-control slate");
+
+  const libraryControlSelection = selectRecommendations([stateSchoolLibraryList, narrativeLibraryTitle], profile, 5);
+  const libraryControlTitles = libraryControlSelection.selected.map((candidate) => candidate.title);
+  assertIncludes(libraryControlTitles, "The Library at Moonlit Lake", "Narrative title containing library should remain selectable");
+  assertNotIncludes(libraryControlTitles, "List of Books for School Libraries in the State of Wisconsin", "School-library book list should still reject in the library-control slate");
   console.log("PASS: Pre-Teen Google Books publication identity changes final slate only for hard impostors");
 }
 
