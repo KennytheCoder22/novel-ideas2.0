@@ -73,8 +73,23 @@ const GOOGLE_BOOKS_NON_NARRATIVE_SHAPES = new Set<GoogleBooksPublicationShape>([
   "nonfiction",
 ]);
 
+const GOOGLE_BOOKS_NARRATIVE_SHAPES = new Set<GoogleBooksPublicationShape>([
+  "novel",
+  "series_installment",
+  "story_collection",
+]);
+
 const GOOGLE_BOOKS_MAINSTREAM_FICTION_PUBLISHER_PATTERN = /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/;
 const GOOGLE_BOOKS_ACADEMIC_PUBLISHER_PATTERN = /\b(university press|cambridge university|oxford university|routledge|palgrave|springer|bloomsbury academic|brill|de gruyter|mcfarland|greenwood|scarecrow press|rowman\s*&?\s*littlefield|edinburgh university|duke university|yale university|harvard university|princeton university)\b/;
+
+function incrementCounter(map: Record<string, number>, key: string): void {
+  if (!key) return;
+  map[key] = Number(map[key] || 0) + 1;
+}
+
+function shapeHistogramCount(histogram: Record<string, number>, shapes: string[]): number {
+  return shapes.reduce((sum, shape) => sum + Number(histogram[shape] || 0), 0);
+}
 
 function clampShapeScore(value: number): number {
   return Math.max(-12, Math.min(8, Math.round(value * 100) / 100));
@@ -96,6 +111,70 @@ function normalizeQuery(value: unknown): string {
     .replace(/["']/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function uniqueQueryParts(values: string[], limit = 24): string[] {
+  const seen = new Set<string>();
+  const output: string[] = [];
+  for (const value of values) {
+    const part = String(value || "").trim();
+    const key = part.toLowerCase();
+    if (!part || seen.has(key)) continue;
+    seen.add(key);
+    output.push(part);
+    if (output.length >= limit) break;
+  }
+  return output;
+}
+
+const GOOGLE_BOOKS_QUERY_EXCLUSION_TERMS = [
+  "-study",
+  "-studies",
+  "-guide",
+  "-reference",
+  "-criticism",
+  "-companion",
+  "-teaching",
+  "-bibliography",
+  "-anthology",
+  "-magazine",
+  "-journal",
+  "-catalog",
+];
+
+function googleBooksAdultNarrativeFetchQuery(query: string): string {
+  const normalized = normalizeQuery(query);
+  if (!normalized) return "";
+  const phrases: Array<{ phrase: string; quoted: string }> = [
+    { phrase: "psychological thriller", quoted: "\"psychological thriller\"" },
+    { phrase: "science fiction", quoted: "\"science fiction\"" },
+    { phrase: "historical fiction", quoted: "\"historical fiction\"" },
+    { phrase: "literary fiction", quoted: "\"literary fiction\"" },
+    { phrase: "dark fantasy", quoted: "\"dark fantasy\"" },
+    { phrase: "gothic horror", quoted: "\"gothic horror\"" },
+    { phrase: "gothic romance", quoted: "\"gothic romance\"" },
+    { phrase: "love story", quoted: "\"love story\"" },
+  ];
+  const quotedPhrases = phrases
+    .filter(({ phrase }) => normalized.includes(phrase))
+    .map(({ quoted }) => quoted);
+  const phraseWords = new Set(
+    phrases
+      .filter(({ phrase }) => normalized.includes(phrase))
+      .flatMap(({ phrase }) => phrase.split(/\s+/)),
+  );
+  const contentTerms = normalized
+    .split(/\s+/)
+    .filter((term) => term.length > 1)
+    .filter((term) => !phraseWords.has(term))
+    .filter((term) => !/^(?:adult|book|books|fiction|novel|novels|story|stories|literature|literary)$/.test(term));
+  return uniqueQueryParts([
+    "subject:fiction",
+    ...quotedPhrases,
+    ...contentTerms,
+    "novel",
+    ...GOOGLE_BOOKS_QUERY_EXCLUSION_TERMS,
+  ]).join(" ");
 }
 
 function normalizeText(value: unknown): string {
@@ -681,9 +760,11 @@ function googleBooksArtifactDropReason(title: string, subtitle: string, descript
   return googleBooksArtifactReasons(title, subtitle, description, categories, publisher)[0];
 }
 
-function buildGoogleBooksFetchQuery(query: string): string {
+function buildGoogleBooksFetchQuery(query: string, ageBand?: TasteProfile["ageBand"]): string {
   const normalized = normalizeQuery(query);
-  return normalized;
+  if (!normalized) return "";
+  if (ageBand !== "adult") return normalized;
+  return googleBooksAdultNarrativeFetchQuery(normalized);
 }
 
 function isPublicDomainCatalogShape(title: string, publicationYear: number | undefined, description: string, categories: string[]): boolean {
@@ -841,6 +922,11 @@ function emptyDiagnostics(
     googleBooksCuratedBookGuideEvidenceByTitle: {},
     googleBooksPeriodicalIdentityEvidenceByTitle: {},
     googleBooksPeriodicalIdentityDecisionByTitle: {},
+    adultGoogleBooksQueryQualityByQuery: {},
+    adultGoogleBooksPublicationShapeHistogramByQuery: {},
+    adultGoogleBooksRejectedShapeHistogramByQuery: {},
+    adultGoogleBooksNarrativeYieldByQuery: {},
+    adultGoogleBooksNarrativeEfficiencyByQuery: {},
     ...overrides,
   };
 }
@@ -865,7 +951,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const plannedQueries = plan.intents
       .map((intent, index) => {
         const originalPlannedQuery = String(intent.query || "").trim();
-        const fetchQuery = buildGoogleBooksFetchQuery(originalPlannedQuery);
+        const fetchQuery = buildGoogleBooksFetchQuery(originalPlannedQuery, ageBand);
         return {
           intentId: String(intent.id || ""),
           fetchQuery,
@@ -951,6 +1037,18 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       enteredNormalizationTitles: string[];
       enteredRankingTitles: string[];
       enteredFinalEligibilityTitles: string[];
+      totalResults: number;
+      narrativeCandidateCount: number;
+      acceptedCandidateCount: number;
+      rejectedCandidateCount: number;
+      publicationShapeHistogram: Record<string, number>;
+      rejectedShapeHistogram: Record<string, number>;
+      rejectionReasons: Record<string, number>;
+      criticismCount: number;
+      referenceCount: number;
+      catalogCount: number;
+      unknownCount: number;
+      narrativeEfficiency: number;
     }> = {};
     const modernNarrativeCountByQuery: Record<string, number> = {};
     const publicDomainCatalogShapeCountByQuery: Record<string, number> = {};
@@ -985,6 +1083,18 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           enteredNormalizationTitles: [],
           enteredRankingTitles: [],
           enteredFinalEligibilityTitles: [],
+          totalResults: 0,
+          narrativeCandidateCount: 0,
+          acceptedCandidateCount: 0,
+          rejectedCandidateCount: 0,
+          publicationShapeHistogram: {},
+          rejectedShapeHistogram: {},
+          rejectionReasons: {},
+          criticismCount: 0,
+          referenceCount: 0,
+          catalogCount: 0,
+          unknownCount: 0,
+          narrativeEfficiency: 0,
         };
       }
       const fetchStartedAt = nowIso();
@@ -1015,8 +1125,11 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       const items = Array.isArray(json.items) ? json.items : null;
       rawCountByQuery[originalQuery] = Number(rawCountByQuery[originalQuery] || 0) + (items ? items.length : 0);
       perQueryQuality[originalQuery].rawResultCount = Number(rawCountByQuery[originalQuery] || 0);
+      perQueryQuality[originalQuery].totalResults = Number(rawCountByQuery[originalQuery] || 0);
       if (!items) {
         dropReasons.non_book_response_shape = Number(dropReasons.non_book_response_shape || 0) + 1;
+        incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "non_book_response_shape");
+        perQueryQuality[originalQuery].rejectedCandidateCount += 1;
         droppedBeforeNormalization += 1;
         continue;
       }
@@ -1025,6 +1138,8 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       for (const item of items) {
         if (!item || typeof item !== "object") {
           dropReasons.malformed_api_record = Number(dropReasons.malformed_api_record || 0) + 1;
+          incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "malformed_api_record");
+          perQueryQuality[originalQuery].rejectedCandidateCount += 1;
           droppedBeforeNormalization += 1;
           continue;
         }
@@ -1034,16 +1149,22 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         const kind = String(row.kind || "");
         if (!volumeInfo || (kind && !/volume/i.test(kind))) {
           dropReasons.malformed_api_record = Number(dropReasons.malformed_api_record || 0) + 1;
+          incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "malformed_api_record");
+          perQueryQuality[originalQuery].rejectedCandidateCount += 1;
           droppedBeforeNormalization += 1;
           continue;
         }
         if (!volumeId) {
           dropReasons.malformed_api_record = Number(dropReasons.malformed_api_record || 0) + 1;
+          incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "malformed_api_record");
+          perQueryQuality[originalQuery].rejectedCandidateCount += 1;
           droppedBeforeNormalization += 1;
           continue;
         }
         if (seenVolumeIds.has(volumeId)) {
           dropReasons.duplicate_volume_id = Number(dropReasons.duplicate_volume_id || 0) + 1;
+          incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "duplicate_volume_id");
+          perQueryQuality[originalQuery].rejectedCandidateCount += 1;
           droppedBeforeNormalization += 1;
           continue;
         }
@@ -1051,12 +1172,16 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         const title = String(volumeInfo.title || "").trim();
         if (!title) {
           dropReasons.missing_title = Number(dropReasons.missing_title || 0) + 1;
+          incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "missing_title");
+          perQueryQuality[originalQuery].rejectedCandidateCount += 1;
           droppedBeforeNormalization += 1;
           continue;
         }
         const authors = stringArray(volumeInfo.authors);
         if (!authors.length) {
           dropReasons.missing_author = Number(dropReasons.missing_author || 0) + 1;
+          incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "missing_author");
+          perQueryQuality[originalQuery].rejectedCandidateCount += 1;
           droppedBeforeNormalization += 1;
           continue;
         }
@@ -1099,6 +1224,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           isbnPresent: hasIsbn,
           pageCount,
         });
+        incrementCounter(perQueryQuality[originalQuery].publicationShapeHistogram, shapeAnalysis.shape);
         publicationShapeByTitle[title] = shapeAnalysis.shape;
         narrativeConfidenceByTitle[title] = shapeAnalysis.narrativeConfidence;
         publicationShapeEvidenceByTitle[title] = shapeAnalysis.evidence;
@@ -1128,11 +1254,18 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         const dropReason = publicationShapeDropReason || artifactDropReason;
         if (dropReason) {
           dropReasons[dropReason] = Number(dropReasons[dropReason] || 0) + 1;
+          incrementCounter(perQueryQuality[originalQuery].rejectionReasons, dropReason);
+          incrementCounter(perQueryQuality[originalQuery].rejectedShapeHistogram, shapeAnalysis.shape);
+          perQueryQuality[originalQuery].rejectedCandidateCount += 1;
           if (publicationShapeDropReason) publicationShapeRejectedBeforeRankingByTitle[title] = publicationShapeDropReason;
           if (publicationShapeDropReason === "publication_shape_generic_category_catalog") genericCategoryRejectedBeforeRankingByTitle[title] = publicationShapeDropReason;
           if (shapeAnalysis.subjectOfStudyTitle && publicationShapeDropReason) subjectOfStudyRejectedBeforeRankingByTitle[title] = publicationShapeDropReason;
           droppedBeforeNormalization += 1;
           continue;
+        }
+        perQueryQuality[originalQuery].acceptedCandidateCount += 1;
+        if (GOOGLE_BOOKS_NARRATIVE_SHAPES.has(shapeAnalysis.shape)) {
+          perQueryQuality[originalQuery].narrativeCandidateCount += 1;
         }
 
         const rawRow = {
@@ -1249,6 +1382,27 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       : failedReason
       ? (fetches.some((row) => row.timedOut) ? "timed_out" : "failed")
       : "empty";
+    const adultGoogleBooksQueryQualityByQuery: Record<string, Record<string, unknown>> = {};
+    const publicationShapeHistogramByQuery: Record<string, Record<string, number>> = {};
+    const rejectedShapeHistogramByQuery: Record<string, Record<string, number>> = {};
+    const narrativeYieldByQuery: Record<string, number> = {};
+    const narrativeEfficiencyByQuery: Record<string, number> = {};
+    for (const [query, row] of Object.entries(perQueryQuality)) {
+      const histogram = row.publicationShapeHistogram;
+      const totalResults = Number(row.totalResults || row.rawResultCount || 0);
+      row.criticismCount = shapeHistogramCount(histogram, ["critical_study", "academic_text", "literary_history", "production_history", "author_commentary"]);
+      row.referenceCount = shapeHistogramCount(histogram, ["reference", "readers_advisory", "writing_guide", "genre_survey"]);
+      row.catalogCount = shapeHistogramCount(histogram, ["generic_category_catalog", "public_domain_compilation", "miscellany"]);
+      row.unknownCount = Number(histogram.unknown || 0);
+      row.narrativeEfficiency = totalResults > 0
+        ? Math.round((Number(row.narrativeCandidateCount || 0) / totalResults) * 1000) / 1000
+        : 0;
+      adultGoogleBooksQueryQualityByQuery[query] = row;
+      publicationShapeHistogramByQuery[query] = histogram;
+      rejectedShapeHistogramByQuery[query] = row.rejectedShapeHistogram;
+      narrativeYieldByQuery[query] = Number(row.narrativeCandidateCount || 0);
+      narrativeEfficiencyByQuery[query] = row.narrativeEfficiency;
+    }
 
     const diagnostics: SourceDiagnosticV2 = {
       source: "googleBooks",
@@ -1324,6 +1478,11 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       googleBooksPeriodicalIdentityDecisionByTitle: periodicalIdentityDecisionByTitle,
       googleBooksModernNarrativeCountByQuery: modernNarrativeCountByQuery,
       googleBooksPublicDomainCatalogShapeCountByQuery: publicDomainCatalogShapeCountByQuery,
+      adultGoogleBooksQueryQualityByQuery,
+      adultGoogleBooksPublicationShapeHistogramByQuery: publicationShapeHistogramByQuery,
+      adultGoogleBooksRejectedShapeHistogramByQuery: rejectedShapeHistogramByQuery,
+      adultGoogleBooksNarrativeYieldByQuery: narrativeYieldByQuery,
+      adultGoogleBooksNarrativeEfficiencyByQuery: narrativeEfficiencyByQuery,
       googleBooksQueryResultQualityByQuery: perQueryQuality,
     };
 

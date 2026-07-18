@@ -2334,6 +2334,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     const queryResultQualityByQuery = { ...((sourceDiagnostics.googleBooksQueryResultQualityByQuery || {}) as Record<string, Record<string, unknown>>) };
     const rankedSet = new Set(googleBooksRankedCandidateTitles.map((title) => normalizedTokenText(title)));
     const finalEligibilitySet = new Set(googleBooksFinalEligibilityTitles.map((title) => normalizedTokenText(title)));
+    const selectedSet = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalizedTokenText(candidate.title)));
     for (const [title, query] of Object.entries(queryByTitle)) {
       const normalizedTitle = normalizedTokenText(title);
       const queryKey = String(query || "");
@@ -2347,11 +2348,20 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         ...(((row.enteredFinalEligibilityTitles || []) as string[])),
         ...(finalEligibilitySet.has(normalizedTitle) ? [title] : []),
       ], 120);
+      const acceptedRecommendationTitles = uniqueStrings([
+        ...(((row.acceptedRecommendationTitles || []) as string[])),
+        ...(selectedSet.has(normalizedTitle) ? [title] : []),
+      ], 120);
       row.enteredRankingTitles = enteredRankingTitles;
       row.enteredFinalEligibilityTitles = enteredFinalEligibilityTitles;
+      row.acceptedRecommendationTitles = acceptedRecommendationTitles;
+      row.enteredRankingCount = enteredRankingTitles.length;
+      row.finalEligibilityCandidateCount = enteredFinalEligibilityTitles.length;
+      row.acceptedRecommendationCount = acceptedRecommendationTitles.length;
       queryResultQualityByQuery[queryKey] = row;
     }
     sourceDiagnostics.googleBooksQueryResultQualityByQuery = queryResultQualityByQuery;
+    sourceDiagnostics.adultGoogleBooksQueryQualityByQuery = queryResultQualityByQuery;
     sourceDiagnostics.googleBooksRankedCandidateTitles = googleBooksRankedCandidateTitles;
     sourceDiagnostics.googleBooksFinalEligibilityTitles = googleBooksFinalEligibilityTitles;
   }
