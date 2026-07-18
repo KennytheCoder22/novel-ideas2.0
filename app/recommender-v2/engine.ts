@@ -5,7 +5,7 @@ import { scoreCandidates } from "./score";
 import { selectRecommendations } from "./select";
 import { sourceAdapters } from "./sources";
 import { buildTasteProfile } from "./tasteProfile";
-import type { NormalizedCandidate, RecommendationResultV2, ScoredCandidate, SourceDiagnosticV2, SourcePlan, SourceResult, SourceStatusV2, SwipeSessionV2, TasteProfile } from "./types";
+import type { AgeBandV2, NormalizedCandidate, RecommendationResultV2, ScoredCandidate, SearchPlan, SourceDiagnosticV2, SourcePlan, SourceResult, SourceStatusV2, SwipeSessionV2, TasteProfile } from "./types";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -129,6 +129,421 @@ function uniqueStrings(values: unknown[], limit = 80): string[] {
     if (strings.length >= limit) break;
   }
   return strings;
+}
+
+type GoogleBooksInfrastructureStatus =
+  | "available"
+  | "shared"
+  | "age_specific"
+  | "missing"
+  | "bypassed"
+  | "disabled"
+  | "attempted"
+  | "succeeded"
+  | "failed";
+
+type GoogleBooksNonAdultAgeBand = Exclude<AgeBandV2, "adult">;
+
+type GoogleBooksAgeBandInfrastructureDiagnostics = {
+  googleBooksAgeBandInfrastructureByDeck: Record<string, Record<string, unknown>>;
+  googleBooksAgeBandQueryPlanningByDeck: Record<string, Record<string, unknown>>;
+  googleBooksAgeBandDispatchByDeck: Record<string, Record<string, unknown>>;
+  googleBooksAgeBandNormalizationByDeck: Record<string, Record<string, unknown>>;
+  googleBooksAgeBandScoringHandoffByDeck: Record<string, Record<string, unknown>>;
+  googleBooksAgeBandEligibilityHandoffByDeck: Record<string, Record<string, unknown>>;
+  googleBooksAgeBandFinalSelectionHandoffByDeck: Record<string, Record<string, unknown>>;
+  googleBooksAgeBandRenderedTitlesByDeck: Record<string, string[]>;
+  googleBooksAgeBandDropStageByTitle: Record<string, string>;
+  googleBooksAgeBandDropReasonByTitle: Record<string, string>;
+  googleBooksAgeBandInfrastructureGaps: Record<string, string[]>;
+  googleBooksAgeBandInfrastructureSummary: Record<string, unknown>;
+};
+
+const GOOGLE_BOOKS_NON_ADULT_AGE_BANDS: GoogleBooksNonAdultAgeBand[] = ["kids", "preteens", "teens"];
+
+function emptyGoogleBooksAgeBandRuntimeRow(ageBand: GoogleBooksNonAdultAgeBand, currentAgeBand: AgeBandV2): Record<string, unknown> {
+  return {
+    status: "bypassed" as GoogleBooksInfrastructureStatus,
+    reason: ageBand === currentAgeBand ? "not_evaluated" : "not_current_session_age_band",
+    currentAgeBand,
+  };
+}
+
+function googleBooksAgeBandInfrastructureMap(): Record<string, Record<string, unknown>> {
+  const shared = {
+    queryPlanning: {
+      status: "shared" as GoogleBooksInfrastructureStatus,
+      file: "app/recommender-v2/searchPlan.ts",
+      note: "buildGoogleBooksIntents emits age-prefixed Google Books queries for non-Adult age bands.",
+    },
+    dispatch: {
+      status: "shared" as GoogleBooksInfrastructureStatus,
+      file: "app/recommender-v2/engine.ts",
+      note: "runRecommenderV2 dispatches any enabled googleBooks source plan through sourceAdapters.googleBooks.",
+    },
+    fetchAdapter: {
+      status: "shared" as GoogleBooksInfrastructureStatus,
+      file: "app/recommender-v2/sources/googleBooksSource.ts",
+      note: "The V2 adapter accepts all age bands; Adult-only fetch-query rewriting is bypassed for younger age bands.",
+    },
+    normalization: {
+      status: "shared" as GoogleBooksInfrastructureStatus,
+      file: "app/recommender-v2/normalize.ts",
+      note: "normalizeSourceResults converts accepted Google Books rows into the shared NormalizedCandidate model.",
+    },
+    scoring: {
+      status: "shared" as GoogleBooksInfrastructureStatus,
+      file: "app/recommender-v2/score.ts",
+      note: "scoreCandidates scores Google Books candidates for all age bands.",
+    },
+    ageSuitability: {
+      status: "shared" as GoogleBooksInfrastructureStatus,
+      file: "app/recommender-v2/score.ts",
+      note: "ageSuitabilityScore contributes age-band suitability for all sources.",
+    },
+    publicationArtifacts: {
+      status: "shared" as GoogleBooksInfrastructureStatus,
+      file: "app/recommender-v2/sources/googleBooksSource.ts",
+      note: "Publication-shape filtering currently runs in the shared Google Books adapter; it is not tuned here for younger age bands.",
+    },
+    sourceQuality: {
+      status: "shared" as GoogleBooksInfrastructureStatus,
+      file: "app/recommender-v2/score.ts",
+      note: "sourceQualityRelevanceScore is calculated for all Google Books candidates.",
+    },
+    seriesDuplication: {
+      status: "shared" as GoogleBooksInfrastructureStatus,
+      file: "app/recommender-v2/select.ts",
+      note: "Generic title, author, and series-root diversity is shared; Adult Google Books cluster handling remains Adult-only.",
+    },
+    countsLineage: {
+      status: "available" as GoogleBooksInfrastructureStatus,
+      file: "app/recommender-v2/engine.ts",
+      note: "This audit reports query, dispatch, normalization, scoring, eligibility, selection, wrapper, and renderer handoff counts.",
+    },
+    wrapperRenderer: {
+      status: "available" as GoogleBooksInfrastructureStatus,
+      file: "screens/SwipeDeckScreen.tsx",
+      note: "The V2 diagnostic wrapper exposes Google Books wrapper and renderer title handoffs.",
+    },
+    googleBooksOnlyRegression: {
+      status: "available" as GoogleBooksInfrastructureStatus,
+      file: "scripts/run-v2-googlebooks-age-band-infrastructure-audit-regressions.mjs",
+      note: "Deterministic Google Books-only infrastructure fixtures cover Kids, Pre-Teens, and Teens.",
+    },
+  };
+  return {
+    kids: {
+      ...shared,
+      finalEligibility: {
+        status: "age_specific" as GoogleBooksInfrastructureStatus,
+        file: "app/recommender-v2/select.ts",
+        note: "Kids use the shared Kids clean-final gate for all sources, including Google Books.",
+      },
+      meaningfulTasteAlignment: {
+        status: "missing" as GoogleBooksInfrastructureStatus,
+        file: "app/recommender-v2/select.ts",
+        note: "No Google Books-specific Kids meaningful-taste final gate exists; only general scoring and Kids clean-final checks apply.",
+      },
+      googleBooksMetadataOnlyTasteEvidence: {
+        status: "missing" as GoogleBooksInfrastructureStatus,
+        file: "app/recommender-v2/score.ts",
+        note: "Metadata-only scoring isolation is Adult Google Books-only; Kids Google Books still uses full candidateText.",
+      },
+    },
+    preteens: {
+      ...shared,
+      finalEligibility: {
+        status: "missing" as GoogleBooksInfrastructureStatus,
+        file: "app/recommender-v2/select.ts",
+        note: "Pre-Teen final eligibility helpers are called, but the current middle-grades rules allow non-Open-Library candidates through without Google Books-specific checks.",
+      },
+      meaningfulTasteAlignment: {
+        status: "missing" as GoogleBooksInfrastructureStatus,
+        file: "app/recommender-v2/select.ts",
+        note: "middleGradesMeaningfulTasteEligibility is Open Library-only; Pre-Teen Google Books has no source-specific meaningful-taste gate.",
+      },
+      googleBooksMetadataOnlyTasteEvidence: {
+        status: "missing" as GoogleBooksInfrastructureStatus,
+        file: "app/recommender-v2/score.ts",
+        note: "Metadata-only scoring isolation is Adult Google Books-only; Pre-Teen Google Books still uses full candidateText.",
+      },
+    },
+    teens: {
+      ...shared,
+      finalEligibility: {
+        status: "missing" as GoogleBooksInfrastructureStatus,
+        file: "app/recommender-v2/select.ts",
+        note: "Teen Open Library has a Teen-specific final gate, but Teen Google Books has no source-specific final eligibility gate.",
+      },
+      meaningfulTasteAlignment: {
+        status: "missing" as GoogleBooksInfrastructureStatus,
+        file: "app/recommender-v2/select.ts",
+        note: "Teen Google Books has no Teen-specific meaningful metadata taste gate; Teen Open Library-only rules do not apply.",
+      },
+      googleBooksMetadataOnlyTasteEvidence: {
+        status: "missing" as GoogleBooksInfrastructureStatus,
+        file: "app/recommender-v2/score.ts",
+        note: "Metadata-only scoring isolation is Adult Google Books-only; Teen Google Books still uses full candidateText.",
+      },
+    },
+  };
+}
+
+function googleBooksAgeBandFutureGaps(): Record<string, string[]> {
+  const common = [
+    "Publication-shape filtering is shared but Adult-designed; younger age-band quality rules should be audited before tuning.",
+    "Reading-level evidence and age-category reliability are not independently validated for Google Books.",
+    "Graphic novel, manga, and light-novel handling should be age-band-specific future work.",
+    "Series-entry preference for younger readers is not Google Books-specific.",
+  ];
+  return {
+    kids: [
+      ...common,
+      "Picture-book versus chapter-book identity is not modeled for Google Books.",
+      "Early-reader identity is not modeled for Google Books.",
+      "Juvenile nonfiction, activity-book, workbook, and classroom artifact leakage needs a Kids-specific source audit.",
+    ],
+    preteens: [
+      ...common,
+      "Middle-grade versus YA distinction is not Google Books-specific.",
+      "School-assignment and classroom artifact suppression needs Google Books validation.",
+      "Middle-grade mature-content protection should not reuse Adult or Teen thresholds directly.",
+    ],
+    teens: [
+      ...common,
+      "YA versus Adult crossover and mature-content protection is not modeled for Teen Google Books.",
+      "Teen Google Books does not yet have a Teen-specific final meaningful-taste gate.",
+      "Teen source tuning must stay separate from the frozen Teen Open Library path.",
+    ],
+  };
+}
+
+function googleBooksStatusFromSourceResult(result: SourceResult | undefined): GoogleBooksInfrastructureStatus {
+  if (!result) return "failed";
+  if (result.status === "skipped") return result.diagnostics?.skippedReason === "source_disabled" ? "disabled" : "bypassed";
+  if (result.status === "succeeded") return "succeeded";
+  if (result.status === "empty") return "failed";
+  if (result.status === "failed" || result.status === "timed_out") return "failed";
+  return result.diagnostics?.attempted ? "attempted" : "available";
+}
+
+function googleBooksFailureStageForReason(reason: string): string {
+  if (/publication_shape|artifact|reference|study|guide|catalog|periodical|anthology|nonfiction/i.test(reason)) return "publication-shape_rejection";
+  if (/maturity|age|juvenile|k2|middle_grades.*(?:final|non_narrative)|adult_or_ya|leakage/i.test(reason)) return "age_suitability_rejection";
+  if (/taste|meaningful|family|evidence|query_only|document/i.test(reason)) return "taste-alignment_rejection";
+  if (/duplicate|same_author|same_series|same_root|cluster|deferred|ranked_below|not_selected/i.test(reason)) return "final-selection_loss";
+  if (/non_positive_score/i.test(reason)) return "scoring_or_final-selection_loss";
+  return "final-selection_loss";
+}
+
+function googleBooksHandoffStatus(entered: number, exited: number, failureReason: string): Record<string, unknown> {
+  if (entered === 0) return { status: "bypassed" as GoogleBooksInfrastructureStatus, reason: "no_googlebooks_candidates_entered_stage", entered, exited };
+  if (exited === 0) return { status: "failed" as GoogleBooksInfrastructureStatus, reason: failureReason, entered, exited };
+  return { status: "succeeded" as GoogleBooksInfrastructureStatus, entered, exited };
+}
+
+function googleBooksSelectedTitleSet(selected: ScoredCandidate[]): Set<string> {
+  return new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalizedTokenText(candidate.title)));
+}
+
+export function buildGoogleBooksAgeBandInfrastructureDiagnostics(input: {
+  profile: TasteProfile;
+  searchPlan: SearchPlan;
+  sourceResults: SourceResult[];
+  normalizedCandidates: NormalizedCandidate[];
+  scoredCandidates: ScoredCandidate[];
+  selectedCandidates: ScoredCandidate[];
+  returnedTitles?: string[];
+}): GoogleBooksAgeBandInfrastructureDiagnostics {
+  const currentAgeBand = input.profile.ageBand;
+  const currentDeck = GOOGLE_BOOKS_NON_ADULT_AGE_BANDS.includes(currentAgeBand as GoogleBooksNonAdultAgeBand)
+    ? currentAgeBand as GoogleBooksNonAdultAgeBand
+    : undefined;
+  const infrastructureByDeck = googleBooksAgeBandInfrastructureMap();
+  const queryPlanningByDeck: Record<string, Record<string, unknown>> = {};
+  const dispatchByDeck: Record<string, Record<string, unknown>> = {};
+  const normalizationByDeck: Record<string, Record<string, unknown>> = {};
+  const scoringHandoffByDeck: Record<string, Record<string, unknown>> = {};
+  const eligibilityHandoffByDeck: Record<string, Record<string, unknown>> = {};
+  const finalSelectionHandoffByDeck: Record<string, Record<string, unknown>> = {};
+  const renderedTitlesByDeck: Record<string, string[]> = {};
+  const dropStageByTitle: Record<string, string> = {};
+  const dropReasonByTitle: Record<string, string> = {};
+
+  for (const ageBand of GOOGLE_BOOKS_NON_ADULT_AGE_BANDS) {
+    queryPlanningByDeck[ageBand] = emptyGoogleBooksAgeBandRuntimeRow(ageBand, currentAgeBand);
+    dispatchByDeck[ageBand] = emptyGoogleBooksAgeBandRuntimeRow(ageBand, currentAgeBand);
+    normalizationByDeck[ageBand] = emptyGoogleBooksAgeBandRuntimeRow(ageBand, currentAgeBand);
+    scoringHandoffByDeck[ageBand] = emptyGoogleBooksAgeBandRuntimeRow(ageBand, currentAgeBand);
+    eligibilityHandoffByDeck[ageBand] = emptyGoogleBooksAgeBandRuntimeRow(ageBand, currentAgeBand);
+    finalSelectionHandoffByDeck[ageBand] = emptyGoogleBooksAgeBandRuntimeRow(ageBand, currentAgeBand);
+    renderedTitlesByDeck[ageBand] = [];
+  }
+
+  if (currentDeck) {
+    const googleBooksPlan = input.searchPlan.sourcePlans.find((plan) => plan.source === "googleBooks");
+    const googleBooksResult = input.sourceResults.find((result) => result.source === "googleBooks");
+    const sourceDiagnostics = googleBooksResult?.diagnostics as SourceDiagnosticV2 | undefined;
+    const normalizedGoogleBooks = input.normalizedCandidates.filter((candidate) => candidate.source === "googleBooks");
+    const scoredGoogleBooks = input.scoredCandidates.filter((candidate) => candidate.source === "googleBooks");
+    const selectedGoogleBooks = input.selectedCandidates.filter((candidate) => candidate.source === "googleBooks");
+    const selectedSet = googleBooksSelectedTitleSet(input.selectedCandidates);
+    const returnedTitles = uniqueStrings(input.returnedTitles || selectedGoogleBooks.map((candidate) => candidate.title), 120);
+    const sourceRejectedBeforeRanking = {
+      ...((sourceDiagnostics?.googleBooksPublicationShapeRejectedBeforeRankingByTitle || {}) as Record<string, string>),
+      ...((sourceDiagnostics?.googleBooksGenericCategoryRejectedBeforeRankingByTitle || {}) as Record<string, string>),
+      ...((sourceDiagnostics?.googleBooksSubjectOfStudyRejectedBeforeRankingByTitle || {}) as Record<string, string>),
+    };
+    const sourceStatus = googleBooksStatusFromSourceResult(googleBooksResult);
+    const plannedQueries = googleBooksPlan?.intents.map((intent) => intent.query).filter(Boolean) || [];
+    const attemptedQueries = sourceDiagnostics?.googleBooksQueriesAttempted || sourceDiagnostics?.queries || [];
+    const rawCount = Number(sourceDiagnostics?.rawApiResultCount ?? sourceDiagnostics?.rawCount ?? googleBooksResult?.rawItems.length ?? 0);
+    const rawAcceptedCount = Number(googleBooksResult?.rawItems.length || 0);
+    const normalizedCount = normalizedGoogleBooks.length;
+    const scoredCount = scoredGoogleBooks.length;
+    const selectedCount = selectedGoogleBooks.length;
+    const sourceAgeLabels = uniqueStrings((googleBooksResult?.rawItems || []).map((item) => (item as Record<string, unknown>)?.ageBand), 20);
+    const maturityBandValues = uniqueStrings(normalizedGoogleBooks.map((candidate) => candidate.maturityBand), 20);
+
+    queryPlanningByDeck[currentDeck] = {
+      status: !googleBooksPlan
+        ? "failed"
+        : !googleBooksPlan.enabled
+          ? "disabled"
+          : plannedQueries.length
+            ? "succeeded"
+            : "failed",
+      sourcePlanPresent: Boolean(googleBooksPlan),
+      enabled: Boolean(googleBooksPlan?.enabled),
+      plannedQueryCount: plannedQueries.length,
+      plannedQueries,
+      skippedReason: googleBooksPlan?.skippedReason || "",
+      failureKind: !googleBooksPlan
+        ? "query_planning_failure"
+        : !googleBooksPlan.enabled
+          ? "source_disabled"
+          : plannedQueries.length
+            ? ""
+            : "query_planning_failure_no_googlebooks_intents",
+    };
+    dispatchByDeck[currentDeck] = {
+      status: sourceStatus,
+      sourceResultPresent: Boolean(googleBooksResult),
+      attempted: Boolean(sourceDiagnostics?.attempted),
+      sourceStatus: googleBooksResult?.status || "missing",
+      skippedReason: sourceDiagnostics?.skippedReason || "",
+      failedReason: sourceDiagnostics?.failedReason || "",
+      timedOut: Boolean(sourceDiagnostics?.timedOut),
+      attemptedQueries,
+      rawApiResultCount: rawCount,
+      rawAcceptedCount,
+      failureKind: !googleBooksResult
+        ? "dispatch_failure_missing_source_result"
+        : googleBooksResult.status === "failed" || googleBooksResult.status === "timed_out"
+          ? "fetch_failure"
+          : googleBooksResult.status === "empty"
+            ? "fetch_empty"
+            : "",
+    };
+    normalizationByDeck[currentDeck] = {
+      ...googleBooksHandoffStatus(rawAcceptedCount, normalizedCount, "normalization_failure"),
+      rawAcceptedCount,
+      normalizedCount,
+      ageBandLabelsPreservedInRawRows: sourceAgeLabels.length === 0 || sourceAgeLabels.every((label) => label === currentDeck),
+      rawAgeBandLabels: sourceAgeLabels,
+      normalizedMaturityBandValues: maturityBandValues,
+      note: "V2 normalization retains source row ageBand on candidate.raw; top-level maturityBand comes from source metadata when present.",
+    };
+    scoringHandoffByDeck[currentDeck] = {
+      ...googleBooksHandoffStatus(normalizedCount, scoredCount, "scoring_handoff_failure"),
+      normalizedCount,
+      scoredCount,
+      scoredTitles: uniqueStrings(scoredGoogleBooks.map((candidate) => candidate.title), 120),
+      sourceQualityEvaluated: scoredGoogleBooks.every((candidate) => Number.isFinite(Number(candidate.scoreBreakdown?.sourceQualityRelevance))),
+      ageSuitabilityEvaluated: scoredGoogleBooks.every((candidate) => Number.isFinite(Number(candidate.scoreBreakdown?.ageTeenSuitability ?? candidate.scoreBreakdown?.ageBandSuitability))),
+    };
+    eligibilityHandoffByDeck[currentDeck] = {
+      status: scoredCount > 0 ? "attempted" : "bypassed",
+      scoredCount,
+      rejectedCount: scoredGoogleBooks.filter((candidate) => !selectedSet.has(normalizedTokenText(candidate.title)) && candidate.rejectedReasons.length > 0).length,
+      cleanCandidateCount: selectedCount,
+      finalEligibilityApplied: infrastructureByDeck[currentDeck]?.finalEligibility,
+      meaningfulTasteAlignmentApplied: infrastructureByDeck[currentDeck]?.meaningfulTasteAlignment,
+    };
+    finalSelectionHandoffByDeck[currentDeck] = {
+      ...googleBooksHandoffStatus(scoredCount, selectedCount, "final-selection_loss"),
+      scoredCount,
+      selectedCount,
+      selectedTitles: selectedGoogleBooks.map((candidate) => candidate.title),
+    };
+    renderedTitlesByDeck[currentDeck] = returnedTitles;
+
+    for (const [title, reason] of Object.entries(sourceRejectedBeforeRanking)) {
+      dropStageByTitle[title] = googleBooksFailureStageForReason(reason);
+      dropReasonByTitle[title] = reason;
+    }
+    for (const candidate of normalizedGoogleBooks) {
+      if (scoredGoogleBooks.some((row) => normalizedTokenText(row.title) === normalizedTokenText(candidate.title))) continue;
+      dropStageByTitle[candidate.title] = "scoring_handoff_failure";
+      dropReasonByTitle[candidate.title] = "normalized_googlebooks_candidate_missing_from_scoring";
+    }
+    for (const candidate of scoredGoogleBooks) {
+      if (selectedSet.has(normalizedTokenText(candidate.title))) {
+        dropStageByTitle[candidate.title] = "rendered_handoff";
+        dropReasonByTitle[candidate.title] = "selected_googlebooks_candidate";
+        continue;
+      }
+      const reason = candidate.rejectedReasons.find((entry) => entry !== "selected") || "ranked_below_final_selection";
+      dropStageByTitle[candidate.title] = googleBooksFailureStageForReason(reason);
+      dropReasonByTitle[candidate.title] = reason;
+    }
+  }
+
+  return {
+    googleBooksAgeBandInfrastructureByDeck: infrastructureByDeck,
+    googleBooksAgeBandQueryPlanningByDeck: queryPlanningByDeck,
+    googleBooksAgeBandDispatchByDeck: dispatchByDeck,
+    googleBooksAgeBandNormalizationByDeck: normalizationByDeck,
+    googleBooksAgeBandScoringHandoffByDeck: scoringHandoffByDeck,
+    googleBooksAgeBandEligibilityHandoffByDeck: eligibilityHandoffByDeck,
+    googleBooksAgeBandFinalSelectionHandoffByDeck: finalSelectionHandoffByDeck,
+    googleBooksAgeBandRenderedTitlesByDeck: renderedTitlesByDeck,
+    googleBooksAgeBandDropStageByTitle: dropStageByTitle,
+    googleBooksAgeBandDropReasonByTitle: dropReasonByTitle,
+    googleBooksAgeBandInfrastructureGaps: googleBooksAgeBandFutureGaps(),
+    googleBooksAgeBandInfrastructureSummary: {
+      scope: "diagnostic_only_googlebooks_non_adult_infrastructure_audit",
+      currentAgeBand,
+      currentDeck: currentDeck || "adult_or_unknown",
+      productionBehaviorChanged: false,
+      sharedInfrastructureAvailable: [
+        "query_planning",
+        "dispatch",
+        "fetch_adapter",
+        "normalization",
+        "scoring",
+        "age_suitability_score",
+        "source_quality_score",
+        "generic_selection_diversity",
+        "session_count_lineage",
+      ],
+      adultOnlyAssumptionsNotReused: [
+        "Adult Google Books metadata-only semantic matcher",
+        "Adult Google Books final meaningful-alignment gate",
+        "Adult Google Books identity enforcement",
+        "Adult Google Books narrative-strength ranking",
+        "Adult Google Books cluster diversity",
+        "Adult query rewriting with subject:fiction and exclusion terms",
+      ],
+      recommendedImplementationSequence: [
+        "Verify each younger age band can produce Google Books rows with appropriate age metadata.",
+        "Decide whether Google Books maturityRating should be treated separately from app ageBand labels.",
+        "Add age-band-specific publication-shape and artifact audits before quality tuning.",
+        "Only after those audits, design Kids, Pre-Teen, or Teen Google Books final eligibility gates independently.",
+      ],
+    },
+  };
 }
 
 type AdultGoogleBooksNormalizationDiagnostics = {
@@ -1507,8 +1922,9 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     } else {
       const recoveryQueries = adultOpenLibraryPostFinalRecoveryQueries(tasteProfile, diagnostics, 3);
       if (!recoveryQueries.length) {
-        const generated = Array.isArray((diagnostics as Record<string, unknown>).adultPostFinalRecoveryGeneratedCandidates)
-          ? ((diagnostics as Record<string, unknown>).adultPostFinalRecoveryGeneratedCandidates as Array<Record<string, unknown>>)
+        const diagnosticsMap = diagnostics as unknown as Record<string, unknown>;
+        const generated = Array.isArray(diagnosticsMap.adultPostFinalRecoveryGeneratedCandidates)
+          ? (diagnosticsMap.adultPostFinalRecoveryGeneratedCandidates as Array<Record<string, unknown>>)
           : [];
         const hasSupported = generated.some((candidate) => Boolean(candidate.supported));
         diagnostics.adultPostFinalRecoveryStoppedReason = hasSupported ? "all_queries_already_attempted" : "no_liked_supported_queries";
@@ -2329,7 +2745,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   );
   const googleBooksSourceResultForDiagnostics = sourceResults.find((result) => result.source === "googleBooks");
   if (googleBooksSourceResultForDiagnostics) {
-    const sourceDiagnostics = googleBooksSourceResultForDiagnostics.diagnostics as Record<string, unknown>;
+    const sourceDiagnostics = googleBooksSourceResultForDiagnostics.diagnostics as unknown as Record<string, unknown>;
     const queryByTitle = (sourceDiagnostics.googleBooksQueryByTitle || {}) as Record<string, string>;
     const queryResultQualityByQuery = { ...((sourceDiagnostics.googleBooksQueryResultQualityByQuery || {}) as Record<string, Record<string, unknown>>) };
     const rankedSet = new Set(googleBooksRankedCandidateTitles.map((title) => normalizedTokenText(title)));
@@ -2403,6 +2819,14 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   rejectedReasonsWithGoogleBooksNormalization.googleBooksRankedCandidateTitles = googleBooksRankedCandidateTitles;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksEnteredRanking = adultGoogleBooksNormalizationDiagnostics.googleBooksEnteredRanking;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksRejectedBeforeRankingReason = adultGoogleBooksNormalizationDiagnostics.googleBooksRejectedBeforeRankingReason;
+  Object.assign(rejectedReasonsWithGoogleBooksNormalization, buildGoogleBooksAgeBandInfrastructureDiagnostics({
+    profile: tasteProfile,
+    searchPlan,
+    sourceResults,
+    normalizedCandidates: normalized,
+    scoredCandidates: scored,
+    selectedCandidates: selected,
+  }));
 
   markPipelineObjects(selected, "selected", requestId);
   stages.push(stageDiagnostic("selected", { selected: selected.length }, { rejectedReasons }));

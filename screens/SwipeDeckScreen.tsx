@@ -2001,6 +2001,13 @@ function handleLeft() {
     const googleBooksWrapperOutputTitles = googleBooksTitlesFromDiagnosticItems(diagnosticReturnedItems as any[]);
     const googleBooksRendererInputTitles = [...googleBooksWrapperOutputTitles];
     const googleBooksRendererOutputTitles = [...googleBooksWrapperOutputTitles];
+    const googleBooksAgeBandRenderedTitlesByDeck = {
+      ...((selectionDiagnostics?.googleBooksAgeBandRenderedTitlesByDeck || {}) as Record<string, string[]>),
+    };
+    const currentGoogleBooksAgeBand = String(diagnostics.tasteProfile?.ageBand || "");
+    if (["kids", "preteens", "teens"].includes(currentGoogleBooksAgeBand)) {
+      googleBooksAgeBandRenderedTitlesByDeck[currentGoogleBooksAgeBand] = googleBooksRendererOutputTitles;
+    }
     const googleBooksAcceptedTitlesByStage = {
       normalizedCandidate: normalizedCandidateTitles,
       rankedCandidate: rankedCandidateTitles,
@@ -2273,6 +2280,18 @@ function handleLeft() {
       googleBooksFinalSelectionDecisionByTitle: gbSelectionDecisionByTitle,
       googleBooksFinalSelectionExclusionReasonByTitle: (selectionDiagnostics?.googleBooksFinalSelectionExclusionReasonByTitle || {}) as Record<string, string>,
       googleBooksCapDroppedTitles: (selectionDiagnostics?.googleBooksCapDroppedTitles || []) as string[],
+      googleBooksAgeBandInfrastructureByDeck: (selectionDiagnostics?.googleBooksAgeBandInfrastructureByDeck || {}) as Record<string, unknown>,
+      googleBooksAgeBandQueryPlanningByDeck: (selectionDiagnostics?.googleBooksAgeBandQueryPlanningByDeck || {}) as Record<string, unknown>,
+      googleBooksAgeBandDispatchByDeck: (selectionDiagnostics?.googleBooksAgeBandDispatchByDeck || {}) as Record<string, unknown>,
+      googleBooksAgeBandNormalizationByDeck: (selectionDiagnostics?.googleBooksAgeBandNormalizationByDeck || {}) as Record<string, unknown>,
+      googleBooksAgeBandScoringHandoffByDeck: (selectionDiagnostics?.googleBooksAgeBandScoringHandoffByDeck || {}) as Record<string, unknown>,
+      googleBooksAgeBandEligibilityHandoffByDeck: (selectionDiagnostics?.googleBooksAgeBandEligibilityHandoffByDeck || {}) as Record<string, unknown>,
+      googleBooksAgeBandFinalSelectionHandoffByDeck: (selectionDiagnostics?.googleBooksAgeBandFinalSelectionHandoffByDeck || {}) as Record<string, unknown>,
+      googleBooksAgeBandRenderedTitlesByDeck,
+      googleBooksAgeBandDropStageByTitle: (selectionDiagnostics?.googleBooksAgeBandDropStageByTitle || {}) as Record<string, string>,
+      googleBooksAgeBandDropReasonByTitle: (selectionDiagnostics?.googleBooksAgeBandDropReasonByTitle || {}) as Record<string, string>,
+      googleBooksAgeBandInfrastructureGaps: (selectionDiagnostics?.googleBooksAgeBandInfrastructureGaps || {}) as Record<string, string[]>,
+      googleBooksAgeBandInfrastructureSummary: (selectionDiagnostics?.googleBooksAgeBandInfrastructureSummary || {}) as Record<string, unknown>,
       adultGoogleBooksCandidateTasteFamiliesByTitle: (selectionDiagnostics?.adultGoogleBooksCandidateTasteFamiliesByTitle || {}) as Record<string, string[]>,
       adultGoogleBooksProfileLikedFamilies: (selectionDiagnostics?.adultGoogleBooksProfileLikedFamilies || []) as string[],
       adultGoogleBooksProfileAvoidFamilies: (selectionDiagnostics?.adultGoogleBooksProfileAvoidFamilies || []) as string[],
@@ -4343,6 +4362,18 @@ function handleLeft() {
       `googleBooksFinalSelectionDecisionByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksFinalSelectionDecisionByTitle || {})}`,
       `googleBooksFinalSelectionExclusionReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksFinalSelectionExclusionReasonByTitle || {})}`,
       `googleBooksCapDroppedTitles:${JSON.stringify((lastRecommendationResult as any)?.googleBooksCapDroppedTitles || [])}`,
+      `googleBooksAgeBandInfrastructureByDeck:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandInfrastructureByDeck || {})}`,
+      `googleBooksAgeBandQueryPlanningByDeck:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandQueryPlanningByDeck || {})}`,
+      `googleBooksAgeBandDispatchByDeck:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandDispatchByDeck || {})}`,
+      `googleBooksAgeBandNormalizationByDeck:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandNormalizationByDeck || {})}`,
+      `googleBooksAgeBandScoringHandoffByDeck:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandScoringHandoffByDeck || {})}`,
+      `googleBooksAgeBandEligibilityHandoffByDeck:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandEligibilityHandoffByDeck || {})}`,
+      `googleBooksAgeBandFinalSelectionHandoffByDeck:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandFinalSelectionHandoffByDeck || {})}`,
+      `googleBooksAgeBandRenderedTitlesByDeck:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandRenderedTitlesByDeck || {})}`,
+      `googleBooksAgeBandDropStageByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandDropStageByTitle || {})}`,
+      `googleBooksAgeBandDropReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandDropReasonByTitle || {})}`,
+      `googleBooksAgeBandInfrastructureGaps:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandInfrastructureGaps || {})}`,
+      `googleBooksAgeBandInfrastructureSummary:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandInfrastructureSummary || {})}`,
       `adultGoogleBooksProfileLikedFamilies:${JSON.stringify((lastRecommendationResult as any)?.adultGoogleBooksProfileLikedFamilies || [])}`,
       `adultGoogleBooksProfileAvoidFamilies:${JSON.stringify((lastRecommendationResult as any)?.adultGoogleBooksProfileAvoidFamilies || [])}`,
       `adultGoogleBooksCandidateTasteFamiliesByTitle:${JSON.stringify((lastRecommendationResult as any)?.adultGoogleBooksCandidateTasteFamiliesByTitle || {})}`,

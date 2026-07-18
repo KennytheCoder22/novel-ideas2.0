@@ -16,6 +16,7 @@
     "test:v2:googlebooks-publication-shape": "node scripts/run-v2-googlebooks-publication-shape-regressions.mjs",
     "test:v2:googlebooks-final-slate-identity-audit": "node scripts/run-v2-googlebooks-final-slate-identity-audit-regressions.mjs",
     "test:v2:googlebooks-narrative-strength-ranking": "node scripts/run-v2-googlebooks-narrative-strength-ranking-regressions.mjs",
+    "test:v2:googlebooks-age-band-infrastructure-audit": "node scripts/run-v2-googlebooks-age-band-infrastructure-audit-regressions.mjs",
     "test:v2:googlebooks-short-signals": "node scripts/run-v2-googlebooks-short-signal-boundary-regressions.mjs",
     "test:v2:openlibrary-presets": "node scripts/run-v2-openlibrary-presets.mjs",
     "test:v2:openlibrary-routing-regressions": "node scripts/run-v2-openlibrary-routing-regressions.mjs"
