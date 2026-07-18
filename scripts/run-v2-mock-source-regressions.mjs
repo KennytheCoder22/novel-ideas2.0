@@ -14,7 +14,8 @@
  */
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
@@ -58,7 +59,7 @@ function assertIncludes(values, expected, message) {
   }
 }
 
-const dir = resolve(new URL(".", import.meta.url).pathname, "../app/recommender-v2");
+const dir = resolve(dirname(fileURLToPath(import.meta.url)), "../app/recommender-v2");
 const { buildSearchPlan } = require(resolve(dir, "searchPlan.ts"));
 
 const adultProfile = {

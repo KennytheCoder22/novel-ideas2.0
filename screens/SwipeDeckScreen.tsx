@@ -1957,6 +1957,7 @@ function handleLeft() {
     const scoredCount = diagnostics.stages.find((stage) => stage.stage === "scored")?.counts?.scored ?? 0;
     const middleGradesPipelineAudit = diagnostics.stages.find((stage) => stage.stage === "middle_grades_candidate_pool_audit")?.details as any;
     const selectionDiagnostics = (diagnostics.stages.find((stage) => stage.stage === "selected")?.details as any)?.rejectedReasons || {};
+    const tasteProfileDiagnostics = (diagnostics.tasteProfile?.diagnostics || {}) as Record<string, any>;
     const normalizedDocsCountForReport = Number(middleGradesPipelineAudit?.normalizedDocsCount ?? normalizedCount);
     const rankedDocsLengthForReport = Number(middleGradesPipelineAudit?.rankedDocsLength ?? scoredCount);
     const convertedDocsAvailableForScoringCountForReport = Number(middleGradesPipelineAudit?.convertedDocsAvailableForScoringCount ?? normalizedCount);
@@ -2282,6 +2283,36 @@ function handleLeft() {
       adultGoogleBooksMeaningfulAlignmentDecisionByTitle: (selectionDiagnostics?.adultGoogleBooksMeaningfulAlignmentDecisionByTitle || {}) as Record<string, string>,
       adultGoogleBooksMeaningfulAlignmentOverrideByTitle: (selectionDiagnostics?.adultGoogleBooksMeaningfulAlignmentOverrideByTitle || {}) as Record<string, string>,
       adultGoogleBooksAvoidFamilyOverlapByTitle: (selectionDiagnostics?.adultGoogleBooksAvoidFamilyOverlapByTitle || {}) as Record<string, string[]>,
+      adultTasteFamilyEvidenceBySwipe: tasteProfileDiagnostics.adultTasteFamilyEvidenceBySwipe || {},
+      adultTastePositiveContributionBySwipe: tasteProfileDiagnostics.adultTastePositiveContributionBySwipe || {},
+      adultTasteNegativeContributionBySwipe: tasteProfileDiagnostics.adultTasteNegativeContributionBySwipe || {},
+      adultTasteFamilyContributionReasonBySwipe: tasteProfileDiagnostics.adultTasteFamilyContributionReasonBySwipe || {},
+      adultTasteFamilySourceTagsBySwipe: tasteProfileDiagnostics.adultTasteFamilySourceTagsBySwipe || {},
+      adultTasteFamilyPositiveWeight: tasteProfileDiagnostics.adultTasteFamilyPositiveWeight || {},
+      adultTasteFamilyNegativeWeight: tasteProfileDiagnostics.adultTasteFamilyNegativeWeight || {},
+      adultTasteFamilyNetWeight: tasteProfileDiagnostics.adultTasteFamilyNetWeight || {},
+      adultTasteFamilyPositiveCount: tasteProfileDiagnostics.adultTasteFamilyPositiveCount || {},
+      adultTasteFamilyNegativeCount: tasteProfileDiagnostics.adultTasteFamilyNegativeCount || {},
+      adultTasteFamilyLikedTitles: tasteProfileDiagnostics.adultTasteFamilyLikedTitles || {},
+      adultTasteFamilyDislikedTitles: tasteProfileDiagnostics.adultTasteFamilyDislikedTitles || {},
+      adultTasteFamilySkippedTitles: tasteProfileDiagnostics.adultTasteFamilySkippedTitles || {},
+      adultTasteSkippedTitlesExcludedFromPolarity: tasteProfileDiagnostics.adultTasteSkippedTitlesExcludedFromPolarity || [],
+      adultTasteFamilyPolarityDecision: tasteProfileDiagnostics.adultTasteFamilyPolarityDecision || {},
+      adultTasteFamilyPolarityReason: tasteProfileDiagnostics.adultTasteFamilyPolarityReason || {},
+      adultTasteOverlappingFamilies: tasteProfileDiagnostics.adultTasteOverlappingFamilies || [],
+      adultTasteOverlapEvidenceByFamily: tasteProfileDiagnostics.adultTasteOverlapEvidenceByFamily || {},
+      adultTasteOverlapCurrentResolutionByFamily: tasteProfileDiagnostics.adultTasteOverlapCurrentResolutionByFamily || {},
+      adultTasteOverlapAffectedCandidateTitlesByFamily: (selectionDiagnostics?.adultTasteOverlapAffectedCandidateTitlesByFamily || {}) as Record<string, string[]>,
+      adultTasteWeightedLikedFamilies: tasteProfileDiagnostics.adultTasteWeightedLikedFamilies || [],
+      adultTasteWeightedAvoidFamilies: tasteProfileDiagnostics.adultTasteWeightedAvoidFamilies || [],
+      adultTasteWeightedMixedFamilies: tasteProfileDiagnostics.adultTasteWeightedMixedFamilies || [],
+      adultTasteWeightedPolarityByFamily: tasteProfileDiagnostics.adultTasteWeightedPolarityByFamily || {},
+      adultTasteWeightedChangedFamilies: tasteProfileDiagnostics.adultTasteWeightedChangedFamilies || [],
+      adultTasteWeightedModelConstants: tasteProfileDiagnostics.adultTasteWeightedModelConstants || {},
+      adultTasteWeightedModelEnabledForSelection: Boolean(tasteProfileDiagnostics.adultTasteWeightedModelEnabledForSelection),
+      adultTasteWeightedCounterfactualCandidateDecisionByTitle: (selectionDiagnostics?.adultTasteWeightedCounterfactualCandidateDecisionByTitle || {}) as Record<string, Record<string, unknown>>,
+      adultTasteWeightedCounterfactualNewPassTitles: (selectionDiagnostics?.adultTasteWeightedCounterfactualNewPassTitles || []) as string[],
+      adultTasteWeightedCounterfactualNewFailTitles: (selectionDiagnostics?.adultTasteWeightedCounterfactualNewFailTitles || []) as string[],
     };
   }
 

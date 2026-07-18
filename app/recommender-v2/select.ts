@@ -4637,6 +4637,79 @@ function adultGoogleBooksMeaningfulTasteEligibility(candidate: ScoredCandidate):
   return { passed: false, reason: failureReason, likedSignals, dislikedSignals, positiveNetTasteFamilies, allCandidateTasteFamilies, negativeNetTasteFamilies, tasteEvidenceSource: failEvidenceSource, likedSignalCount, threshold: failThreshold, specificToneThemeLikedSignals, broadToneLikedSignals, contextOnlyLikedSignals };
 }
 
+function adultTasteWeightedPolarity(profile: TasteProfile): Record<string, { decision?: string; positiveWeight?: number; negativeWeight?: number; netWeight?: number; positiveCount?: number; negativeCount?: number }> {
+  const raw = profile.diagnostics?.adultTasteWeightedPolarityByFamily;
+  return raw && typeof raw === "object" && !Array.isArray(raw)
+    ? raw as Record<string, { decision?: string; positiveWeight?: number; negativeWeight?: number; netWeight?: number; positiveCount?: number; negativeCount?: number }>
+    : {};
+}
+
+function adultGoogleBooksWeightedCounterfactualDecision(
+  profile: TasteProfile,
+  meaningfulTaste: ReturnType<typeof adultGoogleBooksMeaningfulTasteEligibility>,
+  currentProfileLikedFamilies: string[],
+  currentProfileAvoidFamilies: string[],
+): {
+  currentPassed: boolean;
+  weightedPassed: boolean;
+  reason: string;
+  changedFamilies: string[];
+  weightedPositiveFamilies: string[];
+  weightedAvoidFamilies: string[];
+  weightedMixedFamilies: string[];
+  currentOverlappingFamilies: string[];
+} {
+  const polarity = adultTasteWeightedPolarity(profile);
+  const likedFamilies = Array.from(new Set(meaningfulTaste.likedSignals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean)));
+  const dislikedFamilies = Array.from(new Set(meaningfulTaste.dislikedSignals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean)));
+  const candidateFamilies = Array.from(new Set([...likedFamilies, ...dislikedFamilies]));
+  const weightedPositiveFamilies = likedFamilies.filter((family) => {
+    const decision = String(polarity[family]?.decision || "");
+    return ["strongly_liked", "weakly_liked", "mixed_positive"].includes(decision);
+  });
+  const weightedAvoidFamilies = candidateFamilies.filter((family) => String(polarity[family]?.decision || "") === "true_avoid");
+  const weightedMixedFamilies = candidateFamilies.filter((family) => /^mixed_/.test(String(polarity[family]?.decision || "")));
+  const currentOverlappingFamilies = candidateFamilies.filter((family) => currentProfileLikedFamilies.includes(family) && currentProfileAvoidFamilies.includes(family));
+  const changedFamilies = candidateFamilies.filter((family) => {
+    const currentLiked = currentProfileLikedFamilies.includes(family);
+    const currentAvoid = currentProfileAvoidFamilies.includes(family);
+    const decision = String(polarity[family]?.decision || "");
+    const weightedLiked = ["strongly_liked", "weakly_liked", "mixed_positive"].includes(decision);
+    const weightedAvoid = decision === "true_avoid";
+    return currentLiked !== weightedLiked || currentAvoid !== weightedAvoid;
+  });
+
+  const nonFamilyCurrentPass = meaningfulTaste.passed && meaningfulTaste.tasteEvidenceSource !== "family";
+  const weightedPassed = weightedPositiveFamilies.length > 0
+    || nonFamilyCurrentPass
+    || (meaningfulTaste.specificToneThemeLikedSignals.length >= 2 && meaningfulTaste.specificToneThemeLikedSignals.length > meaningfulTaste.dislikedSignals.length);
+  let reason = "weighted_model_matches_current_binary_result";
+  if (!meaningfulTaste.passed && weightedPassed) {
+    reason = weightedPositiveFamilies.length > 0
+      ? "would_pass_weighted_positive_profile_family"
+      : "would_pass_existing_nonfamily_taste_rule";
+  } else if (meaningfulTaste.passed && !weightedPassed) {
+    reason = weightedAvoidFamilies.length > 0
+      ? "would_fail_weighted_true_avoid_profile_family"
+      : "would_fail_no_weighted_positive_profile_family";
+  } else if (currentOverlappingFamilies.length > 0 && weightedPositiveFamilies.some((family) => currentOverlappingFamilies.includes(family))) {
+    reason = "weighted_model_resolves_binary_overlap_as_net_positive";
+  } else if (currentOverlappingFamilies.length > 0 && weightedAvoidFamilies.some((family) => currentOverlappingFamilies.includes(family))) {
+    reason = "weighted_model_preserves_overlap_as_true_avoid";
+  }
+
+  return {
+    currentPassed: meaningfulTaste.passed,
+    weightedPassed,
+    reason,
+    changedFamilies,
+    weightedPositiveFamilies,
+    weightedAvoidFamilies,
+    weightedMixedFamilies,
+    currentOverlappingFamilies,
+  };
+}
+
 function adultGoogleBooksNarrativeEvidence(candidate: ScoredCandidate): string[] {
   const fields = adultGoogleBooksMetadataFields(candidate);
   const signals: string[] = [];
@@ -5093,6 +5166,10 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const meaningfulAlignmentDecisionByTitle: Record<string, string> = {};
   const meaningfulAlignmentOverrideByTitle: Record<string, string> = {};
   const avoidFamilyOverlapByTitle: Record<string, string[]> = {};
+  const weightedCounterfactualCandidateDecisionByTitle: Record<string, Record<string, unknown>> = {};
+  const weightedCounterfactualNewPassTitles: string[] = [];
+  const weightedCounterfactualNewFailTitles: string[] = [];
+  const overlapAffectedCandidateTitlesByFamily: Record<string, string[]> = {};
   let profileLikedFamilies: string[] = [];
   let profileAvoidFamilies: string[] = [];
   if (profile.ageBand === "adult") {
@@ -5166,6 +5243,10 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksMeaningfulAlignmentDecisionByTitle = {};
     diagnostics.adultGoogleBooksMeaningfulAlignmentOverrideByTitle = {};
     diagnostics.adultGoogleBooksAvoidFamilyOverlapByTitle = {};
+    diagnostics.adultTasteWeightedCounterfactualCandidateDecisionByTitle = {};
+    diagnostics.adultTasteWeightedCounterfactualNewPassTitles = [];
+    diagnostics.adultTasteWeightedCounterfactualNewFailTitles = [];
+    diagnostics.adultTasteOverlapAffectedCandidateTitlesByFamily = {};
     diagnostics.googleBooksPlannedQueries = [];
     diagnostics.googleBooksQueriesAttempted = [];
     diagnostics.googleBooksRawCountByQuery = {};
@@ -5194,6 +5275,21 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     if (attemptedQuery) rawCountByQuery[attemptedQuery] = Number(rawCountByQuery[attemptedQuery] || 0) + 1;
 
     const eligibility = adultGoogleBooksFinalEligibility(candidate, profile);
+    const weightedCounterfactual = adultGoogleBooksWeightedCounterfactualDecision(profile, {
+      passed: eligibility.meaningfulTastePassed,
+      reason: eligibility.meaningfulTasteFailureReason,
+      likedSignals: eligibility.documentBackedLikedSignals,
+      dislikedSignals: eligibility.documentBackedDislikedSignals,
+      positiveNetTasteFamilies: eligibility.positiveNetTasteFamilies,
+      allCandidateTasteFamilies: eligibility.allCandidateTasteFamilies,
+      negativeNetTasteFamilies: eligibility.negativeNetTasteFamilies,
+      tasteEvidenceSource: eligibility.tasteEvidenceSource,
+      likedSignalCount: eligibility.likedSignalCount,
+      threshold: eligibility.threshold,
+      specificToneThemeLikedSignals: eligibility.specificToneThemeLikedSignals,
+      broadToneLikedSignals: eligibility.broadToneLikedSignals,
+      contextOnlyLikedSignals: eligibility.contextOnlyLikedSignals,
+    }, profileLikedFamilies, profileAvoidFamilies);
     eligibilityReasonByTitle[candidate.title] = eligibility.reason;
     artifactReasonsByTitle[candidate.title] = eligibility.artifactReasons;
     narrativeEvidenceByTitle[candidate.title] = eligibility.narrativeEvidence;
@@ -5235,6 +5331,14 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     meaningfulAlignmentDecisionByTitle[candidate.title] = eligibility.meaningfulTastePassed ? "passed" : "failed";
     meaningfulAlignmentOverrideByTitle[candidate.title] = eligibility.strongNarrativeOverrideApplied ? "strong_narrative_identity_override" : "none";
     avoidFamilyOverlapByTitle[candidate.title] = eligibility.negativeNetTasteFamilies.filter((f) => profileAvoidFamilies.includes(f));
+    weightedCounterfactualCandidateDecisionByTitle[candidate.title] = weightedCounterfactual;
+    if (!weightedCounterfactual.currentPassed && weightedCounterfactual.weightedPassed) weightedCounterfactualNewPassTitles.push(candidate.title);
+    if (weightedCounterfactual.currentPassed && !weightedCounterfactual.weightedPassed) weightedCounterfactualNewFailTitles.push(candidate.title);
+    for (const family of weightedCounterfactual.currentOverlappingFamilies) {
+      if (!eligibility.meaningfulTastePassed || weightedCounterfactual.reason !== "weighted_model_matches_current_binary_result") {
+        overlapAffectedCandidateTitlesByFamily[family] = Array.from(new Set([...(overlapAffectedCandidateTitlesByFamily[family] || []), candidate.title]));
+      }
+    }
 
     // Explicit per-title decision diagnostics so every ranked candidate has a named reason.
     finalEligibilityDecisionByTitle[candidate.title] = eligibility.allowed ? "accepted" : "rejected";
@@ -5344,6 +5448,10 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksMeaningfulAlignmentDecisionByTitle = meaningfulAlignmentDecisionByTitle;
   diagnostics.adultGoogleBooksMeaningfulAlignmentOverrideByTitle = meaningfulAlignmentOverrideByTitle;
   diagnostics.adultGoogleBooksAvoidFamilyOverlapByTitle = avoidFamilyOverlapByTitle;
+  diagnostics.adultTasteWeightedCounterfactualCandidateDecisionByTitle = weightedCounterfactualCandidateDecisionByTitle;
+  diagnostics.adultTasteWeightedCounterfactualNewPassTitles = Array.from(new Set(weightedCounterfactualNewPassTitles));
+  diagnostics.adultTasteWeightedCounterfactualNewFailTitles = Array.from(new Set(weightedCounterfactualNewFailTitles));
+  diagnostics.adultTasteOverlapAffectedCandidateTitlesByFamily = overlapAffectedCandidateTitlesByFamily;
   diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
   diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
   diagnostics.googleBooksRankedCandidateTitles = uniqueSignals(rankedCandidateTitles);

@@ -1,9 +1,333 @@
-import type { SourceIdV2, SwipeSessionV2, TasteProfile, WeightedSignalV2 } from "./types";
+import type { SourceIdV2, SwipeSessionV2, SwipeSignalV2, TasteProfile, WeightedSignalV2 } from "./types";
 
 const SOURCE_HINTS = new Set<SourceIdV2>(["googleBooks", "openLibrary", "kitsu", "comicVine", "localLibrary", "nyt", "mock"]);
 
 function normalizeSignal(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+type AdultTasteFamily =
+  | "fantasy"
+  | "science_fiction"
+  | "mystery_crime_thriller"
+  | "horror_paranormal"
+  | "historical"
+  | "romance"
+  | "drama_contemporary"
+  | "adventure_action"
+  | "comedy";
+
+type AdultTastePolarityDecision =
+  | "strongly_liked"
+  | "weakly_liked"
+  | "mixed_positive"
+  | "mixed_neutral"
+  | "mixed_negative"
+  | "true_avoid"
+  | "insufficient_evidence";
+
+type AdultTasteContribution = {
+  family: AdultTasteFamily;
+  sourceTag: string;
+  canonicalTag: string;
+  field: string;
+  map: string;
+  contribution: number;
+  contributionStrength: number;
+  evidenceLevel: "family_level" | "subfamily_or_tone_level";
+  reason: string;
+};
+
+const ADULT_TASTE_GENERIC_SIGNAL = /^(adult|book|books|fiction|novel|novels|story|stories|series|literature)$/i;
+const ADULT_TASTE_CONTEXT_ONLY_SIGNAL = /^(family|families|relationship|relationships|friends?|friendship|domestic)$/i;
+const ADULT_TASTE_SUPPLEMENTAL_SIGNAL = /^(identity|authority|political|war and society|systemic injustice|vulnerability|human connection|betrayal|regret|love|community|outsider|atmospheric|dark|spooky|weird|hopeful|warm|gentle|melancholic|playful|quirky|energetic|fast-paced|fast paced|slow|quiet|paced|epic)$/i;
+
+function adultTastePrimaryContentFamily(rawValue: string): AdultTasteFamily | "" {
+  const value = normalizeSignal(rawValue);
+  if (!value || ADULT_TASTE_GENERIC_SIGNAL.test(value) || ADULT_TASTE_CONTEXT_ONLY_SIGNAL.test(value) || ADULT_TASTE_SUPPLEMENTAL_SIGNAL.test(value)) return "";
+  if (/\b(fantasy|magic|magical|mythology|mythological|dark fantasy|fantasy adventure|dragon|dragons)\b/.test(value)) return "fantasy";
+  if (/\b(science fiction|sci fi|sci-fi|speculative|dystopia|dystopian|robot|robots|robotics|artificial intelligence|machine intelligence|android|androids|sentient computer)\b/.test(value)) return "science_fiction";
+  if (/\b(mystery|crime|detective|thriller|suspense|noir|science fiction thriller|sci fi thriller|sci-fi thriller|historical crime)\b/.test(value)) return "mystery_crime_thriller";
+  if (/\b(horror|gothic|paranormal|supernatural|psychological horror|occult)\b/.test(value)) return "horror_paranormal";
+  if (/\b(history|historical)\b/.test(value)) return "historical";
+  if (/\b(romance|romantic)\b/.test(value)) return "romance";
+  if (/\b(drama|contemporary|realistic|literary)\b/.test(value)) return "drama_contemporary";
+  if (/\b(adventure|action|survival|quest)\b/.test(value)) return "adventure_action";
+  if (/\b(comedy|humor|funny)\b/.test(value)) return "comedy";
+  return "";
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.map((value) => String(value || "").trim()).filter(Boolean)));
+}
+
+function roundAdultTasteWeight(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+function adultTasteContributionMultiplier(field: string): number {
+  if (field === "genres") return 1;
+  if (field === "tags") return 0.5;
+  if (field === "format") return 0.25;
+  return 0.75;
+}
+
+function adultTasteEvidenceLevel(field: string, canonicalTag: string): "family_level" | "subfamily_or_tone_level" {
+  if (field !== "genres") return "subfamily_or_tone_level";
+  return /\s|-/.test(canonicalTag) ? "subfamily_or_tone_level" : "family_level";
+}
+
+function adultTasteFamilyContribution(rawValue: string, field: string, map: string, baseWeight: number, action: SwipeSignalV2["action"], title: string): AdultTasteContribution | null {
+  const canonicalTag = normalizeSignal(rawValue);
+  const family = adultTastePrimaryContentFamily(canonicalTag);
+  if (!family) return null;
+  const contributionStrength = roundAdultTasteWeight(Math.abs(baseWeight) * adultTasteContributionMultiplier(field));
+  const contribution = action === "dislike"
+    ? -contributionStrength
+    : action === "like"
+      ? contributionStrength
+      : 0;
+  const evidenceLevel = adultTasteEvidenceLevel(field, canonicalTag);
+  return {
+    family,
+    sourceTag: rawValue,
+    canonicalTag,
+    field,
+    map,
+    contribution,
+    contributionStrength,
+    evidenceLevel,
+    reason: action === "skip"
+      ? `skip_excluded_from_weighted_polarity:${title || "untitled"}`
+      : `${action}_${field}_contributes_${family}_${evidenceLevel}`,
+  };
+}
+
+function adultTastePolarityDecision(positiveWeight: number, negativeWeight: number, positiveCount: number, negativeCount: number): { decision: AdultTastePolarityDecision; reason: string } {
+  const net = roundAdultTasteWeight(positiveWeight - negativeWeight);
+  if (positiveWeight <= 0 && negativeWeight <= 0) return { decision: "insufficient_evidence", reason: "no_liked_or_disliked_family_evidence" };
+  if (negativeWeight > 0 && positiveWeight <= 0) return { decision: "true_avoid", reason: "only_disliked_family_evidence" };
+  if (negativeCount >= 2 && negativeWeight >= positiveWeight) return { decision: "true_avoid", reason: "repeated_negative_evidence_meets_or_exceeds_positive_weight" };
+  if (positiveWeight > 0 && negativeWeight <= 0 && positiveCount >= 2 && positiveWeight >= 2) return { decision: "strongly_liked", reason: "multiple_liked_titles_no_negative_family_evidence" };
+  if (positiveWeight > 0 && negativeWeight <= 0) return { decision: "weakly_liked", reason: "liked_family_evidence_no_negative_family_evidence" };
+  if (net > 0) return { decision: "mixed_positive", reason: "liked_weight_exceeds_disliked_weight" };
+  if (net < 0) return { decision: "mixed_negative", reason: "disliked_weight_exceeds_liked_weight_but_positive_evidence_exists" };
+  return { decision: "mixed_neutral", reason: "liked_and_disliked_family_weights_tie" };
+}
+
+function buildAdultTasteFamilyDiagnostics(session: SwipeSessionV2, currentLikedFamilies: string[], currentAvoidFamilies: string[]): Record<string, unknown> {
+  if (session.ageBand !== "adult") return {};
+
+  const evidenceBySwipe: Record<string, Record<string, unknown>> = {};
+  const positiveContributionBySwipe: Record<string, AdultTasteContribution[]> = {};
+  const negativeContributionBySwipe: Record<string, AdultTasteContribution[]> = {};
+  const reasonBySwipe: Record<string, string[]> = {};
+  const sourceTagsBySwipe: Record<string, string[]> = {};
+  const familyPositiveByTitle: Record<string, Record<string, number>> = {};
+  const familyNegativeByTitle: Record<string, Record<string, number>> = {};
+  const familyPositiveEvidenceLevelByTitle: Record<string, Record<string, Set<string>>> = {};
+  const familyNegativeEvidenceLevelByTitle: Record<string, Record<string, Set<string>>> = {};
+  const skippedTitlesByFamily: Record<string, string[]> = {};
+  const skippedTitles = new Set<string>();
+
+  const addBestContribution = (
+    store: Record<string, Record<string, number>>,
+    evidenceStore: Record<string, Record<string, Set<string>>>,
+    family: string,
+    title: string,
+    weight: number,
+    evidenceLevel: string,
+  ) => {
+    if (!store[family]) store[family] = {};
+    store[family][title] = Math.max(Number(store[family][title] || 0), roundAdultTasteWeight(Math.abs(weight)));
+    if (!evidenceStore[family]) evidenceStore[family] = {};
+    if (!evidenceStore[family][title]) evidenceStore[family][title] = new Set<string>();
+    evidenceStore[family][title].add(evidenceLevel);
+  };
+
+  for (const signal of session.signals || []) {
+    const title = String(signal.title || signal.id || "untitled");
+    const baseWeight = Math.max(0.25, Number(signal.weight || 1));
+    const contributions: AdultTasteContribution[] = [];
+    const addContribution = (rawValue: unknown, field: string, map: string) => {
+      const value = String(rawValue || "");
+      const contribution = adultTasteFamilyContribution(value, field, map, baseWeight, signal.action, title);
+      if (contribution) contributions.push(contribution);
+    };
+
+    for (const value of signal.genres || []) addContribution(value, "genres", signal.action === "dislike" ? "avoidSignals" : "genreFamily");
+    for (const value of signal.tones || []) addContribution(value, "tones", signal.action === "dislike" ? "avoidSignals" : "tone");
+    for (const value of signal.themes || []) addContribution(value, "themes", signal.action === "dislike" ? "avoidSignals" : "themes");
+    for (const value of signal.characterDynamics || []) addContribution(value, "characterDynamics", signal.action === "dislike" ? "avoidSignals" : "characterDynamics");
+    for (const value of signal.tags || []) {
+      const canonical = normalizeSignal(value);
+      const target = /slow|fast|propulsive|quiet|paced/.test(canonical) ? "pacing" : "themes";
+      addContribution(value, "tags", signal.action === "dislike" ? "avoidSignals" : target);
+    }
+    if (signal.format) addContribution(signal.format, "format", signal.action === "dislike" ? "avoidSignals" : "formatPreference");
+
+    if (signal.action === "like") {
+      for (const contribution of contributions) {
+        addBestContribution(familyPositiveByTitle, familyPositiveEvidenceLevelByTitle, contribution.family, title, contribution.contributionStrength, contribution.evidenceLevel);
+      }
+      positiveContributionBySwipe[title] = contributions;
+      negativeContributionBySwipe[title] = [];
+    } else if (signal.action === "dislike") {
+      for (const contribution of contributions) {
+        addBestContribution(familyNegativeByTitle, familyNegativeEvidenceLevelByTitle, contribution.family, title, contribution.contributionStrength, contribution.evidenceLevel);
+      }
+      positiveContributionBySwipe[title] = [];
+      negativeContributionBySwipe[title] = contributions;
+    } else {
+      skippedTitles.add(title);
+      for (const contribution of contributions) {
+        skippedTitlesByFamily[contribution.family] = uniqueStrings([...(skippedTitlesByFamily[contribution.family] || []), title]);
+      }
+      positiveContributionBySwipe[title] = [];
+      negativeContributionBySwipe[title] = [];
+    }
+
+    sourceTagsBySwipe[title] = [
+      ...(signal.genres || []),
+      ...(signal.tags || []),
+      ...(signal.themes || []),
+      ...(signal.tones || []),
+      ...(signal.characterDynamics || []),
+      signal.format || "",
+    ].filter(Boolean).map(String);
+    const canonicalizedTags = sourceTagsBySwipe[title].map(normalizeSignal).filter(Boolean);
+    const derivedFamilies = uniqueStrings(contributions.map((row) => row.family));
+    reasonBySwipe[title] = uniqueStrings([
+      ...contributions.map((row) => row.reason),
+      signal.action === "skip" ? "skip_has_zero_weight_in_weighted_polarity" : "",
+      contributions.length === 0 ? "no_adult_content_family_derived_from_profile_inputs" : "",
+    ]);
+    evidenceBySwipe[title] = {
+      title,
+      action: signal.action,
+      rawCardTags: sourceTagsBySwipe[title],
+      canonicalizedTags,
+      derivedContentFamilies: derivedFamilies,
+      contributionStrength: roundAdultTasteWeight(baseWeight),
+      evidenceLevels: uniqueStrings(contributions.map((row) => row.evidenceLevel)),
+      contributionScopeByFamily: Object.fromEntries(derivedFamilies.map((family) => [
+        family,
+        uniqueStrings(contributions.filter((row) => row.family === family).map((row) => row.evidenceLevel)),
+      ])),
+    };
+  }
+
+  const families = uniqueStrings([
+    ...Object.keys(familyPositiveByTitle),
+    ...Object.keys(familyNegativeByTitle),
+    ...currentLikedFamilies,
+    ...currentAvoidFamilies,
+  ]);
+  const positiveWeight: Record<string, number> = {};
+  const negativeWeight: Record<string, number> = {};
+  const netWeight: Record<string, number> = {};
+  const likedTitlesByFamily: Record<string, string[]> = {};
+  const dislikedTitlesByFamily: Record<string, string[]> = {};
+  const positiveCount: Record<string, number> = {};
+  const negativeCount: Record<string, number> = {};
+  const polarityDecision: Record<string, AdultTastePolarityDecision> = {};
+  const polarityReason: Record<string, string> = {};
+  const familyContributionEvidenceLevel: Record<string, string[]> = {};
+
+  for (const family of families) {
+    const likedByTitle = familyPositiveByTitle[family] || {};
+    const dislikedByTitle = familyNegativeByTitle[family] || {};
+    likedTitlesByFamily[family] = Object.keys(likedByTitle);
+    dislikedTitlesByFamily[family] = Object.keys(dislikedByTitle);
+    positiveCount[family] = likedTitlesByFamily[family].length;
+    negativeCount[family] = dislikedTitlesByFamily[family].length;
+    positiveWeight[family] = roundAdultTasteWeight(Object.values(likedByTitle).reduce((sum, weight) => sum + Number(weight || 0), 0));
+    negativeWeight[family] = roundAdultTasteWeight(Object.values(dislikedByTitle).reduce((sum, weight) => sum + Number(weight || 0), 0));
+    netWeight[family] = roundAdultTasteWeight(positiveWeight[family] - negativeWeight[family]);
+    const decision = adultTastePolarityDecision(positiveWeight[family], negativeWeight[family], positiveCount[family], negativeCount[family]);
+    polarityDecision[family] = decision.decision;
+    polarityReason[family] = decision.reason;
+    familyContributionEvidenceLevel[family] = uniqueStrings([
+      ...Object.values(familyPositiveEvidenceLevelByTitle[family] || {}).flatMap((set) => Array.from(set)),
+      ...Object.values(familyNegativeEvidenceLevelByTitle[family] || {}).flatMap((set) => Array.from(set)),
+    ]);
+  }
+
+  const weightedLikedFamilies = families.filter((family) => ["strongly_liked", "weakly_liked", "mixed_positive"].includes(polarityDecision[family]));
+  const weightedAvoidFamilies = families.filter((family) => polarityDecision[family] === "true_avoid");
+  const weightedMixedFamilies = families.filter((family) => /^mixed_/.test(polarityDecision[family]));
+  const currentLikedSet = new Set(currentLikedFamilies);
+  const currentAvoidSet = new Set(currentAvoidFamilies);
+  const weightedLikedSet = new Set(weightedLikedFamilies);
+  const weightedAvoidSet = new Set(weightedAvoidFamilies);
+  const overlappingFamilies = currentLikedFamilies.filter((family) => currentAvoidSet.has(family));
+  const overlapEvidenceByFamily = Object.fromEntries(overlappingFamilies.map((family) => [
+    family,
+    {
+      likedTitles: likedTitlesByFamily[family] || [],
+      dislikedTitles: dislikedTitlesByFamily[family] || [],
+      avoidEvidenceCardinality: (dislikedTitlesByFamily[family] || []).length <= 1 ? "single_title" : "multiple_titles",
+      evidenceLevels: familyContributionEvidenceLevel[family] || [],
+    },
+  ]));
+
+  return {
+    adultTasteFamilyEvidenceBySwipe: evidenceBySwipe,
+    adultTastePositiveContributionBySwipe: positiveContributionBySwipe,
+    adultTasteNegativeContributionBySwipe: negativeContributionBySwipe,
+    adultTasteFamilyContributionReasonBySwipe: reasonBySwipe,
+    adultTasteFamilySourceTagsBySwipe: sourceTagsBySwipe,
+    adultTasteFamilyPositiveCount: positiveCount,
+    adultTasteFamilyNegativeCount: negativeCount,
+    adultTasteFamilyPositiveWeight: positiveWeight,
+    adultTasteFamilyNegativeWeight: negativeWeight,
+    adultTasteFamilyNetWeight: netWeight,
+    adultTasteFamilyLikedTitles: likedTitlesByFamily,
+    adultTasteFamilyDislikedTitles: dislikedTitlesByFamily,
+    adultTasteFamilySkippedTitles: skippedTitlesByFamily,
+    adultTasteSkippedTitlesExcludedFromPolarity: Array.from(skippedTitles),
+    adultTasteFamilyPolarityDecision: polarityDecision,
+    adultTasteFamilyPolarityReason: polarityReason,
+    adultTasteFamilyEvidenceLevel: familyContributionEvidenceLevel,
+    adultTasteOverlappingFamilies: overlappingFamilies,
+    adultTasteOverlapEvidenceByFamily: overlapEvidenceByFamily,
+    adultTasteOverlapCurrentResolutionByFamily: Object.fromEntries(overlappingFamilies.map((family) => [
+      family,
+      "current_binary_profile_exposes_family_as_liked_and_avoid; candidate_gate_can_cancel_equal_family_support",
+    ])),
+    adultTasteWeightedLikedFamilies: weightedLikedFamilies,
+    adultTasteWeightedAvoidFamilies: weightedAvoidFamilies,
+    adultTasteWeightedMixedFamilies: weightedMixedFamilies,
+    adultTasteWeightedPolarityByFamily: Object.fromEntries(families.map((family) => [
+      family,
+      {
+        decision: polarityDecision[family],
+        positiveWeight: positiveWeight[family],
+        negativeWeight: negativeWeight[family],
+        netWeight: netWeight[family],
+        positiveCount: positiveCount[family],
+        negativeCount: negativeCount[family],
+        likedTitles: likedTitlesByFamily[family] || [],
+        dislikedTitles: dislikedTitlesByFamily[family] || [],
+        skippedTitles: skippedTitlesByFamily[family] || [],
+        reason: polarityReason[family],
+      },
+    ])),
+    adultTasteWeightedChangedFamilies: families.filter((family) =>
+      currentLikedSet.has(family) !== weightedLikedSet.has(family)
+      || currentAvoidSet.has(family) !== weightedAvoidSet.has(family),
+    ),
+    adultTasteWeightedModelEnabledForSelection: false,
+    adultTasteWeightedModelConstants: {
+      genreContribution: 1,
+      themeToneCharacterContribution: 0.75,
+      tagContribution: 0.5,
+      formatContribution: 0.25,
+      perSwipeFamilyContribution: "max_per_family_per_swipe_to_avoid_double_counting_tags_from_one_title",
+      trueAvoidRule: "negative_only_family_or_repeated_negative_weight_greater_than_or_equal_positive_weight",
+      skipRule: "skips_recorded_but_zero_weight_for_weighted_polarity",
+    },
+  };
 }
 
 function addWeighted(map: Map<string, WeightedSignalV2>, rawValue: string, weight: number, evidence: string): void {
@@ -125,6 +449,15 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
     if (SOURCE_HINTS.has(source)) sourceHints.add(source);
   }
 
+  const positiveMaps = [tone, pacing, genreFamily, themes, characterDynamics, formatPreference];
+  const adultCurrentLikedFamilies = session.ageBand === "adult"
+    ? uniqueStrings(positiveMaps.flatMap((map) => [...map.values()].filter((signal) => signal.weight > 0).map((signal) => adultTastePrimaryContentFamily(signal.value)).filter(Boolean)))
+    : [];
+  const adultCurrentAvoidFamilies = session.ageBand === "adult"
+    ? uniqueStrings([...avoidSignals.values()].filter((signal) => signal.weight !== 0).map((signal) => adultTastePrimaryContentFamily(signal.value)).filter(Boolean))
+    : [];
+  const adultTasteDiagnostics = buildAdultTasteFamilyDiagnostics(session, adultCurrentLikedFamilies, adultCurrentAvoidFamilies);
+
   return {
     ageBand: session.ageBand,
     tone: sortedSignals(tone),
@@ -151,6 +484,7 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
       middleGradesDeepDebugRequestedButNotActivated: deepDebugFailure.requestedButInactive,
       middleGradesDeepDebugActivationFailureReason: deepDebugFailure.reason,
       sessionReportHeader: deepDebug.active ? "MIDDLE GRADES DEEP DEBUG: ACTIVE" : undefined,
+      ...adultTasteDiagnostics,
     },
   };
 }
