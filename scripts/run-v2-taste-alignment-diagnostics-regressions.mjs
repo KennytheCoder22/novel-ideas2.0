@@ -137,6 +137,25 @@ function runSelection(candidates, profile = adultProfile, limit = 10) {
   return rejectedReasons;
 }
 
+function cueClassification(diagnostics, title, phrase) {
+  const rows = diagnostics.adultGoogleBooksNarrativeCueClassificationByTitle?.[title] || [];
+  return rows.find((row) => String(row?.phrase || "").toLowerCase() === phrase.toLowerCase());
+}
+
+function assertCueState(diagnostics, title, phrase, expectedState, message) {
+  const row = cueClassification(diagnostics, title, phrase);
+  assertTruthy(row, `${message}: expected cue ${phrase} to be classified`);
+  assertEqual(row.finalDiagnosticState, expectedState, message);
+}
+
+function assertNoGenuineAlias(diagnostics, title, phrase, message) {
+  const rows = diagnostics.adultGoogleBooksGenuineAliasCandidatesByTitle?.[title] || [];
+  assertFalsy(
+    rows.some((row) => String(row?.phrase || "").toLowerCase() === phrase.toLowerCase()),
+    message,
+  );
+}
+
 function adultPolarityProfile(signals) {
   return buildTasteProfile({
     ageBand: "adult",
@@ -579,6 +598,151 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
     "T30: parser confidence should drop when expected cues are not extracted",
   );
   console.log("PASS T30: narrative extraction diagnostics expose ignored mystery cues without changing eligibility");
+}
+
+// --- T31: Narrative cue classification separates extraction gaps from polarity outcomes ---
+{
+  const dislikedThriller = makeScoredCandidate({
+    title: "Disliked Thriller Cue",
+    likedSignals: [],
+    dislikedSignals: ["thriller"],
+    description: "A thriller about a witness running from a dangerous conspiracy.",
+    categories: ["Fiction / Thrillers / Suspense"],
+  });
+  let diagnostics = runSelection([dislikedThriller], adultProfile);
+  assertCueState(
+    diagnostics,
+    "Disliked Thriller Cue",
+    "thriller",
+    "canonical_cue_mapped_negative",
+    "T31a: thriller mapped only through disliked evidence should be negative, not unmapped",
+  );
+  assertFalsy(
+    (diagnostics.adultGoogleBooksUnmappedNarrativeCuesByTitle?.["Disliked Thriller Cue"] || []).some((row) => row?.phrase === "thriller"),
+    "T31a: mapped negative thriller must not appear in extraction-gap diagnostics",
+  );
+  assertTruthy(
+    (diagnostics.adultGoogleBooksNarrativeCueFalseUnmappedSuppressedByTitle?.["Disliked Thriller Cue"] || []).some((row) => row?.phrase === "thriller"),
+    "T31a: mapped negative thriller should be recorded as a suppressed false-unmapped cue",
+  );
+
+  const mixedCrimeProfile = adultPolarityProfile([
+    { title: "Liked Crime", action: "like", genres: ["Crime"], tags: ["crime"], source: "mock", format: "book" },
+    { title: "Disliked Crime", action: "dislike", genres: ["Crime"], tags: ["crime"], source: "mock", format: "book" },
+  ]);
+  const mixedCrime = makeScoredCandidate({
+    title: "Mixed Neutral Crime Cue",
+    likedSignals: ["crime"],
+    dislikedSignals: ["crime"],
+    description: "A crime novel about a detective caught between loyalty and justice.",
+    categories: ["Fiction / Crime"],
+  });
+  diagnostics = runSelection([mixedCrime], mixedCrimeProfile);
+  assertCueState(
+    diagnostics,
+    "Mixed Neutral Crime Cue",
+    "crime",
+    "canonical_cue_mapped_mixed_neutral",
+    "T31b: crime in a mixed-neutral profile should not be reported as unmapped",
+  );
+
+  const historical = makeScoredCandidate({
+    title: "Mapped Historical Cue",
+    likedSignals: ["historical"],
+    dislikedSignals: [],
+    description: "A historical novel following a family through wartime upheaval.",
+    categories: ["Fiction / Historical"],
+  });
+  diagnostics = runSelection([historical], adultProfile);
+  assertCueState(
+    diagnostics,
+    "Mapped Historical Cue",
+    "historical",
+    "canonical_cue_mapped_positive",
+    "T31c: historical should be recognized as mapped positive",
+  );
+  assertNoGenuineAlias(diagnostics, "Mapped Historical Cue", "historical", "T31c: historical must not be proposed as an alias");
+
+  const scifi = makeScoredCandidate({
+    title: "Mapped Sci-Fi Cue",
+    likedSignals: ["science fiction"],
+    dislikedSignals: [],
+    description: "A sci-fi science fiction novel about an experiment aboard a distant space station.",
+    categories: ["Fiction / Science Fiction"],
+  });
+  diagnostics = runSelection([scifi], adultProfile);
+  assertCueState(
+    diagnostics,
+    "Mapped Sci-Fi Cue",
+    "science fiction",
+    "canonical_cue_mapped_positive",
+    "T31d: science fiction should be recognized as mapped positive",
+  );
+  assertCueState(
+    diagnostics,
+    "Mapped Sci-Fi Cue",
+    "sci-fi",
+    "canonical_cue_mapped_positive",
+    "T31d: sci-fi should be recognized as an approved/canonical mapped cue",
+  );
+  assertNoGenuineAlias(diagnostics, "Mapped Sci-Fi Cue", "science fiction", "T31d: science fiction must not be proposed as an alias");
+  assertNoGenuineAlias(diagnostics, "Mapped Sci-Fi Cue", "sci-fi", "T31d: sci-fi must not be proposed as an alias");
+
+  const romantic = makeScoredCandidate({
+    title: "Romantic Missing Cue",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A romantic story about two rivals learning to trust each other.",
+    categories: ["Fiction / Romance"],
+  });
+  diagnostics = runSelection([romantic], adultProfile);
+  assertCueState(
+    diagnostics,
+    "Romantic Missing Cue",
+    "romantic",
+    "canonical_cue_missing_expected_family",
+    "T31e: romantic is already canonical and should be an extraction gap, not an alias",
+  );
+  assertNoGenuineAlias(diagnostics, "Romantic Missing Cue", "romantic", "T31e: recognized romantic cue must not be proposed as alias");
+
+  const serialKiller = makeScoredCandidate({
+    title: "Serial Killer Alias Cue",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A serial killer stalks a detective through a rain-soaked city.",
+    categories: ["Fiction / Suspense"],
+  });
+  diagnostics = runSelection([serialKiller], adultProfile);
+  assertCueState(
+    diagnostics,
+    "Serial Killer Alias Cue",
+    "serial killer",
+    "genuine_alias_candidate",
+    "T31f: noncanonical serial killer phrase should remain a genuine alias candidate",
+  );
+  assertTruthy(
+    (diagnostics.adultGoogleBooksGenuineAliasCandidatesByTitle?.["Serial Killer Alias Cue"] || []).some((row) => row?.phrase === "serial killer"),
+    "T31f: genuine alias candidates should include serial killer",
+  );
+
+  const promo = makeScoredCandidate({
+    title: "Promotional Blurb Cue",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A gripping page-turner perfect for readers who love twisty stories and bestselling suspense.",
+    categories: ["Fiction"],
+  });
+  diagnostics = runSelection([promo], adultProfile);
+  assertCueState(
+    diagnostics,
+    "Promotional Blurb Cue",
+    "gripping",
+    "ambiguous_or_nonactionable",
+    "T31g: promotional copy should be classified as ambiguous/nonactionable",
+  );
+  assertNoGenuineAlias(diagnostics, "Promotional Blurb Cue", "gripping", "T31g: promotional copy must not become an alias");
+
+  console.log("PASS T31: narrative cue classification separates mapped, missing, alias, and ambiguous states");
 }
 
 console.log("\nAll taste-alignment diagnostic regression tests passed.");

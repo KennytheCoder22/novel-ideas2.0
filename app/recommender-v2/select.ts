@@ -4902,6 +4902,39 @@ type AdultGoogleBooksNarrativeCueEvidence = {
   fields: string[];
 };
 
+type AdultGoogleBooksAmbiguousCueEvidence = {
+  phrase: string;
+  fields: string[];
+  reason: string;
+};
+
+type AdultGoogleBooksNarrativeCueClassificationState =
+  | "canonical_cue_mapped_positive"
+  | "canonical_cue_mapped_negative"
+  | "canonical_cue_mapped_mixed_neutral"
+  | "canonical_cue_mapped_mixed_negative"
+  | "canonical_cue_mapped_context_only"
+  | "canonical_cue_mapped_below_threshold"
+  | "canonical_cue_missing_expected_family"
+  | "genuine_alias_candidate"
+  | "ambiguous_or_nonactionable";
+
+type AdultGoogleBooksNarrativeCueClassification = {
+  phrase: string;
+  sourceFields: string[];
+  expectedFamily: string;
+  canonical: boolean;
+  approvedAlias: boolean;
+  allExtractedFamilies: string[];
+  likedFamilyEvidence: string[];
+  dislikedFamilyEvidence: string[];
+  productionFamilyPolarity: string;
+  evidenceSourceClassification: string;
+  meaningfulAlignmentResult: string;
+  finalDiagnosticState: AdultGoogleBooksNarrativeCueClassificationState;
+  explanation: string;
+};
+
 const ADULT_GOOGLEBOOKS_NARRATIVE_CUES: AdultGoogleBooksNarrativeCue[] = [
   { family: "mystery_crime_thriller", phrase: "mystery", pattern: /\bmystery\b/ },
   { family: "mystery_crime_thriller", phrase: "thriller", pattern: /\bthrillers?\b/ },
@@ -4959,6 +4992,53 @@ const ADULT_GOOGLEBOOKS_NARRATIVE_CUES: AdultGoogleBooksNarrativeCue[] = [
   { family: "comedy", phrase: "satire", pattern: /\bsatir(?:e|ical)\b/ },
 ];
 
+const ADULT_GOOGLEBOOKS_CANONICAL_NARRATIVE_CUES = new Set([
+  "thriller",
+  "suspense",
+  "crime",
+  "mystery",
+  "detective",
+  "investigation",
+  "murder",
+  "horror",
+  "supernatural",
+  "haunted",
+  "ghost",
+  "adventure",
+  "action",
+  "survival",
+  "historical",
+  "romance",
+  "romantic",
+  "science fiction",
+  "sci-fi",
+  "sci fi",
+]);
+
+const ADULT_GOOGLEBOOKS_GENUINE_ALIAS_CUE_PHRASES = new Set([
+  "serial killer",
+  "missing person",
+  "conspiracy",
+  "monster",
+  "nightmare",
+  "family saga",
+  "grief",
+  "wartime",
+  "empire",
+  "alien",
+]);
+
+const ADULT_GOOGLEBOOKS_AMBIGUOUS_NARRATIVE_CUES = [
+  { phrase: "gripping", pattern: /\bgripping\b/, reason: "promotional_blurb_language" },
+  { phrase: "twisty", pattern: /\btwisty\b/, reason: "promotional_blurb_language" },
+  { phrase: "page-turner", pattern: /\bpage turner\b/, reason: "promotional_blurb_language" },
+  { phrase: "perfect for readers", pattern: /\bperfect for readers\b/, reason: "comparative_reader_positioning" },
+  { phrase: "fans of", pattern: /\bfans of\b/, reason: "comparative_reader_positioning" },
+  { phrase: "for readers who love", pattern: /\bfor readers who love\b/, reason: "comparative_reader_positioning" },
+  { phrase: "bestselling", pattern: /\bbestselling\b/, reason: "market_positioning" },
+  { phrase: "award-winning", pattern: /\baward winning\b/, reason: "market_positioning" },
+];
+
 function adultGoogleBooksRawNarrativeDescription(candidate: ScoredCandidate): string {
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const volumeInfo = (raw.volumeInfo && typeof raw.volumeInfo === "object") ? (raw.volumeInfo as Record<string, unknown>) : {};
@@ -4991,6 +5071,25 @@ function adultGoogleBooksNarrativeCueEvidence(candidate: ScoredCandidate): Adult
     .filter((row): row is AdultGoogleBooksNarrativeCueEvidence => Boolean(row));
 }
 
+function adultGoogleBooksAmbiguousCueEvidence(candidate: ScoredCandidate): AdultGoogleBooksAmbiguousCueEvidence[] {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const metadataFields = [
+    { field: "description", text: fields.description },
+    { field: "categories", text: fields.categories },
+    { field: "genres", text: fields.genres },
+  ].filter((row) => row.text);
+  return ADULT_GOOGLEBOOKS_AMBIGUOUS_NARRATIVE_CUES
+    .map((cue) => {
+      const matchedFields = metadataFields
+        .filter((row) => cue.pattern.test(row.text))
+        .map((row) => row.field);
+      return matchedFields.length > 0
+        ? { phrase: cue.phrase, fields: matchedFields, reason: cue.reason }
+        : undefined;
+    })
+    .filter((row): row is AdultGoogleBooksAmbiguousCueEvidence => Boolean(row));
+}
+
 function adultGoogleBooksProfileLikedFamiliesFromProfile(profile?: TasteProfile): string[] {
   if (!profile) return [];
   const signals = [
@@ -4998,7 +5097,7 @@ function adultGoogleBooksProfileLikedFamiliesFromProfile(profile?: TasteProfile)
     ...(profile.tone || []).map((s) => String(s.value || "")),
     ...(profile.themes || []).map((s) => String(s.value || "")),
   ].filter(Boolean);
-  return uniqueSignals(signals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean));
+  return adultOpenLibraryUniqueFamilies(signals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean));
 }
 
 function adultGoogleBooksFlattenSignalTextMap(value: unknown): string[] {
@@ -5013,12 +5112,128 @@ function adultGoogleBooksIncrementCounter(map: Record<string, number>, key: stri
   map[key] = Number(map[key] || 0) + 1;
 }
 
+function adultGoogleBooksCueIsCanonical(cue: AdultGoogleBooksNarrativeCueEvidence): boolean {
+  const phrase = normalized(cue.phrase);
+  return ADULT_GOOGLEBOOKS_CANONICAL_NARRATIVE_CUES.has(phrase)
+    || adultOpenLibraryPrimaryContentFamily(phrase) === cue.family
+    || adultOpenLibraryFamilySupportedByText(cue.family, phrase);
+}
+
+function adultGoogleBooksCueIsApprovedAlias(cue: AdultGoogleBooksNarrativeCueEvidence): boolean {
+  const phrase = normalized(cue.phrase);
+  return adultOpenLibraryPrimaryContentFamily(phrase) !== cue.family
+    && adultOpenLibraryFamilySupportedByText(cue.family, phrase);
+}
+
+function adultGoogleBooksCueClassification(
+  cue: AdultGoogleBooksNarrativeCueEvidence,
+  meaningfulTaste: ReturnType<typeof adultGoogleBooksMeaningfulTasteEligibility>,
+  profile?: TasteProfile,
+): AdultGoogleBooksNarrativeCueClassification {
+  const phrase = normalized(cue.phrase);
+  const likedFamilyEvidence = meaningfulTaste.likedSignals
+    .filter((signal) => adultOpenLibraryPrimaryContentFamily(signal) === cue.family);
+  const dislikedFamilyEvidence = meaningfulTaste.dislikedSignals
+    .filter((signal) => adultOpenLibraryPrimaryContentFamily(signal) === cue.family);
+  const allExtractedFamilies = adultOpenLibraryUniqueFamilies([
+    ...meaningfulTaste.allCandidateTasteFamilies,
+    ...meaningfulTaste.likedSignals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean),
+    ...meaningfulTaste.dislikedSignals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean),
+  ]);
+  const productionPolarity = profile ? String(adultTasteProductionPolarity(profile)[cue.family]?.decision || "not_profile_family") : "profile_unavailable";
+  const canonical = adultGoogleBooksCueIsCanonical(cue);
+  const approvedAlias = adultGoogleBooksCueIsApprovedAlias(cue);
+  const familyExtracted = allExtractedFamilies.includes(cue.family);
+  const contextOnly = meaningfulTaste.contextOnlyLikedSignals
+    .map(normalized)
+    .some((signal) => signal === phrase || signalPresentInText(phrase, signal) || signalPresentInText(signal, phrase));
+  let finalDiagnosticState: AdultGoogleBooksNarrativeCueClassificationState;
+  let explanation = "";
+
+  if (familyExtracted) {
+    if (contextOnly) {
+      finalDiagnosticState = "canonical_cue_mapped_context_only";
+      explanation = "Cue-like evidence was recognized but the meaningful-alignment gate classified it as context-only evidence.";
+    } else if (productionPolarity === "mixed_neutral") {
+      finalDiagnosticState = "canonical_cue_mapped_mixed_neutral";
+      explanation = "Expected family was extracted, but production polarity resolved that family as mixed-neutral for this profile.";
+    } else if (productionPolarity === "mixed_negative") {
+      finalDiagnosticState = "canonical_cue_mapped_mixed_negative";
+      explanation = "Expected family was extracted, but production polarity resolved that family as mixed-negative for this profile.";
+    } else if (meaningfulTaste.positiveNetTasteFamilies.includes(cue.family)) {
+      finalDiagnosticState = "canonical_cue_mapped_positive";
+      explanation = "Expected family was extracted and counted as positive production evidence.";
+    } else if (
+      meaningfulTaste.negativeNetTasteFamilies.includes(cue.family)
+      || productionPolarity === "true_avoid"
+      || (likedFamilyEvidence.length === 0 && dislikedFamilyEvidence.length > 0)
+    ) {
+      finalDiagnosticState = "canonical_cue_mapped_negative";
+      explanation = "Expected family was extracted only as disliked or avoid evidence.";
+    } else {
+      finalDiagnosticState = "canonical_cue_mapped_below_threshold";
+      explanation = "Expected family was extracted, but it did not satisfy the current meaningful-alignment support threshold.";
+    }
+  } else if (canonical || approvedAlias) {
+    finalDiagnosticState = "canonical_cue_missing_expected_family";
+    explanation = "Known canonical or approved-alias cue exists in narrative metadata, but the expected family was not produced anywhere in extracted family evidence.";
+  } else if (ADULT_GOOGLEBOOKS_GENUINE_ALIAS_CUE_PHRASES.has(phrase)) {
+    finalDiagnosticState = "genuine_alias_candidate";
+    explanation = "Phrase is not currently canonical for this family but strongly and unambiguously implies it.";
+  } else {
+    finalDiagnosticState = "ambiguous_or_nonactionable";
+    explanation = "Phrase is too broad, contextual, promotional, or ambiguous to become a safe semantic alias.";
+  }
+
+  return {
+    phrase: cue.phrase,
+    sourceFields: cue.fields,
+    expectedFamily: cue.family,
+    canonical,
+    approvedAlias,
+    allExtractedFamilies,
+    likedFamilyEvidence,
+    dislikedFamilyEvidence,
+    productionFamilyPolarity: productionPolarity,
+    evidenceSourceClassification: meaningfulTaste.tasteEvidenceSource,
+    meaningfulAlignmentResult: meaningfulTaste.passed ? `passed:${meaningfulTaste.reason}` : `failed:${meaningfulTaste.reason}`,
+    finalDiagnosticState,
+    explanation,
+  };
+}
+
+function adultGoogleBooksAmbiguousCueClassification(
+  cue: AdultGoogleBooksAmbiguousCueEvidence,
+  meaningfulTaste: ReturnType<typeof adultGoogleBooksMeaningfulTasteEligibility>,
+): AdultGoogleBooksNarrativeCueClassification {
+  return {
+    phrase: cue.phrase,
+    sourceFields: cue.fields,
+    expectedFamily: "",
+    canonical: false,
+    approvedAlias: false,
+    allExtractedFamilies: meaningfulTaste.allCandidateTasteFamilies,
+    likedFamilyEvidence: [],
+    dislikedFamilyEvidence: [],
+    productionFamilyPolarity: "not_family_evidence",
+    evidenceSourceClassification: meaningfulTaste.tasteEvidenceSource,
+    meaningfulAlignmentResult: meaningfulTaste.passed ? `passed:${meaningfulTaste.reason}` : `failed:${meaningfulTaste.reason}`,
+    finalDiagnosticState: "ambiguous_or_nonactionable",
+    explanation: cue.reason,
+  };
+}
+
 function adultGoogleBooksNarrativeFamilyExtractionAnalysis(
   candidate: ScoredCandidate,
   meaningfulTaste: ReturnType<typeof adultGoogleBooksMeaningfulTasteEligibility>,
   profile?: TasteProfile,
 ): Record<string, unknown> {
   const cueEvidence = adultGoogleBooksNarrativeCueEvidence(candidate);
+  const ambiguousCueEvidence = adultGoogleBooksAmbiguousCueEvidence(candidate);
+  const cueClassifications = [
+    ...cueEvidence.map((cue) => adultGoogleBooksCueClassification(cue, meaningfulTaste, profile)),
+    ...ambiguousCueEvidence.map((cue) => adultGoogleBooksAmbiguousCueClassification(cue, meaningfulTaste)),
+  ];
   const expectedByFamily: Record<string, string[]> = {};
   const expectedEvidenceByFamily: Record<string, string[]> = {};
   for (const cue of cueEvidence) {
@@ -5029,13 +5244,13 @@ function adultGoogleBooksNarrativeFamilyExtractionAnalysis(
     ]);
   }
 
-  const extractedLikedFamilies = uniqueSignals(
+  const extractedLikedFamilies = adultOpenLibraryUniqueFamilies(
     meaningfulTaste.likedSignals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean),
   );
-  const extractedDislikedFamilies = uniqueSignals(
+  const extractedDislikedFamilies = adultOpenLibraryUniqueFamilies(
     meaningfulTaste.dislikedSignals.map(adultOpenLibraryPrimaryContentFamily).filter(Boolean),
   );
-  const allExtractedFamilies = uniqueSignals([
+  const allExtractedFamilies = adultOpenLibraryUniqueFamilies([
     ...extractedLikedFamilies,
     ...extractedDislikedFamilies,
     ...meaningfulTaste.allCandidateTasteFamilies,
@@ -5049,43 +5264,52 @@ function adultGoogleBooksNarrativeFamilyExtractionAnalysis(
     ...meaningfulTaste.likedSignals,
     ...meaningfulTaste.dislikedSignals,
   ].map(normalized).filter(Boolean));
-  const ignoredNarrativePhrases = cueEvidence
-    .filter((cue) => {
-      const phrase = normalized(cue.phrase);
-      return !detectedSignalValues.includes(phrase)
-        && !detectedSignalTexts.some((matched) => signalPresentInText(matched, phrase));
-    })
+  const ignoredNarrativePhrases = cueClassifications
+    .filter((cue) => cue.finalDiagnosticState !== "canonical_cue_mapped_positive")
     .map((cue) => ({
       phrase: cue.phrase,
-      family: cue.family,
-      fields: cue.fields,
-      mappedFamily: allExtractedFamilies.includes(cue.family),
-      positiveFamily: meaningfulTaste.positiveNetTasteFamilies.includes(cue.family),
+      family: cue.expectedFamily,
+      fields: cue.sourceFields,
+      finalDiagnosticState: cue.finalDiagnosticState,
+      explanation: cue.explanation,
     }));
-  const unmappedNarrativeCues = ignoredNarrativePhrases
-    .filter((cue) => !cue.mappedFamily)
+  const unmappedNarrativeCues = cueClassifications
+    .filter((cue) => cue.finalDiagnosticState === "canonical_cue_missing_expected_family" || cue.finalDiagnosticState === "genuine_alias_candidate")
     .map((cue) => ({
       phrase: cue.phrase,
-      family: cue.family,
-      fields: cue.fields,
+      family: cue.expectedFamily,
+      fields: cue.sourceFields,
+      finalDiagnosticState: cue.finalDiagnosticState,
+      explanation: cue.explanation,
     }));
   const profileLikedFamilies = adultGoogleBooksProfileLikedFamiliesFromProfile(profile);
-  const futureAliasCandidates = unmappedNarrativeCues
-    .filter((cue) => profileLikedFamilies.length === 0 || profileLikedFamilies.includes(cue.family))
+  const futureAliasCandidates = cueClassifications
+    .filter((cue) => cue.finalDiagnosticState === "genuine_alias_candidate")
+    .filter((cue) => profileLikedFamilies.length === 0 || profileLikedFamilies.includes(cue.expectedFamily))
     .map((cue) => ({
       phrase: cue.phrase,
-      family: cue.family,
-      fields: cue.fields,
-      reason: profileLikedFamilies.includes(cue.family)
+      family: cue.expectedFamily,
+      fields: cue.sourceFields,
+      finalDiagnosticState: cue.finalDiagnosticState,
+      reason: profileLikedFamilies.includes(cue.expectedFamily)
         ? "visible_profile_family_cue_not_extracted"
         : "visible_narrative_cue_not_extracted",
     }));
-  const matchedExpectedFamilyCount = expectedFamilies.filter((family) => allExtractedFamilies.includes(family)).length;
+  const matchedExpectedFamilyCount = cueClassifications
+    .filter((cue) => cue.expectedFamily)
+    .filter((cue) => !["canonical_cue_missing_expected_family", "genuine_alias_candidate", "ambiguous_or_nonactionable"].includes(cue.finalDiagnosticState))
+    .length;
+  const classifiedExpectedCueCount = cueClassifications.filter((cue) => cue.expectedFamily).length;
   const parserConfidence = expectedFamilies.length > 0
-    ? adultOpenLibraryRoundWeight(matchedExpectedFamilyCount / expectedFamilies.length)
+    ? adultOpenLibraryRoundWeight(matchedExpectedFamilyCount / Math.max(1, classifiedExpectedCueCount))
     : detectedSignalValues.length > 0
       ? 1
       : 0;
+  const canonicalCueMissingFamily = cueClassifications.filter((cue) => cue.finalDiagnosticState === "canonical_cue_missing_expected_family");
+  const genuineAliasCandidateCues = cueClassifications.filter((cue) => cue.finalDiagnosticState === "genuine_alias_candidate");
+  const falseUnmappedSuppressed = cueClassifications.filter((cue) =>
+    !["canonical_cue_missing_expected_family", "genuine_alias_candidate", "ambiguous_or_nonactionable"].includes(cue.finalDiagnosticState),
+  );
 
   return {
     rawNarrativeDescription: adultGoogleBooksRawNarrativeDescription(candidate),
@@ -5112,6 +5336,17 @@ function adultGoogleBooksNarrativeFamilyExtractionAnalysis(
     ignoredNarrativePhrases,
     unmappedNarrativeCues,
     futureAliasCandidates,
+    cueClassifications,
+    canonicalCueMissingFamily,
+    genuineAliasCandidateCues,
+    narrativeCuePolarityOutcomes: cueClassifications.map((cue) => ({
+      phrase: cue.phrase,
+      expectedFamily: cue.expectedFamily,
+      productionFamilyPolarity: cue.productionFamilyPolarity,
+      finalDiagnosticState: cue.finalDiagnosticState,
+      explanation: cue.explanation,
+    })),
+    falseUnmappedSuppressed,
     parserConfidence,
     expectedVsExtractedFamilyEvidence: {
       expectedFamiliesByCue: expectedByFamily,
@@ -5689,6 +5924,14 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const unmappedNarrativeCueHistogramByFamily: Record<string, Record<string, number>> = {};
   const futureAliasCandidateHistogram: Record<string, number> = {};
   const narrativeFamilyExtractionExamplesByFamily: Record<string, unknown[]> = {};
+  const narrativeCueClassificationByTitle: Record<string, unknown[]> = {};
+  const narrativeCueClassificationHistogram: Record<string, number> = {};
+  const canonicalCueMissingFamilyByTitle: Record<string, unknown[]> = {};
+  const canonicalCueMissingFamilyHistogram: Record<string, number> = {};
+  const genuineAliasCandidatesByTitle: Record<string, unknown[]> = {};
+  const genuineAliasCandidateHistogram: Record<string, number> = {};
+  const narrativeCuePolarityOutcomeByTitle: Record<string, unknown[]> = {};
+  const narrativeCueFalseUnmappedSuppressedByTitle: Record<string, unknown[]> = {};
   let profileLikedFamilies: string[] = [];
   let profileAvoidFamilies: string[] = [];
   if (profile.ageBand === "adult") {
@@ -5794,6 +6037,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksFutureAliasCandidateHistogram = {};
     diagnostics.adultGoogleBooksNarrativeFamilyExtractionExamplesByFamily = {};
     diagnostics.adultGoogleBooksNarrativeFamilyExtractionRootCauseSummary = "";
+    diagnostics.adultGoogleBooksNarrativeCueClassificationByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeCueClassificationHistogram = {};
+    diagnostics.adultGoogleBooksCanonicalCueMissingFamilyByTitle = {};
+    diagnostics.adultGoogleBooksCanonicalCueMissingFamilyHistogram = {};
+    diagnostics.adultGoogleBooksGenuineAliasCandidatesByTitle = {};
+    diagnostics.adultGoogleBooksGenuineAliasCandidateHistogram = {};
+    diagnostics.adultGoogleBooksNarrativeCuePolarityOutcomeByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeCueFalseUnmappedSuppressedByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeExtractionDiagnosticSummary = "";
     diagnostics.googleBooksPlannedQueries = [];
     diagnostics.googleBooksQueriesAttempted = [];
     diagnostics.googleBooksRawCountByQuery = {};
@@ -5911,6 +6163,25 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     expectedVsExtractedFamilyEvidenceByTitle[candidate.title] = (narrativeExtraction.expectedVsExtractedFamilyEvidence && typeof narrativeExtraction.expectedVsExtractedFamilyEvidence === "object" && !Array.isArray(narrativeExtraction.expectedVsExtractedFamilyEvidence))
       ? narrativeExtraction.expectedVsExtractedFamilyEvidence as Record<string, unknown>
       : {};
+    narrativeCueClassificationByTitle[candidate.title] = Array.isArray(narrativeExtraction.cueClassifications)
+      ? narrativeExtraction.cueClassifications as unknown[]
+      : [];
+    canonicalCueMissingFamilyByTitle[candidate.title] = Array.isArray(narrativeExtraction.canonicalCueMissingFamily)
+      ? narrativeExtraction.canonicalCueMissingFamily as unknown[]
+      : [];
+    genuineAliasCandidatesByTitle[candidate.title] = Array.isArray(narrativeExtraction.genuineAliasCandidateCues)
+      ? narrativeExtraction.genuineAliasCandidateCues as unknown[]
+      : [];
+    narrativeCuePolarityOutcomeByTitle[candidate.title] = Array.isArray(narrativeExtraction.narrativeCuePolarityOutcomes)
+      ? narrativeExtraction.narrativeCuePolarityOutcomes as unknown[]
+      : [];
+    narrativeCueFalseUnmappedSuppressedByTitle[candidate.title] = Array.isArray(narrativeExtraction.falseUnmappedSuppressed)
+      ? narrativeExtraction.falseUnmappedSuppressed as unknown[]
+      : [];
+    for (const row of narrativeCueClassificationByTitle[candidate.title]) {
+      const state = String((row as Record<string, unknown>)?.finalDiagnosticState || "");
+      adultGoogleBooksIncrementCounter(narrativeCueClassificationHistogram, state);
+    }
     for (const row of unmappedNarrativeCuesByTitle[candidate.title]) {
       const family = String((row as Record<string, unknown>)?.family || "");
       const phrase = String((row as Record<string, unknown>)?.phrase || "");
@@ -5930,9 +6201,19 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
         },
       ].slice(0, 8);
     }
+    for (const row of canonicalCueMissingFamilyByTitle[candidate.title]) {
+      const family = String((row as Record<string, unknown>)?.expectedFamily || "");
+      const phrase = String((row as Record<string, unknown>)?.phrase || "");
+      adultGoogleBooksIncrementCounter(canonicalCueMissingFamilyHistogram, family && phrase ? `${family}:${phrase}` : phrase || family);
+    }
     for (const row of futureAliasCandidatesByTitle[candidate.title]) {
       const phrase = String((row as Record<string, unknown>)?.phrase || "");
       adultGoogleBooksIncrementCounter(futureAliasCandidateHistogram, phrase);
+    }
+    for (const row of genuineAliasCandidatesByTitle[candidate.title]) {
+      const family = String((row as Record<string, unknown>)?.expectedFamily || "");
+      const phrase = String((row as Record<string, unknown>)?.phrase || "");
+      adultGoogleBooksIncrementCounter(genuineAliasCandidateHistogram, family && phrase ? `${family}:${phrase}` : phrase || family);
     }
     if (eligibility.reason === "adult_googlebooks_missing_meaningful_document_taste_alignment") {
       const failureDetails = adultGoogleBooksMeaningfulAlignmentFailureDetails(candidate, profileMeaningfulTaste, profile);
@@ -6038,6 +6319,10 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
       return `${family}:${total}${topPhrases ? ` (${topPhrases})` : ""}`;
     })
     .join(" | ");
+  const narrativeExtractionDiagnosticSummary = Object.entries(narrativeCueClassificationHistogram)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([state, count]) => `${state}:${count}`)
+    .join(" | ");
 
   diagnostics.adultGoogleBooksFinalGateApplied = true;
   diagnostics.adultGoogleBooksEligibilityReasonByTitle = eligibilityReasonByTitle;
@@ -6116,6 +6401,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksFutureAliasCandidateHistogram = futureAliasCandidateHistogram;
   diagnostics.adultGoogleBooksNarrativeFamilyExtractionExamplesByFamily = narrativeFamilyExtractionExamplesByFamily;
   diagnostics.adultGoogleBooksNarrativeFamilyExtractionRootCauseSummary = narrativeFamilyExtractionRootCauseSummary;
+  diagnostics.adultGoogleBooksNarrativeCueClassificationByTitle = narrativeCueClassificationByTitle;
+  diagnostics.adultGoogleBooksNarrativeCueClassificationHistogram = narrativeCueClassificationHistogram;
+  diagnostics.adultGoogleBooksCanonicalCueMissingFamilyByTitle = canonicalCueMissingFamilyByTitle;
+  diagnostics.adultGoogleBooksCanonicalCueMissingFamilyHistogram = canonicalCueMissingFamilyHistogram;
+  diagnostics.adultGoogleBooksGenuineAliasCandidatesByTitle = genuineAliasCandidatesByTitle;
+  diagnostics.adultGoogleBooksGenuineAliasCandidateHistogram = genuineAliasCandidateHistogram;
+  diagnostics.adultGoogleBooksNarrativeCuePolarityOutcomeByTitle = narrativeCuePolarityOutcomeByTitle;
+  diagnostics.adultGoogleBooksNarrativeCueFalseUnmappedSuppressedByTitle = narrativeCueFalseUnmappedSuppressedByTitle;
+  diagnostics.adultGoogleBooksNarrativeExtractionDiagnosticSummary = narrativeExtractionDiagnosticSummary;
   diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
   diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
   diagnostics.googleBooksRankedCandidateTitles = uniqueSignals(rankedCandidateTitles);
