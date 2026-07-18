@@ -138,6 +138,33 @@ type AdultGoogleBooksNormalizationDiagnostics = {
   googleBooksAnthologyEvidenceByTitle: Record<string, string[]>;
   googleBooksReferenceEvidenceByTitle: Record<string, string[]>;
   googleBooksPublisherEvidenceByTitle: Record<string, string[]>;
+  googleBooksPublicationShapeByTitle: Record<string, string>;
+  googleBooksNarrativeConfidenceByTitle: Record<string, number>;
+  googleBooksPublicationShapeEvidenceByTitle: Record<string, string[]>;
+  googleBooksNarrativePriorityAdjustmentByTitle: Record<string, number>;
+  googleBooksPublicationShapeRejectedBeforeRankingByTitle: Record<string, string>;
+  googleBooksDominantPublicationShapeEvidenceByTitle: Record<string, string[]>;
+  googleBooksOverriddenNarrativeEvidenceByTitle: Record<string, string[]>;
+  googleBooksPublicationShapePrecedenceDecisionByTitle: Record<string, string>;
+  googleBooksExplicitNonNarrativeIdentityByTitle: Record<string, string[]>;
+  googleBooksStoryLevelNarrativeEvidenceByTitle: Record<string, string[]>;
+  googleBooksGenericCategoryTitleByTitle: Record<string, boolean>;
+  googleBooksGenericCategoryEvidenceByTitle: Record<string, string[]>;
+  googleBooksGenericCategoryRejectedBeforeRankingByTitle: Record<string, string>;
+  googleBooksUnknownShapeEligibilityByTitle: Record<string, boolean>;
+  googleBooksUnknownShapeEvidenceByTitle: Record<string, string[]>;
+  googleBooksUnknownShapeRejectedReasonByTitle: Record<string, string>;
+  googleBooksUnknownStoryEvidenceCountByTitle: Record<string, number>;
+  googleBooksUnknownStoryEvidenceFamiliesByTitle: Record<string, string[]>;
+  googleBooksUnknownNarrativeCorroborationByTitle: Record<string, string[]>;
+  googleBooksUnknownEligibilityThresholdDecisionByTitle: Record<string, string>;
+  googleBooksSubjectOfStudyTitleByTitle: Record<string, boolean>;
+  googleBooksSubjectOfStudyEvidenceByTitle: Record<string, string[]>;
+  googleBooksSubjectOfStudyRejectedBeforeRankingByTitle: Record<string, string>;
+  googleBooksCuratedBookGuideIdentityByTitle: Record<string, boolean>;
+  googleBooksCuratedBookGuideEvidenceByTitle: Record<string, string[]>;
+  googleBooksPeriodicalIdentityEvidenceByTitle: Record<string, string[]>;
+  googleBooksPeriodicalIdentityDecisionByTitle: Record<string, string>;
   googleBooksEnteredRanking: string[];
   googleBooksRejectedBeforeRankingReason: Record<string, string>;
 };
@@ -212,6 +239,108 @@ function adultGoogleBooksPublisherEvidenceFromNormalized(candidate: NormalizedCa
   return Array.from(new Set(evidence));
 }
 
+const ADULT_GOOGLE_BOOKS_NON_NARRATIVE_PUBLICATION_SHAPES = new Set([
+  "reference",
+  "critical_study",
+  "academic_text",
+  "interview_collection",
+  "author_commentary",
+  "writing_guide",
+  "readers_advisory",
+  "genre_survey",
+  "literary_history",
+  "public_domain_compilation",
+  "nonfiction",
+  "anthology",
+  "essay_collection",
+  "periodical",
+  "production_history",
+  "miscellany",
+  "generic_category_catalog",
+]);
+
+function adultGoogleBooksShapeDiagnostics(candidate: NormalizedCandidate): {
+  shape: string;
+  narrativeConfidence: number;
+  evidence: string[];
+  narrativePriorityAdjustment: number;
+  dominantPublicationShapeEvidence: string[];
+  overriddenNarrativeEvidence: string[];
+  publicationShapePrecedenceDecision: string;
+  explicitNonNarrativeIdentity: string[];
+  storyLevelNarrativeEvidence: string[];
+  genericCategoryTitle: boolean;
+  genericCategoryEvidence: string[];
+  unknownShapeEligibility: boolean;
+  unknownShapeEvidence: string[];
+  unknownShapeRejectedReason: string;
+  unknownStoryEvidenceCount: number;
+  unknownStoryEvidenceFamilies: string[];
+  unknownNarrativeCorroboration: string[];
+  unknownEligibilityThresholdDecision: string;
+  subjectOfStudyTitle: boolean;
+  subjectOfStudyEvidence: string[];
+  curatedBookGuideIdentity: boolean;
+  curatedBookGuideEvidence: string[];
+  periodicalIdentityEvidence: string[];
+  periodicalIdentityDecision: string;
+} {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const diagnostics = candidate.diagnostics || {};
+  const shape = String(diagnostics.googleBooksPublicationShape || raw.googleBooksPublicationShape || "unknown");
+  const narrativeConfidence = Number(diagnostics.googleBooksNarrativeConfidence ?? raw.googleBooksNarrativeConfidence ?? 0);
+  const narrativePriorityAdjustment = Number(diagnostics.googleBooksNarrativePriorityAdjustment ?? raw.googleBooksNarrativePriorityAdjustment ?? 0);
+  const evidenceValue = diagnostics.googleBooksPublicationShapeEvidence || raw.googleBooksPublicationShapeEvidence;
+  const evidence = Array.isArray(evidenceValue) ? evidenceValue.map((item) => String(item || "")).filter(Boolean) : [];
+  const dominantEvidenceValue = diagnostics.googleBooksDominantPublicationShapeEvidence || raw.googleBooksDominantPublicationShapeEvidence;
+  const overriddenEvidenceValue = diagnostics.googleBooksOverriddenNarrativeEvidence || raw.googleBooksOverriddenNarrativeEvidence;
+  const explicitIdentityValue = diagnostics.googleBooksExplicitNonNarrativeIdentity || raw.googleBooksExplicitNonNarrativeIdentity;
+  const storyEvidenceValue = diagnostics.googleBooksStoryLevelNarrativeEvidence || raw.googleBooksStoryLevelNarrativeEvidence;
+  const genericEvidenceValue = diagnostics.googleBooksGenericCategoryEvidence || raw.googleBooksGenericCategoryEvidence;
+  const unknownEvidenceValue = diagnostics.googleBooksUnknownShapeEvidence || raw.googleBooksUnknownShapeEvidence;
+  const unknownStoryFamiliesValue = diagnostics.googleBooksUnknownStoryEvidenceFamilies || raw.googleBooksUnknownStoryEvidenceFamilies;
+  const unknownCorroborationValue = diagnostics.googleBooksUnknownNarrativeCorroboration || raw.googleBooksUnknownNarrativeCorroboration;
+  const subjectOfStudyEvidenceValue = diagnostics.googleBooksSubjectOfStudyEvidence || raw.googleBooksSubjectOfStudyEvidence;
+  const curatedBookGuideEvidenceValue = diagnostics.googleBooksCuratedBookGuideEvidence || raw.googleBooksCuratedBookGuideEvidence;
+  const periodicalIdentityEvidenceValue = diagnostics.googleBooksPeriodicalIdentityEvidence || raw.googleBooksPeriodicalIdentityEvidence;
+  return {
+    shape,
+    narrativeConfidence: Number.isFinite(narrativeConfidence) ? narrativeConfidence : 0,
+    evidence,
+    narrativePriorityAdjustment: Number.isFinite(narrativePriorityAdjustment) ? narrativePriorityAdjustment : 0,
+    dominantPublicationShapeEvidence: Array.isArray(dominantEvidenceValue) ? dominantEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    overriddenNarrativeEvidence: Array.isArray(overriddenEvidenceValue) ? overriddenEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    publicationShapePrecedenceDecision: String(diagnostics.googleBooksPublicationShapePrecedenceDecision || raw.googleBooksPublicationShapePrecedenceDecision || ""),
+    explicitNonNarrativeIdentity: Array.isArray(explicitIdentityValue) ? explicitIdentityValue.map((item) => String(item || "")).filter(Boolean) : [],
+    storyLevelNarrativeEvidence: Array.isArray(storyEvidenceValue) ? storyEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    genericCategoryTitle: Boolean(diagnostics.googleBooksGenericCategoryTitle ?? raw.googleBooksGenericCategoryTitle),
+    genericCategoryEvidence: Array.isArray(genericEvidenceValue) ? genericEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    unknownShapeEligibility: Boolean(diagnostics.googleBooksUnknownShapeEligibility ?? raw.googleBooksUnknownShapeEligibility),
+    unknownShapeEvidence: Array.isArray(unknownEvidenceValue) ? unknownEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    unknownShapeRejectedReason: String(diagnostics.googleBooksUnknownShapeRejectedReason || raw.googleBooksUnknownShapeRejectedReason || ""),
+    unknownStoryEvidenceCount: Number(diagnostics.googleBooksUnknownStoryEvidenceCount ?? raw.googleBooksUnknownStoryEvidenceCount ?? 0),
+    unknownStoryEvidenceFamilies: Array.isArray(unknownStoryFamiliesValue) ? unknownStoryFamiliesValue.map((item) => String(item || "")).filter(Boolean) : [],
+    unknownNarrativeCorroboration: Array.isArray(unknownCorroborationValue) ? unknownCorroborationValue.map((item) => String(item || "")).filter(Boolean) : [],
+    unknownEligibilityThresholdDecision: String(diagnostics.googleBooksUnknownEligibilityThresholdDecision || raw.googleBooksUnknownEligibilityThresholdDecision || ""),
+    subjectOfStudyTitle: Boolean(diagnostics.googleBooksSubjectOfStudyTitle ?? raw.googleBooksSubjectOfStudyTitle),
+    subjectOfStudyEvidence: Array.isArray(subjectOfStudyEvidenceValue) ? subjectOfStudyEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    curatedBookGuideIdentity: Boolean(diagnostics.googleBooksCuratedBookGuideIdentity ?? raw.googleBooksCuratedBookGuideIdentity),
+    curatedBookGuideEvidence: Array.isArray(curatedBookGuideEvidenceValue) ? curatedBookGuideEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    periodicalIdentityEvidence: Array.isArray(periodicalIdentityEvidenceValue) ? periodicalIdentityEvidenceValue.map((item) => String(item || "")).filter(Boolean) : [],
+    periodicalIdentityDecision: String(diagnostics.googleBooksPeriodicalIdentityDecision || raw.googleBooksPeriodicalIdentityDecision || ""),
+  };
+}
+
+function adultGoogleBooksPublicationShapeRejectReason(shapeDiagnostics: ReturnType<typeof adultGoogleBooksShapeDiagnostics>): string {
+  if (ADULT_GOOGLE_BOOKS_NON_NARRATIVE_PUBLICATION_SHAPES.has(shapeDiagnostics.shape)) {
+    return `publication_shape_${shapeDiagnostics.shape}`;
+  }
+  if (shapeDiagnostics.shape === "unknown" && !shapeDiagnostics.unknownShapeEligibility) {
+    return shapeDiagnostics.unknownShapeRejectedReason || "publication_shape_unknown_insufficient_narrative_identity";
+  }
+  return "";
+}
+
 function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[], profile: TasteProfile): { candidates: NormalizedCandidate[]; diagnostics: AdultGoogleBooksNormalizationDiagnostics } {
   const diagnostics: AdultGoogleBooksNormalizationDiagnostics = {
     googleBooksNormalizedRejectReasonByTitle: {},
@@ -220,6 +349,33 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
     googleBooksAnthologyEvidenceByTitle: {},
     googleBooksReferenceEvidenceByTitle: {},
     googleBooksPublisherEvidenceByTitle: {},
+    googleBooksPublicationShapeByTitle: {},
+    googleBooksNarrativeConfidenceByTitle: {},
+    googleBooksPublicationShapeEvidenceByTitle: {},
+    googleBooksNarrativePriorityAdjustmentByTitle: {},
+    googleBooksPublicationShapeRejectedBeforeRankingByTitle: {},
+    googleBooksDominantPublicationShapeEvidenceByTitle: {},
+    googleBooksOverriddenNarrativeEvidenceByTitle: {},
+    googleBooksPublicationShapePrecedenceDecisionByTitle: {},
+    googleBooksExplicitNonNarrativeIdentityByTitle: {},
+    googleBooksStoryLevelNarrativeEvidenceByTitle: {},
+    googleBooksGenericCategoryTitleByTitle: {},
+    googleBooksGenericCategoryEvidenceByTitle: {},
+    googleBooksGenericCategoryRejectedBeforeRankingByTitle: {},
+    googleBooksUnknownShapeEligibilityByTitle: {},
+    googleBooksUnknownShapeEvidenceByTitle: {},
+    googleBooksUnknownShapeRejectedReasonByTitle: {},
+    googleBooksUnknownStoryEvidenceCountByTitle: {},
+    googleBooksUnknownStoryEvidenceFamiliesByTitle: {},
+    googleBooksUnknownNarrativeCorroborationByTitle: {},
+    googleBooksUnknownEligibilityThresholdDecisionByTitle: {},
+    googleBooksSubjectOfStudyTitleByTitle: {},
+    googleBooksSubjectOfStudyEvidenceByTitle: {},
+    googleBooksSubjectOfStudyRejectedBeforeRankingByTitle: {},
+    googleBooksCuratedBookGuideIdentityByTitle: {},
+    googleBooksCuratedBookGuideEvidenceByTitle: {},
+    googleBooksPeriodicalIdentityEvidenceByTitle: {},
+    googleBooksPeriodicalIdentityDecisionByTitle: {},
     googleBooksEnteredRanking: [],
     googleBooksRejectedBeforeRankingReason: {},
   };
@@ -238,9 +394,15 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
     const anthologyEvidence = adultGoogleBooksAnthologyEvidenceFromNormalized(candidate);
     const referenceEvidence = adultGoogleBooksReferenceEvidenceFromNormalized(candidate);
     const publisherEvidence = adultGoogleBooksPublisherEvidenceFromNormalized(candidate);
+    const shapeDiagnostics = adultGoogleBooksShapeDiagnostics(candidate);
+    const confirmedNarrativeSeriesInstallment = shapeDiagnostics.shape === "series_installment"
+      && shapeDiagnostics.storyLevelNarrativeEvidence.length > 0
+      && shapeDiagnostics.explicitNonNarrativeIdentity.length === 0;
+    const publicationShapeRejectReason = adultGoogleBooksPublicationShapeRejectReason(shapeDiagnostics);
     let rejectReason = "";
-    if (anthologyEvidence.length > 0) rejectReason = "anthology_or_best_of_reference_shape";
-    else if (referenceEvidence.length > 0) rejectReason = "reference_or_scholarship_shape";
+    if (publicationShapeRejectReason) rejectReason = publicationShapeRejectReason;
+    else if (anthologyEvidence.length > 0) rejectReason = "anthology_or_best_of_reference_shape";
+    else if (referenceEvidence.length > 0 && !confirmedNarrativeSeriesInstallment) rejectReason = "reference_or_scholarship_shape";
     else if (publisherEvidence.length > 0 && narrativeEvidence.length === 0) rejectReason = "publisher_identity_without_narrative_evidence";
 
     const eligible = !rejectReason;
@@ -249,12 +411,39 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
     diagnostics.googleBooksAnthologyEvidenceByTitle[title] = anthologyEvidence;
     diagnostics.googleBooksReferenceEvidenceByTitle[title] = referenceEvidence;
     diagnostics.googleBooksPublisherEvidenceByTitle[title] = publisherEvidence;
+    diagnostics.googleBooksPublicationShapeByTitle[title] = shapeDiagnostics.shape;
+    diagnostics.googleBooksNarrativeConfidenceByTitle[title] = shapeDiagnostics.narrativeConfidence;
+    diagnostics.googleBooksPublicationShapeEvidenceByTitle[title] = shapeDiagnostics.evidence;
+    diagnostics.googleBooksNarrativePriorityAdjustmentByTitle[title] = shapeDiagnostics.narrativePriorityAdjustment;
+    diagnostics.googleBooksDominantPublicationShapeEvidenceByTitle[title] = shapeDiagnostics.dominantPublicationShapeEvidence;
+    diagnostics.googleBooksOverriddenNarrativeEvidenceByTitle[title] = shapeDiagnostics.overriddenNarrativeEvidence;
+    diagnostics.googleBooksPublicationShapePrecedenceDecisionByTitle[title] = shapeDiagnostics.publicationShapePrecedenceDecision;
+    diagnostics.googleBooksExplicitNonNarrativeIdentityByTitle[title] = shapeDiagnostics.explicitNonNarrativeIdentity;
+    diagnostics.googleBooksStoryLevelNarrativeEvidenceByTitle[title] = shapeDiagnostics.storyLevelNarrativeEvidence;
+    diagnostics.googleBooksGenericCategoryTitleByTitle[title] = shapeDiagnostics.genericCategoryTitle;
+    diagnostics.googleBooksGenericCategoryEvidenceByTitle[title] = shapeDiagnostics.genericCategoryEvidence;
+    diagnostics.googleBooksUnknownShapeEligibilityByTitle[title] = shapeDiagnostics.unknownShapeEligibility;
+    diagnostics.googleBooksUnknownShapeEvidenceByTitle[title] = shapeDiagnostics.unknownShapeEvidence;
+    if (shapeDiagnostics.unknownShapeRejectedReason) diagnostics.googleBooksUnknownShapeRejectedReasonByTitle[title] = shapeDiagnostics.unknownShapeRejectedReason;
+    diagnostics.googleBooksUnknownStoryEvidenceCountByTitle[title] = shapeDiagnostics.unknownStoryEvidenceCount;
+    diagnostics.googleBooksUnknownStoryEvidenceFamiliesByTitle[title] = shapeDiagnostics.unknownStoryEvidenceFamilies;
+    diagnostics.googleBooksUnknownNarrativeCorroborationByTitle[title] = shapeDiagnostics.unknownNarrativeCorroboration;
+    diagnostics.googleBooksUnknownEligibilityThresholdDecisionByTitle[title] = shapeDiagnostics.unknownEligibilityThresholdDecision;
+    diagnostics.googleBooksSubjectOfStudyTitleByTitle[title] = shapeDiagnostics.subjectOfStudyTitle;
+    diagnostics.googleBooksSubjectOfStudyEvidenceByTitle[title] = shapeDiagnostics.subjectOfStudyEvidence;
+    diagnostics.googleBooksCuratedBookGuideIdentityByTitle[title] = shapeDiagnostics.curatedBookGuideIdentity;
+    diagnostics.googleBooksCuratedBookGuideEvidenceByTitle[title] = shapeDiagnostics.curatedBookGuideEvidence;
+    diagnostics.googleBooksPeriodicalIdentityEvidenceByTitle[title] = shapeDiagnostics.periodicalIdentityEvidence;
+    diagnostics.googleBooksPeriodicalIdentityDecisionByTitle[title] = shapeDiagnostics.periodicalIdentityDecision;
     diagnostics.googleBooksNormalizedRejectReasonByTitle[title] = eligible ? "entered_ranking" : rejectReason;
     if (eligible) {
       diagnostics.googleBooksEnteredRanking.push(title);
       filtered.push(candidate);
     } else {
       diagnostics.googleBooksRejectedBeforeRankingReason[title] = rejectReason;
+      if (publicationShapeRejectReason) diagnostics.googleBooksPublicationShapeRejectedBeforeRankingByTitle[title] = publicationShapeRejectReason;
+      if (publicationShapeRejectReason === "publication_shape_generic_category_catalog") diagnostics.googleBooksGenericCategoryRejectedBeforeRankingByTitle[title] = publicationShapeRejectReason;
+      if (shapeDiagnostics.subjectOfStudyTitle && publicationShapeRejectReason) diagnostics.googleBooksSubjectOfStudyRejectedBeforeRankingByTitle[title] = publicationShapeRejectReason;
     }
   }
   diagnostics.googleBooksEnteredRanking = uniqueStrings(diagnostics.googleBooksEnteredRanking, 80);
@@ -993,6 +1182,33 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     googleBooksAnthologyEvidenceByTitle: {},
     googleBooksReferenceEvidenceByTitle: {},
     googleBooksPublisherEvidenceByTitle: {},
+    googleBooksPublicationShapeByTitle: {},
+    googleBooksNarrativeConfidenceByTitle: {},
+    googleBooksPublicationShapeEvidenceByTitle: {},
+    googleBooksNarrativePriorityAdjustmentByTitle: {},
+    googleBooksPublicationShapeRejectedBeforeRankingByTitle: {},
+    googleBooksDominantPublicationShapeEvidenceByTitle: {},
+    googleBooksOverriddenNarrativeEvidenceByTitle: {},
+    googleBooksPublicationShapePrecedenceDecisionByTitle: {},
+    googleBooksExplicitNonNarrativeIdentityByTitle: {},
+    googleBooksStoryLevelNarrativeEvidenceByTitle: {},
+    googleBooksGenericCategoryTitleByTitle: {},
+    googleBooksGenericCategoryEvidenceByTitle: {},
+    googleBooksGenericCategoryRejectedBeforeRankingByTitle: {},
+    googleBooksUnknownShapeEligibilityByTitle: {},
+    googleBooksUnknownShapeEvidenceByTitle: {},
+    googleBooksUnknownShapeRejectedReasonByTitle: {},
+    googleBooksUnknownStoryEvidenceCountByTitle: {},
+    googleBooksUnknownStoryEvidenceFamiliesByTitle: {},
+    googleBooksUnknownNarrativeCorroborationByTitle: {},
+    googleBooksUnknownEligibilityThresholdDecisionByTitle: {},
+    googleBooksSubjectOfStudyTitleByTitle: {},
+    googleBooksSubjectOfStudyEvidenceByTitle: {},
+    googleBooksSubjectOfStudyRejectedBeforeRankingByTitle: {},
+    googleBooksCuratedBookGuideIdentityByTitle: {},
+    googleBooksCuratedBookGuideEvidenceByTitle: {},
+    googleBooksPeriodicalIdentityEvidenceByTitle: {},
+    googleBooksPeriodicalIdentityDecisionByTitle: {},
     googleBooksEnteredRanking: [],
     googleBooksRejectedBeforeRankingReason: {},
   };
@@ -2105,6 +2321,33 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   rejectedReasonsWithGoogleBooksNormalization.googleBooksAnthologyEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksAnthologyEvidenceByTitle;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksReferenceEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksReferenceEvidenceByTitle;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksPublisherEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksPublisherEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksPublicationShapeByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksPublicationShapeByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksNarrativeConfidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksNarrativeConfidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksPublicationShapeEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksPublicationShapeEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksNarrativePriorityAdjustmentByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksNarrativePriorityAdjustmentByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksPublicationShapeRejectedBeforeRankingByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksPublicationShapeRejectedBeforeRankingByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksDominantPublicationShapeEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksDominantPublicationShapeEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksOverriddenNarrativeEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksOverriddenNarrativeEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksPublicationShapePrecedenceDecisionByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksPublicationShapePrecedenceDecisionByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksExplicitNonNarrativeIdentityByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksExplicitNonNarrativeIdentityByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksStoryLevelNarrativeEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksStoryLevelNarrativeEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksGenericCategoryTitleByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksGenericCategoryTitleByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksGenericCategoryEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksGenericCategoryEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksGenericCategoryRejectedBeforeRankingByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksGenericCategoryRejectedBeforeRankingByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksUnknownShapeEligibilityByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksUnknownShapeEligibilityByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksUnknownShapeEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksUnknownShapeEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksUnknownShapeRejectedReasonByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksUnknownShapeRejectedReasonByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksUnknownStoryEvidenceCountByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksUnknownStoryEvidenceCountByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksUnknownStoryEvidenceFamiliesByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksUnknownStoryEvidenceFamiliesByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksUnknownNarrativeCorroborationByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksUnknownNarrativeCorroborationByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksUnknownEligibilityThresholdDecisionByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksUnknownEligibilityThresholdDecisionByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksSubjectOfStudyTitleByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksSubjectOfStudyTitleByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksSubjectOfStudyEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksSubjectOfStudyEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksSubjectOfStudyRejectedBeforeRankingByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksSubjectOfStudyRejectedBeforeRankingByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksCuratedBookGuideIdentityByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksCuratedBookGuideIdentityByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksCuratedBookGuideEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksCuratedBookGuideEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksPeriodicalIdentityEvidenceByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksPeriodicalIdentityEvidenceByTitle;
+  rejectedReasonsWithGoogleBooksNormalization.googleBooksPeriodicalIdentityDecisionByTitle = adultGoogleBooksNormalizationDiagnostics.googleBooksPeriodicalIdentityDecisionByTitle;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksRankedCandidateTitles = googleBooksRankedCandidateTitles;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksEnteredRanking = adultGoogleBooksNormalizationDiagnostics.googleBooksEnteredRanking;
   rejectedReasonsWithGoogleBooksNormalization.googleBooksRejectedBeforeRankingReason = adultGoogleBooksNormalizationDiagnostics.googleBooksRejectedBeforeRankingReason;

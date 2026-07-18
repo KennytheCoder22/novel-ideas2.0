@@ -2208,6 +2208,33 @@ function handleLeft() {
       googleBooksRendererOutputTitles,
       googleBooksPlaceholderReplacementReason: placeholderReplacementReason,
       googleBooksRejectedBeforeRankingReason: selectionDiagnostics?.googleBooksRejectedBeforeRankingReason || {},
+      googleBooksPublicationShapeByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksPublicationShapeByTitle || {}), ...(selectionDiagnostics?.googleBooksPublicationShapeByTitle || {}) },
+      googleBooksNarrativeConfidenceByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksNarrativeConfidenceByTitle || {}), ...(selectionDiagnostics?.googleBooksNarrativeConfidenceByTitle || {}) },
+      googleBooksPublicationShapeEvidenceByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksPublicationShapeEvidenceByTitle || {}), ...(selectionDiagnostics?.googleBooksPublicationShapeEvidenceByTitle || {}) },
+      googleBooksNarrativePriorityAdjustmentByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksNarrativePriorityAdjustmentByTitle || {}), ...(selectionDiagnostics?.googleBooksNarrativePriorityAdjustmentByTitle || {}) },
+      googleBooksPublicationShapeRejectedBeforeRankingByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksPublicationShapeRejectedBeforeRankingByTitle || {}), ...(selectionDiagnostics?.googleBooksPublicationShapeRejectedBeforeRankingByTitle || {}) },
+      googleBooksDominantPublicationShapeEvidenceByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksDominantPublicationShapeEvidenceByTitle || {}), ...(selectionDiagnostics?.googleBooksDominantPublicationShapeEvidenceByTitle || {}) },
+      googleBooksOverriddenNarrativeEvidenceByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksOverriddenNarrativeEvidenceByTitle || {}), ...(selectionDiagnostics?.googleBooksOverriddenNarrativeEvidenceByTitle || {}) },
+      googleBooksPublicationShapePrecedenceDecisionByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksPublicationShapePrecedenceDecisionByTitle || {}), ...(selectionDiagnostics?.googleBooksPublicationShapePrecedenceDecisionByTitle || {}) },
+      googleBooksExplicitNonNarrativeIdentityByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksExplicitNonNarrativeIdentityByTitle || {}), ...(selectionDiagnostics?.googleBooksExplicitNonNarrativeIdentityByTitle || {}) },
+      googleBooksStoryLevelNarrativeEvidenceByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksStoryLevelNarrativeEvidenceByTitle || {}), ...(selectionDiagnostics?.googleBooksStoryLevelNarrativeEvidenceByTitle || {}) },
+      googleBooksGenericCategoryTitleByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksGenericCategoryTitleByTitle || {}), ...(selectionDiagnostics?.googleBooksGenericCategoryTitleByTitle || {}) },
+      googleBooksGenericCategoryEvidenceByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksGenericCategoryEvidenceByTitle || {}), ...(selectionDiagnostics?.googleBooksGenericCategoryEvidenceByTitle || {}) },
+      googleBooksGenericCategoryRejectedBeforeRankingByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksGenericCategoryRejectedBeforeRankingByTitle || {}), ...(selectionDiagnostics?.googleBooksGenericCategoryRejectedBeforeRankingByTitle || {}) },
+      googleBooksUnknownShapeEligibilityByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksUnknownShapeEligibilityByTitle || {}), ...(selectionDiagnostics?.googleBooksUnknownShapeEligibilityByTitle || {}) },
+      googleBooksUnknownShapeEvidenceByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksUnknownShapeEvidenceByTitle || {}), ...(selectionDiagnostics?.googleBooksUnknownShapeEvidenceByTitle || {}) },
+      googleBooksUnknownShapeRejectedReasonByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksUnknownShapeRejectedReasonByTitle || {}), ...(selectionDiagnostics?.googleBooksUnknownShapeRejectedReasonByTitle || {}) },
+      googleBooksUnknownStoryEvidenceCountByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksUnknownStoryEvidenceCountByTitle || {}), ...(selectionDiagnostics?.googleBooksUnknownStoryEvidenceCountByTitle || {}) },
+      googleBooksUnknownStoryEvidenceFamiliesByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksUnknownStoryEvidenceFamiliesByTitle || {}), ...(selectionDiagnostics?.googleBooksUnknownStoryEvidenceFamiliesByTitle || {}) },
+      googleBooksUnknownNarrativeCorroborationByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksUnknownNarrativeCorroborationByTitle || {}), ...(selectionDiagnostics?.googleBooksUnknownNarrativeCorroborationByTitle || {}) },
+      googleBooksUnknownEligibilityThresholdDecisionByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksUnknownEligibilityThresholdDecisionByTitle || {}), ...(selectionDiagnostics?.googleBooksUnknownEligibilityThresholdDecisionByTitle || {}) },
+      googleBooksSubjectOfStudyTitleByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksSubjectOfStudyTitleByTitle || {}), ...(selectionDiagnostics?.googleBooksSubjectOfStudyTitleByTitle || {}) },
+      googleBooksSubjectOfStudyEvidenceByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksSubjectOfStudyEvidenceByTitle || {}), ...(selectionDiagnostics?.googleBooksSubjectOfStudyEvidenceByTitle || {}) },
+      googleBooksSubjectOfStudyRejectedBeforeRankingByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksSubjectOfStudyRejectedBeforeRankingByTitle || {}), ...(selectionDiagnostics?.googleBooksSubjectOfStudyRejectedBeforeRankingByTitle || {}) },
+      googleBooksCuratedBookGuideIdentityByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksCuratedBookGuideIdentityByTitle || {}), ...(selectionDiagnostics?.googleBooksCuratedBookGuideIdentityByTitle || {}) },
+      googleBooksCuratedBookGuideEvidenceByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksCuratedBookGuideEvidenceByTitle || {}), ...(selectionDiagnostics?.googleBooksCuratedBookGuideEvidenceByTitle || {}) },
+      googleBooksPeriodicalIdentityEvidenceByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksPeriodicalIdentityEvidenceByTitle || {}), ...(selectionDiagnostics?.googleBooksPeriodicalIdentityEvidenceByTitle || {}) },
+      googleBooksPeriodicalIdentityDecisionByTitle: { ...(googleBooksSourceDiagnostics?.googleBooksPeriodicalIdentityDecisionByTitle || {}), ...(selectionDiagnostics?.googleBooksPeriodicalIdentityDecisionByTitle || {}) },
       googleBooksPublicationYearByTitle: googleBooksSourceDiagnostics?.googleBooksPublicationYearByTitle || {},
       googleBooksDescriptionPresentByTitle: googleBooksSourceDiagnostics?.googleBooksDescriptionPresentByTitle || {},
       googleBooksIsbnPresentByTitle: googleBooksSourceDiagnostics?.googleBooksIsbnPresentByTitle || {},
@@ -2478,6 +2505,12 @@ function handleLeft() {
       }
       const sourceProbeTimeoutMs = 10_000;
       const sourceProbeStatus: Record<string, string> = {};
+      const googleBooksHealthProbeUrl = (() => {
+        const params = new URLSearchParams({ q: "novel", maxResults: "1" });
+        const apiKey = (process as any)?.env?.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
+        if (typeof apiKey === "string" && apiKey.trim()) params.set("key", apiKey.trim());
+        return `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
+      })();
       const probe = async (phaseBefore: string, phaseAfter: string, label: string, url: string) => {
         markPhase(phaseBefore);
         try {
@@ -2491,7 +2524,7 @@ function handleLeft() {
         }
         markPhase(phaseAfter);
       };
-      if (sourceEnabled.googleBooks) await probe("before_google_books_fetch", "after_google_books_fetch", "google_books", "https://www.googleapis.com/books/v1/volumes?q=novel&maxResults=1");
+      if (sourceEnabled.googleBooks) await probe("before_google_books_fetch", "after_google_books_fetch", "google_books", googleBooksHealthProbeUrl);
       if (sourceEnabled.openLibrary) await probe("before_open_library_fetch", "after_open_library_fetch", "open_library", "/api/openlibrary?health=1");
       if (sourceEnabled.kitsu) await probe("before_kitsu_fetch", "after_kitsu_fetch", "kitsu", `${KITSU_API_BASE}/manga?page[limit]=1`);
       if (sourceEnabled.nyt) await probe("before_nyt_fetch", "after_nyt_fetch", "nyt", "/api/nyt-books?health=1");
@@ -4119,6 +4152,33 @@ function handleLeft() {
       `googleBooksRendererOutputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksRendererOutputTitles) && (lastRecommendationResult as any).googleBooksRendererOutputTitles.length ? (lastRecommendationResult as any).googleBooksRendererOutputTitles.join(" | ") : "(none)"}`,
       `googleBooksPlaceholderReplacementReason:${String((lastRecommendationResult as any)?.googleBooksPlaceholderReplacementReason || "")}`,
       `googleBooksRejectedBeforeRankingReason:${JSON.stringify((lastRecommendationResult as any)?.googleBooksRejectedBeforeRankingReason || {})}`,
+      `googleBooksPublicationShapeByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksPublicationShapeByTitle || {})}`,
+      `googleBooksNarrativeConfidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksNarrativeConfidenceByTitle || {})}`,
+      `googleBooksPublicationShapeEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksPublicationShapeEvidenceByTitle || {})}`,
+      `googleBooksNarrativePriorityAdjustmentByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksNarrativePriorityAdjustmentByTitle || {})}`,
+      `googleBooksPublicationShapeRejectedBeforeRankingByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksPublicationShapeRejectedBeforeRankingByTitle || {})}`,
+      `googleBooksDominantPublicationShapeEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksDominantPublicationShapeEvidenceByTitle || {})}`,
+      `googleBooksOverriddenNarrativeEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksOverriddenNarrativeEvidenceByTitle || {})}`,
+      `googleBooksPublicationShapePrecedenceDecisionByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksPublicationShapePrecedenceDecisionByTitle || {})}`,
+      `googleBooksExplicitNonNarrativeIdentityByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksExplicitNonNarrativeIdentityByTitle || {})}`,
+      `googleBooksStoryLevelNarrativeEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksStoryLevelNarrativeEvidenceByTitle || {})}`,
+      `googleBooksGenericCategoryTitleByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksGenericCategoryTitleByTitle || {})}`,
+      `googleBooksGenericCategoryEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksGenericCategoryEvidenceByTitle || {})}`,
+      `googleBooksGenericCategoryRejectedBeforeRankingByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksGenericCategoryRejectedBeforeRankingByTitle || {})}`,
+      `googleBooksUnknownShapeEligibilityByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksUnknownShapeEligibilityByTitle || {})}`,
+      `googleBooksUnknownShapeEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksUnknownShapeEvidenceByTitle || {})}`,
+      `googleBooksUnknownShapeRejectedReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksUnknownShapeRejectedReasonByTitle || {})}`,
+      `googleBooksUnknownStoryEvidenceCountByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksUnknownStoryEvidenceCountByTitle || {})}`,
+      `googleBooksUnknownStoryEvidenceFamiliesByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksUnknownStoryEvidenceFamiliesByTitle || {})}`,
+      `googleBooksUnknownNarrativeCorroborationByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksUnknownNarrativeCorroborationByTitle || {})}`,
+      `googleBooksUnknownEligibilityThresholdDecisionByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksUnknownEligibilityThresholdDecisionByTitle || {})}`,
+      `googleBooksSubjectOfStudyTitleByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksSubjectOfStudyTitleByTitle || {})}`,
+      `googleBooksSubjectOfStudyEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksSubjectOfStudyEvidenceByTitle || {})}`,
+      `googleBooksSubjectOfStudyRejectedBeforeRankingByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksSubjectOfStudyRejectedBeforeRankingByTitle || {})}`,
+      `googleBooksCuratedBookGuideIdentityByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksCuratedBookGuideIdentityByTitle || {})}`,
+      `googleBooksCuratedBookGuideEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksCuratedBookGuideEvidenceByTitle || {})}`,
+      `googleBooksPeriodicalIdentityEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksPeriodicalIdentityEvidenceByTitle || {})}`,
+      `googleBooksPeriodicalIdentityDecisionByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksPeriodicalIdentityDecisionByTitle || {})}`,
       `googleBooksPublicationYearByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksPublicationYearByTitle || {})}`,
       `googleBooksDescriptionPresentByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksDescriptionPresentByTitle || {})}`,
       `googleBooksIsbnPresentByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksIsbnPresentByTitle || {})}`,
