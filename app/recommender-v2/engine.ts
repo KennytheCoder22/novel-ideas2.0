@@ -217,7 +217,7 @@ function adultGoogleBooksReferenceEvidenceFromNormalized(candidate: NormalizedCa
   if (/\b(?:literary criticism|history and criticism|critical (?:study|analysis|essays?)|scholarship|studies in)\b/.test(combined)) {
     evidence.push("criticism_or_scholarship_shape");
   }
-  if (/\b(?:guide to|introduction to|for students|for teachers|study guide|textbook|workbook|course text)\b/.test(combined)) {
+  if (/\b(?:guide to|introduction to|for students|for teachers|study guide|textbook|workbook|course text|exam prep(?:aration)?|certification (?:exam|guide|prep))\b/.test(combined)) {
     evidence.push("instructional_reference_shape");
   }
   return Array.from(new Set(evidence));
@@ -395,14 +395,20 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
     const referenceEvidence = adultGoogleBooksReferenceEvidenceFromNormalized(candidate);
     const publisherEvidence = adultGoogleBooksPublisherEvidenceFromNormalized(candidate);
     const shapeDiagnostics = adultGoogleBooksShapeDiagnostics(candidate);
-    // Extend exemption to `novel` shape: when the publication-shape classifier already confirmed
-    // narrative identity (novel or series_installment with story-level evidence and no explicit
-    // non-narrative identity), trust that result and skip the redundant normalization-gate regex.
-    // This prevents a confirmed `novel` (e.g. Interesting Times) being re-classified as
-    // `reference_or_scholarship_shape` merely because its description mentions a companion or survey.
-    const confirmedNarrativeIdentityFromShape = (shapeDiagnostics.shape === "series_installment" || shapeDiagnostics.shape === "novel")
+    // series_installment with story-level evidence: exempt from all normalization-gate
+    // reference/scholarship checks (no contradictory identity present).
+    const confirmedNarrativeSeriesInstallment = shapeDiagnostics.shape === "series_installment"
       && shapeDiagnostics.storyLevelNarrativeEvidence.length > 0
       && shapeDiagnostics.explicitNonNarrativeIdentity.length === 0;
+    // novel with story-level evidence: exempt only from incidental reference/companion/survey
+    // words, but NOT from hard instructional identity (study guide, textbook, workbook,
+    // exam-prep, certification) which contradicts a narrative publication identity.
+    const hasHardInstructionalEvidence = referenceEvidence.includes("instructional_reference_shape");
+    const confirmedNarrativeIdentityFromShape = confirmedNarrativeSeriesInstallment
+      || (shapeDiagnostics.shape === "novel"
+        && shapeDiagnostics.storyLevelNarrativeEvidence.length > 0
+        && shapeDiagnostics.explicitNonNarrativeIdentity.length === 0
+        && !hasHardInstructionalEvidence);
     const publicationShapeRejectReason = adultGoogleBooksPublicationShapeRejectReason(shapeDiagnostics);
     let rejectReason = "";
     if (publicationShapeRejectReason) rejectReason = publicationShapeRejectReason;
@@ -1667,6 +1673,37 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         // Cap Adult recovery selection to min(5, session.limit) after each merge/rescore/reselect iteration
         const cappedSelected = capAdultRecoverySelection(selected, Math.min(5, session.limit || 10));
         if (cappedSelected.length !== selected.length) {
+          // Record Google Books titles removed by the Open Library priority cap so the stage-lineage
+          // diagnostics correctly attribute the drop to this cap rather than showing a generic
+          // missing_in_next_googlebooks_stage gap.
+          const droppedByCapCandidates = selected.filter((c) => !cappedSelected.some((s) => s.id === c.id));
+          const droppedGbTitles = droppedByCapCandidates.filter((c) => c.source === "googleBooks").map((c) => c.title);
+          if (droppedGbTitles.length > 0) {
+            const rr = rejectedReasons as Record<string, unknown>;
+            rr.googleBooksCapDroppedTitles = [
+              ...((rr.googleBooksCapDroppedTitles || []) as string[]),
+              ...droppedGbTitles,
+            ];
+            // Correct the finalAcceptedDocs snapshot so it only contains titles that survived the cap.
+            const capDropSet = new Set(droppedGbTitles.map((t) => t.toLowerCase()));
+            const acceptedTitles = (rr.adultGoogleBooksAcceptedTitles || []) as string[];
+            rr.adultGoogleBooksAcceptedTitles = acceptedTitles.filter((t) => !capDropSet.has(t.toLowerCase()));
+            // Update the per-title gate diagnostics for the cap-dropped titles.
+            const gate = ((rr.googleBooksPostRankingGateByTitle || {}) as Record<string, string>);
+            const gateReason = ((rr.googleBooksPostRankingGateReasonByTitle || {}) as Record<string, string>);
+            const finalDecision = ((rr.googleBooksFinalSelectionDecisionByTitle || {}) as Record<string, string>);
+            const finalExclusion = ((rr.googleBooksFinalSelectionExclusionReasonByTitle || {}) as Record<string, string>);
+            for (const capTitle of droppedGbTitles) {
+              gate[capTitle] = "adult_recovery_openlibrary_priority_cap";
+              gateReason[capTitle] = "adult_recovery_openlibrary_priority_cap";
+              finalDecision[capTitle] = "deferred_by_cap";
+              finalExclusion[capTitle] = "adult_recovery_openlibrary_priority_cap";
+            }
+            rr.googleBooksPostRankingGateByTitle = gate;
+            rr.googleBooksPostRankingGateReasonByTitle = gateReason;
+            rr.googleBooksFinalSelectionDecisionByTitle = finalDecision;
+            rr.googleBooksFinalSelectionExclusionReasonByTitle = finalExclusion;
+          }
           selected = cappedSelected;
           selection.selected = cappedSelected;
         }

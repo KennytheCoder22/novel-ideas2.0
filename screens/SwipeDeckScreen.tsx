@@ -2258,6 +2258,7 @@ function handleLeft() {
       googleBooksPostRankingGateReasonByTitle: (selectionDiagnostics?.googleBooksPostRankingGateReasonByTitle || {}) as Record<string, string>,
       googleBooksFinalSelectionDecisionByTitle: gbSelectionDecisionByTitle,
       googleBooksFinalSelectionExclusionReasonByTitle: (selectionDiagnostics?.googleBooksFinalSelectionExclusionReasonByTitle || {}) as Record<string, string>,
+      googleBooksCapDroppedTitles: (selectionDiagnostics?.googleBooksCapDroppedTitles || []) as string[],
     };
   }
 
@@ -4171,6 +4172,7 @@ function handleLeft() {
       `googleBooksPostRankingGateReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksPostRankingGateReasonByTitle || {})}`,
       `googleBooksFinalSelectionDecisionByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksFinalSelectionDecisionByTitle || {})}`,
       `googleBooksFinalSelectionExclusionReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksFinalSelectionExclusionReasonByTitle || {})}`,
+      `googleBooksCapDroppedTitles:${JSON.stringify((lastRecommendationResult as any)?.googleBooksCapDroppedTitles || [])}`,
       `googleBooksWrapperInputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksWrapperInputTitles) && (lastRecommendationResult as any).googleBooksWrapperInputTitles.length ? (lastRecommendationResult as any).googleBooksWrapperInputTitles.join(" | ") : "(none)"}`,
       `googleBooksWrapperOutputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksWrapperOutputTitles) && (lastRecommendationResult as any).googleBooksWrapperOutputTitles.length ? (lastRecommendationResult as any).googleBooksWrapperOutputTitles.join(" | ") : "(none)"}`,
       `googleBooksRendererInputTitles:${Array.isArray((lastRecommendationResult as any)?.googleBooksRendererInputTitles) && (lastRecommendationResult as any).googleBooksRendererInputTitles.length ? (lastRecommendationResult as any).googleBooksRendererInputTitles.join(" | ") : "(none)"}`,
