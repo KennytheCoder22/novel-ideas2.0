@@ -437,16 +437,24 @@ function inferGoogleBooksPublicationShape(params: {
   const howGenreWorksEvidence = /\bhow\s+(?:the\s+)?(?:mystery|detective|thriller|suspense|horror|fantasy|science fiction|sci fi|romance|story|novel|fiction)\s+works\b/.test(titleText)
     && /\b(?:writing|craft|analysis|study|criticism|genre|form|structure|theory)\b/.test([descriptionText, categoryBlob].join(" "));
   const studyTitleShape = /\b(comparison of|analysis of|a study of|study of|study guide|teaching|understanding|interpretation of|themes in|systems of|methods to|methods of)\b/.test(titleText);
+  // "<academic concept> of <X> in <Y>" — critical-study topic phrase followed by the work/genre being analyzed.
+  // Examples: "Concepts of Nature in Young Adult Dystopian Fiction", "Visions of the Wasteland in Maze Runner"
+  const studyTopicInWorkShape = /\b(concepts?|visions?|representation|imagery|symbolism|politics|discourse|ecology|portrayal|depiction|dynamics?|rhetoric|violence|trauma|power|agency|identity|gender|race|sexuality|surveillance|resistance|redemption|heroism|mortality|transformation|alienation|rhetoric)\s+of\s+[a-z][a-z ,'-]{2,60}\s+in\s+[a-z]/.test(titleText);
+  // "<academic concept> in <Author's/Author'> <Work>" — identifies a named work as the subject of study.
+  // Examples: "Sexual repression in Orwell's Nineteen Eighty-Four"
+  const academicConceptInAuthorWorkShape = /\b(repression|oppression|alienation|agency|sexuality|violence|trauma|race|class|gender|power|ecology|landscape|mortality|religion|surveillance|resistance|justice|discourse|rhetoric|symbolism|imagery|transformation|heroism|redemption|identity|silence|protest|subversion|revolution|rebellion|servitude|autonomy|dissent|exile|otherness|hybridity|memory|desire|grief)\s+in\s+[a-z][a-z ,'-]+'s?\s+[a-z]/.test(titleText);
   const readingStudyShape = /\breading\s+[a-z0-9][a-z0-9' -]{2,80}\b/.test(titleText)
     && (/\b(literary criticism|history and criticism|study aids?|education|language arts|bibliograph(?:y|ies)|criticism)\b/.test(categoryBlob)
       || /\b(study|critical|criticism|analysis|interpretation|teaching|classroom|essay|monograph|scholarship)\b/.test(descriptionText)
       || GOOGLE_BOOKS_ACADEMIC_PUBLISHER_PATTERN.test(publisherText));
   const quotedWorkStudyShape = /["'][^"']{3,120}["']/.test(titleText)
-    && /\b(comparison|analysis|study|systems?|methods?|control|public|state|ancient|rome|panem|theme|interpretation|condition)\b/.test(titleText);
+    && /\b(comparison|analysis|study|systems?|methods?|control|public|state|ancient|rome|panem|theme|interpretation|condition|perspective|examination|exploration|reading|critique|portrayal|representation|reflection)\b/.test(titleText);
   const criticismShape = /\b(literary criticism|history and criticism|criticism and interpretation|critical (?:study|analysis|essays?)|critical studies|studies in|readings in|analysis of|scholarship|theory|theoretical|posthumanist|cultural study)\b/.test(allText)
     || studyTitleShape
-    || quotedWorkStudyShape;
-  const conceptStudyShape = /\b(ecofeminist|postmodern|postmodern condition|posthumanist|alienation|apocalypse|gender|feminist|ecocriticism|cultural studies?|film studies?)\b/.test(titleText)
+    || quotedWorkStudyShape
+    || studyTopicInWorkShape
+    || academicConceptInAuthorWorkShape;
+  const conceptStudyShape = /\b(ecofeminist|postmodern|postmodern condition|posthumanist|alienation|apocalypse|gender|feminist|ecocriticism|cultural studies?|film studies?|cyberpunk)\b/.test(titleText)
     && /\b(science fiction|horror|fantasy|novels?|fiction|literature|blade runner|i am legend)\b/.test(titleText);
   const genreSurveyShape = /\b(history of (?:mystery|crime|horror|fantasy|science fiction|romance|gothic|detective)|survey of (?:mystery|crime|horror|fantasy|science fiction|romance)|genre studies?|genre survey|books about (?:horror|mystery|crime|fantasy|science fiction|romance))\b/.test(allText)
     || (ambiguousNovelFormTitle && !/\ba novel\b/.test(titleText));

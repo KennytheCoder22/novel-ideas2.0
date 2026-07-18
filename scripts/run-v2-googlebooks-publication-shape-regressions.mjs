@@ -115,6 +115,50 @@ const fixtures = [
     ["Literary Criticism / Mystery & Detective", "Literary Criticism / History"],
     "Academic Press",
   ),
+  // --- academic criticism titles that should classify as critical_study, not novel ---
+  googleBook(
+    "criticism-hunger-games-nature",
+    "Concepts of Nature in Young Adult Dystopian Fiction. Suzanne Collins' The Hunger Games Series",
+    "A seminar paper analyzing the representation of nature in Suzanne Collins' dystopian fiction. The paper examines the characters' relationship with nature and the symbolic role of the environment.",
+    ["Literary Criticism / Fiction in English", "Language Arts & Disciplines"],
+    "GRIN Verlag",
+  ),
+  googleBook(
+    "criticism-american-war",
+    "Omar El Akkad's \"American War\". A Child's Perspective on War",
+    "Academic study exploring a child's perspective and representation of trauma in El Akkad's novel.",
+    ["Literary Criticism / Fiction in English"],
+    "GRIN Verlag",
+  ),
+  googleBook(
+    "criticism-blade-runner",
+    "Blade Runner and the Cyberpunk Narrative",
+    "An academic exploration of cyberpunk themes and narrative structure in Blade Runner fiction and science fiction.",
+    ["Literary Criticism / Science Fiction & Fantasy", "Language Arts & Disciplines"],
+    "Academic Press",
+  ),
+  googleBook(
+    "criticism-orwell-repression",
+    "Sexual repression in Orwell's Nineteen Eighty-Four",
+    "A study of sexual repression, power, and surveillance in George Orwell's dystopian novel.",
+    ["Literary Criticism / Fiction in English", "Language Arts & Disciplines"],
+    "GRIN Verlag",
+  ),
+  googleBook(
+    "criticism-maze-runner",
+    "Visions of the Wasteland in Maze Runner",
+    "An academic reading of post-apocalyptic landscape, survival, and ecology in the Maze Runner series.",
+    ["Literary Criticism / Science Fiction & Fantasy"],
+    "GRIN Verlag",
+  ),
+  // --- genuine novel: should NOT be affected by new patterns ---
+  googleBook(
+    "visions-of-heat",
+    "Visions of Heat",
+    "A young woman discovers her latent ability and must navigate a world where power and desire intersect in unexpected ways.",
+    ["Fiction / Fantasy / Paranormal & Urban", "Fiction / Romance / Paranormal"],
+    "Berkley",
+  ),
 ];
 
 globalThis.fetch = async () => ({
@@ -173,6 +217,32 @@ assertEqual(shapes["How to Write a Mystery Thriller"], "writing_guide", "writing
 assertEqual(rejectedBeforeRanking["How to Write a Mystery Thriller"], "publication_shape_writing_guide", "writing guide should reject before ranking");
 assertEqual(shapes["Studies in Detective Fiction"], "critical_study", "literary study should classify as critical study");
 assertEqual(rejectedBeforeRanking["Studies in Detective Fiction"], "publication_shape_critical_study", "literary study should reject before ranking");
+
+// Academic criticism pattern regressions
+assertEqual(shapes["Concepts of Nature in Young Adult Dystopian Fiction. Suzanne Collins' The Hunger Games Series"], "critical_study", "study-topic-in-work title should classify as critical study");
+assertEqual(rejectedBeforeRanking["Concepts of Nature in Young Adult Dystopian Fiction. Suzanne Collins' The Hunger Games Series"], "publication_shape_critical_study", "study-topic-in-work title should reject before ranking");
+
+assertEqual(shapes["Omar El Akkad's \"American War\". A Child's Perspective on War"], "critical_study", "quoted-work-study title should classify as critical study");
+assertEqual(rejectedBeforeRanking["Omar El Akkad's \"American War\". A Child's Perspective on War"], "publication_shape_critical_study", "quoted-work-study title should reject before ranking");
+
+assertEqual(shapes["Blade Runner and the Cyberpunk Narrative"], "critical_study", "cyberpunk concept study should classify as critical study");
+assertEqual(rejectedBeforeRanking["Blade Runner and the Cyberpunk Narrative"], "publication_shape_critical_study", "cyberpunk concept study should reject before ranking");
+
+assertEqual(shapes["Sexual repression in Orwell's Nineteen Eighty-Four"], "critical_study", "academic-concept-in-author-work title should classify as critical study");
+assertEqual(rejectedBeforeRanking["Sexual repression in Orwell's Nineteen Eighty-Four"], "publication_shape_critical_study", "academic-concept-in-author-work title should reject before ranking");
+
+assertEqual(shapes["Visions of the Wasteland in Maze Runner"], "critical_study", "visions-of-X-in-Y title should classify as critical study");
+assertEqual(rejectedBeforeRanking["Visions of the Wasteland in Maze Runner"], "publication_shape_critical_study", "visions-of-X-in-Y title should reject before ranking");
+
+// Genuine novel regression: "Visions of Heat" must not be caught
+const visionsOfHeatShape = shapes["Visions of Heat"];
+if (visionsOfHeatShape === "critical_study" || visionsOfHeatShape === "academic_text") {
+  throw new Error(`Genuine novel "Visions of Heat" must not be classified as ${visionsOfHeatShape}`);
+}
+const visionsOfHeatRejected = rejectedBeforeRanking["Visions of Heat"];
+if (visionsOfHeatRejected) {
+  throw new Error(`Genuine novel "Visions of Heat" must not be rejected before ranking, got: ${visionsOfHeatRejected}`);
+}
 
 console.log(JSON.stringify({
   name: "adult google books publication shape regressions",
