@@ -4305,6 +4305,20 @@ type AdultGoogleBooksEligibility = {
   contextOnlyLikedSignals: string[];
 };
 
+type AdultGoogleBooksSemanticDerivationTrace = {
+  rawSemanticTerms: string[];
+  semanticTermsByMetadataField: Record<string, string[]>;
+  filteredGenericTerms: string[];
+  canonicalizedSemanticTerms: string[];
+  unmappedSemanticTerms: string[];
+  familyDerivationEvidence: Record<string, string[]>;
+  familyDerivationFailureReason: string;
+  queryFamilyCounterfactual: string;
+  queryFamilyCounterfactualMatchedFamilies: string[];
+  queryFamilyCounterfactualWouldPass: boolean;
+  queryFamilyCounterfactualBlockedReason: string;
+};
+
 function adultGoogleBooksMetadataFields(candidate: ScoredCandidate): { title: string; subtitle: string; description: string; categories: string; genres: string; combined: string } {
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const volumeInfo = (raw.volumeInfo && typeof raw.volumeInfo === "object") ? (raw.volumeInfo as Record<string, unknown>) : {};
@@ -4322,6 +4336,254 @@ function adultGoogleBooksMetadataFields(candidate: ScoredCandidate): { title: st
   const genres = normalized((candidate.genres || []).join(" "));
   const combined = normalized([title, subtitle, description, categories, genres].filter(Boolean).join(" "));
   return { title, subtitle, description, categories: normalized(categories), genres, combined };
+}
+
+const ADULT_GOOGLEBOOKS_LIGHT_NOVEL_AUDIT_TERMS = [
+  "light novel",
+  "isekai",
+  "magic",
+  "magical",
+  "gods",
+  "deity",
+  "mythology",
+  "mythical",
+  "fairy",
+  "fae",
+  "fantasy world",
+  "another world",
+  "reincarnation",
+  "summoned",
+  "quest",
+  "dungeon",
+  "adventurer",
+  "rpg",
+  "game world",
+];
+
+function adultGoogleBooksSemanticMetadataFieldGroups(candidate: ScoredCandidate): Record<string, string> {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const volumeInfo: Record<string, unknown> = (raw.volumeInfo && typeof raw.volumeInfo === "object") ? volumeInfoRecord(raw) : {};
+  const rawDescription = typeof raw.description === "string"
+    ? raw.description
+    : typeof (raw.description as { value?: unknown } | undefined)?.value === "string"
+      ? String((raw.description as { value: string }).value)
+      : typeof volumeInfo.description === "string"
+        ? String(volumeInfo.description)
+        : "";
+  const rawCategories = Array.isArray(volumeInfo.categories) ? volumeInfo.categories.map(String) : [];
+  const rawAuthors = Array.isArray(volumeInfo.authors) ? volumeInfo.authors.map(String) : [];
+  return {
+    title: uniqueSignals([candidate.title].map(normalized).filter(Boolean)).join(" "),
+    subtitle: uniqueSignals([candidate.subtitle, raw.subtitle].flatMap(asStringList).map(normalized).filter(Boolean)).join(" "),
+    description: uniqueSignals([candidate.description, rawDescription, raw.first_sentence].flatMap(asStringList).map(normalized).filter(Boolean)).join(" "),
+    categories: uniqueSignals([...rawCategories, ...asStringList(raw.categories), ...asStringList(raw.category), ...candidate.genres].map(normalized).filter(Boolean)).join(" "),
+    normalized: uniqueSignals([...candidate.themes, ...candidate.tones, ...candidate.characterDynamics, ...candidate.formats].map(normalized).filter(Boolean)).join(" "),
+    creators: uniqueSignals([...candidate.creators, ...rawAuthors, ...asStringList(raw.authors), ...asStringList(raw.author_name)].map(normalized).filter(Boolean)).join(" "),
+    publication: uniqueSignals([
+      candidate.publicationYear,
+      raw.publisher,
+      raw.publishers,
+      raw.publishedDate,
+      volumeInfo.publisher,
+      volumeInfo.publishedDate,
+      volumeInfo.printType,
+      volumeInfo.maturityRating,
+      candidate.maturityBand,
+    ].flatMap(asStringList).map(normalized).filter(Boolean)).join(" "),
+  };
+}
+
+function volumeInfoRecord(raw: Record<string, unknown>): Record<string, unknown> {
+  return (raw.volumeInfo && typeof raw.volumeInfo === "object") ? raw.volumeInfo as Record<string, unknown> : {};
+}
+
+function adultGoogleBooksCanonicalSemanticTerm(term: string): string {
+  const value = normalized(term);
+  if (/\bsci[- ]?fi\b/.test(value)) return "science fiction";
+  if (/\blight novels?\b/.test(value)) return "light novel";
+  if (/\b(?:isekai|another world|reincarnation|summoned)\b/.test(value)) return "isekai";
+  if (/\b(?:magic|magical)\b/.test(value)) return "magic";
+  if (/\b(?:gods?|deit(?:y|ies)|mythology|mythological|mythic|mythical)\b/.test(value)) return "mythology";
+  if (/\b(?:fairy|fairies|fae)\b/.test(value)) return "fairy";
+  if (/\b(?:rpg|game world)\b/.test(value)) return "rpg";
+  return value;
+}
+
+function adultGoogleBooksTermFields(terms: string[], fields: Record<string, string>): Record<string, string[]> {
+  const byField: Record<string, string[]> = {};
+  for (const [field, text] of Object.entries(fields)) {
+    const matched = terms.filter((term) => {
+      const value = normalized(term);
+      return value && signalPresentInText(text, value);
+    });
+    if (matched.length > 0) byField[field] = uniqueSignals(matched);
+  }
+  return byField;
+}
+
+function adultGoogleBooksSemanticTermFields(termsByField: Record<string, string[]>): Record<string, string[]> {
+  const fieldsByTerm: Record<string, string[]> = {};
+  for (const [field, terms] of Object.entries(termsByField)) {
+    for (const term of terms) {
+      const key = adultGoogleBooksCanonicalSemanticTerm(term);
+      fieldsByTerm[key] = uniqueSignals([...(fieldsByTerm[key] || []), field]);
+    }
+  }
+  return fieldsByTerm;
+}
+
+function adultGoogleBooksSemanticFamilyDerivationEvidence(canonicalTerms: string[], termsByField: Record<string, string[]>): Record<string, string[]> {
+  const fieldsByTerm = adultGoogleBooksSemanticTermFields(termsByField);
+  const evidence: Record<string, string[]> = {};
+  for (const term of canonicalTerms) {
+    const family = adultOpenLibraryPrimaryContentFamily(term);
+    if (!family) continue;
+    evidence[family] = uniqueSignals([
+      ...(evidence[family] || []),
+      `${term}:${(fieldsByTerm[term] || ["unknown"]).join("|")}`,
+    ]);
+  }
+  return evidence;
+}
+
+function adultGoogleBooksSemanticFamilyDerivationFailureReason(
+  rawTerms: string[],
+  filteredGenericTerms: string[],
+  canonicalTerms: string[],
+  familyEvidence: Record<string, string[]>,
+  profileLikedFamilies: string[],
+  profileAvoidFamilies: string[],
+  eligibility: AdultGoogleBooksEligibility,
+): string {
+  const derivedFamilies = Object.keys(familyEvidence);
+  if (rawTerms.length === 0) return "no_raw_semantic_terms";
+  if (filteredGenericTerms.length > 0 && filteredGenericTerms.length === rawTerms.length) return "only_generic_or_context_terms";
+  if (canonicalTerms.length === 0) return "no_non_generic_semantic_terms";
+  if (derivedFamilies.length === 0) return "terms_present_but_unmapped_to_family";
+  if (!derivedFamilies.some((family) => profileLikedFamilies.includes(family))) return "candidate_family_present_but_not_profile_liked";
+  if (derivedFamilies.some((family) => profileAvoidFamilies.includes(family) || eligibility.negativeNetTasteFamilies.includes(family))) {
+    return "candidate_family_canceled_by_avoid_evidence";
+  }
+  return "family_derivation_succeeded";
+}
+
+function adultGoogleBooksQueryFamilyCounterfactual(
+  candidate: ScoredCandidate,
+  eligibility: AdultGoogleBooksEligibility,
+  profileLikedFamilies: string[],
+  profileAvoidFamilies: string[],
+): Pick<AdultGoogleBooksSemanticDerivationTrace, "queryFamilyCounterfactual" | "queryFamilyCounterfactualMatchedFamilies" | "queryFamilyCounterfactualWouldPass" | "queryFamilyCounterfactualBlockedReason"> {
+  const queryText = normalized([
+    candidate.diagnostics?.queryText,
+    candidate.diagnostics?.queryFamily,
+    ...(Array.isArray(candidate.diagnostics?.facets) ? candidate.diagnostics.facets.map(String) : []),
+  ].filter(Boolean).join(" "));
+  const queryOnlyGeneric = Boolean(queryText) && !/\b(fantasy|magic|science fiction|sci fi|sci-fi|speculative|dystopia|dystopian|mystery|crime|detective|thriller|suspense|horror|gothic|paranormal|supernatural|historical|history|romance|romantic|drama|contemporary|realistic|literary|adventure|action|survival|quest|comedy|humor)\b/.test(queryText);
+  const queryFamilies = adultOpenLibraryUniqueFamilies(([
+    "fantasy",
+    "science_fiction",
+    "mystery_crime_thriller",
+    "horror_paranormal",
+    "historical",
+    "romance",
+    "drama_contemporary",
+    "adventure_action",
+    "comedy",
+  ] as AdultOpenLibraryContentFamily[]).filter((family) => adultOpenLibraryFamilySupportedByText(family, queryText)));
+  const matchedFamilies = queryFamilies.filter((family) => profileLikedFamilies.includes(family));
+  const avoidBlockedFamilies = matchedFamilies.filter((family) =>
+    profileAvoidFamilies.includes(family)
+    || eligibility.negativeNetTasteFamilies.includes(family)
+    || eligibility.documentBackedDislikedSignals.some((signal) => adultOpenLibraryPrimaryContentFamily(signal) === family),
+  );
+
+  if (!queryText) {
+    return { queryFamilyCounterfactual: "not_applicable", queryFamilyCounterfactualMatchedFamilies: [], queryFamilyCounterfactualWouldPass: false, queryFamilyCounterfactualBlockedReason: "missing_query_family_provenance" };
+  }
+  if (eligibility.meaningfulTastePassed) {
+    return { queryFamilyCounterfactual: "actual_gate_already_passed", queryFamilyCounterfactualMatchedFamilies: matchedFamilies, queryFamilyCounterfactualWouldPass: false, queryFamilyCounterfactualBlockedReason: "actual_gate_already_passed" };
+  }
+  if (eligibility.documentBackedLikedSignals.length === 0) {
+    return { queryFamilyCounterfactual: "blocked", queryFamilyCounterfactualMatchedFamilies: matchedFamilies, queryFamilyCounterfactualWouldPass: false, queryFamilyCounterfactualBlockedReason: "no_document_backed_liked_signals" };
+  }
+  if (queryOnlyGeneric || queryFamilies.length === 0) {
+    return { queryFamilyCounterfactual: "blocked", queryFamilyCounterfactualMatchedFamilies: [], queryFamilyCounterfactualWouldPass: false, queryFamilyCounterfactualBlockedReason: "generic_query_terms_cannot_rescue" };
+  }
+  if (matchedFamilies.length === 0) {
+    return { queryFamilyCounterfactual: "blocked", queryFamilyCounterfactualMatchedFamilies: [], queryFamilyCounterfactualWouldPass: false, queryFamilyCounterfactualBlockedReason: "query_family_not_profile_liked" };
+  }
+  if (avoidBlockedFamilies.length > 0) {
+    return { queryFamilyCounterfactual: "blocked", queryFamilyCounterfactualMatchedFamilies: matchedFamilies, queryFamilyCounterfactualWouldPass: false, queryFamilyCounterfactualBlockedReason: `avoid_evidence_blocks_query_family:${avoidBlockedFamilies.join("|")}` };
+  }
+  if (eligibility.contextOnlyLikedSignals.length > 0 && eligibility.specificToneThemeLikedSignals.length === 0 && eligibility.broadToneLikedSignals.length === 0) {
+    return { queryFamilyCounterfactual: "blocked", queryFamilyCounterfactualMatchedFamilies: matchedFamilies, queryFamilyCounterfactualWouldPass: false, queryFamilyCounterfactualBlockedReason: "context_only_document_evidence" };
+  }
+  return { queryFamilyCounterfactual: "would_pass_if_query_family_corroboration_allowed", queryFamilyCounterfactualMatchedFamilies: matchedFamilies, queryFamilyCounterfactualWouldPass: true, queryFamilyCounterfactualBlockedReason: "none" };
+}
+
+function adultGoogleBooksSemanticDerivationTrace(
+  candidate: ScoredCandidate,
+  eligibility: AdultGoogleBooksEligibility,
+  profileLikedFamilies: string[],
+  profileAvoidFamilies: string[],
+): AdultGoogleBooksSemanticDerivationTrace {
+  const fields = adultGoogleBooksSemanticMetadataFieldGroups(candidate);
+  const rawScoreTerms = uniqueSignals([
+    ...adultGoogleBooksDocumentBackedSignals(candidate, "metadataBackedMatchedLikedSignals"),
+    ...adultGoogleBooksDocumentBackedSignals(candidate, "metadataBackedMatchedDislikedSignals"),
+  ].map(normalized).filter(Boolean));
+  const auditTerms = ADULT_GOOGLEBOOKS_LIGHT_NOVEL_AUDIT_TERMS.filter((term) =>
+    Object.values(fields).some((text) => signalPresentInText(text, term)),
+  );
+  const rawSemanticTerms = uniqueSignals([...rawScoreTerms, ...auditTerms].map(normalized).filter(Boolean));
+  const semanticTermsByMetadataField = adultGoogleBooksTermFields(rawSemanticTerms, fields);
+  const filteredGenericTerms = rawSemanticTerms.filter((term) =>
+    ADULT_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(term) || ADULT_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(term),
+  );
+  const canonicalizedSemanticTerms = uniqueSignals(rawSemanticTerms
+    .filter((term) => !filteredGenericTerms.includes(term))
+    .map(adultGoogleBooksCanonicalSemanticTerm)
+    .filter(Boolean));
+  const familyDerivationEvidence = adultGoogleBooksSemanticFamilyDerivationEvidence(canonicalizedSemanticTerms, semanticTermsByMetadataField);
+  const unmappedSemanticTerms = canonicalizedSemanticTerms.filter((term) => !adultOpenLibraryPrimaryContentFamily(term));
+  return {
+    rawSemanticTerms,
+    semanticTermsByMetadataField,
+    filteredGenericTerms,
+    canonicalizedSemanticTerms,
+    unmappedSemanticTerms,
+    familyDerivationEvidence,
+    familyDerivationFailureReason: adultGoogleBooksSemanticFamilyDerivationFailureReason(rawSemanticTerms, filteredGenericTerms, canonicalizedSemanticTerms, familyDerivationEvidence, profileLikedFamilies, profileAvoidFamilies, eligibility),
+    ...adultGoogleBooksQueryFamilyCounterfactual(candidate, eligibility, profileLikedFamilies, profileAvoidFamilies),
+  };
+}
+
+function adultGoogleBooksFailureCohort(eligibility: AdultGoogleBooksEligibility, trace: AdultGoogleBooksSemanticDerivationTrace, profileLikedFamilies: string[], profileAvoidFamilies: string[]): string {
+  if (eligibility.documentBackedLikedSignals.length === 0) return "no_document_backed_liked_signals";
+  if (eligibility.meaningfulTasteFailureReason === "context_only_signal_not_meaningful") return "context_only";
+  if (eligibility.meaningfulTasteFailureReason === "broad_tone_without_content_family_corroboration") return "broad_tone_only";
+  if (eligibility.allCandidateTasteFamilies.length === 0) return "liked_signals_present_but_no_candidate_family";
+  if (
+    eligibility.negativeNetTasteFamilies.some((family) => profileAvoidFamilies.includes(family))
+    || eligibility.allCandidateTasteFamilies.some((family) => profileAvoidFamilies.includes(family))
+  ) {
+    return "candidate_family_canceled_by_avoid_evidence";
+  }
+  if (!eligibility.allCandidateTasteFamilies.some((family) => profileLikedFamilies.includes(family))) return "candidate_family_present_but_not_profile_liked";
+  if (eligibility.specificToneThemeLikedSignals.length > 0 && !eligibility.meaningfulTastePassed) return "specific_evidence_present_but_no_passing_combination";
+  if (trace.filteredGenericTerms.length > 0 && trace.canonicalizedSemanticTerms.length === 0) return "context_only";
+  return "positive_score_but_failed_named_branch";
+}
+
+function adultGoogleBooksPassCohort(eligibility: AdultGoogleBooksEligibility): string {
+  if (eligibility.strongNarrativeOverrideApplied) return "passed_by_strong_narrative_override";
+  if (eligibility.positiveNetTasteFamilies.length > 0) return "passed_by_positive_family";
+  return "passed_by_specific_evidence";
+}
+
+function adultGoogleBooksAddCohort(title: string, cohort: string, counts: Record<string, number>, titles: Record<string, string[]>): void {
+  counts[cohort] = Number(counts[cohort] || 0) + 1;
+  titles[cohort] = uniqueSignals([...(titles[cohort] || []), title]);
 }
 
 function adultGoogleBooksFirstClassFictionCategories(candidate: ScoredCandidate): string[] {
@@ -5093,6 +5355,24 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const meaningfulAlignmentDecisionByTitle: Record<string, string> = {};
   const meaningfulAlignmentOverrideByTitle: Record<string, string> = {};
   const avoidFamilyOverlapByTitle: Record<string, string[]> = {};
+  const alignmentFailureCohortByTitle: Record<string, string> = {};
+  const alignmentPassCohortByTitle: Record<string, string> = {};
+  const alignmentFailureCohortCount: Record<string, number> = {};
+  const alignmentFailureCohortTitles: Record<string, string[]> = {};
+  const alignmentPassCohortCount: Record<string, number> = {};
+  const alignmentPassCohortTitles: Record<string, string[]> = {};
+  const rawSemanticTermsByTitle: Record<string, string[]> = {};
+  const semanticTermsByMetadataFieldByTitle: Record<string, Record<string, string[]>> = {};
+  const filteredGenericTermsByTitle: Record<string, string[]> = {};
+  const canonicalizedSemanticTermsByTitle: Record<string, string[]> = {};
+  const unmappedSemanticTermsByTitle: Record<string, string[]> = {};
+  const familyDerivationEvidenceByTitle: Record<string, Record<string, string[]>> = {};
+  const familyDerivationFailureReasonByTitle: Record<string, string> = {};
+  const queryFamilyCounterfactualByTitle: Record<string, string> = {};
+  const queryFamilyCounterfactualMatchedFamiliesByTitle: Record<string, string[]> = {};
+  const queryFamilyCounterfactualWouldPassByTitle: Record<string, boolean> = {};
+  const queryFamilyCounterfactualBlockedReasonByTitle: Record<string, string> = {};
+  const queryFamilyCounterfactualRescueTitles: string[] = [];
   let profileLikedFamilies: string[] = [];
   let profileAvoidFamilies: string[] = [];
   if (profile.ageBand === "adult") {
@@ -5166,6 +5446,25 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksMeaningfulAlignmentDecisionByTitle = {};
     diagnostics.adultGoogleBooksMeaningfulAlignmentOverrideByTitle = {};
     diagnostics.adultGoogleBooksAvoidFamilyOverlapByTitle = {};
+    diagnostics.adultGoogleBooksAlignmentFailureCohortByTitle = {};
+    diagnostics.adultGoogleBooksAlignmentPassCohortByTitle = {};
+    diagnostics.adultGoogleBooksAlignmentFailureCohortCount = {};
+    diagnostics.adultGoogleBooksAlignmentFailureCohortTitles = {};
+    diagnostics.adultGoogleBooksAlignmentPassCohortCount = {};
+    diagnostics.adultGoogleBooksAlignmentPassCohortTitles = {};
+    diagnostics.adultGoogleBooksRawSemanticTermsByTitle = {};
+    diagnostics.adultGoogleBooksSemanticTermsByMetadataFieldByTitle = {};
+    diagnostics.adultGoogleBooksFilteredGenericTermsByTitle = {};
+    diagnostics.adultGoogleBooksCanonicalizedSemanticTermsByTitle = {};
+    diagnostics.adultGoogleBooksUnmappedSemanticTermsByTitle = {};
+    diagnostics.adultGoogleBooksFamilyDerivationEvidenceByTitle = {};
+    diagnostics.adultGoogleBooksFamilyDerivationFailureReasonByTitle = {};
+    diagnostics.adultGoogleBooksQueryFamilyCounterfactualByTitle = {};
+    diagnostics.adultGoogleBooksQueryFamilyCounterfactualMatchedFamiliesByTitle = {};
+    diagnostics.adultGoogleBooksQueryFamilyCounterfactualWouldPassByTitle = {};
+    diagnostics.adultGoogleBooksQueryFamilyCounterfactualBlockedReasonByTitle = {};
+    diagnostics.adultGoogleBooksQueryFamilyCounterfactualRescueCount = 0;
+    diagnostics.adultGoogleBooksQueryFamilyCounterfactualRescueTitles = [];
     diagnostics.googleBooksPlannedQueries = [];
     diagnostics.googleBooksQueriesAttempted = [];
     diagnostics.googleBooksRawCountByQuery = {};
@@ -5236,6 +5535,20 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     meaningfulAlignmentOverrideByTitle[candidate.title] = eligibility.strongNarrativeOverrideApplied ? "strong_narrative_identity_override" : "none";
     avoidFamilyOverlapByTitle[candidate.title] = eligibility.negativeNetTasteFamilies.filter((f) => profileAvoidFamilies.includes(f));
 
+    const semanticTrace = adultGoogleBooksSemanticDerivationTrace(candidate, eligibility, profileLikedFamilies, profileAvoidFamilies);
+    rawSemanticTermsByTitle[candidate.title] = semanticTrace.rawSemanticTerms;
+    semanticTermsByMetadataFieldByTitle[candidate.title] = semanticTrace.semanticTermsByMetadataField;
+    filteredGenericTermsByTitle[candidate.title] = semanticTrace.filteredGenericTerms;
+    canonicalizedSemanticTermsByTitle[candidate.title] = semanticTrace.canonicalizedSemanticTerms;
+    unmappedSemanticTermsByTitle[candidate.title] = semanticTrace.unmappedSemanticTerms;
+    familyDerivationEvidenceByTitle[candidate.title] = semanticTrace.familyDerivationEvidence;
+    familyDerivationFailureReasonByTitle[candidate.title] = semanticTrace.familyDerivationFailureReason;
+    queryFamilyCounterfactualByTitle[candidate.title] = semanticTrace.queryFamilyCounterfactual;
+    queryFamilyCounterfactualMatchedFamiliesByTitle[candidate.title] = semanticTrace.queryFamilyCounterfactualMatchedFamilies;
+    queryFamilyCounterfactualWouldPassByTitle[candidate.title] = semanticTrace.queryFamilyCounterfactualWouldPass;
+    queryFamilyCounterfactualBlockedReasonByTitle[candidate.title] = semanticTrace.queryFamilyCounterfactualBlockedReason;
+    if (semanticTrace.queryFamilyCounterfactualWouldPass) queryFamilyCounterfactualRescueTitles.push(candidate.title);
+
     // Explicit per-title decision diagnostics so every ranked candidate has a named reason.
     finalEligibilityDecisionByTitle[candidate.title] = eligibility.allowed ? "accepted" : "rejected";
     finalEligibilityEvidenceByTitle[candidate.title] = Array.from(new Set([
@@ -5270,6 +5583,9 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
       postRankingGateReasonByTitle[candidate.title] = candidate.rejectedReasons.find(Boolean) || "not_reached_selection_capacity";
     }
     if (eligibility.allowed) {
+      const passCohort = adultGoogleBooksPassCohort(eligibility);
+      alignmentPassCohortByTitle[candidate.title] = passCohort;
+      adultGoogleBooksAddCohort(candidate.title, passCohort, alignmentPassCohortCount, alignmentPassCohortTitles);
       if (selectedTitleSet.has(normalized(candidate.title))) {
         finalSelectionDecisionByTitle[candidate.title] = "selected";
       } else if (isAuthorDeferred) {
@@ -5291,6 +5607,9 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
       acceptedTitles.push(candidate.title);
       if (attemptedQuery) acceptedCountByQuery[attemptedQuery] = Number(acceptedCountByQuery[attemptedQuery] || 0) + 1;
     } else if (!eligibility.allowed) {
+      const failureCohort = adultGoogleBooksFailureCohort(eligibility, semanticTrace, profileLikedFamilies, profileAvoidFamilies);
+      alignmentFailureCohortByTitle[candidate.title] = failureCohort;
+      adultGoogleBooksAddCohort(candidate.title, failureCohort, alignmentFailureCohortCount, alignmentFailureCohortTitles);
       rejectedTitlesByReason[eligibility.reason] = [...(rejectedTitlesByReason[eligibility.reason] || []), candidate.title];
       if (attemptedQuery) {
         if (!rejectedCountByQueryAndReason[attemptedQuery]) rejectedCountByQueryAndReason[attemptedQuery] = {};
@@ -5344,6 +5663,25 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksMeaningfulAlignmentDecisionByTitle = meaningfulAlignmentDecisionByTitle;
   diagnostics.adultGoogleBooksMeaningfulAlignmentOverrideByTitle = meaningfulAlignmentOverrideByTitle;
   diagnostics.adultGoogleBooksAvoidFamilyOverlapByTitle = avoidFamilyOverlapByTitle;
+  diagnostics.adultGoogleBooksAlignmentFailureCohortByTitle = alignmentFailureCohortByTitle;
+  diagnostics.adultGoogleBooksAlignmentPassCohortByTitle = alignmentPassCohortByTitle;
+  diagnostics.adultGoogleBooksAlignmentFailureCohortCount = alignmentFailureCohortCount;
+  diagnostics.adultGoogleBooksAlignmentFailureCohortTitles = alignmentFailureCohortTitles;
+  diagnostics.adultGoogleBooksAlignmentPassCohortCount = alignmentPassCohortCount;
+  diagnostics.adultGoogleBooksAlignmentPassCohortTitles = alignmentPassCohortTitles;
+  diagnostics.adultGoogleBooksRawSemanticTermsByTitle = rawSemanticTermsByTitle;
+  diagnostics.adultGoogleBooksSemanticTermsByMetadataFieldByTitle = semanticTermsByMetadataFieldByTitle;
+  diagnostics.adultGoogleBooksFilteredGenericTermsByTitle = filteredGenericTermsByTitle;
+  diagnostics.adultGoogleBooksCanonicalizedSemanticTermsByTitle = canonicalizedSemanticTermsByTitle;
+  diagnostics.adultGoogleBooksUnmappedSemanticTermsByTitle = unmappedSemanticTermsByTitle;
+  diagnostics.adultGoogleBooksFamilyDerivationEvidenceByTitle = familyDerivationEvidenceByTitle;
+  diagnostics.adultGoogleBooksFamilyDerivationFailureReasonByTitle = familyDerivationFailureReasonByTitle;
+  diagnostics.adultGoogleBooksQueryFamilyCounterfactualByTitle = queryFamilyCounterfactualByTitle;
+  diagnostics.adultGoogleBooksQueryFamilyCounterfactualMatchedFamiliesByTitle = queryFamilyCounterfactualMatchedFamiliesByTitle;
+  diagnostics.adultGoogleBooksQueryFamilyCounterfactualWouldPassByTitle = queryFamilyCounterfactualWouldPassByTitle;
+  diagnostics.adultGoogleBooksQueryFamilyCounterfactualBlockedReasonByTitle = queryFamilyCounterfactualBlockedReasonByTitle;
+  diagnostics.adultGoogleBooksQueryFamilyCounterfactualRescueCount = queryFamilyCounterfactualRescueTitles.length;
+  diagnostics.adultGoogleBooksQueryFamilyCounterfactualRescueTitles = uniqueSignals(queryFamilyCounterfactualRescueTitles);
   diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
   diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
   diagnostics.googleBooksRankedCandidateTitles = uniqueSignals(rankedCandidateTitles);
