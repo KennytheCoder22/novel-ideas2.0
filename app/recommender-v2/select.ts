@@ -7845,6 +7845,48 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.googleBooksFinalSelectionExclusionReasonByTitle = finalSelectionExclusionReasonByTitle;
 }
 
+function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand === "adult" || !rankedCandidates.some((candidate) => candidate.source === "googleBooks")) return;
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const finalEligibilityDecisionByTitle = { ...((diagnostics.googleBooksFinalEligibilityDecisionByTitle || {}) as Record<string, string>) };
+  const finalEligibilityReasonByTitle = { ...((diagnostics.googleBooksFinalEligibilityReasonByTitle || {}) as Record<string, string>) };
+  const finalEligibilityEvidenceByTitle = { ...((diagnostics.googleBooksFinalEligibilityEvidenceByTitle || {}) as Record<string, string[]>) };
+  const finalSelectionDecisionByTitle = { ...((diagnostics.googleBooksFinalSelectionDecisionByTitle || {}) as Record<string, string>) };
+  const finalSelectionExclusionReasonByTitle = { ...((diagnostics.googleBooksFinalSelectionExclusionReasonByTitle || {}) as Record<string, string>) };
+  const selectedTitles = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalized(candidate.title)));
+
+  for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
+    const title = candidate.title;
+    const selectedCandidate = selectedTitles.has(normalized(title));
+    const reason = candidate.rejectedReasons.find((entry) => entry !== "selected") || "";
+    if (selectedCandidate) {
+      finalEligibilityDecisionByTitle[title] = "accepted";
+      finalEligibilityReasonByTitle[title] = "googlebooks_final_eligibility_folded_into_generic_selection_path";
+      finalEligibilityEvidenceByTitle[title] = [
+        `requested_deck:${profile.ageBand}`,
+        "generic_reject_reason_path_passed",
+      ];
+      finalSelectionDecisionByTitle[title] = "selected";
+      delete finalSelectionExclusionReasonByTitle[title];
+    } else {
+      finalEligibilityDecisionByTitle[title] = reason ? "rejected" : "bypassed";
+      finalEligibilityReasonByTitle[title] = reason || "ranked_below_final_selection";
+      finalEligibilityEvidenceByTitle[title] = [
+        `requested_deck:${profile.ageBand}`,
+        reason ? "generic_reject_reason_path_rejected" : "generic_selection_ranked_below_selected_slate",
+      ];
+      finalSelectionDecisionByTitle[title] = reason ? `rejected:${reason}` : "not_selected_after_ranking";
+      finalSelectionExclusionReasonByTitle[title] = reason || "ranked_below_final_selection";
+    }
+  }
+
+  diagnostics.googleBooksFinalEligibilityDecisionByTitle = finalEligibilityDecisionByTitle;
+  diagnostics.googleBooksFinalEligibilityReasonByTitle = finalEligibilityReasonByTitle;
+  diagnostics.googleBooksFinalEligibilityEvidenceByTitle = finalEligibilityEvidenceByTitle;
+  diagnostics.googleBooksFinalSelectionDecisionByTitle = finalSelectionDecisionByTitle;
+  diagnostics.googleBooksFinalSelectionExclusionReasonByTitle = finalSelectionExclusionReasonByTitle;
+}
+
 export function selectRecommendations(candidates: ScoredCandidate[], profile: TasteProfile, limit = 10): { selected: ScoredCandidate[]; rejectedReasons: Record<string, number> } {
   const rejectedReasons: Record<string, number> = {};
   const selected: ScoredCandidate[] = [];
@@ -8195,6 +8237,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   addTeenOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultGoogleBooksSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
+  addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 
   return { selected, rejectedReasons };

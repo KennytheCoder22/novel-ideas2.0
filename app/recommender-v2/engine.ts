@@ -2854,11 +2854,17 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
       .map((candidate) => candidate.title),
     120,
   );
+  const googleBooksFinalEligibilityDecisionByTitle = ((rejectedReasons as Record<string, unknown>).googleBooksFinalEligibilityDecisionByTitle || {}) as Record<string, unknown>;
   const googleBooksEligibilityReasonByTitle = ((rejectedReasons as Record<string, unknown>).adultGoogleBooksEligibilityReasonByTitle || {}) as Record<string, unknown>;
   const googleBooksFinalEligibilityTitles = uniqueStrings(
-    Object.entries(googleBooksEligibilityReasonByTitle)
-      .filter(([, reason]) => String(reason || "").startsWith("adult_googlebooks_minimal_final_gate_passed"))
-      .map(([title]) => title),
+    [
+      ...Object.entries(googleBooksFinalEligibilityDecisionByTitle)
+        .filter(([, decision]) => String(decision || "") === "accepted")
+        .map(([title]) => title),
+      ...Object.entries(googleBooksEligibilityReasonByTitle)
+        .filter(([, reason]) => String(reason || "").startsWith("adult_googlebooks_minimal_final_gate_passed"))
+        .map(([title]) => title),
+    ],
     120,
   );
   const googleBooksSourceResultForDiagnostics = sourceResults.find((result) => result.source === "googleBooks");
