@@ -4707,6 +4707,189 @@ function adultGoogleBooksMeaningfulTasteEligibility(candidate: ScoredCandidate, 
   return { passed: false, reason: failureReason, likedSignals, dislikedSignals, positiveNetTasteFamilies, allCandidateTasteFamilies, negativeNetTasteFamilies, tasteEvidenceSource: failEvidenceSource, likedSignalCount, threshold: failThreshold, specificToneThemeLikedSignals, broadToneLikedSignals, contextOnlyLikedSignals, productionDecisionReason };
 }
 
+type AdultGoogleBooksMeaningfulAlignmentFailureMode =
+  | "no_family_evidence"
+  | "family_score_below_threshold"
+  | "positive_family_canceled"
+  | "broad_tone_only"
+  | "context_only"
+  | "metadata_sparse"
+  | "semantic_extraction_failure"
+  | "threshold_only";
+
+function adultGoogleBooksEscapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function adultGoogleBooksTruncateDiagnosticText(value: unknown, limit = 700): string {
+  const text = String(value || "").trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
+}
+
+function adultGoogleBooksRawMetadataSummary(candidate: ScoredCandidate): Record<string, unknown> {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const volumeInfo = (raw.volumeInfo && typeof raw.volumeInfo === "object") ? (raw.volumeInfo as Record<string, unknown>) : {};
+  return {
+    title: candidate.title,
+    subtitle: candidate.subtitle || "",
+    description: adultGoogleBooksTruncateDiagnosticText(candidate.description || volumeInfo.description || ""),
+    categories: Array.isArray(volumeInfo.categories) ? volumeInfo.categories.map(String) : [],
+    genres: candidate.genres || [],
+    authors: Array.isArray(volumeInfo.authors) ? volumeInfo.authors.map(String) : candidate.creators || [],
+    publisher: String(volumeInfo.publisher || ""),
+    publishedDate: String(volumeInfo.publishedDate || ""),
+    pageCount: Number(volumeInfo.pageCount || 0) || undefined,
+  };
+}
+
+function adultGoogleBooksMetadataSparseReasons(candidate: ScoredCandidate): string[] {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const volumeInfo = (raw.volumeInfo && typeof raw.volumeInfo === "object") ? (raw.volumeInfo as Record<string, unknown>) : {};
+  const description = String(candidate.description || volumeInfo.description || "");
+  const categories = Array.isArray(volumeInfo.categories) ? volumeInfo.categories.filter(Boolean) : [];
+  const genres = Array.isArray(candidate.genres) ? candidate.genres.filter(Boolean) : [];
+  const authors = Array.isArray(candidate.creators) ? candidate.creators.filter(Boolean) : [];
+  const reasons: string[] = [];
+  if (!description.trim()) reasons.push("missing_description");
+  else if (description.trim().length < 120) reasons.push("short_description");
+  if (categories.length === 0) reasons.push("missing_google_categories");
+  if (genres.length === 0) reasons.push("missing_normalized_genres");
+  if (authors.length === 0) reasons.push("missing_authors");
+  if (!String(volumeInfo.publisher || "").trim()) reasons.push("missing_publisher");
+  return reasons;
+}
+
+function adultGoogleBooksSignalPresentLiteral(signal: string, metadataText: string): boolean {
+  const value = normalized(signal);
+  if (!value) return false;
+  const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])${adultGoogleBooksEscapeRegExp(value)}(?=$|[^\\p{L}\\p{N}])`, "iu");
+  return pattern.test(metadataText);
+}
+
+function adultGoogleBooksProfileLikedSignalValues(profile?: TasteProfile): string[] {
+  if (!profile) return [];
+  return uniqueSignals([
+    ...(profile.genreFamily || []).map((row) => String(row.value || "")),
+    ...(profile.themes || []).map((row) => String(row.value || "")),
+    ...(profile.tone || []).map((row) => String(row.value || "")),
+    ...(profile.characterDynamics || []).map((row) => String(row.value || "")),
+    ...(profile.formatPreference || []).map((row) => String(row.value || "")),
+  ].map((value) => normalized(value)).filter(Boolean));
+}
+
+function adultGoogleBooksMeaningfulAlignmentFailureDetails(
+  candidate: ScoredCandidate,
+  meaningfulTaste: ReturnType<typeof adultGoogleBooksMeaningfulTasteEligibility>,
+  profile?: TasteProfile,
+): Record<string, unknown> {
+  const likedFamilies = meaningfulTaste.likedSignals.map((signal) => adultOpenLibraryPrimaryContentFamily(signal)).filter(Boolean);
+  const dislikedFamilies = meaningfulTaste.dislikedSignals.map((signal) => adultOpenLibraryPrimaryContentFamily(signal)).filter(Boolean);
+  const likedFamilyCounts = adultGoogleBooksFamilyCounts(likedFamilies);
+  const dislikedFamilyCounts = adultGoogleBooksFamilyCounts(dislikedFamilies);
+  const allFamilies = Array.from(new Set([...likedFamilies, ...dislikedFamilies]));
+  const familyScoresByFamily = Object.fromEntries(allFamilies.map((family) => {
+    const likedScore = Number(likedFamilyCounts[family] || 0);
+    const opposingScore = Number(dislikedFamilyCounts[family] || 0);
+    const threshold = opposingScore + 1;
+    return [family, {
+      likedFamilyScore: likedScore,
+      opposingFamilyScore: opposingScore,
+      netFamilyScore: likedScore - opposingScore,
+      threshold,
+      missingPoints: Math.max(0, threshold - likedScore),
+      comparison: likedScore > opposingScore ? "positive" : likedScore === opposingScore ? "tied_or_canceled" : "negative",
+    }];
+  }));
+  const canceledFamilies = allFamilies.filter((family) =>
+    Number(likedFamilyCounts[family] || 0) > 0
+    && Number(dislikedFamilyCounts[family] || 0) >= Number(likedFamilyCounts[family] || 0)
+    && !meaningfulTaste.positiveNetTasteFamilies.includes(family));
+  const familyMissingDistances = Object.values(familyScoresByFamily)
+    .map((row) => Number((row as Record<string, unknown>).missingPoints || 0))
+    .filter((value) => value > 0);
+  const specificToneThresholdMissing = meaningfulTaste.specificToneThemeLikedSignals.length > 0
+    ? Math.max(0, 2 - meaningfulTaste.specificToneThemeLikedSignals.length)
+    : undefined;
+  const closestThresholdDistance = [
+    ...familyMissingDistances,
+    ...(specificToneThresholdMissing !== undefined && specificToneThresholdMissing > 0 ? [specificToneThresholdMissing] : []),
+  ].sort((a, b) => a - b)[0];
+
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const metadataText = fields.combined;
+  const extractedLiked = uniqueSignals(meaningfulTaste.likedSignals.map((signal) => normalized(signal)).filter(Boolean));
+  const expectedSignalsFromMetadata = adultGoogleBooksProfileLikedSignalValues(profile)
+    .filter((signal) => adultGoogleBooksSignalPresentLiteral(signal, metadataText));
+  const expectedSignalsMissingFromExtraction = expectedSignalsFromMetadata
+    .filter((signal) => !extractedLiked.includes(signal));
+  const parserConfidence = expectedSignalsFromMetadata.length > 0
+    ? adultOpenLibraryRoundWeight((expectedSignalsFromMetadata.length - expectedSignalsMissingFromExtraction.length) / expectedSignalsFromMetadata.length)
+    : meaningfulTaste.likedSignals.length > 0
+      ? 1
+      : 0;
+  const metadataSparseReasons = adultGoogleBooksMetadataSparseReasons(candidate);
+  const positiveTasteScore = adultOpenLibraryRoundWeight(Number(candidate.diagnostics?.positiveTasteScore || 0));
+  const preciseAvoidPenalty = Number(candidate.scoreBreakdown?.avoidSignalPenalty || 0);
+  const broadAvoidPenalty = Number(candidate.scoreBreakdown?.broadAvoidSignalPenalty || 0);
+  const negativeTasteScore = adultOpenLibraryRoundWeight(Math.abs(preciseAvoidPenalty + broadAvoidPenalty));
+  const failureModes: AdultGoogleBooksMeaningfulAlignmentFailureMode[] = [];
+
+  if (likedFamilies.length === 0) failureModes.push("no_family_evidence");
+  if (likedFamilies.length > 0 && meaningfulTaste.positiveNetTasteFamilies.length === 0) failureModes.push("family_score_below_threshold");
+  if (canceledFamilies.length > 0) failureModes.push("positive_family_canceled");
+  if (meaningfulTaste.reason === "broad_tone_without_content_family_corroboration") failureModes.push("broad_tone_only");
+  if (meaningfulTaste.reason === "context_only_signal_not_meaningful" || (meaningfulTaste.contextOnlyLikedSignals.length > 0 && meaningfulTaste.specificToneThemeLikedSignals.length === 0 && likedFamilies.length === 0)) failureModes.push("context_only");
+  if (metadataSparseReasons.length >= 2 || metadataSparseReasons.includes("missing_description")) failureModes.push("metadata_sparse");
+  if (expectedSignalsFromMetadata.length > 0 && expectedSignalsMissingFromExtraction.length > 0 && meaningfulTaste.likedSignals.length === 0) failureModes.push("semantic_extraction_failure");
+  if (
+    meaningfulTaste.likedSignals.length > 0
+    && closestThresholdDistance !== undefined
+    && closestThresholdDistance <= 1
+  ) {
+    failureModes.push("threshold_only");
+  }
+  if (failureModes.length === 0) {
+    failureModes.push(meaningfulTaste.likedSignals.length > 0 ? "threshold_only" : "no_family_evidence");
+  }
+
+  return {
+    failureModes: Array.from(new Set(failureModes)),
+    extractedFamilies: allFamilies,
+    positiveNetTasteFamilies: meaningfulTaste.positiveNetTasteFamilies,
+    negativeNetTasteFamilies: meaningfulTaste.negativeNetTasteFamilies,
+    likedFamilyScoresByFamily: likedFamilyCounts,
+    dislikedFamilyScoresByFamily: dislikedFamilyCounts,
+    familyScoresByFamily,
+    canceledFamilies,
+    positiveScore: positiveTasteScore,
+    negativeScore: negativeTasteScore,
+    signedAvoidPenalty: adultOpenLibraryRoundWeight(preciseAvoidPenalty + broadAvoidPenalty),
+    threshold: meaningfulTaste.threshold,
+    distanceFromThreshold: closestThresholdDistance !== undefined ? adultOpenLibraryRoundWeight(closestThresholdDistance) : undefined,
+    rawScore: meaningfulTaste.likedSignalCount,
+    evidenceSources: {
+      tasteEvidenceSource: meaningfulTaste.tasteEvidenceSource,
+      matchedFields: candidate.diagnostics?.adultGoogleBooksSignalMatchedField || {},
+      matchedMethods: candidate.diagnostics?.adultGoogleBooksSignalMatchMethod || {},
+      matchedText: candidate.diagnostics?.adultGoogleBooksSignalMatchedText || {},
+    },
+    parserConfidence,
+    expectedSignalsFromMetadata,
+    expectedSignalsMissingFromExtraction,
+    actuallyExtractedSignals: {
+      liked: meaningfulTaste.likedSignals,
+      disliked: meaningfulTaste.dislikedSignals,
+      specificToneTheme: meaningfulTaste.specificToneThemeLikedSignals,
+      broadTone: meaningfulTaste.broadToneLikedSignals,
+      contextOnly: meaningfulTaste.contextOnlyLikedSignals,
+    },
+    metadataSparseReasons,
+    missingMetadataFields: metadataSparseReasons,
+    rawMetadata: adultGoogleBooksRawMetadataSummary(candidate),
+    productionDecisionReason: meaningfulTaste.productionDecisionReason,
+  };
+}
+
 function adultTasteWeightedPolarity(profile: TasteProfile): Record<string, { decision?: string; positiveWeight?: number; negativeWeight?: number; netWeight?: number; positiveCount?: number; negativeCount?: number }> {
   const raw = profile.diagnostics?.adultTasteWeightedPolarityByFamily;
   return raw && typeof raw === "object" && !Array.isArray(raw)
@@ -5251,6 +5434,10 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const signalMatchMethodByTitle: Record<string, Record<string, string[]>> = {};
   const shortSignalSubstringMatchesByTitle: Record<string, unknown[]> = {};
   const rejectedShortSignalMatchesByTitle: Record<string, unknown[]> = {};
+  const meaningfulAlignmentFailureReasonByTitle: Record<string, string> = {};
+  const meaningfulAlignmentFailureDetailsByTitle: Record<string, Record<string, unknown>> = {};
+  const meaningfulAlignmentFailureHistogram: Record<string, number> = {};
+  const meaningfulAlignmentFailureExamples: Record<string, string[]> = {};
   let profileLikedFamilies: string[] = [];
   let profileAvoidFamilies: string[] = [];
   if (profile.ageBand === "adult") {
@@ -5337,6 +5524,12 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksSignalMatchMethodByTitle = {};
     diagnostics.adultGoogleBooksShortSignalSubstringMatchesByTitle = {};
     diagnostics.adultGoogleBooksRejectedShortSignalMatchesByTitle = {};
+    diagnostics.adultGoogleBooksMeaningfulAlignmentFailureHistogram = {};
+    diagnostics.adultGoogleBooksMeaningfulAlignmentFailurePercentages = {};
+    diagnostics.adultGoogleBooksMeaningfulAlignmentFailureExamples = {};
+    diagnostics.adultGoogleBooksMeaningfulAlignmentFailureReasonByTitle = {};
+    diagnostics.adultGoogleBooksMeaningfulAlignmentFailureDetailsByTitle = {};
+    diagnostics.adultGoogleBooksMeaningfulAlignmentRootCauseSummary = "";
     diagnostics.googleBooksPlannedQueries = [];
     diagnostics.googleBooksQueriesAttempted = [];
     diagnostics.googleBooksRawCountByQuery = {};
@@ -5365,6 +5558,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     if (attemptedQuery) rawCountByQuery[attemptedQuery] = Number(rawCountByQuery[attemptedQuery] || 0) + 1;
 
     const binaryMeaningfulTaste = adultGoogleBooksMeaningfulTasteEligibility(candidate);
+    const profileMeaningfulTaste = adultGoogleBooksMeaningfulTasteEligibility(candidate, profile);
     const eligibility = adultGoogleBooksFinalEligibility(candidate, profile);
     const weightedCounterfactual = adultGoogleBooksWeightedCounterfactualDecision(profile, binaryMeaningfulTaste, profileLikedFamilies, profileAvoidFamilies);
     eligibilityReasonByTitle[candidate.title] = eligibility.reason;
@@ -5432,6 +5626,21 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     rejectedShortSignalMatchesByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.adultGoogleBooksRejectedShortSignalMatches)
       ? candidate.diagnostics.adultGoogleBooksRejectedShortSignalMatches as unknown[]
       : [];
+    if (eligibility.reason === "adult_googlebooks_missing_meaningful_document_taste_alignment") {
+      const failureDetails = adultGoogleBooksMeaningfulAlignmentFailureDetails(candidate, profileMeaningfulTaste, profile);
+      const failureModes = Array.isArray(failureDetails.failureModes)
+        ? (failureDetails.failureModes as string[]).map(String).filter(Boolean)
+        : [];
+      meaningfulAlignmentFailureReasonByTitle[candidate.title] = failureModes.join("|") || "unclassified";
+      meaningfulAlignmentFailureDetailsByTitle[candidate.title] = failureDetails;
+      for (const mode of failureModes) {
+        meaningfulAlignmentFailureHistogram[mode] = Number(meaningfulAlignmentFailureHistogram[mode] || 0) + 1;
+        meaningfulAlignmentFailureExamples[mode] = Array.from(new Set([
+          ...(meaningfulAlignmentFailureExamples[mode] || []),
+          candidate.title,
+        ])).slice(0, 8);
+      }
+    }
     for (const family of weightedCounterfactual.currentOverlappingFamilies) {
       if (!eligibility.meaningfulTastePassed || weightedCounterfactual.reason !== "weighted_model_matches_current_binary_result") {
         overlapAffectedCandidateTitlesByFamily[family] = Array.from(new Set([...(overlapAffectedCandidateTitlesByFamily[family] || []), candidate.title]));
@@ -5501,6 +5710,16 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     }
   }
 
+  const meaningfulAlignmentFailureTotal = Math.max(1, Object.keys(meaningfulAlignmentFailureDetailsByTitle).length);
+  const meaningfulAlignmentFailurePercentages = Object.fromEntries(
+    Object.entries(meaningfulAlignmentFailureHistogram)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([mode, count]) => [mode, adultOpenLibraryRoundWeight((count / meaningfulAlignmentFailureTotal) * 100)]),
+  );
+  const meaningfulAlignmentRootCauseSummary = Object.entries(meaningfulAlignmentFailurePercentages)
+    .map(([mode, pct]) => `${pct}% ${mode} (${meaningfulAlignmentFailureHistogram[mode] || 0})`)
+    .join(" | ");
+
   diagnostics.adultGoogleBooksFinalGateApplied = true;
   diagnostics.adultGoogleBooksEligibilityReasonByTitle = eligibilityReasonByTitle;
   diagnostics.adultGoogleBooksArtifactReasonsByTitle = artifactReasonsByTitle;
@@ -5559,6 +5778,12 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksSignalMatchMethodByTitle = signalMatchMethodByTitle;
   diagnostics.adultGoogleBooksShortSignalSubstringMatchesByTitle = shortSignalSubstringMatchesByTitle;
   diagnostics.adultGoogleBooksRejectedShortSignalMatchesByTitle = rejectedShortSignalMatchesByTitle;
+  diagnostics.adultGoogleBooksMeaningfulAlignmentFailureHistogram = meaningfulAlignmentFailureHistogram;
+  diagnostics.adultGoogleBooksMeaningfulAlignmentFailurePercentages = meaningfulAlignmentFailurePercentages;
+  diagnostics.adultGoogleBooksMeaningfulAlignmentFailureExamples = meaningfulAlignmentFailureExamples;
+  diagnostics.adultGoogleBooksMeaningfulAlignmentFailureReasonByTitle = meaningfulAlignmentFailureReasonByTitle;
+  diagnostics.adultGoogleBooksMeaningfulAlignmentFailureDetailsByTitle = meaningfulAlignmentFailureDetailsByTitle;
+  diagnostics.adultGoogleBooksMeaningfulAlignmentRootCauseSummary = meaningfulAlignmentRootCauseSummary;
   diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
   diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
   diagnostics.googleBooksRankedCandidateTitles = uniqueSignals(rankedCandidateTitles);

@@ -145,6 +145,9 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   assertEqual(evidenceSource, "none", "T1: tasteEvidenceSource must be 'none' with no signals");
   const score = diagnostics.adultGoogleBooksMeaningfulAlignmentScoreByTitle?.["Empty Signals Book"];
   assertEqual(score, 0, "T1: meaningfulAlignmentScore must be 0 with no signals");
+  const failureModes = diagnostics.adultGoogleBooksMeaningfulAlignmentFailureDetailsByTitle?.["Empty Signals Book"]?.failureModes || [];
+  assertIncludes(failureModes, "no_family_evidence", "T1: failure diagnostics should classify no family evidence");
+  assertTruthy((diagnostics.adultGoogleBooksMeaningfulAlignmentRootCauseSummary || "").includes("no_family_evidence"), "T1: root cause summary should include no_family_evidence");
   console.log("PASS T1: no signals → no_document_backed_liked_signals");
 }
 
@@ -172,6 +175,8 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   const negFamilies = diagnostics.adultGoogleBooksNegativeNetTasteFamiliesByTitle?.["Fantasy with Dislike"];
   // When equal, neither list wins → should not be in positiveNet or negativeNet
   assertNotIncludes(diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle?.["Fantasy with Dislike"] || [], "fantasy", "T3: tied family must not be in positiveNet");
+  const failureModes = diagnostics.adultGoogleBooksMeaningfulAlignmentFailureDetailsByTitle?.["Fantasy with Dislike"]?.failureModes || [];
+  assertIncludes(failureModes, "positive_family_canceled", "T3: failure diagnostics should classify canceled positive family");
   console.log("PASS T3: disliked cancels same family → gate fails");
 }
 
@@ -194,6 +199,8 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   assertFalsy(passed, "T5: single broad tone with no genreFacetMatch should fail");
   const failureReason = diagnostics.adultGoogleBooksMeaningfulTasteFailureReasonByTitle?.["Only Dark"];
   assertEqual(failureReason, "broad_tone_without_content_family_corroboration", "T5: failure reason must be broad_tone_without_content_family_corroboration");
+  const failureModes = diagnostics.adultGoogleBooksMeaningfulAlignmentFailureDetailsByTitle?.["Only Dark"]?.failureModes || [];
+  assertIncludes(failureModes, "broad_tone_only", "T5: failure diagnostics should classify broad tone only");
   console.log("PASS T5: broad tone only (no genreFacetMatch) → broad_tone_without_content_family_corroboration");
 }
 
