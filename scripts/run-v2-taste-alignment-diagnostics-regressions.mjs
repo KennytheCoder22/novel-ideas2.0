@@ -71,15 +71,25 @@ const dir = resolve(dirname(fileURLToPath(import.meta.url)), "../app/recommender
 // indirectly via adultGoogleBooksFinalEligibility or via the full selection pipeline.
 // We build minimal ScoredCandidate fixtures.
 
-function makeScoredCandidate({ title = "Test Book", likedSignals = [], dislikedSignals = [], genreFacetMatch = 0, source = "googleBooks", scoreBreakdown = {} } = {}) {
+function makeScoredCandidate({
+  title = "Test Book",
+  likedSignals = [],
+  dislikedSignals = [],
+  genreFacetMatch = 0,
+  source = "googleBooks",
+  scoreBreakdown = {},
+  description = "A test book.",
+  genres = [],
+  categories = [],
+} = {}) {
   return {
     id: `test-${title.toLowerCase().replace(/\s+/g, "-")}`,
     title,
     source,
     score: 1,
     creators: ["Test Author"],
-    description: "A test book.",
-    genres: [],
+    description,
+    genres,
     tones: [],
     themes: [],
     characterDynamics: [],
@@ -94,7 +104,12 @@ function makeScoredCandidate({ title = "Test Book", likedSignals = [], dislikedS
       sourceQualityRelevance: 1,
     },
     rejectedReasons: [],
-    raw: {},
+    raw: {
+      volumeInfo: {
+        description,
+        categories,
+      },
+    },
   };
 }
 
@@ -528,6 +543,42 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   });
   assertIncludes(profile.genreFamily.map((row) => row.value), "fantasy", "T29: non-Adult skip behavior should remain unchanged");
   console.log("PASS T29: non-Adult skip contribution remains unchanged");
+}
+
+// --- T30: Narrative family extraction diagnostics expose unmapped description cues ---
+{
+  const candidate = makeScoredCandidate({
+    title: "Unmapped Detective Description",
+    likedSignals: [],
+    dislikedSignals: [],
+    description: "A detective investigates a murder after a serial killer vanishes into a small coastal town.",
+    categories: ["Fiction / Mystery & Detective / General"],
+  });
+  const diagnostics = runSelection([candidate], adultProfile);
+  assertFalsy(
+    diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Unmapped Detective Description"],
+    "T30: diagnostics must not change final taste eligibility",
+  );
+  const evidence = diagnostics.adultGoogleBooksExpectedVsExtractedFamilyEvidenceByTitle?.["Unmapped Detective Description"] || {};
+  assertIncludes(
+    evidence.missingExpectedFamilies || [],
+    "mystery_crime_thriller",
+    "T30: visible detective/murder prose should be reported as missing mystery family evidence",
+  );
+  const unmapped = diagnostics.adultGoogleBooksUnmappedNarrativeCuesByTitle?.["Unmapped Detective Description"] || [];
+  assertTruthy(
+    unmapped.some((row) => row?.phrase === "detective" && row?.family === "mystery_crime_thriller"),
+    "T30: detective should be listed as an unmapped narrative cue",
+  );
+  assertTruthy(
+    Number(diagnostics.adultGoogleBooksUnmappedNarrativePhraseHistogram?.detective || 0) > 0,
+    "T30: unmapped phrase histogram should count detective",
+  );
+  assertTruthy(
+    Number(diagnostics.adultGoogleBooksNarrativeParserConfidenceByTitle?.["Unmapped Detective Description"] ?? 1) < 1,
+    "T30: parser confidence should drop when expected cues are not extracted",
+  );
+  console.log("PASS T30: narrative extraction diagnostics expose ignored mystery cues without changing eligibility");
 }
 
 console.log("\nAll taste-alignment diagnostic regression tests passed.");
