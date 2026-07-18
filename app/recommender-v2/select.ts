@@ -4532,6 +4532,310 @@ function adultGoogleBooksInstructionalCraftReasons(candidate: ScoredCandidate): 
   return Array.from(new Set(reasons));
 }
 
+type AdultGoogleBooksFinalSlateIdentity =
+  | "individual_narrative_work"
+  | "narrative_series_volume"
+  | "short_story_collection"
+  | "multi_author_anthology"
+  | "single_author_collection"
+  | "best_of_or_annual_collection"
+  | "omnibus_or_boxed_collection"
+  | "literary_criticism_or_subject_study"
+  | "academic_or_scholarly_text"
+  | "reading_guide_or_companion"
+  | "bibliography_catalog_or_reference"
+  | "periodical_or_serial_issue"
+  | "juvenile_or_incompatible_audience"
+  | "promotional_or_publisher_artifact"
+  | "identity_uncertain";
+
+type AdultGoogleBooksFinalSlateIdentityAgreement =
+  | "identity_agrees_with_current_behavior"
+  | "likely_non_narrative_false_accept"
+  | "likely_collection_false_accept"
+  | "likely_narrative_false_reject"
+  | "uncertain_identity_needs_review";
+
+type AdultGoogleBooksFinalSlateIdentityAuditContext = {
+  eligibility?: AdultGoogleBooksEligibility;
+  finalEligibilityDecision?: string;
+  finalEligibilityReason?: string;
+  finalSelectionDecision?: string;
+  rendered?: boolean;
+};
+
+type AdultGoogleBooksFinalSlateIdentityAuditResult = {
+  identity: AdultGoogleBooksFinalSlateIdentity;
+  confidence: number;
+  evidence: Record<string, string[]>;
+  agreement: AdultGoogleBooksFinalSlateIdentityAgreement;
+  rootCause: string;
+  summary: Record<string, unknown>;
+};
+
+function adultGoogleBooksCandidateVolumeInfo(candidate: ScoredCandidate): Record<string, unknown> {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  return raw.volumeInfo && typeof raw.volumeInfo === "object" ? raw.volumeInfo as Record<string, unknown> : {};
+}
+
+function adultGoogleBooksDiagnosticStrings(candidate: ScoredCandidate, key: string): string[] {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const value = candidate.diagnostics?.[key] || raw[key];
+  return Array.isArray(value) ? uniqueSignals(value.map((item) => String(item || ""))) : [];
+}
+
+function adultGoogleBooksCurrentPublicationShape(candidate: ScoredCandidate): string {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  return String(candidate.diagnostics?.googleBooksPublicationShape || raw.googleBooksPublicationShape || "unknown");
+}
+
+function adultGoogleBooksCurrentPublicationShapePrecedenceDecision(candidate: ScoredCandidate): string {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  return String(candidate.diagnostics?.googleBooksPublicationShapePrecedenceDecision || raw.googleBooksPublicationShapePrecedenceDecision || "");
+}
+
+function adultGoogleBooksFinalSlateIdentityEvidenceContainer(candidate: ScoredCandidate, eligibility?: AdultGoogleBooksEligibility): Record<string, string[]> {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const volumeInfo = adultGoogleBooksCandidateVolumeInfo(candidate);
+  const identifiers = Array.isArray(volumeInfo.industryIdentifiers) ? volumeInfo.industryIdentifiers : [];
+  const evidence: Record<string, string[]> = {
+    titleIdentityEvidence: [],
+    subtitleIdentityEvidence: [],
+    categoryIdentityEvidence: [],
+    descriptionIdentityEvidence: [],
+    narrativeSynopsisEvidence: [],
+    academicFraming: [],
+    editorContributorFraming: [],
+    storiesByFraming: [],
+    collectionAnthologyEvidence: [],
+    subjectOfAuthorFraming: [],
+    publisherEvidence: [],
+    recordQualityEvidence: [
+      ...(identifiers.length > 0 ? ["isbn_present"] : []),
+      ...(Number(volumeInfo.pageCount || 0) > 0 ? [`page_count:${Number(volumeInfo.pageCount || 0)}`] : []),
+      ...(String(volumeInfo.publisher || "").trim() ? [`publisher:${String(volumeInfo.publisher || "").trim()}`] : []),
+      ...(String(volumeInfo.publishedDate || raw.publicationYear || "").trim() ? [`published:${String(volumeInfo.publishedDate || raw.publicationYear || "").trim()}`] : []),
+    ],
+    currentPublicationShapeEvidence: adultGoogleBooksDiagnosticStrings(candidate, "googleBooksPublicationShapeEvidence"),
+    currentDominantPublicationShapeEvidence: adultGoogleBooksDiagnosticStrings(candidate, "googleBooksDominantPublicationShapeEvidence"),
+    currentStoryLevelNarrativeEvidence: adultGoogleBooksDiagnosticStrings(candidate, "googleBooksStoryLevelNarrativeEvidence"),
+    finalEligibilityEvidence: eligibility
+      ? uniqueSignals([
+        ...eligibility.artifactReasons,
+        ...eligibility.referenceSurveyReasons,
+        ...eligibility.encyclopediaReferenceReasons,
+        ...eligibility.annualAnthologyReasons,
+        ...eligibility.anthologyCorroboration,
+        ...eligibility.instructionalCraftReasons,
+        ...eligibility.narrativeEvidence,
+        ...eligibility.workIdentitySignals,
+        ...eligibility.credibleFictionSignals,
+        ...eligibility.sourceQualityFailureReasons,
+      ])
+      : [],
+  };
+  return evidence;
+}
+
+function adultGoogleBooksPushEvidence(evidence: Record<string, string[]>, key: string, value: string): void {
+  if (!value) return;
+  evidence[key] = uniqueSignals([...(evidence[key] || []), value]);
+}
+
+function adultGoogleBooksIdentityConfidence(evidence: Record<string, string[]>, base: number): number {
+  const buckets = Object.values(evidence).filter((items) => Array.isArray(items) && items.length > 0).length;
+  return adultOpenLibraryRoundWeight(Math.min(0.98, base + Math.min(0.18, buckets * 0.025)));
+}
+
+function adultGoogleBooksFinalSlateIdentityRootCause(
+  identity: AdultGoogleBooksFinalSlateIdentity,
+  agreement: AdultGoogleBooksFinalSlateIdentityAgreement,
+  currentShape: string,
+  finalEligibilityReason: string,
+): string {
+  if (agreement === "likely_narrative_false_reject") {
+    return finalEligibilityReason || "narrative_identity_failed_existing_final_eligibility";
+  }
+  if (agreement === "likely_collection_false_accept") {
+    return currentShape === "novel"
+      ? "publication_shape_novel_missed_collection_identity"
+      : "final_eligibility_allowed_collection_identity";
+  }
+  if (agreement === "likely_non_narrative_false_accept") {
+    return currentShape === "novel"
+      ? `publication_shape_novel_missed_${identity}`
+      : `final_eligibility_allowed_${identity}`;
+  }
+  if (agreement === "uncertain_identity_needs_review") return "audit_identity_uncertain";
+  return "identity_agrees_with_current_behavior";
+}
+
+export function adultGoogleBooksFinalSlateIdentityAudit(
+  candidate: ScoredCandidate,
+  context: AdultGoogleBooksFinalSlateIdentityAuditContext = {},
+): AdultGoogleBooksFinalSlateIdentityAuditResult {
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const volumeInfo = adultGoogleBooksCandidateVolumeInfo(candidate);
+  const titleSubtitle = `${fields.title} ${fields.subtitle}`.trim();
+  const description = fields.description;
+  const categories = fields.categories;
+  const publisher = normalized(volumeInfo.publisher);
+  const authors = uniqueSignals([
+    ...(Array.isArray(volumeInfo.authors) ? volumeInfo.authors.map(String) : []),
+    ...(candidate.creators || []),
+  ]);
+  const currentShape = adultGoogleBooksCurrentPublicationShape(candidate);
+  const precedenceDecision = adultGoogleBooksCurrentPublicationShapePrecedenceDecision(candidate);
+  const evidence = adultGoogleBooksFinalSlateIdentityEvidenceContainer(candidate, context.eligibility);
+  const finalEligibilityDecision = context.finalEligibilityDecision || (context.eligibility ? context.eligibility.allowed ? "accepted" : "rejected" : "");
+  const finalEligibilityReason = context.finalEligibilityReason || context.eligibility?.reason || "";
+  const finalSelectionDecision = context.finalSelectionDecision || "";
+  const rendered = Boolean(context.rendered || finalSelectionDecision === "selected");
+  const finalAccepted = finalEligibilityDecision === "accepted" || context.eligibility?.allowed === true;
+
+  const periodicalSignals = adultGoogleBooksPeriodicalCorroboration(candidate);
+  for (const signal of periodicalSignals) adultGoogleBooksPushEvidence(evidence, "descriptionIdentityEvidence", signal);
+  const referenceSurveyReasons = adultGoogleBooksReferenceSurveyReasons(candidate);
+  for (const reason of referenceSurveyReasons) adultGoogleBooksPushEvidence(evidence, "categoryIdentityEvidence", reason);
+  const encyclopediaSignals = adultGoogleBooksEncyclopediaReferenceSignals(candidate);
+  for (const reason of encyclopediaSignals.reasons) adultGoogleBooksPushEvidence(evidence, "categoryIdentityEvidence", reason);
+  for (const reason of encyclopediaSignals.multiVolumeCorroboration) adultGoogleBooksPushEvidence(evidence, "categoryIdentityEvidence", reason);
+  const annualAnthologySignals = adultGoogleBooksAnnualAnthologySignals(candidate);
+  for (const reason of annualAnthologySignals.reasons) adultGoogleBooksPushEvidence(evidence, "collectionAnthologyEvidence", reason);
+  for (const reason of annualAnthologySignals.corroboration) adultGoogleBooksPushEvidence(evidence, "collectionAnthologyEvidence", reason);
+  for (const reason of adultGoogleBooksInstructionalCraftReasons(candidate)) adultGoogleBooksPushEvidence(evidence, "academicFraming", reason);
+  for (const reason of context.eligibility?.artifactReasons || adultGoogleBooksArtifactReasons(candidate)) adultGoogleBooksPushEvidence(evidence, "categoryIdentityEvidence", reason);
+
+  if (/\b(?:periodical|serial publications?|magazines?|journals?)\b/.test(categories)) adultGoogleBooksPushEvidence(evidence, "categoryIdentityEvidence", "category_periodical_identity");
+  if (/\b(?:articles?|contributors?|editorials?|issue|volume|serial|periodical)\b/.test(description) && /\b(?:review|journal|magazine|mercury|quarterly|gazette|bulletin)\b/.test(titleSubtitle)) {
+    adultGoogleBooksPushEvidence(evidence, "descriptionIdentityEvidence", "periodical_publication_framing");
+  }
+  if (/\b(?:guide to|top\s+\d+|best|essential|must read|must-read|greatest)\b.{0,60}\b(?:books?|novels?|reads|stories)\b/.test(titleSubtitle)) {
+    adultGoogleBooksPushEvidence(evidence, "titleIdentityEvidence", "curated_books_or_readers_advisory_title_shape");
+  }
+  if (/\b(?:reader'?s advisory|readers advisory|companion|guide|handbook|bibliograph(?:y|ies)|catalog|catalogue|reference|encyclop(?:a)?edia|dictionary|directory)\b/.test(`${titleSubtitle} ${categories} ${description}`)) {
+    adultGoogleBooksPushEvidence(evidence, "categoryIdentityEvidence", "reference_or_companion_framing");
+  }
+  if (/\b(?:food|politics|gender|race|ecofeminist|alienation|apocalypse|postmodern|systems?|methods?|comparison|study|studies|analysis|reading|teaching|understanding|interpretation|themes?)\b.{0,80}\b(?:fiction|novels?|literature|horror|science fiction|speculative fiction)\b/.test(titleSubtitle)) {
+    adultGoogleBooksPushEvidence(evidence, "academicFraming", "subject_of_study_title_framing");
+  }
+  if (/\b(?:in|of)\s+[a-z0-9 ]{2,60}(?:'s|s)\s+(?:fiction|novels?|works?|writing)\b/.test(titleSubtitle)) {
+    adultGoogleBooksPushEvidence(evidence, "subjectOfAuthorFraming", "author_or_work_subject_framing");
+  }
+  if (/\b(?:literary criticism|criticism and interpretation|history and criticism|academic|scholarly|monograph|thesis|dissertation|study|studies|analysis)\b/.test(`${categories} ${description}`)) {
+    adultGoogleBooksPushEvidence(evidence, "academicFraming", "academic_or_criticism_metadata");
+  }
+  if (/\b(?:university press|routledge|palgrave|cambridge scholars|oxford university press|academic)\b/.test(publisher)) {
+    adultGoogleBooksPushEvidence(evidence, "publisherEvidence", "academic_publisher");
+  }
+  if (/\b(?:edited by|editor(?:s|ial)?|selected by|contributors?|multiple authors|featuring stories by)\b/.test(`${titleSubtitle} ${description}`)) {
+    adultGoogleBooksPushEvidence(evidence, "editorContributorFraming", "editor_or_contributor_framing");
+  }
+  if (/\b(?:stories by|tales by|short stories by|collection of stories|story collection)\b/.test(`${titleSubtitle} ${description}`)) {
+    adultGoogleBooksPushEvidence(evidence, "storiesByFraming", "stories_by_or_short_story_collection_framing");
+  }
+  if (/\b(?:mammoth book|year'?s best|best new|best of|annual|antholog(?:y|ies)|omnibus|boxed set|box set|megapack|collection|collected|complete works|classic novels|greatest .* books)\b/.test(titleSubtitle)) {
+    adultGoogleBooksPushEvidence(evidence, "collectionAnthologyEvidence", "collection_or_anthology_title_shape");
+  }
+  if (/\b(?:juvenile fiction|young adult|teen|children'?s books?|children'?s fiction|middle grade)\b/.test(categories)) {
+    adultGoogleBooksPushEvidence(evidence, "categoryIdentityEvidence", "juvenile_or_incompatible_audience_metadata");
+  }
+  if (/\b(?:sampler|preview|excerpt|promotional|publisher'?s catalog|coming soon|advance reader)\b/.test(`${titleSubtitle} ${description}`)) {
+    adultGoogleBooksPushEvidence(evidence, "descriptionIdentityEvidence", "promotional_or_publisher_artifact_framing");
+  }
+  if (/\b(?:a novel|this novel|novel follows|thriller follows|mystery follows|fantasy follows|story follows|protagonist|detective|investigator|must uncover|must survive|murder|killer|conspiracy|quest|kingdom|empire|family secret|dark psychological thriller)\b/.test(description)) {
+    adultGoogleBooksPushEvidence(evidence, "narrativeSynopsisEvidence", "story_level_description");
+  }
+  if (/\b(?:fiction|mystery|thriller|fantasy|science fiction|horror|romance|historical fiction|crime)\b/.test(categories)) {
+    adultGoogleBooksPushEvidence(evidence, "categoryIdentityEvidence", "fiction_or_genre_category");
+  }
+  if (/\b(?:book|volume|vol|part|#)\s*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/.test(titleSubtitle) && /\b(?:novel|thriller|mystery|suspense|series|saga)\b/.test(`${titleSubtitle} ${description}`)) {
+    adultGoogleBooksPushEvidence(evidence, "titleIdentityEvidence", "numbered_narrative_series_volume");
+  }
+
+  let identity: AdultGoogleBooksFinalSlateIdentity = "identity_uncertain";
+  let confidence = 0.48;
+  const allIdentityEvidenceText = Object.values(evidence).flat().join(" ");
+  if (periodicalSignals.length > 0 || currentShape === "periodical") {
+    identity = "periodical_or_serial_issue";
+    confidence = 0.86;
+  } else if (evidence.collectionAnthologyEvidence.some((item) => /annual|best|year|mammoth/.test(item)) || currentShape === "anthology" && /\b(?:best|annual|mammoth)\b/.test(titleSubtitle)) {
+    identity = "best_of_or_annual_collection";
+    confidence = 0.86;
+  } else if (/\b(?:short stories|short story collection|story collection|collection of stories|tales)\b/.test(titleSubtitle)) {
+    identity = "short_story_collection";
+    confidence = 0.74;
+  } else if (evidence.storiesByFraming.length > 0 && authors.length <= 1) {
+    identity = "single_author_collection";
+    confidence = 0.78;
+  } else if (evidence.collectionAnthologyEvidence.some((item) => /omnibus|boxed|megapack|classic novels|greatest|collection/.test(item)) && /\b(?:novels?|books?|works?|megapack|collection)\b/.test(titleSubtitle)) {
+    identity = "omnibus_or_boxed_collection";
+    confidence = 0.83;
+  } else if (/\b(?:writer reference|reference|encyclopedia|catalog|bibliograph|curated|advisory)\b/.test(allIdentityEvidenceText)) {
+    identity = /\b(?:advisory|companion|guide)\b/.test(allIdentityEvidenceText) ? "reading_guide_or_companion" : "bibliography_catalog_or_reference";
+    confidence = 0.84;
+  } else if (evidence.academicFraming.some((item) => /\b(?:instructional|craft|writing)\b/.test(item))) {
+    identity = "reading_guide_or_companion";
+    confidence = 0.82;
+  } else if (evidence.academicFraming.length > 0 || evidence.subjectOfAuthorFraming.length > 0 || ["critical_study", "literary_history", "author_commentary", "production_history"].includes(currentShape)) {
+    identity = evidence.publisherEvidence.includes("academic publisher") || currentShape === "academic_text" ? "academic_or_scholarly_text" : "literary_criticism_or_subject_study";
+    confidence = 0.85;
+  } else if (evidence.editorContributorFraming.length > 0 || currentShape === "anthology") {
+    identity = "multi_author_anthology";
+    confidence = 0.82;
+  } else if (evidence.categoryIdentityEvidence.includes("juvenile_or_incompatible_audience_metadata")) {
+    identity = "juvenile_or_incompatible_audience";
+    confidence = 0.76;
+  } else if (evidence.descriptionIdentityEvidence.includes("promotional_or_publisher_artifact_framing")) {
+    identity = "promotional_or_publisher_artifact";
+    confidence = 0.8;
+  } else if (evidence.titleIdentityEvidence.includes("numbered_narrative_series_volume") || (adultGoogleBooksSeriesRoot(candidate) && /\b(?:book|volume|vol|part|#)\s*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/.test(titleSubtitle))) {
+    identity = "narrative_series_volume";
+    confidence = 0.78;
+  } else if (evidence.narrativeSynopsisEvidence.length > 0 || currentShape === "novel") {
+    identity = "individual_narrative_work";
+    confidence = currentShape === "novel" ? 0.72 : 0.68;
+  }
+
+  confidence = adultGoogleBooksIdentityConfidence(evidence, confidence);
+  const narrativeIdentities = new Set<AdultGoogleBooksFinalSlateIdentity>(["individual_narrative_work", "narrative_series_volume"]);
+  const collectionIdentities = new Set<AdultGoogleBooksFinalSlateIdentity>(["short_story_collection", "multi_author_anthology", "single_author_collection", "best_of_or_annual_collection", "omnibus_or_boxed_collection"]);
+  const acceptedOrRendered = finalAccepted || rendered || finalSelectionDecision === "selected";
+  let agreement: AdultGoogleBooksFinalSlateIdentityAgreement = "identity_agrees_with_current_behavior";
+  if (identity === "identity_uncertain") {
+    agreement = "uncertain_identity_needs_review";
+  } else if (acceptedOrRendered && collectionIdentities.has(identity)) {
+    agreement = "likely_collection_false_accept";
+  } else if (acceptedOrRendered && !narrativeIdentities.has(identity)) {
+    agreement = "likely_non_narrative_false_accept";
+  } else if (!finalAccepted && narrativeIdentities.has(identity)) {
+    agreement = "likely_narrative_false_reject";
+  }
+
+  const rootCause = adultGoogleBooksFinalSlateIdentityRootCause(identity, agreement, currentShape, finalEligibilityReason);
+  return {
+    identity,
+    confidence,
+    evidence,
+    agreement,
+    rootCause,
+    summary: {
+      auditedIdentity: identity,
+      confidence,
+      currentPublicationShape: currentShape,
+      currentPublicationShapePrecedenceDecision: precedenceDecision,
+      finalEligibilityDecision: finalEligibilityDecision || "(unknown)",
+      finalEligibilityReason: finalEligibilityReason || "(none)",
+      finalSelectionDecision: finalSelectionDecision || "(unknown)",
+      rendered,
+      agreement,
+      reasonForDisagreement: agreement === "identity_agrees_with_current_behavior" ? "" : rootCause,
+      smallestExistingRuleThatAppearsToHaveFailed: rootCause,
+      evidenceFields: evidence,
+    },
+  };
+}
+
 function adultGoogleBooksDocumentBackedSignals(candidate: ScoredCandidate, field: "metadataBackedMatchedLikedSignals" | "metadataBackedMatchedDislikedSignals"): string[] {
   const values = candidate.diagnostics?.[field];
   return Array.isArray(values) ? uniqueSignals(values.map(String)) : [];
@@ -6505,6 +6809,17 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const canonicalMissingFamilyUnresolvedTitles: string[] = [];
   const canonicalNarrativeFamilyPromotionHistogram: Record<string, number> = {};
   const canonicalNarrativeFamilyPromotionEligibilityChanges: Record<string, unknown> = {};
+  const finalSlateIdentityByTitle: Record<string, string> = {};
+  const finalSlateIdentityEvidenceByTitle: Record<string, Record<string, string[]>> = {};
+  const finalSlateIdentityConfidenceByTitle: Record<string, number> = {};
+  const finalSlateIdentityAgreementByTitle: Record<string, string> = {};
+  const finalSlateIdentityHistogram: Record<string, number> = {};
+  const likelyNonNarrativeFalseAcceptedTitles: string[] = [];
+  const likelyCollectionFalseAcceptedTitles: string[] = [];
+  const likelyNarrativeFalseRejectedTitles: string[] = [];
+  const renderedIdentityAudit: Record<string, unknown> = {};
+  const finalSlateIdentityRootCauseHistogram: Record<string, number> = {};
+  const finalSlateIdentityFlaggedDetailsByTitle: Record<string, unknown> = {};
   let profileLikedFamilies: string[] = [];
   let profileAvoidFamilies: string[] = [];
   if (profile.ageBand === "adult") {
@@ -6647,6 +6962,18 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksCanonicalMissingFamilyUnresolvedTitles = [];
     diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionHistogram = {};
     diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionEligibilityChanges = {};
+    diagnostics.adultGoogleBooksFinalSlateIdentityByTitle = {};
+    diagnostics.adultGoogleBooksFinalSlateIdentityEvidenceByTitle = {};
+    diagnostics.adultGoogleBooksFinalSlateIdentityConfidenceByTitle = {};
+    diagnostics.adultGoogleBooksFinalSlateIdentityAgreementByTitle = {};
+    diagnostics.adultGoogleBooksFinalSlateIdentityHistogram = {};
+    diagnostics.adultGoogleBooksLikelyNonNarrativeFalseAcceptedTitles = [];
+    diagnostics.adultGoogleBooksLikelyCollectionFalseAcceptedTitles = [];
+    diagnostics.adultGoogleBooksLikelyNarrativeFalseRejectedTitles = [];
+    diagnostics.adultGoogleBooksRenderedIdentityAudit = {};
+    diagnostics.adultGoogleBooksFinalSlateIdentityRootCauseHistogram = {};
+    diagnostics.adultGoogleBooksFinalSlateIdentityAuditSummary = "";
+    diagnostics.adultGoogleBooksFinalSlateIdentityFlaggedDetailsByTitle = {};
     diagnostics.googleBooksPlannedQueries = [];
     diagnostics.googleBooksQueriesAttempted = [];
     diagnostics.googleBooksRawCountByQuery = {};
@@ -6999,6 +7326,35 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
       }
     }
 
+    const identityAudit = adultGoogleBooksFinalSlateIdentityAudit(candidate, {
+      eligibility,
+      finalEligibilityDecision: finalEligibilityDecisionByTitle[candidate.title],
+      finalEligibilityReason: eligibilityReasonByTitle[candidate.title],
+      finalSelectionDecision: finalSelectionDecisionByTitle[candidate.title],
+      rendered: selectedTitleSet.has(normalized(candidate.title)),
+    });
+    finalSlateIdentityByTitle[candidate.title] = identityAudit.identity;
+    finalSlateIdentityEvidenceByTitle[candidate.title] = identityAudit.evidence;
+    finalSlateIdentityConfidenceByTitle[candidate.title] = identityAudit.confidence;
+    finalSlateIdentityAgreementByTitle[candidate.title] = identityAudit.agreement;
+    finalSlateIdentityHistogram[identityAudit.identity] = Number(finalSlateIdentityHistogram[identityAudit.identity] || 0) + 1;
+    finalSlateIdentityRootCauseHistogram[identityAudit.rootCause] = Number(finalSlateIdentityRootCauseHistogram[identityAudit.rootCause] || 0) + 1;
+    if (identityAudit.agreement === "likely_non_narrative_false_accept") {
+      likelyNonNarrativeFalseAcceptedTitles.push(candidate.title);
+      finalSlateIdentityFlaggedDetailsByTitle[candidate.title] = identityAudit.summary;
+    } else if (identityAudit.agreement === "likely_collection_false_accept") {
+      likelyCollectionFalseAcceptedTitles.push(candidate.title);
+      finalSlateIdentityFlaggedDetailsByTitle[candidate.title] = identityAudit.summary;
+    } else if (identityAudit.agreement === "likely_narrative_false_reject") {
+      likelyNarrativeFalseRejectedTitles.push(candidate.title);
+      finalSlateIdentityFlaggedDetailsByTitle[candidate.title] = identityAudit.summary;
+    } else if (identityAudit.agreement === "uncertain_identity_needs_review") {
+      finalSlateIdentityFlaggedDetailsByTitle[candidate.title] = identityAudit.summary;
+    }
+    if (selectedTitleSet.has(normalized(candidate.title))) {
+      renderedIdentityAudit[candidate.title] = identityAudit.summary;
+    }
+
     if (eligibility.allowed && selectedTitleSet.has(normalized(candidate.title))) {
       acceptedTitles.push(candidate.title);
       if (attemptedQuery) acceptedCountByQuery[attemptedQuery] = Number(acceptedCountByQuery[attemptedQuery] || 0) + 1;
@@ -7035,6 +7391,14 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([state, count]) => `${state}:${count}`)
     .join(" | ");
+  const finalSlateIdentityAuditSummary = [
+    `identity=${Object.entries(finalSlateIdentityHistogram).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([identity, count]) => `${identity}:${count}`).join(",") || "none"}`,
+    `nonNarrativeFalseAccepts=${likelyNonNarrativeFalseAcceptedTitles.length}`,
+    `collectionFalseAccepts=${likelyCollectionFalseAcceptedTitles.length}`,
+    `narrativeFalseRejects=${likelyNarrativeFalseRejectedTitles.length}`,
+    `uncertain=${Object.values(finalSlateIdentityAgreementByTitle).filter((value) => value === "uncertain_identity_needs_review").length}`,
+    `rootCauses=${Object.entries(finalSlateIdentityRootCauseHistogram).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([reason, count]) => `${reason}:${count}`).join(",") || "none"}`,
+  ].join(" | ");
 
   diagnostics.adultGoogleBooksFinalGateApplied = true;
   diagnostics.adultGoogleBooksEligibilityReasonByTitle = eligibilityReasonByTitle;
@@ -7151,6 +7515,18 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksCanonicalMissingFamilyUnresolvedTitles = Array.from(new Set(canonicalMissingFamilyUnresolvedTitles));
   diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionHistogram = canonicalNarrativeFamilyPromotionHistogram;
   diagnostics.adultGoogleBooksCanonicalNarrativeFamilyPromotionEligibilityChanges = canonicalNarrativeFamilyPromotionEligibilityChanges;
+  diagnostics.adultGoogleBooksFinalSlateIdentityByTitle = finalSlateIdentityByTitle;
+  diagnostics.adultGoogleBooksFinalSlateIdentityEvidenceByTitle = finalSlateIdentityEvidenceByTitle;
+  diagnostics.adultGoogleBooksFinalSlateIdentityConfidenceByTitle = finalSlateIdentityConfidenceByTitle;
+  diagnostics.adultGoogleBooksFinalSlateIdentityAgreementByTitle = finalSlateIdentityAgreementByTitle;
+  diagnostics.adultGoogleBooksFinalSlateIdentityHistogram = finalSlateIdentityHistogram;
+  diagnostics.adultGoogleBooksLikelyNonNarrativeFalseAcceptedTitles = Array.from(new Set(likelyNonNarrativeFalseAcceptedTitles));
+  diagnostics.adultGoogleBooksLikelyCollectionFalseAcceptedTitles = Array.from(new Set(likelyCollectionFalseAcceptedTitles));
+  diagnostics.adultGoogleBooksLikelyNarrativeFalseRejectedTitles = Array.from(new Set(likelyNarrativeFalseRejectedTitles));
+  diagnostics.adultGoogleBooksRenderedIdentityAudit = renderedIdentityAudit;
+  diagnostics.adultGoogleBooksFinalSlateIdentityRootCauseHistogram = finalSlateIdentityRootCauseHistogram;
+  diagnostics.adultGoogleBooksFinalSlateIdentityAuditSummary = finalSlateIdentityAuditSummary;
+  diagnostics.adultGoogleBooksFinalSlateIdentityFlaggedDetailsByTitle = finalSlateIdentityFlaggedDetailsByTitle;
   diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
   diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
   diagnostics.googleBooksRankedCandidateTitles = uniqueSignals(rankedCandidateTitles);
