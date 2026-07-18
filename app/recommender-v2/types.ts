@@ -314,6 +314,12 @@ export interface SourceDiagnosticV2 {
   googleBooksCuratedBookGuideEvidenceByTitle?: Record<string, string[]>;
   googleBooksPeriodicalIdentityEvidenceByTitle?: Record<string, string[]>;
   googleBooksPeriodicalIdentityDecisionByTitle?: Record<string, string>;
+  adultGoogleBooksSignalMatchTraceByTitle?: Record<string, unknown[]>;
+  adultGoogleBooksSignalMatchedFieldByTitle?: Record<string, Record<string, string[]>>;
+  adultGoogleBooksSignalMatchedTextByTitle?: Record<string, Record<string, string[]>>;
+  adultGoogleBooksSignalMatchMethodByTitle?: Record<string, Record<string, string[]>>;
+  adultGoogleBooksShortSignalSubstringMatchesByTitle?: Record<string, unknown[]>;
+  adultGoogleBooksRejectedShortSignalMatchesByTitle?: Record<string, unknown[]>;
   googleBooksModernNarrativeCountByQuery?: Record<string, number>;
   googleBooksPublicDomainCatalogShapeCountByQuery?: Record<string, number>;
   googleBooksRankedCandidateTitles?: string[];

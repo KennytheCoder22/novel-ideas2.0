@@ -79,6 +79,188 @@ function candidateMetadataText(candidate: NormalizedCandidate): string {
   ].join(" ").toLowerCase();
 }
 
+type MetadataSignalField = {
+  field: string;
+  text: string;
+};
+
+type AdultGoogleBooksSignalMatchTrace = {
+  signal: string;
+  normalizedSignal: string;
+  field: string;
+  matchedText: string;
+  method: string;
+  signalBucket: string;
+  accepted: boolean;
+  reason?: string;
+};
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function candidateMetadataFields(candidate: NormalizedCandidate): MetadataSignalField[] {
+  const { description: rawDescription, firstSentence, subjects } = rawTextParts(candidate);
+  const fields: MetadataSignalField[] = [
+    { field: "title", text: candidate.title },
+    { field: "subtitle", text: candidate.subtitle || "" },
+    { field: "description", text: candidate.description || "" },
+    { field: "rawDescription", text: rawDescription },
+    { field: "firstSentence", text: firstSentence },
+    { field: "subjects", text: subjects },
+    { field: "creators", text: candidate.creators.join(" ") },
+    { field: "genres", text: candidate.genres.join(" ") },
+    { field: "themes", text: candidate.themes.join(" ") },
+    { field: "tones", text: candidate.tones.join(" ") },
+    { field: "characterDynamics", text: candidate.characterDynamics.join(" ") },
+    { field: "formats", text: candidate.formats.join(" ") },
+  ];
+  return fields
+    .map((entry) => ({ field: entry.field, text: String(entry.text || "") }))
+    .filter((entry) => entry.text.trim().length > 0);
+}
+
+function shortSignalAliasMatches(signal: string, text: string): { matchedText: string; method: string } | undefined {
+  const patterns: Record<string, Array<{ pattern: RegExp; method: string }>> = {
+    ai: [
+      { pattern: /(^|[^\p{L}\p{N}])(artificial\s+intelligence)(?=$|[^\p{L}\p{N}])/iu, method: "approved_alias_phrase" },
+      { pattern: /(^|[^\p{L}\p{N}])(a\s*\.?\s*i\.?)(?=$|[^\p{L}\p{N}])/iu, method: "punctuated_acronym_token" },
+    ],
+    rpg: [
+      { pattern: /(^|[^\p{L}\p{N}])(role[-\s]?playing\s+game)(?=$|[^\p{L}\p{N}])/iu, method: "approved_alias_phrase" },
+    ],
+    tv: [
+      { pattern: /(^|[^\p{L}\p{N}])(television)(?=$|[^\p{L}\p{N}])/iu, method: "approved_alias_phrase" },
+    ],
+  };
+  for (const { pattern, method } of patterns[signal] || []) {
+    const match = pattern.exec(text);
+    if (match?.[2]) return { matchedText: match[2], method };
+  }
+  return undefined;
+}
+
+function shortSignalTokenMatch(signal: string, text: string): string | undefined {
+  const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])(${escapeRegExp(signal)})(?=$|[^\\p{L}\\p{N}])`, "iu");
+  const match = pattern.exec(text);
+  return match?.[2];
+}
+
+function shortSignalEmbeddedMatches(signal: string, text: string): string[] {
+  const pattern = new RegExp(`[\\p{L}\\p{N}]*${escapeRegExp(signal)}[\\p{L}\\p{N}]*`, "giu");
+  const matches: string[] = [];
+  for (const match of text.matchAll(pattern)) {
+    const token = String(match[0] || "");
+    if (!token) continue;
+    const acceptedToken = shortSignalTokenMatch(signal, token);
+    if (normalized(token) === signal || normalized(acceptedToken) === signal) continue;
+    matches.push(token);
+  }
+  return uniqueStrings(matches).slice(0, 5);
+}
+
+function adultGoogleBooksSignalMatch(
+  combinedText: string,
+  fields: MetadataSignalField[],
+  signal: WeightedSignalV2,
+  signalBucket: string,
+  trace: AdultGoogleBooksSignalMatchTrace[],
+): boolean {
+  const value = normalized(signal.value);
+  if (!value) return false;
+  const isShortSignal = value.length <= 3;
+
+  if (!isShortSignal) {
+    if (!signalPresentInText(combinedText, value)) return false;
+    const matchedField = fields.find((field) => signalPresentInText(field.text.toLowerCase(), value));
+    trace.push({
+      signal: signal.value,
+      normalizedSignal: value,
+      field: matchedField?.field || "combinedMetadata",
+      matchedText: value,
+      method: "existing_semantic_match",
+      signalBucket,
+      accepted: true,
+    });
+    return true;
+  }
+
+  for (const field of fields) {
+    const fieldText = field.text;
+    const tokenMatch = shortSignalTokenMatch(value, fieldText);
+    if (tokenMatch) {
+      trace.push({
+        signal: signal.value,
+        normalizedSignal: value,
+        field: field.field,
+        matchedText: tokenMatch,
+        method: "unicode_token_boundary",
+        signalBucket,
+        accepted: true,
+      });
+      return true;
+    }
+    const aliasMatch = shortSignalAliasMatches(value, fieldText);
+    if (aliasMatch) {
+      trace.push({
+        signal: signal.value,
+        normalizedSignal: value,
+        field: field.field,
+        matchedText: aliasMatch.matchedText,
+        method: aliasMatch.method,
+        signalBucket,
+        accepted: true,
+      });
+      return true;
+    }
+  }
+
+  for (const field of fields) {
+    for (const embedded of shortSignalEmbeddedMatches(value, field.text)) {
+      trace.push({
+        signal: signal.value,
+        normalizedSignal: value,
+        field: field.field,
+        matchedText: embedded,
+        method: "rejected_embedded_substring",
+        signalBucket,
+        accepted: false,
+        reason: "short_signal_requires_token_boundary_or_approved_alias",
+      });
+    }
+  }
+  return false;
+}
+
+function adultGoogleBooksSignalMatches(
+  combinedText: string,
+  fields: MetadataSignalField[],
+  signals: WeightedSignalV2[],
+  signalBucket: string,
+  trace: AdultGoogleBooksSignalMatchTrace[],
+): WeightedSignalV2[] {
+  return signals.filter((signal) => adultGoogleBooksSignalMatch(combinedText, fields, signal, signalBucket, trace));
+}
+
+function adultGoogleBooksTraceBySignal(
+  trace: AdultGoogleBooksSignalMatchTrace[],
+  key: keyof Pick<AdultGoogleBooksSignalMatchTrace, "field" | "matchedText" | "method">,
+): Record<string, string[]> {
+  return trace
+    .filter((entry) => entry.accepted)
+    .reduce<Record<string, string[]>>((acc, entry) => {
+      const signal = entry.normalizedSignal || normalized(entry.signal);
+      const value = String(entry[key] || "");
+      if (!signal || !value) return acc;
+      acc[signal] = uniqueStrings([...(acc[signal] || []), value]);
+      return acc;
+    }, {});
+}
+
 function hasStrongTeenMetadata(text: string): boolean {
   return /\b(young adult|juvenile fiction|teen|adolescent|high school|coming of age)\b/.test(text);
 }
@@ -353,11 +535,16 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const adultGoogleBooks = profile.ageBand === "adult" && candidate.source === "googleBooks";
     const metadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary || adultOpenLibrary || adultGoogleBooks;
     const text = metadataOnlyEvidence ? metadataText : fullText;
-    const rawGenreMatches = signalMatches(text, profile.genreFamily);
-    const rawThemeMatches = signalMatches(text, profile.themes);
-    const rawToneMatches = signalMatches(text, profile.tone);
-    const rawCharacterMatches = signalMatches(text, profile.characterDynamics);
-    const rawFormatMatches = signalMatches(text, profile.formatPreference);
+    const adultGoogleBooksFields = adultGoogleBooks ? candidateMetadataFields(candidate) : [];
+    const adultGoogleBooksSignalTrace: AdultGoogleBooksSignalMatchTrace[] = [];
+    const matchSignals = (signals: WeightedSignalV2[], signalBucket: string): WeightedSignalV2[] => adultGoogleBooks
+      ? adultGoogleBooksSignalMatches(text, adultGoogleBooksFields, signals, signalBucket, adultGoogleBooksSignalTrace)
+      : signalMatches(text, signals);
+    const rawGenreMatches = matchSignals(profile.genreFamily, "genreFamily");
+    const rawThemeMatches = matchSignals(profile.themes, "themes");
+    const rawToneMatches = matchSignals(profile.tone, "tone");
+    const rawCharacterMatches = matchSignals(profile.characterDynamics, "characterDynamics");
+    const rawFormatMatches = matchSignals(profile.formatPreference, "formatPreference");
     const filterGenericMatches = (matches: WeightedSignalV2[]) => middleGradesOpenLibrary
       ? matches.filter((signal) => !isMiddleGradesGenericTasteSignal(signal))
       : kidsOpenLibrary
@@ -373,7 +560,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const toneMatches = filterGenericMatches(rawToneMatches);
     const characterMatches = filterGenericMatches(rawCharacterMatches);
     const formatMatches = filterGenericMatches(rawFormatMatches);
-    const avoidMatches = signalMatches(text, profile.avoidSignals);
+    const avoidMatches = matchSignals(profile.avoidSignals, "avoidSignals");
     const positiveMatches = [...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
     const fullPositiveMatches = [...signalMatches(fullText, profile.themes), ...signalMatches(fullText, profile.tone), ...signalMatches(fullText, profile.characterDynamics), ...signalMatches(fullText, profile.formatPreference)];
     const rawTasteMatchCount = rawGenreMatches.length + rawThemeMatches.length + rawToneMatches.length + rawCharacterMatches.length + rawFormatMatches.length;
@@ -389,6 +576,8 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
         .map((signal) => signal.value)
       : [];
     const googleBooksNarrativeEvidence = adultGoogleBooks ? adultGoogleBooksNarrativeEvidence(candidate) : { score: 0, signals: [] };
+    const adultGoogleBooksShortSubstringMatches = adultGoogleBooksSignalTrace
+      .filter((entry) => entry.method === "rejected_embedded_substring");
 
     const allPositiveMatches = [...genreMatches, ...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
     const kidsNarrativeEvidence = kidsOpenLibrary ? kidsNarrativeSemanticEvidence(candidate, allPositiveMatches) : { score: 0, signals: [] };
@@ -446,6 +635,12 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
         adultOpenLibraryExcludedRetrievalEvidence: adultOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
         adultGoogleBooksMetadataOnlyEvidence: adultGoogleBooks || undefined,
         adultGoogleBooksExcludedRetrievalEvidence: adultGoogleBooks ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+        adultGoogleBooksSignalMatchTrace: adultGoogleBooks ? adultGoogleBooksSignalTrace : undefined,
+        adultGoogleBooksSignalMatchedField: adultGoogleBooks ? adultGoogleBooksTraceBySignal(adultGoogleBooksSignalTrace, "field") : undefined,
+        adultGoogleBooksSignalMatchedText: adultGoogleBooks ? adultGoogleBooksTraceBySignal(adultGoogleBooksSignalTrace, "matchedText") : undefined,
+        adultGoogleBooksSignalMatchMethod: adultGoogleBooks ? adultGoogleBooksTraceBySignal(adultGoogleBooksSignalTrace, "method") : undefined,
+        adultGoogleBooksShortSignalSubstringMatches: adultGoogleBooks ? adultGoogleBooksShortSubstringMatches : undefined,
+        adultGoogleBooksRejectedShortSignalMatches: adultGoogleBooks ? adultGoogleBooksShortSubstringMatches : undefined,
       },
     };
   }).sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));

@@ -5245,6 +5245,12 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const weightedProductionNewPassTitles: string[] = [];
   const weightedProductionNewFailTitles: string[] = [];
   const overlapAffectedCandidateTitlesByFamily: Record<string, string[]> = {};
+  const signalMatchTraceByTitle: Record<string, unknown[]> = {};
+  const signalMatchedFieldByTitle: Record<string, Record<string, string[]>> = {};
+  const signalMatchedTextByTitle: Record<string, Record<string, string[]>> = {};
+  const signalMatchMethodByTitle: Record<string, Record<string, string[]>> = {};
+  const shortSignalSubstringMatchesByTitle: Record<string, unknown[]> = {};
+  const rejectedShortSignalMatchesByTitle: Record<string, unknown[]> = {};
   let profileLikedFamilies: string[] = [];
   let profileAvoidFamilies: string[] = [];
   if (profile.ageBand === "adult") {
@@ -5325,6 +5331,12 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultTasteWeightedProductionNewPassTitles = [];
     diagnostics.adultTasteWeightedProductionNewFailTitles = [];
     diagnostics.adultTasteOverlapAffectedCandidateTitlesByFamily = {};
+    diagnostics.adultGoogleBooksSignalMatchTraceByTitle = {};
+    diagnostics.adultGoogleBooksSignalMatchedFieldByTitle = {};
+    diagnostics.adultGoogleBooksSignalMatchedTextByTitle = {};
+    diagnostics.adultGoogleBooksSignalMatchMethodByTitle = {};
+    diagnostics.adultGoogleBooksShortSignalSubstringMatchesByTitle = {};
+    diagnostics.adultGoogleBooksRejectedShortSignalMatchesByTitle = {};
     diagnostics.googleBooksPlannedQueries = [];
     diagnostics.googleBooksQueriesAttempted = [];
     diagnostics.googleBooksRawCountByQuery = {};
@@ -5402,6 +5414,24 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     weightedProductionDecisionReasonByTitle[candidate.title] = eligibility.productionDecisionReason;
     if (!binaryMeaningfulTaste.passed && eligibility.meaningfulTastePassed) weightedProductionNewPassTitles.push(candidate.title);
     if (binaryMeaningfulTaste.passed && !eligibility.meaningfulTastePassed) weightedProductionNewFailTitles.push(candidate.title);
+    signalMatchTraceByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.adultGoogleBooksSignalMatchTrace)
+      ? candidate.diagnostics.adultGoogleBooksSignalMatchTrace as unknown[]
+      : [];
+    signalMatchedFieldByTitle[candidate.title] = candidate.diagnostics?.adultGoogleBooksSignalMatchedField && typeof candidate.diagnostics.adultGoogleBooksSignalMatchedField === "object" && !Array.isArray(candidate.diagnostics.adultGoogleBooksSignalMatchedField)
+      ? candidate.diagnostics.adultGoogleBooksSignalMatchedField as Record<string, string[]>
+      : {};
+    signalMatchedTextByTitle[candidate.title] = candidate.diagnostics?.adultGoogleBooksSignalMatchedText && typeof candidate.diagnostics.adultGoogleBooksSignalMatchedText === "object" && !Array.isArray(candidate.diagnostics.adultGoogleBooksSignalMatchedText)
+      ? candidate.diagnostics.adultGoogleBooksSignalMatchedText as Record<string, string[]>
+      : {};
+    signalMatchMethodByTitle[candidate.title] = candidate.diagnostics?.adultGoogleBooksSignalMatchMethod && typeof candidate.diagnostics.adultGoogleBooksSignalMatchMethod === "object" && !Array.isArray(candidate.diagnostics.adultGoogleBooksSignalMatchMethod)
+      ? candidate.diagnostics.adultGoogleBooksSignalMatchMethod as Record<string, string[]>
+      : {};
+    shortSignalSubstringMatchesByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.adultGoogleBooksShortSignalSubstringMatches)
+      ? candidate.diagnostics.adultGoogleBooksShortSignalSubstringMatches as unknown[]
+      : [];
+    rejectedShortSignalMatchesByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.adultGoogleBooksRejectedShortSignalMatches)
+      ? candidate.diagnostics.adultGoogleBooksRejectedShortSignalMatches as unknown[]
+      : [];
     for (const family of weightedCounterfactual.currentOverlappingFamilies) {
       if (!eligibility.meaningfulTastePassed || weightedCounterfactual.reason !== "weighted_model_matches_current_binary_result") {
         overlapAffectedCandidateTitlesByFamily[family] = Array.from(new Set([...(overlapAffectedCandidateTitlesByFamily[family] || []), candidate.title]));
@@ -5523,6 +5553,12 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultTasteWeightedProductionNewPassTitles = Array.from(new Set(weightedProductionNewPassTitles));
   diagnostics.adultTasteWeightedProductionNewFailTitles = Array.from(new Set(weightedProductionNewFailTitles));
   diagnostics.adultTasteOverlapAffectedCandidateTitlesByFamily = overlapAffectedCandidateTitlesByFamily;
+  diagnostics.adultGoogleBooksSignalMatchTraceByTitle = signalMatchTraceByTitle;
+  diagnostics.adultGoogleBooksSignalMatchedFieldByTitle = signalMatchedFieldByTitle;
+  diagnostics.adultGoogleBooksSignalMatchedTextByTitle = signalMatchedTextByTitle;
+  diagnostics.adultGoogleBooksSignalMatchMethodByTitle = signalMatchMethodByTitle;
+  diagnostics.adultGoogleBooksShortSignalSubstringMatchesByTitle = shortSignalSubstringMatchesByTitle;
+  diagnostics.adultGoogleBooksRejectedShortSignalMatchesByTitle = rejectedShortSignalMatchesByTitle;
   diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
   diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
   diagnostics.googleBooksRankedCandidateTitles = uniqueSignals(rankedCandidateTitles);
