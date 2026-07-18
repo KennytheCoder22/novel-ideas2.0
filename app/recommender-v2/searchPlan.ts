@@ -164,7 +164,7 @@ function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones:
   ];
 }
 
-export function buildSearchPlan(profile: TasteProfile, enabledSources: Partial<Record<SourceIdV2, boolean>> = { mock: true }): SearchPlan {
+export function buildSearchPlan(profile: TasteProfile, enabledSources: Partial<Record<SourceIdV2, boolean>> = {}): SearchPlan {
   const genres = topValues(profile.genreFamily, 2);
   const tones = topValues(profile.tone, 2);
   const themes = topValues(profile.themes, 2);
@@ -193,7 +193,7 @@ export function buildSearchPlan(profile: TasteProfile, enabledSources: Partial<R
 
   const allSources: SourceIdV2[] = ["mock", "googleBooks", "openLibrary", "kitsu", "comicVine", "localLibrary", "nyt"];
   const sourcePlans: SourcePlan[] = allSources.map((source) => {
-    const enabled = enabledSources[source] === true || (source === "mock" && enabledSources[source] !== false);
+    const enabled = enabledSources[source] === true;
     return {
       source,
       enabled,
