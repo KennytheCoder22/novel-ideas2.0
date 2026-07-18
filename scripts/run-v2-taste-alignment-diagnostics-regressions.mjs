@@ -365,10 +365,12 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   ]);
   const candidate = makeScoredCandidate({ title: "Counterfactual Fantasy", likedSignals: ["fantasy"], dislikedSignals: ["fantasy"] });
   const diagnostics = runSelection([candidate], profile);
-  assertFalsy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Counterfactual Fantasy"], "T19: current binary gate should still fail tied candidate family");
+  assertTruthy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Counterfactual Fantasy"], "T19: mixed-positive overlap should now pass production taste eligibility");
   assertIncludes(diagnostics.adultTasteWeightedCounterfactualNewPassTitles || [], "Counterfactual Fantasy", "T19: weighted comparison should report a hypothetical new pass");
+  assertIncludes(diagnostics.adultTasteWeightedProductionNewPassTitles || [], "Counterfactual Fantasy", "T19: production diagnostics should report the new pass");
+  assertIncludes(profile.diagnostics.adultTasteProductionMixedPositiveFamilies || [], "fantasy", "T19: fantasy should be recorded as production mixed-positive");
   assertEqual(profile.diagnostics.adultTasteWeightedModelEnabledForSelection, false, "T19: weighted model must remain disabled for selection");
-  console.log("PASS T19: weighted model reports counterfactual new pass without changing current selection");
+  console.log("PASS T19: mixed-positive overlap is usable by guarded production gate");
 }
 
 // â”€â”€â”€ T20: True avoid remains protected in weighted comparison â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -383,6 +385,142 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   const decision = diagnostics.adultTasteWeightedCounterfactualCandidateDecisionByTitle?.["Avoided Horror"];
   assertEqual(decision?.weightedPassed, false, "T20: weighted comparison should keep true-avoid candidate failing");
   console.log("PASS T20: true avoid still blocks contradictory candidate in comparison mode");
+}
+
+// --- T21: Adult skips have zero production influence and do not steer Google Books routing ---
+{
+  const profile = adultPolarityProfile([
+    { title: "The Night Circus", action: "skip", genres: ["Fantasy / Cozy"], tags: ["fantasy", "magic"], source: "mock", format: "book" },
+    { title: "Baldur's Gate 3", action: "skip", genres: ["Fantasy / Adventure"], tags: ["adventure"], source: "mock", format: "book" },
+  ]);
+  assertEqual(profile.genreFamily.length, 0, "T21: adult skipped genres must not enter genreFamily");
+  assertEqual(profile.themes.length, 0, "T21: adult skipped tags must not enter themes");
+  assertEqual(profile.formatPreference.length, 0, "T21: adult skipped formats must not enter formatPreference");
+  assertEqual(profile.avoidSignals.length, 0, "T21: adult skips must not enter avoidSignals");
+  assertEqual((profile.diagnostics.adultTasteProductionLikedFamilies || []).length, 0, "T21: adult skips must not create production liked families");
+  assertEqual((profile.diagnostics.adultTasteProductionAvoidFamilies || []).length, 0, "T21: adult skips must not create production avoid families");
+  assertIncludes((profile.diagnostics.adultTasteSkippedSignalsRemovedFromProductionProfile || []).map((row) => row.title), "The Night Circus", "T21: skipped title should be recorded as removed");
+
+  const { buildSearchPlan } = require(resolve(dir, "searchPlan.ts"));
+  const googleBooksPlan = buildSearchPlan(profile, { googleBooks: true }).sourcePlans.find((p) => p.source === "googleBooks");
+  const routedText = (googleBooksPlan?.intents || []).map((intent) => intent.query).join(" ");
+  assertFalsy(/\bfantasy|adventure\b/.test(routedText), "T21: adult skips must not steer Google Books family queries");
+
+  const sparseCandidate = makeScoredCandidate({ title: "Skip Routed Sparse Candidate", likedSignals: [], dislikedSignals: [] });
+  const diagnostics = runSelection([sparseCandidate], profile);
+  assertFalsy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Skip Routed Sparse Candidate"], "T21: skips must not rescue candidate taste eligibility");
+  console.log("PASS T21: adult skips have zero production/routing/eligibility influence");
+}
+
+// --- T22: Required two sci-fi likes plus one dislike resolves mixed-positive and usable ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Westworld", action: "like", genres: ["Science Fiction / Mystery"], tags: ["science fiction"], source: "mock", format: "book" },
+    { title: "Stranger Things", action: "like", genres: ["Sci-Fi / Mystery"], tags: ["science fiction"], source: "mock", format: "book" },
+    { title: "Detroit: Become Human", action: "dislike", genres: ["Science Fiction"], tags: ["ai"], source: "mock", format: "book" },
+  ]);
+  assertAdultFamilyDecision(profile, "science_fiction", "mixed_positive", "T22: sci-fi should be mixed_positive");
+  assertIncludes(profile.diagnostics.adultTasteProductionMixedPositiveFamilies || [], "science_fiction", "T22: sci-fi should be production mixed-positive");
+  const candidate = makeScoredCandidate({ title: "Mixed Positive Sci-Fi", likedSignals: ["science fiction"], dislikedSignals: ["science fiction"] });
+  const diagnostics = runSelection([candidate], profile);
+  assertTruthy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Mixed Positive Sci-Fi"], "T22: mixed-positive sci-fi should count as positive support");
+  assertIncludes(diagnostics.adultTasteWeightedProductionNewPassTitles || [], "Mixed Positive Sci-Fi", "T22: mixed-positive sci-fi should appear as production new pass");
+  console.log("PASS T22: two sci-fi likes plus one dislike remains usable");
+}
+
+// --- T23: Two mystery likes plus two dislikes resolves mixed-neutral, not true avoid ---
+{
+  const profile = adultPolarityProfile([
+    { title: "The Shadow of the Wind", action: "like", genres: ["Mystery / Literary"], tags: ["mystery"], source: "mock", format: "book" },
+    { title: "My Favorite Murder", action: "like", genres: ["Mystery / Suspense"], tags: ["thriller"], source: "mock", format: "book" },
+    { title: "Alan Wake 2", action: "dislike", genres: ["Mystery / Horror"], tags: ["mystery"], source: "mock", format: "book" },
+    { title: "Fight Club", action: "dislike", genres: ["Mystery / Drama"], tags: ["thriller"], source: "mock", format: "book" },
+  ]);
+  assertAdultFamilyDecision(profile, "mystery_crime_thriller", "mixed_neutral", "T23: two liked and two disliked mystery rows should tie");
+  assertIncludes(profile.diagnostics.adultTasteProductionMixedNeutralFamilies || [], "mystery_crime_thriller", "T23: mystery should be production mixed-neutral");
+  assertNotIncludes(profile.diagnostics.adultTasteProductionAvoidFamilies || [], "mystery_crime_thriller", "T23: mixed-neutral mystery must not be hard avoid");
+  const candidate = makeScoredCandidate({ title: "Neutral Mystery", likedSignals: ["mystery"], dislikedSignals: ["mystery"] });
+  const diagnostics = runSelection([candidate], profile);
+  assertFalsy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Neutral Mystery"], "T23: mixed-neutral family cannot independently pass");
+  assertEqual(diagnostics.adultGoogleBooksNegativeNetTasteFamiliesByTitle?.["Neutral Mystery"]?.length || 0, 0, "T23: mixed-neutral family cannot independently fail as negative");
+  console.log("PASS T23: equal mystery evidence remains mixed-neutral");
+}
+
+// --- T24: One drama like plus one dislike resolves mixed-neutral ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Normal People", action: "like", genres: ["Drama / Contemporary"], tags: ["drama"], source: "mock", format: "book" },
+    { title: "Fight Club", action: "dislike", genres: ["Drama"], tags: ["dark"], source: "mock", format: "book" },
+  ]);
+  assertAdultFamilyDecision(profile, "drama_contemporary", "mixed_neutral", "T24: one liked and one disliked drama row should tie");
+  assertIncludes(profile.diagnostics.adultTasteProductionMixedNeutralFamilies || [], "drama_contemporary", "T24: drama should be production mixed-neutral");
+  console.log("PASS T24: one-like/one-dislike drama remains mixed-neutral");
+}
+
+// --- T25: Negative-only fantasy remains true avoid ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Circe", action: "dislike", genres: ["Fantasy / Mythology"], tags: ["fantasy"], source: "mock", format: "book" },
+  ]);
+  assertAdultFamilyDecision(profile, "fantasy", "true_avoid", "T25: negative-only fantasy should be true avoid");
+  assertIncludes(profile.diagnostics.adultTasteProductionAvoidFamilies || [], "fantasy", "T25: negative-only fantasy should remain production avoid");
+  console.log("PASS T25: negative-only fantasy remains true avoid");
+}
+
+// --- T26: Overwhelming repeated negative evidence can still create true avoid ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Weak Fantasy Like", action: "like", genres: ["Fantasy"], tags: ["magic"], source: "mock", format: "book", weight: 0.25 },
+    { title: "Disliked Fantasy One", action: "dislike", genres: ["Fantasy"], tags: ["fantasy"], source: "mock", format: "book" },
+    { title: "Disliked Fantasy Two", action: "dislike", genres: ["Fantasy"], tags: ["magic"], source: "mock", format: "book" },
+    { title: "Disliked Fantasy Three", action: "dislike", genres: ["Fantasy"], tags: ["quest"], source: "mock", format: "book" },
+  ]);
+  assertAdultFamilyDecision(profile, "fantasy", "true_avoid", "T26: three strong dislikes should overcome one weak positive by margin");
+  assertIncludes(profile.diagnostics.adultTasteProductionAvoidFamilies || [], "fantasy", "T26: overwhelming negative fantasy should remain production avoid");
+  console.log("PASS T26: overwhelming negative evidence can still become true avoid");
+}
+
+// --- T27: Mixed-negative overlap does not hard-reject a candidate with another positive family ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Liked Science Fiction", action: "like", genres: ["Science Fiction"], tags: ["science fiction"], source: "mock", format: "book" },
+    { title: "Liked Fantasy", action: "like", genres: ["Fantasy"], tags: ["fantasy"], source: "mock", format: "book" },
+    { title: "Disliked Fantasy One", action: "dislike", genres: ["Fantasy"], tags: ["magic"], source: "mock", format: "book" },
+    { title: "Disliked Fantasy Two", action: "dislike", genres: ["Fantasy"], tags: ["quest"], source: "mock", format: "book" },
+  ]);
+  assertAdultFamilyDecision(profile, "fantasy", "mixed_negative", "T27: fantasy should be mixed-negative, not true avoid");
+  const candidate = makeScoredCandidate({ title: "Mixed Negative With Sci-Fi", likedSignals: ["fantasy", "science fiction"], dislikedSignals: ["fantasy"] });
+  const diagnostics = runSelection([candidate], profile);
+  assertTruthy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Mixed Negative With Sci-Fi"], "T27: another positive family should still pass");
+  assertIncludes(diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle?.["Mixed Negative With Sci-Fi"] || [], "science_fiction", "T27: sci-fi should be the positive passing family");
+  console.log("PASS T27: mixed-negative overlap does not hard-reject other positive evidence");
+}
+
+// --- T28: Sparse candidate stays rejected even with mixed-positive routed profile family ---
+{
+  const profile = adultPolarityProfile([
+    { title: "Westworld", action: "like", genres: ["Science Fiction"], tags: ["science fiction"], source: "mock", format: "book" },
+    { title: "Stranger Things", action: "like", genres: ["Science Fiction / Mystery"], tags: ["science fiction"], source: "mock", format: "book" },
+    { title: "Detroit: Become Human", action: "dislike", genres: ["Science Fiction"], tags: ["ai"], source: "mock", format: "book" },
+  ]);
+  const candidate = makeScoredCandidate({ title: "Sparse Mixed-Positive Candidate", likedSignals: [], dislikedSignals: [] });
+  const diagnostics = runSelection([candidate], profile);
+  assertFalsy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Sparse Mixed-Positive Candidate"], "T28: zero document-backed evidence must not be rescued");
+  assertEqual(diagnostics.adultGoogleBooksMeaningfulTasteFailureReasonByTitle?.["Sparse Mixed-Positive Candidate"], "no_document_backed_liked_signals", "T28: sparse candidate should fail for missing document evidence");
+  console.log("PASS T28: mixed-positive routed family does not rescue zero-evidence candidate");
+}
+
+// --- T29: Non-Adult skip behavior is unchanged ---
+{
+  const profile = buildTasteProfile({
+    ageBand: "teens",
+    enabledSources: { googleBooks: true },
+    signals: [
+      { title: "Skipped Teen Fantasy", action: "skip", genres: ["Fantasy"], tags: ["magic"], source: "mock", format: "book" },
+    ],
+  });
+  assertIncludes(profile.genreFamily.map((row) => row.value), "fantasy", "T29: non-Adult skip behavior should remain unchanged");
+  console.log("PASS T29: non-Adult skip contribution remains unchanged");
 }
 
 console.log("\nAll taste-alignment diagnostic regression tests passed.");

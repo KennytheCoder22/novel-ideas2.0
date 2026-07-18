@@ -105,9 +105,13 @@ function adultTasteFamilyContribution(rawValue: string, field: string, map: stri
 
 function adultTastePolarityDecision(positiveWeight: number, negativeWeight: number, positiveCount: number, negativeCount: number): { decision: AdultTastePolarityDecision; reason: string } {
   const net = roundAdultTasteWeight(positiveWeight - negativeWeight);
+  const meaningfulNegativeMargin = Math.max(1, roundAdultTasteWeight(positiveWeight * 0.5));
+  const positiveEvidenceStrong = positiveCount >= 2 || positiveWeight >= 2;
   if (positiveWeight <= 0 && negativeWeight <= 0) return { decision: "insufficient_evidence", reason: "no_liked_or_disliked_family_evidence" };
   if (negativeWeight > 0 && positiveWeight <= 0) return { decision: "true_avoid", reason: "only_disliked_family_evidence" };
-  if (negativeCount >= 2 && negativeWeight >= positiveWeight) return { decision: "true_avoid", reason: "repeated_negative_evidence_meets_or_exceeds_positive_weight" };
+  if (negativeCount >= 3 && negativeWeight > positiveWeight + meaningfulNegativeMargin && !positiveEvidenceStrong) {
+    return { decision: "true_avoid", reason: "overwhelming_negative_evidence_exceeds_weak_positive_by_meaningful_margin" };
+  }
   if (positiveWeight > 0 && negativeWeight <= 0 && positiveCount >= 2 && positiveWeight >= 2) return { decision: "strongly_liked", reason: "multiple_liked_titles_no_negative_family_evidence" };
   if (positiveWeight > 0 && negativeWeight <= 0) return { decision: "weakly_liked", reason: "liked_family_evidence_no_negative_family_evidence" };
   if (net > 0) return { decision: "mixed_positive", reason: "liked_weight_exceeds_disliked_weight" };
@@ -261,6 +265,67 @@ function buildAdultTasteFamilyDiagnostics(session: SwipeSessionV2, currentLikedF
   const weightedLikedSet = new Set(weightedLikedFamilies);
   const weightedAvoidSet = new Set(weightedAvoidFamilies);
   const overlappingFamilies = currentLikedFamilies.filter((family) => currentAvoidSet.has(family));
+  const overlappingFamilySet = new Set(overlappingFamilies);
+  const productionLikedSet = new Set(currentLikedFamilies.filter((family) => !overlappingFamilySet.has(family)));
+  const productionAvoidSet = new Set(currentAvoidFamilies.filter((family) => !overlappingFamilySet.has(family)));
+  const productionMixedPositiveFamilies: string[] = [];
+  const productionMixedNeutralFamilies: string[] = [];
+  const productionMixedNegativeFamilies: string[] = [];
+  const productionResolutionReasonByFamily: Record<string, string> = {};
+
+  for (const family of families) {
+    const decision = polarityDecision[family];
+    const overlapsCurrentProfile = overlappingFamilySet.has(family);
+    if (!overlapsCurrentProfile) {
+      if (currentLikedSet.has(family)) productionResolutionReasonByFamily[family] = "non_overlapping_family_keeps_current_liked_profile_behavior";
+      else if (currentAvoidSet.has(family)) productionResolutionReasonByFamily[family] = "non_overlapping_family_keeps_current_avoid_profile_behavior";
+      else productionResolutionReasonByFamily[family] = "family_not_present_in_current_production_profile";
+      continue;
+    }
+
+    if (decision === "mixed_positive" || decision === "strongly_liked" || decision === "weakly_liked") {
+      productionLikedSet.add(family);
+      productionAvoidSet.delete(family);
+      if (decision === "mixed_positive") productionMixedPositiveFamilies.push(family);
+      productionResolutionReasonByFamily[family] = `${decision}_overlap_resolved_as_liked_without_hard_avoid`;
+    } else if (decision === "mixed_neutral") {
+      productionAvoidSet.delete(family);
+      productionLikedSet.delete(family);
+      productionMixedNeutralFamilies.push(family);
+      productionResolutionReasonByFamily[family] = "mixed_neutral_overlap_treated_as_neither_positive_proof_nor_hard_avoid";
+    } else if (decision === "mixed_negative") {
+      productionAvoidSet.delete(family);
+      productionLikedSet.delete(family);
+      productionMixedNegativeFamilies.push(family);
+      productionResolutionReasonByFamily[family] = "mixed_negative_overlap_treated_as_soft_negative_without_hard_block";
+    } else if (decision === "true_avoid") {
+      productionAvoidSet.add(family);
+      productionLikedSet.delete(family);
+      productionResolutionReasonByFamily[family] = "true_avoid_overlap_retains_hard_avoid";
+    } else {
+      productionAvoidSet.delete(family);
+      productionLikedSet.delete(family);
+      productionResolutionReasonByFamily[family] = "overlap_has_insufficient_weighted_evidence";
+    }
+  }
+
+  const productionPolarityByFamily = Object.fromEntries(families.map((family) => [
+    family,
+    {
+      decision: polarityDecision[family],
+      currentLiked: currentLikedSet.has(family),
+      currentAvoid: currentAvoidSet.has(family),
+      overlap: overlappingFamilySet.has(family),
+      productionLiked: productionLikedSet.has(family),
+      productionAvoid: productionAvoidSet.has(family),
+      positiveWeight: positiveWeight[family],
+      negativeWeight: negativeWeight[family],
+      netWeight: netWeight[family],
+      positiveCount: positiveCount[family],
+      negativeCount: negativeCount[family],
+      reason: productionResolutionReasonByFamily[family],
+    },
+  ]));
   const overlapEvidenceByFamily = Object.fromEntries(overlappingFamilies.map((family) => [
     family,
     {
@@ -286,6 +351,14 @@ function buildAdultTasteFamilyDiagnostics(session: SwipeSessionV2, currentLikedF
     adultTasteFamilyDislikedTitles: dislikedTitlesByFamily,
     adultTasteFamilySkippedTitles: skippedTitlesByFamily,
     adultTasteSkippedTitlesExcludedFromPolarity: Array.from(skippedTitles),
+    adultTasteSkippedSignalsRemovedFromProductionProfile: Array.from(skippedTitles).map((title) => {
+      const removedFamilies = evidenceBySwipe[title]?.derivedContentFamilies;
+      return {
+        title,
+        removedFamilies: Array.isArray(removedFamilies) ? removedFamilies.map(String) : [],
+        reason: "adult_skip_has_zero_production_weight",
+      };
+    }),
     adultTasteFamilyPolarityDecision: polarityDecision,
     adultTasteFamilyPolarityReason: polarityReason,
     adultTasteFamilyEvidenceLevel: familyContributionEvidenceLevel,
@@ -317,6 +390,13 @@ function buildAdultTasteFamilyDiagnostics(session: SwipeSessionV2, currentLikedF
       currentLikedSet.has(family) !== weightedLikedSet.has(family)
       || currentAvoidSet.has(family) !== weightedAvoidSet.has(family),
     ),
+    adultTasteProductionPolarityByFamily: productionPolarityByFamily,
+    adultTasteProductionPolarityResolutionReasonByFamily: productionResolutionReasonByFamily,
+    adultTasteProductionLikedFamilies: Array.from(productionLikedSet),
+    adultTasteProductionAvoidFamilies: Array.from(productionAvoidSet),
+    adultTasteProductionMixedPositiveFamilies: uniqueStrings(productionMixedPositiveFamilies),
+    adultTasteProductionMixedNeutralFamilies: uniqueStrings(productionMixedNeutralFamilies),
+    adultTasteProductionMixedNegativeFamilies: uniqueStrings(productionMixedNegativeFamilies),
     adultTasteWeightedModelEnabledForSelection: false,
     adultTasteWeightedModelConstants: {
       genreContribution: 1,
@@ -324,8 +404,9 @@ function buildAdultTasteFamilyDiagnostics(session: SwipeSessionV2, currentLikedF
       tagContribution: 0.5,
       formatContribution: 0.25,
       perSwipeFamilyContribution: "max_per_family_per_swipe_to_avoid_double_counting_tags_from_one_title",
-      trueAvoidRule: "negative_only_family_or_repeated_negative_weight_greater_than_or_equal_positive_weight",
+      trueAvoidRule: "negative_only_family_or_at_least_three_disliked_titles_exceeding_weak_positive_by_meaningful_margin",
       skipRule: "skips_recorded_but_zero_weight_for_weighted_polarity",
+      productionUse: "weighted_polarity_reconciles_only_current_liked_and_avoid_family_overlaps",
     },
   };
 }
@@ -430,7 +511,8 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
   const deepDebugFailure = middleGradesDeepDebugExpectedButInactive(session, deepDebug.active);
 
   for (const signal of session.signals || []) {
-    const direction = signal.action === "like" ? 1 : signal.action === "dislike" ? -1 : 0.25;
+    const adultSkip = session.ageBand === "adult" && signal.action === "skip";
+    const direction = signal.action === "like" ? 1 : signal.action === "dislike" ? -1 : adultSkip ? 0 : 0.25;
     const weight = direction * Math.max(0.25, Number(signal.weight || 1));
     const evidence = signal.title ? `${signal.action}:${signal.title}` : signal.action;
     const targetMap = signal.action === "dislike" ? avoidSignals : null;
@@ -446,7 +528,7 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
     }
     if (signal.format) addWeighted(targetMap || formatPreference, signal.format, weight, evidence);
     const source = String(signal.source || "") as SourceIdV2;
-    if (SOURCE_HINTS.has(source)) sourceHints.add(source);
+    if (SOURCE_HINTS.has(source) && !adultSkip) sourceHints.add(source);
   }
 
   const positiveMaps = [tone, pacing, genreFamily, themes, characterDynamics, formatPreference];
