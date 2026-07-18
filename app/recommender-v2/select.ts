@@ -2108,6 +2108,145 @@ function compareForInitialSelection(a: ScoredCandidate, b: ScoredCandidate, prof
     || a.title.localeCompare(b.title);
 }
 
+type AdultGoogleBooksNarrativeStrengthResult = {
+  score: number;
+  components: Record<string, number>;
+  evidence: Record<string, string[]>;
+};
+
+function adultGoogleBooksRawDescription(candidate: ScoredCandidate): string {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const volumeInfo = raw.volumeInfo && typeof raw.volumeInfo === "object" ? raw.volumeInfo as Record<string, unknown> : {};
+  return String(candidate.description || volumeInfo.description || "").trim();
+}
+
+function adultGoogleBooksNarrativeStrengthAdd(
+  components: Record<string, number>,
+  evidence: Record<string, string[]>,
+  key: string,
+  value: number,
+  reason: string,
+): void {
+  if (value <= 0) return;
+  components[key] = adultOpenLibraryRoundWeight(Number(components[key] || 0) + value);
+  evidence[key] = Array.from(new Set([...(evidence[key] || []), reason]));
+}
+
+export function adultGoogleBooksNarrativeStrength(candidate: ScoredCandidate): AdultGoogleBooksNarrativeStrengthResult {
+  if (candidate.source !== "googleBooks") return { score: 0, components: {}, evidence: {} };
+  const fields = adultGoogleBooksMetadataFields(candidate);
+  const descriptionRaw = adultGoogleBooksRawDescription(candidate);
+  const description = normalized(descriptionRaw);
+  const combined = normalized([
+    fields.title,
+    fields.subtitle,
+    fields.description,
+    fields.categories,
+    fields.genres,
+  ].filter(Boolean).join(" "));
+  const components: Record<string, number> = {};
+  const evidence: Record<string, string[]> = {};
+  const words = description.split(/\s+/).filter(Boolean).length;
+  const sentenceCount = descriptionRaw.split(/[.!?]+/).map((part) => part.trim()).filter(Boolean).length;
+
+  if (words >= 180) adultGoogleBooksNarrativeStrengthAdd(components, evidence, "synopsisRichness", 0.8, `description_words:${words}`);
+  else if (words >= 110) adultGoogleBooksNarrativeStrengthAdd(components, evidence, "synopsisRichness", 0.55, `description_words:${words}`);
+  else if (words >= 60) adultGoogleBooksNarrativeStrengthAdd(components, evidence, "synopsisRichness", 0.3, `description_words:${words}`);
+  if (sentenceCount >= 3) adultGoogleBooksNarrativeStrengthAdd(components, evidence, "synopsisStructure", 0.25, `description_sentences:${sentenceCount}`);
+
+  const namedCharacterMatches = descriptionRaw.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) || [];
+  const namedCharacterCount = Array.from(new Set(namedCharacterMatches.filter((name) =>
+    !/\b(?:The|This|When|After|Before|But|And|For|From|With|In|On|A|An)\b/.test(name),
+  ))).length;
+  if (namedCharacterCount > 0) adultGoogleBooksNarrativeStrengthAdd(components, evidence, "identifiableProtagonist", 0.45, `named_character_count:${Math.min(namedCharacterCount, 4)}`);
+  if (/\b(?:protagonist|hero(?:ine)?|detective|investigator|journalist|agent|soldier|witch|prince|princess|king|queen|sister|brother|mother|father|family)\b/.test(description)) {
+    adultGoogleBooksNarrativeStrengthAdd(components, evidence, "identifiableProtagonist", 0.35, "role_or_relationship_character_anchor");
+  }
+
+  if (/\b(?:must|forced to|has to|discovers?|uncovers?|investigates?|confronts?|faces?|hunts?|pursues?|flees?|survives?|save|stop|prevent|protect|escape)\b/.test(description)) {
+    adultGoogleBooksNarrativeStrengthAdd(components, evidence, "conflictSpecificity", 0.5, "active_conflict_or_goal_language");
+  }
+  if (/\b(?:murder|killer|crime|conspiracy|betrayal|secret|threat|danger|war|curse|trial|revenge|disappearance|body|death|attack)\b/.test(description)) {
+    adultGoogleBooksNarrativeStrengthAdd(components, evidence, "conflictSpecificity", 0.45, "specific_conflict_terms");
+  }
+
+  if (/\b(?:in|on|across|beneath|inside)\s+(?:a|an|the)\s+(?:small town|city|village|kingdom|empire|planet|ship|island|coast|mountains?|forest|school|academy|estate|house|castle|colony|future|past)\b/.test(description)) {
+    adultGoogleBooksNarrativeStrengthAdd(components, evidence, "settingSpecificity", 0.45, "anchored_setting_phrase");
+  }
+  if (/\b(?:kingdom|empire|realm|magic|magical|witch|dragon|gods?|mythology|space|planet|alien|future|dystopian|post-apocalyptic|colony|starship|cyberpunk)\b/.test(combined)) {
+    adultGoogleBooksNarrativeStrengthAdd(components, evidence, "fantasyScienceFictionWorldbuilding", 0.4, "speculative_worldbuilding_metadata");
+  }
+
+  if (/\b(?:grief|love|family|betrayal|identity|guilt|trauma|redemption|loyalty|friendship|loss|survival|protect(?:s|ing)?|sacrifice)\b/.test(description)) {
+    adultGoogleBooksNarrativeStrengthAdd(components, evidence, "emotionalStakes", 0.35, "emotional_or_relationship_stakes");
+  }
+  if (/\b(?:mystery|thriller|suspense|detective|investigation|case|clue|twist|secrets?|killer|murder)\b/.test(combined)) {
+    adultGoogleBooksNarrativeStrengthAdd(components, evidence, "mysteryThrillerTension", 0.35, "mystery_thriller_tension_metadata");
+  }
+  if (/\b(?:horror|haunt(?:ed|ing)?|ghosts?|monsters?|terror|nightmare|evil|darkness|spooky|blood|curse)\b/.test(combined)) {
+    adultGoogleBooksNarrativeStrengthAdd(components, evidence, "horrorAtmosphere", 0.3, "horror_atmosphere_metadata");
+  }
+  if (/\b(?:adventure|quest|journey|expedition|battle|chase|rescue|escape|survival|dangerous|race against time)\b/.test(combined)) {
+    adultGoogleBooksNarrativeStrengthAdd(components, evidence, "adventureIntensity", 0.3, "adventure_or_survival_intensity");
+  }
+  if (/\b(?:historical|century|war|victorian|regency|medieval|ancient|roman|world war|civil war|period)\b/.test(combined)) {
+    adultGoogleBooksNarrativeStrengthAdd(components, evidence, "historicalSpecificity", 0.25, "historical_or_period_specificity");
+  }
+
+  const rawScore = Object.values(components).reduce((sum, value) => sum + Number(value || 0), 0);
+  const score = adultOpenLibraryRoundWeight(Math.min(2.5, rawScore));
+  return { score, components, evidence };
+}
+
+function adultGoogleBooksNarrativeStrengthAdjustedSelectionScore(candidate: ScoredCandidate): number {
+  return adultOpenLibraryRoundWeight(Number(candidate.score || 0) + Number(candidate.diagnostics?.adultGoogleBooksNarrativeStrengthScore || 0));
+}
+
+function adultGoogleBooksApplyNarrativeStrengthRanking(rankedCandidates: ScoredCandidate[], profile: TasteProfile): ScoredCandidate[] {
+  if (profile.ageBand !== "adult" || !rankedCandidates.some((candidate) => candidate.source === "googleBooks")) return rankedCandidates;
+  const baseRankByCandidate = new Map<ScoredCandidate, number>();
+  rankedCandidates.forEach((candidate, index) => baseRankByCandidate.set(candidate, index + 1));
+  const eligibleGoogleBooks = rankedCandidates.filter((candidate) => {
+    if (candidate.source !== "googleBooks") return false;
+    const strength = adultGoogleBooksNarrativeStrength(candidate);
+    candidate.diagnostics.adultGoogleBooksNarrativeStrengthScore = strength.score;
+    candidate.diagnostics.adultGoogleBooksNarrativeStrengthComponents = strength.components;
+    candidate.diagnostics.adultGoogleBooksNarrativeStrengthEvidence = strength.evidence;
+    candidate.diagnostics.adultGoogleBooksNarrativeStrengthBaseScore = adultOpenLibraryRoundWeight(Number(candidate.score || 0));
+    candidate.diagnostics.adultGoogleBooksNarrativeStrengthRankBefore = baseRankByCandidate.get(candidate) || 0;
+    const eligible = !rejectReason(candidate, profile);
+    candidate.diagnostics.adultGoogleBooksNarrativeStrengthApplied = eligible;
+    candidate.diagnostics.adultGoogleBooksNarrativeStrengthSelectionScore = eligible
+      ? adultGoogleBooksNarrativeStrengthAdjustedSelectionScore(candidate)
+      : adultOpenLibraryRoundWeight(Number(candidate.score || 0));
+    return eligible;
+  });
+  if (eligibleGoogleBooks.length <= 1) {
+    rankedCandidates.forEach((candidate, index) => {
+      if (candidate.source === "googleBooks") candidate.diagnostics.adultGoogleBooksNarrativeStrengthRankAfter = index + 1;
+    });
+    return rankedCandidates;
+  }
+
+  const eligibleSet = new Set(eligibleGoogleBooks);
+  const sortedEligibleGoogleBooks = [...eligibleGoogleBooks].sort((a, b) =>
+    adultGoogleBooksNarrativeStrengthAdjustedSelectionScore(b) - adultGoogleBooksNarrativeStrengthAdjustedSelectionScore(a)
+    || Number(b.score || 0) - Number(a.score || 0)
+    || (baseRankByCandidate.get(a) || 0) - (baseRankByCandidate.get(b) || 0)
+    || a.title.localeCompare(b.title),
+  );
+  const replacementQueue = [...sortedEligibleGoogleBooks];
+  const reranked = rankedCandidates.map((candidate) =>
+    eligibleSet.has(candidate) ? replacementQueue.shift() || candidate : candidate,
+  );
+  reranked.forEach((candidate, index) => {
+    if (candidate.source !== "googleBooks") return;
+    candidate.diagnostics.adultGoogleBooksNarrativeStrengthRankAfter = index + 1;
+    candidate.diagnostics.adultGoogleBooksNarrativeStrengthRankDelta = Number(candidate.diagnostics.adultGoogleBooksNarrativeStrengthRankBefore || 0) - (index + 1);
+  });
+  return reranked;
+}
+
 function middleGradesRepresentativeText(candidate: ScoredCandidate): string {
   return normalized([
     candidate.title,
@@ -6873,6 +7012,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const identityAcceptedTitles: string[] = [];
   const identityEnforcementHistogram: Record<string, number> = {};
   const identityBehaviorChanges: Record<string, unknown> = {};
+  const narrativeStrengthScoreByTitle: Record<string, number> = {};
+  const narrativeStrengthComponentsByTitle: Record<string, Record<string, number>> = {};
+  const narrativeStrengthEvidenceByTitle: Record<string, Record<string, string[]>> = {};
+  const narrativeStrengthSelectionScoreByTitle: Record<string, number> = {};
+  const narrativeStrengthRankBeforeByTitle: Record<string, number> = {};
+  const narrativeStrengthRankAfterByTitle: Record<string, number> = {};
+  const narrativeStrengthRankDeltaByTitle: Record<string, number> = {};
+  const narrativeStrengthAppliedTitles: string[] = [];
+  const narrativeStrengthRankingChanges: Record<string, unknown> = {};
   let profileLikedFamilies: string[] = [];
   let profileAvoidFamilies: string[] = [];
   if (profile.ageBand === "adult") {
@@ -7033,6 +7181,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultGoogleBooksIdentityAcceptedTitles = [];
     diagnostics.adultGoogleBooksIdentityEnforcementHistogram = {};
     diagnostics.adultGoogleBooksIdentityBehaviorChanges = {};
+    diagnostics.adultGoogleBooksNarrativeStrengthScoreByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeStrengthComponentsByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeStrengthEvidenceByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeStrengthSelectionScoreByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeStrengthRankBeforeByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeStrengthRankAfterByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeStrengthRankDeltaByTitle = {};
+    diagnostics.adultGoogleBooksNarrativeStrengthAppliedTitles = [];
+    diagnostics.adultGoogleBooksNarrativeStrengthRankingChanges = {};
     diagnostics.googleBooksPlannedQueries = [];
     diagnostics.googleBooksQueriesAttempted = [];
     diagnostics.googleBooksRawCountByQuery = {};
@@ -7055,6 +7212,29 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const productionPolarityExplanations = adultTasteProductionPolarityExplanations(profile);
   for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
     rankedCandidateTitles.push(candidate.title);
+    narrativeStrengthScoreByTitle[candidate.title] = Number(candidate.diagnostics?.adultGoogleBooksNarrativeStrengthScore || 0);
+    narrativeStrengthComponentsByTitle[candidate.title] = candidate.diagnostics?.adultGoogleBooksNarrativeStrengthComponents && typeof candidate.diagnostics.adultGoogleBooksNarrativeStrengthComponents === "object" && !Array.isArray(candidate.diagnostics.adultGoogleBooksNarrativeStrengthComponents)
+      ? candidate.diagnostics.adultGoogleBooksNarrativeStrengthComponents as Record<string, number>
+      : {};
+    narrativeStrengthEvidenceByTitle[candidate.title] = candidate.diagnostics?.adultGoogleBooksNarrativeStrengthEvidence && typeof candidate.diagnostics.adultGoogleBooksNarrativeStrengthEvidence === "object" && !Array.isArray(candidate.diagnostics.adultGoogleBooksNarrativeStrengthEvidence)
+      ? candidate.diagnostics.adultGoogleBooksNarrativeStrengthEvidence as Record<string, string[]>
+      : {};
+    narrativeStrengthSelectionScoreByTitle[candidate.title] = Number(candidate.diagnostics?.adultGoogleBooksNarrativeStrengthSelectionScore || candidate.score || 0);
+    narrativeStrengthRankBeforeByTitle[candidate.title] = Number(candidate.diagnostics?.adultGoogleBooksNarrativeStrengthRankBefore || 0);
+    narrativeStrengthRankAfterByTitle[candidate.title] = Number(candidate.diagnostics?.adultGoogleBooksNarrativeStrengthRankAfter || 0);
+    narrativeStrengthRankDeltaByTitle[candidate.title] = Number(candidate.diagnostics?.adultGoogleBooksNarrativeStrengthRankDelta || 0);
+    if (candidate.diagnostics?.adultGoogleBooksNarrativeStrengthApplied) narrativeStrengthAppliedTitles.push(candidate.title);
+    if (Number(candidate.diagnostics?.adultGoogleBooksNarrativeStrengthRankDelta || 0) !== 0) {
+      narrativeStrengthRankingChanges[candidate.title] = {
+        baseScore: Number(candidate.diagnostics?.adultGoogleBooksNarrativeStrengthBaseScore || candidate.score || 0),
+        narrativeStrengthScore: narrativeStrengthScoreByTitle[candidate.title],
+        adjustedSelectionScore: narrativeStrengthSelectionScoreByTitle[candidate.title],
+        rankBefore: narrativeStrengthRankBeforeByTitle[candidate.title],
+        rankAfter: narrativeStrengthRankAfterByTitle[candidate.title],
+        rankDelta: narrativeStrengthRankDeltaByTitle[candidate.title],
+        components: narrativeStrengthComponentsByTitle[candidate.title],
+      };
+    }
     const plannedQuery = String(candidate.diagnostics?.originalPlannedQuery || candidate.diagnostics?.queryText || "").trim();
     const attemptedQuery = String(candidate.diagnostics?.queryText || candidate.diagnostics?.originalPlannedQuery || "").trim();
     if (plannedQuery) plannedQueries.add(plannedQuery);
@@ -7610,6 +7790,15 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultGoogleBooksIdentityAcceptedTitles = Array.from(new Set(identityAcceptedTitles));
   diagnostics.adultGoogleBooksIdentityEnforcementHistogram = identityEnforcementHistogram;
   diagnostics.adultGoogleBooksIdentityBehaviorChanges = identityBehaviorChanges;
+  diagnostics.adultGoogleBooksNarrativeStrengthScoreByTitle = narrativeStrengthScoreByTitle;
+  diagnostics.adultGoogleBooksNarrativeStrengthComponentsByTitle = narrativeStrengthComponentsByTitle;
+  diagnostics.adultGoogleBooksNarrativeStrengthEvidenceByTitle = narrativeStrengthEvidenceByTitle;
+  diagnostics.adultGoogleBooksNarrativeStrengthSelectionScoreByTitle = narrativeStrengthSelectionScoreByTitle;
+  diagnostics.adultGoogleBooksNarrativeStrengthRankBeforeByTitle = narrativeStrengthRankBeforeByTitle;
+  diagnostics.adultGoogleBooksNarrativeStrengthRankAfterByTitle = narrativeStrengthRankAfterByTitle;
+  diagnostics.adultGoogleBooksNarrativeStrengthRankDeltaByTitle = narrativeStrengthRankDeltaByTitle;
+  diagnostics.adultGoogleBooksNarrativeStrengthAppliedTitles = Array.from(new Set(narrativeStrengthAppliedTitles));
+  diagnostics.adultGoogleBooksNarrativeStrengthRankingChanges = narrativeStrengthRankingChanges;
   diagnostics.googleBooksPlannedQueries = Array.from(plannedQueries);
   diagnostics.googleBooksQueriesAttempted = Array.from(queriesAttempted);
   diagnostics.googleBooksRankedCandidateTitles = uniqueSignals(rankedCandidateTitles);
@@ -7642,7 +7831,10 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   const seenAdultGoogleBooksClusterAuthors: Record<string, Set<string>> = {};
 
   applyMiddleGradesQueryOnlyScoreCaps(candidates, profile, rejectedReasons);
-  const rankedCandidates = [...candidates].sort((a, b) => compareForInitialSelection(a, b, profile));
+  const rankedCandidates = adultGoogleBooksApplyNarrativeStrengthRanking(
+    [...candidates].sort((a, b) => compareForInitialSelection(a, b, profile)),
+    profile,
+  );
 
   for (const candidate of rankedCandidates) {
     const reason = rejectReason(candidate, profile);
