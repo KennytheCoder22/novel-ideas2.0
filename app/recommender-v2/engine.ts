@@ -395,14 +395,19 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
     const referenceEvidence = adultGoogleBooksReferenceEvidenceFromNormalized(candidate);
     const publisherEvidence = adultGoogleBooksPublisherEvidenceFromNormalized(candidate);
     const shapeDiagnostics = adultGoogleBooksShapeDiagnostics(candidate);
-    const confirmedNarrativeSeriesInstallment = shapeDiagnostics.shape === "series_installment"
+    // Extend exemption to `novel` shape: when the publication-shape classifier already confirmed
+    // narrative identity (novel or series_installment with story-level evidence and no explicit
+    // non-narrative identity), trust that result and skip the redundant normalization-gate regex.
+    // This prevents a confirmed `novel` (e.g. Interesting Times) being re-classified as
+    // `reference_or_scholarship_shape` merely because its description mentions a companion or survey.
+    const confirmedNarrativeIdentityFromShape = (shapeDiagnostics.shape === "series_installment" || shapeDiagnostics.shape === "novel")
       && shapeDiagnostics.storyLevelNarrativeEvidence.length > 0
       && shapeDiagnostics.explicitNonNarrativeIdentity.length === 0;
     const publicationShapeRejectReason = adultGoogleBooksPublicationShapeRejectReason(shapeDiagnostics);
     let rejectReason = "";
     if (publicationShapeRejectReason) rejectReason = publicationShapeRejectReason;
     else if (anthologyEvidence.length > 0) rejectReason = "anthology_or_best_of_reference_shape";
-    else if (referenceEvidence.length > 0 && !confirmedNarrativeSeriesInstallment) rejectReason = "reference_or_scholarship_shape";
+    else if (referenceEvidence.length > 0 && !confirmedNarrativeIdentityFromShape) rejectReason = "reference_or_scholarship_shape";
     else if (publisherEvidence.length > 0 && narrativeEvidence.length === 0) rejectReason = "publisher_identity_without_narrative_evidence";
 
     const eligible = !rejectReason;
