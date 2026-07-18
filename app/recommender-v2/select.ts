@@ -4543,6 +4543,11 @@ type AdultTasteProductionPolarityEntry = {
   productionLiked?: boolean;
   productionAvoid?: boolean;
   reason?: string;
+  positiveWeight?: number;
+  negativeWeight?: number;
+  netWeight?: number;
+  positiveCount?: number;
+  negativeCount?: number;
 };
 
 function adultTasteProductionPolarity(profile?: TasteProfile): Record<string, AdultTasteProductionPolarityEntry> {
@@ -4550,6 +4555,25 @@ function adultTasteProductionPolarity(profile?: TasteProfile): Record<string, Ad
   return raw && typeof raw === "object" && !Array.isArray(raw)
     ? raw as Record<string, AdultTasteProductionPolarityEntry>
     : {};
+}
+
+function adultTasteProductionPolarityExplanations(profile?: TasteProfile): Record<string, Record<string, unknown>> {
+  const raw = profile?.diagnostics?.adultTasteProductionPolarityExplanationByFamily;
+  return raw && typeof raw === "object" && !Array.isArray(raw)
+    ? raw as Record<string, Record<string, unknown>>
+    : {};
+}
+
+function adultGoogleBooksProductionSuppressionRule(explanation: Record<string, unknown> | undefined): string {
+  if (!explanation) return "";
+  const decision = String(explanation.decision || "");
+  const rule = String(explanation.productionRule || "");
+  const finalPolarity = String(explanation.finalProductionPolarity || "");
+  if (finalPolarity === "liked") return "";
+  if (decision === "mixed_neutral" || decision === "mixed_negative" || decision === "true_avoid" || decision === "insufficient_evidence") {
+    return rule || decision;
+  }
+  return "";
 }
 
 function adultGoogleBooksFamilyCounts(families: string[]): Record<string, number> {
@@ -6105,6 +6129,10 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const weightedProductionNewPassTitles: string[] = [];
   const weightedProductionNewFailTitles: string[] = [];
   const overlapAffectedCandidateTitlesByFamily: Record<string, string[]> = {};
+  const productionSuppressionRuleHistogram: Record<string, number> = {};
+  const productionSuppressedCandidatesByRule: Record<string, string[]> = {};
+  const productionSuppressedFamiliesByTitle: Record<string, string[]> = {};
+  const productionSuppressionDetailsByTitle: Record<string, unknown[]> = {};
   const signalMatchTraceByTitle: Record<string, unknown[]> = {};
   const signalMatchedFieldByTitle: Record<string, Record<string, string[]>> = {};
   const signalMatchedTextByTitle: Record<string, Record<string, string[]>> = {};
@@ -6226,6 +6254,10 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.adultTasteWeightedProductionNewPassTitles = [];
     diagnostics.adultTasteWeightedProductionNewFailTitles = [];
     diagnostics.adultTasteOverlapAffectedCandidateTitlesByFamily = {};
+    diagnostics.adultGoogleBooksProductionSuppressionRuleHistogram = {};
+    diagnostics.adultGoogleBooksProductionSuppressedCandidatesByRule = {};
+    diagnostics.adultGoogleBooksProductionSuppressedFamiliesByTitle = {};
+    diagnostics.adultGoogleBooksProductionSuppressionDetailsByTitle = {};
     diagnostics.adultGoogleBooksSignalMatchTraceByTitle = {};
     diagnostics.adultGoogleBooksSignalMatchedFieldByTitle = {};
     diagnostics.adultGoogleBooksSignalMatchedTextByTitle = {};
@@ -6290,6 +6322,7 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   }
 
   const selectedTitleSet = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalized(candidate.title)));
+  const productionPolarityExplanations = adultTasteProductionPolarityExplanations(profile);
   for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
     rankedCandidateTitles.push(candidate.title);
     const plannedQuery = String(candidate.diagnostics?.originalPlannedQuery || candidate.diagnostics?.queryText || "").trim();
@@ -6351,6 +6384,40 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     weightedProductionDecisionReasonByTitle[candidate.title] = eligibility.productionDecisionReason;
     if (!binaryMeaningfulTaste.passed && eligibility.meaningfulTastePassed) weightedProductionNewPassTitles.push(candidate.title);
     if (binaryMeaningfulTaste.passed && !eligibility.meaningfulTastePassed) weightedProductionNewFailTitles.push(candidate.title);
+    const positiveFamilySet = new Set(eligibility.positiveNetTasteFamilies);
+    const suppressedDetails = Array.from(new Set(eligibility.allCandidateTasteFamilies.map(String).filter(Boolean)))
+      .filter((family) => !positiveFamilySet.has(family))
+      .map((family) => {
+        const explanation = productionPolarityExplanations[family];
+        const rule = adultGoogleBooksProductionSuppressionRule(explanation);
+        if (!rule) return null;
+        return {
+          family,
+          rule,
+          weightedDecision: String(explanation?.decision || ""),
+          finalProductionPolarity: String(explanation?.finalProductionPolarity || ""),
+          positiveContribution: Number(explanation?.positiveContribution || 0),
+          negativeContribution: Number(explanation?.negativeContribution || 0),
+          cancellationAmount: Number(explanation?.cancellationAmount || 0),
+          remainingNetScore: Number(explanation?.remainingNetScore || 0),
+          thresholdComparison: String(explanation?.thresholdComparison || ""),
+          candidateLikedSignals: eligibility.documentBackedLikedSignals.filter((signal) => adultOpenLibraryPrimaryContentFamily(signal) === family),
+          candidateDislikedSignals: eligibility.documentBackedDislikedSignals.filter((signal) => adultOpenLibraryPrimaryContentFamily(signal) === family),
+        };
+      })
+      .filter(Boolean) as Record<string, unknown>[];
+    if (suppressedDetails.length > 0) {
+      productionSuppressionDetailsByTitle[candidate.title] = suppressedDetails;
+      productionSuppressedFamiliesByTitle[candidate.title] = Array.from(new Set(suppressedDetails.map((row) => String(row.family || "")).filter(Boolean)));
+      for (const detail of suppressedDetails) {
+        const rule = String(detail.rule || "unknown_production_rule");
+        adultGoogleBooksIncrementCounter(productionSuppressionRuleHistogram, rule);
+        productionSuppressedCandidatesByRule[rule] = Array.from(new Set([
+          ...(productionSuppressedCandidatesByRule[rule] || []),
+          candidate.title,
+        ])).slice(0, 12);
+      }
+    }
     signalMatchTraceByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.adultGoogleBooksSignalMatchTrace)
       ? candidate.diagnostics.adultGoogleBooksSignalMatchTrace as unknown[]
       : [];
@@ -6645,6 +6712,10 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.adultTasteWeightedProductionNewPassTitles = Array.from(new Set(weightedProductionNewPassTitles));
   diagnostics.adultTasteWeightedProductionNewFailTitles = Array.from(new Set(weightedProductionNewFailTitles));
   diagnostics.adultTasteOverlapAffectedCandidateTitlesByFamily = overlapAffectedCandidateTitlesByFamily;
+  diagnostics.adultGoogleBooksProductionSuppressionRuleHistogram = productionSuppressionRuleHistogram;
+  diagnostics.adultGoogleBooksProductionSuppressedCandidatesByRule = productionSuppressedCandidatesByRule;
+  diagnostics.adultGoogleBooksProductionSuppressedFamiliesByTitle = productionSuppressedFamiliesByTitle;
+  diagnostics.adultGoogleBooksProductionSuppressionDetailsByTitle = productionSuppressionDetailsByTitle;
   diagnostics.adultGoogleBooksSignalMatchTraceByTitle = signalMatchTraceByTitle;
   diagnostics.adultGoogleBooksSignalMatchedFieldByTitle = signalMatchedFieldByTitle;
   diagnostics.adultGoogleBooksSignalMatchedTextByTitle = signalMatchedTextByTitle;

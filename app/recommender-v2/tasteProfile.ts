@@ -326,6 +326,75 @@ function buildAdultTasteFamilyDiagnostics(session: SwipeSessionV2, currentLikedF
       reason: productionResolutionReasonByFamily[family],
     },
   ]));
+  const productionPolarityExplanationByFamily = Object.fromEntries(families.map((family) => {
+    const positive = Number(positiveWeight[family] || 0);
+    const negative = Number(negativeWeight[family] || 0);
+    const net = Number(netWeight[family] || 0);
+    const cancellationAmount = roundAdultTasteWeight(Math.min(positive, negative));
+    const meaningfulNegativeMargin = Math.max(1, roundAdultTasteWeight(positive * 0.5));
+    const decision = polarityDecision[family];
+    const productionLiked = productionLikedSet.has(family);
+    const productionAvoid = productionAvoidSet.has(family);
+    const thresholdComparison =
+      decision === "true_avoid" && positive <= 0
+        ? `negativeWeight=${negative} > 0 and positiveWeight=${positive} <= 0`
+        : decision === "true_avoid"
+          ? `negativeCount=${negativeCount[family]} >= 3 and negativeWeight=${negative} > positiveWeight=${positive} + meaningfulNegativeMargin=${meaningfulNegativeMargin}`
+          : decision === "strongly_liked"
+            ? `positiveWeight=${positive} >= 2 and positiveCount=${positiveCount[family]} >= 2 with negativeWeight=${negative} <= 0`
+            : decision === "weakly_liked"
+              ? `positiveWeight=${positive} > 0 with negativeWeight=${negative} <= 0`
+              : decision === "mixed_positive"
+                ? `netWeight=${net} > 0 after cancellation=${cancellationAmount}`
+                : decision === "mixed_negative"
+                  ? `netWeight=${net} < 0 after cancellation=${cancellationAmount}`
+                  : decision === "mixed_neutral"
+                    ? `netWeight=${net} == 0 after cancellation=${cancellationAmount}`
+                    : `positiveWeight=${positive} and negativeWeight=${negative} provide insufficient evidence`;
+    return [
+      family,
+      {
+        family,
+        decision,
+        polarityReason: polarityReason[family],
+        productionRule: productionResolutionReasonByFamily[family],
+        finalProductionPolarity: productionLiked ? "liked" : productionAvoid ? "avoided" : "neutral",
+        positiveContribution: positive,
+        negativeContribution: negative,
+        cancellationAmount,
+        remainingNetScore: net,
+        thresholdComparison,
+        thresholdValues: {
+          positiveCount: positiveCount[family],
+          negativeCount: negativeCount[family],
+          meaningfulNegativeMargin,
+          positiveEvidenceStrong: positiveCount[family] >= 2 || positive >= 2,
+        },
+        currentLiked: currentLikedSet.has(family),
+        currentAvoid: currentAvoidSet.has(family),
+        overlap: overlappingFamilySet.has(family),
+        productionLiked,
+        productionAvoid,
+        likedTitles: likedTitlesByFamily[family] || [],
+        dislikedTitles: dislikedTitlesByFamily[family] || [],
+      },
+    ];
+  }));
+  const mixedFamilyProductionExplanationByFamily = Object.fromEntries(
+    Object.entries(productionPolarityExplanationByFamily).filter(([, value]) => {
+      const decision = String((value as Record<string, unknown>).decision || "");
+      return decision === "insufficient_evidence" || /^mixed_/.test(decision);
+    }),
+  );
+  const productionPolarityRuleHistogram: Record<string, number> = {};
+  const mixedFamilyProductionRuleHistogram: Record<string, number> = {};
+  for (const family of families) {
+    const rule = productionResolutionReasonByFamily[family] || "unknown_production_rule";
+    productionPolarityRuleHistogram[rule] = Number(productionPolarityRuleHistogram[rule] || 0) + 1;
+    if (Object.prototype.hasOwnProperty.call(mixedFamilyProductionExplanationByFamily, family)) {
+      mixedFamilyProductionRuleHistogram[rule] = Number(mixedFamilyProductionRuleHistogram[rule] || 0) + 1;
+    }
+  }
   const overlapEvidenceByFamily = Object.fromEntries(overlappingFamilies.map((family) => [
     family,
     {
@@ -392,6 +461,10 @@ function buildAdultTasteFamilyDiagnostics(session: SwipeSessionV2, currentLikedF
     ),
     adultTasteProductionPolarityByFamily: productionPolarityByFamily,
     adultTasteProductionPolarityResolutionReasonByFamily: productionResolutionReasonByFamily,
+    adultTasteProductionPolarityExplanationByFamily: productionPolarityExplanationByFamily,
+    adultTasteMixedFamilyProductionExplanationByFamily: mixedFamilyProductionExplanationByFamily,
+    adultTasteProductionPolarityRuleHistogram: productionPolarityRuleHistogram,
+    adultTasteMixedFamilyProductionRuleHistogram: mixedFamilyProductionRuleHistogram,
     adultTasteProductionLikedFamilies: Array.from(productionLikedSet),
     adultTasteProductionAvoidFamilies: Array.from(productionAvoidSet),
     adultTasteProductionMixedPositiveFamilies: uniqueStrings(productionMixedPositiveFamilies),

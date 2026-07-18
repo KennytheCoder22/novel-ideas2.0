@@ -411,6 +411,12 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   assertIncludes(diagnostics.adultTasteWeightedProductionNewPassTitles || [], "Counterfactual Fantasy", "T19: production diagnostics should report the new pass");
   assertIncludes(profile.diagnostics.adultTasteProductionMixedPositiveFamilies || [], "fantasy", "T19: fantasy should be recorded as production mixed-positive");
   assertEqual(profile.diagnostics.adultTasteWeightedModelEnabledForSelection, false, "T19: weighted model must remain disabled for selection");
+  const explanation = profile.diagnostics.adultTasteMixedFamilyProductionExplanationByFamily?.fantasy;
+  assertEqual(explanation?.positiveContribution, 2, "T19: mixed-positive explanation should expose positive contribution");
+  assertEqual(explanation?.negativeContribution, 1, "T19: mixed-positive explanation should expose negative contribution");
+  assertEqual(explanation?.cancellationAmount, 1, "T19: mixed-positive explanation should expose cancellation amount");
+  assertEqual(explanation?.remainingNetScore, 1, "T19: mixed-positive explanation should expose remaining net score");
+  assertEqual(explanation?.finalProductionPolarity, "liked", "T19: mixed-positive explanation should show production liked polarity");
   console.log("PASS T19: mixed-positive overlap is usable by guarded production gate");
 }
 
@@ -484,6 +490,21 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   const diagnostics = runSelection([candidate], profile);
   assertFalsy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Neutral Mystery"], "T23: mixed-neutral family cannot independently pass");
   assertEqual(diagnostics.adultGoogleBooksNegativeNetTasteFamiliesByTitle?.["Neutral Mystery"]?.length || 0, 0, "T23: mixed-neutral family cannot independently fail as negative");
+  const explanation = profile.diagnostics.adultTasteMixedFamilyProductionExplanationByFamily?.mystery_crime_thriller;
+  assertEqual(explanation?.positiveContribution, 2, "T23: mixed-neutral explanation should expose positive contribution");
+  assertEqual(explanation?.negativeContribution, 2, "T23: mixed-neutral explanation should expose negative contribution");
+  assertEqual(explanation?.cancellationAmount, 2, "T23: mixed-neutral explanation should expose full cancellation");
+  assertEqual(explanation?.remainingNetScore, 0, "T23: mixed-neutral explanation should expose zero net");
+  assertEqual(explanation?.finalProductionPolarity, "neutral", "T23: mixed-neutral explanation should show neutral production polarity");
+  assertTruthy(
+    (diagnostics.adultGoogleBooksProductionSuppressionRuleHistogram?.mixed_neutral_overlap_treated_as_neither_positive_proof_nor_hard_avoid || 0) >= 1,
+    "T23: mixed-neutral production rule should appear in suppression histogram",
+  );
+  assertIncludes(
+    diagnostics.adultGoogleBooksProductionSuppressedFamiliesByTitle?.["Neutral Mystery"] || [],
+    "mystery_crime_thriller",
+    "T23: candidate-level suppression diagnostics should name the neutral family",
+  );
   console.log("PASS T23: equal mystery evidence remains mixed-neutral");
 }
 
@@ -534,6 +555,13 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   const diagnostics = runSelection([candidate], profile);
   assertTruthy(diagnostics.adultGoogleBooksMeaningfulTastePassedByTitle?.["Mixed Negative With Sci-Fi"], "T27: another positive family should still pass");
   assertIncludes(diagnostics.adultGoogleBooksPositiveNetTasteFamiliesByTitle?.["Mixed Negative With Sci-Fi"] || [], "science_fiction", "T27: sci-fi should be the positive passing family");
+  const explanation = profile.diagnostics.adultTasteMixedFamilyProductionExplanationByFamily?.fantasy;
+  assertEqual(explanation?.finalProductionPolarity, "neutral", "T27: mixed-negative explanation should show soft-neutral production polarity");
+  assertEqual(explanation?.remainingNetScore, -1, "T27: mixed-negative explanation should expose negative net score");
+  assertTruthy(
+    (diagnostics.adultGoogleBooksProductionSuppressionRuleHistogram?.mixed_negative_overlap_treated_as_soft_negative_without_hard_block || 0) >= 1,
+    "T27: mixed-negative production rule should appear in suppression histogram",
+  );
   console.log("PASS T27: mixed-negative overlap does not hard-reject other positive evidence");
 }
 
