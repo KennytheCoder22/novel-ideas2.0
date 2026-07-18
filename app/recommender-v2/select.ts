@@ -5026,6 +5026,13 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   const rejectedTitlesByReason: Record<string, string[]> = {};
   const acceptedTitles: string[] = [];
   const rankedCandidateTitles: string[] = [];
+  // Explicit per-title decision maps so no ranked candidate disappears with only a lineage gap.
+  const finalEligibilityDecisionByTitle: Record<string, string> = {};
+  const finalEligibilityEvidenceByTitle: Record<string, string[]> = {};
+  const postRankingGateByTitle: Record<string, string> = {};
+  const postRankingGateReasonByTitle: Record<string, string> = {};
+  const finalSelectionDecisionByTitle: Record<string, string> = {};
+  const finalSelectionExclusionReasonByTitle: Record<string, string> = {};
   if (profile.ageBand !== "adult") {
     diagnostics.adultGoogleBooksFinalGateApplied = false;
     diagnostics.adultGoogleBooksEligibilityReasonByTitle = {};
@@ -5065,6 +5072,13 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     diagnostics.googleBooksRetrievalUnderfillReason = undefined;
     diagnostics.adultGoogleBooksRejectedTitlesByReason = {};
     diagnostics.adultGoogleBooksAcceptedTitles = [];
+    diagnostics.googleBooksFinalEligibilityDecisionByTitle = {};
+    diagnostics.googleBooksFinalEligibilityReasonByTitle = {};
+    diagnostics.googleBooksFinalEligibilityEvidenceByTitle = {};
+    diagnostics.googleBooksPostRankingGateByTitle = {};
+    diagnostics.googleBooksPostRankingGateReasonByTitle = {};
+    diagnostics.googleBooksFinalSelectionDecisionByTitle = {};
+    diagnostics.googleBooksFinalSelectionExclusionReasonByTitle = {};
     return;
   }
 
@@ -5103,6 +5117,58 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
     meaningfulTastePassedByTitle[candidate.title] = eligibility.meaningfulTastePassed;
     meaningfulTasteFailureReasonByTitle[candidate.title] = eligibility.meaningfulTasteFailureReason;
     broadToneOnlyRejectedByTitle[candidate.title] = eligibility.meaningfulTasteFailureReason === "broad_tone_without_content_family_corroboration";
+
+    // Explicit per-title decision diagnostics so every ranked candidate has a named reason.
+    finalEligibilityDecisionByTitle[candidate.title] = eligibility.allowed ? "accepted" : "rejected";
+    finalEligibilityEvidenceByTitle[candidate.title] = Array.from(new Set([
+      ...eligibility.artifactReasons,
+      ...eligibility.narrativeEvidence,
+      ...eligibility.workIdentitySignals,
+      ...eligibility.credibleFictionSignals,
+      ...eligibility.sourceQualityFailureReasons,
+    ]));
+    const isAuthorDeferred = authorCapAppliedByTitle[candidate.title];
+    const isSeriesDeferred = seriesCapAppliedByTitle[candidate.title];
+    const otherDeferralReason = candidate.rejectedReasons.find((r) =>
+      /deferred|cluster/.test(r) && r !== "same_author_deferred" && r !== "same_series_or_root_deferred",
+    );
+    if (!eligibility.allowed) {
+      postRankingGateByTitle[candidate.title] = "final_eligibility";
+      postRankingGateReasonByTitle[candidate.title] = eligibility.reason;
+    } else if (isAuthorDeferred) {
+      postRankingGateByTitle[candidate.title] = "author_diversity_deferral";
+      postRankingGateReasonByTitle[candidate.title] = "same_author_deferred";
+    } else if (isSeriesDeferred) {
+      postRankingGateByTitle[candidate.title] = "series_diversity_deferral";
+      postRankingGateReasonByTitle[candidate.title] = "same_series_or_root_deferred";
+    } else if (otherDeferralReason) {
+      postRankingGateByTitle[candidate.title] = "cluster_diversity_deferral";
+      postRankingGateReasonByTitle[candidate.title] = otherDeferralReason;
+    } else if (selectedTitleSet.has(normalized(candidate.title))) {
+      postRankingGateByTitle[candidate.title] = "selected";
+      postRankingGateReasonByTitle[candidate.title] = "accepted";
+    } else {
+      postRankingGateByTitle[candidate.title] = "passed_eligibility_not_selected";
+      postRankingGateReasonByTitle[candidate.title] = candidate.rejectedReasons.find(Boolean) || "not_reached_selection_capacity";
+    }
+    if (eligibility.allowed) {
+      if (selectedTitleSet.has(normalized(candidate.title))) {
+        finalSelectionDecisionByTitle[candidate.title] = "selected";
+      } else if (isAuthorDeferred) {
+        finalSelectionDecisionByTitle[candidate.title] = "deferred_author_diversity";
+        finalSelectionExclusionReasonByTitle[candidate.title] = "same_author_deferred";
+      } else if (isSeriesDeferred) {
+        finalSelectionDecisionByTitle[candidate.title] = "deferred_series_diversity";
+        finalSelectionExclusionReasonByTitle[candidate.title] = "same_series_or_root_deferred";
+      } else if (otherDeferralReason) {
+        finalSelectionDecisionByTitle[candidate.title] = "deferred_cluster_diversity";
+        finalSelectionExclusionReasonByTitle[candidate.title] = otherDeferralReason;
+      } else {
+        finalSelectionDecisionByTitle[candidate.title] = "passed_eligibility_not_selected";
+        finalSelectionExclusionReasonByTitle[candidate.title] = candidate.rejectedReasons.find(Boolean) || "not_reached_selection_capacity";
+      }
+    }
+
     if (eligibility.allowed && selectedTitleSet.has(normalized(candidate.title))) {
       acceptedTitles.push(candidate.title);
       if (attemptedQuery) acceptedCountByQuery[attemptedQuery] = Number(acceptedCountByQuery[attemptedQuery] || 0) + 1;
@@ -5154,6 +5220,13 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.googleBooksRetrievalUnderfillReason = acceptedTitles.length === 0 ? "no_googlebooks_candidates_passed_final_eligibility" : undefined;
   diagnostics.adultGoogleBooksRejectedTitlesByReason = rejectedTitlesByReason;
   diagnostics.adultGoogleBooksAcceptedTitles = acceptedTitles;
+  diagnostics.googleBooksFinalEligibilityDecisionByTitle = finalEligibilityDecisionByTitle;
+  diagnostics.googleBooksFinalEligibilityReasonByTitle = eligibilityReasonByTitle;
+  diagnostics.googleBooksFinalEligibilityEvidenceByTitle = finalEligibilityEvidenceByTitle;
+  diagnostics.googleBooksPostRankingGateByTitle = postRankingGateByTitle;
+  diagnostics.googleBooksPostRankingGateReasonByTitle = postRankingGateReasonByTitle;
+  diagnostics.googleBooksFinalSelectionDecisionByTitle = finalSelectionDecisionByTitle;
+  diagnostics.googleBooksFinalSelectionExclusionReasonByTitle = finalSelectionExclusionReasonByTitle;
 }
 
 export function selectRecommendations(candidates: ScoredCandidate[], profile: TasteProfile, limit = 10): { selected: ScoredCandidate[]; rejectedReasons: Record<string, number> } {
