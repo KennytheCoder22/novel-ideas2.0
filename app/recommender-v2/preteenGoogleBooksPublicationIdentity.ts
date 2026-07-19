@@ -120,7 +120,9 @@ function preteenGoogleBooksMetadata(candidate: ScoredCandidate): {
 export function preteenGoogleBooksPublicationIdentityAudit(candidate: ScoredCandidate): PreteenGoogleBooksPublicationIdentityAudit {
   const fields = preteenGoogleBooksMetadata(candidate);
   const titleSubtitle = `${fields.title} ${fields.subtitle}`.trim();
+  const publicationIdentityTitle = titleSubtitle.replace(/^(?:the|a|an)\s+/, "").trim();
   const corroboration = `${fields.description} ${fields.categories} ${fields.publisher}`.trim();
+  const publicationIdentityCombined = `${publicationIdentityTitle} ${corroboration} ${fields.authors}`.trim();
   const evidence: string[] = [];
   const narrativeEvidence: string[] = [];
   const artifactEvidence: string[] = [];
@@ -154,18 +156,23 @@ export function preteenGoogleBooksPublicationIdentityAudit(candidate: ScoredCand
   pushIf(artifactEvidence, /\bschool publications?\b/.test(titleSubtitle) || /\bschool publications?\b/.test(fields.categories), "school_publication_identity");
   pushIf(
     artifactEvidence,
-    /\blist of books for (?:high[-\s]?school|school) libraries\b/.test(titleSubtitle)
-      || /\b(?:school|high[-\s]?school)[-\s]librar(?:y|ies)\s+(?:book\s+list|catalog(?:ue)?|list)\b/.test(titleSubtitle)
-      || /\b(?:book\s+list|catalog(?:ue)?|list\s+of\s+books)\s+(?:for|of)\s+.*\b(?:school|high[-\s]?school)[-\s]librar(?:y|ies)\b/.test(titleSubtitle)
-      || /\binstitutional librar(?:y|ies)\s+(?:book\s+list|catalog(?:ue)?|list)\b/.test(titleSubtitle),
+    /\blist of books for (?:high[-\s]?school|school) libraries\b/.test(publicationIdentityTitle)
+      || /\b(?:school|high[-\s]?school)[-\s]librar(?:y|ies)\s+(?:book\s+list|catalog(?:ue)?|list)\b/.test(publicationIdentityTitle)
+      || /\b(?:book\s+list|catalog(?:ue)?|list\s+of\s+books)\s+(?:for|of)\s+.*\b(?:school|high[-\s]?school)[-\s]librar(?:y|ies)\b/.test(publicationIdentityTitle)
+      || /\binstitutional librar(?:y|ies)\s+(?:book\s+list|catalog(?:ue)?|list)\b/.test(publicationIdentityTitle),
     "institutional_school_library_book_list_identity",
+  );
+  pushIf(
+    artifactEvidence,
+    /^(?:[a-z0-9]+\s+){1,6}list\s+of\s+(?:[a-z0-9]+\s+){0,5}(?:books?|novels?|fiction|stories|reads|literature)$/.test(publicationIdentityTitle),
+    "curated_literature_list_identity",
   );
   pushIf(artifactEvidence, /\bteacher'?s? guide\b|\beducator guide\b|\blesson plans?\b|\bclassroom resources?\b|\bcurriculum\b|\bfor teachers\b/.test(fields.combined), "teacher_or_classroom_material_identity");
   pushIf(artifactEvidence, /\bstudy guide\b|\bchapter summaries?\b|\bteaching unit\b|\breading guide\b/.test(fields.combined), "study_guide_identity");
   pushIf(artifactEvidence, /\bworkbooks?\b|\bpractice book\b|\btest prep\b|\bexam prep\b/.test(fields.combined), "workbook_identity");
   pushIf(artifactEvidence, /\bactivity books?\b|\bcoloring books?\b|\bpuzzle books?\b|\bsticker books?\b|\bmaze books?\b/.test(fields.combined), "activity_book_identity");
-  pushIf(artifactEvidence, /\bcatalog(?:ue)?\b|\bdirectory\b|\bbookseller\b|\blibrary catalog\b|\bbook list\b/.test(fields.combined), "catalog_identity");
-  pushIf(artifactEvidence, /\bencyclopedia\b|\bdictionary\b|\breference\b|\bhandbook\b|\bguide to the best\b|\bguide to .* books\b|\bbest .* books\b/.test(fields.combined), "reference_identity");
+  pushIf(artifactEvidence, /\bcatalog(?:ue)?\b|\bdirectory\b|\bbookseller\b|\blibrary catalog\b|\bbook list\b/.test(publicationIdentityCombined), "catalog_identity");
+  pushIf(artifactEvidence, /\bencyclopedia\b|\bdictionary\b|\breference\b|\bhandbook\b|\bguide to the best\b|\bguide to .* books\b|\bbest .* books\b/.test(publicationIdentityCombined), "reference_identity");
   pushIf(artifactEvidence, /\bjuvenile nonfiction\b|\bchildren'?s nonfiction\b|\beducation\b|\blanguage arts\b/.test(fields.categories), "educational_nonfiction_category");
 
   let identity: PreteenGoogleBooksPublicationIdentity = "unknown";
@@ -179,7 +186,7 @@ export function preteenGoogleBooksPublicationIdentityAudit(candidate: ScoredCand
   else if (artifactEvidence.includes("study_guide_identity")) identity = "study_guide";
   else if (artifactEvidence.includes("workbook_identity")) identity = "workbook";
   else if (artifactEvidence.includes("activity_book_identity")) identity = "activity_book";
-  else if (artifactEvidence.includes("catalog_identity")) identity = "catalog";
+  else if (artifactEvidence.includes("catalog_identity") || artifactEvidence.includes("curated_literature_list_identity")) identity = "catalog";
   else if (artifactEvidence.includes("reference_identity")) identity = "reference";
   else if (artifactEvidence.includes("educational_nonfiction_category")) identity = "nonfiction";
   else if (narrativeEvidence.includes("manga_metadata")) identity = "manga";

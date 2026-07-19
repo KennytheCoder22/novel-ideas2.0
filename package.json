@@ -21,6 +21,7 @@
     "test:v2:googlebooks-lineage-diagnostics": "node scripts/run-v2-googlebooks-lineage-diagnostics-regressions.mjs",
     "test:v2:googlebooks-preteen-publication-identity-audit": "node scripts/run-v2-googlebooks-preteen-publication-identity-regressions.mjs",
     "test:v2:googlebooks-preteen-publication-shape-false-reject-audit": "node scripts/run-v2-googlebooks-preteen-publication-shape-false-reject-audit-regressions.mjs",
+    "test:v2:googlebooks-preteen-publication-shape-narrative-rescue": "node scripts/run-v2-googlebooks-preteen-publication-shape-narrative-rescue-regressions.mjs",
     "test:v2:googlebooks-short-signals": "node scripts/run-v2-googlebooks-short-signal-boundary-regressions.mjs",
     "test:v2:openlibrary-presets": "node scripts/run-v2-openlibrary-presets.mjs",
     "test:v2:openlibrary-routing-regressions": "node scripts/run-v2-openlibrary-routing-regressions.mjs"

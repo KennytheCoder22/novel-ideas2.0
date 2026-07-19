@@ -167,6 +167,22 @@ const narrativeLibraryTitle = googleBookCandidate(
   { score: 11 },
 );
 
+const goldStarList = googleBookCandidate(
+  "Gold Star List of American Fiction",
+  "A selective survey recommending notable works of American fiction for readers and libraries.",
+  ["Fiction"],
+);
+const theGoldStarList = googleBookCandidate(
+  "The Gold Star List of American Fiction",
+  "A selective survey recommending notable works of American fiction for readers and libraries.",
+  ["Fiction"],
+);
+const narrativeListTitle = googleBookCandidate(
+  "The List of Impossible Things",
+  "When a young detective finds a mysterious list, she must solve each impossible clue, protect her friends, and uncover the secret beneath her school.",
+  ["Juvenile Fiction / Mysteries & Detective Stories", "Middle grade fiction"],
+);
+
 {
   const schoolAudit = preteenGoogleBooksPublicationIdentityAudit(schoolPublication);
   assertEqual(schoolAudit.identity, "school_publication", "School Publication should be identified as school publication");
@@ -196,6 +212,17 @@ const narrativeLibraryTitle = googleBookCandidate(
 
   const libraryNarrativeAudit = preteenGoogleBooksPublicationIdentityAudit(narrativeLibraryTitle);
   assertEqual(libraryNarrativeAudit.allowed, true, "Narrative title containing library should not be rejected as a school-library list");
+
+  const goldStarAudit = preteenGoogleBooksPublicationIdentityAudit(goldStarList);
+  const theGoldStarAudit = preteenGoogleBooksPublicationIdentityAudit(theGoldStarList);
+  for (const audit of [goldStarAudit, theGoldStarAudit]) {
+    assertEqual(audit.identity, "catalog", "Gold Star publication-list variants should share catalog identity");
+    assertEqual(audit.allowed, false, "Gold Star publication-list variants should be hard artifacts");
+    assertIncludes(audit.artifactEvidence, "curated_literature_list_identity", "Gold Star variants should expose curated-list evidence");
+  }
+  assertEqual(goldStarAudit.identity, theGoldStarAudit.identity, "Optional leading The should not alter Pre-Teen publication identity");
+  const narrativeListAudit = preteenGoogleBooksPublicationIdentityAudit(narrativeListTitle);
+  assertEqual(narrativeListAudit.allowed, true, "List in a narrative context should not be broadly rejected");
   console.log("PASS: Pre-Teen Google Books publication identity classifier explains artifact and narrative evidence");
 }
 

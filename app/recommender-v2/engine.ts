@@ -2952,6 +2952,48 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     selectedCandidates: selected,
   }));
 
+  const preteenRescueSourceResult = sourceResults.find((result) => result.source === "googleBooks");
+  if (preteenRescueSourceResult && tasteProfile.ageBand === "preteens") {
+    const sourceDiagnostics = preteenRescueSourceResult.diagnostics as unknown as Record<string, unknown>;
+    const rescuedTitles = uniqueStrings((sourceDiagnostics.preteenGoogleBooksPublicationShapeRescuedTitles || []) as string[], 120);
+    const scoredTitleSet = new Set(scored.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalizedTokenText(candidate.title)));
+    const selectedTitleSet = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalizedTokenText(candidate.title)));
+    const enteredScoringTitles = rescuedTitles.filter((title) => scoredTitleSet.has(normalizedTokenText(title)));
+    const selectedRescuedTitles = rescuedTitles.filter((title) => selectedTitleSet.has(normalizedTokenText(title)));
+    const downstreamDropReasonByTitle = (rejectedReasonsWithGoogleBooksNormalization.googleBooksAgeBandDropReasonByTitle || {}) as Record<string, string>;
+    const notSelectedReasonByTitle: Record<string, string> = {};
+    for (const title of rescuedTitles) {
+      if (selectedTitleSet.has(normalizedTokenText(title))) continue;
+      notSelectedReasonByTitle[title] = downstreamDropReasonByTitle[title]
+        || (scoredTitleSet.has(normalizedTokenText(title))
+          ? "not_selected_after_scoring_and_downstream_selection"
+          : "did_not_reach_scoring_after_source_rescue");
+    }
+    const existingSummary = (sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSummary || {}) as Record<string, unknown>;
+    const rescueSummary = {
+      ...existingSummary,
+      enteredScoringCount: enteredScoringTitles.length,
+      laterSelectedCount: selectedRescuedTitles.length,
+      laterNotSelectedCount: Object.keys(notSelectedReasonByTitle).length,
+      scoringCandidateCountChange: enteredScoringTitles.length,
+      finalRecommendationCountChange: selectedRescuedTitles.length,
+      automaticFinalAcceptance: false,
+    };
+    sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles = enteredScoringTitles;
+    sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSelectedTitles = selectedRescuedTitles;
+    sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueNotSelectedReasonByTitle = notSelectedReasonByTitle;
+    sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSummary = rescueSummary;
+    rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueAppliedByTitle = sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueAppliedByTitle || {};
+    rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueReasonByTitle = sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueReasonByTitle || {};
+    rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueEvidenceByTitle = sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueEvidenceByTitle || {};
+    rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescuedTitles = rescuedTitles;
+    rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueRejectedTitles = sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueRejectedTitles || [];
+    rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueRejectedReasonByTitle = sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueRejectedReasonByTitle || {};
+    rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles = enteredScoringTitles;
+    rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueSelectedTitles = selectedRescuedTitles;
+    rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueNotSelectedReasonByTitle = notSelectedReasonByTitle;
+    rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueSummary = rescueSummary;
+  }
   markPipelineObjects(selected, "selected", requestId);
   stages.push(stageDiagnostic("selected", { selected: selected.length }, { rejectedReasons }));
   if (middleGradesDeepDebugActive) {

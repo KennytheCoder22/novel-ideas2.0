@@ -217,6 +217,10 @@ function normalizeText(value: unknown): string {
     .trim();
 }
 
+function normalizePublicationIdentityTitle(value: unknown): string {
+  return normalizeText(value).replace(/^(?:the|a|an)\s+/, "").trim();
+}
+
 function queryFamilyFromQuery(query: string): string {
   const normalized = normalizeQuery(query);
   if (/\b(thriller|suspense|conspiracy|manhunt|abduction)\b/.test(normalized)) return "thriller";
@@ -361,15 +365,36 @@ function googleBooksBundledPublicationEvidence(titleText: string, descriptionTex
   return Array.from(new Set(evidence));
 }
 
+function googleBooksAnnualAnthologyEvidence(titleText: string, descriptionText: string, categoryBlob: string): string[] {
+  const evidence: string[] = [];
+  const annualBestAmericanTitle = /^the best american .+ (?:19|20)\d{2}$/.test(titleText);
+  if (!annualBestAmericanTitle) return evidence;
+
+  evidence.push("best_american_annual_title_shape");
+  if (/\b(?:guest|series) editors?\b|\beditors?\b.{0,80}\bselect(?:s|ed|ing)?\b|\bselect(?:s|ed|ing)?\s+(?:\w+\s+){0,3}(?:pieces|stories|works)\b/.test(descriptionText)) {
+    evidence.push("annual_anthology_editor_selection_description");
+  }
+  if (/\b(?:pieces|stories|works)\b.{0,80}\bpublished (?:in )?the previous year\b|\bbest (?:examples|stories|works|pieces)\b.{0,80}\bprevious year\b/.test(descriptionText)) {
+    evidence.push("annual_anthology_previous_year_selection_description");
+  }
+  if (/\bcollections? (?:&|and) anthologies\b|\bantholog(?:y|ies)\b/.test(categoryBlob)) {
+    evidence.push("anthology_category");
+  }
+  return Array.from(new Set(evidence));
+}
+
 function googleBooksCuratedBookGuideEvidence(titleText: string, descriptionText: string, categoryBlob: string): string[] {
   const evidence: string[] = [];
-  const normalized = normalizeText(titleText)
+  const normalized = normalizePublicationIdentityTitle(titleText)
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   const bookContainer = "(?:books?|novels?|fiction|stories|reads|literature)";
-  if (new RegExp(`^(?:the\\s+)?guide\\s+to\\s+(?:the\\s+)?top\\s+\\d+\\s+.+\\b${bookContainer}$`).test(normalized)) {
+  if (new RegExp(`^(?:[a-z0-9]+\\s+){1,6}list\\s+of\\s+(?:[a-z0-9]+\\s+){0,5}${bookContainer}$`).test(normalized)) {
+    evidence.push("curated_list_of_literature_title_shape");
+  }
+  if (new RegExp(`^guide\\s+to\\s+(?:the\\s+)?top\\s+\\d+\\s+.+\\b${bookContainer}$`).test(normalized)) {
     evidence.push("guide_to_top_books_title_shape");
   }
   if (new RegExp(`^(?:the\\s+)?top\\s+\\d+\\s+.+\\b${bookContainer}$`).test(normalized)) {
@@ -564,6 +589,109 @@ function preteenGoogleBooksPublicationShapeAuditRecord(params: {
   };
 }
 
+type PreteenGoogleBooksPublicationShapeRescueDecision = {
+  applied: boolean;
+  reason: string;
+  evidenceFamilies: string[];
+};
+
+const PRETEEN_GOOGLE_BOOKS_RESCUABLE_UNKNOWN_REASONS = new Set([
+  "publication_shape_unknown_insufficient_narrative_identity",
+  "publication_shape_unknown_insufficient_story_evidence",
+]);
+
+const PRETEEN_GOOGLE_BOOKS_RESCUABLE_NARRATIVE_IDENTITIES = new Set([
+  "middle_grade_novel",
+  "chapter_book",
+  "graphic_novel",
+  "manga",
+  "light_novel",
+  "narrative_book",
+]);
+
+function preteenGoogleBooksPublicationShapeRescueDecision(params: {
+  title: string;
+  subtitle: string;
+  authors: string[];
+  publisher: string;
+  description: string;
+  categories: string[];
+  pageCount?: number;
+  printType: string;
+  isbnPresent: boolean;
+  publicationYear?: number;
+  shapeAnalysis: GoogleBooksPublicationShapeAnalysis;
+  publicationShapeDropReason: string;
+  artifactDropReason?: string;
+  auditRecord: PreteenGoogleBooksPublicationShapeAuditRecord;
+}): PreteenGoogleBooksPublicationShapeRescueDecision {
+  const evidenceFamilies: string[] = [];
+  const titleText = normalizeText([params.title, params.subtitle].filter(Boolean).join(" "));
+  const categoryBlob = normalizeText(params.categories.join(" | "));
+  const descriptionText = normalizeText(params.description);
+  const identityNarrativeEvidence = params.auditRecord.narrativeEvidence;
+  const titleHasStructuredNarrativeIdentity = /\((?:book\s*)?\d+\)|\([^)]*\bseries\b[^)]*\)|\b(?:book|volume|vol\.?|part|#)\s*\d+\b/.test(titleText)
+    || (/\b(?:mystery|mysteries|adventure|quest|secret|murder|dragon|magic|creatures?|ghost|case)\b/.test(titleText)
+      && titleText.split(/\s+/).filter(Boolean).length >= 3);
+  if (titleHasStructuredNarrativeIdentity) evidenceFamilies.push("title_subtitle_narrative_identity");
+  if (params.shapeAnalysis.storyLevelNarrativeEvidence.length > 0) {
+    evidenceFamilies.push("description_story_evidence");
+  }
+  if (identityNarrativeEvidence.includes("juvenile_fiction_category")
+    || identityNarrativeEvidence.includes("graphic_novel_category")
+    || /\b(?:juvenile|children'?s|young readers?) fiction\b|\b(?:manga|comics? (?:and|&) graphic novels?|graphic novels?)\b/.test(categoryBlob)) {
+    evidenceFamilies.push("fiction_or_juvenile_categories");
+  }
+  if (/\bmiddle grade\b|\bchapter books?\b/.test([categoryBlob, descriptionText].join(" "))) {
+    evidenceFamilies.push("middle_grade_or_children_audience");
+  }
+  if (identityNarrativeEvidence.includes("middle_grade_publisher_context")) {
+    evidenceFamilies.push("middle_grade_publisher_context");
+  }
+  const bibliographicSignals = [
+    params.authors.length > 0,
+    Boolean(params.publisher),
+    params.isbnPresent,
+    Number(params.pageCount || 0) >= 80,
+    normalizeText(params.printType) === "book",
+    Number(params.publicationYear || 0) >= 1800,
+  ].filter(Boolean).length;
+  if (bibliographicSignals >= 4) evidenceFamilies.push("normal_book_bibliographic_metadata");
+
+  const uniqueEvidenceFamilies = Array.from(new Set(evidenceFamilies));
+  const substantiveNarrativeFamilyPresent = uniqueEvidenceFamilies.some((family) => [
+    "description_story_evidence",
+    "fiction_or_juvenile_categories",
+    "middle_grade_or_children_audience",
+  ].includes(family));
+  if (params.artifactDropReason || params.shapeAnalysis.shape === "anthology" || params.auditRecord.artifactEvidence.length > 0) {
+    return { applied: false, reason: "hard_artifact_evidence_present", evidenceFamilies: uniqueEvidenceFamilies };
+  }
+  if (!PRETEEN_GOOGLE_BOOKS_RESCUABLE_UNKNOWN_REASONS.has(params.publicationShapeDropReason)) {
+    return { applied: false, reason: "not_rescuable_unknown_shape_reason", evidenceFamilies: uniqueEvidenceFamilies };
+  }
+  if (params.shapeAnalysis.shape !== "unknown") {
+    return { applied: false, reason: "not_unknown_publication_shape", evidenceFamilies: uniqueEvidenceFamilies };
+  }
+  if (!PRETEEN_GOOGLE_BOOKS_RESCUABLE_NARRATIVE_IDENTITIES.has(params.auditRecord.preteenIdentity)) {
+    return { applied: false, reason: "preteen_identity_not_rescuable_narrative", evidenceFamilies: uniqueEvidenceFamilies };
+  }
+  if (params.auditRecord.preteenIdentityDecision !== "accept") {
+    return { applied: false, reason: "preteen_identity_classifier_rejected", evidenceFamilies: uniqueEvidenceFamilies };
+  }
+  if (!substantiveNarrativeFamilyPresent) {
+    return { applied: false, reason: "title_only_or_no_substantive_narrative_metadata", evidenceFamilies: uniqueEvidenceFamilies };
+  }
+  if (uniqueEvidenceFamilies.length < 2) {
+    return { applied: false, reason: "fewer_than_two_independent_evidence_families", evidenceFamilies: uniqueEvidenceFamilies };
+  }
+  return {
+    applied: true,
+    reason: "preteen_unknown_shape_rescued_by_corroborated_narrative_identity",
+    evidenceFamilies: uniqueEvidenceFamilies,
+  };
+}
+
 function inferGoogleBooksPublicationShape(params: {
   title: string;
   subtitle?: string;
@@ -576,11 +704,13 @@ function inferGoogleBooksPublicationShape(params: {
   pageCount?: number;
 }): GoogleBooksPublicationShapeAnalysis {
   const titleText = normalizeText([params.title, params.subtitle].filter(Boolean).join(" "));
+  const publicationIdentityTitleText = normalizePublicationIdentityTitle(titleText);
   const descriptionText = normalizeText(params.description || "");
   const categoryBlob = categoryText(params.categories);
   const publisherText = normalizeText(params.publisher || "");
   const authorText = normalizeText(params.authors.join(" "));
   const allText = [titleText, descriptionText, categoryBlob, publisherText, authorText].filter(Boolean).join(" | ");
+  const publicationIdentityText = [publicationIdentityTitleText, descriptionText, categoryBlob, publisherText, authorText].filter(Boolean).join(" | ");
   const evidence: string[] = [];
   const weakNarrativeEvidence: string[] = [];
   const storyLevelNarrativeEvidence: string[] = [];
@@ -637,13 +767,13 @@ function inferGoogleBooksPublicationShape(params: {
     narrativeConfidence += 1;
   }
 
-  const curatedBookGuideEvidence = googleBooksCuratedBookGuideEvidence(titleText, descriptionText, categoryBlob);
+  const curatedBookGuideEvidence = googleBooksCuratedBookGuideEvidence(publicationIdentityTitleText, descriptionText, categoryBlob);
   const curatedBookGuideIdentity = curatedBookGuideEvidence.length > 0;
   const periodicalIdentityEvidence = googleBooksPeriodicalIdentityEvidence(titleText, "", descriptionText, categoryBlob, publisherText, allText);
   const periodicalIdentityDecision = periodicalIdentityEvidence.length > 0
     ? "periodical_identity_overrides_narrative_signals"
     : "no_corroborated_periodical_identity";
-  const referenceShape = /\b(encyclop(?:a)?edia|dictionary|directory|catalog(?:ue)?|bibliograph(?:y|ies)|index|almanac|companion to|reader'?s companion|reference guide)\b/.test(allText)
+  const referenceShape = /\b(encyclop(?:a)?edia|dictionary|directory|catalog(?:ue)?|bibliograph(?:y|ies)|index|almanac|companion to|reader'?s companion|reference guide)\b/.test(publicationIdentityText)
     || /\b(reference|bibliographies? and indexes|catalogs?|directories)\b/.test(categoryBlob);
   const writingGuideShape = /\b(how to write|writing fiction|creative writing|writer'?s guide|writing guide|handbook for writers|craft of fiction|plotting|character development guide|writer'?s market|guide to literary agents?)\b/.test(allText);
   const readersAdvisoryShape = curatedBookGuideIdentity
@@ -651,7 +781,7 @@ function inferGoogleBooksPublicationShape(params: {
   const periodicalShape = periodicalIdentityEvidence.length > 0;
   const miscellanyShape = /\b(bathroom reader|uncle john'?s|reader plunges|miscellany|miscellaneous|trivia|fact book|fun facts|digest)\b/.test(allText);
   const interviewShape = /\b(conversations with|interviews? with|interview collection|talks with)\b/.test(titleText) || /\b(interviews?|conversations)\b/.test(categoryBlob);
-  const genericCategoryEvidence = googleBooksGenericCategoryTitleEvidence(titleText);
+  const genericCategoryEvidence = googleBooksGenericCategoryTitleEvidence(publicationIdentityTitleText);
   const genericCategoryTitle = genericCategoryEvidence.length > 0;
   const productionHistoryShape = /\b(the making of|making of|making-of|behind the scenes|production history|art and making of|inside the making)\b/.test(allText)
     || /\b(?:film|television|motion picture)\s+(?:history|production|criticism)\b/.test(categoryBlob);
@@ -691,12 +821,14 @@ function inferGoogleBooksPublicationShape(params: {
     || (ambiguousNovelFormTitle && !/\ba novel\b/.test(titleText));
   const literaryHistoryShape = /\b(history of literature|literary history|history of (?:american|english|british|world) literature|literature and culture)\b/.test(allText);
   const bundledPublicationEvidence = googleBooksBundledPublicationEvidence(titleText, descriptionText, categoryBlob);
-  const anthologyShape = bundledPublicationEvidence.length > 0
+  const annualAnthologyEvidence = googleBooksAnnualAnthologyEvidence(titleText, descriptionText, categoryBlob);
+  const anthologyEvidence = [...bundledPublicationEvidence, ...annualAnthologyEvidence];
+  const anthologyShape = anthologyEvidence.length > 0
     || /\b(antholog(?:y|ies)|omnibus|collected stories|selected stories|complete stories|great short stories|great tales|masterpieces of|best of the year|year'?s best|annual collection|edited by|selected by)\b/.test(allText);
   const essayCollectionShape = /\b(essay collection|critical essays?|essays on|collected essays)\b/.test(allText)
     || (/\bessays?\b/.test(titleText) && !novelIdentity);
   const publicDomainCompilationShape = (Number.isFinite(Number(params.publicationYear)) && Number(params.publicationYear) < 1950)
-    && (/\b(complete works?|collected works?|selected works?|library edition|public domain|masterpieces|omnibus|volume\s+\d+)\b/.test(titleText)
+    && (/\b(complete works?|collected works?|selected works?|library edition|public domain|masterpieces|omnibus|volume\s+\d+)\b/.test(publicationIdentityTitleText)
       || /\b(literary criticism|history and criticism|bibliograph(?:y|ies)|reference)\b/.test(categoryBlob)
       || (!params.isbnPresent && !narrativeDescription));
   const nonfictionShape = /\b(nonfiction|non-fiction|biography|autobiography|memoir|essays?|history|philosophy|reference|business|language arts|education|study aids?|travel|self-help|psychology|political science|social science|science|medical|technology|computers?)\b/.test(categoryBlob)
@@ -717,7 +849,7 @@ function inferGoogleBooksPublicationShape(params: {
   if (commentaryShape) explicitShapeCandidates.push({ shape: "author_commentary", evidence: ["author_or_work_commentary_shape"], decision: "commentary_about_work_or_author_overrides_narrative_signals" });
   if (genreSurveyShape) explicitShapeCandidates.push({ shape: "genre_survey", evidence: ["genre_survey_shape"], decision: "genre_survey_identity_overrides_narrative_signals" });
   if (literaryHistoryShape) explicitShapeCandidates.push({ shape: "literary_history", evidence: ["literary_history_shape"], decision: "literary_history_identity_overrides_narrative_signals" });
-  if (anthologyShape) explicitShapeCandidates.push({ shape: "anthology", evidence: bundledPublicationEvidence.length ? bundledPublicationEvidence : ["anthology_or_omnibus_shape"], decision: "anthology_identity_overrides_narrative_signals" });
+  if (anthologyShape) explicitShapeCandidates.push({ shape: "anthology", evidence: anthologyEvidence.length ? anthologyEvidence : ["anthology_or_omnibus_shape"], decision: "anthology_identity_overrides_narrative_signals" });
   if (essayCollectionShape) explicitShapeCandidates.push({ shape: "essay_collection", evidence: ["essay_collection_shape"], decision: "essay_collection_identity_overrides_narrative_signals" });
   if (miscellanyShape) explicitShapeCandidates.push({ shape: "miscellany", evidence: ["miscellany_or_digest_shape"], decision: "miscellany_identity_overrides_narrative_signals" });
   if (publicDomainCompilationShape) explicitShapeCandidates.push({ shape: "public_domain_compilation", evidence: ["public_domain_compilation_shape"], decision: "public_domain_compilation_identity_overrides_narrative_signals" });
@@ -1089,6 +1221,21 @@ function emptyDiagnostics(
       productionBehaviorChanged: false,
       auditedRejectedCount: 0,
     },
+    preteenGoogleBooksPublicationShapeRescueAppliedByTitle: {},
+    preteenGoogleBooksPublicationShapeRescueReasonByTitle: {},
+    preteenGoogleBooksPublicationShapeRescueEvidenceByTitle: {},
+    preteenGoogleBooksPublicationShapeRescuedTitles: [],
+    preteenGoogleBooksPublicationShapeRescueRejectedTitles: [],
+    preteenGoogleBooksPublicationShapeRescueRejectedReasonByTitle: {},
+    preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles: [],
+    preteenGoogleBooksPublicationShapeRescueSelectedTitles: [],
+    preteenGoogleBooksPublicationShapeRescueNotSelectedReasonByTitle: {},
+    preteenGoogleBooksPublicationShapeRescueSummary: {
+      scope: "preteen_googlebooks_unknown_publication_shape_rescue",
+      appliedCount: 0,
+      rejectedCount: 0,
+      automaticFinalAcceptance: false,
+    },
     adultGoogleBooksQueryQualityByQuery: {},
     adultGoogleBooksPublicationShapeHistogramByQuery: {},
     adultGoogleBooksRejectedShapeHistogramByQuery: {},
@@ -1202,6 +1349,12 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const preteenPublicationShapeLikelyCorrectRejectTitles: string[] = [];
     const preteenPublicationShapeAmbiguousRejectTitles: string[] = [];
     const preteenPublicationShapeFalseRejectHistogram: Record<string, number> = {};
+    const preteenPublicationShapeRescueAppliedByTitle: Record<string, boolean> = {};
+    const preteenPublicationShapeRescueReasonByTitle: Record<string, string> = {};
+    const preteenPublicationShapeRescueEvidenceByTitle: Record<string, string[]> = {};
+    const preteenPublicationShapeRescuedTitles: string[] = [];
+    const preteenPublicationShapeRescueRejectedTitles: string[] = [];
+    const preteenPublicationShapeRescueRejectedReasonByTitle: Record<string, string> = {};
     const perQueryQuality: Record<string, {
       query: string;
       rawResultCount: number;
@@ -1430,8 +1583,67 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         curatedBookGuideEvidenceByTitle[title] = shapeAnalysis.curatedBookGuideEvidence;
         periodicalIdentityEvidenceByTitle[title] = shapeAnalysis.periodicalIdentityEvidence;
         periodicalIdentityDecisionByTitle[title] = shapeAnalysis.periodicalIdentityDecision;
-        const publicationShapeDropReason = googleBooksPublicationShapeDropReason(shapeAnalysis);
+        const originalPublicationShapeDropReason = googleBooksPublicationShapeDropReason(shapeAnalysis);
         const artifactDropReason = googleBooksArtifactDropReason(title, String(volumeInfo.subtitle || "").trim(), description, categories, publisher);
+        let preteenPublicationShapeRescueDecision: PreteenGoogleBooksPublicationShapeRescueDecision | undefined;
+        if (ageBand === "preteens" && originalPublicationShapeDropReason) {
+          const auditRecord = preteenGoogleBooksPublicationShapeAuditRecord({
+            title,
+            subtitle: String(volumeInfo.subtitle || "").trim(),
+            authors,
+            publisher,
+            description,
+            categories,
+            pageCount,
+            printType,
+            isbnPresent: hasIsbn,
+            publicationYear,
+            shapeAnalysis,
+            rejectionReason: originalPublicationShapeDropReason,
+          });
+          preteenPublicationShapeAuditByTitle[title] = auditRecord;
+          if (!preteenPublicationShapeRejectedTitles.includes(title)) preteenPublicationShapeRejectedTitles.push(title);
+          preteenPublicationShapeRejectedReasonByTitle[title] = originalPublicationShapeDropReason;
+          preteenPublicationShapeNarrativeEvidenceByTitle[title] = auditRecord.narrativeEvidence;
+          preteenPublicationShapeArtifactEvidenceByTitle[title] = auditRecord.artifactEvidence;
+          preteenPublicationShapeCounterfactualDecisionByTitle[title] = [auditRecord.preteenIdentityDecision, auditRecord.preteenIdentity, auditRecord.recommendedFutureDecision].join(":");
+          if (auditRecord.disposition === "likely_false_reject") {
+            if (!preteenPublicationShapeLikelyFalseRejectTitles.includes(title)) preteenPublicationShapeLikelyFalseRejectTitles.push(title);
+            incrementCounter(preteenPublicationShapeFalseRejectHistogram, originalPublicationShapeDropReason);
+          } else if (auditRecord.disposition === "likely_correct_reject") {
+            if (!preteenPublicationShapeLikelyCorrectRejectTitles.includes(title)) preteenPublicationShapeLikelyCorrectRejectTitles.push(title);
+          } else if (!preteenPublicationShapeAmbiguousRejectTitles.includes(title)) {
+            preteenPublicationShapeAmbiguousRejectTitles.push(title);
+          }
+          preteenPublicationShapeRescueDecision = preteenGoogleBooksPublicationShapeRescueDecision({
+            title,
+            subtitle: String(volumeInfo.subtitle || "").trim(),
+            authors,
+            publisher,
+            description,
+            categories,
+            pageCount,
+            printType,
+            isbnPresent: hasIsbn,
+            publicationYear,
+            shapeAnalysis,
+            publicationShapeDropReason: originalPublicationShapeDropReason,
+            artifactDropReason,
+            auditRecord,
+          });
+          preteenPublicationShapeRescueAppliedByTitle[title] = preteenPublicationShapeRescueDecision.applied;
+          preteenPublicationShapeRescueReasonByTitle[title] = preteenPublicationShapeRescueDecision.reason;
+          preteenPublicationShapeRescueEvidenceByTitle[title] = preteenPublicationShapeRescueDecision.evidenceFamilies;
+          if (preteenPublicationShapeRescueDecision.applied) {
+            if (!preteenPublicationShapeRescuedTitles.includes(title)) preteenPublicationShapeRescuedTitles.push(title);
+          } else {
+            if (!preteenPublicationShapeRescueRejectedTitles.includes(title)) preteenPublicationShapeRescueRejectedTitles.push(title);
+            preteenPublicationShapeRescueRejectedReasonByTitle[title] = preteenPublicationShapeRescueDecision.reason;
+          }
+        }
+        const publicationShapeDropReason = preteenPublicationShapeRescueDecision?.applied
+          ? undefined
+          : originalPublicationShapeDropReason;
         const dropReason = publicationShapeDropReason || artifactDropReason;
         if (dropReason) {
           dropReasons[dropReason] = Number(dropReasons[dropReason] || 0) + 1;
@@ -1439,36 +1651,6 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           incrementCounter(perQueryQuality[originalQuery].rejectedShapeHistogram, shapeAnalysis.shape);
           perQueryQuality[originalQuery].rejectedCandidateCount += 1;
           if (publicationShapeDropReason) publicationShapeRejectedBeforeRankingByTitle[title] = publicationShapeDropReason;
-          if (ageBand === "preteens" && publicationShapeDropReason) {
-            const auditRecord = preteenGoogleBooksPublicationShapeAuditRecord({
-              title,
-              subtitle: String(volumeInfo.subtitle || "").trim(),
-              authors,
-              publisher,
-              description,
-              categories,
-              pageCount,
-              printType,
-              isbnPresent: hasIsbn,
-              publicationYear,
-              shapeAnalysis,
-              rejectionReason: publicationShapeDropReason,
-            });
-            preteenPublicationShapeAuditByTitle[title] = auditRecord;
-            if (!preteenPublicationShapeRejectedTitles.includes(title)) preteenPublicationShapeRejectedTitles.push(title);
-            preteenPublicationShapeRejectedReasonByTitle[title] = publicationShapeDropReason;
-            preteenPublicationShapeNarrativeEvidenceByTitle[title] = auditRecord.narrativeEvidence;
-            preteenPublicationShapeArtifactEvidenceByTitle[title] = auditRecord.artifactEvidence;
-            preteenPublicationShapeCounterfactualDecisionByTitle[title] = [auditRecord.preteenIdentityDecision, auditRecord.preteenIdentity, auditRecord.recommendedFutureDecision].join(":");
-            if (auditRecord.disposition === "likely_false_reject") {
-              if (!preteenPublicationShapeLikelyFalseRejectTitles.includes(title)) preteenPublicationShapeLikelyFalseRejectTitles.push(title);
-              incrementCounter(preteenPublicationShapeFalseRejectHistogram, publicationShapeDropReason);
-            } else if (auditRecord.disposition === "likely_correct_reject") {
-              if (!preteenPublicationShapeLikelyCorrectRejectTitles.includes(title)) preteenPublicationShapeLikelyCorrectRejectTitles.push(title);
-            } else if (!preteenPublicationShapeAmbiguousRejectTitles.includes(title)) {
-              preteenPublicationShapeAmbiguousRejectTitles.push(title);
-            }
-          }
           if (publicationShapeDropReason === "publication_shape_generic_category_catalog") genericCategoryRejectedBeforeRankingByTitle[title] = publicationShapeDropReason;
           if (shapeAnalysis.subjectOfStudyTitle && publicationShapeDropReason) subjectOfStudyRejectedBeforeRankingByTitle[title] = publicationShapeDropReason;
           droppedBeforeNormalization += 1;
@@ -1549,6 +1731,9 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           googleBooksCuratedBookGuideEvidence: shapeAnalysis.curatedBookGuideEvidence,
           googleBooksPeriodicalIdentityEvidence: shapeAnalysis.periodicalIdentityEvidence,
           googleBooksPeriodicalIdentityDecision: shapeAnalysis.periodicalIdentityDecision,
+          preteenGoogleBooksPublicationShapeRescueApplied: Boolean(preteenPublicationShapeRescueDecision?.applied),
+          preteenGoogleBooksPublicationShapeRescueReason: preteenPublicationShapeRescueDecision?.reason || "not_considered",
+          preteenGoogleBooksPublicationShapeRescueEvidence: preteenPublicationShapeRescueDecision?.evidenceFamilies || [],
         };
 
         rawItems.push(rawRow);
@@ -1626,14 +1811,14 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       .map(([reason, count]) => ({ reason, count }));
     const preteenPublicationShapeAuditSummary: Record<string, unknown> = {
       scope: "preteen_googlebooks_publication_shape_rejections",
-      productionBehaviorChanged: false,
+      productionBehaviorChanged: ageBand === "preteens",
       auditedRejectedCount: preteenPublicationShapeRejectedTitles.length,
       likelyFalseRejectCount: preteenPublicationShapeLikelyFalseRejectTitles.length,
       likelyCorrectRejectCount: preteenPublicationShapeLikelyCorrectRejectTitles.length,
       ambiguousRejectCount: preteenPublicationShapeAmbiguousRejectTitles.length,
       dominantLikelyFalseRejectRules: preteenPublicationShapeDominantLossRules,
       recommendedInterventionStage: "before_scoring_at_publication_shape_gate",
-      smallestSafeFuturePolicy: "for_preteens_only_allow_identity_accepted_rows_with_strong_preteen_narrative_metadata_to_scoring",
+      implementedPolicy: "for_preteens_only_rescue_unknown_shape_identity_accepted_rows_with_two_corroborating_evidence_families_to_scoring",
     };
 
     const diagnostics: SourceDiagnosticV2 = {
@@ -1722,6 +1907,27 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       preteenGoogleBooksPublicationShapeAmbiguousRejectTitles: preteenPublicationShapeAmbiguousRejectTitles,
       preteenGoogleBooksPublicationShapeFalseRejectHistogram: preteenPublicationShapeFalseRejectHistogram,
       preteenGoogleBooksPublicationShapeAuditSummary: preteenPublicationShapeAuditSummary,
+      preteenGoogleBooksPublicationShapeRescueAppliedByTitle: preteenPublicationShapeRescueAppliedByTitle,
+      preteenGoogleBooksPublicationShapeRescueReasonByTitle: preteenPublicationShapeRescueReasonByTitle,
+      preteenGoogleBooksPublicationShapeRescueEvidenceByTitle: preteenPublicationShapeRescueEvidenceByTitle,
+      preteenGoogleBooksPublicationShapeRescuedTitles: preteenPublicationShapeRescuedTitles,
+      preteenGoogleBooksPublicationShapeRescueRejectedTitles: preteenPublicationShapeRescueRejectedTitles,
+      preteenGoogleBooksPublicationShapeRescueRejectedReasonByTitle: preteenPublicationShapeRescueRejectedReasonByTitle,
+      preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles: [],
+      preteenGoogleBooksPublicationShapeRescueSelectedTitles: [],
+      preteenGoogleBooksPublicationShapeRescueNotSelectedReasonByTitle: {},
+      preteenGoogleBooksPublicationShapeRescueSummary: {
+        scope: "preteen_googlebooks_unknown_publication_shape_rescue",
+        consideredCount: preteenPublicationShapeRescuedTitles.length + preteenPublicationShapeRescueRejectedTitles.length,
+        appliedCount: preteenPublicationShapeRescuedTitles.length,
+        rejectedCount: preteenPublicationShapeRescueRejectedTitles.length,
+        eligibleUnknownReasons: Array.from(PRETEEN_GOOGLE_BOOKS_RESCUABLE_UNKNOWN_REASONS),
+        requiredIndependentEvidenceFamilyCount: 2,
+        substantiveNarrativeMetadataRequired: true,
+        titleOnlyRescueAllowed: false,
+        automaticFinalAcceptance: false,
+        otherAgeBandsChanged: false,
+      },
       googleBooksModernNarrativeCountByQuery: modernNarrativeCountByQuery,
       googleBooksPublicDomainCatalogShapeCountByQuery: publicDomainCatalogShapeCountByQuery,
       adultGoogleBooksQueryQualityByQuery,
