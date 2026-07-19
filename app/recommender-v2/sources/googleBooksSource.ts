@@ -595,6 +595,16 @@ type PreteenGoogleBooksPublicationShapeRescueDecision = {
   evidenceFamilies: string[];
 };
 
+type KidsGoogleBooksPublicationAuditRecord = {
+  title: string;
+  narrativeEvidence: string[];
+  formatEvidence: string[];
+  ageEvidence: string[];
+  trustedMetadata: string[];
+  counterfactualDecision: "likely_k2_narrative_publication" | "likely_correct_reject" | "ambiguous";
+  decisionReason: string;
+};
+
 const PRETEEN_GOOGLE_BOOKS_RESCUABLE_UNKNOWN_REASONS = new Set([
   "publication_shape_unknown_insufficient_narrative_identity",
   "publication_shape_unknown_insufficient_story_evidence",
@@ -607,6 +617,11 @@ const PRETEEN_GOOGLE_BOOKS_RESCUABLE_NARRATIVE_IDENTITIES = new Set([
   "manga",
   "light_novel",
   "narrative_book",
+]);
+
+const KIDS_GOOGLE_BOOKS_UNKNOWN_SHAPE_REASONS = new Set([
+  "publication_shape_unknown_insufficient_narrative_identity",
+  "publication_shape_unknown_insufficient_story_evidence",
 ]);
 
 function preteenGoogleBooksPublicationShapeRescueDecision(params: {
@@ -689,6 +704,80 @@ function preteenGoogleBooksPublicationShapeRescueDecision(params: {
     applied: true,
     reason: "preteen_unknown_shape_rescued_by_corroborated_narrative_identity",
     evidenceFamilies: uniqueEvidenceFamilies,
+  };
+}
+
+function kidsGoogleBooksPublicationAuditRecord(params: {
+  title: string;
+  subtitle: string;
+  description: string;
+  categories: string[];
+  publisher: string;
+  pageCount?: number;
+  printType: string;
+  isbnPresent: boolean;
+  shapeAnalysis: GoogleBooksPublicationShapeAnalysis;
+}): KidsGoogleBooksPublicationAuditRecord {
+  const titleText = normalizeText([params.title, params.subtitle].filter(Boolean).join(" "));
+  const categoryBlob = normalizeText(params.categories.join(" | "));
+  const descriptionText = normalizeText(params.description);
+  const publisherText = normalizeText(params.publisher);
+  const narrativeEvidence = Array.from(new Set([
+    ...params.shapeAnalysis.storyLevelNarrativeEvidence,
+    /\b[a-z]{3,}'s\s+[a-z]/.test(titleText) ? "character_named_possessive_title" : "",
+    /\b(?:adventures?|journey|quest|friends?|friendship|mystery|secret)\b/.test(titleText) ? "story_like_title_phrase" : "",
+  ].filter(Boolean)));
+  const formatEvidence = Array.from(new Set([
+    /\bpicture book\b/.test(titleText) ? "title_picture_book_identity" : "",
+    /\bearly reader\b|\bbeginning reader\b/.test(titleText) ? "title_early_reader_identity" : "",
+    /\bread aloud\b/.test(titleText) ? "title_read_aloud_identity" : "",
+    /\billustrated\b/.test([titleText, descriptionText].join(" ")) ? "illustrated_format_evidence" : "",
+    normalizeText(params.printType) === "book" ? "print_type_book" : "",
+    Number.isFinite(Number(params.pageCount)) && Number(params.pageCount) > 0 && Number(params.pageCount) <= 96 ? "short_childrens_book_length" : "",
+  ].filter(Boolean)));
+  const ageEvidence = Array.from(new Set([
+    /\bjuvenile fiction\b|\bchildren'?s fiction\b/.test(categoryBlob) ? "juvenile_or_childrens_fiction_category" : "",
+    /\bpicture books?\b/.test(categoryBlob) ? "picture_book_category" : "",
+    /\bearly reader|beginning reader\b/.test(categoryBlob) ? "early_reader_category" : "",
+  ].filter(Boolean)));
+  const trustedMetadata = Array.from(new Set([
+    params.isbnPresent ? "isbn_present" : "",
+    params.publisher ? "publisher_present" : "",
+    params.categories.length > 0 ? "categories_present" : "",
+    descriptionText.length >= 30 ? "description_present" : "",
+    publisherText && !GOOGLE_BOOKS_ACADEMIC_PUBLISHER_PATTERN.test(publisherText) ? "non_academic_publisher_context" : "",
+  ].filter(Boolean)));
+
+  const positiveEvidenceCount = new Set([
+    ...narrativeEvidence,
+    ...formatEvidence,
+    ...ageEvidence,
+  ]).size;
+  const hasStrongKidsFormatIdentity = formatEvidence.some((row) => /picture_book|early_reader|read_aloud/.test(row));
+  const hasKidsAudienceIdentity = ageEvidence.length > 0;
+  const hasWorkbookOrInstructionEvidence = /\b(workbook|activities|activity book|phonics|teacher|classroom|lesson plan|study guide|skill practice|literacy practice)\b/.test([titleText, descriptionText, categoryBlob].join(" "));
+
+  let counterfactualDecision: KidsGoogleBooksPublicationAuditRecord["counterfactualDecision"] = "ambiguous";
+  let decisionReason = "insufficient_kids_specific_corroboration";
+  if (hasWorkbookOrInstructionEvidence) {
+    counterfactualDecision = "likely_correct_reject";
+    decisionReason = "instructional_or_workbook_evidence_present";
+  } else if ((hasStrongKidsFormatIdentity && hasKidsAudienceIdentity) || (positiveEvidenceCount >= 3 && trustedMetadata.length >= 2)) {
+    counterfactualDecision = "likely_k2_narrative_publication";
+    decisionReason = "kids_format_or_audience_identity_corroborated";
+  } else if (positiveEvidenceCount <= 1) {
+    counterfactualDecision = "likely_correct_reject";
+    decisionReason = "too_little_kids_narrative_evidence";
+  }
+
+  return {
+    title: params.title,
+    narrativeEvidence,
+    formatEvidence,
+    ageEvidence,
+    trustedMetadata,
+    counterfactualDecision,
+    decisionReason,
   };
 }
 
@@ -1050,10 +1139,10 @@ function googleBooksArtifactDropReason(title: string, subtitle: string, descript
 }
 
 function buildGoogleBooksFetchQuery(query: string, ageBand?: TasteProfile["ageBand"]): string {
-  const normalized = normalizeQuery(query);
-  if (!normalized) return "";
-  if (ageBand !== "adult") return normalized;
-  return googleBooksAdultNarrativeFetchQuery(normalized);
+  const canonical = String(query || "").trim().replace(/\s+/g, " ");
+  if (!canonical) return "";
+  if (ageBand !== "adult") return canonical;
+  return googleBooksAdultNarrativeFetchQuery(normalizeQuery(canonical));
 }
 
 function isPublicDomainCatalogShape(title: string, publicationYear: number | undefined, description: string, categories: string[]): boolean {
@@ -1241,6 +1330,15 @@ function emptyDiagnostics(
       rejectedCount: 0,
       automaticFinalAcceptance: false,
     },
+    kidsGoogleBooksPublicationAuditByTitle: {},
+    kidsGoogleBooksPublicationNarrativeEvidenceByTitle: {},
+    kidsGoogleBooksPublicationFormatEvidenceByTitle: {},
+    kidsGoogleBooksPublicationAgeEvidenceByTitle: {},
+    kidsGoogleBooksPublicationTrustedMetadataByTitle: {},
+    kidsGoogleBooksPublicationCounterfactualDecisionByTitle: {},
+    kidsGoogleBooksLikelyFalseRejectTitles: [],
+    kidsGoogleBooksLikelyCorrectRejectTitles: [],
+    kidsGoogleBooksAmbiguousRejectTitles: [],
     adultGoogleBooksQueryQualityByQuery: {},
     adultGoogleBooksPublicationShapeHistogramByQuery: {},
     adultGoogleBooksRejectedShapeHistogramByQuery: {},
@@ -1360,6 +1458,15 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const preteenPublicationShapeRescuedTitles: string[] = [];
     const preteenPublicationShapeRescueRejectedTitles: string[] = [];
     const preteenPublicationShapeRescueRejectedReasonByTitle: Record<string, string> = {};
+    const kidsPublicationAuditByTitle: Record<string, KidsGoogleBooksPublicationAuditRecord> = {};
+    const kidsPublicationNarrativeEvidenceByTitle: Record<string, string[]> = {};
+    const kidsPublicationFormatEvidenceByTitle: Record<string, string[]> = {};
+    const kidsPublicationAgeEvidenceByTitle: Record<string, string[]> = {};
+    const kidsPublicationTrustedMetadataByTitle: Record<string, string[]> = {};
+    const kidsPublicationCounterfactualDecisionByTitle: Record<string, string> = {};
+    const kidsPublicationLikelyFalseRejectTitles: string[] = [];
+    const kidsPublicationLikelyCorrectRejectTitles: string[] = [];
+    const kidsPublicationAmbiguousRejectTitles: string[] = [];
     const perQueryQuality: Record<string, {
       query: string;
       rawResultCount: number;
@@ -1667,6 +1774,32 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
             preteenPublicationShapeRescueRejectedReasonByTitle[title] = preteenPublicationShapeRescueDecision.reason;
           }
         }
+        if (ageBand === "kids" && originalPublicationShapeDropReason && KIDS_GOOGLE_BOOKS_UNKNOWN_SHAPE_REASONS.has(originalPublicationShapeDropReason)) {
+          const auditRecord = kidsGoogleBooksPublicationAuditRecord({
+            title,
+            subtitle: String(volumeInfo.subtitle || "").trim(),
+            description,
+            categories,
+            publisher,
+            pageCount,
+            printType,
+            isbnPresent: hasIsbn,
+            shapeAnalysis,
+          });
+          kidsPublicationAuditByTitle[title] = auditRecord;
+          kidsPublicationNarrativeEvidenceByTitle[title] = auditRecord.narrativeEvidence;
+          kidsPublicationFormatEvidenceByTitle[title] = auditRecord.formatEvidence;
+          kidsPublicationAgeEvidenceByTitle[title] = auditRecord.ageEvidence;
+          kidsPublicationTrustedMetadataByTitle[title] = auditRecord.trustedMetadata;
+          kidsPublicationCounterfactualDecisionByTitle[title] = `${auditRecord.counterfactualDecision}:${auditRecord.decisionReason}`;
+          if (auditRecord.counterfactualDecision === "likely_k2_narrative_publication") {
+            if (!kidsPublicationLikelyFalseRejectTitles.includes(title)) kidsPublicationLikelyFalseRejectTitles.push(title);
+          } else if (auditRecord.counterfactualDecision === "likely_correct_reject") {
+            if (!kidsPublicationLikelyCorrectRejectTitles.includes(title)) kidsPublicationLikelyCorrectRejectTitles.push(title);
+          } else if (!kidsPublicationAmbiguousRejectTitles.includes(title)) {
+            kidsPublicationAmbiguousRejectTitles.push(title);
+          }
+        }
         const publicationShapeDropReason = preteenPublicationShapeRescueDecision?.applied
           ? undefined
           : originalPublicationShapeDropReason;
@@ -1818,6 +1951,9 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const sourceStatusDetail = failedQueryCount > 0 && successfulQueryCount > 0
       ? (rawItems.length > 0 ? "partial_success" : "partial_success_no_usable_rows")
       : status;
+    const sourceFailedReason = sourceStatusDetail === "partial_success" || sourceStatusDetail === "partial_success_no_usable_rows"
+      ? undefined
+      : (failedReason || undefined);
     const adultGoogleBooksQueryQualityByQuery: Record<string, Record<string, unknown>> = {};
     const publicationShapeHistogramByQuery: Record<string, Record<string, number>> = {};
     const rejectedShapeHistogramByQuery: Record<string, Record<string, number>> = {};
@@ -1860,7 +1996,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       status,
       planned: true,
       attempted: true,
-      failedReason: failedReason || undefined,
+      failedReason: sourceFailedReason,
       timedOut: fetches.some((row) => Boolean(row.timedOut)),
       startedAt,
       finishedAt,
@@ -1966,6 +2102,15 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         automaticFinalAcceptance: false,
         otherAgeBandsChanged: false,
       },
+      kidsGoogleBooksPublicationAuditByTitle: kidsPublicationAuditByTitle,
+      kidsGoogleBooksPublicationNarrativeEvidenceByTitle: kidsPublicationNarrativeEvidenceByTitle,
+      kidsGoogleBooksPublicationFormatEvidenceByTitle: kidsPublicationFormatEvidenceByTitle,
+      kidsGoogleBooksPublicationAgeEvidenceByTitle: kidsPublicationAgeEvidenceByTitle,
+      kidsGoogleBooksPublicationTrustedMetadataByTitle: kidsPublicationTrustedMetadataByTitle,
+      kidsGoogleBooksPublicationCounterfactualDecisionByTitle: kidsPublicationCounterfactualDecisionByTitle,
+      kidsGoogleBooksLikelyFalseRejectTitles: kidsPublicationLikelyFalseRejectTitles,
+      kidsGoogleBooksLikelyCorrectRejectTitles: kidsPublicationLikelyCorrectRejectTitles,
+      kidsGoogleBooksAmbiguousRejectTitles: kidsPublicationAmbiguousRejectTitles,
       googleBooksModernNarrativeCountByQuery: modernNarrativeCountByQuery,
       googleBooksPublicDomainCatalogShapeCountByQuery: publicDomainCatalogShapeCountByQuery,
       adultGoogleBooksQueryQualityByQuery,

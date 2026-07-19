@@ -149,7 +149,7 @@ function googleBooksPlan(ageBand, genreFamilyValues) {
   );
 }
 
-// Cross-band protection: adult, preteen, and kids query strings must remain byte-for-byte unchanged for the science fiction + contemporary fixture.
+// Cross-band protection: adult and preteen query strings must remain byte-for-byte unchanged for the science fiction + contemporary fixture.
 {
   assertDeepEqual(
     googleBooksPlan("adult", ["science fiction", "contemporary"]).queries,
@@ -160,11 +160,6 @@ function googleBooksPlan(ageBand, genreFamilyValues) {
     googleBooksPlan("preteens", ["science fiction", "contemporary"]).queries,
     ["middle grade science fiction fiction novel", "middle grade contemporary fiction novel", "middle grade science fiction contemporary fiction"],
     "preteens query planning must remain unchanged",
-  );
-  assertDeepEqual(
-    googleBooksPlan("kids", ["science fiction", "contemporary"]).queries,
-    ["children science fiction fiction novel", "children contemporary fiction novel", "children science fiction contemporary fiction"],
-    "kids query planning must remain unchanged",
   );
 }
 

@@ -359,6 +359,15 @@ export interface SourceDiagnosticV2 {
   kidsGoogleBooksRejectedBeforeScoringByTitle?: Record<string, string>;
   kidsGoogleBooksEnteredScoringTitles?: string[];
   kidsGoogleBooksPreScoringSummary?: Record<string, unknown>;
+  kidsGoogleBooksPublicationAuditByTitle?: Record<string, unknown>;
+  kidsGoogleBooksPublicationNarrativeEvidenceByTitle?: Record<string, string[]>;
+  kidsGoogleBooksPublicationFormatEvidenceByTitle?: Record<string, string[]>;
+  kidsGoogleBooksPublicationAgeEvidenceByTitle?: Record<string, string[]>;
+  kidsGoogleBooksPublicationTrustedMetadataByTitle?: Record<string, string[]>;
+  kidsGoogleBooksPublicationCounterfactualDecisionByTitle?: Record<string, string>;
+  kidsGoogleBooksLikelyFalseRejectTitles?: string[];
+  kidsGoogleBooksLikelyCorrectRejectTitles?: string[];
+  kidsGoogleBooksAmbiguousRejectTitles?: string[];
   teensGoogleBooksPreScoringAgeSuitabilityScoreByTitle?: Record<string, number>;
   teensGoogleBooksPreScoringDecisionByTitle?: Record<string, string>;
   teensGoogleBooksRejectedBeforeScoringByTitle?: Record<string, string>;

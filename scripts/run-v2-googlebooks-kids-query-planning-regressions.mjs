@@ -47,6 +47,14 @@ function assertNoNovelTemplates(queries, messagePrefix) {
   }
 }
 
+function assertNoMalformedChildrenPossessive(queries, messagePrefix) {
+  for (const query of queries) {
+    if (/\bchildren\s+s\b/i.test(String(query || ""))) {
+      throw new Error(`${messagePrefix}: malformed children possessive in query ${JSON.stringify(query)}`);
+    }
+  }
+}
+
 const dir = resolve(dirname(fileURLToPath(import.meta.url)), "../app/recommender-v2");
 const { buildSearchPlan } = require(resolve(dir, "searchPlan.ts"));
 const { buildTasteProfile } = require(resolve(dir, "tasteProfile.ts"));
@@ -92,6 +100,7 @@ for (const fixture of [
   assertEqual(result.queries.length, unique.length, `${fixture.name}: planner should not emit duplicate queries`);
   assertTruthy(result.queries.length > 0 && result.queries.length <= 3, `${fixture.name}: planner should emit one to three queries`);
   assertNoNovelTemplates(result.queries, `${fixture.name}: planner should avoid generic K-2 novel templates`);
+  assertNoMalformedChildrenPossessive(result.queries, `${fixture.name}: planner should not emit malformed possessive`);
   assertTruthy(result.queries.some((query) => /picture book/.test(query)), `${fixture.name}: expected a picture-book query`);
   assertTruthy(
     result.queries.some((query) => /early reader|beginning reader|read aloud|illustrated/.test(query)),
@@ -105,12 +114,22 @@ for (const fixture of [
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksQueryReplacementReason !== "undefined", `${fixture.name}: replacement diagnostics should be present`);
 }
 
+// Humor + adventure should keep format distinction while broadening family on the third query.
+{
+  const result = googleBooksQueries(profile("kids", ["humorous", "adventure"]));
+  assertEqual(
+    JSON.stringify(result.queries),
+    JSON.stringify(["kids humorous picture book", "kids humorous early reader", "kids adventure picture book"]),
+    "humor+adventure should use safe family breadth on the third Kids query",
+  );
+}
+
 // Disliked fantasy with liked humor should not force fantasy templates.
 {
   const prof = profile("kids", ["humorous"], [], ["friendship"]);
   prof.avoidSignals = [{ value: "fantasy", weight: 1, evidence: ["dislike:fantasy"] }];
   const result = googleBooksQueries(prof);
-  assertNotIncludes(result.queries, "children's fantasy picture book", "disliked fantasy should not force a fantasy query template");
+  assertNotIncludes(result.queries, "kids fantasy picture book", "disliked fantasy should not force a fantasy query template");
 }
 
 // Skip-only fantasy must not contribute positive fantasy evidence.
@@ -194,8 +213,12 @@ for (const fixture of [
   ];
 
   let attempt = 0;
+  const requestedQueries = [];
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => {
+  globalThis.fetch = async (input) => {
+    const requestUrl = typeof input === "string" ? input : String(input?.url || "");
+    const parsed = new URL(requestUrl);
+    requestedQueries.push(String(parsed.searchParams.get("q") || ""));
     attempt += 1;
     if (attempt <= 2) {
       return {
@@ -212,6 +235,7 @@ for (const fixture of [
 
   assertEqual(result.status, "succeeded", "partial query abort must not force total source failure when earlier queries yielded usable rows");
   assertEqual(result.diagnostics.googleBooksSourceStatus, "partial_success", "source status detail should be partial_success");
+  assertEqual(typeof result.diagnostics.failedReason === "undefined", true, "partial success must not carry a contradictory aggregate failedReason");
   assertEqual(result.diagnostics.googleBooksSourceSuccessfulQueries, 2, "two successful queries should be recorded");
   assertEqual(result.diagnostics.googleBooksSourcePartialFailures, 1, "one failed query should be recorded");
   assertEqual(result.rawItems.length >= 2, true, "rows from successful earlier queries must be retained");
@@ -222,6 +246,104 @@ for (const fixture of [
   assertEqual(fetchRows[2].status === "aborted" || fetchRows[2].status === "failed", true, "third query should be marked aborted/failed");
   assertEqual(typeof fetchRows[0].acceptedAfterSourcePolicy === "number", true, "acceptedAfterSourcePolicy should be populated");
   assertEqual(typeof fetchRows[0].rawApiCount === "number", true, "rawApiCount should be populated");
+  assertNoMalformedChildrenPossessive((sourcePlan.intents || []).map((intent) => intent.query), "planned kids fetch queries");
+  assertNoMalformedChildrenPossessive(fetchRows.map((row) => row.query), "attempted kids fetch queries");
+  assertNoMalformedChildrenPossessive(requestedQueries, "requested Google Books URL queries");
+  assertEqual(
+    requestedQueries.slice(0, Math.min(requestedQueries.length, (sourcePlan.intents || []).length)).join(" || "),
+    (sourcePlan.intents || []).slice(0, requestedQueries.length).map((intent) => intent.query).join(" || "),
+    "Google Books request query should match canonical Kids planner query text",
+  );
+  assertEqual(
+    fetchRows.slice(0, requestedQueries.length).every((row) => String(row.query || "") === String(row.originalPlannedQuery || "")),
+    true,
+    "per-query diagnostics should retain exact planned query text",
+  );
+}
+
+// Kids publication-shape unknown rejection audit should expose counterfactual diagnostics without changing acceptance.
+{
+  const kidsProfile = profile("kids", ["friendship"], [], ["friendship"]);
+  const sourcePlan = buildSearchPlan(kidsProfile, { googleBooks: true }).sourcePlans.find((source) => source.source === "googleBooks");
+  assertTruthy(sourcePlan, "kids source plan should exist for publication audit");
+  const unknownRejectRows = [
+    {
+      kind: "books#volume",
+      id: "kids-unknown-false-reject",
+      volumeInfo: {
+        title: "Frances Frog's Forever Friend",
+        authors: ["Regression Author"],
+        description: "Frances Frog meets a new friend near the pond.",
+        categories: ["Juvenile Fiction / Social Themes / Friendship"],
+        publisher: "Kids House",
+        publishedDate: "2022",
+        pageCount: 32,
+        printType: "BOOK",
+        language: "en",
+        maturityRating: "NOT_MATURE",
+        industryIdentifiers: [{ type: "ISBN_13", identifier: "9780000000001" }],
+      },
+    },
+    {
+      kind: "books#volume",
+      id: "kids-unknown-correct-reject",
+      volumeInfo: {
+        title: "Kids Facts",
+        authors: ["Regression Author"],
+        description: "Facts for kids.",
+        categories: [],
+        publisher: "",
+        publishedDate: "2023",
+        printType: "BOOK",
+        language: "en",
+        maturityRating: "NOT_MATURE",
+      },
+    },
+    {
+      kind: "books#volume",
+      id: "kids-unknown-ambiguous",
+      volumeInfo: {
+        title: "Jeremy Jackrabbit",
+        authors: ["Regression Author"],
+        description: "Jeremy explores the woods.",
+        categories: [],
+        publisher: "Kids House",
+        publishedDate: "2023",
+        pageCount: 40,
+        printType: "BOOK",
+        language: "en",
+        maturityRating: "NOT_MATURE",
+        industryIdentifiers: [{ type: "ISBN_13", identifier: "9780000000002" }],
+      },
+    },
+  ];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify({ totalItems: unknownRejectRows.length, items: unknownRejectRows }),
+  });
+  const result = await googleBooksSourceAdapter.search(sourcePlan, { profile: kidsProfile });
+  globalThis.fetch = originalFetch;
+  assertEqual(result.rawItems.length, 0, "unknown-shape publication audit must not activate a Kids rescue in this pass");
+  const auditByTitle = result.diagnostics.kidsGoogleBooksPublicationAuditByTitle || {};
+  const counterfactualByTitle = result.diagnostics.kidsGoogleBooksPublicationCounterfactualDecisionByTitle || {};
+  assertTruthy(typeof auditByTitle["Frances Frog's Forever Friend"] === "object", "kids publication audit should include unknown-shape rejected titles");
+  assertTruthy(
+    String(counterfactualByTitle["Frances Frog's Forever Friend"] || "").startsWith("likely_k2_narrative_publication"),
+    "counterfactual diagnostics should mark likely false rejects",
+  );
+  assertTruthy(
+    String(counterfactualByTitle["Kids Facts"] || "").startsWith("likely_correct_reject"),
+    "counterfactual diagnostics should mark likely correct rejects",
+  );
+  assertTruthy(
+    String(counterfactualByTitle["Jeremy Jackrabbit"] || "").startsWith("ambiguous"),
+    "counterfactual diagnostics should mark ambiguous rejects",
+  );
+  assertIncludes(result.diagnostics.kidsGoogleBooksLikelyFalseRejectTitles || [], "Frances Frog's Forever Friend", "likely false reject list should include Frances Frog");
+  assertIncludes(result.diagnostics.kidsGoogleBooksLikelyCorrectRejectTitles || [], "Kids Facts", "likely correct reject list should include Kids Facts");
+  assertIncludes(result.diagnostics.kidsGoogleBooksAmbiguousRejectTitles || [], "Jeremy Jackrabbit", "ambiguous reject list should include Jeremy Jackrabbit");
 }
 
 console.log("PASS kids google books query planning and partial-failure regressions");

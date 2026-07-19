@@ -646,7 +646,7 @@ export function buildGoogleBooksAgeBandInfrastructureDiagnostics(input: {
       status: sourceStatus,
       sourceResultPresent: Boolean(googleBooksResult),
       attempted: Boolean(sourceDiagnostics?.attempted),
-      sourceStatus: googleBooksResult?.status || "missing",
+      sourceStatus: String(sourceDiagnostics?.googleBooksSourceStatus || googleBooksResult?.status || "missing"),
       skippedReason: sourceDiagnostics?.skippedReason || "",
       failedReason: sourceDiagnostics?.failedReason || "",
       timedOut: Boolean(sourceDiagnostics?.timedOut),
