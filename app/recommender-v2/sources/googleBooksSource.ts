@@ -1,4 +1,5 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
+import { preteenGoogleBooksPublicationIdentityAudit } from "../preteenGoogleBooksPublicationIdentity";
 
 const GOOGLE_BOOKS_API_BASE = "https://www.googleapis.com/books/v1/volumes";
 const GOOGLE_BOOKS_ADAPTER_VERSION = "v5";
@@ -53,6 +54,31 @@ type GoogleBooksPublicationShapeAnalysis = {
   curatedBookGuideEvidence: string[];
   periodicalIdentityEvidence: string[];
   periodicalIdentityDecision: string;
+};
+
+type PreteenGoogleBooksPublicationShapeAuditRecord = {
+  title: string;
+  subtitle: string;
+  authors: string[];
+  publisher: string;
+  descriptionPresent: boolean;
+  descriptionExcerpt: string;
+  descriptionExcerptClassification: string;
+  categories: string[];
+  pageCount?: number;
+  printType: string;
+  isbnPresent: boolean;
+  publicationYear?: number;
+  currentPublicationShape: string;
+  currentRejectionReason: string;
+  narrativeEvidence: string[];
+  artifactEvidence: string[];
+  preteenIdentityDecision: "accept" | "reject";
+  preteenIdentity: string;
+  preteenIdentityReason: string;
+  recommendedFutureDecision: string;
+  disposition: "likely_false_reject" | "likely_correct_reject" | "ambiguous_reject";
+  confidence: number;
 };
 
 const GOOGLE_BOOKS_NON_NARRATIVE_SHAPES = new Set<GoogleBooksPublicationShape>([
@@ -417,6 +443,125 @@ function googleBooksPublicationShapeDropReason(analysis: GoogleBooksPublicationS
   if (analysis.shape === "anthology" || analysis.shape === "essay_collection") return `publication_shape_${analysis.shape}`;
   if (analysis.shape === "unknown" && !analysis.unknownShapeEligibility) return analysis.unknownShapeRejectedReason || "publication_shape_unknown_insufficient_narrative_identity";
   return undefined;
+}
+
+function preteenGoogleBooksPublicationShapeAuditRecord(params: {
+  title: string;
+  subtitle: string;
+  authors: string[];
+  publisher: string;
+  description: string;
+  categories: string[];
+  pageCount?: number;
+  printType: string;
+  isbnPresent: boolean;
+  publicationYear?: number;
+  shapeAnalysis: GoogleBooksPublicationShapeAnalysis;
+  rejectionReason: string;
+}): PreteenGoogleBooksPublicationShapeAuditRecord {
+  const identityAudit = preteenGoogleBooksPublicationIdentityAudit({
+    title: params.title,
+    subtitle: params.subtitle,
+    creators: params.authors,
+    description: params.description,
+    genres: params.categories,
+    raw: {
+      publisher: params.publisher,
+      pageCount: params.pageCount,
+      printType: params.printType,
+      volumeInfo: {
+        title: params.title,
+        subtitle: params.subtitle,
+        authors: params.authors,
+        publisher: params.publisher,
+        description: params.description,
+        categories: params.categories,
+        pageCount: params.pageCount,
+        printType: params.printType,
+        publishedDate: params.publicationYear ? String(params.publicationYear) : undefined,
+      },
+    },
+    diagnostics: {},
+  } as any);
+  const normalizedDescription = normalizeText(params.description);
+  const titleText = normalizeText(`${params.title} ${params.subtitle}`);
+  const titleNarrativeEvidence: string[] = [];
+  if (/\((?:book\s*)?\d+\)|\b(?:book|volume|vol\.?|part|#)\s*\d+\b/.test(titleText)) {
+    titleNarrativeEvidence.push("title_series_entry_cue");
+  }
+  if (/\b(?:mystery|mysteries|adventure|quest|secret|murder|dragon|magic|creatures?|ghost|case)\b/.test(titleText)) {
+    titleNarrativeEvidence.push("title_fiction_story_cue");
+  }
+  const narrativeEvidence = Array.from(new Set([
+    ...identityAudit.narrativeEvidence,
+    ...params.shapeAnalysis.storyLevelNarrativeEvidence,
+    ...params.shapeAnalysis.unknownShapeEvidence,
+    ...titleNarrativeEvidence,
+  ])).slice(0, 20);
+  const artifactEvidence = Array.from(new Set([
+    ...identityAudit.artifactEvidence,
+    ...params.shapeAnalysis.dominantPublicationShapeEvidence,
+    ...params.shapeAnalysis.explicitNonNarrativeIdentity,
+  ])).slice(0, 20);
+  const strongPreteenNarrativeIdentity = identityAudit.allowed && (
+    identityAudit.narrativeEvidence.some((item) => /middle_grade|juvenile_fiction|chapter_book|graphic_novel/.test(item))
+    || (params.shapeAnalysis.storyLevelNarrativeEvidence.length > 0 && /juvenile fiction|children'?s fiction/i.test(params.categories.join(" | ")))
+  );
+  const explicitCorrectReject = !identityAudit.allowed
+    || params.shapeAnalysis.explicitNonNarrativeIdentity.length > 0
+    || params.shapeAnalysis.shape === "anthology"
+    || params.shapeAnalysis.shape === "essay_collection";
+
+  let disposition: PreteenGoogleBooksPublicationShapeAuditRecord["disposition"] = "ambiguous_reject";
+  let recommendedFutureDecision = "retain_reject_pending_better_metadata";
+  let confidence = 0.5;
+  if (explicitCorrectReject) {
+    disposition = "likely_correct_reject";
+    recommendedFutureDecision = "retain_shared_publication_shape_reject";
+    confidence = identityAudit.allowed ? 0.85 : Math.max(0.9, identityAudit.confidence);
+  } else if (strongPreteenNarrativeIdentity) {
+    disposition = "likely_false_reject";
+    recommendedFutureDecision = "allow_to_scoring_after_preteen_identity_check";
+    confidence = params.shapeAnalysis.storyLevelNarrativeEvidence.length > 0 ? 0.9 : 0.82;
+  } else if (identityAudit.allowed && titleNarrativeEvidence.length >= 2) {
+    recommendedFutureDecision = "manual_review_or_require_one_preteen_metadata_corroborator";
+    confidence = 0.6;
+  }
+
+  const descriptionExcerptClassification = !normalizedDescription
+    ? "absent"
+    : params.shapeAnalysis.storyLevelNarrativeEvidence.length > 0
+    ? "useful_narrative_excerpt"
+    : identityAudit.artifactEvidence.length > 0 || params.shapeAnalysis.explicitNonNarrativeIdentity.length > 0
+    ? "useful_artifact_or_non_narrative_excerpt"
+    : normalizedDescription.length >= 80
+    ? "useful_but_inconclusive_excerpt"
+    : "sparse_excerpt";
+
+  return {
+    title: params.title,
+    subtitle: params.subtitle,
+    authors: params.authors,
+    publisher: params.publisher,
+    descriptionPresent: Boolean(normalizedDescription),
+    descriptionExcerpt: String(params.description || "").replace(/\s+/g, " ").trim().slice(0, 240),
+    descriptionExcerptClassification,
+    categories: params.categories,
+    pageCount: params.pageCount,
+    printType: params.printType,
+    isbnPresent: params.isbnPresent,
+    publicationYear: params.publicationYear,
+    currentPublicationShape: params.shapeAnalysis.shape,
+    currentRejectionReason: params.rejectionReason,
+    narrativeEvidence,
+    artifactEvidence,
+    preteenIdentityDecision: identityAudit.allowed ? "accept" : "reject",
+    preteenIdentity: identityAudit.identity,
+    preteenIdentityReason: identityAudit.reason,
+    recommendedFutureDecision,
+    disposition,
+    confidence,
+  };
 }
 
 function inferGoogleBooksPublicationShape(params: {
@@ -929,6 +1074,21 @@ function emptyDiagnostics(
     googleBooksCuratedBookGuideEvidenceByTitle: {},
     googleBooksPeriodicalIdentityEvidenceByTitle: {},
     googleBooksPeriodicalIdentityDecisionByTitle: {},
+    preteenGoogleBooksPublicationShapeAuditByTitle: {},
+    preteenGoogleBooksPublicationShapeRejectedTitles: [],
+    preteenGoogleBooksPublicationShapeRejectedReasonByTitle: {},
+    preteenGoogleBooksPublicationShapeNarrativeEvidenceByTitle: {},
+    preteenGoogleBooksPublicationShapeArtifactEvidenceByTitle: {},
+    preteenGoogleBooksPublicationShapeCounterfactualDecisionByTitle: {},
+    preteenGoogleBooksPublicationShapeLikelyFalseRejectTitles: [],
+    preteenGoogleBooksPublicationShapeLikelyCorrectRejectTitles: [],
+    preteenGoogleBooksPublicationShapeAmbiguousRejectTitles: [],
+    preteenGoogleBooksPublicationShapeFalseRejectHistogram: {},
+    preteenGoogleBooksPublicationShapeAuditSummary: {
+      scope: "preteen_googlebooks_publication_shape_rejections",
+      productionBehaviorChanged: false,
+      auditedRejectedCount: 0,
+    },
     adultGoogleBooksQueryQualityByQuery: {},
     adultGoogleBooksPublicationShapeHistogramByQuery: {},
     adultGoogleBooksRejectedShapeHistogramByQuery: {},
@@ -1032,6 +1192,16 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const curatedBookGuideEvidenceByTitle: Record<string, string[]> = {};
     const periodicalIdentityEvidenceByTitle: Record<string, string[]> = {};
     const periodicalIdentityDecisionByTitle: Record<string, string> = {};
+    const preteenPublicationShapeAuditByTitle: Record<string, PreteenGoogleBooksPublicationShapeAuditRecord> = {};
+    const preteenPublicationShapeRejectedTitles: string[] = [];
+    const preteenPublicationShapeRejectedReasonByTitle: Record<string, string> = {};
+    const preteenPublicationShapeNarrativeEvidenceByTitle: Record<string, string[]> = {};
+    const preteenPublicationShapeArtifactEvidenceByTitle: Record<string, string[]> = {};
+    const preteenPublicationShapeCounterfactualDecisionByTitle: Record<string, string> = {};
+    const preteenPublicationShapeLikelyFalseRejectTitles: string[] = [];
+    const preteenPublicationShapeLikelyCorrectRejectTitles: string[] = [];
+    const preteenPublicationShapeAmbiguousRejectTitles: string[] = [];
+    const preteenPublicationShapeFalseRejectHistogram: Record<string, number> = {};
     const perQueryQuality: Record<string, {
       query: string;
       rawResultCount: number;
@@ -1269,6 +1439,36 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           incrementCounter(perQueryQuality[originalQuery].rejectedShapeHistogram, shapeAnalysis.shape);
           perQueryQuality[originalQuery].rejectedCandidateCount += 1;
           if (publicationShapeDropReason) publicationShapeRejectedBeforeRankingByTitle[title] = publicationShapeDropReason;
+          if (ageBand === "preteens" && publicationShapeDropReason) {
+            const auditRecord = preteenGoogleBooksPublicationShapeAuditRecord({
+              title,
+              subtitle: String(volumeInfo.subtitle || "").trim(),
+              authors,
+              publisher,
+              description,
+              categories,
+              pageCount,
+              printType,
+              isbnPresent: hasIsbn,
+              publicationYear,
+              shapeAnalysis,
+              rejectionReason: publicationShapeDropReason,
+            });
+            preteenPublicationShapeAuditByTitle[title] = auditRecord;
+            if (!preteenPublicationShapeRejectedTitles.includes(title)) preteenPublicationShapeRejectedTitles.push(title);
+            preteenPublicationShapeRejectedReasonByTitle[title] = publicationShapeDropReason;
+            preteenPublicationShapeNarrativeEvidenceByTitle[title] = auditRecord.narrativeEvidence;
+            preteenPublicationShapeArtifactEvidenceByTitle[title] = auditRecord.artifactEvidence;
+            preteenPublicationShapeCounterfactualDecisionByTitle[title] = [auditRecord.preteenIdentityDecision, auditRecord.preteenIdentity, auditRecord.recommendedFutureDecision].join(":");
+            if (auditRecord.disposition === "likely_false_reject") {
+              if (!preteenPublicationShapeLikelyFalseRejectTitles.includes(title)) preteenPublicationShapeLikelyFalseRejectTitles.push(title);
+              incrementCounter(preteenPublicationShapeFalseRejectHistogram, publicationShapeDropReason);
+            } else if (auditRecord.disposition === "likely_correct_reject") {
+              if (!preteenPublicationShapeLikelyCorrectRejectTitles.includes(title)) preteenPublicationShapeLikelyCorrectRejectTitles.push(title);
+            } else if (!preteenPublicationShapeAmbiguousRejectTitles.includes(title)) {
+              preteenPublicationShapeAmbiguousRejectTitles.push(title);
+            }
+          }
           if (publicationShapeDropReason === "publication_shape_generic_category_catalog") genericCategoryRejectedBeforeRankingByTitle[title] = publicationShapeDropReason;
           if (shapeAnalysis.subjectOfStudyTitle && publicationShapeDropReason) subjectOfStudyRejectedBeforeRankingByTitle[title] = publicationShapeDropReason;
           droppedBeforeNormalization += 1;
@@ -1421,6 +1621,21 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       narrativeEfficiencyByQuery[query] = row.narrativeEfficiency;
     }
 
+    const preteenPublicationShapeDominantLossRules = Object.entries(preteenPublicationShapeFalseRejectHistogram)
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .map(([reason, count]) => ({ reason, count }));
+    const preteenPublicationShapeAuditSummary: Record<string, unknown> = {
+      scope: "preteen_googlebooks_publication_shape_rejections",
+      productionBehaviorChanged: false,
+      auditedRejectedCount: preteenPublicationShapeRejectedTitles.length,
+      likelyFalseRejectCount: preteenPublicationShapeLikelyFalseRejectTitles.length,
+      likelyCorrectRejectCount: preteenPublicationShapeLikelyCorrectRejectTitles.length,
+      ambiguousRejectCount: preteenPublicationShapeAmbiguousRejectTitles.length,
+      dominantLikelyFalseRejectRules: preteenPublicationShapeDominantLossRules,
+      recommendedInterventionStage: "before_scoring_at_publication_shape_gate",
+      smallestSafeFuturePolicy: "for_preteens_only_allow_identity_accepted_rows_with_strong_preteen_narrative_metadata_to_scoring",
+    };
+
     const diagnostics: SourceDiagnosticV2 = {
       source: "googleBooks",
       status,
@@ -1496,6 +1711,17 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       googleBooksCuratedBookGuideEvidenceByTitle: curatedBookGuideEvidenceByTitle,
       googleBooksPeriodicalIdentityEvidenceByTitle: periodicalIdentityEvidenceByTitle,
       googleBooksPeriodicalIdentityDecisionByTitle: periodicalIdentityDecisionByTitle,
+      preteenGoogleBooksPublicationShapeAuditByTitle: preteenPublicationShapeAuditByTitle,
+      preteenGoogleBooksPublicationShapeRejectedTitles: preteenPublicationShapeRejectedTitles,
+      preteenGoogleBooksPublicationShapeRejectedReasonByTitle: preteenPublicationShapeRejectedReasonByTitle,
+      preteenGoogleBooksPublicationShapeNarrativeEvidenceByTitle: preteenPublicationShapeNarrativeEvidenceByTitle,
+      preteenGoogleBooksPublicationShapeArtifactEvidenceByTitle: preteenPublicationShapeArtifactEvidenceByTitle,
+      preteenGoogleBooksPublicationShapeCounterfactualDecisionByTitle: preteenPublicationShapeCounterfactualDecisionByTitle,
+      preteenGoogleBooksPublicationShapeLikelyFalseRejectTitles: preteenPublicationShapeLikelyFalseRejectTitles,
+      preteenGoogleBooksPublicationShapeLikelyCorrectRejectTitles: preteenPublicationShapeLikelyCorrectRejectTitles,
+      preteenGoogleBooksPublicationShapeAmbiguousRejectTitles: preteenPublicationShapeAmbiguousRejectTitles,
+      preteenGoogleBooksPublicationShapeFalseRejectHistogram: preteenPublicationShapeFalseRejectHistogram,
+      preteenGoogleBooksPublicationShapeAuditSummary: preteenPublicationShapeAuditSummary,
       googleBooksModernNarrativeCountByQuery: modernNarrativeCountByQuery,
       googleBooksPublicDomainCatalogShapeCountByQuery: publicDomainCatalogShapeCountByQuery,
       adultGoogleBooksQueryQualityByQuery,
