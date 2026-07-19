@@ -323,6 +323,17 @@ export interface SourceDiagnosticV2 {
   googleBooksCuratedBookGuideEvidenceByTitle?: Record<string, string[]>;
   googleBooksPeriodicalIdentityEvidenceByTitle?: Record<string, string[]>;
   googleBooksPeriodicalIdentityDecisionByTitle?: Record<string, string>;
+  preteenGoogleBooksPublicationShapeAuditByTitle?: Record<string, unknown>;
+  preteenGoogleBooksPublicationShapeRejectedTitles?: string[];
+  preteenGoogleBooksPublicationShapeRejectedReasonByTitle?: Record<string, string>;
+  preteenGoogleBooksPublicationShapeNarrativeEvidenceByTitle?: Record<string, string[]>;
+  preteenGoogleBooksPublicationShapeArtifactEvidenceByTitle?: Record<string, string[]>;
+  preteenGoogleBooksPublicationShapeCounterfactualDecisionByTitle?: Record<string, string>;
+  preteenGoogleBooksPublicationShapeLikelyFalseRejectTitles?: string[];
+  preteenGoogleBooksPublicationShapeLikelyCorrectRejectTitles?: string[];
+  preteenGoogleBooksPublicationShapeAmbiguousRejectTitles?: string[];
+  preteenGoogleBooksPublicationShapeFalseRejectHistogram?: Record<string, number>;
+  preteenGoogleBooksPublicationShapeAuditSummary?: Record<string, unknown>;
   adultGoogleBooksSignalMatchTraceByTitle?: Record<string, unknown[]>;
   adultGoogleBooksSignalMatchedFieldByTitle?: Record<string, Record<string, string[]>>;
   adultGoogleBooksSignalMatchedTextByTitle?: Record<string, Record<string, string[]>>;
