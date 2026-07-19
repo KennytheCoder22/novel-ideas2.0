@@ -28,7 +28,7 @@ import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
 import { runRecommenderV2 } from "../app/recommender-v2";
-import { computeGoogleBooksDropDiagnostics, computeGoogleBooksDropDiagnosticsByTitle, harmonizeGoogleBooksStageLineage } from "../app/recommender-v2/googleBooksLineageDiagnostics";
+import { applyGoogleBooksRenderingStageLineage, computeGoogleBooksDropDiagnostics, computeGoogleBooksDropDiagnosticsByTitle, harmonizeGoogleBooksStageLineage } from "../app/recommender-v2/googleBooksLineageDiagnostics";
 import type { AgeBandV2, RecommendationResultV2, SwipeSignalV2 } from "../app/recommender-v2";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
 const DEPLOYED_COMMIT_MARKER = "17c4615";
@@ -1911,7 +1911,18 @@ function handleLeft() {
       finalSelectionId: v2ReturnedItemsFailClosed ? "" : title,
       bypassedScoring: scoredCount === 0,
     }));
-    const normalizedCandidateTitles = uniqueTitles(Object.keys((selectionDiagnostics?.googleBooksNormalizationEligibilityByTitle || {}) as Record<string, unknown>));
+    const googleBooksStageDecisionByTitle = (selectionDiagnostics?.googleBooksStageDecisionByTitle || {}) as Record<string, Record<string, string>>;
+    const googleBooksStageReasonByTitle = (selectionDiagnostics?.googleBooksStageReasonByTitle || {}) as Record<string, Record<string, string>>;
+    const googleBooksStageGateByTitle = (selectionDiagnostics?.googleBooksStageGateByTitle || {}) as Record<string, Record<string, string>>;
+    const titlesAtDetailedStage = (stage: string, accepted: string[]) => uniqueTitles(
+      Object.entries(googleBooksStageDecisionByTitle)
+        .filter(([, decisions]) => accepted.includes(String(decisions?.[stage] || "")))
+        .map(([title]) => title),
+    );
+    const normalizedCandidateTitles = uniqueTitles([
+      ...titlesAtDetailedStage("normalization", ["admitted"]),
+      ...Object.keys((selectionDiagnostics?.googleBooksNormalizationEligibilityByTitle || {}) as Record<string, unknown>),
+    ]);
     const rankedCandidateTitles = uniqueTitles(Array.isArray(selectionDiagnostics?.googleBooksRankedCandidateTitles) ? selectionDiagnostics.googleBooksRankedCandidateTitles : []);
     const genericFinalEligibilityTitles = uniqueTitles(
       Object.entries((selectionDiagnostics?.googleBooksFinalEligibilityDecisionByTitle || {}) as Record<string, unknown>)
@@ -1945,6 +1956,15 @@ function handleLeft() {
       googleBooksAgeBandRenderedTitlesByDeck[currentGoogleBooksAgeBand] = googleBooksRendererOutputTitles;
     }
     const googleBooksAcceptedTitlesByStage = harmonizeGoogleBooksStageLineage({
+      sourceAdmission: titlesAtDetailedStage("source_admission", ["admitted"]),
+      normalization: titlesAtDetailedStage("normalization", ["admitted"]),
+      publicationIdentityOrShapePolicy: titlesAtDetailedStage("publication_identity_or_shape_policy", ["passed", "rescued"]),
+      audienceMaturityPolicy: titlesAtDetailedStage("audience_maturity_policy", ["passed", "tracked"]),
+      preScoringAdmission: titlesAtDetailedStage("pre_scoring", ["entered"]),
+      scoringAdmission: titlesAtDetailedStage("scoring_admission", ["entered"]),
+      ranking: titlesAtDetailedStage("ranking", ["entered"]),
+      selection: titlesAtDetailedStage("selection", ["selected"]),
+      rendering: googleBooksRendererOutputTitles,
       normalizedCandidate: normalizedCandidateTitles,
       rankedCandidate: rankedCandidateTitles,
       googleBooksRankedCandidateTitles: rankedCandidateTitles,
@@ -1962,6 +1982,12 @@ function handleLeft() {
     const gbRejectedBeforeRankingReason = (selectionDiagnostics?.googleBooksRejectedBeforeRankingReason || googleBooksSourceDiagnostics?.googleBooksRejectedBeforeRankingReason || {}) as Record<string, string>;
     const dropped = computeGoogleBooksDropDiagnostics(googleBooksAcceptedTitlesByStage as Record<string, string[]>);
     const droppedByTitle = computeGoogleBooksDropDiagnosticsByTitle(googleBooksAcceptedTitlesByStage as Record<string, string[]>, gbEligibilityReasonByTitle, gbSelectionDecisionByTitle, gbRejectedBeforeRankingReason);
+    const renderedStageLineage = applyGoogleBooksRenderingStageLineage(
+      googleBooksStageDecisionByTitle,
+      googleBooksStageReasonByTitle,
+      googleBooksStageGateByTitle,
+      googleBooksRendererOutputTitles,
+    );
     const placeholderReplacementReason = finalAcceptedTitles.length > 0
       && googleBooksWrapperOutputTitles.length === 0
       && returnedItemsTitlesBeforeV2FailClosed.length > 0
@@ -2163,6 +2189,11 @@ function handleLeft() {
       googleBooksDroppedReason: dropped.droppedReason,
       googleBooksDroppedStageByTitle: droppedByTitle.droppedStageByTitle,
       googleBooksDroppedReasonByTitle: droppedByTitle.droppedReasonByTitle,
+      googleBooksStageDecisionByTitle: renderedStageLineage.decisionByTitle,
+      googleBooksStageReasonByTitle: renderedStageLineage.reasonByTitle,
+      googleBooksStageGateByTitle: renderedStageLineage.gateByTitle,
+      googleBooksStageOrder: selectionDiagnostics?.googleBooksStageOrder || [],
+      googleBooksFinalEligibilityGateByTitle: selectionDiagnostics?.googleBooksFinalEligibilityGateByTitle || {},
       googleBooksWrapperInputTitles,
       googleBooksWrapperOutputTitles,
       googleBooksRendererInputTitles,
@@ -2620,6 +2651,15 @@ function handleLeft() {
         (diagnosticResult as any).googleBooksDroppedReason = dropped.droppedReason;
         (diagnosticResult as any).googleBooksDroppedStageByTitle = droppedByTitle.droppedStageByTitle;
         (diagnosticResult as any).googleBooksDroppedReasonByTitle = droppedByTitle.droppedReasonByTitle;
+        const renderedStageLineage = applyGoogleBooksRenderingStageLineage(
+          ((diagnosticResult as any).googleBooksStageDecisionByTitle || {}) as Record<string, Record<string, string>>,
+          ((diagnosticResult as any).googleBooksStageReasonByTitle || {}) as Record<string, Record<string, string>>,
+          ((diagnosticResult as any).googleBooksStageGateByTitle || {}) as Record<string, Record<string, string>>,
+          rendererTitles,
+        );
+        (diagnosticResult as any).googleBooksStageDecisionByTitle = renderedStageLineage.decisionByTitle;
+        (diagnosticResult as any).googleBooksStageReasonByTitle = renderedStageLineage.reasonByTitle;
+        (diagnosticResult as any).googleBooksStageGateByTitle = renderedStageLineage.gateByTitle;
         (diagnosticResult as any).renderedTopRecommendationsLength = guardedNormalizedItems.length;
         (diagnosticResult as any).renderedTopRecommendationsTitles = guardedNormalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean);
         if (guardedNormalizedItems.length > 0) {
@@ -4351,6 +4391,11 @@ function handleLeft() {
       `googleBooksAgeBandRenderedTitlesByDeck:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandRenderedTitlesByDeck || {})}`,
       `googleBooksAgeBandDropStageByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandDropStageByTitle || {})}`,
       `googleBooksAgeBandDropReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandDropReasonByTitle || {})}`,
+      `googleBooksStageOrder:${JSON.stringify((lastRecommendationResult as any)?.googleBooksStageOrder || [])}`,
+      `googleBooksStageDecisionByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksStageDecisionByTitle || {})}`,
+      `googleBooksStageReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksStageReasonByTitle || {})}`,
+      `googleBooksStageGateByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksStageGateByTitle || {})}`,
+      `googleBooksFinalEligibilityGateByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksFinalEligibilityGateByTitle || {})}`,
       `googleBooksAgeBandInfrastructureGaps:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandInfrastructureGaps || {})}`,
       `googleBooksAgeBandInfrastructureSummary:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAgeBandInfrastructureSummary || {})}`,
       `googleBooksAudienceBandByTitle:${JSON.stringify((lastRecommendationResult as any)?.googleBooksAudienceBandByTitle || {})}`,

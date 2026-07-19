@@ -39,6 +39,29 @@ export function harmonizeGoogleBooksStageLineage(stages: Record<string, string[]
   };
 }
 
+export function applyGoogleBooksRenderingStageLineage(
+  decisionByTitle: Record<string, Record<string, string>>,
+  reasonByTitle: Record<string, Record<string, string>>,
+  gateByTitle: Record<string, Record<string, string>>,
+  renderedTitles: string[],
+): {
+  decisionByTitle: Record<string, Record<string, string>>;
+  reasonByTitle: Record<string, Record<string, string>>;
+  gateByTitle: Record<string, Record<string, string>>;
+} {
+  const rendered = new Set(renderedTitles.map((title) => String(title || "").trim().toLowerCase()).filter(Boolean));
+  const decisions = Object.fromEntries(Object.entries(decisionByTitle || {}).map(([title, stages]) => [title, { ...stages }]));
+  const reasons = Object.fromEntries(Object.entries(reasonByTitle || {}).map(([title, stages]) => [title, { ...stages }]));
+  const gates = Object.fromEntries(Object.entries(gateByTitle || {}).map(([title, stages]) => [title, { ...stages }]));
+  for (const title of uniqueTitles([...Object.keys(decisions), ...renderedTitles])) {
+    const key = title.toLowerCase();
+    decisions[title] = { ...(decisions[title] || {}), rendering: rendered.has(key) ? "rendered" : decisions[title]?.selection === "selected" ? "not_rendered" : "not_reached" };
+    reasons[title] = { ...(reasons[title] || {}), rendering: rendered.has(key) ? "present_in_renderer_output" : decisions[title]?.selection === "selected" ? "selected_candidate_missing_from_renderer_output" : "not_reached" };
+    gates[title] = { ...(gates[title] || {}), rendering: "googlebooks_renderer_output" };
+  }
+  return { decisionByTitle: decisions, reasonByTitle: reasons, gateByTitle: gates };
+}
+
 export function computeGoogleBooksDropDiagnostics(stages: Record<string, string[]>): { droppedStage: string; droppedReason: string } {
   const stageOrder = [
     "normalizedCandidate",

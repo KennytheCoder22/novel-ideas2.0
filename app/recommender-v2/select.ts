@@ -7932,12 +7932,35 @@ function addPreteenGoogleBooksPublicationIdentityObservability(rankedCandidates:
   diagnostics.preteenGoogleBooksPublicationRejectedTitles = Array.from(new Set(rejectedTitles));
   diagnostics.preteenGoogleBooksPublicationAcceptedTitles = Array.from(new Set(acceptedTitles));
 }
+function nonAdultGoogleBooksFinalEligibilityGate(reason: string, ageBand: string): string {
+  if (/googlebooks_mature_content|maturity_band_mismatch/i.test(reason)) return "audience_maturity_final_eligibility";
+  if (/^k2_(?:suspicious_title_artifact|non_narrative_informational_artifact|missing_story_picture_reader_relevance)$/i.test(reason)) return "kids_clean_final_eligibility";
+  if (/^preteen_googlebooks_publication_identity/i.test(reason)) return "preteen_publication_identity_final_guard";
+  if (/middle_grades_(?:reference_or_local_history_artifact|query_only_missing_document_evidence|missing_route_or_fiction_evidence|non_narrative_informational_artifact)|title_only_route_evidence_missing_support|adult_or_ya_humor_leakage|humor_keyword_only_leakage|zero_doc_backed_taste_match|broad_adventure_only_taste_match/i.test(reason)) return "preteen_age_taste_final_eligibility";
+  if (/non_positive_score/i.test(reason)) return `${ageBand}_positive_score_final_eligibility`;
+  if (/missing_title/i.test(reason)) return "shared_required_metadata_final_eligibility";
+  return "";
+}
+
+function nonAdultGoogleBooksSelectionGate(reason: string): string {
+  if (/same_author/i.test(reason)) return "author_diversity_deferral";
+  if (/same_series|same_root/i.test(reason)) return "series_diversity_deferral";
+  if (/cluster/i.test(reason)) return "cluster_diversity_deferral";
+  if (/duplicate/i.test(reason)) return "duplicate_selection_gate";
+  if (/replaced|cap|coverage|ranked_below|not_selected|capacity/i.test(reason)) return "selection_capacity_or_quality_ordering";
+  if (/deferred/i.test(reason)) return "selection_diversity_deferral";
+  return "passed_eligibility_not_selected";
+}
+
 function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
   if (profile.ageBand === "adult" || !rankedCandidates.some((candidate) => candidate.source === "googleBooks")) return;
   const diagnostics = rejectedReasons as Record<string, unknown>;
   const finalEligibilityDecisionByTitle = { ...((diagnostics.googleBooksFinalEligibilityDecisionByTitle || {}) as Record<string, string>) };
   const finalEligibilityReasonByTitle = { ...((diagnostics.googleBooksFinalEligibilityReasonByTitle || {}) as Record<string, string>) };
   const finalEligibilityEvidenceByTitle = { ...((diagnostics.googleBooksFinalEligibilityEvidenceByTitle || {}) as Record<string, string[]>) };
+  const finalEligibilityGateByTitle = { ...((diagnostics.googleBooksFinalEligibilityGateByTitle || {}) as Record<string, string>) };
+  const postRankingGateByTitle = { ...((diagnostics.googleBooksPostRankingGateByTitle || {}) as Record<string, string>) };
+  const postRankingGateReasonByTitle = { ...((diagnostics.googleBooksPostRankingGateReasonByTitle || {}) as Record<string, string>) };
   const finalSelectionDecisionByTitle = { ...((diagnostics.googleBooksFinalSelectionDecisionByTitle || {}) as Record<string, string>) };
   const finalSelectionExclusionReasonByTitle = { ...((diagnostics.googleBooksFinalSelectionExclusionReasonByTitle || {}) as Record<string, string>) };
   const selectedTitles = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalized(candidate.title)));
@@ -7945,31 +7968,48 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
   for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
     const title = candidate.title;
     const selectedCandidate = selectedTitles.has(normalized(title));
-    const reason = candidate.rejectedReasons.find((entry) => entry !== "selected") || "";
+    const finalEligibilityFailureReason = candidate.rejectedReasons.find((entry) => Boolean(nonAdultGoogleBooksFinalEligibilityGate(entry, profile.ageBand))) || "";
+    const selectionReason = candidate.rejectedReasons.find((entry) => entry !== "selected" && entry !== finalEligibilityFailureReason && !/^non_positive_score_detail/.test(entry)) || "";
+    const acceptedReason = `${profile.ageBand}_googlebooks_named_final_eligibility_passed`;
+    const acceptedRescueReason = candidate.rejectedReasons.find((entry) => /^accepted_.*rescue|rescue_accepted/i.test(entry)) || "";
     if (selectedCandidate) {
       finalEligibilityDecisionByTitle[title] = "accepted";
-      finalEligibilityReasonByTitle[title] = "googlebooks_final_eligibility_folded_into_generic_selection_path";
-      finalEligibilityEvidenceByTitle[title] = [
-        `requested_deck:${profile.ageBand}`,
-        "generic_reject_reason_path_passed",
-      ];
+      finalEligibilityReasonByTitle[title] = acceptedRescueReason ? `${acceptedReason}_via:${acceptedRescueReason}` : acceptedReason;
+      finalEligibilityGateByTitle[title] = acceptedRescueReason ? `${profile.ageBand}_googlebooks_rescue_final_eligibility` : `${profile.ageBand}_googlebooks_final_eligibility`;
+      finalEligibilityEvidenceByTitle[title] = [`requested_deck:${profile.ageBand}`, acceptedRescueReason ? `accepted_rescue:${acceptedRescueReason}` : "named_final_eligibility_passed"];
+      postRankingGateByTitle[title] = "selected";
+      postRankingGateReasonByTitle[title] = acceptedRescueReason || "accepted";
       finalSelectionDecisionByTitle[title] = "selected";
       delete finalSelectionExclusionReasonByTitle[title];
+    } else if (finalEligibilityFailureReason) {
+      const gate = nonAdultGoogleBooksFinalEligibilityGate(finalEligibilityFailureReason, profile.ageBand);
+      finalEligibilityDecisionByTitle[title] = "rejected";
+      finalEligibilityReasonByTitle[title] = finalEligibilityFailureReason;
+      finalEligibilityGateByTitle[title] = gate;
+      finalEligibilityEvidenceByTitle[title] = [`requested_deck:${profile.ageBand}`, `named_gate:${gate}`];
+      postRankingGateByTitle[title] = "final_eligibility";
+      postRankingGateReasonByTitle[title] = finalEligibilityFailureReason;
+      finalSelectionDecisionByTitle[title] = `not_reached:${gate}`;
+      finalSelectionExclusionReasonByTitle[title] = finalEligibilityFailureReason;
     } else {
-      finalEligibilityDecisionByTitle[title] = reason ? "rejected" : "bypassed";
-      finalEligibilityReasonByTitle[title] = reason || "ranked_below_final_selection";
-      finalEligibilityEvidenceByTitle[title] = [
-        `requested_deck:${profile.ageBand}`,
-        reason ? "generic_reject_reason_path_rejected" : "generic_selection_ranked_below_selected_slate",
-      ];
-      finalSelectionDecisionByTitle[title] = reason ? `rejected:${reason}` : "not_selected_after_ranking";
-      finalSelectionExclusionReasonByTitle[title] = reason || "ranked_below_final_selection";
+      finalEligibilityDecisionByTitle[title] = "accepted";
+      finalEligibilityReasonByTitle[title] = acceptedReason;
+      finalEligibilityGateByTitle[title] = `${profile.ageBand}_googlebooks_final_eligibility`;
+      finalEligibilityEvidenceByTitle[title] = [`requested_deck:${profile.ageBand}`, "named_final_eligibility_passed"];
+      const exclusionReason = selectionReason || "ranked_below_final_selection";
+      postRankingGateByTitle[title] = nonAdultGoogleBooksSelectionGate(exclusionReason);
+      postRankingGateReasonByTitle[title] = exclusionReason;
+      finalSelectionDecisionByTitle[title] = "passed_eligibility_not_selected";
+      finalSelectionExclusionReasonByTitle[title] = exclusionReason;
     }
   }
 
   diagnostics.googleBooksFinalEligibilityDecisionByTitle = finalEligibilityDecisionByTitle;
   diagnostics.googleBooksFinalEligibilityReasonByTitle = finalEligibilityReasonByTitle;
   diagnostics.googleBooksFinalEligibilityEvidenceByTitle = finalEligibilityEvidenceByTitle;
+  diagnostics.googleBooksFinalEligibilityGateByTitle = finalEligibilityGateByTitle;
+  diagnostics.googleBooksPostRankingGateByTitle = postRankingGateByTitle;
+  diagnostics.googleBooksPostRankingGateReasonByTitle = postRankingGateReasonByTitle;
   diagnostics.googleBooksFinalSelectionDecisionByTitle = finalSelectionDecisionByTitle;
   diagnostics.googleBooksFinalSelectionExclusionReasonByTitle = finalSelectionExclusionReasonByTitle;
 }
