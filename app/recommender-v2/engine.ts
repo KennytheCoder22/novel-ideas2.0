@@ -1319,6 +1319,21 @@ type KidsGoogleBooksPreScoringDiagnostics = {
   likelyAdultOrYaTitles: string[];
   likelyK2Titles: string[];
   ambiguousAudienceTitles: string[];
+  recommendationIdentityByTitle: Record<string, string>;
+  collectionEvidenceByTitle: Record<string, string[]>;
+  singlePublicationEvidenceByTitle: Record<string, string[]>;
+  marketingKeywordEvidenceByTitle: Record<string, string[]>;
+  trustedIdentityFieldsByTitle: Record<string, string[]>;
+  identityDecisionByTitle: Record<string, string>;
+  identityRejectionReasonByTitle: Record<string, string>;
+  collectionRejectedTitles: string[];
+  genericBundleRejectedTitles: string[];
+  singleStoryAcceptedTitles: string[];
+  ambiguousIdentityTitles: string[];
+  audienceFormatGateDecisionByTitle: Record<string, string>;
+  cleanFinalGateDecisionByTitle: Record<string, string>;
+  cleanFinalGateEvidenceByTitle: Record<string, string[]>;
+  gateSequenceByTitle: Record<string, string>;
 };
 
 function emptyKidsGoogleBooksPreScoringDiagnostics(): KidsGoogleBooksPreScoringDiagnostics {
@@ -1337,6 +1352,21 @@ function emptyKidsGoogleBooksPreScoringDiagnostics(): KidsGoogleBooksPreScoringD
     likelyAdultOrYaTitles: [],
     likelyK2Titles: [],
     ambiguousAudienceTitles: [],
+    recommendationIdentityByTitle: {},
+    collectionEvidenceByTitle: {},
+    singlePublicationEvidenceByTitle: {},
+    marketingKeywordEvidenceByTitle: {},
+    trustedIdentityFieldsByTitle: {},
+    identityDecisionByTitle: {},
+    identityRejectionReasonByTitle: {},
+    collectionRejectedTitles: [],
+    genericBundleRejectedTitles: [],
+    singleStoryAcceptedTitles: [],
+    ambiguousIdentityTitles: [],
+    audienceFormatGateDecisionByTitle: {},
+    cleanFinalGateDecisionByTitle: {},
+    cleanFinalGateEvidenceByTitle: {},
+    gateSequenceByTitle: {},
   };
 }
 
@@ -1367,6 +1397,30 @@ export function applyKidsGoogleBooksPreScoringGate(
     if (eligibility.likelyBucket === "likely_k2" && !diagnostics.likelyK2Titles.includes(title)) diagnostics.likelyK2Titles.push(title);
     if (eligibility.likelyBucket === "ambiguous" && !diagnostics.ambiguousAudienceTitles.includes(title)) diagnostics.ambiguousAudienceTitles.push(title);
     diagnostics.decisionByTitle[title] = eligibility.reason;
+    const candidateDiag = (candidate as { diagnostics?: Record<string, unknown> }).diagnostics || {};
+    const identity = String(candidateDiag.kidsGoogleBooksRecommendationIdentity || "");
+    const collectionEvidence = Array.isArray(candidateDiag.kidsGoogleBooksCollectionEvidence) ? (candidateDiag.kidsGoogleBooksCollectionEvidence as string[]) : [];
+    const singlePublicationEvidence = Array.isArray(candidateDiag.kidsGoogleBooksSinglePublicationEvidence) ? (candidateDiag.kidsGoogleBooksSinglePublicationEvidence as string[]) : [];
+    const marketingKeywordEvidence = Array.isArray(candidateDiag.kidsGoogleBooksMarketingKeywordEvidence) ? (candidateDiag.kidsGoogleBooksMarketingKeywordEvidence as string[]) : [];
+    const trustedIdentityFields = Array.isArray(candidateDiag.kidsGoogleBooksTrustedIdentityFields) ? (candidateDiag.kidsGoogleBooksTrustedIdentityFields as string[]) : [];
+    const audienceFormatGateDecision = String(candidateDiag.kidsGoogleBooksAudienceFormatGateDecision || "");
+    if (identity) diagnostics.recommendationIdentityByTitle[title] = identity;
+    if (collectionEvidence.length) diagnostics.collectionEvidenceByTitle[title] = collectionEvidence;
+    if (singlePublicationEvidence.length) diagnostics.singlePublicationEvidenceByTitle[title] = singlePublicationEvidence;
+    if (marketingKeywordEvidence.length) diagnostics.marketingKeywordEvidenceByTitle[title] = marketingKeywordEvidence;
+    if (trustedIdentityFields.length) diagnostics.trustedIdentityFieldsByTitle[title] = trustedIdentityFields;
+    if (audienceFormatGateDecision) diagnostics.audienceFormatGateDecisionByTitle[title] = audienceFormatGateDecision;
+    if (identity) {
+      diagnostics.identityDecisionByTitle[title] = eligibility.allowed ? `accepted:${identity}` : `rejected:${identity}`;
+      if (!eligibility.allowed && eligibility.reason.startsWith("k2_collection_or_bundle")) {
+        diagnostics.identityRejectionReasonByTitle[title] = eligibility.reason;
+        if (identity === "activity_or_joke_compilation" || identity === "story_collection") diagnostics.collectionRejectedTitles.push(title);
+        if (identity === "generic_bundle") diagnostics.genericBundleRejectedTitles.push(title);
+      } else if (eligibility.allowed) {
+        if (identity === "single_story") diagnostics.singleStoryAcceptedTitles.push(title);
+        if (identity === "ambiguous") diagnostics.ambiguousIdentityTitles.push(title);
+      }
+    }
     if (eligibility.allowed) {
       diagnostics.enteredScoringTitles.push(title);
       filtered.push(candidate);
@@ -1394,6 +1448,18 @@ function kidsGoogleBooksPreScoringObservability(diagnostics: KidsGoogleBooksPreS
     kidsGoogleBooksLikelyAdultOrYaTitles: diagnostics.likelyAdultOrYaTitles,
     kidsGoogleBooksLikelyK2Titles: diagnostics.likelyK2Titles,
     kidsGoogleBooksAmbiguousAudienceTitles: diagnostics.ambiguousAudienceTitles,
+    kidsGoogleBooksRecommendationIdentityByTitle: diagnostics.recommendationIdentityByTitle,
+    kidsGoogleBooksCollectionEvidenceByTitle: diagnostics.collectionEvidenceByTitle,
+    kidsGoogleBooksSinglePublicationEvidenceByTitle: diagnostics.singlePublicationEvidenceByTitle,
+    kidsGoogleBooksMarketingKeywordEvidenceByTitle: diagnostics.marketingKeywordEvidenceByTitle,
+    kidsGoogleBooksTrustedIdentityFieldsByTitle: diagnostics.trustedIdentityFieldsByTitle,
+    kidsGoogleBooksIdentityDecisionByTitle: diagnostics.identityDecisionByTitle,
+    kidsGoogleBooksIdentityRejectionReasonByTitle: diagnostics.identityRejectionReasonByTitle,
+    kidsGoogleBooksCollectionRejectedTitles: diagnostics.collectionRejectedTitles,
+    kidsGoogleBooksGenericBundleRejectedTitles: diagnostics.genericBundleRejectedTitles,
+    kidsGoogleBooksSingleStoryAcceptedTitles: diagnostics.singleStoryAcceptedTitles,
+    kidsGoogleBooksAmbiguousIdentityTitles: diagnostics.ambiguousIdentityTitles,
+    kidsGoogleBooksAudienceFormatGateDecisionByTitle: diagnostics.audienceFormatGateDecisionByTitle,
     kidsGoogleBooksPreScoringSummary: {
       scope: "kids_googlebooks_conclusive_identity_and_age_suitability_pre_scoring_enforcement",
       consideredCount: Object.keys(diagnostics.decisionByTitle).length,

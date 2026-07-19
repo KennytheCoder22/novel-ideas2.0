@@ -305,6 +305,20 @@ function buildKidsGoogleBooksIntents(profile: TasteProfile, genres: string[], to
   const familySuppressedReason = avoidFamilies.length
     ? avoidFamilies.map((family) => `suppressed_family:${family}`).join("|")
     : "";
+  const suppressedFamilyDetails: Record<string, { blockedBy: string[]; likeBackedRows: number; noLikeBackedRows: number }> = {};
+  for (const family of Array.from(blockedFamilies)) {
+    const blockingRows = [...profile.genreFamily, ...profile.themes, ...profile.tone]
+      .filter((row) => kidsGoogleBooksThemeFromSignal(row.value) === family);
+    const likeBackedRows = blockingRows.filter((row) => isLikeBacked(row.evidence || []));
+    const noLikeBackedRows = blockingRows.filter((row) => !isLikeBacked(row.evidence || []));
+    if (noLikeBackedRows.length > 0) {
+      suppressedFamilyDetails[family] = {
+        blockedBy: noLikeBackedRows.map((row) => `${row.value}(${(row.evidence || []).join(",")})`),
+        likeBackedRows: likeBackedRows.length,
+        noLikeBackedRows: noLikeBackedRows.length,
+      };
+    }
+  }
   return {
     intents,
     diagnostics: {
@@ -318,6 +332,7 @@ function buildKidsGoogleBooksIntents(profile: TasteProfile, genres: string[], to
       kidsGoogleBooksSelectedSecondaryFamily: secondaryTheme || "",
       kidsGoogleBooksGenericPlanningReason: genericPlanningReason,
       kidsGoogleBooksFamilySuppressedReason: familySuppressedReason,
+      kidsGoogleBooksSuppressedFamilyDetailsByFamily: suppressedFamilyDetails,
       kidsGoogleBooksQueryFamilyByQuery: familyByQuery,
       kidsGoogleBooksQueryFormatByQuery: formatByQuery,
       kidsGoogleBooksQueryThemeByQuery: themeByQuery,

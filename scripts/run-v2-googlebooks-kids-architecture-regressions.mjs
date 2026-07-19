@@ -197,4 +197,41 @@ assertEqual(lineage.googleBooksAgeBandDropStageByTitle[atlas.title], "age_suitab
 assertEqual(lineage.googleBooksAgeBandDropStageByTitle[mature.title], "age_suitability_rejection", "Kids mature lineage should identify its enforcement boundary");
 assertNotIncludes(lineage.googleBooksAgeBandScoringHandoffByDeck.kids.scoredTitles, atlas.title, "lineage must not claim rejected artifacts were scored");
 console.log("PASS: Kids diagnostics accurately report pre-scoring enforcement and downstream absence");
+
+// Collection/bundle identity gate fixtures
+{
+  const bundleFixtures = [
+    candidate("Kid Ebooks With Fun Stories & Kid Jokes", "A collection of fun stories and kid jokes.", {
+      genres: ["Juvenile Fiction"],
+      raw: { title: "Kid Ebooks With Fun Stories & Kid Jokes", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Juvenile Fiction"], description: "Fun stories and picture book collection for kids." },
+      diagnostics: { queryText: "kids magic picture book", queryFamily: "magic", googleBooksAudienceBand: "kids", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "novel", googleBooksSourceMaturityRating: "NOT_MATURE" },
+    }),
+    candidate("10 Picture Books for Kids", "Ten picture books for children.", {
+      genres: ["Juvenile Fiction"],
+      raw: { title: "10 Picture Books for Kids", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Juvenile Fiction"] },
+      diagnostics: { queryText: "kids magic picture book", queryFamily: "magic", googleBooksAudienceBand: "kids", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "novel" },
+    }),
+    candidate("Curious George Home Run (CGTV Early Reader)", "Curious George helps the team win.", {
+      genres: ["Juvenile Fiction", "Early Readers"],
+      raw: { title: "Curious George Home Run (CGTV Early Reader)", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Juvenile Fiction", "Early Readers"], description: "Curious George helps the team." },
+      diagnostics: { queryText: "kids magic picture book", queryFamily: "magic", googleBooksAudienceBand: "kids", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "novel" },
+    }),
+  ];
+
+  const bundleGate = applyKidsGoogleBooksPreScoringGate(bundleFixtures.map((f) => ({ ...f, source: "googleBooks" })), profile);
+  const bundleEntered = new Set(bundleGate.candidates.map((r) => r.title));
+
+  if (bundleEntered.has("Kid Ebooks With Fun Stories & Kid Jokes")) throw new Error("Kid Ebooks With Fun Stories & Kid Jokes should be rejected by collection/bundle identity gate");
+  if (bundleEntered.has("10 Picture Books for Kids")) throw new Error("10 Picture Books for Kids should be rejected as a numbered books catalog");
+
+  const kidEbooksReason = bundleGate.diagnostics.rejectedBeforeScoringByTitle["Kid Ebooks With Fun Stories & Kid Jokes"] || "";
+  if (!kidEbooksReason.includes("k2_collection_or_bundle")) throw new Error(`Kid Ebooks rejection reason should contain k2_collection_or_bundle, got: ${kidEbooksReason}`);
+
+  if (!bundleEntered.has("Curious George Home Run (CGTV Early Reader)")) {
+    throw new Error("Curious George Home Run should still pass Kids pre-scoring gate");
+  }
+
+  console.log("PASS: Kids Google Books collection/bundle identity gate rejects bundles and accepts single publications");
+}
+
 console.log("All Kids Google Books architecture regressions passed.");
