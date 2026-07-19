@@ -1446,6 +1446,53 @@ export function analyzeGoogleBooksVolumeForAudit(volumeInfo: Record<string, unkn
   };
 }
 
+function kidsEditionQualityScore(item: Record<string, unknown>): number {
+  let score = 0;
+  const volumeInfo = (item.volumeInfo as Record<string, unknown>) || {};
+  const categories = stringArray(volumeInfo.categories);
+  const categoryBlob = categories.map(c => String(c || "").toLowerCase()).join(" | ");
+  const description = String(volumeInfo.description || "").trim();
+  const publisher = String(volumeInfo.publisher || "").trim().toLowerCase();
+  const title = String(volumeInfo.title || "").trim();
+  const subtitle = String(volumeInfo.subtitle || "").trim();
+  const pageCount = Number(volumeInfo.pageCount);
+
+  if (/\bjuvenile fiction\b/i.test(categoryBlob)) score += 10;
+  if (description.length > 40) score += 5;
+  if (/\b(early reader|easy reader|beginning reader|beginner book|picture book|read aloud|i can read|step into reading|ready to read|easy-to-read)\b/i.test([title, subtitle, description].join(" "))) score += 8;
+  const hasIsbn = Array.isArray(volumeInfo.industryIdentifiers)
+    && (volumeInfo.industryIdentifiers as unknown[]).some((id) => {
+      const t = String((id as Record<string, unknown>)?.type || "").toUpperCase();
+      return t === "ISBN_13" || t === "ISBN_10";
+    });
+  if (hasIsbn) score += 3;
+  if (pageCount > 0) score += 2;
+  if (pageCount >= 20 && pageCount <= 80) score += 3;
+  if (publisher && GOOGLE_BOOKS_MAINSTREAM_FICTION_PUBLISHER_PATTERN.test(publisher)) score += 2;
+  if (/\bjuvenile nonfiction\b/i.test(categoryBlob)) score -= 8;
+  if (categoryBlob === "" || categories.length === 0) score -= 3;
+  if (/[\u0100-\uffff]{5,}/.test(title)) score -= 15;
+  return score;
+}
+
+function kidsDeduplicateEditions(items: unknown[]): unknown[] {
+  const groups = new Map<string, { best: unknown; bestScore: number }>();
+  for (const item of items) {
+    const volumeInfo = ((item as Record<string, unknown>).volumeInfo as Record<string, unknown>) || {};
+    const rawTitle = String(volumeInfo.title || "").trim().toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+    const rawAuthors = stringArray(volumeInfo.authors);
+    const firstAuthor = (rawAuthors[0] || "").toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+    const groupTitle = rawTitle.replace(/\s*[\(\[].{0,40}[\)\]]$/, "").trim();
+    const key = `${groupTitle}||${firstAuthor}`;
+    const score = kidsEditionQualityScore(item as Record<string, unknown>);
+    const existing = groups.get(key);
+    if (!existing || score > existing.bestScore) {
+      groups.set(key, { best: item, bestScore: score });
+    }
+  }
+  return Array.from(groups.values()).map(g => g.best);
+}
+
 export const googleBooksSourceAdapter: SourceAdapterV2 = {
   source: "googleBooks",
   async search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal }): Promise<SourceResult> {
@@ -2233,7 +2280,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     return {
       source: "googleBooks",
       status,
-      rawItems,
+      rawItems: ageBand === "kids" ? kidsDeduplicateEditions(rawItems) : rawItems,
       diagnostics,
     };
   },

@@ -234,4 +234,105 @@ console.log("PASS: Kids diagnostics accurately report pre-scoring enforcement an
   console.log("PASS: Kids Google Books collection/bundle identity gate rejects bundles and accepts single publications");
 }
 
+// Regression: query text cannot certify publication identity
+{
+  const adultWithKidsQuery = candidate("Adult Literary Fiction Piece", "A complex adult literary novel.", {
+    genres: ["Fiction", "Literary"],
+    raw: { title: "Adult Literary Fiction Piece", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Fiction"] },
+    diagnostics: { queryText: "kids picture book", queryFamily: "magic", googleBooksAudienceBand: "unknown", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "novel" },
+  });
+  const queryTextGate = applyKidsGoogleBooksPreScoringGate([{ ...adultWithKidsQuery, source: "googleBooks" }], profile);
+  if (queryTextGate.candidates.some(c => c.title === "Adult Literary Fiction Piece")) {
+    throw new Error("Adult/unknown volume must not pass Kids pre-scoring merely because queryText contains 'kids picture book'");
+  }
+  console.log("PASS: query text 'kids picture book' alone cannot certify K-2 publication identity");
+}
+
+// Regression: Children's stories category (smart quote) → should recognize K-2 audience
+{
+  const elephantPiggie = candidate("I Am Invited to a Party!", "Attending her first party, Piggie follows Elephant's advice on what to wear, with surprising results.", {
+    genres: ["Children\u2019s stories"],
+    raw: {
+      title: "I Am Invited to a Party!",
+      maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown",
+      categories: ["Children\u2019s stories"],
+      description: "Attending her first party, Piggie follows Elephant's advice on what to wear, with surprising results.",
+    },
+    diagnostics: { queryText: "kids humorous picture book", queryFamily: "humorous", googleBooksAudienceBand: "unknown", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "unknown" },
+  });
+  const pgGate = applyKidsGoogleBooksPreScoringGate([{ ...elephantPiggie, source: "googleBooks" }], profile);
+  if (!pgGate.candidates.some(c => c.title === "I Am Invited to a Party!")) {
+    const reason = pgGate.diagnostics.rejectedBeforeScoringByTitle["I Am Invited to a Party!"];
+    throw new Error(`I Am Invited to a Party! should pass Kids pre-scoring (Children\u2019s stories category with curly apostrophe), rejected: ${reason}`);
+  }
+  console.log("PASS: Children\u2019s stories (curly apostrophe) correctly recognized as K-2 audience evidence");
+}
+
+// Regression: easy-to-read series description should establish early-reader format
+{
+  const henryMudge = candidate("Henry and Mudge", "The first book in the acclaimed easy-to-read series featuring Henry and his lovable 180-pound dog, Mudge.", {
+    genres: ["Juvenile Fiction"],
+    raw: {
+      title: "Henry and Mudge",
+      maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown",
+      categories: ["Juvenile Fiction"],
+      description: "The first book in the acclaimed easy-to-read series featuring Henry and his lovable 180-pound dog, Mudge.",
+      pageCount: 44,
+    },
+    diagnostics: { queryText: "kids adventure early reader", queryFamily: "adventure", googleBooksAudienceBand: "unknown", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "unknown" },
+  });
+  const hmGate = applyKidsGoogleBooksPreScoringGate([{ ...henryMudge, source: "googleBooks" }], profile);
+  if (!hmGate.candidates.some(c => c.title === "Henry and Mudge")) {
+    const reason = hmGate.diagnostics.rejectedBeforeScoringByTitle["Henry and Mudge"];
+    throw new Error(`Henry and Mudge should pass Kids pre-scoring (easy-to-read series + Juvenile Fiction), rejected: ${reason}`);
+  }
+  console.log("PASS: easy-to-read series + Juvenile Fiction recognized as K-2 early reader");
+}
+
+// Regression: Juvenile Fiction + pronoun-led description → juvenile_narrative format
+{
+  const froggy = candidate("Froggy Gets Dressed", "Rambunctious Froggy hops out into the snow for a winter frolic but is called back by his mother to put on some necessary articles of clothing.", {
+    genres: ["Juvenile Fiction"],
+    raw: {
+      title: "Froggy Gets Dressed",
+      maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown",
+      categories: ["Juvenile Fiction"],
+      description: "Rambunctious Froggy hops out into the snow for a winter frolic but is called back by his mother to put on some necessary articles of clothing.",
+      pageCount: 34,
+    },
+    diagnostics: { queryText: "kids humorous picture book", queryFamily: "humorous", googleBooksAudienceBand: "unknown", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "unknown" },
+  });
+  const froggyGate = applyKidsGoogleBooksPreScoringGate([{ ...froggy, source: "googleBooks" }], profile);
+  if (!froggyGate.candidates.some(c => c.title === "Froggy Gets Dressed")) {
+    const reason = froggyGate.diagnostics.rejectedBeforeScoringByTitle["Froggy Gets Dressed"];
+    throw new Error(`Froggy Gets Dressed should pass Kids pre-scoring (Juvenile Fiction + his/mother pronoun narrative), rejected: ${reason}`);
+  }
+  console.log("PASS: Juvenile Fiction + pronoun-led narrative description recognized as K-2 juvenile narrative");
+}
+
+// Regression: subject-heading-only categories still fail
+{
+  const subjectHeadingOnly = [
+    candidate("Stellaluna", "A bat story.", {
+      genres: ["Bats"],
+      raw: { title: "Stellaluna", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Bats"] },
+    }),
+    candidate("Don't Let the Pigeon Drive the Bus!", "The Pigeon wants to drive the bus.", {
+      genres: ["Bus drivers"],
+      raw: { title: "Don't Let the Pigeon Drive the Bus!", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Bus drivers"] },
+    }),
+    candidate("Chicka Chicka Boom Boom", "Alphabet letters climb a coconut tree.", {
+      genres: ["Juvenile Nonfiction"],
+      raw: { title: "Chicka Chicka Boom Boom", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Juvenile Nonfiction"] },
+    }),
+  ];
+  const subjectGate = applyKidsGoogleBooksPreScoringGate(subjectHeadingOnly.map(f => ({ ...f, source: "googleBooks" })), profile);
+  for (const f of subjectHeadingOnly) {
+    if (subjectGate.candidates.some(c => c.title === f.title)) {
+      throw new Error(`${f.title} should remain rejected — subject-heading-only category provides no K-2 audience evidence`);
+    }
+  }
+  console.log("PASS: subject-heading-only categories (Bats, Bus drivers, Juvenile Nonfiction) remain correctly rejected");
+}
+
 console.log("All Kids Google Books architecture regressions passed.");
