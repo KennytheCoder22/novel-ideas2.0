@@ -834,12 +834,17 @@ function inferGoogleBooksPublicationShape(params: {
   const nonfictionShape = /\b(nonfiction|non-fiction|biography|autobiography|memoir|essays?|history|philosophy|reference|business|language arts|education|study aids?|travel|self-help|psychology|political science|social science|science|medical|technology|computers?)\b/.test(categoryBlob)
     && !fictionCategory
     && !/\b(true crime|narrative nonfiction)\b/.test(categoryBlob);
+  // Promotional sampler/sneak-preview documents: publisher-branded "Sneak Preview(s)" items
+  // are sample/promotional products, not standalone novels. Test only the title so that
+  // ordinary books whose descriptions happen to contain the word "preview" are unaffected.
+  const sneakPreviewSampleShape = /\bsneak previews?\b/.test(titleText);
 
   const explicitShapeCandidates: Array<{ shape: GoogleBooksPublicationShape; evidence: string[]; decision: string }> = [];
   if (periodicalShape) explicitShapeCandidates.push({ shape: "periodical", evidence: periodicalIdentityEvidence, decision: periodicalIdentityDecision });
   if (writingGuideShape || craftGuideTitleShape || techniqueInstructionalEvidence || howGenreWorksEvidence) explicitShapeCandidates.push({ shape: "writing_guide", evidence: [techniqueInstructionalEvidence ? "technique_or_craft_instruction_title_shape" : howGenreWorksEvidence ? "how_genre_form_works_instruction_title_shape" : craftGuideTitleShape ? "craft_or_art_practice_title_shape" : "writing_instruction_publication_shape"], decision: "writing_guide_identity_overrides_narrative_signals" });
   if (readersAdvisoryShape) explicitShapeCandidates.push({ shape: "readers_advisory", evidence: curatedBookGuideIdentity ? curatedBookGuideEvidence : ["readers_advisory_publication_shape"], decision: "readers_advisory_identity_overrides_narrative_signals" });
   if (genericCategoryTitle) explicitShapeCandidates.push({ shape: "generic_category_catalog", evidence: genericCategoryEvidence, decision: "generic_category_title_overrides_narrative_signals" });
+  if (sneakPreviewSampleShape) explicitShapeCandidates.push({ shape: "reference", evidence: ["promotional_sneak_preview_title_shape"], decision: "sneak_preview_promotional_identity_overrides_narrative_signals" });
   if (referenceShape) explicitShapeCandidates.push({ shape: "reference", evidence: ["reference_publication_shape"], decision: "reference_identity_overrides_narrative_signals" });
   if (productionHistoryShape) explicitShapeCandidates.push({ shape: "production_history", evidence: ["making_of_or_production_history_shape"], decision: "production_history_identity_overrides_narrative_signals" });
   if ((criticismShape || readingStudyShape || quotedWorkStudyShape) && academicPublisher) explicitShapeCandidates.push({ shape: "academic_text", evidence: ["academic_publisher_criticism_shape"], decision: "academic_scholarship_identity_overrides_narrative_signals" });
