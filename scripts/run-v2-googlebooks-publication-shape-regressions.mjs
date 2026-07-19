@@ -102,6 +102,27 @@ const fixtures = [
     "HarperCollins",
   ),
   googleBook(
+    "gold-star-list",
+    "Gold Star List of American Fiction",
+    "A selective survey recommending notable works of American fiction for readers and libraries.",
+    ["Fiction"],
+    "Gold Star Publishing",
+  ),
+  googleBook(
+    "the-gold-star-list",
+    "The Gold Star List of American Fiction",
+    "A selective survey recommending notable works of American fiction for readers and libraries.",
+    ["Fiction"],
+    "Gold Star Publishing",
+  ),
+  googleBook(
+    "narrative-list",
+    "The List of Impossible Things",
+    "When a young detective finds a mysterious list, she must solve each impossible clue, protect her friends, and uncover the secret beneath her school.",
+    ["Fiction / Mystery & Detective", "Fiction / Action & Adventure"],
+    "Scholastic",
+  ),
+  googleBook(
     "technique-mystery",
     "The Technique of the Mystery Story",
     "A craft and writing study examining mystery story technique, plotting, structure, criticism, and methods for writers.",
@@ -223,6 +244,14 @@ assertEqual(shapes["The Best American Science Fiction and Fantasy 2022"], "antho
 assertEqual(rejectedBeforeRanking["The Best American Science Fiction and Fantasy 2022"], "publication_shape_anthology", "annual Best American volume should reject before ranking");
 assertIncludes(shapeEvidence["The Best American Science Fiction and Fantasy 2022"], "best_american_annual_title_shape", "annual Best American title evidence should be exposed");
 assertIncludes(shapeEvidence["The Best American Science Fiction and Fantasy 2022"], "annual_anthology_editor_selection_description", "editor-selection metadata should corroborate annual anthology identity");
+for (const title of ["Gold Star List of American Fiction", "The Gold Star List of American Fiction"]) {
+  assertEqual(shapes[title], "readers_advisory", `${title} should classify as a curated-list artifact`);
+  assertEqual(rejectedBeforeRanking[title], "publication_shape_readers_advisory", `${title} should reject before ranking`);
+  assertIncludes(shapeEvidence[title], "curated_list_of_literature_title_shape", `${title} should expose curated-list evidence`);
+}
+assertEqual(shapes["Gold Star List of American Fiction"], shapes["The Gold Star List of American Fiction"], "Optional leading article should not alter publication shape");
+assertEqual(shapes["The List of Impossible Things"], "novel", "Narrative-context list title should remain a novel");
+assertEqual(normalizedReasons["The List of Impossible Things"], "entered_ranking", "Narrative-context list title should enter ranking");
 assertEqual(shapes["The Technique of the Mystery Story"], "writing_guide", "technique title should classify as writing guide");
 assertEqual(rejectedBeforeRanking["The Technique of the Mystery Story"], "publication_shape_writing_guide", "technique title should reject before ranking");
 assertEqual(shapes["How to Write a Mystery Thriller"], "writing_guide", "writing guide should classify as writing guide");

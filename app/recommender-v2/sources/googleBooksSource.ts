@@ -217,6 +217,10 @@ function normalizeText(value: unknown): string {
     .trim();
 }
 
+function normalizePublicationIdentityTitle(value: unknown): string {
+  return normalizeText(value).replace(/^(?:the|a|an)\s+/, "").trim();
+}
+
 function queryFamilyFromQuery(query: string): string {
   const normalized = normalizeQuery(query);
   if (/\b(thriller|suspense|conspiracy|manhunt|abduction)\b/.test(normalized)) return "thriller";
@@ -381,13 +385,16 @@ function googleBooksAnnualAnthologyEvidence(titleText: string, descriptionText: 
 
 function googleBooksCuratedBookGuideEvidence(titleText: string, descriptionText: string, categoryBlob: string): string[] {
   const evidence: string[] = [];
-  const normalized = normalizeText(titleText)
+  const normalized = normalizePublicationIdentityTitle(titleText)
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   const bookContainer = "(?:books?|novels?|fiction|stories|reads|literature)";
-  if (new RegExp(`^(?:the\\s+)?guide\\s+to\\s+(?:the\\s+)?top\\s+\\d+\\s+.+\\b${bookContainer}$`).test(normalized)) {
+  if (new RegExp(`^(?:[a-z0-9]+\\s+){1,6}list\\s+of\\s+(?:[a-z0-9]+\\s+){0,5}${bookContainer}$`).test(normalized)) {
+    evidence.push("curated_list_of_literature_title_shape");
+  }
+  if (new RegExp(`^guide\\s+to\\s+(?:the\\s+)?top\\s+\\d+\\s+.+\\b${bookContainer}$`).test(normalized)) {
     evidence.push("guide_to_top_books_title_shape");
   }
   if (new RegExp(`^(?:the\\s+)?top\\s+\\d+\\s+.+\\b${bookContainer}$`).test(normalized)) {
@@ -697,11 +704,13 @@ function inferGoogleBooksPublicationShape(params: {
   pageCount?: number;
 }): GoogleBooksPublicationShapeAnalysis {
   const titleText = normalizeText([params.title, params.subtitle].filter(Boolean).join(" "));
+  const publicationIdentityTitleText = normalizePublicationIdentityTitle(titleText);
   const descriptionText = normalizeText(params.description || "");
   const categoryBlob = categoryText(params.categories);
   const publisherText = normalizeText(params.publisher || "");
   const authorText = normalizeText(params.authors.join(" "));
   const allText = [titleText, descriptionText, categoryBlob, publisherText, authorText].filter(Boolean).join(" | ");
+  const publicationIdentityText = [publicationIdentityTitleText, descriptionText, categoryBlob, publisherText, authorText].filter(Boolean).join(" | ");
   const evidence: string[] = [];
   const weakNarrativeEvidence: string[] = [];
   const storyLevelNarrativeEvidence: string[] = [];
@@ -758,13 +767,13 @@ function inferGoogleBooksPublicationShape(params: {
     narrativeConfidence += 1;
   }
 
-  const curatedBookGuideEvidence = googleBooksCuratedBookGuideEvidence(titleText, descriptionText, categoryBlob);
+  const curatedBookGuideEvidence = googleBooksCuratedBookGuideEvidence(publicationIdentityTitleText, descriptionText, categoryBlob);
   const curatedBookGuideIdentity = curatedBookGuideEvidence.length > 0;
   const periodicalIdentityEvidence = googleBooksPeriodicalIdentityEvidence(titleText, "", descriptionText, categoryBlob, publisherText, allText);
   const periodicalIdentityDecision = periodicalIdentityEvidence.length > 0
     ? "periodical_identity_overrides_narrative_signals"
     : "no_corroborated_periodical_identity";
-  const referenceShape = /\b(encyclop(?:a)?edia|dictionary|directory|catalog(?:ue)?|bibliograph(?:y|ies)|index|almanac|companion to|reader'?s companion|reference guide)\b/.test(allText)
+  const referenceShape = /\b(encyclop(?:a)?edia|dictionary|directory|catalog(?:ue)?|bibliograph(?:y|ies)|index|almanac|companion to|reader'?s companion|reference guide)\b/.test(publicationIdentityText)
     || /\b(reference|bibliographies? and indexes|catalogs?|directories)\b/.test(categoryBlob);
   const writingGuideShape = /\b(how to write|writing fiction|creative writing|writer'?s guide|writing guide|handbook for writers|craft of fiction|plotting|character development guide|writer'?s market|guide to literary agents?)\b/.test(allText);
   const readersAdvisoryShape = curatedBookGuideIdentity
@@ -772,7 +781,7 @@ function inferGoogleBooksPublicationShape(params: {
   const periodicalShape = periodicalIdentityEvidence.length > 0;
   const miscellanyShape = /\b(bathroom reader|uncle john'?s|reader plunges|miscellany|miscellaneous|trivia|fact book|fun facts|digest)\b/.test(allText);
   const interviewShape = /\b(conversations with|interviews? with|interview collection|talks with)\b/.test(titleText) || /\b(interviews?|conversations)\b/.test(categoryBlob);
-  const genericCategoryEvidence = googleBooksGenericCategoryTitleEvidence(titleText);
+  const genericCategoryEvidence = googleBooksGenericCategoryTitleEvidence(publicationIdentityTitleText);
   const genericCategoryTitle = genericCategoryEvidence.length > 0;
   const productionHistoryShape = /\b(the making of|making of|making-of|behind the scenes|production history|art and making of|inside the making)\b/.test(allText)
     || /\b(?:film|television|motion picture)\s+(?:history|production|criticism)\b/.test(categoryBlob);
@@ -819,7 +828,7 @@ function inferGoogleBooksPublicationShape(params: {
   const essayCollectionShape = /\b(essay collection|critical essays?|essays on|collected essays)\b/.test(allText)
     || (/\bessays?\b/.test(titleText) && !novelIdentity);
   const publicDomainCompilationShape = (Number.isFinite(Number(params.publicationYear)) && Number(params.publicationYear) < 1950)
-    && (/\b(complete works?|collected works?|selected works?|library edition|public domain|masterpieces|omnibus|volume\s+\d+)\b/.test(titleText)
+    && (/\b(complete works?|collected works?|selected works?|library edition|public domain|masterpieces|omnibus|volume\s+\d+)\b/.test(publicationIdentityTitleText)
       || /\b(literary criticism|history and criticism|bibliograph(?:y|ies)|reference)\b/.test(categoryBlob)
       || (!params.isbnPresent && !narrativeDescription));
   const nonfictionShape = /\b(nonfiction|non-fiction|biography|autobiography|memoir|essays?|history|philosophy|reference|business|language arts|education|study aids?|travel|self-help|psychology|political science|social science|science|medical|technology|computers?)\b/.test(categoryBlob)

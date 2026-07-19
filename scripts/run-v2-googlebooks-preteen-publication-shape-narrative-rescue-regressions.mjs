@@ -74,6 +74,9 @@ const anthologyTitle = "Middle Grade Mystery Anthology";
 const bestAmericanAnthologyTitle = "The Best American Science Fiction and Fantasy 2022";
 const nebulaAnthologyTitle = "Nebula Awards Showcase 2014";
 const singleAuthorCollectionTitle = "The Lantern Stories";
+const goldStarListTitle = "Gold Star List of American Fiction";
+const theGoldStarListTitle = "The Gold Star List of American Fiction";
+const narrativeListTitle = "The List of Impossible Things";
 const ambiguousTitle = "The Secret of Black Hollow (3)";
 const sparseTitleOnlyTitle = "Mystery Series";
 const nonfictionReferenceTitle = "The Mystery of Writing History: A Reference Guide";
@@ -99,6 +102,27 @@ const fixtures = [
     "In these linked stories, one young hero follows a mysterious lantern through the forest, confronts a hidden danger, and discovers the secret that can save her village.",
     ["Juvenile Fiction / Short Stories", "Juvenile Fiction / Fantasy & Magic"],
     { publisher: "Scholastic", authors: ["Regression Author"], pageCount: 192 },
+  ),
+  googleBook(
+    "17",
+    goldStarListTitle,
+    "A selective survey recommending notable works of American fiction for readers and libraries.",
+    ["Fiction"],
+    { publisher: "Gold Star Publishing", publicationYear: 1922, pageCount: 240, isbnPresent: false },
+  ),
+  googleBook(
+    "18",
+    theGoldStarListTitle,
+    "A selective survey recommending notable works of American fiction for readers and libraries.",
+    ["Fiction"],
+    { publisher: "Gold Star Publishing", publicationYear: 1922, pageCount: 240, isbnPresent: false },
+  ),
+  googleBook(
+    "19",
+    narrativeListTitle,
+    "When twelve-year-old Mina finds a mysterious list, she must solve each impossible clue, protect her friends, and uncover the secret hidden beneath her school.",
+    ["Juvenile Fiction / Mysteries & Detective Stories", "Middle grade fiction"],
+    { publisher: "Scholastic", pageCount: 224 },
   ),
   googleBook(
     "3",
@@ -229,7 +253,7 @@ const sourceResult = await googleBooksSourceAdapter.search(plan, { profile });
 const sourceDiagnostics = sourceResult.diagnostics;
 const sourceOutputTitles = sourceResult.rawItems.map((row) => row.title);
 const rescuedTitles = [crookedOakTitle, coverForMurderTitle, midnightMapTitle];
-const originalPassTitles = [clearNovelTitle, samplerQuestTitle, singleAuthorCollectionTitle];
+const originalPassTitles = [clearNovelTitle, samplerQuestTitle, singleAuthorCollectionTitle, narrativeListTitle];
 
 assertEqual(sourceOutputTitles, [...originalPassTitles, ...rescuedTitles], "Only original narrative controls and three corroborated rescues should reach normalization");
 assertEqual(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescuedTitles, rescuedTitles, "Exactly three audited false rejects should be rescued");
@@ -253,6 +277,8 @@ const rejectedControls = [
   anthologyTitle,
   bestAmericanAnthologyTitle,
   nebulaAnthologyTitle,
+  goldStarListTitle,
+  theGoldStarListTitle,
   ambiguousTitle,
   sparseTitleOnlyTitle,
   nonfictionReferenceTitle,
@@ -301,6 +327,23 @@ assertIncludes(
 );
 assertEqual(sourceDiagnostics.googleBooksPublicationShapeByTitle[singleAuthorCollectionTitle], "story_collection", "A genuine single-author linked-story collection should stay narrative-shaped");
 assertNotIncludes(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueRejectedTitles, singleAuthorCollectionTitle, "A genuine narrative collection should not be broadly artifact-blocked");
+for (const title of [goldStarListTitle, theGoldStarListTitle]) {
+  assertEqual(sourceDiagnostics.googleBooksPublicationShapeByTitle[title], "readers_advisory", `${title} should receive the curated-list artifact shape`);
+  assertEqual(sourceDiagnostics.googleBooksPublicationShapeRejectedBeforeRankingByTitle[title], "publication_shape_readers_advisory", `${title} should reject before scoring`);
+  assertIncludes(sourceDiagnostics.googleBooksDominantPublicationShapeEvidenceByTitle[title], "curated_list_of_literature_title_shape", `${title} should expose curated-list evidence`);
+  assertEqual(sourceDiagnostics.preteenGoogleBooksPublicationShapeAuditByTitle[title].preteenIdentity, "catalog", `${title} should expose the catalog publication identity`);
+  assertIncludes(sourceDiagnostics.preteenGoogleBooksPublicationShapeAuditByTitle[title].artifactEvidence, "curated_literature_list_identity", `${title} should expose hard-artifact identity evidence`);
+  assertEqual(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueAppliedByTitle[title], false, `${title} must never apply rescue`);
+  assertEqual(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueRejectedReasonByTitle[title], "hard_artifact_evidence_present", `${title} should be hard-blocked from rescue`);
+}
+assertEqual(
+  sourceDiagnostics.googleBooksPublicationShapeByTitle[goldStarListTitle],
+  sourceDiagnostics.googleBooksPublicationShapeByTitle[theGoldStarListTitle],
+  "Optional leading The must not change Gold Star publication identity",
+);
+assertEqual(sourceDiagnostics.googleBooksPublicationShapeByTitle[clearNovelTitle], "novel", "A legitimate narrative beginning with The should remain a novel");
+assertEqual(sourceDiagnostics.googleBooksPublicationShapeByTitle[narrativeListTitle], "novel", "List in a narrative title should not trigger curated-list identity");
+assertNotIncludes(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueRejectedTitles, narrativeListTitle, "Narrative-context list title should remain allowed");
 assertEqual(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSummary.automaticFinalAcceptance, false, "Source rescue must not grant final acceptance");
 assertEqual(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSummary.otherAgeBandsChanged, false, "Other age bands must remain unchanged");
 
@@ -339,7 +382,7 @@ const finalEligibilityDecisionByTitle = engineResult.diagnostics.rejectedReasons
 for (const title of rescuedTitles) {
   assertIncludes(engineSourceDiagnostics.preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles, title, `${title} should enter scoring`);
 }
-for (const title of [bestAmericanAnthologyTitle, nebulaAnthologyTitle]) {
+for (const title of [bestAmericanAnthologyTitle, nebulaAnthologyTitle, goldStarListTitle, theGoldStarListTitle]) {
   assertNotIncludes(engineSourceDiagnostics.preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles, title, `${title} must never enter scoring`);
   assertNotIncludes(engineSourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSelectedTitles, title, `${title} must never be selected through rescue`);
   assertEqual(finalEligibilityDecisionByTitle[title], undefined, `${title} must never reach final eligibility`);
