@@ -22,6 +22,9 @@ function assertIncludes(values, expected, message) {
 function assertNotIncludes(values, unexpected, message) {
   if (Array.isArray(values) && values.includes(unexpected)) throw new Error(`${message}: did not expect ${JSON.stringify(unexpected)} in ${JSON.stringify(values)}`);
 }
+function assertOneOf(actual, expectedValues, message) {
+  if (!expectedValues.includes(actual)) throw new Error(`${message}: expected one of ${JSON.stringify(expectedValues)}, got ${JSON.stringify(actual)}`);
+}
 
 const dir = resolve(dirname(fileURLToPath(import.meta.url)), "../app/recommender-v2");
 const { applyKidsGoogleBooksPreScoringGate, buildGoogleBooksAgeBandInfrastructureDiagnostics } = require(resolve(dir, "engine.ts"));
@@ -65,7 +68,11 @@ const entered = gate.candidates.map((row) => row.title);
 assertIncludes(entered, garden.title, "ordinary Kids narrative should enter scoring");
 assertIncludes(entered, narrativeGuide.title, "narrative context should bound informational-word rejection");
 for (const rejected of [atlas, mature, teenLeakage]) assertNotIncludes(entered, rejected.title, `${rejected.title} should be removed before scoring`);
-assertEqual(gate.diagnostics.rejectedBeforeScoringByTitle[atlas.title], "k2_missing_story_picture_reader_relevance", "existing Kids artifact classification reason should be preserved");
+assertOneOf(
+  gate.diagnostics.rejectedBeforeScoringByTitle[atlas.title],
+  ["k2_missing_story_picture_reader_relevance", "k2_unknown_or_non_k2_audience_without_credible_k2_evidence"],
+  "Kids informational artifact should be rejected by either audience or format gate",
+);
 assertEqual(gate.diagnostics.rejectedBeforeScoringByTitle[mature.title], "googlebooks_mature_content_not_allowed_for_kids", "Kids maturity policy reason should be preserved");
 console.log("PASS: conclusively rejected Kids Google Books artifacts and age-inappropriate rows never enter scoring");
 
@@ -81,6 +88,96 @@ console.log("PASS: narrative admission, bounded rescue behavior, and final count
 
 const legacySelection = selectRecommendations(scoreCandidates(input, profile), profile, 5);
 assertEqual(legacySelection.selected.length, selection.selected.length, "moving conclusive enforcement earlier must not change the fixture final count");
+
+// Independent Kids audience/format eligibility: reject obvious Adult/YA even when NOT_MATURE.
+{
+  const fixtures = [
+    candidate("Sandman Vol. 1: Preludes & Nocturnes 30th Anniversary Edition", "A landmark comics collection.", {
+      genres: ["Comics & Graphic Novels", "Fantasy"],
+      raw: { title: "Sandman Vol. 1: Preludes & Nocturnes 30th Anniversary Edition", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+      diagnostics: { queryText: "kids fantasy picture book", googleBooksPublicationShape: "novel", googleBooksSourceMaturityRating: "NOT_MATURE" },
+    }),
+    candidate("Sparks Rise (The Darkest Minds, Book 2.5)", "A young adult novella set in The Darkest Minds world.", {
+      genres: ["Young Adult Fiction", "Science Fiction"],
+      raw: { title: "Sparks Rise (The Darkest Minds, Book 2.5)", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+    }),
+    candidate("Long Time Gone", "A literary novel of loss and memory.", {
+      genres: ["Fiction", "Literary"],
+      raw: { title: "Long Time Gone", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+    }),
+    candidate("Academy and Literature", "Critical essays and literary history.", {
+      genres: ["Literary Criticism", "History and Criticism"],
+      raw: { title: "Academy and Literature", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+      diagnostics: { queryText: "kids fantasy picture book", googleBooksPublicationShape: "critical_study", googleBooksSourceMaturityRating: "NOT_MATURE" },
+    }),
+    candidate("Pope to Swinburne", "Poetry and literary criticism.", {
+      genres: ["Poetry", "Literary Criticism"],
+      raw: { title: "Pope to Swinburne", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+    }),
+    candidate("Adult Literary Fiction with NOT_MATURE", "An adult literary fiction novel.", {
+      genres: ["Fiction", "Literary"],
+      raw: { title: "Adult Literary Fiction with NOT_MATURE", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+    }),
+    candidate("Adult Graphic Novel via Kids Query", "An acclaimed fantasy graphic novel for adults.", {
+      genres: ["Comics & Graphic Novels", "Fantasy"],
+      raw: { title: "Adult Graphic Novel via Kids Query", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+      diagnostics: { queryText: "kids fantasy picture book", googleBooksPublicationShape: "novel", googleBooksSourceMaturityRating: "NOT_MATURE" },
+    }),
+    candidate("Curious George Home Run (CGTV Early Reader)", "An early reader story about Curious George.", {
+      genres: ["Juvenile Fiction", "Early Readers"],
+      raw: { title: "Curious George Home Run (CGTV Early Reader)", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+    }),
+    candidate("Curious George Librarian for a Day (CGTV Early Reader)", "Curious George helps at the library in this early reader.", {
+      genres: ["Juvenile Fiction", "Early Readers"],
+      raw: { title: "Curious George Librarian for a Day (CGTV Early Reader)", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+    }),
+    candidate("The Farm Next Door", "A short story description.", {
+      genres: ["Fiction"],
+      raw: { title: "The Farm Next Door", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+    }),
+    candidate("The Actual One", "A short literary description.", {
+      genres: ["Fiction"],
+      raw: { title: "The Actual One", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+    }),
+    candidate("A Duet for Home", "A short literary description.", {
+      genres: ["Fiction"],
+      raw: { title: "A Duet for Home", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown" },
+    }),
+  ];
+
+  const gate = applyKidsGoogleBooksPreScoringGate(fixtures, profile);
+  const entered = new Set(gate.candidates.map((row) => row.title));
+  for (const rejectedTitle of [
+    "Sandman Vol. 1: Preludes & Nocturnes 30th Anniversary Edition",
+    "Sparks Rise (The Darkest Minds, Book 2.5)",
+    "Long Time Gone",
+    "Academy and Literature",
+    "Pope to Swinburne",
+    "Adult Literary Fiction with NOT_MATURE",
+    "Adult Graphic Novel via Kids Query",
+    "The Farm Next Door",
+    "The Actual One",
+    "A Duet for Home",
+  ]) {
+    if (entered.has(rejectedTitle)) throw new Error(`${rejectedTitle} should be rejected by independent Kids audience/format eligibility`);
+  }
+  for (const acceptedTitle of [
+    "Curious George Home Run (CGTV Early Reader)",
+    "Curious George Librarian for a Day (CGTV Early Reader)",
+  ]) {
+    if (!entered.has(acceptedTitle)) throw new Error(`${acceptedTitle} should pass independent Kids audience/format eligibility`);
+  }
+  assertEqual(
+    gate.diagnostics.inferredAudienceBandByTitle["Adult Literary Fiction with NOT_MATURE"],
+    "unknown",
+    "NOT_MATURE alone must not establish kids audience",
+  );
+  assertEqual(
+    gate.diagnostics.rejectedBeforeScoringByTitle["Adult Literary Fiction with NOT_MATURE"],
+    "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+    "unknown audience without strong K-2 evidence should fail closed",
+  );
+}
 
 const searchPlan = buildSearchPlan(profile, { googleBooks: true });
 const sourceResults = [{
@@ -100,4 +197,170 @@ assertEqual(lineage.googleBooksAgeBandDropStageByTitle[atlas.title], "age_suitab
 assertEqual(lineage.googleBooksAgeBandDropStageByTitle[mature.title], "age_suitability_rejection", "Kids mature lineage should identify its enforcement boundary");
 assertNotIncludes(lineage.googleBooksAgeBandScoringHandoffByDeck.kids.scoredTitles, atlas.title, "lineage must not claim rejected artifacts were scored");
 console.log("PASS: Kids diagnostics accurately report pre-scoring enforcement and downstream absence");
+
+// Collection/bundle identity gate fixtures
+{
+  const bundleFixtures = [
+    candidate("Kid Ebooks With Fun Stories & Kid Jokes", "A collection of fun stories and kid jokes.", {
+      genres: ["Juvenile Fiction"],
+      raw: { title: "Kid Ebooks With Fun Stories & Kid Jokes", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Juvenile Fiction"], description: "Fun stories and picture book collection for kids." },
+      diagnostics: { queryText: "kids magic picture book", queryFamily: "magic", googleBooksAudienceBand: "kids", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "novel", googleBooksSourceMaturityRating: "NOT_MATURE" },
+    }),
+    candidate("10 Picture Books for Kids", "Ten picture books for children.", {
+      genres: ["Juvenile Fiction"],
+      raw: { title: "10 Picture Books for Kids", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Juvenile Fiction"] },
+      diagnostics: { queryText: "kids magic picture book", queryFamily: "magic", googleBooksAudienceBand: "kids", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "novel" },
+    }),
+    candidate("Curious George Home Run (CGTV Early Reader)", "Curious George helps the team win.", {
+      genres: ["Juvenile Fiction", "Early Readers"],
+      raw: { title: "Curious George Home Run (CGTV Early Reader)", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Juvenile Fiction", "Early Readers"], description: "Curious George helps the team." },
+      diagnostics: { queryText: "kids magic picture book", queryFamily: "magic", googleBooksAudienceBand: "kids", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "novel" },
+    }),
+  ];
+
+  const bundleGate = applyKidsGoogleBooksPreScoringGate(bundleFixtures.map((f) => ({ ...f, source: "googleBooks" })), profile);
+  const bundleEntered = new Set(bundleGate.candidates.map((r) => r.title));
+
+  if (bundleEntered.has("Kid Ebooks With Fun Stories & Kid Jokes")) throw new Error("Kid Ebooks With Fun Stories & Kid Jokes should be rejected by collection/bundle identity gate");
+  if (bundleEntered.has("10 Picture Books for Kids")) throw new Error("10 Picture Books for Kids should be rejected as a numbered books catalog");
+
+  const kidEbooksReason = bundleGate.diagnostics.rejectedBeforeScoringByTitle["Kid Ebooks With Fun Stories & Kid Jokes"] || "";
+  if (!kidEbooksReason.includes("k2_collection_or_bundle")) throw new Error(`Kid Ebooks rejection reason should contain k2_collection_or_bundle, got: ${kidEbooksReason}`);
+
+  if (!bundleEntered.has("Curious George Home Run (CGTV Early Reader)")) {
+    throw new Error("Curious George Home Run should still pass Kids pre-scoring gate");
+  }
+
+  console.log("PASS: Kids Google Books collection/bundle identity gate rejects bundles and accepts single publications");
+}
+
+// Regression: query text cannot certify publication identity
+{
+  const adultWithKidsQuery = candidate("Adult Literary Fiction Piece", "A complex adult literary novel.", {
+    genres: ["Fiction", "Literary"],
+    raw: { title: "Adult Literary Fiction Piece", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Fiction"] },
+    diagnostics: { queryText: "kids picture book", queryFamily: "magic", googleBooksAudienceBand: "unknown", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "novel" },
+  });
+  const queryTextGate = applyKidsGoogleBooksPreScoringGate([{ ...adultWithKidsQuery, source: "googleBooks" }], profile);
+  if (queryTextGate.candidates.some(c => c.title === "Adult Literary Fiction Piece")) {
+    throw new Error("Adult/unknown volume must not pass Kids pre-scoring merely because queryText contains 'kids picture book'");
+  }
+  console.log("PASS: query text 'kids picture book' alone cannot certify K-2 publication identity");
+}
+
+// Regression: Children's stories category (smart quote) → should recognize K-2 audience
+{
+  const elephantPiggie = candidate("I Am Invited to a Party!", "Attending her first party, Piggie follows Elephant's advice on what to wear, with surprising results.", {
+    genres: ["Children\u2019s stories"],
+    raw: {
+      title: "I Am Invited to a Party!",
+      maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown",
+      categories: ["Children\u2019s stories"],
+      description: "Attending her first party, Piggie follows Elephant's advice on what to wear, with surprising results.",
+    },
+    diagnostics: { queryText: "kids humorous picture book", queryFamily: "humorous", googleBooksAudienceBand: "unknown", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "unknown" },
+  });
+  const pgGate = applyKidsGoogleBooksPreScoringGate([{ ...elephantPiggie, source: "googleBooks" }], profile);
+  if (!pgGate.candidates.some(c => c.title === "I Am Invited to a Party!")) {
+    const reason = pgGate.diagnostics.rejectedBeforeScoringByTitle["I Am Invited to a Party!"];
+    throw new Error(`I Am Invited to a Party! should pass Kids pre-scoring (Children\u2019s stories category with curly apostrophe), rejected: ${reason}`);
+  }
+  console.log("PASS: Children\u2019s stories (curly apostrophe) correctly recognized as K-2 audience evidence");
+}
+
+// Regression: easy-to-read series description should establish early-reader format
+{
+  const henryMudge = candidate("Henry and Mudge", "The first book in the acclaimed easy-to-read series featuring Henry and his lovable 180-pound dog, Mudge.", {
+    genres: ["Juvenile Fiction"],
+    raw: {
+      title: "Henry and Mudge",
+      maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown",
+      categories: ["Juvenile Fiction"],
+      description: "The first book in the acclaimed easy-to-read series featuring Henry and his lovable 180-pound dog, Mudge.",
+      pageCount: 44,
+    },
+    diagnostics: { queryText: "kids adventure early reader", queryFamily: "adventure", googleBooksAudienceBand: "unknown", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "unknown" },
+  });
+  const hmGate = applyKidsGoogleBooksPreScoringGate([{ ...henryMudge, source: "googleBooks" }], profile);
+  if (!hmGate.candidates.some(c => c.title === "Henry and Mudge")) {
+    const reason = hmGate.diagnostics.rejectedBeforeScoringByTitle["Henry and Mudge"];
+    throw new Error(`Henry and Mudge should pass Kids pre-scoring (easy-to-read series + Juvenile Fiction), rejected: ${reason}`);
+  }
+  console.log("PASS: easy-to-read series + Juvenile Fiction recognized as K-2 early reader");
+}
+
+// Regression: Juvenile Fiction + pronoun-led description → juvenile_narrative format
+{
+  const froggy = candidate("Froggy Gets Dressed", "Rambunctious Froggy hops out into the snow for a winter frolic but is called back by his mother to put on some necessary articles of clothing.", {
+    genres: ["Juvenile Fiction"],
+    raw: {
+      title: "Froggy Gets Dressed",
+      maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown",
+      categories: ["Juvenile Fiction"],
+      description: "Rambunctious Froggy hops out into the snow for a winter frolic but is called back by his mother to put on some necessary articles of clothing.",
+      pageCount: 34,
+    },
+    diagnostics: { queryText: "kids humorous picture book", queryFamily: "humorous", googleBooksAudienceBand: "unknown", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "unknown" },
+  });
+  const froggyGate = applyKidsGoogleBooksPreScoringGate([{ ...froggy, source: "googleBooks" }], profile);
+  if (!froggyGate.candidates.some(c => c.title === "Froggy Gets Dressed")) {
+    const reason = froggyGate.diagnostics.rejectedBeforeScoringByTitle["Froggy Gets Dressed"];
+    throw new Error(`Froggy Gets Dressed should pass Kids pre-scoring (Juvenile Fiction + his/mother pronoun narrative), rejected: ${reason}`);
+  }
+  console.log("PASS: Juvenile Fiction + pronoun-led narrative description recognized as K-2 juvenile narrative");
+}
+
+// Regression: subject-heading-only categories still fail
+{
+  const subjectHeadingOnly = [
+    candidate("Stellaluna", "A bat story.", {
+      genres: ["Bats"],
+      raw: { title: "Stellaluna", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Bats"] },
+    }),
+    candidate("Don't Let the Pigeon Drive the Bus!", "The Pigeon wants to drive the bus.", {
+      genres: ["Bus drivers"],
+      raw: { title: "Don't Let the Pigeon Drive the Bus!", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Bus drivers"] },
+    }),
+    candidate("Chicka Chicka Boom Boom", "Alphabet letters climb a coconut tree.", {
+      genres: ["Juvenile Nonfiction"],
+      raw: { title: "Chicka Chicka Boom Boom", maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown", categories: ["Juvenile Nonfiction"] },
+    }),
+  ];
+  const subjectGate = applyKidsGoogleBooksPreScoringGate(subjectHeadingOnly.map(f => ({ ...f, source: "googleBooks" })), profile);
+  for (const f of subjectHeadingOnly) {
+    if (subjectGate.candidates.some(c => c.title === f.title)) {
+      throw new Error(`${f.title} should remain rejected — subject-heading-only category provides no K-2 audience evidence`);
+    }
+  }
+  console.log("PASS: subject-heading-only categories (Bats, Bus drivers, Juvenile Nonfiction) remain correctly rejected");
+}
+
+// Regression: Juvenile Fiction + pronoun + known long page count must NOT pass
+// Google Books labels YA novels (e.g., The Hunger Games, 374pp) as "Juvenile Fiction".
+// The pronoun expansion must not fire when pageCount > 100.
+{
+  const hungerGames = candidate("The Hunger Games", "Set in a dark vision of the near future, a terrifying reality TV show is taking place.", {
+    genres: ["Juvenile Fiction"],
+    themes: ["survival"],
+    raw: {
+      title: "The Hunger Games",
+      maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown",
+      categories: ["Juvenile Fiction"],
+      description: "Set in a dark vision of the near future, a terrifying reality TV show is taking place. Katniss and her family struggle to survive.",
+      volumeInfo: {
+        categories: ["Juvenile Fiction"],
+        description: "Set in a dark vision of the near future, a terrifying reality TV show is taking place. Katniss and her family struggle to survive.",
+        pageCount: 374,
+        maturityRating: "NOT_MATURE",
+      },
+    },
+    diagnostics: { queryText: "kids adventure", googleBooksAudienceBand: "unknown", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "novel" },
+  });
+  const hgGate = applyKidsGoogleBooksPreScoringGate([{ ...hungerGames, source: "googleBooks" }], profile);
+  if (hgGate.candidates.some(c => c.title === "The Hunger Games")) {
+    throw new Error("The Hunger Games (374pp, YA) must not pass Kids pre-scoring — Juvenile Fiction + pronoun alone must not certify K-2 when pageCount > 100");
+  }
+  console.log("PASS: Juvenile Fiction + pronoun + pageCount 374 correctly rejected (YA page-count guard)");
+}
+
 console.log("All Kids Google Books architecture regressions passed.");

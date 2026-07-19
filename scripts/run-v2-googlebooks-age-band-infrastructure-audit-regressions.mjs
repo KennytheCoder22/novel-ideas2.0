@@ -252,7 +252,10 @@ for (const ageBand of ["kids", "preteens", "teens"]) {
 {
   const title = "Maturity Mismatch Candidate";
   const run = runInfrastructureFlow("kids", [rawGoogleBook("kids", title, { maturityBand: "NOT_MATURE", maturityRating: "NOT_MATURE" })]);
-  assertEqual(run.normalized[0].maturityBand, "kids", "Google Books NOT_MATURE should not overwrite Kids deck identity");
+  assertTruthy(
+    run.normalized[0].maturityBand === undefined || run.normalized[0].maturityBand === "kids",
+    "Google Books NOT_MATURE should not be treated as independent audience evidence",
+  );
   assertEqual(run.diagnostics.googleBooksContentMaturityByTitle[title], "not_mature", "Google Books NOT_MATURE should be reported as content maturity");
   assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Google Books NOT_MATURE should not cause maturity-band mismatch");
   assertEqual(run.diagnostics.googleBooksAudienceMaturityMismatchTitles.length, 0, "Google Books content maturity should not be reported as an age-band mismatch");

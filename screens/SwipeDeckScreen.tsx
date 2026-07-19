@@ -3669,11 +3669,20 @@ function handleLeft() {
     const v2OpenLibrarySourceDiagnosticsForReport = Array.isArray(v2DebugResult?.diagnostics?.sources)
       ? v2DebugResult?.diagnostics?.sources.find((source: any) => source.source === "openLibrary")
       : null;
+    const v2GoogleBooksSourceDiagnosticsForReport = Array.isArray(v2DebugResult?.diagnostics?.sources)
+      ? v2DebugResult?.diagnostics?.sources.find((source: any) => source.source === "googleBooks")
+      : Array.isArray((lastRecommendationResult as any)?.diagnostics?.sources)
+        ? (lastRecommendationResult as any).diagnostics.sources.find((source: any) => source.source === "googleBooks")
+        : null;
     const sourceStarvationAuditForReport = (lastRecommendationResult as any)?.sourceStarvationAudit || preFatalDispatchState?.sourceStarvationAudit || null;
     const googleBooksSourceFetchDiagnosticsForReport = Array.isArray((lastRecommendationResult as any)?.googleBooksSourceFetchDiagnostics)
       ? (lastRecommendationResult as any).googleBooksSourceFetchDiagnostics
       : Array.isArray(preFatalDispatchState?.googleBooksSourceFetchDiagnostics)
         ? preFatalDispatchState.googleBooksSourceFetchDiagnostics
+        : Array.isArray((v2GoogleBooksSourceDiagnosticsForReport as any)?.googleBooksSourceFetchDiagnostics)
+          ? (v2GoogleBooksSourceDiagnosticsForReport as any).googleBooksSourceFetchDiagnostics
+          : Array.isArray((v2GoogleBooksSourceDiagnosticsForReport as any)?.fetches)
+            ? (v2GoogleBooksSourceDiagnosticsForReport as any).fetches
         : [];
     const openLibrarySourceFetchDiagnosticsForReport = Array.isArray((lastRecommendationResult as any)?.openLibrarySourceFetchDiagnostics)
       ? (lastRecommendationResult as any).openLibrarySourceFetchDiagnostics

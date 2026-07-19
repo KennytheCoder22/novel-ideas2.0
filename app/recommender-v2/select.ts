@@ -3360,12 +3360,12 @@ function kidsNonTitleDocumentText(candidate: ScoredCandidate): string {
     Array.isArray(raw?.subject_facet) ? raw.subject_facet.join(" ") : raw?.subject_facet,
     rawDescription,
     firstSentence,
-  ].filter(Boolean).join(" "));
+  ].filter(Boolean).join(" ")).replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'");
 }
 
 function kidsHasStoryAgeShape(candidate: ScoredCandidate): boolean {
   const text = kidsNonTitleDocumentText(candidate);
-  return /\b(picture books?|juvenile fiction|juvenile literature|children s stories|children s books?|easy readers?|early readers?|beginning readers?|beginner books?|read aloud|read alouds?|ages? [4-8]|grades? (?:k|1|2)|kindergarten|preschool)\b/.test(text);
+  return /\b(picture books?|juvenile fiction|juvenile literature|children[ ']?s stories|children[ ']?s books?|easy readers?|early readers?|beginning readers?|beginner books?|read aloud|read alouds?|ages? [4-8]|grades? (?:k|1|2)|kindergarten|preschool)\b/.test(text);
 }
 
 function kidsHasStrongStoryReaderEvidence(candidate: ScoredCandidate): boolean {
@@ -3459,11 +3459,11 @@ function kidsQueryAnchoredStoryCandidate(candidate: ScoredCandidate): boolean {
   return /\b(picture|picture books?|early readers?|easy readers?|beginning readers?|children picture|k2 openlibrary picture early reader|k2 clean candidate shortfall semantic expansion)\b/.test(routeText);
 }
 
-function kidsHighConfidenceK2Narrative(candidate: ScoredCandidate, queryAnchored: boolean, documentBackedTaste: boolean): boolean {
+function kidsHighConfidenceK2Narrative(candidate: ScoredCandidate, documentBackedTaste: boolean): boolean {
   if (!kidsHasStoryAgeShape(candidate)) return false;
   if (kidsHasStrongStoryReaderEvidence(candidate)) return true;
   if (kidsOlderClassicLeakage(candidate) && !documentBackedTaste) return false;
-  return queryAnchored;
+  return false;
 }
 
 
@@ -3488,26 +3488,264 @@ function kidsNonNarrativeInformationalArtifact(candidate: ScoredCandidate): bool
   return informational && !narrative;
 }
 
+type KidsAudienceBand = "kids" | "preteens" | "teens" | "adult" | "unknown";
+type KidsFormatIdentity = "picture_book" | "early_reader" | "beginning_chapter_book" | "read_aloud" | "juvenile_narrative" | "unknown";
+type KidsGoogleBooksAudienceEligibility = {
+  allowed: boolean;
+  reason: string;
+  inferredAudienceBand: KidsAudienceBand;
+  audienceEvidence: string[];
+  formatIdentity: KidsFormatIdentity;
+  formatEvidence: string[];
+  audienceDecision: string;
+  audienceRejectionReason: string;
+  requestContextExcludedFromEvidence: boolean;
+  notMatureExcludedFromAgeEvidence: boolean;
+  likelyBucket: "likely_k2" | "likely_adult_or_ya" | "ambiguous";
+};
+
+const KIDS_GOOGLE_BOOKS_NON_NARRATIVE_SHAPES = new Set([
+  "critical_study",
+  "academic_text",
+  "author_commentary",
+  "literary_history",
+  "reference",
+  "writing_guide",
+  "readers_advisory",
+  "periodical",
+  "anthology",
+  "essay_collection",
+  "generic_category_catalog",
+  "public_domain_compilation",
+  "nonfiction",
+  "miscellany",
+]);
+
+function kidsGoogleBooksCollectionOrBundleIdentity(candidate: ScoredCandidate): {
+  identity: string;
+  collectionEvidence: string[];
+  singlePublicationEvidence: string[];
+  marketingKeywordEvidence: string[];
+  trustedIdentityFields: string[];
+} {
+  const rawTitle = [candidate.title, candidate.subtitle].filter(Boolean).join(" ");
+  const titleText = normalized(rawTitle);
+  const nonTitleText = kidsNonTitleDocumentText(candidate);
+  const collectionEvidence: string[] = [];
+  const singlePublicationEvidence: string[] = [];
+  const marketingKeywordEvidence: string[] = [];
+  const trustedIdentityFields: string[] = [];
+
+  if (/\bebooks?\b/.test(titleText)) collectionEvidence.push("title_ebook_bundle_indicator");
+  if (/\bfun stories\b/.test(titleText)) collectionEvidence.push("title_fun_stories_collection");
+  if (/\bjoke books?\b|\bkid jokes?\b|\bkids? jokes?\b/.test(titleText)) collectionEvidence.push("title_joke_compilation");
+  if (/\b\d+\s+(?:picture\s+)?books?\b/.test(titleText) && /\bfor kids\b/.test(titleText)) collectionEvidence.push("title_numbered_books_for_kids_catalog");
+  if (/\bpicture books? for kids\b/.test(titleText)) collectionEvidence.push("title_picture_books_for_kids_catalog");
+  if (/\bbooks about things kids love\b/.test(titleText)) collectionEvidence.push("title_books_about_catalog");
+  if (/\bgreat books about\b/.test(titleText)) collectionEvidence.push("title_great_books_about_catalog");
+
+  if (/\bkid ebooks?\b|\bkids? ebooks?\b/.test(titleText)) marketingKeywordEvidence.push("title_seo_kids_ebooks");
+  if (/\bfor kids\b/.test(titleText) && /\bpicture books?\b/.test(titleText)) marketingKeywordEvidence.push("title_for_kids_with_picture_books_phrase");
+
+  if (/\((?:cgtv\s+early reader|step into reading|i can read|ready to read|scholastic reader|level\s+[12])\)/i.test(rawTitle)) singlePublicationEvidence.push("series_reading_program_designation");
+  if (/\((?:book\s+\d+|#\s*\d+|volume\s+\d+|part\s+\d+)\)/i.test(rawTitle)) singlePublicationEvidence.push("series_entry_designation");
+  if (/\b(?:early reader|beginning reader|beginner book)\b/i.test(rawTitle) && !/\breaders?\b.*\bbooks?\b/i.test(rawTitle)) singlePublicationEvidence.push("single_format_designation_in_title");
+
+  const categories: string[] = Array.isArray((candidate.raw as Record<string, unknown>)?.categories) ? (candidate.raw as Record<string, unknown[]>).categories as string[] : [];
+  if (categories.some((cat) => /\bjuvenile fiction\b/i.test(String(cat)))) trustedIdentityFields.push("juvenile_fiction_category");
+  if (categories.some((cat) => /\bearly reader\b|\bpicture books?\b/i.test(String(cat)))) trustedIdentityFields.push("children_format_category");
+  if (String(nonTitleText).length > 0) trustedIdentityFields.push("non_title_text_present");
+
+  const hasJokeCompilation = collectionEvidence.some((e) => e.includes("joke_compilation"));
+  const hasFunStoriesCollection = collectionEvidence.some((e) => e.includes("fun_stories_collection"));
+  const hasSeoEbooks = marketingKeywordEvidence.some((e) => e.includes("seo_kids_ebooks"));
+  const hasEbookBundle = collectionEvidence.some((e) => e.includes("ebook_bundle_indicator"));
+  const hasCatalogPattern = collectionEvidence.some((e) => e.includes("_catalog") || e.includes("numbered_books_for_kids"));
+  const hasSingleEvidence = singlePublicationEvidence.length > 0;
+
+  let identity: string;
+  if (hasJokeCompilation || (hasFunStoriesCollection && (hasSeoEbooks || hasEbookBundle))) {
+    identity = "activity_or_joke_compilation";
+  } else if (hasCatalogPattern) {
+    identity = "generic_bundle";
+  } else if (hasFunStoriesCollection || hasEbookBundle) {
+    identity = "story_collection";
+  } else if (hasSingleEvidence) {
+    identity = "single_story";
+  } else {
+    identity = "ambiguous";
+  }
+
+  return { identity, collectionEvidence, singlePublicationEvidence, marketingKeywordEvidence, trustedIdentityFields };
+}
+
+function kidsGoogleBooksAudienceEligibility(candidate: ScoredCandidate): KidsGoogleBooksAudienceEligibility {
+  const titleText = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  const nonTitleText = kidsNonTitleDocumentText(candidate);
+  const combined = [titleText, nonTitleText].join(" ");
+  const shape = normalized(candidate.diagnostics?.googleBooksPublicationShape);
+  const rawVolumeInfo = (candidate.raw && typeof candidate.raw === "object" && "volumeInfo" in (candidate.raw as object))
+    ? ((candidate.raw as Record<string, unknown>).volumeInfo as Record<string, unknown> | undefined)
+    : undefined;
+  const pageCount = Number(rawVolumeInfo?.pageCount || 0) || undefined;
+  const audienceEvidence: string[] = [];
+  const formatEvidence: string[] = [];
+  const contradictionEvidence: string[] = [];
+  let formatIdentity: KidsFormatIdentity = "unknown";
+
+  if (/\b(picture books?|picture book)\b/.test(combined)) {
+    formatIdentity = "picture_book";
+    formatEvidence.push("picture_book_identity");
+  }
+  if (/\b(early readers?|easy readers?|easy-to-read|easy to read|beginning readers?|beginner books?|i can read|step into reading|ready to read|ready-to-read|scholastic reader|level [12]|reading level [12]|reader level [12]|cgtv early reader)\b/.test(combined)) {
+    formatIdentity = formatIdentity === "unknown" ? "early_reader" : formatIdentity;
+    formatEvidence.push("early_reader_identity");
+  }
+  if (/\b(read aloud|read alouds?)\b/.test(combined)) {
+    formatIdentity = formatIdentity === "unknown" ? "read_aloud" : formatIdentity;
+    formatEvidence.push("read_aloud_identity");
+  }
+  if (/\b(chapter books?|beginning chapter)\b/.test(combined)) {
+    formatIdentity = formatIdentity === "unknown" ? "beginning_chapter_book" : formatIdentity;
+    formatEvidence.push("beginning_chapter_book_identity");
+  }
+  if (formatIdentity === "unknown" && /\b(story|stories|tale|tales|adventure|journey|friendship|friends?|character|characters)\b/.test(combined)) {
+    formatIdentity = "juvenile_narrative";
+    formatEvidence.push("juvenile_narrative_story_signals");
+  }
+
+  if (/\b(juvenile fiction|children[ ']?s fiction|children[ ']?s stories|picture books?)\b/.test(nonTitleText)) audienceEvidence.push("juvenile_or_childrens_fiction_category");
+  if (/\b(ages?\s*(?:3|4|5|6|7|8)\b|grades?\s*(?:k|1|2)\b|kindergarten|preschool)\b/.test(nonTitleText)) audienceEvidence.push("k2_age_or_grade_metadata");
+  if (/\b(middle grade|grades?\s*[3-8]|ages?\s*(?:9|10|11|12)\b)\b/.test(nonTitleText)) audienceEvidence.push("middle_grades_metadata");
+  if (/\b(young adult|ya\b|teen(?:s|age|ager)?|high school|new adult)\b/.test(combined)) contradictionEvidence.push("ya_or_teen_audience_marker");
+  if (/\b(adult fiction|for adults|college romance|new adult)\b/.test(combined)) contradictionEvidence.push("adult_audience_marker");
+  if (/\b(comics? (?:and|&) graphic novels?|graphic novels?)\b/.test(nonTitleText) && !/\b(juvenile fiction|children[ ']?s fiction)\b/.test(nonTitleText)) contradictionEvidence.push("adult_or_general_graphic_novel_context");
+  if (/\b(sandman|preludes and nocturnes|30th anniversary edition)\b/.test(combined)) contradictionEvidence.push("adult_graphic_novel_identity");
+  if (/\b(poetry|poems?|literary criticism|history and criticism|critical studies?|essays?|anthology|reference|catalog|bibliograph(?:y|ies)|periodical)\b/.test(combined)) contradictionEvidence.push("academic_reference_or_non_narrative_identity");
+  if (shape && KIDS_GOOGLE_BOOKS_NON_NARRATIVE_SHAPES.has(shape)) contradictionEvidence.push(`non_narrative_publication_shape:${shape}`);
+
+  if (formatIdentity === "unknown" && audienceEvidence.includes("juvenile_or_childrens_fiction_category")) {
+    // Only apply pronoun expansion when page count is unknown or within K-2 range.
+    // Google Books labels YA novels (e.g., The Hunger Games) as "Juvenile Fiction", so
+    // a known long page count (>100) is a decisive counter-signal.
+    const knownLongBook = pageCount !== undefined && pageCount > 100;
+    if (!knownLongBook && /\b(he|she|his|her|they|their)\b/.test(combined)) {
+      formatIdentity = "juvenile_narrative";
+      formatEvidence.push("juvenile_fiction_with_narrative_pronoun");
+    }
+  }
+
+  let inferredAudienceBand: KidsAudienceBand = "unknown";
+  if (contradictionEvidence.some((entry) => /ya_or_teen|adult_audience|adult_graphic|academic_reference|non_narrative/.test(entry))) {
+    inferredAudienceBand = contradictionEvidence.some((entry) => /ya_or_teen/.test(entry)) ? "teens" : "adult";
+  } else if (audienceEvidence.includes("k2_age_or_grade_metadata") || audienceEvidence.includes("juvenile_or_childrens_fiction_category")) {
+    inferredAudienceBand = "kids";
+  } else if (audienceEvidence.includes("middle_grades_metadata")) {
+    inferredAudienceBand = "preteens";
+  }
+
+  const hasStrongK2Format = formatIdentity === "picture_book" || formatIdentity === "early_reader" || formatIdentity === "read_aloud" || formatIdentity === "beginning_chapter_book";
+  const hasCredibleK2Audience = inferredAudienceBand === "kids";
+  const hasDecisiveAdultOrYaContradiction = contradictionEvidence.length > 0;
+  const hasNarrativeFormat = hasStrongK2Format || formatIdentity === "juvenile_narrative";
+  const allowed = hasCredibleK2Audience && hasNarrativeFormat && !hasDecisiveAdultOrYaContradiction;
+
+  const reason = !hasCredibleK2Audience
+    ? "k2_unknown_or_non_k2_audience_without_credible_k2_evidence"
+    : !hasNarrativeFormat
+      ? "k2_missing_child_readable_narrative_or_format_identity"
+      : hasDecisiveAdultOrYaContradiction
+        ? "k2_decisive_adult_or_ya_contradiction"
+        : "kids_googlebooks_independent_audience_and_format_passed";
+  const audienceDecision = allowed
+    ? "accepted_k2_independent_audience_and_format"
+    : "rejected_k2_independent_audience_or_format";
+  const audienceRejectionReason = allowed ? "" : reason;
+  const likelyBucket = allowed
+    ? "likely_k2"
+    : hasDecisiveAdultOrYaContradiction || inferredAudienceBand === "adult" || inferredAudienceBand === "teens"
+      ? "likely_adult_or_ya"
+      : "ambiguous";
+
+  return {
+    allowed,
+    reason,
+    inferredAudienceBand,
+    audienceEvidence: Array.from(new Set([...audienceEvidence, ...contradictionEvidence])),
+    formatIdentity,
+    formatEvidence: Array.from(new Set(formatEvidence)),
+    audienceDecision,
+    audienceRejectionReason,
+    requestContextExcludedFromEvidence: true,
+    notMatureExcludedFromAgeEvidence: true,
+    likelyBucket,
+  };
+}
+
 export function kidsGoogleBooksPreScoringEligibility(
   candidate: NormalizedCandidate,
   profile: TasteProfile,
-): { allowed: boolean; reason: string } {
+): KidsGoogleBooksAudienceEligibility {
   if (profile.ageBand !== "kids" || candidate.source !== "googleBooks") {
-    return { allowed: true, reason: "kids_googlebooks_pre_scoring_policy_not_applicable" };
+    return {
+      allowed: true,
+      reason: "kids_googlebooks_pre_scoring_policy_not_applicable",
+      inferredAudienceBand: "unknown",
+      audienceEvidence: [],
+      formatIdentity: "unknown",
+      formatEvidence: [],
+      audienceDecision: "policy_not_applicable",
+      audienceRejectionReason: "",
+      requestContextExcludedFromEvidence: true,
+      notMatureExcludedFromAgeEvidence: true,
+      likelyBucket: "ambiguous",
+    };
   }
   const policyCandidate = candidate as ScoredCandidate;
+  const audienceEligibility = kidsGoogleBooksAudienceEligibility(policyCandidate);
+  policyCandidate.diagnostics = {
+    ...policyCandidate.diagnostics,
+    kidsGoogleBooksInferredAudienceBand: audienceEligibility.inferredAudienceBand,
+    kidsGoogleBooksAudienceEvidence: audienceEligibility.audienceEvidence,
+    kidsGoogleBooksFormatIdentity: audienceEligibility.formatIdentity,
+    kidsGoogleBooksFormatEvidence: audienceEligibility.formatEvidence,
+    kidsGoogleBooksAudienceDecision: audienceEligibility.audienceDecision,
+    kidsGoogleBooksAudienceRejectionReason: audienceEligibility.audienceRejectionReason,
+    kidsGoogleBooksRequestContextExcludedFromEvidence: audienceEligibility.requestContextExcludedFromEvidence,
+    kidsGoogleBooksNotMatureExcludedFromAgeEvidence: audienceEligibility.notMatureExcludedFromAgeEvidence,
+    kidsGoogleBooksAudienceFormatGateDecision: audienceEligibility.allowed
+      ? "passed_k2_independent_audience_and_format"
+      : `rejected:${audienceEligibility.reason}`,
+  };
   const maturityReason = googleBooksMaturityRejectReason(policyCandidate, profile);
-  if (maturityReason) return { allowed: false, reason: maturityReason };
+  if (maturityReason) return { ...audienceEligibility, allowed: false, reason: maturityReason, audienceRejectionReason: maturityReason };
+  if (!audienceEligibility.allowed) return audienceEligibility;
+  const identityResult = kidsGoogleBooksCollectionOrBundleIdentity(policyCandidate);
+  policyCandidate.diagnostics = {
+    ...policyCandidate.diagnostics,
+    kidsGoogleBooksRecommendationIdentity: identityResult.identity,
+    kidsGoogleBooksCollectionEvidence: identityResult.collectionEvidence,
+    kidsGoogleBooksSinglePublicationEvidence: identityResult.singlePublicationEvidence,
+    kidsGoogleBooksMarketingKeywordEvidence: identityResult.marketingKeywordEvidence,
+    kidsGoogleBooksTrustedIdentityFields: identityResult.trustedIdentityFields,
+  };
+  const isRejectableCollection = identityResult.identity === "activity_or_joke_compilation"
+    || identityResult.identity === "generic_bundle"
+    || identityResult.identity === "story_collection";
+  if (isRejectableCollection) {
+    const collectionReason = `k2_collection_or_bundle_${identityResult.identity.replace(/-/g, "_")}`;
+    return { ...audienceEligibility, allowed: false, reason: collectionReason, audienceRejectionReason: collectionReason };
+  }
   if (isKidsSuspiciousSelectionCandidate(policyCandidate)) {
-    return { allowed: false, reason: "k2_suspicious_title_artifact" };
+    return { ...audienceEligibility, allowed: false, reason: "k2_suspicious_title_artifact", audienceRejectionReason: "k2_suspicious_title_artifact" };
   }
   if (kidsNonNarrativeInformationalArtifact(policyCandidate) && !profileExplicitlyRequestsNonfictionReference(profile)) {
-    return { allowed: false, reason: "k2_non_narrative_informational_artifact" };
+    return { ...audienceEligibility, allowed: false, reason: "k2_non_narrative_informational_artifact", audienceRejectionReason: "k2_non_narrative_informational_artifact" };
   }
   if (kidsObviousNonK2CleanLeakage(policyCandidate)) {
-    return { allowed: false, reason: "k2_missing_story_picture_reader_relevance" };
+    return { ...audienceEligibility, allowed: false, reason: "k2_missing_story_picture_reader_relevance", audienceRejectionReason: "k2_missing_story_picture_reader_relevance" };
   }
-  return { allowed: true, reason: "kids_googlebooks_conclusive_pre_scoring_policy_passed" };
+  return { ...audienceEligibility, allowed: true, reason: "kids_googlebooks_conclusive_pre_scoring_policy_passed", audienceRejectionReason: "" };
 }
 
 function middleGradesNonNarrativeInformationalArtifact(candidate: ScoredCandidate): boolean {
@@ -3519,19 +3757,36 @@ function middleGradesNonNarrativeInformationalArtifact(candidate: ScoredCandidat
 }
 
 function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
+  return kidsCleanFinalCandidateWithEvidence(candidate).passed;
+}
+
+function kidsCleanFinalCandidateWithEvidence(candidate: ScoredCandidate): {
+  passed: boolean;
+  reason: string;
+  evidence: string[];
+  failedCheck: string;
+} {
+  const audienceEligibility = kidsGoogleBooksAudienceEligibility(candidate);
+  if (!audienceEligibility.allowed) return { passed: false, reason: "k2_missing_story_picture_reader_relevance", evidence: ["failed_audience_format_gate"], failedCheck: "audience_format_gate" };
   const tasteScore = kidsTasteScore(candidate);
-  if (candidate.score <= 0 || isKidsSuspiciousSelectionCandidate(candidate) || tasteScore <= 0) return false;
-  if (kidsNonNarrativeInformationalArtifact(candidate)) return false;
-  if (kidsObviousNonK2CleanLeakage(candidate)) return false;
-  const queryAnchored = kidsQueryAnchoredStoryCandidate(candidate);
+  if (candidate.score <= 0) return { passed: false, reason: "k2_missing_story_picture_reader_relevance", evidence: ["non_positive_score"], failedCheck: "non_positive_score" };
+  if (isKidsSuspiciousSelectionCandidate(candidate)) return { passed: false, reason: "k2_missing_story_picture_reader_relevance", evidence: ["suspicious_candidate"], failedCheck: "suspicious_title" };
+  if (tasteScore <= 0) return { passed: false, reason: "k2_missing_story_picture_reader_relevance", evidence: [`taste_score:${tasteScore}`], failedCheck: "zero_taste_score" };
+  if (kidsNonNarrativeInformationalArtifact(candidate)) return { passed: false, reason: "k2_missing_story_picture_reader_relevance", evidence: ["non_narrative_informational_artifact"], failedCheck: "non_narrative_informational_artifact" };
+  if (kidsObviousNonK2CleanLeakage(candidate)) return { passed: false, reason: "k2_missing_story_picture_reader_relevance", evidence: ["obvious_non_k2_leakage"], failedCheck: "obvious_non_k2_leakage" };
+  const queryAnchoredForDiagnosticsOnly = kidsQueryAnchoredStoryCandidate(candidate);
   const storyAgeShape = kidsHasStoryAgeShape(candidate);
-  if (!storyAgeShape && !queryAnchored) return false;
+  if (!storyAgeShape) return { passed: false, reason: "k2_missing_story_picture_reader_relevance", evidence: ["no_story_age_shape"], failedCheck: "story_age_shape" };
   const documentBackedTaste = kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0;
-  if (kidsOlderClassicLeakage(candidate) && !kidsHasStrongStoryReaderEvidence(candidate)) return false;
-  if (kidsWeakFallbackTitleShape(candidate) && !kidsHasStrongStoryReaderEvidence(candidate) && !documentBackedTaste) return false;
-  return documentBackedTaste
-    || kidsHighConfidenceK2Narrative(candidate, queryAnchored, documentBackedTaste)
-    || (queryAnchored && !kidsOlderClassicLeakage(candidate) && !kidsWeakFallbackTitleShape(candidate) && tasteScore > 0);
+  if (kidsOlderClassicLeakage(candidate) && !kidsHasStrongStoryReaderEvidence(candidate)) return { passed: false, reason: "k2_missing_story_picture_reader_relevance", evidence: ["older_classic_leakage", "no_strong_story_reader_evidence"], failedCheck: "older_classic_leakage" };
+  if (kidsWeakFallbackTitleShape(candidate) && !kidsHasStrongStoryReaderEvidence(candidate) && !documentBackedTaste) return { passed: false, reason: "k2_missing_story_picture_reader_relevance", evidence: ["weak_fallback_title_shape", "no_strong_story_reader_evidence", "no_document_backed_taste"], failedCheck: "weak_fallback_title_shape" };
+  const passed = documentBackedTaste
+    || kidsHighConfidenceK2Narrative(candidate, documentBackedTaste);
+  if (!passed) return { passed: false, reason: "k2_missing_story_picture_reader_relevance", evidence: ["no_final_qualifying_condition_met", queryAnchoredForDiagnosticsOnly ? "query_anchored_retrieval_context_not_publication_evidence" : "not_query_anchored"], failedCheck: "final_qualifying_condition" };
+  const passedBy = documentBackedTaste
+    ? "document_backed_taste"
+    : "high_confidence_k2_narrative";
+  return { passed: true, reason: "kids_clean_final_gate_passed", evidence: [passedBy, storyAgeShape ? "has_story_age_shape" : "query_anchored", `taste_score:${tasteScore}`], failedCheck: "" };
 }
 
 function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
@@ -6880,9 +7135,30 @@ function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string
   if (!candidate.title.trim()) return "missing_title";
   const googleBooksMaturityReason = googleBooksMaturityRejectReason(candidate, profile);
   if (googleBooksMaturityReason) return googleBooksMaturityReason;
+  if (profile.ageBand === "kids" && candidate.source === "googleBooks") {
+    const eligibility = kidsGoogleBooksPreScoringEligibility(candidate, profile);
+    if (!eligibility.allowed) return eligibility.reason;
+  }
   if (profile.ageBand === "kids" && isKidsSuspiciousSelectionCandidate(candidate)) return "k2_suspicious_title_artifact";
   if (profile.ageBand === "kids" && kidsNonNarrativeInformationalArtifact(candidate) && !profileExplicitlyRequestsNonfictionReference(profile)) return "k2_non_narrative_informational_artifact";
-  if (profile.ageBand === "kids" && !isKidsCleanFinalCandidate(candidate)) return "k2_missing_story_picture_reader_relevance";
+  if (profile.ageBand === "kids") {
+    const cleanFinalResult = kidsCleanFinalCandidateWithEvidence(candidate);
+    if (!cleanFinalResult.passed) {
+      candidate.diagnostics = {
+        ...(candidate.diagnostics || {}),
+        kidsGoogleBooksCleanFinalGatePassed: false,
+        kidsGoogleBooksCleanFinalGateEvidence: cleanFinalResult.evidence,
+        kidsGoogleBooksCleanFinalGateFailedCheck: cleanFinalResult.failedCheck,
+      };
+      return cleanFinalResult.reason;
+    }
+    candidate.diagnostics = {
+      ...(candidate.diagnostics || {}),
+      kidsGoogleBooksCleanFinalGatePassed: true,
+      kidsGoogleBooksCleanFinalGateEvidence: cleanFinalResult.evidence,
+      kidsGoogleBooksCleanFinalGateFailedCheck: "",
+    };
+  }
   if (profile.ageBand === "preteens") {
     if (candidate.rejectedReasons.includes("middle_grades_replaced_by_stronger_franchise_representative")) return "middle_grades_replaced_by_stronger_franchise_representative";
     const eligibility = middleGradesFinalEligibility(candidate);
@@ -7934,6 +8210,7 @@ function addPreteenGoogleBooksPublicationIdentityObservability(rankedCandidates:
 }
 function nonAdultGoogleBooksFinalEligibilityGate(reason: string, ageBand: string): string {
   if (/googlebooks_mature_content|maturity_band_mismatch/i.test(reason)) return "audience_maturity_final_eligibility";
+  if (/^k2_(?:unknown_or_non_k2_audience_without_credible_k2_evidence|missing_child_readable_narrative_or_format_identity|decisive_adult_or_ya_contradiction)$/i.test(reason)) return "kids_googlebooks_audience_format_final_eligibility";
   if (/^k2_(?:suspicious_title_artifact|non_narrative_informational_artifact|missing_story_picture_reader_relevance)$/i.test(reason)) return "kids_clean_final_eligibility";
   if (/^preteen_googlebooks_publication_identity/i.test(reason)) return "preteen_publication_identity_final_guard";
   if (/middle_grades_(?:reference_or_local_history_artifact|query_only_missing_document_evidence|missing_route_or_fiction_evidence|non_narrative_informational_artifact)|title_only_route_evidence_missing_support|adult_or_ya_humor_leakage|humor_keyword_only_leakage|zero_doc_backed_taste_match|broad_adventure_only_taste_match/i.test(reason)) return "preteen_age_taste_final_eligibility";
@@ -7970,13 +8247,35 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
     const selectedCandidate = selectedTitles.has(normalized(title));
     const finalEligibilityFailureReason = candidate.rejectedReasons.find((entry) => Boolean(nonAdultGoogleBooksFinalEligibilityGate(entry, profile.ageBand))) || "";
     const selectionReason = candidate.rejectedReasons.find((entry) => entry !== "selected" && entry !== finalEligibilityFailureReason && !/^non_positive_score_detail/.test(entry)) || "";
-    const acceptedReason = `${profile.ageBand}_googlebooks_named_final_eligibility_passed`;
+    const kidsAudienceEvidence = Array.isArray(candidate.diagnostics?.kidsGoogleBooksAudienceEvidence)
+      ? candidate.diagnostics.kidsGoogleBooksAudienceEvidence.map((row: unknown) => String(row || "")).filter(Boolean)
+      : [];
+    const kidsFormatEvidence = Array.isArray(candidate.diagnostics?.kidsGoogleBooksFormatEvidence)
+      ? candidate.diagnostics.kidsGoogleBooksFormatEvidence.map((row: unknown) => String(row || "")).filter(Boolean)
+      : [];
+    const kidsFinalEligibilityEvidence = profile.ageBand === "kids"
+      ? [
+        `inferred_audience:${String(candidate.diagnostics?.kidsGoogleBooksInferredAudienceBand || "unknown")}`,
+        `format_identity:${String(candidate.diagnostics?.kidsGoogleBooksFormatIdentity || "unknown")}`,
+        ...kidsAudienceEvidence.map((entry) => `audience_evidence:${entry}`),
+        ...kidsFormatEvidence.map((entry) => `format_evidence:${entry}`),
+      ]
+      : [];
+    const acceptedReason = profile.ageBand === "kids"
+      ? "kids_googlebooks_independent_audience_and_format_final_eligibility_passed"
+      : `${profile.ageBand}_googlebooks_named_final_eligibility_passed`;
     const acceptedRescueReason = candidate.rejectedReasons.find((entry) => /^accepted_.*rescue|rescue_accepted/i.test(entry)) || "";
     if (selectedCandidate) {
       finalEligibilityDecisionByTitle[title] = "accepted";
       finalEligibilityReasonByTitle[title] = acceptedRescueReason ? `${acceptedReason}_via:${acceptedRescueReason}` : acceptedReason;
-      finalEligibilityGateByTitle[title] = acceptedRescueReason ? `${profile.ageBand}_googlebooks_rescue_final_eligibility` : `${profile.ageBand}_googlebooks_final_eligibility`;
-      finalEligibilityEvidenceByTitle[title] = [`requested_deck:${profile.ageBand}`, acceptedRescueReason ? `accepted_rescue:${acceptedRescueReason}` : "named_final_eligibility_passed"];
+      finalEligibilityGateByTitle[title] = acceptedRescueReason
+        ? `${profile.ageBand}_googlebooks_rescue_final_eligibility`
+        : profile.ageBand === "kids"
+          ? "kids_googlebooks_audience_format_final_eligibility"
+          : `${profile.ageBand}_googlebooks_final_eligibility`;
+      finalEligibilityEvidenceByTitle[title] = profile.ageBand === "kids"
+        ? kidsFinalEligibilityEvidence
+        : [`requested_deck:${profile.ageBand}`, acceptedRescueReason ? `accepted_rescue:${acceptedRescueReason}` : "named_final_eligibility_passed"];
       postRankingGateByTitle[title] = "selected";
       postRankingGateReasonByTitle[title] = acceptedRescueReason || "accepted";
       finalSelectionDecisionByTitle[title] = "selected";
@@ -7986,7 +8285,15 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
       finalEligibilityDecisionByTitle[title] = "rejected";
       finalEligibilityReasonByTitle[title] = finalEligibilityFailureReason;
       finalEligibilityGateByTitle[title] = gate;
-      finalEligibilityEvidenceByTitle[title] = [`requested_deck:${profile.ageBand}`, `named_gate:${gate}`];
+      finalEligibilityEvidenceByTitle[title] = profile.ageBand === "kids"
+        ? [
+          `requested_deck:kids`,
+          `named_gate:${gate}`,
+          ...(Array.isArray(candidate.diagnostics?.kidsGoogleBooksCleanFinalGateEvidence)
+            ? (candidate.diagnostics.kidsGoogleBooksCleanFinalGateEvidence as string[]).map((e) => `clean_final_gate:${e}`)
+            : []),
+        ]
+        : [`requested_deck:${profile.ageBand}`, `named_gate:${gate}`];
       postRankingGateByTitle[title] = "final_eligibility";
       postRankingGateReasonByTitle[title] = finalEligibilityFailureReason;
       finalSelectionDecisionByTitle[title] = `not_reached:${gate}`;
@@ -7994,8 +8301,12 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
     } else {
       finalEligibilityDecisionByTitle[title] = "accepted";
       finalEligibilityReasonByTitle[title] = acceptedReason;
-      finalEligibilityGateByTitle[title] = `${profile.ageBand}_googlebooks_final_eligibility`;
-      finalEligibilityEvidenceByTitle[title] = [`requested_deck:${profile.ageBand}`, "named_final_eligibility_passed"];
+      finalEligibilityGateByTitle[title] = profile.ageBand === "kids"
+        ? "kids_googlebooks_audience_format_final_eligibility"
+        : `${profile.ageBand}_googlebooks_final_eligibility`;
+      finalEligibilityEvidenceByTitle[title] = profile.ageBand === "kids"
+        ? kidsFinalEligibilityEvidence
+        : [`requested_deck:${profile.ageBand}`, "named_final_eligibility_passed"];
       const exclusionReason = selectionReason || "ranked_below_final_selection";
       postRankingGateByTitle[title] = nonAdultGoogleBooksSelectionGate(exclusionReason);
       postRankingGateReasonByTitle[title] = exclusionReason;

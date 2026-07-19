@@ -91,6 +91,260 @@ function googleBooksAdultPairedNarrativeQuery(primaryGenre?: string, secondaryGe
   return googleBooksAdultNarrativeQuery(primary || secondary || undefined, tone || undefined);
 }
 
+type KidsGoogleBooksQueryCandidate = {
+  id: string;
+  query: string;
+  family: string;
+  format: "picture_book" | "early_reader" | "read_aloud" | "illustrated_children_book";
+  theme: string;
+  rung: "primary" | "adjacent" | "third";
+  priority: number;
+  facets: string[];
+  rationale: string[];
+};
+
+function kidsGoogleBooksTheme(signals: string[]): string {
+  const normalized = signals.map((value) => normalizedTerm(value)).join(" ");
+  if (/\b(humorous|humour|humor|funny|laugh)\b/.test(normalized)) return "humorous";
+  if (/\b(animal|animals|pet|pets|dog|dogs|cat|cats)\b/.test(normalized)) return "animal";
+  if (/\b(friendship|friend|friends)\b/.test(normalized)) return "friendship";
+  if (/\b(nature|forest|garden|ocean|sea|river|weather)\b/.test(normalized)) return "nature";
+  if (/\b(fantasy|magic|magical|dragon|fairy)\b/.test(normalized)) return "fantasy";
+  if (/\b(adventure|quest|journey|explore)\b/.test(normalized)) return "adventure";
+  if (/\b(alphabet|letters|phonics)\b/.test(normalized)) return "alphabet";
+  if (/\b(rhythm|rhythmical|rhyme|rhyming|repetition|repetitive)\b/.test(normalized)) return "rhyming";
+  return "general";
+}
+
+function kidsGoogleBooksThemeFromSignal(value: string): string | undefined {
+  const normalized = normalizedTerm(value);
+  if (!normalized) return undefined;
+  if (/\b(humorous|humour|humor|funny|laugh)\b/.test(normalized)) return "humorous";
+  if (/\b(animal|animals|pet|pets|dog|dogs|cat|cats)\b/.test(normalized)) return "animal";
+  if (/\b(friendship|friend|friends)\b/.test(normalized)) return "friendship";
+  if (/\b(nature|forest|garden|ocean|sea|river|weather)\b/.test(normalized)) return "nature";
+  if (/\b(fantasy|magic|magical|dragon|fairy)\b/.test(normalized)) return "fantasy";
+  if (/\b(adventure|quest|journey|explore)\b/.test(normalized)) return "adventure";
+  if (/\b(alphabet|letters|phonics)\b/.test(normalized)) return "alphabet";
+  if (/\b(rhythm|rhythmical|rhyme|rhyming|repetition|repetitive)\b/.test(normalized)) return "rhyming";
+  return undefined;
+}
+
+function kidsGoogleBooksThemeCandidates(
+  genres: string[],
+  tones: string[],
+  themes: string[],
+  formats: string[],
+  blockedFamilies: Set<string>,
+): string[] {
+  const orderedSignals = [...genres, ...themes, ...tones, ...formats];
+  const seen = new Set<string>();
+  const orderedFamilies: string[] = [];
+  for (const signal of orderedSignals) {
+    const family = kidsGoogleBooksThemeFromSignal(signal);
+    if (!family || seen.has(family) || blockedFamilies.has(family)) continue;
+    seen.add(family);
+    orderedFamilies.push(family);
+  }
+  const fallback = kidsGoogleBooksTheme(orderedSignals);
+  if (fallback !== "general" && !seen.has(fallback) && !blockedFamilies.has(fallback)) orderedFamilies.push(fallback);
+  return orderedFamilies.length ? orderedFamilies : ["general"];
+}
+
+function kidsThemePhrase(theme: string): string {
+  if (theme === "general") return "";
+  if (theme === "rhyming") return "rhyming";
+  if (theme === "alphabet") return "alphabet";
+  return theme;
+}
+
+function kidsGoogleBooksSupportsEarlyReader(signals: string[]): boolean {
+  const normalized = signals.map((value) => normalizedTerm(value)).join(" ");
+  return /\b(adventure|fantasy|magic|mystery|science fiction|animal|friendship|humorous|alphabet|rhyming|reader|beginning reader|read aloud)\b/.test(normalized);
+}
+
+function kidsGoogleBooksFormatQuery(theme: string, format: KidsGoogleBooksQueryCandidate["format"]): string {
+  const themePrefix = kidsThemePhrase(theme);
+  if (format === "picture_book") {
+    return uniqueTerms(["kids", ...(themePrefix ? [themePrefix] : []), "picture book"], 5).join(" ");
+  }
+  if (format === "early_reader") {
+    return uniqueTerms(["kids", ...(themePrefix ? [themePrefix] : []), "early reader"], 5).join(" ");
+  }
+  if (format === "read_aloud") {
+    return uniqueTerms(["kids", ...(themePrefix ? [themePrefix] : []), "read aloud"], 5).join(" ");
+  }
+  return uniqueTerms(["illustrated", "kids", ...(themePrefix ? [themePrefix] : []), "book"], 6).join(" ");
+}
+
+function buildKidsGoogleBooksIntents(profile: TasteProfile, genres: string[], tones: string[], themes: string[], formats: string[]): { intents: SearchIntentV2[]; diagnostics: Record<string, unknown> } {
+  const signalPool = [...genres, ...themes, ...tones, ...formats];
+  const isLikeBacked = (evidence: string[]): boolean => evidence.some((entry) => /^like:/i.test(String(entry || "")));
+  const positiveFamilies = Array.from(new Set(
+    [...profile.genreFamily, ...profile.themes, ...profile.tone]
+      .filter((row) => isLikeBacked(row.evidence || []))
+      .map((row) => kidsGoogleBooksThemeFromSignal(row.value))
+      .filter(Boolean) as string[],
+  ));
+  const blockedFamilies = new Set(
+    (profile.avoidSignals || [])
+      .map((signal) => kidsGoogleBooksThemeFromSignal(signal.value))
+      .filter(Boolean) as string[],
+  );
+  for (const row of [...profile.genreFamily, ...profile.themes, ...profile.tone]) {
+    const family = kidsGoogleBooksThemeFromSignal(row.value);
+    if (!family) continue;
+    if (!isLikeBacked(row.evidence || [])) blockedFamilies.add(family);
+  }
+  const themeCandidates = kidsGoogleBooksThemeCandidates(genres, tones, themes, formats, blockedFamilies);
+  const theme = themeCandidates[0] || "general";
+  const secondaryTheme = themeCandidates.find((candidate) => candidate && candidate !== theme);
+  const supportsEarlyReader = kidsGoogleBooksSupportsEarlyReader(signalPool);
+  const avoidFamilies = Array.from(blockedFamilies);
+
+  const candidates: KidsGoogleBooksQueryCandidate[] = [
+    {
+      id: "family-fiction-primary",
+      query: kidsGoogleBooksFormatQuery(theme, "picture_book"),
+      family: theme,
+      format: "picture_book",
+      theme,
+      rung: "primary",
+      priority: 1,
+      facets: [...genres, ...tones, ...themes].filter(Boolean),
+      rationale: ["built_from_top_taste_profile_signals", "kids_googlebooks_picture_book_template"],
+    },
+  ];
+  if (supportsEarlyReader) {
+    candidates.push({
+      id: "adjacent-or-tone-fiction",
+      query: kidsGoogleBooksFormatQuery(theme, "early_reader"),
+      family: theme,
+      format: "early_reader",
+      theme,
+      rung: "adjacent",
+      priority: 0.85,
+      facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
+      rationale: ["adjacent_family_or_tone_expansion", "kids_googlebooks_early_reader_template"],
+    });
+  }
+  const thirdFormat: KidsGoogleBooksQueryCandidate["format"] = secondaryTheme
+    ? "picture_book"
+    : supportsEarlyReader
+      ? "read_aloud"
+      : "illustrated_children_book";
+  const thirdTheme = secondaryTheme || theme;
+  candidates.push({
+    id: "fallback-fiction-broad",
+    query: kidsGoogleBooksFormatQuery(thirdTheme, thirdFormat),
+    family: thirdTheme,
+    format: thirdFormat,
+    theme: thirdTheme,
+    rung: "third",
+    priority: 0.55,
+    facets: [profile.maturityBand, ...formats, ...genres.slice(0, 1)].filter(Boolean),
+    rationale: [
+      secondaryTheme
+        ? "third_query_uses_secondary_supported_family_for_breadth"
+        : "broad_fallback_when_underfilled",
+      `kids_googlebooks_${thirdFormat}_template`,
+    ],
+  });
+
+  const plannedQueries: string[] = [];
+  const familyByQuery: Record<string, string> = {};
+  const formatByQuery: Record<string, string> = {};
+  const themeByQuery: Record<string, string> = {};
+  const rungByQuery: Record<string, string> = {};
+  const duplicateSuppressionReasons: string[] = [];
+  const seenQueryToRung = new Map<string, string>();
+  const intents: SearchIntentV2[] = [];
+  for (const candidate of candidates) {
+    const normalizedQuery = normalizedTerm(candidate.query);
+    if (!normalizedQuery) continue;
+    if (seenQueryToRung.has(normalizedQuery)) {
+      duplicateSuppressionReasons.push(`${candidate.rung}:${candidate.query}=>duplicate_of_${seenQueryToRung.get(normalizedQuery)}`);
+      continue;
+    }
+    if (normalizedQuery.includes("fiction novel")) {
+      duplicateSuppressionReasons.push(`${candidate.rung}:${candidate.query}=>suppressed_k2_novel_template`);
+      continue;
+    }
+    seenQueryToRung.set(normalizedQuery, candidate.rung);
+    plannedQueries.push(candidate.query);
+    familyByQuery[candidate.query] = candidate.family || "general";
+    formatByQuery[candidate.query] = candidate.format;
+    themeByQuery[candidate.query] = candidate.theme;
+    rungByQuery[candidate.query] = candidate.rung;
+    intents.push({
+      id: candidate.id,
+      query: candidate.query,
+      facets: candidate.facets,
+      priority: candidate.priority,
+      rationale: [
+        ...candidate.rationale,
+        `kids_googlebooks_query_family:${candidate.family || "general"}`,
+        `kids_googlebooks_query_format:${candidate.format}`,
+        `kids_googlebooks_query_theme:${candidate.theme}`,
+        `kids_googlebooks_query_rung:${candidate.rung}`,
+      ],
+    });
+    if (intents.length >= 3) break;
+  }
+
+  const omittedThirdQueryReason = intents.some((intent) => intent.id === "fallback-fiction-broad")
+    ? secondaryTheme
+      ? "replaced_novel_template_with_secondary_family_picture_book"
+      : supportsEarlyReader
+        ? "replaced_novel_template_with_read_aloud"
+        : "replaced_novel_template_with_illustrated_children_book"
+    : "omitted_third_query:no_distinct_safe_template";
+  const genericPlanningReason = theme === "general"
+    ? "no_like_backed_family_signals_survived_suppression"
+    : "";
+  const familySuppressedReason = avoidFamilies.length
+    ? avoidFamilies.map((family) => `suppressed_family:${family}`).join("|")
+    : "";
+  const suppressedFamilyDetails: Record<string, { blockedBy: string[]; likeBackedRows: number; noLikeBackedRows: number }> = {};
+  for (const family of Array.from(blockedFamilies)) {
+    const blockingRows = [...profile.genreFamily, ...profile.themes, ...profile.tone]
+      .filter((row) => kidsGoogleBooksThemeFromSignal(row.value) === family);
+    const likeBackedRows = blockingRows.filter((row) => isLikeBacked(row.evidence || []));
+    const noLikeBackedRows = blockingRows.filter((row) => !isLikeBacked(row.evidence || []));
+    if (noLikeBackedRows.length > 0) {
+      suppressedFamilyDetails[family] = {
+        blockedBy: noLikeBackedRows.map((row) => `${row.value}(${(row.evidence || []).join(",")})`),
+        likeBackedRows: likeBackedRows.length,
+        noLikeBackedRows: noLikeBackedRows.length,
+      };
+    }
+  }
+  return {
+    intents,
+    diagnostics: {
+      kidsGoogleBooksPlannedQueries: plannedQueries,
+      kidsGoogleBooksThemeCandidates: themeCandidates,
+      kidsGoogleBooksSelectedPrimaryTheme: theme,
+      kidsGoogleBooksSelectedSecondaryTheme: secondaryTheme || "",
+      kidsGoogleBooksProfilePositiveFamilies: positiveFamilies,
+      kidsGoogleBooksProfileAvoidFamilies: avoidFamilies,
+      kidsGoogleBooksSelectedPrimaryFamily: theme,
+      kidsGoogleBooksSelectedSecondaryFamily: secondaryTheme || "",
+      kidsGoogleBooksGenericPlanningReason: genericPlanningReason,
+      kidsGoogleBooksFamilySuppressedReason: familySuppressedReason,
+      kidsGoogleBooksSuppressedFamilyDetailsByFamily: suppressedFamilyDetails,
+      kidsGoogleBooksQueryFamilyByQuery: familyByQuery,
+      kidsGoogleBooksQueryFormatByQuery: formatByQuery,
+      kidsGoogleBooksQueryThemeByQuery: themeByQuery,
+      kidsGoogleBooksQueryRungByQuery: rungByQuery,
+      kidsGoogleBooksQuerySuppressionReason: duplicateSuppressionReasons,
+      kidsGoogleBooksQueryReplacementReason: omittedThirdQueryReason,
+      kidsGoogleBooksDuplicateQueriesRemoved: duplicateSuppressionReasons.filter((reason) => reason.includes("duplicate_of_")).length,
+      kidsGoogleBooksOmittedThirdQueryReason: omittedThirdQueryReason,
+    },
+  };
+}
+
 type TeenGoogleBooksQueryCandidate = {
   id: string;
   query: string;
@@ -236,6 +490,9 @@ function buildTeenGoogleBooksIntents(profile: TasteProfile, genres: string[], to
 }
 
 function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones: string[], themes: string[], formats: string[]): { intents: SearchIntentV2[]; diagnostics: Record<string, unknown> } {
+  if (profile.ageBand === "kids") {
+    return buildKidsGoogleBooksIntents(profile, genres, tones, themes, formats);
+  }
   if (profile.ageBand === "teens") {
     return buildTeenGoogleBooksIntents(profile, genres, tones, themes, formats);
   }
