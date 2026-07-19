@@ -159,6 +159,34 @@ const fixtures = [
     ["Fiction / Fantasy / Paranormal & Urban", "Fiction / Romance / Paranormal"],
     "Berkley",
   ),
+  // --- sneak-preview promotional identity fixtures ---
+  // Publisher-branded "Sneak Previews" bundle: despite a narrative description, the title
+  // explicitly identifies this as a promotional sample, not a standalone novel.
+  googleBook(
+    "sneak-preview-dc",
+    "DC Graphic Novels for Young Adults Sneak Previews: The Oracle Code (2020-) #1",
+    "Barbara Gordon takes on a new identity as Oracle in this exciting graphic novel, using her skills to fight crime from within a rehabilitation center for young people with disabilities.",
+    ["Comics & Graphic Novels / Young Adult", "Fiction / Comics & Graphic Novels"],
+    "DC Comics",
+  ),
+  // The underlying graphic novel "The Oracle Code" itself: no "Sneak Previews" in title,
+  // should remain eligible as a narrative work.
+  googleBook(
+    "oracle-code",
+    "The Oracle Code",
+    "Barbara Gordon takes on a new identity as Oracle in this graphic novel, using her intelligence and hacking skills to investigate a mystery at a rehabilitation center.",
+    ["Comics & Graphic Novels / Young Adult", "Fiction / Comics & Graphic Novels"],
+    "DC Comics",
+  ),
+  // Genuine novel whose description contains the word "preview": must not be rejected,
+  // proving the sneak-preview rule is title-identity-based, not description-based.
+  googleBook(
+    "novel-description-preview",
+    "Before the Storm",
+    "In this preview of a world on the edge of collapse, a young meteorologist discovers a conspiracy and must survive the chaos that follows.",
+    ["Fiction / Thriller / Suspense", "Fiction / Adventure"],
+    "Harper",
+  ),
 ];
 
 globalThis.fetch = async () => ({
@@ -242,6 +270,22 @@ if (visionsOfHeatShape === "critical_study" || visionsOfHeatShape === "academic_
 const visionsOfHeatRejected = rejectedBeforeRanking["Visions of Heat"];
 if (visionsOfHeatRejected) {
   throw new Error(`Genuine novel "Visions of Heat" must not be rejected before ranking, got: ${visionsOfHeatRejected}`);
+}
+
+// Sneak-preview promotional identity regressions
+assertEqual(shapes["DC Graphic Novels for Young Adults Sneak Previews: The Oracle Code (2020-) #1"], "reference", "sneak-preview bundle should classify as reference");
+assertEqual(rejectedBeforeRanking["DC Graphic Novels for Young Adults Sneak Previews: The Oracle Code (2020-) #1"], "publication_shape_reference", "sneak-preview bundle should reject before ranking");
+
+// The underlying work (no "Sneak Previews" in title) must remain eligible
+const oracleCodeRejected = rejectedBeforeRanking["The Oracle Code"];
+if (oracleCodeRejected) {
+  throw new Error(`"The Oracle Code" (genuine graphic novel) must not be rejected before ranking, got: ${oracleCodeRejected}`);
+}
+
+// A genuine novel whose description contains "preview" must not be rejected
+const descPreviewRejected = rejectedBeforeRanking["Before the Storm"];
+if (descPreviewRejected) {
+  throw new Error(`"Before the Storm" (genuine novel with 'preview' in description) must not be rejected before ranking, got: ${descPreviewRejected}`);
 }
 
 console.log(JSON.stringify({
