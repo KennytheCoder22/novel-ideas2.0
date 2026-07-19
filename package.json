@@ -14,6 +14,7 @@
     "trace:comicvine:contract": "npx tsx scripts/run-comicvine-contract-traces.ts",
     "test:v2:googlebooks-query-quality": "node scripts/run-v2-googlebooks-query-quality-regressions.mjs",
     "test:v2:googlebooks-publication-shape": "node scripts/run-v2-googlebooks-publication-shape-regressions.mjs",
+    "test:v2:googlebooks-kids-architecture": "node scripts/run-v2-googlebooks-kids-architecture-regressions.mjs",
     "test:v2:googlebooks-final-slate-identity-audit": "node scripts/run-v2-googlebooks-final-slate-identity-audit-regressions.mjs",
     "test:v2:googlebooks-narrative-strength-ranking": "node scripts/run-v2-googlebooks-narrative-strength-ranking-regressions.mjs",
     "test:v2:googlebooks-age-band-infrastructure-audit": "node scripts/run-v2-googlebooks-age-band-infrastructure-audit-regressions.mjs",

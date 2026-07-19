@@ -1,4 +1,4 @@
-import type { ScoredCandidate, TasteProfile } from "./types";
+import type { NormalizedCandidate, ScoredCandidate, TasteProfile } from "./types";
 import { signalPresentInText } from "./score";
 import { annotatePreteenGoogleBooksPublicationIdentity, preteenGoogleBooksPublicationIdentityAudit } from "./preteenGoogleBooksPublicationIdentity";
 
@@ -3486,6 +3486,28 @@ function kidsNonNarrativeInformationalArtifact(candidate: ScoredCandidate): bool
   const informational = /\b(atlas|atlases|picture dictionary|dictionary|encyclopedia|reference|field guide|identification guide|guide to|guidebook|handbook|manual|activity book|activities|puzzles?|coloring|colouring|workbook|worksheet|word book|wordbook|concept book|first words|look and find|search and find|i spy|spot the|facts?|nonfiction|non fiction|informational)\b/.test(text);
   const narrative = /\b(story|stories|tale|tales|fiction|novel|chapter book|early reader|easy reader|picture book|read aloud|adventure|journey|friendship|friends?|character|characters)\b/.test(text);
   return informational && !narrative;
+}
+
+export function kidsGoogleBooksPreScoringEligibility(
+  candidate: NormalizedCandidate,
+  profile: TasteProfile,
+): { allowed: boolean; reason: string } {
+  if (profile.ageBand !== "kids" || candidate.source !== "googleBooks") {
+    return { allowed: true, reason: "kids_googlebooks_pre_scoring_policy_not_applicable" };
+  }
+  const policyCandidate = candidate as ScoredCandidate;
+  const maturityReason = googleBooksMaturityRejectReason(policyCandidate, profile);
+  if (maturityReason) return { allowed: false, reason: maturityReason };
+  if (isKidsSuspiciousSelectionCandidate(policyCandidate)) {
+    return { allowed: false, reason: "k2_suspicious_title_artifact" };
+  }
+  if (kidsNonNarrativeInformationalArtifact(policyCandidate) && !profileExplicitlyRequestsNonfictionReference(profile)) {
+    return { allowed: false, reason: "k2_non_narrative_informational_artifact" };
+  }
+  if (kidsObviousNonK2CleanLeakage(policyCandidate)) {
+    return { allowed: false, reason: "k2_missing_story_picture_reader_relevance" };
+  }
+  return { allowed: true, reason: "kids_googlebooks_conclusive_pre_scoring_policy_passed" };
 }
 
 function middleGradesNonNarrativeInformationalArtifact(candidate: ScoredCandidate): boolean {
