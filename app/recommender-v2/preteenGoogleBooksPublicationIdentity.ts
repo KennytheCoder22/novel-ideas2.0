@@ -1,4 +1,6 @@
-import type { ScoredCandidate } from "./types";
+import type { NormalizedCandidate, ScoredCandidate } from "./types";
+
+type PreteenGoogleBooksPublicationCandidate = NormalizedCandidate | ScoredCandidate;
 
 export type PreteenGoogleBooksPublicationIdentity =
   | "middle_grade_novel"
@@ -66,12 +68,12 @@ function pushIf(target: string[], condition: boolean, evidence: string): void {
   if (condition) target.push(evidence);
 }
 
-function rawVolumeInfo(candidate: ScoredCandidate): Record<string, unknown> {
+function rawVolumeInfo(candidate: PreteenGoogleBooksPublicationCandidate): Record<string, unknown> {
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   return raw.volumeInfo && typeof raw.volumeInfo === "object" ? raw.volumeInfo as Record<string, unknown> : {};
 }
 
-function preteenGoogleBooksMetadata(candidate: ScoredCandidate): {
+function preteenGoogleBooksMetadata(candidate: PreteenGoogleBooksPublicationCandidate): {
   title: string;
   subtitle: string;
   description: string;
@@ -117,7 +119,7 @@ function preteenGoogleBooksMetadata(candidate: ScoredCandidate): {
   };
 }
 
-export function preteenGoogleBooksPublicationIdentityAudit(candidate: ScoredCandidate): PreteenGoogleBooksPublicationIdentityAudit {
+export function preteenGoogleBooksPublicationIdentityAudit(candidate: PreteenGoogleBooksPublicationCandidate): PreteenGoogleBooksPublicationIdentityAudit {
   const fields = preteenGoogleBooksMetadata(candidate);
   const titleSubtitle = `${fields.title} ${fields.subtitle}`.trim();
   const publicationIdentityTitle = titleSubtitle.replace(/^(?:the|a|an)\s+/, "").trim();
@@ -251,7 +253,7 @@ export function preteenGoogleBooksPublicationIdentityAudit(candidate: ScoredCand
   };
 }
 
-export function annotatePreteenGoogleBooksPublicationIdentity(candidate: ScoredCandidate, audit = preteenGoogleBooksPublicationIdentityAudit(candidate)): void {
+export function annotatePreteenGoogleBooksPublicationIdentity(candidate: PreteenGoogleBooksPublicationCandidate, audit = preteenGoogleBooksPublicationIdentityAudit(candidate)): void {
   candidate.diagnostics.preteenGoogleBooksPublicationIdentity = audit.identity;
   candidate.diagnostics.preteenGoogleBooksPublicationIdentityConfidence = audit.confidence;
   candidate.diagnostics.preteenGoogleBooksPublicationIdentityEvidence = audit.evidence;

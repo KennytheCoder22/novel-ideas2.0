@@ -46,6 +46,7 @@ function assertNotIncludes(values, unexpected, message) {
 const v2Dir = resolve("app/recommender-v2");
 const { selectRecommendations } = require(resolve(v2Dir, "select.ts"));
 const { preteenGoogleBooksPublicationIdentityAudit } = require(resolve(v2Dir, "preteenGoogleBooksPublicationIdentity.ts"));
+const { applyPreteenGoogleBooksPublicationIdentityPreScoringGate } = require(resolve(v2Dir, "engine.ts"));
 
 const profile = {
   ageBand: "preteens",
@@ -224,6 +225,29 @@ const narrativeListTitle = googleBookCandidate(
   const narrativeListAudit = preteenGoogleBooksPublicationIdentityAudit(narrativeListTitle);
   assertEqual(narrativeListAudit.allowed, true, "List in a narrative context should not be broadly rejected");
   console.log("PASS: Pre-Teen Google Books publication identity classifier explains artifact and narrative evidence");
+}
+
+{
+  const gateInput = [middleGradeSampler, schoolPublication, stateSchoolLibraryList, genuineNovel, narrativeSamplerName, narrativeListTitle];
+  const preteenGate = applyPreteenGoogleBooksPublicationIdentityPreScoringGate(gateInput, profile);
+  const enteredTitles = preteenGate.candidates.map((candidate) => candidate.title);
+  assertNotIncludes(enteredTitles, middleGradeSampler.title, "Recognized sampler should be removed before Pre-Teen scoring");
+  assertNotIncludes(enteredTitles, schoolPublication.title, "Recognized school publication should be removed by the same pre-scoring boundary");
+  assertNotIncludes(enteredTitles, stateSchoolLibraryList.title, "Recognized institutional list should be removed by the same pre-scoring boundary");
+  assertIncludes(enteredTitles, genuineNovel.title, "Genuine narrative should cross the Pre-Teen pre-scoring identity boundary");
+  assertIncludes(enteredTitles, narrativeSamplerName.title, "Narrative use of Sampler's should remain unaffected");
+  assertIncludes(enteredTitles, narrativeListTitle.title, "Narrative-context list title should remain unaffected");
+  assertEqual(
+    preteenGate.diagnostics.rejectedBeforeScoringByTitle[middleGradeSampler.title],
+    "preteen_googlebooks_publication_identity_rejected_sampler",
+    "Pre-scoring gate should preserve the existing sampler classifier reason",
+  );
+  for (const ageBand of ["kids", "teens", "adult"]) {
+    const otherProfile = { ...profile, ageBand, maturityBand: ageBand };
+    const otherGate = applyPreteenGoogleBooksPublicationIdentityPreScoringGate(gateInput, otherProfile);
+    assertIncludes(otherGate.candidates.map((candidate) => candidate.title), middleGradeSampler.title, `${ageBand} should bypass the Pre-Teen-only enforcement boundary`);
+  }
+  console.log("PASS: Pre-Teen Google Books publication identity is enforced before scoring without reusing it for other age bands");
 }
 
 {

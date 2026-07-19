@@ -162,7 +162,7 @@ const fixtures = [
   googleBook(
     "8",
     samplerTitle,
-    "A free middle grade sampler with preview chapters, excerpts, and sneak peeks from upcoming adventure books.",
+    "A middle grade adventure follows a young hero who must save her friends, solve a magical mystery, and survive a dangerous quest. This promotional sampler includes preview chapters, excerpts, and sneak peeks from upcoming books.",
     ["Juvenile Fiction / Action & Adventure"],
     { publisher: "Kids Preview Press", pageCount: 64 },
   ),
@@ -254,8 +254,10 @@ const sourceDiagnostics = sourceResult.diagnostics;
 const sourceOutputTitles = sourceResult.rawItems.map((row) => row.title);
 const rescuedTitles = [crookedOakTitle, coverForMurderTitle, midnightMapTitle];
 const originalPassTitles = [clearNovelTitle, samplerQuestTitle, singleAuthorCollectionTitle, narrativeListTitle];
+const recognizedPreScoringArtifactTitles = [samplerTitle];
 
-assertEqual(sourceOutputTitles, [...originalPassTitles, ...rescuedTitles], "Only original narrative controls and three corroborated rescues should reach normalization");
+assertEqual(sourceOutputTitles, [...originalPassTitles, ...rescuedTitles, ...recognizedPreScoringArtifactTitles], "Source publication-shape output should retain narrative-shaped rows until the age-specific pre-scoring identity boundary");
+assertEqual(sourceDiagnostics.googleBooksPublicationShapeByTitle[samplerTitle], "novel", "Narrative-looking sampler fixture should pass the shared publication-shape layer as a novel");
 assertEqual(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescuedTitles, rescuedTitles, "Exactly three audited false rejects should be rescued");
 
 for (const title of rescuedTitles) {
@@ -272,7 +274,6 @@ for (const title of rescuedTitles) {
 const rejectedControls = [
   writingGuideTitle,
   schoolPublicationTitle,
-  samplerTitle,
   libraryListTitle,
   anthologyTitle,
   bestAmericanAnthologyTitle,
@@ -377,11 +378,29 @@ const engineResult = await runRecommenderV2({
 });
 const engineSourceDiagnostics = (engineResult.diagnostics.sources || []).find((source) => source.source === "googleBooks") || {};
 const selectedTitles = engineResult.items.map((item) => item.title);
-const finalEligibilityDecisionByTitle = engineResult.diagnostics.rejectedReasons?.googleBooksFinalEligibilityDecisionByTitle || {};
+const engineRejectedReasons = engineResult.diagnostics.rejectedReasons || {};
+const finalEligibilityDecisionByTitle = engineRejectedReasons.googleBooksFinalEligibilityDecisionByTitle || {};
 
 for (const title of rescuedTitles) {
   assertIncludes(engineSourceDiagnostics.preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles, title, `${title} should enter scoring`);
 }
+assertEqual(engineSourceDiagnostics.preteenGoogleBooksPublicationIdentityByTitle[samplerTitle], "sampler", "Existing Pre-Teen classifier should recognize the narrative-looking sampler");
+assertEqual(
+  engineSourceDiagnostics.preteenGoogleBooksPublicationIdentityRejectedBeforeScoringByTitle[samplerTitle],
+  "preteen_googlebooks_publication_identity_rejected_sampler",
+  "Recognized sampler should reject at the shared pre-scoring identity boundary",
+);
+assertNotIncludes(engineSourceDiagnostics.preteenGoogleBooksPublicationIdentityEnteredScoringTitles, samplerTitle, "Sampler must not enter the scored universe");
+assertNotIncludes(engineRejectedReasons.googleBooksAgeBandScoringHandoffByDeck.preteens.scoredTitles, samplerTitle, "Sampler must be absent from scoring handoff diagnostics");
+assertNotIncludes(engineRejectedReasons.googleBooksRankedCandidateTitles, samplerTitle, "Sampler must never enter ranking");
+for (const row of Object.values(engineSourceDiagnostics.googleBooksQueryResultQualityByQuery || {})) {
+  assertNotIncludes(row.enteredRankingTitles, samplerTitle, "Sampler must be removed from per-query ranking lineage");
+  assertNotIncludes(row.enteredFinalEligibilityTitles, samplerTitle, "Sampler must be removed from per-query final-eligibility lineage");
+  assertNotIncludes(row.acceptedRecommendationTitles, samplerTitle, "Sampler must be removed from per-query recommendation lineage");
+}
+assertEqual(finalEligibilityDecisionByTitle[samplerTitle], undefined, "Sampler must never reach final eligibility");
+assertNotIncludes(selectedTitles, samplerTitle, "Sampler must never render");
+assertEqual(engineRejectedReasons.googleBooksAgeBandDropStageByTitle[samplerTitle], "publication-identity_rejection", "Sampler lineage should end at pre-scoring publication identity");
 for (const title of [bestAmericanAnthologyTitle, nebulaAnthologyTitle, goldStarListTitle, theGoldStarListTitle]) {
   assertNotIncludes(engineSourceDiagnostics.preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles, title, `${title} must never enter scoring`);
   assertNotIncludes(engineSourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSelectedTitles, title, `${title} must never be selected through rescue`);

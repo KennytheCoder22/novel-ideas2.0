@@ -344,6 +344,9 @@ export interface SourceDiagnosticV2 {
   preteenGoogleBooksPublicationShapeRescueSelectedTitles?: string[];
   preteenGoogleBooksPublicationShapeRescueNotSelectedReasonByTitle?: Record<string, string>;
   preteenGoogleBooksPublicationShapeRescueSummary?: Record<string, unknown>;
+  preteenGoogleBooksPublicationIdentityRejectedBeforeScoringByTitle?: Record<string, string>;
+  preteenGoogleBooksPublicationIdentityEnteredScoringTitles?: string[];
+  preteenGoogleBooksPublicationIdentityPreScoringSummary?: Record<string, unknown>;
   adultGoogleBooksSignalMatchTraceByTitle?: Record<string, unknown[]>;
   adultGoogleBooksSignalMatchedFieldByTitle?: Record<string, Record<string, string[]>>;
   adultGoogleBooksSignalMatchedTextByTitle?: Record<string, Record<string, string[]>>;

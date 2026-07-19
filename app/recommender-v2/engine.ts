@@ -3,6 +3,8 @@ import { normalizeSourceResults } from "./normalize";
 import { buildSearchPlan } from "./searchPlan";
 import { scoreCandidates } from "./score";
 import { selectRecommendations } from "./select";
+import { annotatePreteenGoogleBooksPublicationIdentity, preteenGoogleBooksPublicationIdentityAudit } from "./preteenGoogleBooksPublicationIdentity";
+import type { PreteenGoogleBooksPublicationIdentityAudit } from "./preteenGoogleBooksPublicationIdentity";
 import { sourceAdapters } from "./sources";
 import { buildTasteProfile } from "./tasteProfile";
 import type { AgeBandV2, NormalizedCandidate, RecommendationResultV2, ScoredCandidate, SearchPlan, SourceDiagnosticV2, SourcePlan, SourceResult, SourceStatusV2, SwipeSessionV2, TasteProfile } from "./types";
@@ -338,6 +340,7 @@ function googleBooksStatusFromSourceResult(result: SourceResult | undefined): Go
 }
 
 function googleBooksFailureStageForReason(reason: string): string {
+  if (/preteen_googlebooks_publication_identity/i.test(reason)) return "publication-identity_rejection";
   if (/publication_shape|artifact|reference|study|guide|catalog|periodical|anthology|nonfiction/i.test(reason)) return "publication-shape_rejection";
   if (/maturity|age|juvenile|k2|middle_grades.*(?:final|non_narrative)|adult_or_ya|leakage/i.test(reason)) return "age_suitability_rejection";
   if (/taste|meaningful|family|evidence|query_only|document/i.test(reason)) return "taste-alignment_rejection";
@@ -495,6 +498,7 @@ export function buildGoogleBooksAgeBandInfrastructureDiagnostics(input: {
       ...((sourceDiagnostics?.googleBooksPublicationShapeRejectedBeforeRankingByTitle || {}) as Record<string, string>),
       ...((sourceDiagnostics?.googleBooksGenericCategoryRejectedBeforeRankingByTitle || {}) as Record<string, string>),
       ...((sourceDiagnostics?.googleBooksSubjectOfStudyRejectedBeforeRankingByTitle || {}) as Record<string, string>),
+      ...((sourceDiagnostics?.preteenGoogleBooksPublicationIdentityRejectedBeforeScoringByTitle || {}) as Record<string, string>),
     };
     const sourceStatus = googleBooksStatusFromSourceResult(googleBooksResult);
     const plannedQueries = googleBooksPlan?.intents.map((intent) => intent.query).filter(Boolean) || [];
@@ -992,6 +996,135 @@ function applyAdultGoogleBooksNormalizationGate(candidates: NormalizedCandidate[
   }
   diagnostics.googleBooksEnteredRanking = uniqueStrings(diagnostics.googleBooksEnteredRanking, 80);
   return { candidates: filtered, diagnostics };
+}
+
+type PreteenGoogleBooksPublicationIdentityPreScoringDiagnostics = {
+  auditByTitle: Record<string, PreteenGoogleBooksPublicationIdentityAudit>;
+  rejectedBeforeScoringByTitle: Record<string, string>;
+  enteredScoringTitles: string[];
+};
+
+function emptyPreteenGoogleBooksPublicationIdentityPreScoringDiagnostics(): PreteenGoogleBooksPublicationIdentityPreScoringDiagnostics {
+  return { auditByTitle: {}, rejectedBeforeScoringByTitle: {}, enteredScoringTitles: [] };
+}
+
+export function applyPreteenGoogleBooksPublicationIdentityPreScoringGate(
+  candidates: NormalizedCandidate[],
+  profile: TasteProfile,
+): { candidates: NormalizedCandidate[]; diagnostics: PreteenGoogleBooksPublicationIdentityPreScoringDiagnostics } {
+  const diagnostics = emptyPreteenGoogleBooksPublicationIdentityPreScoringDiagnostics();
+  if (profile.ageBand !== "preteens") return { candidates, diagnostics };
+
+  const filtered: NormalizedCandidate[] = [];
+  for (const candidate of candidates) {
+    if (candidate.source !== "googleBooks") {
+      filtered.push(candidate);
+      continue;
+    }
+    const title = String(candidate.title || "").trim();
+    if (!title) continue;
+    const audit = preteenGoogleBooksPublicationIdentityAudit(candidate);
+    annotatePreteenGoogleBooksPublicationIdentity(candidate, audit);
+    diagnostics.auditByTitle[title] = audit;
+    if (audit.allowed) {
+      diagnostics.enteredScoringTitles.push(title);
+      filtered.push(candidate);
+    } else {
+      diagnostics.rejectedBeforeScoringByTitle[title] = audit.reason;
+    }
+  }
+  diagnostics.enteredScoringTitles = uniqueStrings(diagnostics.enteredScoringTitles, 120);
+  return { candidates: filtered, diagnostics };
+}
+
+function preteenGoogleBooksPublicationIdentityPreScoringObservability(
+  diagnostics: PreteenGoogleBooksPublicationIdentityPreScoringDiagnostics,
+): Record<string, unknown> {
+  const identityByTitle: Record<string, string> = {};
+  const confidenceByTitle: Record<string, number> = {};
+  const evidenceByTitle: Record<string, string[]> = {};
+  const narrativeEvidenceByTitle: Record<string, string[]> = {};
+  const artifactEvidenceByTitle: Record<string, string[]> = {};
+  const narrativeConfidenceSourceByTitle: Record<string, string[]> = {};
+  const trustedFieldEvidenceByTitle: Record<string, string[]> = {};
+  const overriddenNarrativeEvidenceByTitle: Record<string, string[]> = {};
+  const decisionByTitle: Record<string, string> = {};
+  const reasonByTitle: Record<string, string> = {};
+  const recommendedFuturePolicyByTitle: Record<string, string> = {};
+  for (const [title, audit] of Object.entries(diagnostics.auditByTitle)) {
+    identityByTitle[title] = audit.identity;
+    confidenceByTitle[title] = audit.confidence;
+    evidenceByTitle[title] = audit.evidence;
+    narrativeEvidenceByTitle[title] = audit.narrativeEvidence;
+    artifactEvidenceByTitle[title] = audit.artifactEvidence;
+    narrativeConfidenceSourceByTitle[title] = audit.narrativeConfidenceSource;
+    trustedFieldEvidenceByTitle[title] = audit.trustedFieldEvidence;
+    overriddenNarrativeEvidenceByTitle[title] = audit.overriddenNarrativeEvidence;
+    decisionByTitle[title] = audit.allowed ? "entered_scoring" : "rejected";
+    reasonByTitle[title] = audit.reason;
+    recommendedFuturePolicyByTitle[title] = audit.recommendedFuturePolicyDecision;
+  }
+  const rejectedTitles = Object.keys(diagnostics.rejectedBeforeScoringByTitle);
+  return {
+    preteenGoogleBooksPublicationIdentityByTitle: identityByTitle,
+    preteenGoogleBooksPublicationIdentityConfidenceByTitle: confidenceByTitle,
+    preteenGoogleBooksPublicationIdentityEvidenceByTitle: evidenceByTitle,
+    preteenGoogleBooksPublicationNarrativeEvidenceByTitle: narrativeEvidenceByTitle,
+    preteenGoogleBooksPublicationArtifactEvidenceByTitle: artifactEvidenceByTitle,
+    preteenGoogleBooksPublicationNarrativeConfidenceSourceByTitle: narrativeConfidenceSourceByTitle,
+    preteenGoogleBooksPublicationTrustedFieldEvidenceByTitle: trustedFieldEvidenceByTitle,
+    preteenGoogleBooksPublicationOverriddenNarrativeEvidenceByTitle: overriddenNarrativeEvidenceByTitle,
+    preteenGoogleBooksPublicationDecisionByTitle: decisionByTitle,
+    preteenGoogleBooksPublicationReasonByTitle: reasonByTitle,
+    preteenGoogleBooksPublicationRecommendedFuturePolicyByTitle: recommendedFuturePolicyByTitle,
+    preteenGoogleBooksPublicationRejectedTitles: rejectedTitles,
+    preteenGoogleBooksPublicationIdentityRejectedBeforeScoringByTitle: diagnostics.rejectedBeforeScoringByTitle,
+    preteenGoogleBooksPublicationIdentityEnteredScoringTitles: diagnostics.enteredScoringTitles,
+    preteenGoogleBooksPublicationIdentityPreScoringSummary: {
+      scope: "preteen_googlebooks_recognized_publication_identity_pre_scoring_enforcement",
+      consideredCount: Object.keys(diagnostics.auditByTitle).length,
+      rejectedBeforeScoringCount: rejectedTitles.length,
+      enteredScoringCount: diagnostics.enteredScoringTitles.length,
+      classifierRulesChanged: false,
+      ageSuitabilityRulesChanged: false,
+      scoringOrSelectionRulesChanged: false,
+    },
+  };
+}
+
+function mergePreteenGoogleBooksPublicationIdentityPreScoringObservability(
+  target: Record<string, unknown>,
+  observability: Record<string, unknown>,
+): void {
+  const recordFields = [
+    "preteenGoogleBooksPublicationIdentityByTitle",
+    "preteenGoogleBooksPublicationIdentityConfidenceByTitle",
+    "preteenGoogleBooksPublicationIdentityEvidenceByTitle",
+    "preteenGoogleBooksPublicationNarrativeEvidenceByTitle",
+    "preteenGoogleBooksPublicationArtifactEvidenceByTitle",
+    "preteenGoogleBooksPublicationNarrativeConfidenceSourceByTitle",
+    "preteenGoogleBooksPublicationTrustedFieldEvidenceByTitle",
+    "preteenGoogleBooksPublicationOverriddenNarrativeEvidenceByTitle",
+    "preteenGoogleBooksPublicationDecisionByTitle",
+    "preteenGoogleBooksPublicationReasonByTitle",
+    "preteenGoogleBooksPublicationRecommendedFuturePolicyByTitle",
+  ];
+  for (const field of recordFields) {
+    target[field] = {
+      ...((observability[field] || {}) as Record<string, unknown>),
+      ...((target[field] || {}) as Record<string, unknown>),
+    };
+  }
+  target.preteenGoogleBooksPublicationRejectedTitles = uniqueStrings([
+    ...((observability.preteenGoogleBooksPublicationRejectedTitles || []) as string[]),
+    ...((target.preteenGoogleBooksPublicationRejectedTitles || []) as string[]),
+  ], 120);
+  target.preteenGoogleBooksPublicationIdentityRejectedBeforeScoringByTitle = observability.preteenGoogleBooksPublicationIdentityRejectedBeforeScoringByTitle || {};
+  target.preteenGoogleBooksPublicationIdentityEnteredScoringTitles = observability.preteenGoogleBooksPublicationIdentityEnteredScoringTitles || [];
+  target.preteenGoogleBooksPublicationIdentityPreScoringSummary = observability.preteenGoogleBooksPublicationIdentityPreScoringSummary || {};
+  for (const reason of Object.values((observability.preteenGoogleBooksPublicationIdentityRejectedBeforeScoringByTitle || {}) as Record<string, string>)) {
+    target[reason] = Number(target[reason] || 0) + 1;
+  }
 }
 
 function mergeNumberRecords(primary?: Record<string, number>, secondary?: Record<string, number>): Record<string, number> | undefined {
@@ -1756,9 +1889,15 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     googleBooksEnteredRanking: [],
     googleBooksRejectedBeforeRankingReason: {},
   };
+  let preteenGoogleBooksPublicationIdentityPreScoringGate = {
+    candidates: normalized,
+    diagnostics: emptyPreteenGoogleBooksPublicationIdentityPreScoringDiagnostics(),
+  };
   let adultGoogleBooksNormalizationGate = applyAdultGoogleBooksNormalizationGate(normalized, tasteProfile);
   normalized = adultGoogleBooksNormalizationGate.candidates;
   adultGoogleBooksNormalizationDiagnostics = adultGoogleBooksNormalizationGate.diagnostics;
+  preteenGoogleBooksPublicationIdentityPreScoringGate = applyPreteenGoogleBooksPublicationIdentityPreScoringGate(normalized, tasteProfile);
+  normalized = preteenGoogleBooksPublicationIdentityPreScoringGate.candidates;
   let scored = scoreCandidates(normalized, tasteProfile);
   let selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
   let selected = selection.selected;
@@ -1927,6 +2066,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         adultGoogleBooksNormalizationGate = applyAdultGoogleBooksNormalizationGate(normalized, tasteProfile);
         normalized = adultGoogleBooksNormalizationGate.candidates;
         adultGoogleBooksNormalizationDiagnostics = adultGoogleBooksNormalizationGate.diagnostics;
+        preteenGoogleBooksPublicationIdentityPreScoringGate = applyPreteenGoogleBooksPublicationIdentityPreScoringGate(normalized, tasteProfile);
+        normalized = preteenGoogleBooksPublicationIdentityPreScoringGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -2199,6 +2340,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         adultGoogleBooksNormalizationGate = applyAdultGoogleBooksNormalizationGate(normalized, tasteProfile);
         normalized = adultGoogleBooksNormalizationGate.candidates;
         adultGoogleBooksNormalizationDiagnostics = adultGoogleBooksNormalizationGate.diagnostics;
+        preteenGoogleBooksPublicationIdentityPreScoringGate = applyPreteenGoogleBooksPublicationIdentityPreScoringGate(normalized, tasteProfile);
+        normalized = preteenGoogleBooksPublicationIdentityPreScoringGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -2380,6 +2523,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         adultGoogleBooksNormalizationGate = applyAdultGoogleBooksNormalizationGate(normalized, tasteProfile);
         normalized = adultGoogleBooksNormalizationGate.candidates;
         adultGoogleBooksNormalizationDiagnostics = adultGoogleBooksNormalizationGate.diagnostics;
+        preteenGoogleBooksPublicationIdentityPreScoringGate = applyPreteenGoogleBooksPublicationIdentityPreScoringGate(normalized, tasteProfile);
+        normalized = preteenGoogleBooksPublicationIdentityPreScoringGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -2572,6 +2717,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         adultGoogleBooksNormalizationGate = applyAdultGoogleBooksNormalizationGate(normalized, tasteProfile);
         normalized = adultGoogleBooksNormalizationGate.candidates;
         adultGoogleBooksNormalizationDiagnostics = adultGoogleBooksNormalizationGate.diagnostics;
+        preteenGoogleBooksPublicationIdentityPreScoringGate = applyPreteenGoogleBooksPublicationIdentityPreScoringGate(normalized, tasteProfile);
+        normalized = preteenGoogleBooksPublicationIdentityPreScoringGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -2842,6 +2989,18 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     currentOpenLibrarySourceResult.diagnostics.expansionSelectedRejectedByReason = {};
   }
 
+  const preteenGoogleBooksPublicationIdentityObservability = preteenGoogleBooksPublicationIdentityPreScoringObservability(
+    preteenGoogleBooksPublicationIdentityPreScoringGate.diagnostics,
+  );
+  mergePreteenGoogleBooksPublicationIdentityPreScoringObservability(
+    rejectedReasons as Record<string, unknown>,
+    preteenGoogleBooksPublicationIdentityObservability,
+  );
+  const preteenGoogleBooksSourceResult = sourceResults.find((result) => result.source === "googleBooks");
+  if (preteenGoogleBooksSourceResult && tasteProfile.ageBand === "preteens") {
+    Object.assign(preteenGoogleBooksSourceResult.diagnostics as unknown as Record<string, unknown>, preteenGoogleBooksPublicationIdentityObservability);
+  }
+
   markPipelineObjects(normalized, "normalized", requestId);
   stages.push(stageDiagnostic("normalized", { normalized: normalized.length }));
 
@@ -2873,6 +3032,10 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     const queryByTitle = (sourceDiagnostics.googleBooksQueryByTitle || {}) as Record<string, string>;
     const queryResultQualityByQuery = { ...((sourceDiagnostics.googleBooksQueryResultQualityByQuery || {}) as Record<string, Record<string, unknown>>) };
     const rankedSet = new Set(googleBooksRankedCandidateTitles.map((title) => normalizedTokenText(title)));
+    const preScoringIdentityRejectedSet = new Set(
+      Object.keys(preteenGoogleBooksPublicationIdentityPreScoringGate.diagnostics.rejectedBeforeScoringByTitle)
+        .map((title) => normalizedTokenText(title)),
+    );
     const finalEligibilitySet = new Set(googleBooksFinalEligibilityTitles.map((title) => normalizedTokenText(title)));
     const selectedSet = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalizedTokenText(candidate.title)));
     for (const [title, query] of Object.entries(queryByTitle)) {
@@ -2881,16 +3044,16 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
       if (!queryKey) continue;
       const row = (queryResultQualityByQuery[queryKey] || { query: queryKey }) as Record<string, unknown>;
       const enteredRankingTitles = uniqueStrings([
-        ...(((row.enteredRankingTitles || []) as string[])),
-        ...(rankedSet.has(normalizedTitle) ? [title] : []),
+        ...(((row.enteredRankingTitles || []) as string[]).filter((candidateTitle) => !preScoringIdentityRejectedSet.has(normalizedTokenText(candidateTitle)))),
+        ...(rankedSet.has(normalizedTitle) && !preScoringIdentityRejectedSet.has(normalizedTitle) ? [title] : []),
       ], 120);
       const enteredFinalEligibilityTitles = uniqueStrings([
-        ...(((row.enteredFinalEligibilityTitles || []) as string[])),
-        ...(finalEligibilitySet.has(normalizedTitle) ? [title] : []),
+        ...(((row.enteredFinalEligibilityTitles || []) as string[]).filter((candidateTitle) => !preScoringIdentityRejectedSet.has(normalizedTokenText(candidateTitle)))),
+        ...(finalEligibilitySet.has(normalizedTitle) && !preScoringIdentityRejectedSet.has(normalizedTitle) ? [title] : []),
       ], 120);
       const acceptedRecommendationTitles = uniqueStrings([
-        ...(((row.acceptedRecommendationTitles || []) as string[])),
-        ...(selectedSet.has(normalizedTitle) ? [title] : []),
+        ...(((row.acceptedRecommendationTitles || []) as string[]).filter((candidateTitle) => !preScoringIdentityRejectedSet.has(normalizedTokenText(candidateTitle)))),
+        ...(selectedSet.has(normalizedTitle) && !preScoringIdentityRejectedSet.has(normalizedTitle) ? [title] : []),
       ], 120);
       row.enteredRankingTitles = enteredRankingTitles;
       row.enteredFinalEligibilityTitles = enteredFinalEligibilityTitles;
