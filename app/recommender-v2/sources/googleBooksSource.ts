@@ -1370,6 +1370,82 @@ function emptyDiagnostics(
   };
 }
 
+export type GoogleBooksVolumeAuditAnalysis = {
+  title: string;
+  subtitle: string;
+  authors: string[];
+  publisher: string;
+  description: string;
+  categories: string[];
+  pageCount: number | undefined;
+  printType: string;
+  publicationYear: number | undefined;
+  maturityRating: string;
+  contentMaturity: string;
+  inferredAudienceBand: string;
+  hasIsbn: boolean;
+  hasDescription: boolean;
+  publicationShape: string;
+  narrativeConfidence: number;
+  publicationShapeEvidence: string[];
+  explicitNonNarrativeIdentity: string[];
+  storyLevelNarrativeEvidence: string[];
+  genericCategoryTitle: boolean;
+  unknownShapeEligibility: boolean;
+  unknownShapeRejectedReason: string;
+  publicationShapeDropReason: string | undefined;
+  artifactDropReason: string | undefined;
+  admittedAfterSourcePolicy: boolean;
+};
+
+/**
+ * Read-only diagnostic wrapper: analyze a raw Google Books API volumeInfo object.
+ * Used only by the Kids K-2 ground-truth audit script. Does not change production behavior.
+ */
+export function analyzeGoogleBooksVolumeForAudit(volumeInfo: Record<string, unknown>, item: Record<string, unknown>): GoogleBooksVolumeAuditAnalysis {
+  const title = String(volumeInfo.title || "").trim();
+  const subtitle = String(volumeInfo.subtitle || "").trim();
+  const authors = stringArray(volumeInfo.authors);
+  const publisher = String(volumeInfo.publisher || "").trim();
+  const description = descriptionFromVolume(item, volumeInfo);
+  const categories = stringArray(volumeInfo.categories);
+  const pageCount = Number.isFinite(Number(volumeInfo.pageCount)) ? Number(volumeInfo.pageCount) : undefined;
+  const printType = String(volumeInfo.printType || "BOOK").trim() || "BOOK";
+  const publicationYear = parsePublicationYear(volumeInfo.publishedDate);
+  const maturityRating = String(volumeInfo.maturityRating || "").trim() || "unknown";
+  const contentMaturity = googleBooksContentMaturityFromRating(maturityRating);
+  const industryIdentifiers = Array.isArray(volumeInfo.industryIdentifiers)
+    ? volumeInfo.industryIdentifiers.filter((id) => id && typeof id === "object")
+    : [];
+  const isbn13 = industryIdentifiers.find((id: any) => String(id?.type || "").toUpperCase() === "ISBN_13");
+  const isbn10 = industryIdentifiers.find((id: any) => String(id?.type || "").toUpperCase() === "ISBN_10");
+  const hasIsbn = Boolean(
+    (isbn13 && String((isbn13 as any).identifier || "").trim())
+    || (isbn10 && String((isbn10 as any).identifier || "").trim()),
+  );
+  const hasDescription = Boolean(String(description || "").trim());
+  const inferredAudienceBand = inferGoogleBooksAudienceBand({ title, subtitle, description, categories, publisher });
+  const shapeAnalysis = inferGoogleBooksPublicationShape({ title, subtitle: subtitle || undefined, description, categories, publisher, authors, publicationYear, isbnPresent: hasIsbn, pageCount });
+  const publicationShapeDropReason = googleBooksPublicationShapeDropReason(shapeAnalysis);
+  const artifactDropReason = googleBooksArtifactDropReason(title, subtitle, description, categories, publisher);
+  const admittedAfterSourcePolicy = !publicationShapeDropReason && !artifactDropReason;
+  return {
+    title, subtitle, authors, publisher, description, categories, pageCount, printType, publicationYear,
+    maturityRating, contentMaturity, inferredAudienceBand, hasIsbn, hasDescription,
+    publicationShape: shapeAnalysis.shape,
+    narrativeConfidence: shapeAnalysis.narrativeConfidence,
+    publicationShapeEvidence: shapeAnalysis.evidence,
+    explicitNonNarrativeIdentity: shapeAnalysis.explicitNonNarrativeIdentity,
+    storyLevelNarrativeEvidence: shapeAnalysis.storyLevelNarrativeEvidence,
+    genericCategoryTitle: shapeAnalysis.genericCategoryTitle,
+    unknownShapeEligibility: shapeAnalysis.unknownShapeEligibility,
+    unknownShapeRejectedReason: shapeAnalysis.unknownShapeRejectedReason || "",
+    publicationShapeDropReason,
+    artifactDropReason,
+    admittedAfterSourcePolicy,
+  };
+}
+
 export const googleBooksSourceAdapter: SourceAdapterV2 = {
   source: "googleBooks",
   async search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal }): Promise<SourceResult> {
