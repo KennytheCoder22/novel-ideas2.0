@@ -1394,6 +1394,10 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     let rawApiResultCount = 0;
     let droppedBeforeNormalization = 0;
     let failedReason = "";
+    let failedQueryCount = 0;
+    let timedOutQueryCount = 0;
+    let abortedQueryCount = 0;
+    let successfulQueryCount = 0;
 
     const primaryQueries = queries.filter((intent) => intent.intentId !== "fallback-fiction-broad");
     const fallbackQueries = queries.filter((intent) => intent.intentId === "fallback-fiction-broad");
@@ -1440,6 +1444,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       const fetchFinishedAt = nowIso();
       const fetchDiagnostic: SourceFetchDiagnosticV2 = {
         query,
+        attemptNumber: index + 1,
         fetchStartedAt,
         fetchFinishedAt,
         elapsedMs: Date.parse(fetchFinishedAt) - Date.parse(fetchStartedAt),
@@ -1456,19 +1461,35 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
 
       if (fetched.failedReason) {
         failedReason = failedReason || fetched.failedReason;
+        fetchDiagnostic.aborted = /abort/i.test(String(fetched.failedReason || ""));
+        fetchDiagnostic.status = fetched.timedOut
+          ? "timed_out"
+          : fetchDiagnostic.aborted
+            ? "aborted"
+            : "failed";
+        fetchDiagnostic.rawApiCount = 0;
+        fetchDiagnostic.acceptedAfterSourcePolicy = 0;
+        failedQueryCount += 1;
+        if (fetched.timedOut) timedOutQueryCount += 1;
+        if (fetchDiagnostic.aborted) abortedQueryCount += 1;
         continue;
       }
 
       const json = (fetched.json || {}) as Record<string, unknown>;
       const items = Array.isArray(json.items) ? json.items : null;
+      successfulQueryCount += 1;
       rawCountByQuery[originalQuery] = Number(rawCountByQuery[originalQuery] || 0) + (items ? items.length : 0);
       perQueryQuality[originalQuery].rawResultCount = Number(rawCountByQuery[originalQuery] || 0);
       perQueryQuality[originalQuery].totalResults = Number(rawCountByQuery[originalQuery] || 0);
+      fetchDiagnostic.rawApiCount = items ? items.length : 0;
+      let acceptedAfterSourcePolicyForQuery = 0;
       if (!items) {
         dropReasons.non_book_response_shape = Number(dropReasons.non_book_response_shape || 0) + 1;
         incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "non_book_response_shape");
         perQueryQuality[originalQuery].rejectedCandidateCount += 1;
         droppedBeforeNormalization += 1;
+        fetchDiagnostic.status = "empty";
+        fetchDiagnostic.acceptedAfterSourcePolicy = 0;
         continue;
       }
 
@@ -1662,6 +1683,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           continue;
         }
         perQueryQuality[originalQuery].acceptedCandidateCount += 1;
+        acceptedAfterSourcePolicyForQuery += 1;
         if (GOOGLE_BOOKS_NARRATIVE_SHAPES.has(shapeAnalysis.shape)) {
           perQueryQuality[originalQuery].narrativeCandidateCount += 1;
         }
@@ -1772,6 +1794,8 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           publicDomainCatalogShapeCountByQuery[originalQuery] = Number(publicDomainCatalogShapeCountByQuery[originalQuery] || 0) + 1;
         }
       }
+      fetchDiagnostic.acceptedAfterSourcePolicy = acceptedAfterSourcePolicyForQuery;
+      fetchDiagnostic.status = items.length > 0 ? "succeeded" : "empty";
 
       const shouldRunFallback = !fallbackExecuted
         && fallbackQueries.length > 0
@@ -1786,9 +1810,14 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const finishedAt = nowIso();
     const status: SourceResult["status"] = rawItems.length > 0
       ? "succeeded"
-      : failedReason
-      ? (fetches.some((row) => row.timedOut) ? "timed_out" : "failed")
-      : "empty";
+      : successfulQueryCount > 0
+        ? "empty"
+        : failedReason
+          ? (timedOutQueryCount > 0 ? "timed_out" : "failed")
+          : "empty";
+    const sourceStatusDetail = failedQueryCount > 0 && successfulQueryCount > 0
+      ? (rawItems.length > 0 ? "partial_success" : "partial_success_no_usable_rows")
+      : status;
     const adultGoogleBooksQueryQualityByQuery: Record<string, Record<string, unknown>> = {};
     const publicationShapeHistogramByQuery: Record<string, Record<string, number>> = {};
     const rejectedShapeHistogramByQuery: Record<string, Record<string, number>> = {};
@@ -1860,7 +1889,11 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       googleBooksSourceNormalizedRowCount: rawItems.length,
       googleBooksSourceDroppedBeforeNormalization: droppedBeforeNormalization,
       googleBooksSourceDropReasons: dropReasons,
-      googleBooksSourceStatus: status,
+      googleBooksSourceStatus: sourceStatusDetail,
+      googleBooksSourcePartialFailures: failedQueryCount > 0 ? failedQueryCount : undefined,
+      googleBooksSourceSuccessfulQueries: successfulQueryCount,
+      googleBooksSourceTimedOutQueries: timedOutQueryCount || undefined,
+      googleBooksSourceAbortedQueries: abortedQueryCount || undefined,
       googleBooksSourceAdapterVersion: GOOGLE_BOOKS_ADAPTER_VERSION,
       googleBooksPublicationYearByTitle: publicationYearByTitle,
       googleBooksDescriptionPresentByTitle: descriptionPresentByTitle,

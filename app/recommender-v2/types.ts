@@ -79,9 +79,13 @@ export interface SearchPlan {
 
 export interface SourceFetchDiagnosticV2 {
   query: string;
+  attemptNumber?: number;
+  status?: "succeeded" | "failed" | "timed_out" | "aborted" | "empty";
+  aborted?: boolean;
+  rawApiCount?: number;
+  acceptedAfterSourcePolicy?: number;
   fetchStartedAt?: string;
   fetchFinishedAt?: string;
-  attemptNumber?: number;
   requestStart?: string;
   requestEnd?: string;
   abortReason?: string;
@@ -271,6 +275,10 @@ export interface SourceDiagnosticV2 {
   googleBooksSourceDroppedBeforeNormalization?: number;
   googleBooksSourceDropReasons?: Record<string, number>;
   googleBooksSourceStatus?: string;
+  googleBooksSourcePartialFailures?: number;
+  googleBooksSourceSuccessfulQueries?: number;
+  googleBooksSourceTimedOutQueries?: number;
+  googleBooksSourceAbortedQueries?: number;
   googleBooksSourceAdapterVersion?: string;
   googleBooksPlannedQueries?: string[];
   googleBooksQueriesAttempted?: string[];
