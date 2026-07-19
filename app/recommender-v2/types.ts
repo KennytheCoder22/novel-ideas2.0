@@ -351,6 +351,11 @@ export interface SourceDiagnosticV2 {
   kidsGoogleBooksRejectedBeforeScoringByTitle?: Record<string, string>;
   kidsGoogleBooksEnteredScoringTitles?: string[];
   kidsGoogleBooksPreScoringSummary?: Record<string, unknown>;
+  teensGoogleBooksPreScoringAgeSuitabilityScoreByTitle?: Record<string, number>;
+  teensGoogleBooksPreScoringDecisionByTitle?: Record<string, string>;
+  teensGoogleBooksRejectedBeforeScoringByTitle?: Record<string, string>;
+  teensGoogleBooksEnteredScoringTitles?: string[];
+  teensGoogleBooksPreScoringSummary?: Record<string, unknown>;
   adultGoogleBooksSignalMatchTraceByTitle?: Record<string, unknown[]>;
   adultGoogleBooksSignalMatchedFieldByTitle?: Record<string, Record<string, string[]>>;
   adultGoogleBooksSignalMatchedTextByTitle?: Record<string, Record<string, string[]>>;

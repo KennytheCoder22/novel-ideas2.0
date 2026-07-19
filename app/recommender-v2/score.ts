@@ -429,7 +429,7 @@ function queryRungBonus(candidate: NormalizedCandidate): number {
   return 0.2;
 }
 
-function ageSuitabilityScore(candidate: NormalizedCandidate, profile: TasteProfile): number {
+export function ageSuitabilityScore(candidate: NormalizedCandidate, profile: TasteProfile): number {
   const text = candidateMetadataText(candidate);
   if (profile.ageBand === "adult") {
     if (/\b(juvenile fiction|children'?s books?|easy readers?|middle grade|rainbow magic)\b/.test(text)) return -2;
