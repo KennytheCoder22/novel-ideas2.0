@@ -91,7 +91,154 @@ function googleBooksAdultPairedNarrativeQuery(primaryGenre?: string, secondaryGe
   return googleBooksAdultNarrativeQuery(primary || secondary || undefined, tone || undefined);
 }
 
-function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones: string[], themes: string[], formats: string[]): SearchIntentV2[] {
+type TeenGoogleBooksQueryCandidate = {
+  id: string;
+  query: string;
+  family: string;
+  rung: "primary" | "adjacent" | "third";
+  priority: number;
+  facets: string[];
+  rationale: string[];
+};
+
+function teenGoogleBooksCanonicalFamilyQuery(agePrefix: string, family?: string): string | undefined {
+  const normalizedFamily = normalizedTerm(family || "");
+  if (!normalizedFamily) return undefined;
+  if (normalizedFamily === "science fiction") return `${agePrefix} science fiction novel`;
+  if (normalizedFamily === "fiction") return `${agePrefix} fiction novel`;
+  return uniqueTerms([agePrefix, normalizedFamily, "fiction", "novel"], 4).join(" ");
+}
+
+function teenGoogleBooksDistinctThirdQuery(
+  agePrefix: string,
+  primaryGenre?: string,
+  secondaryGenre?: string,
+  adjacentGenre?: string,
+): { query?: string; family?: string; reason: string } {
+  const primary = normalizedTerm(primaryGenre || "");
+  const secondary = normalizedTerm(secondaryGenre || "");
+  const adjacent = normalizedTerm(adjacentGenre || "");
+  const companion = secondary && secondary !== primary ? secondary : adjacent && adjacent !== primary ? adjacent : "";
+  if (!primary || !companion) {
+    return { reason: "omitted_third_query:no_distinct_companion_family" };
+  }
+  const pairKey = `${primary}+${companion}`;
+  if (pairKey === "historical+mystery" || pairKey === "mystery+historical") {
+    return {
+      query: `${agePrefix} historical mystery novel`,
+      family: "historical_mystery",
+      reason: "replaced_third_query:historical_mystery_template",
+    };
+  }
+  if (pairKey === "fantasy+adventure") {
+    return {
+      query: `${agePrefix} fantasy adventure novel`,
+      family: "fantasy_adventure",
+      reason: "replaced_third_query:fantasy_adventure_template",
+    };
+  }
+  if (pairKey === "humorous+fantasy" || pairKey === "fantasy+humorous") {
+    return {
+      query: `${agePrefix} humorous fantasy novel`,
+      family: "humorous_fantasy",
+      reason: "replaced_third_query:humorous_fantasy_template",
+    };
+  }
+  return { reason: `omitted_third_query:no_safe_distinct_template:${pairKey}` };
+}
+
+function buildTeenGoogleBooksIntents(profile: TasteProfile, genres: string[], tones: string[], themes: string[], formats: string[]): { intents: SearchIntentV2[]; diagnostics: Record<string, unknown> } {
+  const agePrefix = googleBooksAgePrefix(profile.ageBand);
+  const genreAnchors = uniqueTerms(genres.map(googleBooksGenreAnchor).filter(Boolean) as string[], 2);
+  const descriptors = uniqueTerms([...tones, ...themes].map(googleBooksDescriptor).filter(Boolean) as string[], 1);
+  const primaryGenre = genreAnchors[0];
+  const secondaryGenre = genreAnchors[1];
+  const adjacentGenre = googleBooksAdjacentGenre(primaryGenre);
+  const primaryQuery = teenGoogleBooksCanonicalFamilyQuery(agePrefix, primaryGenre);
+  const adjacentFamily = secondaryGenre && secondaryGenre !== primaryGenre
+    ? secondaryGenre
+    : adjacentGenre && adjacentGenre !== primaryGenre
+      ? adjacentGenre
+      : undefined;
+  const adjacentQuery = teenGoogleBooksCanonicalFamilyQuery(agePrefix, adjacentFamily);
+  const thirdQuery = teenGoogleBooksDistinctThirdQuery(agePrefix, primaryGenre, secondaryGenre, adjacentGenre);
+  const candidates: TeenGoogleBooksQueryCandidate[] = [
+    {
+      id: "family-fiction-primary",
+      query: primaryQuery || `${agePrefix} fiction novel`,
+      family: primaryGenre || "fiction",
+      rung: "primary",
+      priority: 1,
+      facets: [...genres, ...tones, ...themes].filter(Boolean),
+      rationale: ["built_from_top_taste_profile_signals", "google_books_narrative_query"],
+    },
+    {
+      id: "adjacent-or-tone-fiction",
+      query: adjacentQuery || `${agePrefix} fiction novel`,
+      family: adjacentFamily || "fiction",
+      rung: "adjacent",
+      priority: 0.85,
+      facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
+      rationale: ["adjacent_family_or_tone_expansion", "google_books_narrative_query"],
+    },
+  ];
+  if (thirdQuery.query) {
+    candidates.push({
+      id: "fallback-fiction-broad",
+      query: thirdQuery.query,
+      family: thirdQuery.family || "combined_family",
+      rung: "third",
+      priority: 0.55,
+      facets: [profile.maturityBand, ...formats, ...genres.slice(0, 1)].filter(Boolean),
+      rationale: ["broad_fallback_when_underfilled", "google_books_narrative_query", thirdQuery.reason],
+    });
+  }
+
+  const plannedQueries: string[] = [];
+  const familyByQuery: Record<string, string> = {};
+  const rungByQuery: Record<string, string> = {};
+  const duplicateSuppressionReasons: string[] = [];
+  const seenQueryToRung = new Map<string, string>();
+  const intents: SearchIntentV2[] = [];
+  for (const candidate of candidates) {
+    const normalizedQuery = normalizedTerm(candidate.query);
+    if (!normalizedQuery) continue;
+    if (seenQueryToRung.has(normalizedQuery)) {
+      duplicateSuppressionReasons.push(`${candidate.rung}:${candidate.query}=>duplicate_of_${seenQueryToRung.get(normalizedQuery)}`);
+      continue;
+    }
+    seenQueryToRung.set(normalizedQuery, candidate.rung);
+    plannedQueries.push(candidate.query);
+    familyByQuery[candidate.query] = candidate.family;
+    rungByQuery[candidate.query] = candidate.rung;
+    intents.push({
+      id: candidate.id,
+      query: candidate.query,
+      facets: candidate.facets,
+      priority: candidate.priority,
+      rationale: [
+        ...candidate.rationale,
+        `teen_googlebooks_query_family:${candidate.family}`,
+        `teen_googlebooks_query_rung:${candidate.rung}`,
+      ],
+    });
+  }
+  return {
+    intents,
+    diagnostics: {
+      teenGoogleBooksFinalQueryList: plannedQueries,
+      teenGoogleBooksQueryFamilyByQuery: familyByQuery,
+      teenGoogleBooksQueryRungByQuery: rungByQuery,
+      teenGoogleBooksDuplicateSuppressionReasons: duplicateSuppressionReasons,
+      teenGoogleBooksOmittedThirdQueryReason: thirdQuery.reason,
+    },
+  };
+}
+
+function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones: string[], themes: string[], formats: string[]): { intents: SearchIntentV2[]; diagnostics: Record<string, unknown> } {
+  if (profile.ageBand === "teens") {
+    return buildTeenGoogleBooksIntents(profile, genres, tones, themes, formats);
+  }
   const agePrefix = googleBooksAgePrefix(profile.ageBand);
   const useAgePrefix = profile.ageBand !== "adult";
   const genreAnchors = uniqueTerms(genres.map(googleBooksGenreAnchor).filter(Boolean) as string[], 2);
@@ -137,31 +284,34 @@ function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones:
         "novel",
       ]),
   ]).join(" ");
-  return [
-    {
-      id: "family-fiction-primary",
-      query: primaryQuery || (useAgePrefix ? `${agePrefix} fiction novel` : "fiction novel"),
-      facets: [...genres, ...tones, ...themes].filter(Boolean),
-      priority: 1,
-      rationale: ["built_from_top_taste_profile_signals", "google_books_narrative_query"],
-    },
-    {
-      id: "adjacent-or-tone-fiction",
-      query: adjacentOrToneQuery || (useAgePrefix
-        ? [agePrefix, primaryGenre || "fiction", "novel"].filter(Boolean).join(" ")
-        : [primaryGenre || "fiction", "novel"].filter(Boolean).join(" ")),
-      facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
-      priority: 0.85,
-      rationale: ["adjacent_family_or_tone_expansion", "google_books_narrative_query"],
-    },
-    {
-      id: "fallback-fiction-broad",
-      query: fallbackQuery || (useAgePrefix ? [agePrefix, "fiction", "novel"].filter(Boolean).join(" ") : "literary fiction novel"),
-      facets: [profile.maturityBand, ...formats, ...genres.slice(0, 1)].filter(Boolean),
-      priority: 0.55,
-      rationale: ["broad_fallback_when_underfilled", "google_books_narrative_query"],
-    },
-  ];
+  return {
+    intents: [
+      {
+        id: "family-fiction-primary",
+        query: primaryQuery || (useAgePrefix ? `${agePrefix} fiction novel` : "fiction novel"),
+        facets: [...genres, ...tones, ...themes].filter(Boolean),
+        priority: 1,
+        rationale: ["built_from_top_taste_profile_signals", "google_books_narrative_query"],
+      },
+      {
+        id: "adjacent-or-tone-fiction",
+        query: adjacentOrToneQuery || (useAgePrefix
+          ? [agePrefix, primaryGenre || "fiction", "novel"].filter(Boolean).join(" ")
+          : [primaryGenre || "fiction", "novel"].filter(Boolean).join(" ")),
+        facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
+        priority: 0.85,
+        rationale: ["adjacent_family_or_tone_expansion", "google_books_narrative_query"],
+      },
+      {
+        id: "fallback-fiction-broad",
+        query: fallbackQuery || (useAgePrefix ? [agePrefix, "fiction", "novel"].filter(Boolean).join(" ") : "literary fiction novel"),
+        facets: [profile.maturityBand, ...formats, ...genres.slice(0, 1)].filter(Boolean),
+        priority: 0.55,
+        rationale: ["broad_fallback_when_underfilled", "google_books_narrative_query"],
+      },
+    ],
+    diagnostics: {},
+  };
 }
 
 export function buildSearchPlan(profile: TasteProfile, enabledSources: Partial<Record<SourceIdV2, boolean>> = {}): SearchPlan {
@@ -189,7 +339,8 @@ export function buildSearchPlan(profile: TasteProfile, enabledSources: Partial<R
       rationale: ["maturity_and_format_safety_net"],
     },
   ];
-  const googleBooksIntents = buildGoogleBooksIntents(profile, genres, tones, themes, formats);
+  const googleBooksPlanning = buildGoogleBooksIntents(profile, genres, tones, themes, formats);
+  const googleBooksIntents = googleBooksPlanning.intents;
 
   const allSources: SourceIdV2[] = ["mock", "googleBooks", "openLibrary", "kitsu", "comicVine", "localLibrary", "nyt"];
   const sourcePlans: SourcePlan[] = allSources.map((source) => {
@@ -213,6 +364,7 @@ export function buildSearchPlan(profile: TasteProfile, enabledSources: Partial<R
       intentCount: intents.length,
       enabledSourceCount: sourcePlans.filter((plan) => plan.enabled).length,
       sourceAgnostic: true,
+      ...googleBooksPlanning.diagnostics,
     },
   };
 }
