@@ -173,8 +173,8 @@ const result = await googleBooksSourceAdapter.search(plan, { profile });
 const diagnostics = result.diagnostics;
 const outputTitles = result.rawItems.map((row) => row.title);
 
-assertEqual(outputTitles, [clearNovelTitle], "Audit instrumentation must leave source output unchanged");
-assertEqual(diagnostics.preteenGoogleBooksPublicationShapeAuditSummary?.productionBehaviorChanged, false, "Audit must declare behavior unchanged");
+assertEqual(outputTitles, [clearNovelTitle, crookedOakTitle, coverForMurderTitle, sparseNovelTitle], "Audit should observe the production narrative rescue baseline");
+assertEqual(diagnostics.preteenGoogleBooksPublicationShapeAuditSummary?.productionBehaviorChanged, true, "Audit should declare the production rescue behavior change");
 assertEqual(diagnostics.preteenGoogleBooksPublicationShapeAuditSummary?.auditedRejectedCount, 9, "Every shared-shape rejection should be audited");
 assertEqual(diagnostics.preteenGoogleBooksPublicationShapeAuditSummary?.likelyFalseRejectCount, 3, "Three narrative-shaped fixtures should be likely false rejects");
 assertEqual(diagnostics.preteenGoogleBooksPublicationShapeAuditSummary?.likelyCorrectRejectCount, 5, "Five artifact fixtures should be likely correct rejects");
@@ -183,7 +183,7 @@ assertEqual(diagnostics.preteenGoogleBooksPublicationShapeAuditSummary?.recommen
 
 for (const title of [crookedOakTitle, coverForMurderTitle, sparseNovelTitle]) {
   assertIncludes(diagnostics.preteenGoogleBooksPublicationShapeLikelyFalseRejectTitles, title, `${title} should be a likely false reject`);
-  if (outputTitles.includes(title)) throw new Error(`${title} must remain rejected in this audit branch`);
+  assertIncludes(outputTitles, title, `${title} should now be rescued into the source scoring handoff`);
 }
 for (const title of [writingGuideTitle, schoolPublicationTitle, samplerTitle, libraryListTitle, anthologyTitle]) {
   assertIncludes(diagnostics.preteenGoogleBooksPublicationShapeLikelyCorrectRejectTitles, title, `${title} should be a likely correct reject`);
