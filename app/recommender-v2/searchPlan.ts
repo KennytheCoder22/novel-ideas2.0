@@ -180,6 +180,12 @@ function kidsGoogleBooksFormatQuery(theme: string, format: KidsGoogleBooksQueryC
 function buildKidsGoogleBooksIntents(profile: TasteProfile, genres: string[], tones: string[], themes: string[], formats: string[]): { intents: SearchIntentV2[]; diagnostics: Record<string, unknown> } {
   const signalPool = [...genres, ...themes, ...tones, ...formats];
   const isLikeBacked = (evidence: string[]): boolean => evidence.some((entry) => /^like:/i.test(String(entry || "")));
+  const positiveFamilies = Array.from(new Set(
+    [...profile.genreFamily, ...profile.themes, ...profile.tone]
+      .filter((row) => isLikeBacked(row.evidence || []))
+      .map((row) => kidsGoogleBooksThemeFromSignal(row.value))
+      .filter(Boolean) as string[],
+  ));
   const blockedFamilies = new Set(
     (profile.avoidSignals || [])
       .map((signal) => kidsGoogleBooksThemeFromSignal(signal.value))
@@ -194,6 +200,7 @@ function buildKidsGoogleBooksIntents(profile: TasteProfile, genres: string[], to
   const theme = themeCandidates[0] || "general";
   const secondaryTheme = themeCandidates.find((candidate) => candidate && candidate !== theme);
   const supportsEarlyReader = kidsGoogleBooksSupportsEarlyReader(signalPool);
+  const avoidFamilies = Array.from(blockedFamilies);
 
   const candidates: KidsGoogleBooksQueryCandidate[] = [
     {
@@ -292,6 +299,12 @@ function buildKidsGoogleBooksIntents(profile: TasteProfile, genres: string[], to
         ? "replaced_novel_template_with_read_aloud"
         : "replaced_novel_template_with_illustrated_children_book"
     : "omitted_third_query:no_distinct_safe_template";
+  const genericPlanningReason = theme === "general"
+    ? "no_like_backed_family_signals_survived_suppression"
+    : "";
+  const familySuppressedReason = avoidFamilies.length
+    ? avoidFamilies.map((family) => `suppressed_family:${family}`).join("|")
+    : "";
   return {
     intents,
     diagnostics: {
@@ -299,6 +312,12 @@ function buildKidsGoogleBooksIntents(profile: TasteProfile, genres: string[], to
       kidsGoogleBooksThemeCandidates: themeCandidates,
       kidsGoogleBooksSelectedPrimaryTheme: theme,
       kidsGoogleBooksSelectedSecondaryTheme: secondaryTheme || "",
+      kidsGoogleBooksProfilePositiveFamilies: positiveFamilies,
+      kidsGoogleBooksProfileAvoidFamilies: avoidFamilies,
+      kidsGoogleBooksSelectedPrimaryFamily: theme,
+      kidsGoogleBooksSelectedSecondaryFamily: secondaryTheme || "",
+      kidsGoogleBooksGenericPlanningReason: genericPlanningReason,
+      kidsGoogleBooksFamilySuppressedReason: familySuppressedReason,
       kidsGoogleBooksQueryFamilyByQuery: familyByQuery,
       kidsGoogleBooksQueryFormatByQuery: formatByQuery,
       kidsGoogleBooksQueryThemeByQuery: themeByQuery,

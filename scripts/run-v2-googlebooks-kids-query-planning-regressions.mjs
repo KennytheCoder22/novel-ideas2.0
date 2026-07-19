@@ -112,6 +112,12 @@ for (const fixture of [
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksQueryThemeByQuery === "object", `${fixture.name}: theme diagnostics should be present`);
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksQuerySuppressionReason !== "undefined", `${fixture.name}: suppression diagnostics should be present`);
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksQueryReplacementReason !== "undefined", `${fixture.name}: replacement diagnostics should be present`);
+  assertTruthy(Array.isArray(result.diagnostics.kidsGoogleBooksProfilePositiveFamilies), `${fixture.name}: positive-family diagnostics should be present`);
+  assertTruthy(Array.isArray(result.diagnostics.kidsGoogleBooksProfileAvoidFamilies), `${fixture.name}: avoid-family diagnostics should be present`);
+  assertTruthy(typeof result.diagnostics.kidsGoogleBooksSelectedPrimaryFamily === "string", `${fixture.name}: primary-family diagnostics should be present`);
+  assertTruthy(typeof result.diagnostics.kidsGoogleBooksSelectedSecondaryFamily === "string", `${fixture.name}: secondary-family diagnostics should be present`);
+  assertTruthy(typeof result.diagnostics.kidsGoogleBooksGenericPlanningReason === "string", `${fixture.name}: generic-planning diagnostics should be present`);
+  assertTruthy(typeof result.diagnostics.kidsGoogleBooksFamilySuppressedReason === "string", `${fixture.name}: family-suppression diagnostics should be present`);
 }
 
 // Humor + adventure should keep format distinction while broadening family on the third query.
@@ -121,6 +127,15 @@ for (const fixture of [
     JSON.stringify(result.queries),
     JSON.stringify(["kids humorous picture book", "kids humorous early reader", "kids adventure picture book"]),
     "humor+adventure should use safe family breadth on the third Kids query",
+  );
+}
+
+{
+  const result = googleBooksQueries(profile("kids", []));
+  assertEqual(
+    result.diagnostics.kidsGoogleBooksGenericPlanningReason,
+    "no_like_backed_family_signals_survived_suppression",
+    "generic kids planning should report why no specific family was selected",
   );
 }
 

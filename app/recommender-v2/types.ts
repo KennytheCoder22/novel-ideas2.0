@@ -358,6 +358,17 @@ export interface SourceDiagnosticV2 {
   kidsGoogleBooksPreScoringDecisionByTitle?: Record<string, string>;
   kidsGoogleBooksRejectedBeforeScoringByTitle?: Record<string, string>;
   kidsGoogleBooksEnteredScoringTitles?: string[];
+  kidsGoogleBooksInferredAudienceBandByTitle?: Record<string, string>;
+  kidsGoogleBooksAudienceEvidenceByTitle?: Record<string, string[]>;
+  kidsGoogleBooksFormatIdentityByTitle?: Record<string, string>;
+  kidsGoogleBooksFormatEvidenceByTitle?: Record<string, string[]>;
+  kidsGoogleBooksAudienceDecisionByTitle?: Record<string, string>;
+  kidsGoogleBooksAudienceRejectionReasonByTitle?: Record<string, string>;
+  kidsGoogleBooksRequestContextExcludedFromEvidenceByTitle?: Record<string, boolean>;
+  kidsGoogleBooksNotMatureExcludedFromAgeEvidenceByTitle?: Record<string, boolean>;
+  kidsGoogleBooksLikelyAdultOrYaTitles?: string[];
+  kidsGoogleBooksLikelyK2Titles?: string[];
+  kidsGoogleBooksAmbiguousAudienceTitles?: string[];
   kidsGoogleBooksPreScoringSummary?: Record<string, unknown>;
   kidsGoogleBooksPublicationAuditByTitle?: Record<string, unknown>;
   kidsGoogleBooksPublicationNarrativeEvidenceByTitle?: Record<string, string[]>;

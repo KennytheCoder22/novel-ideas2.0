@@ -138,6 +138,28 @@ function parsePublicationYear(value: unknown): number | undefined {
   return match ? Number(match[0]) : undefined;
 }
 
+function inferGoogleBooksAudienceBand(params: {
+  title: string;
+  subtitle: string;
+  description: string;
+  categories: string[];
+  publisher: string;
+}): "kids" | "preteens" | "teens" | "adult" | "unknown" {
+  const text = normalizeText([
+    params.title,
+    params.subtitle,
+    params.description,
+    params.categories.join(" | "),
+    params.publisher,
+  ].join(" | "));
+  if (!text) return "unknown";
+  if (/\b(young adult|ya\b|teen(?:s|age|ager)?|high school|new adult)\b/.test(text)) return "teens";
+  if (/\b(adult fiction|literary criticism|history and criticism|critical studies?|poetry|poems?|essays?|academic|monograph|scholarship)\b/.test(text)) return "adult";
+  if (/\b(middle grade|grades?\s*[3-8]|ages?\s*(?:8|9|10|11|12)\b)\b/.test(text)) return "preteens";
+  if (/\b(juvenile fiction|children'?s fiction|picture books?|picture book|early readers?|easy readers?|beginning readers?|read aloud|ages?\s*(?:3|4|5|6|7|8)\b|grades?\s*(?:k|1|2)\b|kindergarten|preschool)\b/.test(text)) return "kids";
+  return "unknown";
+}
+
 function normalizeQuery(value: unknown): string {
   return String(value || "")
     .toLowerCase()
@@ -1415,6 +1437,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const audienceBandByTitle: Record<string, string> = {};
     const contentMaturityByTitle: Record<string, string> = {};
     const sourceMaturityRatingByTitle: Record<string, string> = {};
+    const requestedDeckByTitle: Record<string, string> = {};
     const publicationShapeByTitle: Record<string, string> = {};
     const narrativeConfidenceByTitle: Record<string, number> = {};
     const publicationShapeEvidenceByTitle: Record<string, string[]> = {};
@@ -1680,6 +1703,13 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         const averageRating = Number.isFinite(Number(volumeInfo.averageRating)) ? Number(volumeInfo.averageRating) : undefined;
         const ratingsCount = Number.isFinite(Number(volumeInfo.ratingsCount)) ? Number(volumeInfo.ratingsCount) : 0;
         const pageCount = Number.isFinite(Number(volumeInfo.pageCount)) ? Number(volumeInfo.pageCount) : undefined;
+        const inferredAudienceBand = inferGoogleBooksAudienceBand({
+          title,
+          subtitle: String(volumeInfo.subtitle || "").trim(),
+          description,
+          categories,
+          publisher,
+        });
         const shapeAnalysis = inferGoogleBooksPublicationShape({
           title,
           subtitle: String(volumeInfo.subtitle || "").trim() || undefined,
@@ -1845,7 +1875,8 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           maturityRating,
           sourceMaturityRating: maturityRating,
           contentMaturity,
-          audienceBand: ageBand,
+          audienceBand: inferredAudienceBand,
+          requestedAgeBand: ageBand,
           industryIdentifiers,
           isbn13: isbn13 ? String((isbn13 as any).identifier || "").trim() || undefined : undefined,
           isbn10: isbn10 ? String((isbn10 as any).identifier || "").trim() || undefined : undefined,
@@ -1907,9 +1938,10 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         printTypeByTitle[title] = printType;
         languageByTitle[title] = language;
         maturityRatingByTitle[title] = maturityRating || "";
-        audienceBandByTitle[title] = ageBand;
+        audienceBandByTitle[title] = inferredAudienceBand;
         contentMaturityByTitle[title] = contentMaturity;
         sourceMaturityRatingByTitle[title] = maturityRating || "";
+        requestedDeckByTitle[title] = ageBand;
         perQueryQuality[originalQuery].titles.push(title);
         if (Number.isFinite(Number(publicationYear))) perQueryQuality[originalQuery].publicationYearByTitle[title] = Number(publicationYear);
         perQueryQuality[originalQuery].languageByTitle[title] = language;
@@ -2042,6 +2074,7 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       googleBooksAudienceBandByTitle: audienceBandByTitle,
       googleBooksContentMaturityByTitle: contentMaturityByTitle,
       googleBooksSourceMaturityRatingByTitle: sourceMaturityRatingByTitle,
+      googleBooksRequestedDeckByTitle: requestedDeckByTitle,
       googleBooksQueryByTitle: queryByTitle,
       googleBooksPublicationShapeByTitle: publicationShapeByTitle,
       googleBooksNarrativeConfidenceByTitle: narrativeConfidenceByTitle,

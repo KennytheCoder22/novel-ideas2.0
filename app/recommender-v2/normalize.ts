@@ -35,7 +35,7 @@ function normalizeMaturityBand(source: SourceIdV2, row: Record<string, unknown>)
   const rawMaturityBand = String(row.maturityBand || row.maturity || "").trim();
   if (source !== "googleBooks") return rawMaturityBand || undefined;
 
-  const sourceAudienceBand = ageBandValue(row.audienceBand) || ageBandValue(row.ageBand);
+  const sourceAudienceBand = ageBandValue(row.audienceBand);
   const sourceMaturityBand = ageBandValue(rawMaturityBand);
   if (sourceAudienceBand === "adult") {
     return rawMaturityBand || undefined;
@@ -130,7 +130,8 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           preteenGoogleBooksPublicationShapeRescueApplied: row.preteenGoogleBooksPublicationShapeRescueApplied,
           preteenGoogleBooksPublicationShapeRescueReason: row.preteenGoogleBooksPublicationShapeRescueReason,
           preteenGoogleBooksPublicationShapeRescueEvidence: row.preteenGoogleBooksPublicationShapeRescueEvidence,
-          googleBooksAudienceBand: source === "googleBooks" ? (String(row.audienceBand || row.ageBand || "").trim() || undefined) : undefined,
+          googleBooksAudienceBand: source === "googleBooks" ? (String(row.audienceBand || "").trim() || undefined) : undefined,
+          googleBooksRequestedDeck: source === "googleBooks" ? (String(row.requestedAgeBand || row.ageBand || "").trim() || undefined) : undefined,
           googleBooksContentMaturity: source === "googleBooks" ? String(row.contentMaturity || googleBooksContentMaturityFromRating(sourceMaturityRating)) : undefined,
           googleBooksSourceMaturityRating: source === "googleBooks" ? (sourceMaturityRating || undefined) : undefined,
           authors: row.authors || row.author_name || row.creators,

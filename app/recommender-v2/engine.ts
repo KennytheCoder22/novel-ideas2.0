@@ -1308,10 +1308,36 @@ type KidsGoogleBooksPreScoringDiagnostics = {
   decisionByTitle: Record<string, string>;
   rejectedBeforeScoringByTitle: Record<string, string>;
   enteredScoringTitles: string[];
+  inferredAudienceBandByTitle: Record<string, string>;
+  audienceEvidenceByTitle: Record<string, string[]>;
+  formatIdentityByTitle: Record<string, string>;
+  formatEvidenceByTitle: Record<string, string[]>;
+  audienceDecisionByTitle: Record<string, string>;
+  audienceRejectionReasonByTitle: Record<string, string>;
+  requestContextExcludedFromEvidenceByTitle: Record<string, boolean>;
+  notMatureExcludedFromAgeEvidenceByTitle: Record<string, boolean>;
+  likelyAdultOrYaTitles: string[];
+  likelyK2Titles: string[];
+  ambiguousAudienceTitles: string[];
 };
 
 function emptyKidsGoogleBooksPreScoringDiagnostics(): KidsGoogleBooksPreScoringDiagnostics {
-  return { decisionByTitle: {}, rejectedBeforeScoringByTitle: {}, enteredScoringTitles: [] };
+  return {
+    decisionByTitle: {},
+    rejectedBeforeScoringByTitle: {},
+    enteredScoringTitles: [],
+    inferredAudienceBandByTitle: {},
+    audienceEvidenceByTitle: {},
+    formatIdentityByTitle: {},
+    formatEvidenceByTitle: {},
+    audienceDecisionByTitle: {},
+    audienceRejectionReasonByTitle: {},
+    requestContextExcludedFromEvidenceByTitle: {},
+    notMatureExcludedFromAgeEvidenceByTitle: {},
+    likelyAdultOrYaTitles: [],
+    likelyK2Titles: [],
+    ambiguousAudienceTitles: [],
+  };
 }
 
 export function applyKidsGoogleBooksPreScoringGate(
@@ -1329,6 +1355,17 @@ export function applyKidsGoogleBooksPreScoringGate(
     const title = String(candidate.title || "").trim();
     if (!title) continue;
     const eligibility = kidsGoogleBooksPreScoringEligibility(candidate, profile);
+    diagnostics.inferredAudienceBandByTitle[title] = eligibility.inferredAudienceBand;
+    diagnostics.audienceEvidenceByTitle[title] = eligibility.audienceEvidence;
+    diagnostics.formatIdentityByTitle[title] = eligibility.formatIdentity;
+    diagnostics.formatEvidenceByTitle[title] = eligibility.formatEvidence;
+    diagnostics.audienceDecisionByTitle[title] = eligibility.audienceDecision;
+    diagnostics.audienceRejectionReasonByTitle[title] = eligibility.audienceRejectionReason;
+    diagnostics.requestContextExcludedFromEvidenceByTitle[title] = eligibility.requestContextExcludedFromEvidence;
+    diagnostics.notMatureExcludedFromAgeEvidenceByTitle[title] = eligibility.notMatureExcludedFromAgeEvidence;
+    if (eligibility.likelyBucket === "likely_adult_or_ya" && !diagnostics.likelyAdultOrYaTitles.includes(title)) diagnostics.likelyAdultOrYaTitles.push(title);
+    if (eligibility.likelyBucket === "likely_k2" && !diagnostics.likelyK2Titles.includes(title)) diagnostics.likelyK2Titles.push(title);
+    if (eligibility.likelyBucket === "ambiguous" && !diagnostics.ambiguousAudienceTitles.includes(title)) diagnostics.ambiguousAudienceTitles.push(title);
     diagnostics.decisionByTitle[title] = eligibility.reason;
     if (eligibility.allowed) {
       diagnostics.enteredScoringTitles.push(title);
@@ -1346,6 +1383,17 @@ function kidsGoogleBooksPreScoringObservability(diagnostics: KidsGoogleBooksPreS
     kidsGoogleBooksPreScoringDecisionByTitle: diagnostics.decisionByTitle,
     kidsGoogleBooksRejectedBeforeScoringByTitle: diagnostics.rejectedBeforeScoringByTitle,
     kidsGoogleBooksEnteredScoringTitles: diagnostics.enteredScoringTitles,
+    kidsGoogleBooksInferredAudienceBandByTitle: diagnostics.inferredAudienceBandByTitle,
+    kidsGoogleBooksAudienceEvidenceByTitle: diagnostics.audienceEvidenceByTitle,
+    kidsGoogleBooksFormatIdentityByTitle: diagnostics.formatIdentityByTitle,
+    kidsGoogleBooksFormatEvidenceByTitle: diagnostics.formatEvidenceByTitle,
+    kidsGoogleBooksAudienceDecisionByTitle: diagnostics.audienceDecisionByTitle,
+    kidsGoogleBooksAudienceRejectionReasonByTitle: diagnostics.audienceRejectionReasonByTitle,
+    kidsGoogleBooksRequestContextExcludedFromEvidenceByTitle: diagnostics.requestContextExcludedFromEvidenceByTitle,
+    kidsGoogleBooksNotMatureExcludedFromAgeEvidenceByTitle: diagnostics.notMatureExcludedFromAgeEvidenceByTitle,
+    kidsGoogleBooksLikelyAdultOrYaTitles: diagnostics.likelyAdultOrYaTitles,
+    kidsGoogleBooksLikelyK2Titles: diagnostics.likelyK2Titles,
+    kidsGoogleBooksAmbiguousAudienceTitles: diagnostics.ambiguousAudienceTitles,
     kidsGoogleBooksPreScoringSummary: {
       scope: "kids_googlebooks_conclusive_identity_and_age_suitability_pre_scoring_enforcement",
       consideredCount: Object.keys(diagnostics.decisionByTitle).length,
