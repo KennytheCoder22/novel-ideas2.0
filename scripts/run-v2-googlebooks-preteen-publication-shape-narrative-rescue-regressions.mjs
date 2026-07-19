@@ -71,6 +71,9 @@ const schoolPublicationTitle = "School Publication";
 const samplerTitle = "Awesome Adventures for Kids Middle Grade Sampler";
 const libraryListTitle = "List of Books for School Libraries in the State of Wisconsin";
 const anthologyTitle = "Middle Grade Mystery Anthology";
+const bestAmericanAnthologyTitle = "The Best American Science Fiction and Fantasy 2022";
+const nebulaAnthologyTitle = "Nebula Awards Showcase 2014";
+const singleAuthorCollectionTitle = "The Lantern Stories";
 const ambiguousTitle = "The Secret of Black Hollow (3)";
 const sparseTitleOnlyTitle = "Mystery Series";
 const nonfictionReferenceTitle = "The Mystery of Writing History: A Reference Guide";
@@ -89,6 +92,13 @@ const fixtures = [
     "A middle grade fantasy novel follows Sampler, a clever apprentice, as she must protect her friends, solve an ancient mystery, and survive a magical quest.",
     ["Juvenile Fiction / Fantasy & Magic", "Juvenile Fiction / Action & Adventure"],
     { publisher: "Scholastic" },
+  ),
+  googleBook(
+    "14",
+    singleAuthorCollectionTitle,
+    "In these linked stories, one young hero follows a mysterious lantern through the forest, confronts a hidden danger, and discovers the secret that can save her village.",
+    ["Juvenile Fiction / Short Stories", "Juvenile Fiction / Fantasy & Magic"],
+    { publisher: "Scholastic", authors: ["Regression Author"], pageCount: 192 },
   ),
   googleBook(
     "3",
@@ -145,6 +155,20 @@ const fixtures = [
     "An anthology collecting middle grade mystery stories by multiple authors for young readers.",
     ["Juvenile Fiction / Mysteries & Detective Stories", "Fiction / Anthologies"],
     { publisher: "Young Readers Press", authors: ["Regression Editor"], pageCount: 320 },
+  ),
+  googleBook(
+    "15",
+    bestAmericanAnthologyTitle,
+    "Award-winning, New York Times bestselling author and guest editor Rebecca Roanhorse and series editor John Joseph Adams select twenty pieces that represent the best examples of the form published the previous year and explore the ever-expanding and changing world of science fiction and fantasy.",
+    ["Fiction"],
+    { publisher: "HarperCollins", authors: ["John Joseph Adams", "Rebecca Roanhorse"], publicationYear: 2022, pageCount: 322 },
+  ),
+  googleBook(
+    "16",
+    nebulaAnthologyTitle,
+    "An annual anthology of award-winning science fiction and fantasy stories selected by editors from the Nebula Awards year.",
+    ["Fiction / Science Fiction / Collections & Anthologies", "Fiction / Fantasy / Collections & Anthologies"],
+    { publisher: "Pyr", authors: ["K. K. Rusch"], publicationYear: 2014, pageCount: 416 },
   ),
   googleBook(
     "11",
@@ -205,7 +229,7 @@ const sourceResult = await googleBooksSourceAdapter.search(plan, { profile });
 const sourceDiagnostics = sourceResult.diagnostics;
 const sourceOutputTitles = sourceResult.rawItems.map((row) => row.title);
 const rescuedTitles = [crookedOakTitle, coverForMurderTitle, midnightMapTitle];
-const originalPassTitles = [clearNovelTitle, samplerQuestTitle];
+const originalPassTitles = [clearNovelTitle, samplerQuestTitle, singleAuthorCollectionTitle];
 
 assertEqual(sourceOutputTitles, [...originalPassTitles, ...rescuedTitles], "Only original narrative controls and three corroborated rescues should reach normalization");
 assertEqual(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescuedTitles, rescuedTitles, "Exactly three audited false rejects should be rescued");
@@ -227,6 +251,8 @@ const rejectedControls = [
   samplerTitle,
   libraryListTitle,
   anthologyTitle,
+  bestAmericanAnthologyTitle,
+  nebulaAnthologyTitle,
   ambiguousTitle,
   sparseTitleOnlyTitle,
   nonfictionReferenceTitle,
@@ -245,11 +271,36 @@ assertEqual(
   "preteen_identity_not_rescuable_narrative",
   "Mystery/series title words alone should not rescue",
 );
+for (const title of [anthologyTitle, bestAmericanAnthologyTitle, nebulaAnthologyTitle]) {
+  assertEqual(
+    sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueRejectedReasonByTitle[title],
+    "hard_artifact_evidence_present",
+    `${title} should be hard-blocked before unknown-shape rescue qualification`,
+  );
+}
+assertEqual(sourceDiagnostics.googleBooksPublicationShapeByTitle[bestAmericanAnthologyTitle], "anthology", "Live annual anthology should classify as anthology");
 assertEqual(
-  sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueRejectedReasonByTitle[anthologyTitle],
-  "not_rescuable_unknown_shape_reason",
-  "Anthology should remain outside unknown-shape rescue scope",
+  sourceDiagnostics.googleBooksPublicationShapeRejectedBeforeRankingByTitle[bestAmericanAnthologyTitle],
+  "publication_shape_anthology",
+  "Live annual anthology should be rejected at the source publication-shape gate",
 );
+assertIncludes(
+  sourceDiagnostics.googleBooksDominantPublicationShapeEvidenceByTitle[bestAmericanAnthologyTitle],
+  "best_american_annual_title_shape",
+  "Annual anthology title evidence should be detected",
+);
+assertIncludes(
+  sourceDiagnostics.googleBooksDominantPublicationShapeEvidenceByTitle[bestAmericanAnthologyTitle],
+  "annual_anthology_editor_selection_description",
+  "Representative editor-selection metadata should corroborate anthology identity",
+);
+assertIncludes(
+  sourceDiagnostics.preteenGoogleBooksPublicationShapeArtifactEvidenceByTitle[bestAmericanAnthologyTitle],
+  "best_american_annual_title_shape",
+  "Annual anthology evidence should be recorded as hard-artifact evidence",
+);
+assertEqual(sourceDiagnostics.googleBooksPublicationShapeByTitle[singleAuthorCollectionTitle], "story_collection", "A genuine single-author linked-story collection should stay narrative-shaped");
+assertNotIncludes(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueRejectedTitles, singleAuthorCollectionTitle, "A genuine narrative collection should not be broadly artifact-blocked");
 assertEqual(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSummary.automaticFinalAcceptance, false, "Source rescue must not grant final acceptance");
 assertEqual(sourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSummary.otherAgeBandsChanged, false, "Other age bands must remain unchanged");
 
@@ -283,9 +334,16 @@ const engineResult = await runRecommenderV2({
 });
 const engineSourceDiagnostics = (engineResult.diagnostics.sources || []).find((source) => source.source === "googleBooks") || {};
 const selectedTitles = engineResult.items.map((item) => item.title);
+const finalEligibilityDecisionByTitle = engineResult.diagnostics.rejectedReasons?.googleBooksFinalEligibilityDecisionByTitle || {};
 
 for (const title of rescuedTitles) {
   assertIncludes(engineSourceDiagnostics.preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles, title, `${title} should enter scoring`);
+}
+for (const title of [bestAmericanAnthologyTitle, nebulaAnthologyTitle]) {
+  assertNotIncludes(engineSourceDiagnostics.preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles, title, `${title} must never enter scoring`);
+  assertNotIncludes(engineSourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSelectedTitles, title, `${title} must never be selected through rescue`);
+  assertEqual(finalEligibilityDecisionByTitle[title], undefined, `${title} must never reach final eligibility`);
+  assertNotIncludes(selectedTitles, title, `${title} must never reach final selection or rendered recommendations`);
 }
 assertEqual(engineSourceDiagnostics.preteenGoogleBooksPublicationShapeRescueSelectedTitles, [], "Rescued fixtures should not be force-selected in the deterministic slate");
 assertEqual(selectedTitles.length, 1, "Rescue should not change the one-item deterministic recommendation count");

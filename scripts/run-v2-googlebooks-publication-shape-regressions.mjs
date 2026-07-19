@@ -95,6 +95,13 @@ const fixtures = [
     "Wildside Press",
   ),
   googleBook(
+    "best-american-2022",
+    "The Best American Science Fiction and Fantasy 2022",
+    "Award-winning author and guest editor Rebecca Roanhorse and series editor John Joseph Adams select twenty pieces that represent the best examples of the form published the previous year.",
+    ["Fiction"],
+    "HarperCollins",
+  ),
+  googleBook(
     "technique-mystery",
     "The Technique of the Mystery Story",
     "A craft and writing study examining mystery story technique, plotting, structure, criticism, and methods for writers.",
@@ -196,6 +203,7 @@ const rejectedBeforeRanking = {
   ...(diagnostics.googleBooksPublicationShapeRejectedBeforeRankingByTitle || {}),
 };
 const enteredRanking = diagnostics.googleBooksEnteredRanking || [];
+const shapeEvidence = sourceDiagnostics.googleBooksDominantPublicationShapeEvidenceByTitle || {};
 
 for (const [, title] of ellaDarkTitles) {
   assertEqual(shapes[title], "series_installment", `${title} should classify as a series installment`);
@@ -211,6 +219,10 @@ assertEqual(shapes["The E. Hoffmann Price Fantasy & Science Fiction MEGAPACK\u00
 assertEqual(rejectedBeforeRanking["The E. Hoffmann Price Fantasy & Science Fiction MEGAPACK\u00ae"], "publication_shape_anthology", "author/genre MEGAPACK should reject before ranking");
 assertEqual(shapes["The Second Ardath Mayhar MEGAPACK\u00ae: 27 Science Fiction & Fantasy Tales"], "anthology", "tales MEGAPACK should classify as anthology");
 assertEqual(rejectedBeforeRanking["The Second Ardath Mayhar MEGAPACK\u00ae: 27 Science Fiction & Fantasy Tales"], "publication_shape_anthology", "tales MEGAPACK should reject before ranking");
+assertEqual(shapes["The Best American Science Fiction and Fantasy 2022"], "anthology", "annual Best American volume should classify as anthology");
+assertEqual(rejectedBeforeRanking["The Best American Science Fiction and Fantasy 2022"], "publication_shape_anthology", "annual Best American volume should reject before ranking");
+assertIncludes(shapeEvidence["The Best American Science Fiction and Fantasy 2022"], "best_american_annual_title_shape", "annual Best American title evidence should be exposed");
+assertIncludes(shapeEvidence["The Best American Science Fiction and Fantasy 2022"], "annual_anthology_editor_selection_description", "editor-selection metadata should corroborate annual anthology identity");
 assertEqual(shapes["The Technique of the Mystery Story"], "writing_guide", "technique title should classify as writing guide");
 assertEqual(rejectedBeforeRanking["The Technique of the Mystery Story"], "publication_shape_writing_guide", "technique title should reject before ranking");
 assertEqual(shapes["How to Write a Mystery Thriller"], "writing_guide", "writing guide should classify as writing guide");

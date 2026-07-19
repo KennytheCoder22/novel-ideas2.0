@@ -361,6 +361,24 @@ function googleBooksBundledPublicationEvidence(titleText: string, descriptionTex
   return Array.from(new Set(evidence));
 }
 
+function googleBooksAnnualAnthologyEvidence(titleText: string, descriptionText: string, categoryBlob: string): string[] {
+  const evidence: string[] = [];
+  const annualBestAmericanTitle = /^the best american .+ (?:19|20)\d{2}$/.test(titleText);
+  if (!annualBestAmericanTitle) return evidence;
+
+  evidence.push("best_american_annual_title_shape");
+  if (/\b(?:guest|series) editors?\b|\beditors?\b.{0,80}\bselect(?:s|ed|ing)?\b|\bselect(?:s|ed|ing)?\s+(?:\w+\s+){0,3}(?:pieces|stories|works)\b/.test(descriptionText)) {
+    evidence.push("annual_anthology_editor_selection_description");
+  }
+  if (/\b(?:pieces|stories|works)\b.{0,80}\bpublished (?:in )?the previous year\b|\bbest (?:examples|stories|works|pieces)\b.{0,80}\bprevious year\b/.test(descriptionText)) {
+    evidence.push("annual_anthology_previous_year_selection_description");
+  }
+  if (/\bcollections? (?:&|and) anthologies\b|\bantholog(?:y|ies)\b/.test(categoryBlob)) {
+    evidence.push("anthology_category");
+  }
+  return Array.from(new Set(evidence));
+}
+
 function googleBooksCuratedBookGuideEvidence(titleText: string, descriptionText: string, categoryBlob: string): string[] {
   const evidence: string[] = [];
   const normalized = normalizeText(titleText)
@@ -639,14 +657,14 @@ function preteenGoogleBooksPublicationShapeRescueDecision(params: {
     "fiction_or_juvenile_categories",
     "middle_grade_or_children_audience",
   ].includes(family));
+  if (params.artifactDropReason || params.shapeAnalysis.shape === "anthology" || params.auditRecord.artifactEvidence.length > 0) {
+    return { applied: false, reason: "hard_artifact_evidence_present", evidenceFamilies: uniqueEvidenceFamilies };
+  }
   if (!PRETEEN_GOOGLE_BOOKS_RESCUABLE_UNKNOWN_REASONS.has(params.publicationShapeDropReason)) {
     return { applied: false, reason: "not_rescuable_unknown_shape_reason", evidenceFamilies: uniqueEvidenceFamilies };
   }
   if (params.shapeAnalysis.shape !== "unknown") {
     return { applied: false, reason: "not_unknown_publication_shape", evidenceFamilies: uniqueEvidenceFamilies };
-  }
-  if (params.artifactDropReason || params.auditRecord.artifactEvidence.length > 0) {
-    return { applied: false, reason: "hard_artifact_evidence_present", evidenceFamilies: uniqueEvidenceFamilies };
   }
   if (!PRETEEN_GOOGLE_BOOKS_RESCUABLE_NARRATIVE_IDENTITIES.has(params.auditRecord.preteenIdentity)) {
     return { applied: false, reason: "preteen_identity_not_rescuable_narrative", evidenceFamilies: uniqueEvidenceFamilies };
@@ -794,7 +812,9 @@ function inferGoogleBooksPublicationShape(params: {
     || (ambiguousNovelFormTitle && !/\ba novel\b/.test(titleText));
   const literaryHistoryShape = /\b(history of literature|literary history|history of (?:american|english|british|world) literature|literature and culture)\b/.test(allText);
   const bundledPublicationEvidence = googleBooksBundledPublicationEvidence(titleText, descriptionText, categoryBlob);
-  const anthologyShape = bundledPublicationEvidence.length > 0
+  const annualAnthologyEvidence = googleBooksAnnualAnthologyEvidence(titleText, descriptionText, categoryBlob);
+  const anthologyEvidence = [...bundledPublicationEvidence, ...annualAnthologyEvidence];
+  const anthologyShape = anthologyEvidence.length > 0
     || /\b(antholog(?:y|ies)|omnibus|collected stories|selected stories|complete stories|great short stories|great tales|masterpieces of|best of the year|year'?s best|annual collection|edited by|selected by)\b/.test(allText);
   const essayCollectionShape = /\b(essay collection|critical essays?|essays on|collected essays)\b/.test(allText)
     || (/\bessays?\b/.test(titleText) && !novelIdentity);
@@ -820,7 +840,7 @@ function inferGoogleBooksPublicationShape(params: {
   if (commentaryShape) explicitShapeCandidates.push({ shape: "author_commentary", evidence: ["author_or_work_commentary_shape"], decision: "commentary_about_work_or_author_overrides_narrative_signals" });
   if (genreSurveyShape) explicitShapeCandidates.push({ shape: "genre_survey", evidence: ["genre_survey_shape"], decision: "genre_survey_identity_overrides_narrative_signals" });
   if (literaryHistoryShape) explicitShapeCandidates.push({ shape: "literary_history", evidence: ["literary_history_shape"], decision: "literary_history_identity_overrides_narrative_signals" });
-  if (anthologyShape) explicitShapeCandidates.push({ shape: "anthology", evidence: bundledPublicationEvidence.length ? bundledPublicationEvidence : ["anthology_or_omnibus_shape"], decision: "anthology_identity_overrides_narrative_signals" });
+  if (anthologyShape) explicitShapeCandidates.push({ shape: "anthology", evidence: anthologyEvidence.length ? anthologyEvidence : ["anthology_or_omnibus_shape"], decision: "anthology_identity_overrides_narrative_signals" });
   if (essayCollectionShape) explicitShapeCandidates.push({ shape: "essay_collection", evidence: ["essay_collection_shape"], decision: "essay_collection_identity_overrides_narrative_signals" });
   if (miscellanyShape) explicitShapeCandidates.push({ shape: "miscellany", evidence: ["miscellany_or_digest_shape"], decision: "miscellany_identity_overrides_narrative_signals" });
   if (publicDomainCompilationShape) explicitShapeCandidates.push({ shape: "public_domain_compilation", evidence: ["public_domain_compilation_shape"], decision: "public_domain_compilation_identity_overrides_narrative_signals" });
