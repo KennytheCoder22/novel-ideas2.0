@@ -1,43 +1,43 @@
 {
-  "generatedAt": "2026-07-19T21:48:21.710Z",
+  "generatedAt": "2026-07-19T22:34:35.721Z",
   "aggregate": {
     "totalFixtures": 40,
     "positiveCount": 30,
     "negativeCount": 10,
     "positiveResults": {
       "trueAccepts": 0,
-      "falseRejects": 12,
-      "partialPreScoringPassOnly": 18,
+      "falseRejects": 7,
+      "partialPreScoringPassOnly": 23,
       "trueAcceptRate": 0,
       "falseRejectTitles": [
-        "Don't Let the Pigeon Drive the Bus!",
-        "Froggy Gets Dressed",
         "The Day the Crayons Quit",
         "The Book with No Pictures",
         "We Are in a Book!",
-        "I Am Invited to a Party!",
-        "Henry and Mudge: The First Book",
         "Henry and Mudge and the Happy Cat",
         "Curious George Librarian for a Day",
-        "Pete the Cat: I Love My White Shoes",
         "Stellaluna",
         "Chicka Chicka Boom Boom"
       ],
       "partialPassTitles": [
         "The Snowy Day",
         "Where the Wild Things Are",
+        "Don't Let the Pigeon Drive the Bus!",
         "The Gruffalo",
+        "Froggy Gets Dressed",
         "The Very Hungry Caterpillar",
         "Corduroy",
         "Last Stop on Market Street",
         "Dragons Love Tacos",
+        "I Am Invited to a Party!",
         "Frog and Toad Are Friends",
         "Frog and Toad Together",
+        "Henry and Mudge: The First Book",
         "Nate the Great",
         "Nate the Great and the Lost List",
         "Mercy Watson to the Rescue",
         "Mercy Watson Goes for a Ride",
         "Curious George Home Run",
+        "Pete the Cat: I Love My White Shoes",
         "Pete the Cat and His Four Groovy Buttons",
         "Pete the Cat: Too Cool for School",
         "The Cat in the Hat",
@@ -53,20 +53,23 @@
     "editionSelectionMatters": [
       "The Snowy Day",
       "Where the Wild Things Are",
+      "Don't Let the Pigeon Drive the Bus!",
       "The Gruffalo",
+      "Froggy Gets Dressed",
       "The Very Hungry Caterpillar",
       "Last Stop on Market Street",
       "Dragons Love Tacos",
-      "Frog and Toad Are Friends",
+      "I Am Invited to a Party!",
       "Frog and Toad Together",
+      "Henry and Mudge: The First Book",
       "Nate the Great",
       "Nate the Great and the Lost List",
       "Mercy Watson to the Rescue",
       "Mercy Watson Goes for a Ride",
       "Curious George Home Run",
+      "Pete the Cat: I Love My White Shoes",
       "Pete the Cat: Too Cool for School",
       "The Cat in the Hat",
-      "Green Eggs and Ham",
       "Harry Potter and the Sorcerer's Stone"
     ],
     "metadataFieldAnalysis": {
@@ -94,10 +97,10 @@
       }
     },
     "topRejectionReasonsForGoodBooks": {
-      "not_selected": 13,
-      "k2_missing_child_readable_narrative_or_format_identity": 6,
-      "k2_unknown_or_non_k2_audience_without_credible_k2_evidence": 9,
-      "k2_missing_story_picture_reader_relevance": 2
+      "not_selected": 20,
+      "k2_unknown_or_non_k2_audience_without_credible_k2_evidence": 7,
+      "k2_missing_story_picture_reader_relevance": 2,
+      "k2_missing_child_readable_narrative_or_format_identity": 1
     },
     "apiErrors": []
   },
@@ -207,21 +210,23 @@
           "publicationShapeDropReason": "publication_shape_unknown_insufficient_story_evidence",
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": false,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 0.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "juvenile_fiction_with_narrative_pronoun"
+          ]
         },
         {
           "volumeId": "CDGTEAAAQBAJ",
@@ -426,21 +431,23 @@
           "publicationShapeDropReason": "publication_shape_unknown_insufficient_narrative_identity",
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": false,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 0.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "juvenile_fiction_with_narrative_pronoun"
+          ]
         },
         {
           "volumeId": "74E_nQAACAAJ",
@@ -662,11 +669,11 @@
         }
       ],
       "anyEditionAccepted": false,
-      "bestMatchVolumeId": "74E_nQAACAAJ",
+      "bestMatchVolumeId": "2w0NAQAAMAAJ",
       "bestMatchAdmission": "rejected_final_gate",
       "bestMatchPublicationShape": "unknown",
       "bestMatchCategories": [
-        "Children's stories"
+        "Juvenile Fiction"
       ],
       "editionSelectionMatters": true,
       "labelMatch": "partial_pre_scoring_pass"
@@ -765,21 +772,23 @@
           "publicationShapeDropReason": null,
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": true,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 0.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "juvenile_fiction_with_narrative_pronoun"
+          ]
         },
         {
           "volumeId": "vn8A0QEACAAJ",
@@ -877,14 +886,14 @@
         }
       ],
       "anyEditionAccepted": false,
-      "bestMatchVolumeId": "0DuXngEACAAJ",
-      "bestMatchAdmission": "rejected_pre_scoring",
-      "bestMatchPublicationShape": "unknown",
+      "bestMatchVolumeId": "y1gG0QEACAAJ",
+      "bestMatchAdmission": "rejected_final_gate",
+      "bestMatchPublicationShape": "novel",
       "bestMatchCategories": [
-        "Bus drivers"
+        "Juvenile Fiction"
       ],
-      "editionSelectionMatters": false,
-      "labelMatch": "false_reject"
+      "editionSelectionMatters": true,
+      "labelMatch": "partial_pre_scoring_pass"
     },
     {
       "fixtureTitle": "The Gruffalo",
@@ -1011,60 +1020,6 @@
           ]
         },
         {
-          "volumeId": "bg4GRAAACAAJ",
-          "title": "The Gruffalo's Child",
-          "subtitle": "",
-          "authors": [
-            "Julia Donaldson"
-          ],
-          "publisher": "Macmillan",
-          "publishedDate": "2010",
-          "publicationYear": 2010,
-          "description": "The sequel to the bestselling THE GRUFFALO, now available in brand new, easy to handle, board book format for even the youngest children to enjoy!One dark night the Gruffalo's child disobeys her father's warnings and ventures out into the snow. After all, the Big Bad Mouse doesn't really exist . . .",
-          "categories": [
-            "Animals"
-          ],
-          "pageCount": 0,
-          "printType": "BOOK",
-          "maturityRating": "NOT_MATURE",
-          "inferredAudienceBand": "unknown",
-          "hasIsbn": true,
-          "hasDescription": true,
-          "language": "en",
-          "publicationShape": "novel",
-          "narrativeConfidence": 4.5,
-          "publicationShapeEvidence": [
-            "narrative_synopsis_description",
-            "mainstream_fiction_publisher",
-            "isbn_backed_record_quality",
-            "novel_or_narrative_fiction_shape"
-          ],
-          "explicitNonNarrativeIdentity": [],
-          "storyLevelNarrativeEvidence": [
-            "narrative_synopsis_description",
-            "plot_setup_description"
-          ],
-          "genericCategoryTitle": false,
-          "unknownShapeEligibility": false,
-          "unknownShapeRejectedReason": "",
-          "publicationShapeDropReason": null,
-          "artifactDropReason": null,
-          "admittedAfterSourcePolicy": true,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
-          "audienceReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
-          "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
-          "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
-          "kidsCollectionEvidence": [],
-          "kidsAudienceEvidence": [],
-          "kidsFormatEvidence": []
-        },
-        {
           "volumeId": "FsT5wAEACAAJ",
           "title": "The Gruffalo Activity Book",
           "subtitle": "",
@@ -1171,6 +1126,60 @@
           "kidsFormatEvidence": [
             "picture_book_identity"
           ]
+        },
+        {
+          "volumeId": "bg4GRAAACAAJ",
+          "title": "The Gruffalo's Child",
+          "subtitle": "",
+          "authors": [
+            "Julia Donaldson"
+          ],
+          "publisher": "Macmillan",
+          "publishedDate": "2010",
+          "publicationYear": 2010,
+          "description": "The sequel to the bestselling THE GRUFFALO, now available in brand new, easy to handle, board book format for even the youngest children to enjoy!One dark night the Gruffalo's child disobeys her father's warnings and ventures out into the snow. After all, the Big Bad Mouse doesn't really exist . . .",
+          "categories": [
+            "Animals"
+          ],
+          "pageCount": 0,
+          "printType": "BOOK",
+          "maturityRating": "NOT_MATURE",
+          "inferredAudienceBand": "unknown",
+          "hasIsbn": true,
+          "hasDescription": true,
+          "language": "en",
+          "publicationShape": "novel",
+          "narrativeConfidence": 4.5,
+          "publicationShapeEvidence": [
+            "narrative_synopsis_description",
+            "mainstream_fiction_publisher",
+            "isbn_backed_record_quality",
+            "novel_or_narrative_fiction_shape"
+          ],
+          "explicitNonNarrativeIdentity": [],
+          "storyLevelNarrativeEvidence": [
+            "narrative_synopsis_description",
+            "plot_setup_description"
+          ],
+          "genericCategoryTitle": false,
+          "unknownShapeEligibility": false,
+          "unknownShapeRejectedReason": "",
+          "publicationShapeDropReason": null,
+          "artifactDropReason": null,
+          "admittedAfterSourcePolicy": true,
+          "passedPreScoring": false,
+          "preScoringRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "audienceReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "passedFinalGate": false,
+          "finalRejectionReason": null,
+          "overallAdmission": "rejected_pre_scoring",
+          "tasteScore": 0,
+          "identityDecision": null,
+          "identityRejectionReason": null,
+          "audienceFormatGateDecision": "rejected:k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "kidsCollectionEvidence": [],
+          "kidsAudienceEvidence": [],
+          "kidsFormatEvidence": []
         }
       ],
       "anyEditionAccepted": false,
@@ -1228,21 +1237,23 @@
           "publicationShapeDropReason": "publication_shape_unknown_insufficient_narrative_identity",
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": false,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 0.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "juvenile_fiction_with_narrative_pronoun"
+          ]
         },
         {
           "volumeId": "XqOOEAAAQBAJ",
@@ -1279,21 +1290,23 @@
           "publicationShapeDropReason": "publication_shape_unknown_insufficient_narrative_identity",
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": false,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 0.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "juvenile_fiction_with_narrative_pronoun"
+          ]
         },
         {
           "volumeId": "oiSwPwAACAAJ",
@@ -1383,13 +1396,13 @@
       ],
       "anyEditionAccepted": false,
       "bestMatchVolumeId": "luVvDwAAQBAJ",
-      "bestMatchAdmission": "rejected_pre_scoring",
+      "bestMatchAdmission": "rejected_final_gate",
       "bestMatchPublicationShape": "unknown",
       "bestMatchCategories": [
         "Juvenile Fiction"
       ],
-      "editionSelectionMatters": false,
-      "labelMatch": "false_reject"
+      "editionSelectionMatters": true,
+      "labelMatch": "partial_pre_scoring_pass"
     },
     {
       "fixtureTitle": "The Very Hungry Caterpillar",
@@ -1997,7 +2010,7 @@
       "editionsFound": 3,
       "editions": [
         {
-          "volumeId": "5cz5AwAAQBAJ",
+          "volumeId": "NS3eDAAAQBAJ",
           "title": "Last Stop on Market Street",
           "subtitle": "",
           "authors": [
@@ -2010,7 +2023,7 @@
           "categories": [
             "Juvenile Fiction"
           ],
-          "pageCount": 40,
+          "pageCount": 34,
           "printType": "BOOK",
           "maturityRating": "NOT_MATURE",
           "inferredAudienceBand": "kids",
@@ -2176,7 +2189,7 @@
         }
       ],
       "anyEditionAccepted": false,
-      "bestMatchVolumeId": "5cz5AwAAQBAJ",
+      "bestMatchVolumeId": "NS3eDAAAQBAJ",
       "bestMatchAdmission": "rejected_final_gate",
       "bestMatchPublicationShape": "novel",
       "bestMatchCategories": [
@@ -2491,21 +2504,23 @@
           "publicationShapeDropReason": null,
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": true,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 8.5,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "juvenile_fiction_with_narrative_pronoun"
+          ]
         },
         {
           "volumeId": "qAZGZxu_73UC",
@@ -2718,27 +2733,29 @@
           "publicationShapeDropReason": null,
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": true,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 6.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "juvenile_fiction_with_narrative_pronoun"
+          ]
         }
       ],
       "anyEditionAccepted": false,
-      "bestMatchVolumeId": "qAZGZxu_73UC",
+      "bestMatchVolumeId": "4WylEAAAQBAJ",
       "bestMatchAdmission": "rejected_final_gate",
-      "bestMatchPublicationShape": "unknown",
+      "bestMatchPublicationShape": "novel",
       "bestMatchCategories": [
         "Juvenile Fiction"
       ],
@@ -3057,18 +3074,20 @@
           "publicationShapeDropReason": "publication_shape_unknown_insufficient_story_evidence",
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": false,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
-          "audienceReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 0.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
-          "kidsAudienceEvidence": [],
+          "kidsAudienceEvidence": [
+            "juvenile_or_childrens_fiction_category"
+          ],
           "kidsFormatEvidence": [
             "juvenile_narrative_story_signals"
           ]
@@ -3127,13 +3146,13 @@
       ],
       "anyEditionAccepted": false,
       "bestMatchVolumeId": "T4e-KQAACAAJ",
-      "bestMatchAdmission": "rejected_pre_scoring",
+      "bestMatchAdmission": "rejected_final_gate",
       "bestMatchPublicationShape": "unknown",
       "bestMatchCategories": [
         "Children's stories"
       ],
-      "editionSelectionMatters": false,
-      "labelMatch": "false_reject"
+      "editionSelectionMatters": true,
+      "labelMatch": "partial_pre_scoring_pass"
     },
     {
       "fixtureTitle": "Frog and Toad Are Friends",
@@ -3180,18 +3199,20 @@
           "publicationShapeDropReason": "publication_shape_unknown_insufficient_narrative_identity",
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": false,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
-          "audienceReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 5.5,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
-          "kidsAudienceEvidence": [],
+          "kidsAudienceEvidence": [
+            "juvenile_or_childrens_fiction_category"
+          ],
           "kidsFormatEvidence": [
             "juvenile_narrative_story_signals"
           ]
@@ -3309,13 +3330,13 @@
         }
       ],
       "anyEditionAccepted": false,
-      "bestMatchVolumeId": "wpBAtAEACAAJ",
+      "bestMatchVolumeId": "UExyEYhrz8MC",
       "bestMatchAdmission": "rejected_final_gate",
-      "bestMatchPublicationShape": "novel",
+      "bestMatchPublicationShape": "unknown",
       "bestMatchCategories": [
-        "Juvenile Fiction"
+        "Children's stories"
       ],
-      "editionSelectionMatters": true,
+      "editionSelectionMatters": false,
       "labelMatch": "partial_pre_scoring_pass"
     },
     {
@@ -3640,21 +3661,23 @@
           "publicationShapeDropReason": "publication_shape_unknown_insufficient_narrative_identity",
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": false,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 3.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "early_reader_identity"
+          ]
         },
         {
           "volumeId": "YfjTlwEACAAJ",
@@ -3794,13 +3817,13 @@
       ],
       "anyEditionAccepted": false,
       "bestMatchVolumeId": "m1XMtztBwOcC",
-      "bestMatchAdmission": "rejected_pre_scoring",
+      "bestMatchAdmission": "rejected_final_gate",
       "bestMatchPublicationShape": "unknown",
       "bestMatchCategories": [
         "Juvenile Fiction"
       ],
-      "editionSelectionMatters": false,
-      "labelMatch": "false_reject"
+      "editionSelectionMatters": true,
+      "labelMatch": "partial_pre_scoring_pass"
     },
     {
       "fixtureTitle": "Henry and Mudge and the Happy Cat",
@@ -4304,21 +4327,23 @@
           "publicationShapeDropReason": null,
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": true,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 0.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "juvenile_fiction_with_narrative_pronoun"
+          ]
         }
       ],
       "anyEditionAccepted": false,
@@ -5065,21 +5090,23 @@
           "publicationShapeDropReason": "publication_shape_unknown_insufficient_story_evidence",
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": false,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 0.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "juvenile_fiction_with_narrative_pronoun"
+          ]
         },
         {
           "volumeId": "YP5RXwAACAAJ",
@@ -5272,21 +5299,23 @@
           "publicationShapeDropReason": "publication_shape_unknown_insufficient_narrative_identity",
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": false,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 0.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
           "kidsAudienceEvidence": [
             "juvenile_or_childrens_fiction_category"
           ],
-          "kidsFormatEvidence": []
+          "kidsFormatEvidence": [
+            "juvenile_fiction_with_narrative_pronoun"
+          ]
         },
         {
           "volumeId": "_7-EswEACAAJ",
@@ -5336,13 +5365,13 @@
       ],
       "anyEditionAccepted": false,
       "bestMatchVolumeId": "4Sn_AAAAQBAJ",
-      "bestMatchAdmission": "rejected_pre_scoring",
+      "bestMatchAdmission": "rejected_final_gate",
       "bestMatchPublicationShape": "unknown",
       "bestMatchCategories": [
         "Juvenile Fiction"
       ],
-      "editionSelectionMatters": false,
-      "labelMatch": "false_reject"
+      "editionSelectionMatters": true,
+      "labelMatch": "partial_pre_scoring_pass"
     },
     {
       "fixtureTitle": "Pete the Cat and His Four Groovy Buttons",
@@ -5970,18 +5999,20 @@
           "publicationShapeDropReason": null,
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": true,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
-          "audienceReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "passedPreScoring": true,
+          "preScoringRejectionReason": null,
+          "audienceReason": null,
           "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
+          "finalRejectionReason": "not_selected",
+          "overallAdmission": "rejected_final_gate",
+          "tasteScore": 0.8,
+          "identityDecision": "accepted:ambiguous",
           "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "audienceFormatGateDecision": "passed_k2_independent_audience_and_format",
           "kidsCollectionEvidence": [],
-          "kidsAudienceEvidence": [],
+          "kidsAudienceEvidence": [
+            "juvenile_or_childrens_fiction_category"
+          ],
           "kidsFormatEvidence": [
             "juvenile_narrative_story_signals"
           ]
@@ -6157,7 +6188,7 @@
       "bestMatchCategories": [
         "Juvenile Fiction"
       ],
-      "editionSelectionMatters": true,
+      "editionSelectionMatters": false,
       "labelMatch": "partial_pre_scoring_pass"
     },
     {
@@ -6169,6 +6200,59 @@
       "notes": "Narrative picture book",
       "editionsFound": 5,
       "editions": [
+        {
+          "volumeId": "LfL1Ovhxba0C",
+          "title": "Stellaluna",
+          "subtitle": "",
+          "authors": [
+            "Janell Cannon"
+          ],
+          "publisher": "",
+          "publishedDate": "1993",
+          "publicationYear": 1993,
+          "description": "After she falls headfirst into a bird's nest, a baby bat is raised like a bird until she is reunited with her mother.",
+          "categories": [
+            "Bats"
+          ],
+          "pageCount": 52,
+          "printType": "BOOK",
+          "maturityRating": "NOT_MATURE",
+          "inferredAudienceBand": "unknown",
+          "hasIsbn": true,
+          "hasDescription": true,
+          "language": "en",
+          "publicationShape": "novel",
+          "narrativeConfidence": 4,
+          "publicationShapeEvidence": [
+            "narrative_synopsis_description",
+            "isbn_backed_record_quality",
+            "novel_or_narrative_fiction_shape"
+          ],
+          "explicitNonNarrativeIdentity": [],
+          "storyLevelNarrativeEvidence": [
+            "narrative_synopsis_description",
+            "plot_setup_description"
+          ],
+          "genericCategoryTitle": false,
+          "unknownShapeEligibility": false,
+          "unknownShapeRejectedReason": "",
+          "publicationShapeDropReason": null,
+          "artifactDropReason": null,
+          "admittedAfterSourcePolicy": true,
+          "passedPreScoring": false,
+          "preScoringRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "audienceReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "passedFinalGate": false,
+          "finalRejectionReason": null,
+          "overallAdmission": "rejected_pre_scoring",
+          "tasteScore": 0,
+          "identityDecision": null,
+          "identityRejectionReason": null,
+          "audienceFormatGateDecision": "rejected:k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "kidsCollectionEvidence": [],
+          "kidsAudienceEvidence": [],
+          "kidsFormatEvidence": []
+        },
         {
           "volumeId": "7_gpuwEACAAJ",
           "title": "Stellaluna",
@@ -6379,7 +6463,7 @@
         }
       ],
       "anyEditionAccepted": false,
-      "bestMatchVolumeId": "7_gpuwEACAAJ",
+      "bestMatchVolumeId": "LfL1Ovhxba0C",
       "bestMatchAdmission": "rejected_pre_scoring",
       "bestMatchPublicationShape": "novel",
       "bestMatchCategories": [
@@ -7263,6 +7347,58 @@
       "editionsFound": 5,
       "editions": [
         {
+          "volumeId": "hlb_sM1AN0gC",
+          "title": "The Hunger Games",
+          "subtitle": "",
+          "authors": [
+            "Suzanne Collins"
+          ],
+          "publisher": "Scholastic Inc.",
+          "publishedDate": "2008",
+          "publicationYear": 2008,
+          "description": "By winning the Hunger Games, Katniss and Peeta have secured a life of safety and plenty for themselves and their families, but because they won by defying the rules, they unwittingly become the faces of an impending rebellion. |",
+          "categories": [
+            "Juvenile Fiction"
+          ],
+          "pageCount": 386,
+          "printType": "BOOK",
+          "maturityRating": "NOT_MATURE",
+          "inferredAudienceBand": "kids",
+          "hasIsbn": true,
+          "hasDescription": true,
+          "language": "en",
+          "publicationShape": "unknown",
+          "narrativeConfidence": 1,
+          "publicationShapeEvidence": [
+            "fiction_category",
+            "isbn_backed_record_quality",
+            "book_length_record_quality"
+          ],
+          "explicitNonNarrativeIdentity": [],
+          "storyLevelNarrativeEvidence": [],
+          "genericCategoryTitle": false,
+          "unknownShapeEligibility": false,
+          "unknownShapeRejectedReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "publicationShapeDropReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "artifactDropReason": null,
+          "admittedAfterSourcePolicy": false,
+          "passedPreScoring": false,
+          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "passedFinalGate": false,
+          "finalRejectionReason": null,
+          "overallAdmission": "rejected_pre_scoring",
+          "tasteScore": 0,
+          "identityDecision": null,
+          "identityRejectionReason": null,
+          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
+          "kidsCollectionEvidence": [],
+          "kidsAudienceEvidence": [
+            "juvenile_or_childrens_fiction_category"
+          ],
+          "kidsFormatEvidence": []
+        },
+        {
           "volumeId": "h62hbrZbaXAC",
           "title": "The Hunger Games (movie tie-in)",
           "subtitle": "",
@@ -7305,58 +7441,6 @@
           "publicationShapeDropReason": null,
           "artifactDropReason": null,
           "admittedAfterSourcePolicy": true,
-          "passedPreScoring": false,
-          "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
-          "passedFinalGate": false,
-          "finalRejectionReason": null,
-          "overallAdmission": "rejected_pre_scoring",
-          "tasteScore": 0,
-          "identityDecision": null,
-          "identityRejectionReason": null,
-          "audienceFormatGateDecision": "rejected:k2_missing_child_readable_narrative_or_format_identity",
-          "kidsCollectionEvidence": [],
-          "kidsAudienceEvidence": [
-            "juvenile_or_childrens_fiction_category"
-          ],
-          "kidsFormatEvidence": []
-        },
-        {
-          "volumeId": "hlb_sM1AN0gC",
-          "title": "The Hunger Games",
-          "subtitle": "",
-          "authors": [
-            "Suzanne Collins"
-          ],
-          "publisher": "Scholastic Inc.",
-          "publishedDate": "2008",
-          "publicationYear": 2008,
-          "description": "By winning the Hunger Games, Katniss and Peeta have secured a life of safety and plenty for themselves and their families, but because they won by defying the rules, they unwittingly become the faces of an impending rebellion. |",
-          "categories": [
-            "Juvenile Fiction"
-          ],
-          "pageCount": 386,
-          "printType": "BOOK",
-          "maturityRating": "NOT_MATURE",
-          "inferredAudienceBand": "kids",
-          "hasIsbn": true,
-          "hasDescription": true,
-          "language": "en",
-          "publicationShape": "unknown",
-          "narrativeConfidence": 1,
-          "publicationShapeEvidence": [
-            "fiction_category",
-            "isbn_backed_record_quality",
-            "book_length_record_quality"
-          ],
-          "explicitNonNarrativeIdentity": [],
-          "storyLevelNarrativeEvidence": [],
-          "genericCategoryTitle": false,
-          "unknownShapeEligibility": false,
-          "unknownShapeRejectedReason": "publication_shape_unknown_insufficient_narrative_identity",
-          "publicationShapeDropReason": "publication_shape_unknown_insufficient_narrative_identity",
-          "artifactDropReason": null,
-          "admittedAfterSourcePolicy": false,
           "passedPreScoring": false,
           "preScoringRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
           "audienceReason": "k2_missing_child_readable_narrative_or_format_identity",
@@ -7533,9 +7617,9 @@
         }
       ],
       "anyEditionAccepted": false,
-      "bestMatchVolumeId": "h62hbrZbaXAC",
+      "bestMatchVolumeId": "hlb_sM1AN0gC",
       "bestMatchAdmission": "rejected_pre_scoring",
-      "bestMatchPublicationShape": "novel",
+      "bestMatchPublicationShape": "unknown",
       "bestMatchCategories": [
         "Juvenile Fiction"
       ],

@@ -335,4 +335,32 @@ console.log("PASS: Kids diagnostics accurately report pre-scoring enforcement an
   console.log("PASS: subject-heading-only categories (Bats, Bus drivers, Juvenile Nonfiction) remain correctly rejected");
 }
 
+// Regression: Juvenile Fiction + pronoun + known long page count must NOT pass
+// Google Books labels YA novels (e.g., The Hunger Games, 374pp) as "Juvenile Fiction".
+// The pronoun expansion must not fire when pageCount > 100.
+{
+  const hungerGames = candidate("The Hunger Games", "Set in a dark vision of the near future, a terrifying reality TV show is taking place.", {
+    genres: ["Juvenile Fiction"],
+    themes: ["survival"],
+    raw: {
+      title: "The Hunger Games",
+      maturityRating: "NOT_MATURE", contentMaturity: "not_mature", audienceBand: "unknown",
+      categories: ["Juvenile Fiction"],
+      description: "Set in a dark vision of the near future, a terrifying reality TV show is taking place. Katniss and her family struggle to survive.",
+      volumeInfo: {
+        categories: ["Juvenile Fiction"],
+        description: "Set in a dark vision of the near future, a terrifying reality TV show is taking place. Katniss and her family struggle to survive.",
+        pageCount: 374,
+        maturityRating: "NOT_MATURE",
+      },
+    },
+    diagnostics: { queryText: "kids adventure", googleBooksAudienceBand: "unknown", googleBooksContentMaturity: "not_mature", googleBooksPublicationShape: "novel" },
+  });
+  const hgGate = applyKidsGoogleBooksPreScoringGate([{ ...hungerGames, source: "googleBooks" }], profile);
+  if (hgGate.candidates.some(c => c.title === "The Hunger Games")) {
+    throw new Error("The Hunger Games (374pp, YA) must not pass Kids pre-scoring — Juvenile Fiction + pronoun alone must not certify K-2 when pageCount > 100");
+  }
+  console.log("PASS: Juvenile Fiction + pronoun + pageCount 374 correctly rejected (YA page-count guard)");
+}
+
 console.log("All Kids Google Books architecture regressions passed.");

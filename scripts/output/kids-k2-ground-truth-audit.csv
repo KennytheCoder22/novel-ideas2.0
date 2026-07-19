@@ -1,20 +1,20 @@
 fixtureTitle,fixtureAuthor,expectedLabel,category,group,editionsFound,anyEditionAccepted,bestMatchAdmission,bestMatchPublicationShape,bestMatchCategoriesCount,editionSelectionMatters,labelMatch
 "The Snowy Day","Ezra Jack Keats",should_accept,picture_book,positive,5,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
 "Where the Wild Things Are","Maurice Sendak",should_accept,picture_book,positive,5,false,rejected_final_gate,unknown,1,true,partial_pre_scoring_pass
-"Don't Let the Pigeon Drive the Bus!","Mo Willems",should_accept,picture_book,positive,4,false,rejected_pre_scoring,unknown,1,false,false_reject
+"Don't Let the Pigeon Drive the Bus!","Mo Willems",should_accept,picture_book,positive,4,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
 "The Gruffalo","Julia Donaldson",should_accept,picture_book,positive,5,false,rejected_final_gate,unknown,1,true,partial_pre_scoring_pass
-"Froggy Gets Dressed","Jonathan London",should_accept,picture_book,positive,4,false,rejected_pre_scoring,unknown,1,false,false_reject
+"Froggy Gets Dressed","Jonathan London",should_accept,picture_book,positive,4,false,rejected_final_gate,unknown,1,true,partial_pre_scoring_pass
 "The Very Hungry Caterpillar","Eric Carle",should_accept,picture_book,positive,5,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
 "Corduroy","Don Freeman",should_accept,picture_book,positive,5,false,rejected_final_gate,novel,1,false,partial_pre_scoring_pass
 "Last Stop on Market Street","Matt de la Peña",should_accept,picture_book,positive,3,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
 "The Day the Crayons Quit","Drew Daywalt",should_accept,picture_book,positive,5,false,rejected_pre_scoring,novel,1,false,false_reject
-"Dragons Love Tacos","Adam Rubin",should_accept,picture_book,positive,5,false,rejected_final_gate,unknown,1,true,partial_pre_scoring_pass
+"Dragons Love Tacos","Adam Rubin",should_accept,picture_book,positive,5,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
 "The Book with No Pictures","B.J. Novak",should_accept,picture_book,positive,4,false,rejected_pre_scoring,unknown,1,false,false_reject
 "We Are in a Book!","Mo Willems",should_accept,early_reader,positive,1,false,rejected_pre_scoring,unknown,0,false,false_reject
-"I Am Invited to a Party!","Mo Willems",should_accept,early_reader,positive,2,false,rejected_pre_scoring,unknown,1,false,false_reject
-"Frog and Toad Are Friends","Arnold Lobel",should_accept,early_reader,positive,3,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
+"I Am Invited to a Party!","Mo Willems",should_accept,early_reader,positive,2,false,rejected_final_gate,unknown,1,true,partial_pre_scoring_pass
+"Frog and Toad Are Friends","Arnold Lobel",should_accept,early_reader,positive,3,false,rejected_final_gate,unknown,1,false,partial_pre_scoring_pass
 "Frog and Toad Together","Arnold Lobel",should_accept,early_reader,positive,5,false,rejected_final_gate,unknown,1,true,partial_pre_scoring_pass
-"Henry and Mudge: The First Book","Cynthia Rylant",should_accept,early_reader,positive,4,false,rejected_pre_scoring,unknown,1,false,false_reject
+"Henry and Mudge: The First Book","Cynthia Rylant",should_accept,early_reader,positive,4,false,rejected_final_gate,unknown,1,true,partial_pre_scoring_pass
 "Henry and Mudge and the Happy Cat","Cynthia Rylant",should_accept,early_reader,positive,4,false,rejected_pre_scoring,nonfiction,1,false,false_reject
 "Nate the Great","Marjorie Weinman Sharmat",should_accept,beginner_chapter_book,positive,5,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
 "Nate the Great and the Lost List","Marjorie Weinman Sharmat",should_accept,beginner_chapter_book,positive,3,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
@@ -22,16 +22,16 @@ fixtureTitle,fixtureAuthor,expectedLabel,category,group,editionsFound,anyEdition
 "Mercy Watson Goes for a Ride","Kate DiCamillo",should_accept,beginner_chapter_book,positive,2,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
 "Curious George Home Run","H. A. Rey",should_accept,early_reader,positive,4,false,rejected_final_gate,unknown,1,true,partial_pre_scoring_pass
 "Curious George Librarian for a Day","H. A. Rey",should_accept,early_reader,positive,1,false,rejected_pre_scoring,novel,1,false,false_reject
-"Pete the Cat: I Love My White Shoes","Eric Litwin",should_accept,picture_book,positive,2,false,rejected_pre_scoring,unknown,1,false,false_reject
+"Pete the Cat: I Love My White Shoes","Eric Litwin",should_accept,picture_book,positive,2,false,rejected_final_gate,unknown,1,true,partial_pre_scoring_pass
 "Pete the Cat and His Four Groovy Buttons","Eric Litwin",should_accept,picture_book,positive,1,false,rejected_final_gate,novel,1,false,partial_pre_scoring_pass
 "Pete the Cat: Too Cool for School","James Dean",should_accept,early_reader,positive,3,false,rejected_final_gate,unknown,1,true,partial_pre_scoring_pass
 "The Cat in the Hat","Dr. Seuss",should_accept,early_reader,positive,5,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
-"Green Eggs and Ham","Dr. Seuss",should_accept,early_reader,positive,5,false,rejected_final_gate,novel,1,true,partial_pre_scoring_pass
+"Green Eggs and Ham","Dr. Seuss",should_accept,early_reader,positive,5,false,rejected_final_gate,novel,1,false,partial_pre_scoring_pass
 "Stellaluna","Janell Cannon",should_accept,picture_book,positive,5,false,rejected_pre_scoring,novel,1,false,false_reject
 "Chicka Chicka Boom Boom","Bill Martin Jr.",should_accept,rhyming_picture_book,positive,5,false,rejected_pre_scoring,nonfiction,1,false,false_reject
 "Sandman Vol. 1: Preludes and Nocturnes","Neil Gaiman",should_reject,adult_graphic_novel,negative,5,false,rejected_pre_scoring,series_installment,1,false,correct_reject
 "Harry Potter and the Sorcerer's Stone","J.K. Rowling",ambiguous,middle_grade_or_ya,negative,5,false,rejected_final_gate,critical_study,1,true,rejected_ambiguous
-"The Hunger Games","Suzanne Collins",should_reject,ya_novel,negative,5,false,rejected_pre_scoring,novel,1,false,correct_reject
+"The Hunger Games","Suzanne Collins",should_reject,ya_novel,negative,5,false,rejected_pre_scoring,unknown,1,false,correct_reject
 "Teaching Reading with Picture Books","various",should_reject,teaching_guide,negative,0,false,,,0,false,correct_reject
 "The Everything Kids' Reading Activity Book","various",should_reject,workbook,negative,0,false,,,0,false,correct_reject
 "A History of Picture Books","various",should_reject,criticism_history,negative,0,false,,,0,false,correct_reject

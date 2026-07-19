@@ -3584,6 +3584,10 @@ function kidsGoogleBooksAudienceEligibility(candidate: ScoredCandidate): KidsGoo
   const nonTitleText = kidsNonTitleDocumentText(candidate);
   const combined = [titleText, nonTitleText].join(" ");
   const shape = normalized(candidate.diagnostics?.googleBooksPublicationShape);
+  const rawVolumeInfo = (candidate.raw && typeof candidate.raw === "object" && "volumeInfo" in (candidate.raw as object))
+    ? ((candidate.raw as Record<string, unknown>).volumeInfo as Record<string, unknown> | undefined)
+    : undefined;
+  const pageCount = Number(rawVolumeInfo?.pageCount || 0) || undefined;
   const audienceEvidence: string[] = [];
   const formatEvidence: string[] = [];
   const contradictionEvidence: string[] = [];
@@ -3621,7 +3625,11 @@ function kidsGoogleBooksAudienceEligibility(candidate: ScoredCandidate): KidsGoo
   if (shape && KIDS_GOOGLE_BOOKS_NON_NARRATIVE_SHAPES.has(shape)) contradictionEvidence.push(`non_narrative_publication_shape:${shape}`);
 
   if (formatIdentity === "unknown" && audienceEvidence.includes("juvenile_or_childrens_fiction_category")) {
-    if (/\b(he|she|his|her|they|their)\b/.test(combined)) {
+    // Only apply pronoun expansion when page count is unknown or within K-2 range.
+    // Google Books labels YA novels (e.g., The Hunger Games) as "Juvenile Fiction", so
+    // a known long page count (>100) is a decisive counter-signal.
+    const knownLongBook = pageCount !== undefined && pageCount > 100;
+    if (!knownLongBook && /\b(he|she|his|her|they|their)\b/.test(combined)) {
       formatIdentity = "juvenile_narrative";
       formatEvidence.push("juvenile_fiction_with_narrative_pronoun");
     }
