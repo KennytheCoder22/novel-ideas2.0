@@ -1,5 +1,6 @@
 import type { ScoredCandidate, TasteProfile } from "./types";
 import { signalPresentInText } from "./score";
+import { annotatePreteenGoogleBooksPublicationIdentity, preteenGoogleBooksPublicationIdentityAudit } from "./preteenGoogleBooksPublicationIdentity";
 
 type DeferredCandidate = { candidate: ScoredCandidate; reason: string };
 type TeenOpenLibrarySeriesPositionInfo = { seriesName: string; position: number; source: string };
@@ -6867,6 +6868,11 @@ function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string
     if (middleGradesNonNarrativeInformationalArtifact(candidate) && !profileExplicitlyRequestsNonfictionReference(profile)) return "middle_grades_non_narrative_informational_artifact";
     const tasteEligibility = middleGradesMeaningfulTasteEligibility(candidate, true);
     if (!tasteEligibility.allowed) return tasteEligibility.reason || "middle_grades_missing_meaningful_taste_evidence";
+    if (candidate.source === "googleBooks") {
+      const publicationIdentity = preteenGoogleBooksPublicationIdentityAudit(candidate);
+      annotatePreteenGoogleBooksPublicationIdentity(candidate, publicationIdentity);
+      if (!publicationIdentity.allowed) return publicationIdentity.reason;
+    }
   }
   if (profile.ageBand === "teens" && candidate.source === "openLibrary") {
     const eligibility = teenOpenLibraryMeaningfulTasteEligibility(candidate, profile);
@@ -7845,6 +7851,65 @@ function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandi
   diagnostics.googleBooksFinalSelectionExclusionReasonByTitle = finalSelectionExclusionReasonByTitle;
 }
 
+function addPreteenGoogleBooksPublicationIdentityObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens" || !rankedCandidates.some((candidate) => candidate.source === "googleBooks")) return;
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const identityByTitle: Record<string, string> = {};
+  const confidenceByTitle: Record<string, number> = {};
+  const evidenceByTitle: Record<string, string[]> = {};
+  const narrativeEvidenceByTitle: Record<string, string[]> = {};
+  const artifactEvidenceByTitle: Record<string, string[]> = {};
+  const narrativeConfidenceSourceByTitle: Record<string, string[]> = {};
+  const trustedFieldEvidenceByTitle: Record<string, string[]> = {};
+  const overriddenNarrativeEvidenceByTitle: Record<string, string[]> = {};
+  const decisionByTitle: Record<string, string> = {};
+  const reasonByTitle: Record<string, string> = {};
+  const recommendedFuturePolicyByTitle: Record<string, string> = {};
+  const rejectedTitles: string[] = [];
+  const acceptedTitles: string[] = [];
+  const selectedTitles = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalized(candidate.title)));
+
+  for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
+    const audit = preteenGoogleBooksPublicationIdentityAudit(candidate);
+    annotatePreteenGoogleBooksPublicationIdentity(candidate, audit);
+    const title = candidate.title;
+    identityByTitle[title] = audit.identity;
+    confidenceByTitle[title] = audit.confidence;
+    evidenceByTitle[title] = audit.evidence;
+    narrativeEvidenceByTitle[title] = audit.narrativeEvidence;
+    artifactEvidenceByTitle[title] = audit.artifactEvidence;
+    narrativeConfidenceSourceByTitle[title] = audit.narrativeConfidenceSource;
+    trustedFieldEvidenceByTitle[title] = audit.trustedFieldEvidence;
+    overriddenNarrativeEvidenceByTitle[title] = audit.overriddenNarrativeEvidence;
+    recommendedFuturePolicyByTitle[title] = audit.recommendedFuturePolicyDecision;
+    if (!audit.allowed) {
+      decisionByTitle[title] = "rejected";
+      reasonByTitle[title] = audit.reason;
+      rejectedTitles.push(title);
+    } else if (selectedTitles.has(normalized(title))) {
+      decisionByTitle[title] = "selected";
+      reasonByTitle[title] = audit.reason;
+      acceptedTitles.push(title);
+    } else {
+      decisionByTitle[title] = "not_selected_after_existing_ranking";
+      reasonByTitle[title] = audit.reason;
+    }
+  }
+
+  diagnostics.preteenGoogleBooksPublicationIdentityByTitle = identityByTitle;
+  diagnostics.preteenGoogleBooksPublicationIdentityConfidenceByTitle = confidenceByTitle;
+  diagnostics.preteenGoogleBooksPublicationIdentityEvidenceByTitle = evidenceByTitle;
+  diagnostics.preteenGoogleBooksPublicationNarrativeEvidenceByTitle = narrativeEvidenceByTitle;
+  diagnostics.preteenGoogleBooksPublicationArtifactEvidenceByTitle = artifactEvidenceByTitle;
+  diagnostics.preteenGoogleBooksPublicationNarrativeConfidenceSourceByTitle = narrativeConfidenceSourceByTitle;
+  diagnostics.preteenGoogleBooksPublicationTrustedFieldEvidenceByTitle = trustedFieldEvidenceByTitle;
+  diagnostics.preteenGoogleBooksPublicationOverriddenNarrativeEvidenceByTitle = overriddenNarrativeEvidenceByTitle;
+  diagnostics.preteenGoogleBooksPublicationDecisionByTitle = decisionByTitle;
+  diagnostics.preteenGoogleBooksPublicationReasonByTitle = reasonByTitle;
+  diagnostics.preteenGoogleBooksPublicationRecommendedFuturePolicyByTitle = recommendedFuturePolicyByTitle;
+  diagnostics.preteenGoogleBooksPublicationRejectedTitles = Array.from(new Set(rejectedTitles));
+  diagnostics.preteenGoogleBooksPublicationAcceptedTitles = Array.from(new Set(acceptedTitles));
+}
 function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
   if (profile.ageBand === "adult" || !rankedCandidates.some((candidate) => candidate.source === "googleBooks")) return;
   const diagnostics = rejectedReasons as Record<string, unknown>;
@@ -8237,6 +8302,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   addTeenOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultGoogleBooksSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
+  addPreteenGoogleBooksPublicationIdentityObservability(rankedCandidates, selected, rejectedReasons, profile);
   addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 
