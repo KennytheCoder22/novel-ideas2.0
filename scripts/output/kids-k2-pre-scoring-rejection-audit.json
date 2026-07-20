@@ -1,0 +1,964 @@
+{
+  "generatedAt": "2026-07-20T00:53:31.797Z",
+  "presets": [
+    {
+      "preset": "Test A",
+      "attemptedQueries": [
+        "kids friendship picture book",
+        "kids humorous picture book",
+        "kids rhyming picture book"
+      ],
+      "uniqueRawCandidates": 59,
+      "publicationShapePassCount": 9,
+      "enteredScoringCount": 7,
+      "rejectedAfterShapeCount": 2,
+      "publicationShapePassRejectedHistogram": {
+        "k2_collection_or_bundle_activity_or_joke_compilation": 1,
+        "k2_unknown_or_non_k2_audience_without_credible_k2_evidence": 1
+      },
+      "representativeExamplesByReason": {
+        "k2_collection_or_bundle_activity_or_joke_compilation": [
+          {
+            "preset": "Test A",
+            "volumeId": "A7ELBgAAQBAJ",
+            "title": "Kid Ebooks With Fun Stories & Kid Jokes",
+            "queries": [
+              "kids humorous picture book"
+            ],
+            "categories": [
+              "Juvenile Fiction"
+            ],
+            "pageCount": 52,
+            "publicationShape": "story_collection",
+            "inferredAudienceBand": "kids",
+            "formatIdentity": "picture_book",
+            "audienceDecision": "accepted_k2_independent_audience_and_format",
+            "audienceRejectionReason": "k2_collection_or_bundle_activity_or_joke_compilation",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category"
+            ],
+            "formatEvidence": [
+              "picture_book_identity"
+            ],
+            "recommendationIdentity": "activity_or_joke_compilation",
+            "descriptionSnippet": "El Ninjo's new kid ebook that is called African Bean Adventures In The Jungle is something for young & old. Whether you're a \"professional\" butt-whistler or just an amateur, El Nin"
+          }
+        ],
+        "k2_unknown_or_non_k2_audience_without_credible_k2_evidence": [
+          {
+            "preset": "Test A",
+            "volumeId": "rRPQygAACAAJ",
+            "title": "Mortimer's Book of What-Ifs",
+            "queries": [
+              "kids rhyming picture book"
+            ],
+            "categories": [
+              "Juvenile Fiction"
+            ],
+            "pageCount": 24,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "adult",
+            "formatIdentity": "picture_book",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category",
+              "academic_reference_or_non_narrative_identity"
+            ],
+            "formatEvidence": [
+              "picture_book_identity"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "Children's (kids) Rhyming Picture Book with a Where's Waldo appeal. All kids ask \"What if\" questions each and every day. This is the way that they learn and develop their growing m"
+          }
+        ]
+      }
+    },
+    {
+      "preset": "Test B",
+      "attemptedQueries": [
+        "kids adventure picture book",
+        "kids magic adventure",
+        "kids dragon adventure early reader"
+      ],
+      "uniqueRawCandidates": 60,
+      "publicationShapePassCount": 25,
+      "enteredScoringCount": 10,
+      "rejectedAfterShapeCount": 15,
+      "publicationShapePassRejectedHistogram": {
+        "k2_collection_or_bundle_generic_bundle": 3,
+        "k2_unknown_or_non_k2_audience_without_credible_k2_evidence": 9,
+        "k2_missing_child_readable_narrative_or_format_identity": 1,
+        "googlebooks_mature_content_not_allowed_for_kids": 2
+      },
+      "representativeExamplesByReason": {
+        "k2_collection_or_bundle_generic_bundle": [
+          {
+            "preset": "Test B",
+            "volumeId": "L3d30QEACAAJ",
+            "title": "Pippin's Forest Adventure",
+            "queries": [
+              "kids adventure picture book"
+            ],
+            "categories": [
+              "Juvenile Fiction"
+            ],
+            "pageCount": 0,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "kids",
+            "formatIdentity": "picture_book",
+            "audienceDecision": "accepted_k2_independent_audience_and_format",
+            "audienceRejectionReason": "k2_collection_or_bundle_generic_bundle",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category",
+              "k2_age_or_grade_metadata"
+            ],
+            "formatEvidence": [
+              "picture_book_identity"
+            ],
+            "recommendationIdentity": "generic_bundle",
+            "descriptionSnippet": "A curious city pigeon. A forest full of surprises. A heartwarming picture book about friendship, courage, and the wonder of nature. When Pippin the pigeon leaves behind her busy ci"
+          },
+          {
+            "preset": "Test B",
+            "volumeId": "uPjtEAAAQBAJ",
+            "title": "The Little Explorer: A Wholesome Adventure Picture Book for Kids",
+            "queries": [
+              "kids adventure picture book"
+            ],
+            "categories": [
+              "Juvenile Fiction"
+            ],
+            "pageCount": 29,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "kids",
+            "formatIdentity": "picture_book",
+            "audienceDecision": "accepted_k2_independent_audience_and_format",
+            "audienceRejectionReason": "k2_collection_or_bundle_generic_bundle",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category"
+            ],
+            "formatEvidence": [
+              "picture_book_identity"
+            ],
+            "recommendationIdentity": "generic_bundle",
+            "descriptionSnippet": "Are you ready to foster a love for curiosity and discovery in your child? Dive into the enchanting world of 'The Little Explorer,' where every page is a journey filled with hidden "
+          },
+          {
+            "preset": "Test B",
+            "volumeId": "wdezzgEACAAJ",
+            "title": "Atom and the Universe",
+            "queries": [
+              "kids adventure picture book"
+            ],
+            "categories": [],
+            "pageCount": 24,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "kids",
+            "formatIdentity": "picture_book",
+            "audienceDecision": "accepted_k2_independent_audience_and_format",
+            "audienceRejectionReason": "k2_collection_or_bundle_generic_bundle",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category"
+            ],
+            "formatEvidence": [
+              "picture_book_identity"
+            ],
+            "recommendationIdentity": "generic_bundle",
+            "descriptionSnippet": "Ignite a lifelong passion for astronomy by joining Atom's fun and science-packed adventure beyond the stars! \"Every light you see was made from a light that came before it,\" the Un"
+          }
+        ],
+        "k2_unknown_or_non_k2_audience_without_credible_k2_evidence": [
+          {
+            "preset": "Test B",
+            "volumeId": "Yzv8DwAAQBAJ",
+            "title": "Solar System Amazing Space Adventure",
+            "queries": [
+              "kids adventure picture book"
+            ],
+            "categories": [
+              "Juvenile Fiction"
+            ],
+            "pageCount": 0,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "adult",
+            "formatIdentity": "juvenile_narrative",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category",
+              "academic_reference_or_non_narrative_identity"
+            ],
+            "formatEvidence": [
+              "juvenile_narrative_story_signals"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "This dog’s about to blast off. Will his trip be out-of-this-world? Arthur can’t wait to make his first flight into outer space. Jumping for joy, he’s rocketing off on a mission to "
+          },
+          {
+            "preset": "Test B",
+            "volumeId": "VLMO0AEACAAJ",
+            "title": "Magic Book Children's picture book Magic/Fantasy/Adventure",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [],
+            "pageCount": 0,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "picture_book",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [],
+            "formatEvidence": [
+              "picture_book_identity"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "\"BOOK WITH TEXT IN ENGLISH WRITTEN IN ITALY\" \"Join Oliver, a resourceful young adventurer, and his friends as they embark on an incredible adventure in the Kingdom of Wonders. Toge"
+          },
+          {
+            "preset": "Test B",
+            "volumeId": "k08oDwAAQBAJ",
+            "title": "The Children's Magical Adventures",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [
+              "Fiction"
+            ],
+            "pageCount": 63,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "juvenile_narrative",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [],
+            "formatEvidence": [
+              "juvenile_narrative_story_signals"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "During the first world war Kenneth Ingle moved his family of mother Gloria, children Asa, Jade and Kaya into the English countryside, but after he becomes a prisoner of the enemy h"
+          },
+          {
+            "preset": "Test B",
+            "volumeId": "8y_dEAAAQBAJ",
+            "title": "Barbie's Magical Adventure in Dreamland",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [
+              "Fiction"
+            ],
+            "pageCount": 61,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "juvenile_narrative",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [],
+            "formatEvidence": [
+              "juvenile_narrative_story_signals"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "Reading \"Barbie's Magical Adventure in Dreamland\" takes people to magical worlds of thought and wonder. The story is about Barbie, a young girl with beautiful golden hair and brigh"
+          },
+          {
+            "preset": "Test B",
+            "volumeId": "9_LZzwEACAAJ",
+            "title": "Magical Adventures. A Collection of Enchanting Stories for Children.",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [],
+            "pageCount": 0,
+            "publicationShape": "story_collection",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "juvenile_narrative",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [],
+            "formatEvidence": [
+              "juvenile_narrative_story_signals"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "Magical Adventure is a collection of enchanting stories for children.Sonia Jones, Magical Adventures for Children is a beautifully crafted fantasy storybook that will take the year"
+          }
+        ],
+        "k2_missing_child_readable_narrative_or_format_identity": [
+          {
+            "preset": "Test B",
+            "volumeId": "QWdODwAAQBAJ",
+            "title": "Peter Pan & Other Magical Adventures For Children - 10 Classic Fantasy Books in One Volume (Illustrated Edition)",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [
+              "Juvenile Fiction"
+            ],
+            "pageCount": 1243,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "kids",
+            "formatIdentity": "unknown",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category"
+            ],
+            "formatEvidence": [],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "Musaicum Books presents to you this carefully created volume of \"Peter Pan & Other Magical Adventures For Children - 10 Classic Fantasy Books in One Volume (Illustrated Edition)\". "
+          }
+        ],
+        "googlebooks_mature_content_not_allowed_for_kids": [
+          {
+            "preset": "Test B",
+            "volumeId": "3JAEDgAAQBAJ",
+            "title": "The Greatest Children's Books - E. Nesbit Collection: Fantastical Adventures, Tales of Magical Creatures & Journeys into Enchanting Worlds (Illustrated)",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [
+              "Fiction"
+            ],
+            "pageCount": 3134,
+            "publicationShape": "story_collection",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "juvenile_narrative",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "googlebooks_mature_content_not_allowed_for_kids",
+            "audienceEvidence": [],
+            "formatEvidence": [
+              "juvenile_narrative_story_signals"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "This carefully crafted ebook: “The Greatest Children's Books - E. Nesbit Collection: Fantastical Adventures, Tales of Magical Creatures & Journeys into Enchanting Worlds (Illustrat"
+          },
+          {
+            "preset": "Test B",
+            "volumeId": "AsAQEAAAQBAJ",
+            "title": "Savage Dragon #256",
+            "queries": [
+              "kids dragon adventure early reader"
+            ],
+            "categories": [
+              "Comics & Graphic Novels"
+            ],
+            "pageCount": 32,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "unknown",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "googlebooks_mature_content_not_allowed_for_kids",
+            "audienceEvidence": [
+              "adult_or_general_graphic_novel_context"
+            ],
+            "formatEvidence": [],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "\"WAKE THE DEAD\" Bellco Chemicals has been working in secret to raise the dead. But things don't always go as planned, as their most successful test subject breaks free from his con"
+          }
+        ]
+      }
+    },
+    {
+      "preset": "Test C",
+      "attemptedQueries": [
+        "kids adventure picture book",
+        "kids magic adventure",
+        "kids dragon adventure early reader"
+      ],
+      "uniqueRawCandidates": 60,
+      "publicationShapePassCount": 25,
+      "enteredScoringCount": 10,
+      "rejectedAfterShapeCount": 15,
+      "publicationShapePassRejectedHistogram": {
+        "k2_collection_or_bundle_generic_bundle": 3,
+        "k2_unknown_or_non_k2_audience_without_credible_k2_evidence": 9,
+        "k2_missing_child_readable_narrative_or_format_identity": 1,
+        "googlebooks_mature_content_not_allowed_for_kids": 2
+      },
+      "representativeExamplesByReason": {
+        "k2_collection_or_bundle_generic_bundle": [
+          {
+            "preset": "Test C",
+            "volumeId": "L3d30QEACAAJ",
+            "title": "Pippin's Forest Adventure",
+            "queries": [
+              "kids adventure picture book"
+            ],
+            "categories": [
+              "Juvenile Fiction"
+            ],
+            "pageCount": 0,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "kids",
+            "formatIdentity": "picture_book",
+            "audienceDecision": "accepted_k2_independent_audience_and_format",
+            "audienceRejectionReason": "k2_collection_or_bundle_generic_bundle",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category",
+              "k2_age_or_grade_metadata"
+            ],
+            "formatEvidence": [
+              "picture_book_identity"
+            ],
+            "recommendationIdentity": "generic_bundle",
+            "descriptionSnippet": "A curious city pigeon. A forest full of surprises. A heartwarming picture book about friendship, courage, and the wonder of nature. When Pippin the pigeon leaves behind her busy ci"
+          },
+          {
+            "preset": "Test C",
+            "volumeId": "uPjtEAAAQBAJ",
+            "title": "The Little Explorer: A Wholesome Adventure Picture Book for Kids",
+            "queries": [
+              "kids adventure picture book"
+            ],
+            "categories": [
+              "Juvenile Fiction"
+            ],
+            "pageCount": 29,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "kids",
+            "formatIdentity": "picture_book",
+            "audienceDecision": "accepted_k2_independent_audience_and_format",
+            "audienceRejectionReason": "k2_collection_or_bundle_generic_bundle",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category"
+            ],
+            "formatEvidence": [
+              "picture_book_identity"
+            ],
+            "recommendationIdentity": "generic_bundle",
+            "descriptionSnippet": "Are you ready to foster a love for curiosity and discovery in your child? Dive into the enchanting world of 'The Little Explorer,' where every page is a journey filled with hidden "
+          },
+          {
+            "preset": "Test C",
+            "volumeId": "wdezzgEACAAJ",
+            "title": "Atom and the Universe",
+            "queries": [
+              "kids adventure picture book"
+            ],
+            "categories": [],
+            "pageCount": 24,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "kids",
+            "formatIdentity": "picture_book",
+            "audienceDecision": "accepted_k2_independent_audience_and_format",
+            "audienceRejectionReason": "k2_collection_or_bundle_generic_bundle",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category"
+            ],
+            "formatEvidence": [
+              "picture_book_identity"
+            ],
+            "recommendationIdentity": "generic_bundle",
+            "descriptionSnippet": "Ignite a lifelong passion for astronomy by joining Atom's fun and science-packed adventure beyond the stars! \"Every light you see was made from a light that came before it,\" the Un"
+          }
+        ],
+        "k2_unknown_or_non_k2_audience_without_credible_k2_evidence": [
+          {
+            "preset": "Test C",
+            "volumeId": "Yzv8DwAAQBAJ",
+            "title": "Solar System Amazing Space Adventure",
+            "queries": [
+              "kids adventure picture book"
+            ],
+            "categories": [
+              "Juvenile Fiction"
+            ],
+            "pageCount": 0,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "adult",
+            "formatIdentity": "juvenile_narrative",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category",
+              "academic_reference_or_non_narrative_identity"
+            ],
+            "formatEvidence": [
+              "juvenile_narrative_story_signals"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "This dog’s about to blast off. Will his trip be out-of-this-world? Arthur can’t wait to make his first flight into outer space. Jumping for joy, he’s rocketing off on a mission to "
+          },
+          {
+            "preset": "Test C",
+            "volumeId": "VLMO0AEACAAJ",
+            "title": "Magic Book Children's picture book Magic/Fantasy/Adventure",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [],
+            "pageCount": 0,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "picture_book",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [],
+            "formatEvidence": [
+              "picture_book_identity"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "\"BOOK WITH TEXT IN ENGLISH WRITTEN IN ITALY\" \"Join Oliver, a resourceful young adventurer, and his friends as they embark on an incredible adventure in the Kingdom of Wonders. Toge"
+          },
+          {
+            "preset": "Test C",
+            "volumeId": "k08oDwAAQBAJ",
+            "title": "The Children's Magical Adventures",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [
+              "Fiction"
+            ],
+            "pageCount": 63,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "juvenile_narrative",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [],
+            "formatEvidence": [
+              "juvenile_narrative_story_signals"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "During the first world war Kenneth Ingle moved his family of mother Gloria, children Asa, Jade and Kaya into the English countryside, but after he becomes a prisoner of the enemy h"
+          },
+          {
+            "preset": "Test C",
+            "volumeId": "8y_dEAAAQBAJ",
+            "title": "Barbie's Magical Adventure in Dreamland",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [
+              "Fiction"
+            ],
+            "pageCount": 61,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "juvenile_narrative",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [],
+            "formatEvidence": [
+              "juvenile_narrative_story_signals"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "Reading \"Barbie's Magical Adventure in Dreamland\" takes people to magical worlds of thought and wonder. The story is about Barbie, a young girl with beautiful golden hair and brigh"
+          },
+          {
+            "preset": "Test C",
+            "volumeId": "9_LZzwEACAAJ",
+            "title": "Magical Adventures. A Collection of Enchanting Stories for Children.",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [],
+            "pageCount": 0,
+            "publicationShape": "story_collection",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "juvenile_narrative",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+            "audienceEvidence": [],
+            "formatEvidence": [
+              "juvenile_narrative_story_signals"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "Magical Adventure is a collection of enchanting stories for children.Sonia Jones, Magical Adventures for Children is a beautifully crafted fantasy storybook that will take the year"
+          }
+        ],
+        "k2_missing_child_readable_narrative_or_format_identity": [
+          {
+            "preset": "Test C",
+            "volumeId": "QWdODwAAQBAJ",
+            "title": "Peter Pan & Other Magical Adventures For Children - 10 Classic Fantasy Books in One Volume (Illustrated Edition)",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [
+              "Juvenile Fiction"
+            ],
+            "pageCount": 1243,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "kids",
+            "formatIdentity": "unknown",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
+            "audienceEvidence": [
+              "juvenile_or_childrens_fiction_category"
+            ],
+            "formatEvidence": [],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "Musaicum Books presents to you this carefully created volume of \"Peter Pan & Other Magical Adventures For Children - 10 Classic Fantasy Books in One Volume (Illustrated Edition)\". "
+          }
+        ],
+        "googlebooks_mature_content_not_allowed_for_kids": [
+          {
+            "preset": "Test C",
+            "volumeId": "3JAEDgAAQBAJ",
+            "title": "The Greatest Children's Books - E. Nesbit Collection: Fantastical Adventures, Tales of Magical Creatures & Journeys into Enchanting Worlds (Illustrated)",
+            "queries": [
+              "kids magic adventure"
+            ],
+            "categories": [
+              "Fiction"
+            ],
+            "pageCount": 3134,
+            "publicationShape": "story_collection",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "juvenile_narrative",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "googlebooks_mature_content_not_allowed_for_kids",
+            "audienceEvidence": [],
+            "formatEvidence": [
+              "juvenile_narrative_story_signals"
+            ],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "This carefully crafted ebook: “The Greatest Children's Books - E. Nesbit Collection: Fantastical Adventures, Tales of Magical Creatures & Journeys into Enchanting Worlds (Illustrat"
+          },
+          {
+            "preset": "Test C",
+            "volumeId": "AsAQEAAAQBAJ",
+            "title": "Savage Dragon #256",
+            "queries": [
+              "kids dragon adventure early reader"
+            ],
+            "categories": [
+              "Comics & Graphic Novels"
+            ],
+            "pageCount": 32,
+            "publicationShape": "novel",
+            "inferredAudienceBand": "unknown",
+            "formatIdentity": "unknown",
+            "audienceDecision": "rejected_k2_independent_audience_or_format",
+            "audienceRejectionReason": "googlebooks_mature_content_not_allowed_for_kids",
+            "audienceEvidence": [
+              "adult_or_general_graphic_novel_context"
+            ],
+            "formatEvidence": [],
+            "recommendationIdentity": "",
+            "descriptionSnippet": "\"WAKE THE DEAD\" Bellco Chemicals has been working in secret to raise the dead. But things don't always go as planned, as their most successful test subject breaks free from his con"
+          }
+        ]
+      }
+    }
+  ],
+  "aggregate": {
+    "totalRows": 179,
+    "publicationShapePassCount": 59,
+    "enteredScoringCount": 27,
+    "rejectedAfterShapeCount": 32,
+    "publicationShapePassRejectedHistogram": {
+      "k2_collection_or_bundle_activity_or_joke_compilation": 1,
+      "k2_unknown_or_non_k2_audience_without_credible_k2_evidence": 19,
+      "k2_collection_or_bundle_generic_bundle": 6,
+      "k2_missing_child_readable_narrative_or_format_identity": 2,
+      "googlebooks_mature_content_not_allowed_for_kids": 4
+    },
+    "representativeExamplesByReason": {
+      "k2_collection_or_bundle_activity_or_joke_compilation": [
+        {
+          "preset": "Test A",
+          "volumeId": "A7ELBgAAQBAJ",
+          "title": "Kid Ebooks With Fun Stories & Kid Jokes",
+          "queries": [
+            "kids humorous picture book"
+          ],
+          "categories": [
+            "Juvenile Fiction"
+          ],
+          "pageCount": 52,
+          "publicationShape": "story_collection",
+          "inferredAudienceBand": "kids",
+          "formatIdentity": "picture_book",
+          "audienceDecision": "accepted_k2_independent_audience_and_format",
+          "audienceRejectionReason": "k2_collection_or_bundle_activity_or_joke_compilation",
+          "audienceEvidence": [
+            "juvenile_or_childrens_fiction_category"
+          ],
+          "formatEvidence": [
+            "picture_book_identity"
+          ],
+          "recommendationIdentity": "activity_or_joke_compilation",
+          "descriptionSnippet": "El Ninjo's new kid ebook that is called African Bean Adventures In The Jungle is something for young & old. Whether you're a \"professional\" butt-whistler or just an amateur, El Nin"
+        }
+      ],
+      "k2_unknown_or_non_k2_audience_without_credible_k2_evidence": [
+        {
+          "preset": "Test A",
+          "volumeId": "rRPQygAACAAJ",
+          "title": "Mortimer's Book of What-Ifs",
+          "queries": [
+            "kids rhyming picture book"
+          ],
+          "categories": [
+            "Juvenile Fiction"
+          ],
+          "pageCount": 24,
+          "publicationShape": "novel",
+          "inferredAudienceBand": "adult",
+          "formatIdentity": "picture_book",
+          "audienceDecision": "rejected_k2_independent_audience_or_format",
+          "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "audienceEvidence": [
+            "juvenile_or_childrens_fiction_category",
+            "academic_reference_or_non_narrative_identity"
+          ],
+          "formatEvidence": [
+            "picture_book_identity"
+          ],
+          "recommendationIdentity": "",
+          "descriptionSnippet": "Children's (kids) Rhyming Picture Book with a Where's Waldo appeal. All kids ask \"What if\" questions each and every day. This is the way that they learn and develop their growing m"
+        },
+        {
+          "preset": "Test B",
+          "volumeId": "Yzv8DwAAQBAJ",
+          "title": "Solar System Amazing Space Adventure",
+          "queries": [
+            "kids adventure picture book"
+          ],
+          "categories": [
+            "Juvenile Fiction"
+          ],
+          "pageCount": 0,
+          "publicationShape": "novel",
+          "inferredAudienceBand": "adult",
+          "formatIdentity": "juvenile_narrative",
+          "audienceDecision": "rejected_k2_independent_audience_or_format",
+          "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "audienceEvidence": [
+            "juvenile_or_childrens_fiction_category",
+            "academic_reference_or_non_narrative_identity"
+          ],
+          "formatEvidence": [
+            "juvenile_narrative_story_signals"
+          ],
+          "recommendationIdentity": "",
+          "descriptionSnippet": "This dog’s about to blast off. Will his trip be out-of-this-world? Arthur can’t wait to make his first flight into outer space. Jumping for joy, he’s rocketing off on a mission to "
+        },
+        {
+          "preset": "Test B",
+          "volumeId": "VLMO0AEACAAJ",
+          "title": "Magic Book Children's picture book Magic/Fantasy/Adventure",
+          "queries": [
+            "kids magic adventure"
+          ],
+          "categories": [],
+          "pageCount": 0,
+          "publicationShape": "novel",
+          "inferredAudienceBand": "unknown",
+          "formatIdentity": "picture_book",
+          "audienceDecision": "rejected_k2_independent_audience_or_format",
+          "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "audienceEvidence": [],
+          "formatEvidence": [
+            "picture_book_identity"
+          ],
+          "recommendationIdentity": "",
+          "descriptionSnippet": "\"BOOK WITH TEXT IN ENGLISH WRITTEN IN ITALY\" \"Join Oliver, a resourceful young adventurer, and his friends as they embark on an incredible adventure in the Kingdom of Wonders. Toge"
+        },
+        {
+          "preset": "Test B",
+          "volumeId": "k08oDwAAQBAJ",
+          "title": "The Children's Magical Adventures",
+          "queries": [
+            "kids magic adventure"
+          ],
+          "categories": [
+            "Fiction"
+          ],
+          "pageCount": 63,
+          "publicationShape": "novel",
+          "inferredAudienceBand": "unknown",
+          "formatIdentity": "juvenile_narrative",
+          "audienceDecision": "rejected_k2_independent_audience_or_format",
+          "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "audienceEvidence": [],
+          "formatEvidence": [
+            "juvenile_narrative_story_signals"
+          ],
+          "recommendationIdentity": "",
+          "descriptionSnippet": "During the first world war Kenneth Ingle moved his family of mother Gloria, children Asa, Jade and Kaya into the English countryside, but after he becomes a prisoner of the enemy h"
+        },
+        {
+          "preset": "Test B",
+          "volumeId": "8y_dEAAAQBAJ",
+          "title": "Barbie's Magical Adventure in Dreamland",
+          "queries": [
+            "kids magic adventure"
+          ],
+          "categories": [
+            "Fiction"
+          ],
+          "pageCount": 61,
+          "publicationShape": "novel",
+          "inferredAudienceBand": "unknown",
+          "formatIdentity": "juvenile_narrative",
+          "audienceDecision": "rejected_k2_independent_audience_or_format",
+          "audienceRejectionReason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+          "audienceEvidence": [],
+          "formatEvidence": [
+            "juvenile_narrative_story_signals"
+          ],
+          "recommendationIdentity": "",
+          "descriptionSnippet": "Reading \"Barbie's Magical Adventure in Dreamland\" takes people to magical worlds of thought and wonder. The story is about Barbie, a young girl with beautiful golden hair and brigh"
+        }
+      ],
+      "k2_collection_or_bundle_generic_bundle": [
+        {
+          "preset": "Test B",
+          "volumeId": "L3d30QEACAAJ",
+          "title": "Pippin's Forest Adventure",
+          "queries": [
+            "kids adventure picture book"
+          ],
+          "categories": [
+            "Juvenile Fiction"
+          ],
+          "pageCount": 0,
+          "publicationShape": "novel",
+          "inferredAudienceBand": "kids",
+          "formatIdentity": "picture_book",
+          "audienceDecision": "accepted_k2_independent_audience_and_format",
+          "audienceRejectionReason": "k2_collection_or_bundle_generic_bundle",
+          "audienceEvidence": [
+            "juvenile_or_childrens_fiction_category",
+            "k2_age_or_grade_metadata"
+          ],
+          "formatEvidence": [
+            "picture_book_identity"
+          ],
+          "recommendationIdentity": "generic_bundle",
+          "descriptionSnippet": "A curious city pigeon. A forest full of surprises. A heartwarming picture book about friendship, courage, and the wonder of nature. When Pippin the pigeon leaves behind her busy ci"
+        },
+        {
+          "preset": "Test B",
+          "volumeId": "uPjtEAAAQBAJ",
+          "title": "The Little Explorer: A Wholesome Adventure Picture Book for Kids",
+          "queries": [
+            "kids adventure picture book"
+          ],
+          "categories": [
+            "Juvenile Fiction"
+          ],
+          "pageCount": 29,
+          "publicationShape": "novel",
+          "inferredAudienceBand": "kids",
+          "formatIdentity": "picture_book",
+          "audienceDecision": "accepted_k2_independent_audience_and_format",
+          "audienceRejectionReason": "k2_collection_or_bundle_generic_bundle",
+          "audienceEvidence": [
+            "juvenile_or_childrens_fiction_category"
+          ],
+          "formatEvidence": [
+            "picture_book_identity"
+          ],
+          "recommendationIdentity": "generic_bundle",
+          "descriptionSnippet": "Are you ready to foster a love for curiosity and discovery in your child? Dive into the enchanting world of 'The Little Explorer,' where every page is a journey filled with hidden "
+        },
+        {
+          "preset": "Test B",
+          "volumeId": "wdezzgEACAAJ",
+          "title": "Atom and the Universe",
+          "queries": [
+            "kids adventure picture book"
+          ],
+          "categories": [],
+          "pageCount": 24,
+          "publicationShape": "novel",
+          "inferredAudienceBand": "kids",
+          "formatIdentity": "picture_book",
+          "audienceDecision": "accepted_k2_independent_audience_and_format",
+          "audienceRejectionReason": "k2_collection_or_bundle_generic_bundle",
+          "audienceEvidence": [
+            "juvenile_or_childrens_fiction_category"
+          ],
+          "formatEvidence": [
+            "picture_book_identity"
+          ],
+          "recommendationIdentity": "generic_bundle",
+          "descriptionSnippet": "Ignite a lifelong passion for astronomy by joining Atom's fun and science-packed adventure beyond the stars! \"Every light you see was made from a light that came before it,\" the Un"
+        }
+      ],
+      "k2_missing_child_readable_narrative_or_format_identity": [
+        {
+          "preset": "Test B",
+          "volumeId": "QWdODwAAQBAJ",
+          "title": "Peter Pan & Other Magical Adventures For Children - 10 Classic Fantasy Books in One Volume (Illustrated Edition)",
+          "queries": [
+            "kids magic adventure"
+          ],
+          "categories": [
+            "Juvenile Fiction"
+          ],
+          "pageCount": 1243,
+          "publicationShape": "novel",
+          "inferredAudienceBand": "kids",
+          "formatIdentity": "unknown",
+          "audienceDecision": "rejected_k2_independent_audience_or_format",
+          "audienceRejectionReason": "k2_missing_child_readable_narrative_or_format_identity",
+          "audienceEvidence": [
+            "juvenile_or_childrens_fiction_category"
+          ],
+          "formatEvidence": [],
+          "recommendationIdentity": "",
+          "descriptionSnippet": "Musaicum Books presents to you this carefully created volume of \"Peter Pan & Other Magical Adventures For Children - 10 Classic Fantasy Books in One Volume (Illustrated Edition)\". "
+        }
+      ],
+      "googlebooks_mature_content_not_allowed_for_kids": [
+        {
+          "preset": "Test B",
+          "volumeId": "3JAEDgAAQBAJ",
+          "title": "The Greatest Children's Books - E. Nesbit Collection: Fantastical Adventures, Tales of Magical Creatures & Journeys into Enchanting Worlds (Illustrated)",
+          "queries": [
+            "kids magic adventure"
+          ],
+          "categories": [
+            "Fiction"
+          ],
+          "pageCount": 3134,
+          "publicationShape": "story_collection",
+          "inferredAudienceBand": "unknown",
+          "formatIdentity": "juvenile_narrative",
+          "audienceDecision": "rejected_k2_independent_audience_or_format",
+          "audienceRejectionReason": "googlebooks_mature_content_not_allowed_for_kids",
+          "audienceEvidence": [],
+          "formatEvidence": [
+            "juvenile_narrative_story_signals"
+          ],
+          "recommendationIdentity": "",
+          "descriptionSnippet": "This carefully crafted ebook: “The Greatest Children's Books - E. Nesbit Collection: Fantastical Adventures, Tales of Magical Creatures & Journeys into Enchanting Worlds (Illustrat"
+        },
+        {
+          "preset": "Test B",
+          "volumeId": "AsAQEAAAQBAJ",
+          "title": "Savage Dragon #256",
+          "queries": [
+            "kids dragon adventure early reader"
+          ],
+          "categories": [
+            "Comics & Graphic Novels"
+          ],
+          "pageCount": 32,
+          "publicationShape": "novel",
+          "inferredAudienceBand": "unknown",
+          "formatIdentity": "unknown",
+          "audienceDecision": "rejected_k2_independent_audience_or_format",
+          "audienceRejectionReason": "googlebooks_mature_content_not_allowed_for_kids",
+          "audienceEvidence": [
+            "adult_or_general_graphic_novel_context"
+          ],
+          "formatEvidence": [],
+          "recommendationIdentity": "",
+          "descriptionSnippet": "\"WAKE THE DEAD\" Bellco Chemicals has been working in secret to raise the dead. But things don't always go as planned, as their most successful test subject breaks free from his con"
+        }
+      ]
+    },
+    "dominantReason": {
+      "reason": "k2_unknown_or_non_k2_audience_without_credible_k2_evidence",
+      "count": 19
+    }
+  }
+}
