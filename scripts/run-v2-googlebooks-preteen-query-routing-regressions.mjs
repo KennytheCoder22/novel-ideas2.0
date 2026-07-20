@@ -230,16 +230,23 @@ console.log("\n[10] existing: horror primary");
   assertEqual(queries[0], "middle grade horror fiction novel", "horror: primary query unchanged");
 }
 
-console.log("\n[11] existing: science fiction primary");
+console.log("\n[11] existing: science fiction primary — no double 'fiction'");
 {
   const queries = getGoogleBooksQueries(makePreteenProfile(["science fiction", "adventure"]));
-  // The generic preteens path doesn't have a special case for "science fiction"
-  // so "fiction" appears twice in the query — this is a pre-existing behavior
-  // that predates this change.  Assert the actual current output so regressions
-  // are detected without masking as a newly introduced issue.
-  assertStringContains(queries[0], "science fiction", "science fiction: primary query must contain 'science fiction'");
-  assertStringContains(queries[0], "middle grade", "science fiction: primary query must be middle-grade prefixed");
+  // primaryGenre = "science fiction" already contains "fiction", so the standalone
+  // "fiction" token must be suppressed — "science fiction fiction novel" is wrong.
+  assertEqual(queries[0], "middle grade science fiction novel", "science fiction: primary query must not double 'fiction'");
+  assertStringNotContains(queries[0], "fiction fiction", "science fiction: primary query must not contain 'fiction fiction'");
   assertNotIncludes(queries, GENERIC_ONLY, "science fiction: primary must not be bare generic");
+}
+
+console.log("\n[11b] science fiction only — fallback query no double 'fiction'");
+{
+  const queries = getGoogleBooksQueries(makePreteenProfile(["science fiction"]));
+  // Primary: "middle grade science fiction novel"
+  // Fallback: "middle grade science fiction contemporary novel" (no extra "fiction")
+  assertEqual(queries[0], "middle grade science fiction novel", "science fiction only: primary query");
+  assertStringNotContains(queries.join(" "), "fiction fiction", "science fiction only: no 'fiction fiction' anywhere in plan");
 }
 
 console.log("\n[12] existing: thriller primary");

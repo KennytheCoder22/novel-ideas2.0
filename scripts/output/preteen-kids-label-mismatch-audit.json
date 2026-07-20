@@ -1,19 +1,91 @@
 {
-  "generatedAt": "2026-07-20T08:10:24.898Z",
+  "generatedAt": "2026-07-20T18:23:57.607Z",
   "inputs": [
-    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
-    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt",
-    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-f1bd1612-f138-44b2-a959-456d24d69617.txt"
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-439a969f-620b-4692-8c20-3303f5ffa921.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-6f944dff-e065-4415-b0ec-ee4da45803ac.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt"
   ],
   "reports": [
     {
-      "report": "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
+      "report": "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
       "kidsAudienceTitleCount": 4,
       "kidsAudienceMismatchRejectCount": 4,
       "rows": [
         {
+          "title": "The Good, the Bad, and the Bossy",
+          "report": "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.65,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:305",
+            "print_type:book",
+            "juvenile_fiction_category"
+          ],
+          "pageCount": 305,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        },
+        {
+          "title": "Miss Impossible",
+          "report": "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.65,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:259",
+            "print_type:book",
+            "juvenile_fiction_category"
+          ],
+          "pageCount": 259,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        },
+        {
           "title": "Spark Hunter",
-          "report": "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
+          "report": "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
           "audienceBand": "kids",
           "requestedDeck": "preteens",
           "finalDecision": "rejected",
@@ -47,7 +119,7 @@
         },
         {
           "title": "R.I.P. Nanny Tobbins",
-          "report": "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
+          "report": "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
           "audienceBand": "kids",
           "requestedDeck": "preteens",
           "finalDecision": "rejected",
@@ -78,10 +150,51 @@
           ],
           "classification": "works_for_both",
           "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        }
+      ]
+    },
+    {
+      "report": "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt",
+      "kidsAudienceTitleCount": 3,
+      "kidsAudienceMismatchRejectCount": 3,
+      "rows": [
+        {
+          "title": "The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+          "report": "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "unknown",
+          "shapeRescued": true,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.85,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:84",
+            "print_type:book",
+            "juvenile_fiction_category",
+            "story_level_or_fiction_language"
+          ],
+          "pageCount": 84,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
         },
         {
           "title": "The Good, the Bad, and the Bossy",
-          "report": "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
+          "report": "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt",
           "audienceBand": "kids",
           "requestedDeck": "preteens",
           "finalDecision": "rejected",
@@ -114,7 +227,7 @@
         },
         {
           "title": "Miss Impossible",
-          "report": "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
+          "report": "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt",
           "audienceBand": "kids",
           "requestedDeck": "preteens",
           "finalDecision": "rejected",
@@ -148,13 +261,274 @@
       ]
     },
     {
-      "report": "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt",
+      "report": "pasted-text-439a969f-620b-4692-8c20-3303f5ffa921.txt",
+      "kidsAudienceTitleCount": 1,
+      "kidsAudienceMismatchRejectCount": 1,
+      "rows": [
+        {
+          "title": "The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+          "report": "pasted-text-439a969f-620b-4692-8c20-3303f5ffa921.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "unknown",
+          "shapeRescued": true,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.85,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:84",
+            "print_type:book",
+            "juvenile_fiction_category",
+            "story_level_or_fiction_language"
+          ],
+          "pageCount": 84,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        }
+      ]
+    },
+    {
+      "report": "pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt",
+      "kidsAudienceTitleCount": 3,
+      "kidsAudienceMismatchRejectCount": 3,
+      "rows": [
+        {
+          "title": "The Good, the Bad, and the Bossy",
+          "report": "pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.65,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:305",
+            "print_type:book",
+            "juvenile_fiction_category"
+          ],
+          "pageCount": 305,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        },
+        {
+          "title": "Miss Impossible",
+          "report": "pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.65,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:259",
+            "print_type:book",
+            "juvenile_fiction_category"
+          ],
+          "pageCount": 259,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        },
+        {
+          "title": "The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+          "report": "pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "unknown",
+          "shapeRescued": true,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.85,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:84",
+            "print_type:book",
+            "juvenile_fiction_category",
+            "story_level_or_fiction_language"
+          ],
+          "pageCount": 84,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        }
+      ]
+    },
+    {
+      "report": "pasted-text-6f944dff-e065-4415-b0ec-ee4da45803ac.txt",
+      "kidsAudienceTitleCount": 0,
+      "kidsAudienceMismatchRejectCount": 0,
+      "rows": []
+    },
+    {
+      "report": "pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt",
       "kidsAudienceTitleCount": 3,
       "kidsAudienceMismatchRejectCount": 3,
       "rows": [
         {
           "title": "The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
-          "report": "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt",
+          "report": "pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "unknown",
+          "shapeRescued": true,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.85,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:84",
+            "print_type:book",
+            "juvenile_fiction_category",
+            "story_level_or_fiction_language"
+          ],
+          "pageCount": 84,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        },
+        {
+          "title": "The Good, the Bad, and the Bossy",
+          "report": "pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.65,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:305",
+            "print_type:book",
+            "juvenile_fiction_category"
+          ],
+          "pageCount": 305,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        },
+        {
+          "title": "Miss Impossible",
+          "report": "pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.65,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:259",
+            "print_type:book",
+            "juvenile_fiction_category"
+          ],
+          "pageCount": 259,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        }
+      ]
+    },
+    {
+      "report": "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt",
+      "kidsAudienceTitleCount": 3,
+      "kidsAudienceMismatchRejectCount": 3,
+      "rows": [
+        {
+          "title": "The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+          "report": "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt",
           "audienceBand": "kids",
           "requestedDeck": "preteens",
           "finalDecision": "rejected",
@@ -188,7 +562,83 @@
         },
         {
           "title": "Spark Hunter",
-          "report": "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt",
+          "report": "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.85,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:270",
+            "print_type:book",
+            "juvenile_fiction_category",
+            "story_level_or_fiction_language"
+          ],
+          "pageCount": 270,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "clearly_preteen",
+          "classificationReason": "middle_grade_identity_with_strong_narrative_and_chapter_book_length"
+        },
+        {
+          "title": "ParaNorthern",
+          "report": "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.85,
+          "identityEvidence": [
+            "title",
+            "subtitle",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:244",
+            "print_type:book",
+            "juvenile_fiction_category",
+            "story_level_or_fiction_language"
+          ],
+          "pageCount": 244,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "clearly_preteen",
+          "classificationReason": "middle_grade_identity_with_strong_narrative_and_chapter_book_length"
+        }
+      ]
+    },
+    {
+      "report": "pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt",
+      "kidsAudienceTitleCount": 3,
+      "kidsAudienceMismatchRejectCount": 3,
+      "rows": [
+        {
+          "title": "Spark Hunter",
+          "report": "pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt",
           "audienceBand": "kids",
           "requestedDeck": "preteens",
           "finalDecision": "rejected",
@@ -222,7 +672,7 @@
         },
         {
           "title": "R.I.P. Nanny Tobbins",
-          "report": "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt",
+          "report": "pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt",
           "audienceBand": "kids",
           "requestedDeck": "preteens",
           "finalDecision": "rejected",
@@ -253,17 +703,10 @@
           ],
           "classification": "works_for_both",
           "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
-        }
-      ]
-    },
-    {
-      "report": "pasted-text-f1bd1612-f138-44b2-a959-456d24d69617.txt",
-      "kidsAudienceTitleCount": 1,
-      "kidsAudienceMismatchRejectCount": 1,
-      "rows": [
+        },
         {
           "title": "The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
-          "report": "pasted-text-f1bd1612-f138-44b2-a959-456d24d69617.txt",
+          "report": "pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt",
           "audienceBand": "kids",
           "requestedDeck": "preteens",
           "finalDecision": "rejected",
@@ -296,32 +739,173 @@
           "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
         }
       ]
+    },
+    {
+      "report": "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt",
+      "kidsAudienceTitleCount": 4,
+      "kidsAudienceMismatchRejectCount": 4,
+      "rows": [
+        {
+          "title": "Spark Hunter",
+          "report": "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.85,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:270",
+            "print_type:book",
+            "juvenile_fiction_category",
+            "story_level_or_fiction_language"
+          ],
+          "pageCount": 270,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "clearly_preteen",
+          "classificationReason": "middle_grade_identity_with_strong_narrative_and_chapter_book_length"
+        },
+        {
+          "title": "R.I.P. Nanny Tobbins",
+          "report": "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.65,
+          "identityEvidence": [
+            "title",
+            "subtitle",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:207",
+            "print_type:book",
+            "juvenile_fiction_category"
+          ],
+          "pageCount": 207,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        },
+        {
+          "title": "The Good, the Bad, and the Bossy",
+          "report": "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.65,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:305",
+            "print_type:book",
+            "juvenile_fiction_category"
+          ],
+          "pageCount": 305,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        },
+        {
+          "title": "Miss Impossible",
+          "report": "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt",
+          "audienceBand": "kids",
+          "requestedDeck": "preteens",
+          "finalDecision": "rejected",
+          "finalReason": "maturity_band_mismatch",
+          "publicationShape": "novel",
+          "shapeRescued": false,
+          "identity": "middle_grade_novel",
+          "identityConfidence": 0.65,
+          "identityEvidence": [
+            "title",
+            "description",
+            "categories",
+            "publisher",
+            "authors",
+            "page_count:259",
+            "print_type:book",
+            "juvenile_fiction_category"
+          ],
+          "pageCount": 259,
+          "contentMaturity": "not_mature",
+          "sourceMaturityRating": "NOT_MATURE",
+          "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+          "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+          "finalEligibilityEvidence": [
+            "requested_deck:preteens",
+            "named_gate:audience_maturity_final_eligibility"
+          ],
+          "classification": "works_for_both",
+          "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen"
+        }
+      ]
     }
   ],
   "aggregate": {
-    "kidsAudienceTitlesObservedAcrossReports": 8,
-    "uniqueKidsAudienceMismatchRejectCount": 5,
+    "kidsAudienceTitlesObservedAcrossReports": 24,
+    "uniqueKidsAudienceMismatchRejectCount": 6,
     "classificationCounts": {
       "clearly_k2": 0,
-      "clearly_preteen": 1,
+      "clearly_preteen": 2,
       "works_for_both": 4,
       "ambiguous": 0
     },
     "mismatchFalseRejectRatePercent": 100,
-    "kidsAudiencePreteenOrBothRatePercent": 62.5,
+    "kidsAudiencePreteenOrBothRatePercent": 25,
     "evidenceCombinationTable": {
       "middle_grade_plus_strong_narrative": {
-        "total": 2,
-        "clearlyPreteen": 1,
+        "total": 3,
+        "clearlyPreteen": 2,
         "worksForBoth": 1,
         "clearlyK2": 0,
         "ambiguous": 0,
-        "clearlyPreteenRate": 50,
+        "clearlyPreteenRate": 66.7,
         "preteenOrBothRate": 100
       },
       "middle_grade_plus_strong_narrative_plus_chapter_book_length": {
-        "total": 1,
-        "clearlyPreteen": 1,
+        "total": 2,
+        "clearlyPreteen": 2,
         "worksForBoth": 0,
         "clearlyK2": 0,
         "ambiguous": 0,
@@ -351,7 +935,7 @@
   "uniqueRows": [
     {
       "title": "Miss Impossible",
-      "report": "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
+      "report": "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
       "audienceBand": "kids",
       "requestedDeck": "preteens",
       "finalDecision": "rejected",
@@ -382,12 +966,54 @@
       "classification": "works_for_both",
       "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen",
       "reports": [
-        "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt"
+        "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
+        "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt",
+        "pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt",
+        "pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt",
+        "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt"
+      ]
+    },
+    {
+      "title": "ParaNorthern",
+      "report": "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt",
+      "audienceBand": "kids",
+      "requestedDeck": "preteens",
+      "finalDecision": "rejected",
+      "finalReason": "maturity_band_mismatch",
+      "publicationShape": "novel",
+      "shapeRescued": false,
+      "identity": "middle_grade_novel",
+      "identityConfidence": 0.85,
+      "identityEvidence": [
+        "title",
+        "subtitle",
+        "description",
+        "categories",
+        "publisher",
+        "authors",
+        "page_count:244",
+        "print_type:book",
+        "juvenile_fiction_category",
+        "story_level_or_fiction_language"
+      ],
+      "pageCount": 244,
+      "contentMaturity": "not_mature",
+      "sourceMaturityRating": "NOT_MATURE",
+      "maturityDecision": "not_mature_content_allowed_for_preteens_deck",
+      "ageSuitabilityDecision": "not_selected:maturity_band_mismatch:age_suitability=0.25",
+      "finalEligibilityEvidence": [
+        "requested_deck:preteens",
+        "named_gate:audience_maturity_final_eligibility"
+      ],
+      "classification": "clearly_preteen",
+      "classificationReason": "middle_grade_identity_with_strong_narrative_and_chapter_book_length",
+      "reports": [
+        "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt"
       ]
     },
     {
       "title": "R.I.P. Nanny Tobbins",
-      "report": "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
+      "report": "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
       "audienceBand": "kids",
       "requestedDeck": "preteens",
       "finalDecision": "rejected",
@@ -419,13 +1045,14 @@
       "classification": "works_for_both",
       "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen",
       "reports": [
-        "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
-        "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt"
+        "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
+        "pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt",
+        "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt"
       ]
     },
     {
       "title": "Spark Hunter",
-      "report": "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
+      "report": "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
       "audienceBand": "kids",
       "requestedDeck": "preteens",
       "finalDecision": "rejected",
@@ -457,13 +1084,15 @@
       "classification": "clearly_preteen",
       "classificationReason": "middle_grade_identity_with_strong_narrative_and_chapter_book_length",
       "reports": [
-        "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
-        "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt"
+        "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
+        "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt",
+        "pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt",
+        "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt"
       ]
     },
     {
       "title": "The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
-      "report": "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt",
+      "report": "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt",
       "audienceBand": "kids",
       "requestedDeck": "preteens",
       "finalDecision": "rejected",
@@ -495,13 +1124,17 @@
       "classification": "works_for_both",
       "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen",
       "reports": [
-        "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt",
-        "pasted-text-f1bd1612-f138-44b2-a959-456d24d69617.txt"
+        "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt",
+        "pasted-text-439a969f-620b-4692-8c20-3303f5ffa921.txt",
+        "pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt",
+        "pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt",
+        "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt",
+        "pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt"
       ]
     },
     {
       "title": "The Good, the Bad, and the Bossy",
-      "report": "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
+      "report": "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
       "audienceBand": "kids",
       "requestedDeck": "preteens",
       "finalDecision": "rejected",
@@ -532,7 +1165,11 @@
       "classification": "works_for_both",
       "classificationReason": "middle_grade_identity_with_juvenile_fiction_signals_but_not_high_enough_for_clear_preteen",
       "reports": [
-        "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt"
+        "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
+        "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt",
+        "pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt",
+        "pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt",
+        "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt"
       ]
     }
   ]

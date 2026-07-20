@@ -233,4 +233,78 @@ for (const ageBand of ["kids", "preteens"]) {
   console.log("PASS live-shape: The Band of Bigs no longer fails maturity_band_mismatch");
 }
 
+{
+  const title = "Pre-Teen Juvenile Fiction Reclassified Candidate";
+  const run = runFlow("preteens", [rawGoogleBook("preteens", title, {
+    audienceBand: "kids",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    description: "A middle grade adventure novel follows two friends who solve a dangerous mystery in their town library.",
+    genres: ["Juvenile Fiction / Action & Adventure"],
+  })]);
+  assertEqual(run.normalized[0].maturityBand, undefined, "Pre-Teen NOT_MATURE juvenile-fiction labels should be reclassified to unknown maturity band");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Pre-Teen reclassified juvenile-fiction title should no longer fail maturity mismatch");
+  console.log("PASS preteens: broad juvenile-fiction kids labels can be evaluated");
+}
+
+{
+  const title = "Pre-Teen Explicit Early Reader Candidate";
+  const run = runFlow("preteens", [rawGoogleBook("preteens", title, {
+    audienceBand: "kids",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    description: "A picture book for beginning readers in grade 1 follows a preschool class through alphabet fun.",
+    genres: ["Juvenile Fiction / Readers / Beginner", "Picture books"],
+  })]);
+  assertEqual(run.normalized[0].maturityBand, "kids", "Explicit early-reader markers must remain kids for Pre-Teens");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "maturity_band_mismatch", "Explicit early-reader books should still fail the Pre-Teen maturity gate");
+  console.log("PASS preteens: explicit early-reader markers remain protected");
+}
+
+{
+  const title = "Pre-Teen Teen-Labeled Middle Grade Candidate";
+  const run = runFlow("preteens", [rawGoogleBook("preteens", title, {
+    audienceBand: "teens",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    description: "A middle grade fantasy novel follows Lina as she solves a hidden-school mystery and protects her friends.",
+    genres: ["Juvenile Fiction / Fantasy & Magic", "Middle grade fiction"],
+  })]);
+  assertEqual(run.normalized[0].maturityBand, undefined, "High-confidence middle-grade novels should bypass teen source labels for Pre-Teens");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Teen-labeled middle-grade novel should remain eligible for Pre-Teens");
+  console.log("PASS preteens: high-confidence middle-grade novels bypass teen source labels");
+}
+
+{
+  const title = "Pre-Teen Adult-Labeled Middle Grade Candidate";
+  const run = runFlow("preteens", [rawGoogleBook("preteens", title, {
+    audienceBand: "adult",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    description: "A middle grade fantasy novel follows Lina as she solves a hidden-school mystery and protects her friends.",
+    genres: ["Juvenile Fiction / Fantasy & Magic", "Middle grade fiction"],
+  })]);
+  assertEqual(run.normalized[0].maturityBand, undefined, "High-confidence middle-grade novels should bypass adult source labels for Pre-Teens");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Adult-labeled middle-grade novel should remain eligible for Pre-Teens");
+  console.log("PASS preteens: high-confidence middle-grade novels bypass adult source labels");
+}
+
+{
+  const title = "Pre-Teen Teen-Labeled Nonfiction Guide Candidate";
+  const run = runFlow("preteens", [rawGoogleBook("preteens", title, {
+    audienceBand: "teens",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    description: "A classroom study guide with chapter summaries and teacher prompts for literature instruction.",
+    genres: ["Education", "Juvenile Nonfiction"],
+  })]);
+  assertEqual(run.normalized[0].maturityBand, "teens", "Non-middle-grade artifacts must not bypass teen source labels");
+  console.log("PASS preteens: non-middle-grade teen labels remain unchanged");
+}
+
 console.log("PASS googlebooks audience/maturity separation regressions");
