@@ -1,17 +1,17 @@
 routeId,routeLabel,querySetLabel,queryIds,uniqueRawNarrativeCandidates,uniquePublicationShapePasses,uniqueK2PreScoringPasses,uniqueFinalEligibilityPasses,duplicatePct,finalTitles,uniqueLeadAuthors,uniqueGenres
-route-adventure-stack,"Adventure stack","baseline-adventure-picture-book + theme-adventure-early-reader + format-chapter-book","baseline-adventure-picture-book|theme-adventure-early-reader|format-chapter-book",20,21,13,0,0,"",0,0
-route-adventure-stack,"Adventure stack","baseline-adventure-picture-book + theme-adventure-early-reader","baseline-adventure-picture-book|theme-adventure-early-reader",14,15,10,0,0,"",0,0
+route-adventure-stack,"Adventure stack","baseline-adventure-picture-book + theme-adventure-early-reader + format-chapter-book","baseline-adventure-picture-book|theme-adventure-early-reader|format-chapter-book",20,21,11,0,0,"",0,0
+route-adventure-stack,"Adventure stack","baseline-adventure-picture-book + theme-adventure-early-reader","baseline-adventure-picture-book|theme-adventure-early-reader",14,15,8,0,0,"",0,0
 route-adventure-stack,"Adventure stack","baseline-adventure-picture-book + format-chapter-book","baseline-adventure-picture-book|format-chapter-book",15,15,8,0,0,"",0,0
-route-adventure-stack,"Adventure stack","theme-adventure-early-reader + format-chapter-book","theme-adventure-early-reader|format-chapter-book",11,12,8,0,0,"",0,0
 route-friendship-humor-rhyme,"Friendship/Humor/Rhyming","theme-friendship-picture-book + theme-humor-picture-book + theme-rhyming-picture-book","theme-friendship-picture-book|theme-humor-picture-book|theme-rhyming-picture-book",9,9,7,0,0,"",0,0
+route-adventure-stack,"Adventure stack","theme-adventure-early-reader + format-chapter-book","theme-adventure-early-reader|format-chapter-book",11,12,6,0,0,"",0,0
 route-friendship-humor-rhyme,"Friendship/Humor/Rhyming","theme-friendship-picture-book + theme-rhyming-picture-book","theme-friendship-picture-book|theme-rhyming-picture-book",7,7,6,0,0,"",0,0
+route-fantasy-variants,"Fantasy variants","baseline-fantasy-picture-book + baseline-fantasy-early-reader + theme-magic-adventure","baseline-fantasy-picture-book|baseline-fantasy-early-reader|theme-magic-adventure",14,14,5,0,1.7,"",0,0
+route-fantasy-variants,"Fantasy variants","baseline-fantasy-early-reader + theme-magic-adventure","baseline-fantasy-early-reader|theme-magic-adventure",13,13,5,0,0,"",0,0
 route-friendship-humor-rhyme,"Friendship/Humor/Rhyming","theme-friendship-picture-book + theme-humor-picture-book","theme-friendship-picture-book|theme-humor-picture-book",6,6,5,0,0,"",0,0
+route-fantasy-variants,"Fantasy variants","baseline-fantasy-picture-book + theme-magic-adventure","baseline-fantasy-picture-book|theme-magic-adventure",13,13,4,0,0,"",0,0
 route-general,"General Kids formats","baseline-generic-picture-book + baseline-generic-early-reader + baseline-read-aloud","baseline-generic-picture-book|baseline-generic-early-reader|baseline-read-aloud",8,9,4,0,1.7,"",0,0
 route-general,"General Kids formats","baseline-generic-early-reader + baseline-read-aloud","baseline-generic-early-reader|baseline-read-aloud",7,8,4,0,0,"",0,0
 route-general,"General Kids formats","baseline-generic-picture-book + baseline-generic-early-reader","baseline-generic-picture-book|baseline-generic-early-reader",7,8,3,0,0,"",0,0
 route-friendship-humor-rhyme,"Friendship/Humor/Rhyming","theme-humor-picture-book + theme-rhyming-picture-book","theme-humor-picture-book|theme-rhyming-picture-book",5,5,3,0,0,"",0,0
-route-fantasy-variants,"Fantasy variants","baseline-fantasy-picture-book + theme-magic-adventure","baseline-fantasy-picture-book|theme-magic-adventure",12,12,2,0,0,"",0,0
-route-fantasy-variants,"Fantasy variants","baseline-fantasy-picture-book + baseline-fantasy-early-reader + theme-magic-adventure","baseline-fantasy-picture-book|baseline-fantasy-early-reader|theme-magic-adventure",12,12,2,0,1.7,"",0,0
-route-fantasy-variants,"Fantasy variants","baseline-fantasy-early-reader + theme-magic-adventure","baseline-fantasy-early-reader|theme-magic-adventure",11,11,2,0,0,"",0,0
 route-general,"General Kids formats","baseline-generic-picture-book + baseline-read-aloud","baseline-generic-picture-book|baseline-read-aloud",2,2,1,0,2.5,"",0,0
-route-fantasy-variants,"Fantasy variants","baseline-fantasy-picture-book + baseline-fantasy-early-reader","baseline-fantasy-picture-book|baseline-fantasy-early-reader",1,1,0,0,2.5,"",0,0
+route-fantasy-variants,"Fantasy variants","baseline-fantasy-picture-book + baseline-fantasy-early-reader","baseline-fantasy-picture-book|baseline-fantasy-early-reader",2,2,1,0,2.5,"",0,0

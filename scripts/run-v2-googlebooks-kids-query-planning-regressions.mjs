@@ -101,11 +101,8 @@ for (const fixture of [
   assertTruthy(result.queries.length > 0 && result.queries.length <= 3, `${fixture.name}: planner should emit one to three queries`);
   assertNoNovelTemplates(result.queries, `${fixture.name}: planner should avoid generic K-2 novel templates`);
   assertNoMalformedChildrenPossessive(result.queries, `${fixture.name}: planner should not emit malformed possessive`);
-  assertTruthy(result.queries.some((query) => /picture book/.test(query)), `${fixture.name}: expected a picture-book query`);
-  assertTruthy(
-    result.queries.some((query) => /early reader|beginning reader|read aloud|illustrated/.test(query)),
-    `${fixture.name}: expected a distinct non-picture-book companion query`,
-  );
+  assertNotIncludes(result.queries, "kids fantasy picture book", `${fixture.name}: underperforming fantasy picture-book template must be retired`);
+  assertNotIncludes(result.queries, "kids fantasy early reader", `${fixture.name}: underperforming fantasy early-reader template must be retired`);
   assertTruthy(Array.isArray(result.diagnostics.kidsGoogleBooksPlannedQueries), `${fixture.name}: planned-query diagnostics should be present`);
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksQueryFamilyByQuery === "object", `${fixture.name}: family diagnostics should be present`);
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksQueryFormatByQuery === "object", `${fixture.name}: format diagnostics should be present`);
@@ -114,19 +111,25 @@ for (const fixture of [
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksQueryReplacementReason !== "undefined", `${fixture.name}: replacement diagnostics should be present`);
   assertTruthy(Array.isArray(result.diagnostics.kidsGoogleBooksProfilePositiveFamilies), `${fixture.name}: positive-family diagnostics should be present`);
   assertTruthy(Array.isArray(result.diagnostics.kidsGoogleBooksProfileAvoidFamilies), `${fixture.name}: avoid-family diagnostics should be present`);
+  assertTruthy(typeof result.diagnostics.kidsGoogleBooksSelectedCascade === "string", `${fixture.name}: selected-cascade diagnostics should be present`);
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksSelectedPrimaryFamily === "string", `${fixture.name}: primary-family diagnostics should be present`);
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksSelectedSecondaryFamily === "string", `${fixture.name}: secondary-family diagnostics should be present`);
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksGenericPlanningReason === "string", `${fixture.name}: generic-planning diagnostics should be present`);
   assertTruthy(typeof result.diagnostics.kidsGoogleBooksFamilySuppressedReason === "string", `${fixture.name}: family-suppression diagnostics should be present`);
 }
 
-// Humor + adventure should keep format distinction while broadening family on the third query.
+// Humor + adventure should use the dedicated thematic cascade for diversity.
 {
   const result = googleBooksQueries(profile("kids", ["humorous", "adventure"]));
   assertEqual(
     JSON.stringify(result.queries),
-    JSON.stringify(["kids humorous picture book", "kids humorous early reader", "kids adventure picture book"]),
-    "humor+adventure should use safe family breadth on the third Kids query",
+    JSON.stringify(["kids friendship picture book", "kids humorous picture book", "kids rhyming picture book"]),
+    "humor+adventure should use the friendship/humor/rhyming thematic cascade",
+  );
+  assertEqual(
+    result.diagnostics.kidsGoogleBooksSelectedCascade,
+    "thematic_friendship_humor_rhyming",
+    "humor+adventure should report thematic cascade selection",
   );
 }
 
@@ -144,7 +147,24 @@ for (const fixture of [
   const prof = profile("kids", ["humorous"], [], ["friendship"]);
   prof.avoidSignals = [{ value: "fantasy", weight: 1, evidence: ["dislike:fantasy"] }];
   const result = googleBooksQueries(prof);
-  assertNotIncludes(result.queries, "kids fantasy picture book", "disliked fantasy should not force a fantasy query template");
+  assertNotIncludes(result.queries, "kids fantasy picture book", "disliked fantasy should not force retired fantasy picture-book template");
+  assertNotIncludes(result.queries, "kids fantasy early reader", "disliked fantasy should not force retired fantasy early-reader template");
+  assertNotIncludes(result.queries, "kids magic adventure", "disliked fantasy should not force fantasy-variant query templates");
+}
+
+// Fantasy route should preserve fantasy retrieval via new formulations, not old templates.
+{
+  const result = googleBooksQueries(profile("kids", ["fantasy", "adventure"]));
+  assertEqual(
+    JSON.stringify(result.queries),
+    JSON.stringify(["kids adventure picture book", "kids magic adventure", "kids dragon adventure early reader"]),
+    "fantasy+adventure should use the fantasy-friendly adventure cascade",
+  );
+  assertEqual(
+    result.diagnostics.kidsGoogleBooksSelectedCascade,
+    "fantasy_magic_adventure",
+    "fantasy+adventure should report fantasy cascade selection",
+  );
 }
 
 // Skip-only fantasy must not contribute positive fantasy evidence.

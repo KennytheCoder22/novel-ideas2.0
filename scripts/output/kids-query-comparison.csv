@@ -1,24 +1,24 @@
 id,group,query,apiTotalItems,rawCount,shapeAdmittedCount,audienceKidsCount,preScoringPassCount,finalEligibilityPassCount,shapeYieldPct,audienceYieldPct,k2YieldPct
 baseline-adventure-picture-book,baseline,"kids adventure picture book",300,20,9,12,5,0,45,60,25
-theme-adventure-early-reader,theme,"kids adventure early reader",300,20,6,17,5,0,30,85,25
-prefix-juvenile-fiction,prefix,"juvenile fiction",300,20,5,8,4,0,25,40,20
+prefix-juvenile-fiction,prefix,"juvenile fiction",300,20,6,8,4,0,30,40,20
 theme-friendship-picture-book,theme,"kids friendship picture book",300,20,4,15,4,0,20,75,20
+theme-magic-adventure,theme,"kids magic adventure",300,20,12,7,4,0,60,35,20
 baseline-generic-early-reader,baseline,"kids early reader",300,20,7,17,3,0,35,85,15
 format-chapter-book,format,"kids chapter book",300,20,6,8,3,0,30,40,15
+theme-adventure-early-reader,theme,"kids adventure early reader",300,20,6,16,3,0,30,80,15
 theme-dragon-adventure-reader,theme,"kids dragon adventure early reader",300,20,5,9,3,0,25,45,15
 prefix-childrens-early-reader,prefix,"children's early reader",300,20,4,16,2,0,20,80,10
 theme-rhyming-picture-book,theme,"kids rhyming picture book",300,20,3,19,2,0,15,95,10
-theme-magic-adventure,theme,"kids magic adventure",300,20,11,5,2,0,55,25,10
 subject-childrens-stories,subject,"subject:children's stories",6,6,3,3,2,0,50,50,33
+baseline-fantasy-early-reader,baseline,"kids fantasy early reader",300,20,1,3,1,0,5,15,5
 baseline-read-aloud,baseline,"kids read aloud",300,20,1,8,1,0,5,40,5
-format-illustrated-story,format,"kids illustrated story",300,20,8,6,1,0,40,30,5
+format-illustrated-story,format,"kids illustrated story",300,20,4,5,1,0,20,25,5
 theme-humor-picture-book,theme,"kids humorous picture book",300,20,2,9,1,0,10,45,5
 baseline-fantasy-picture-book,baseline,"kids fantasy picture book",300,20,1,4,0,0,5,20,0
-baseline-fantasy-early-reader,baseline,"kids fantasy early reader",300,20,0,2,0,0,0,10,0
 baseline-generic-picture-book,baseline,"kids picture book",300,20,1,11,0,0,5,55,0
-prefix-childrens-picture-book,prefix,"children's picture book",300,20,0,7,0,0,0,35,0
-prefix-juvenile-picture-book,prefix,"juvenile fiction picture book",300,20,0,11,0,0,0,55,0
-format-beginning-reader,format,"beginning reader fiction",300,20,1,4,0,0,5,20,0
+prefix-childrens-picture-book,prefix,"children's picture book",300,20,0,5,0,0,0,25,0
+prefix-juvenile-picture-book,prefix,"juvenile fiction picture book",300,20,0,7,0,0,0,35,0
+format-beginning-reader,format,"beginning reader fiction",300,20,1,5,0,0,5,25,0
 format-easy-reader,format,"easy reader fiction",300,20,1,3,0,0,5,15,0
 theme-animal-picture-book,theme,"kids animal picture book",300,20,0,20,0,0,0,100,0
 theme-humor-early-reader,theme,"kids humorous early reader",300,20,2,3,0,0,10,15,0
