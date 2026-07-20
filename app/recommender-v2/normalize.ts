@@ -1,4 +1,5 @@
 import type { AgeBandV2, CandidateFormatV2, NormalizedCandidate, SourceIdV2, SourceResult } from "./types";
+import { preteenGoogleBooksPublicationIdentityAudit } from "./preteenGoogleBooksPublicationIdentity";
 
 const AGE_BAND_VALUES = new Set<AgeBandV2>(["kids", "preteens", "teens", "adult"]);
 const GOOGLE_BOOKS_MATURITY_RATINGS = new Set(["MATURE", "NOT_MATURE"]);
@@ -31,16 +32,98 @@ function googleBooksContentMaturityFromRating(value: unknown): "mature" | "not_m
   return "unknown";
 }
 
+function googleBooksIsNotMature(row: Record<string, unknown>): boolean {
+  const rating = String(googleBooksSourceMaturityRating(row) || "").trim().toUpperCase();
+  return rating === "NOT_MATURE";
+}
+
+function googleBooksCombinedMetadataText(row: Record<string, unknown>): string {
+  const volumeInfo = row.volumeInfo && typeof row.volumeInfo === "object"
+    ? row.volumeInfo as Record<string, unknown>
+    : {};
+  const categories = asStringArray(volumeInfo.categories || row.genres);
+  return [
+    row.title,
+    row.subtitle,
+    row.description,
+    volumeInfo.description,
+    categories.join(" | "),
+    volumeInfo.publisher || row.publisher,
+  ]
+    .map((value) => String(value || "").toLowerCase())
+    .join(" ");
+}
+
+function googleBooksHasExplicitEarlyReaderMarkers(row: Record<string, unknown>): boolean {
+  const text = googleBooksCombinedMetadataText(row);
+  return /\b(picture books?|board books?|early readers?|easy readers?|beginning readers?|leveled readers?|learn to read|read aloud|phonics readers?|kindergarten|preschool|grades?\s*(?:k|1|2)\b|grade\s*(?:k|1|2)\b)\b/.test(text);
+}
+
+function preteenGoogleBooksHighConfidenceMiddleGradeNovel(row: Record<string, unknown>): boolean {
+  const volumeInfo = row.volumeInfo && typeof row.volumeInfo === "object"
+    ? row.volumeInfo as Record<string, unknown>
+    : {};
+  const audit = preteenGoogleBooksPublicationIdentityAudit({
+    id: String(row.id || row.sourceId || "googleBooks:normalize-audit"),
+    source: "googleBooks",
+    sourceId: String(row.sourceId || row.id || "normalize-audit"),
+    title: String(row.title || volumeInfo.title || "").trim(),
+    subtitle: String(row.subtitle || volumeInfo.subtitle || "").trim() || undefined,
+    creators: asStringArray(row.creators || row.authors || volumeInfo.authors),
+    description: normalizeDescription(row),
+    formats: ["book"],
+    genres: asStringArray(row.genres || volumeInfo.categories),
+    themes: asStringArray(row.themes),
+    tones: asStringArray(row.tones),
+    characterDynamics: asStringArray(row.characterDynamics),
+    maturityBand: String(row.maturityBand || row.maturity || "").trim() || undefined,
+    publicationYear: Number.isFinite(Number(row.publicationYear || row.first_publish_year)) ? Number(row.publicationYear || row.first_publish_year) : undefined,
+    sourceUrl: String(row.sourceUrl || row.url || "").trim() || undefined,
+    raw: {
+      ...row,
+      volumeInfo,
+    },
+    diagnostics: {},
+  } as NormalizedCandidate);
+  return audit.allowed && audit.identity === "middle_grade_novel" && audit.confidence >= 0.85;
+}
+
+function normalizedGoogleBooksAudienceBandForMaturity(
+  row: Record<string, unknown>,
+  sourceAudienceBand: AgeBandV2 | undefined,
+): AgeBandV2 | undefined {
+  const policyOverride = String(row.googleBooksAudiencePolicyOverride || "").trim();
+  if (policyOverride === "strict_preserve_source_audience") return sourceAudienceBand;
+
+  const requestedDeck = ageBandValue(row.requestedAgeBand || row.ageBand);
+  if (requestedDeck !== "preteens") return sourceAudienceBand;
+  if (!googleBooksIsNotMature(row)) return sourceAudienceBand;
+
+  if (sourceAudienceBand === "kids") {
+    // Pre-Teen policy: keep explicit K-2 / early-reader markers as kids, but
+    // treat broad Juvenile Fiction labels as unknown so they can be evaluated.
+    return googleBooksHasExplicitEarlyReaderMarkers(row) ? sourceAudienceBand : undefined;
+  }
+
+  if ((sourceAudienceBand === "teens" || sourceAudienceBand === "adult") && preteenGoogleBooksHighConfidenceMiddleGradeNovel(row)) {
+    return undefined;
+  }
+
+  return sourceAudienceBand;
+}
+
 function normalizeMaturityBand(source: SourceIdV2, row: Record<string, unknown>): string | undefined {
   const rawMaturityBand = String(row.maturityBand || row.maturity || "").trim();
   if (source !== "googleBooks") return rawMaturityBand || undefined;
 
   const sourceAudienceBand = ageBandValue(row.audienceBand);
   const sourceMaturityBand = ageBandValue(rawMaturityBand);
-  if (sourceAudienceBand === "adult") {
+  const requestedDeck = ageBandValue(row.requestedAgeBand || row.ageBand);
+  if (requestedDeck === "adult" && sourceAudienceBand === "adult") {
     return rawMaturityBand || undefined;
   }
-  return sourceMaturityBand || sourceAudienceBand || undefined;
+  const effectiveAudienceBand = normalizedGoogleBooksAudienceBandForMaturity(row, sourceAudienceBand);
+  return sourceMaturityBand || effectiveAudienceBand || undefined;
 }
 
 function normalizeDescription(row: Record<string, unknown>): string | undefined {
