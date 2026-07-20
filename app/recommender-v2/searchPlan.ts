@@ -95,7 +95,7 @@ type KidsGoogleBooksQueryCandidate = {
   id: string;
   query: string;
   family: string;
-  format: "picture_book" | "early_reader" | "read_aloud" | "illustrated_children_book";
+  format: "picture_book" | "early_reader" | "read_aloud" | "illustrated_children_book" | "chapter_book" | "magic_adventure";
   theme: string;
   rung: "primary" | "adjacent" | "third";
   priority: number;
@@ -163,6 +163,11 @@ function kidsGoogleBooksSupportsEarlyReader(signals: string[]): boolean {
   return /\b(adventure|fantasy|magic|mystery|science fiction|animal|friendship|humorous|alphabet|rhyming|reader|beginning reader|read aloud)\b/.test(normalized);
 }
 
+function kidsGoogleBooksSupportsFantasyRetrieval(signals: string[]): boolean {
+  const normalized = signals.map((value) => normalizedTerm(value)).join(" ");
+  return /\b(fantasy|magic|magical|dragon|dragons|wizard|witch|fairy|myth|mythology)\b/.test(normalized);
+}
+
 function kidsGoogleBooksFormatQuery(theme: string, format: KidsGoogleBooksQueryCandidate["format"]): string {
   const themePrefix = kidsThemePhrase(theme);
   if (format === "picture_book") {
@@ -200,56 +205,129 @@ function buildKidsGoogleBooksIntents(profile: TasteProfile, genres: string[], to
   const theme = themeCandidates[0] || "general";
   const secondaryTheme = themeCandidates.find((candidate) => candidate && candidate !== theme);
   const supportsEarlyReader = kidsGoogleBooksSupportsEarlyReader(signalPool);
+  const supportsFantasyRetrieval = kidsGoogleBooksSupportsFantasyRetrieval(signalPool)
+    || positiveFamilies.includes("fantasy")
+    || themeCandidates.includes("fantasy");
   const avoidFamilies = Array.from(blockedFamilies);
 
-  const candidates: KidsGoogleBooksQueryCandidate[] = [
-    {
-      id: "family-fiction-primary",
-      query: kidsGoogleBooksFormatQuery(theme, "picture_book"),
-      family: theme,
-      format: "picture_book",
-      theme,
-      rung: "primary",
-      priority: 1,
-      facets: [...genres, ...tones, ...themes].filter(Boolean),
-      rationale: ["built_from_top_taste_profile_signals", "kids_googlebooks_picture_book_template"],
-    },
-  ];
-  if (supportsEarlyReader) {
-    candidates.push({
-      id: "adjacent-or-tone-fiction",
-      query: kidsGoogleBooksFormatQuery(theme, "early_reader"),
-      family: theme,
-      format: "early_reader",
-      theme,
-      rung: "adjacent",
-      priority: 0.85,
-      facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
-      rationale: ["adjacent_family_or_tone_expansion", "kids_googlebooks_early_reader_template"],
-    });
+  const candidates: KidsGoogleBooksQueryCandidate[] = [];
+  const thematicRoute = theme === "friendship" || theme === "humorous" || theme === "rhyming";
+  const fantasyRoute = !thematicRoute && supportsFantasyRetrieval;
+  const selectedCascade = thematicRoute
+    ? "thematic_friendship_humor_rhyming"
+    : fantasyRoute
+      ? "fantasy_magic_adventure"
+      : "adventure_broad_narrative";
+
+  if (thematicRoute) {
+    candidates.push(
+      {
+        id: "thematic-primary-friendship-picture-book",
+        query: "kids friendship picture book",
+        family: "friendship",
+        format: "picture_book",
+        theme: "friendship",
+        rung: "primary",
+        priority: 1,
+        facets: [...genres, ...tones, ...themes].filter(Boolean),
+        rationale: ["kids_googlebooks_thematic_cascade", "kids_googlebooks_friendship_picture_book_template"],
+      },
+      {
+        id: "thematic-adjacent-humorous-picture-book",
+        query: "kids humorous picture book",
+        family: "humorous",
+        format: "picture_book",
+        theme: "humorous",
+        rung: "adjacent",
+        priority: 0.85,
+        facets: [...genres.slice(0, 2), ...tones.slice(0, 2), ...themes.slice(0, 1)].filter(Boolean),
+        rationale: ["kids_googlebooks_thematic_cascade", "kids_googlebooks_humorous_picture_book_template"],
+      },
+      {
+        id: "thematic-third-rhyming-picture-book",
+        query: "kids rhyming picture book",
+        family: "rhyming",
+        format: "picture_book",
+        theme: "rhyming",
+        rung: "third",
+        priority: 0.7,
+        facets: [profile.maturityBand, ...formats, ...themes.slice(0, 2)].filter(Boolean),
+        rationale: ["kids_googlebooks_thematic_cascade", "kids_googlebooks_rhyming_picture_book_template"],
+      },
+    );
+  } else if (fantasyRoute) {
+    candidates.push(
+      {
+        id: "fantasy-primary-adventure-picture-book",
+        query: "kids adventure picture book",
+        family: "adventure",
+        format: "picture_book",
+        theme: "adventure",
+        rung: "primary",
+        priority: 1,
+        facets: [...genres, ...tones, ...themes].filter(Boolean),
+        rationale: ["kids_googlebooks_fantasy_route_via_adventure", "kids_googlebooks_adventure_picture_book_template"],
+      },
+      {
+        id: "fantasy-adjacent-magic-adventure",
+        query: "kids magic adventure",
+        family: "fantasy",
+        format: "magic_adventure",
+        theme: "fantasy",
+        rung: "adjacent",
+        priority: 0.85,
+        facets: [...genres.slice(0, 2), ...themes.slice(0, 2), ...tones.slice(0, 1)].filter(Boolean),
+        rationale: ["kids_googlebooks_fantasy_route_via_adventure", "kids_googlebooks_magic_adventure_template"],
+      },
+      {
+        id: "fantasy-third-dragon-adventure-early-reader",
+        query: "kids dragon adventure early reader",
+        family: "fantasy",
+        format: "early_reader",
+        theme: "fantasy",
+        rung: "third",
+        priority: supportsEarlyReader ? 0.7 : 0.6,
+        facets: [profile.maturityBand, ...formats, ...genres.slice(0, 1)].filter(Boolean),
+        rationale: ["kids_googlebooks_fantasy_route_via_adventure", "kids_googlebooks_dragon_adventure_early_reader_template"],
+      },
+    );
+  } else {
+    candidates.push(
+      {
+        id: "adventure-primary-picture-book",
+        query: "kids adventure picture book",
+        family: "adventure",
+        format: "picture_book",
+        theme: "adventure",
+        rung: "primary",
+        priority: 1,
+        facets: [...genres, ...tones, ...themes].filter(Boolean),
+        rationale: ["kids_googlebooks_adventure_cascade", "kids_googlebooks_adventure_picture_book_template"],
+      },
+      {
+        id: "adventure-adjacent-early-reader",
+        query: "kids adventure early reader",
+        family: "adventure",
+        format: "early_reader",
+        theme: "adventure",
+        rung: "adjacent",
+        priority: supportsEarlyReader ? 0.85 : 0.75,
+        facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
+        rationale: ["kids_googlebooks_adventure_cascade", "kids_googlebooks_adventure_early_reader_template"],
+      },
+      {
+        id: "adventure-third-chapter-book",
+        query: "kids chapter book",
+        family: secondaryTheme || "adventure",
+        format: "chapter_book",
+        theme: secondaryTheme || "adventure",
+        rung: "third",
+        priority: 0.7,
+        facets: [profile.maturityBand, ...formats, ...genres.slice(0, 1)].filter(Boolean),
+        rationale: ["kids_googlebooks_adventure_cascade", "kids_googlebooks_chapter_book_template"],
+      },
+    );
   }
-  const thirdFormat: KidsGoogleBooksQueryCandidate["format"] = secondaryTheme
-    ? "picture_book"
-    : supportsEarlyReader
-      ? "read_aloud"
-      : "illustrated_children_book";
-  const thirdTheme = secondaryTheme || theme;
-  candidates.push({
-    id: "fallback-fiction-broad",
-    query: kidsGoogleBooksFormatQuery(thirdTheme, thirdFormat),
-    family: thirdTheme,
-    format: thirdFormat,
-    theme: thirdTheme,
-    rung: "third",
-    priority: 0.55,
-    facets: [profile.maturityBand, ...formats, ...genres.slice(0, 1)].filter(Boolean),
-    rationale: [
-      secondaryTheme
-        ? "third_query_uses_secondary_supported_family_for_breadth"
-        : "broad_fallback_when_underfilled",
-      `kids_googlebooks_${thirdFormat}_template`,
-    ],
-  });
 
   const plannedQueries: string[] = [];
   const familyByQuery: Record<string, string> = {};
@@ -292,13 +370,7 @@ function buildKidsGoogleBooksIntents(profile: TasteProfile, genres: string[], to
     if (intents.length >= 3) break;
   }
 
-  const omittedThirdQueryReason = intents.some((intent) => intent.id === "fallback-fiction-broad")
-    ? secondaryTheme
-      ? "replaced_novel_template_with_secondary_family_picture_book"
-      : supportsEarlyReader
-        ? "replaced_novel_template_with_read_aloud"
-        : "replaced_novel_template_with_illustrated_children_book"
-    : "omitted_third_query:no_distinct_safe_template";
+  const omittedThirdQueryReason = selectedCascade;
   const genericPlanningReason = theme === "general"
     ? "no_like_backed_family_signals_survived_suppression"
     : "";
@@ -328,6 +400,7 @@ function buildKidsGoogleBooksIntents(profile: TasteProfile, genres: string[], to
       kidsGoogleBooksSelectedSecondaryTheme: secondaryTheme || "",
       kidsGoogleBooksProfilePositiveFamilies: positiveFamilies,
       kidsGoogleBooksProfileAvoidFamilies: avoidFamilies,
+      kidsGoogleBooksSelectedCascade: selectedCascade,
       kidsGoogleBooksSelectedPrimaryFamily: theme,
       kidsGoogleBooksSelectedSecondaryFamily: secondaryTheme || "",
       kidsGoogleBooksGenericPlanningReason: genericPlanningReason,
