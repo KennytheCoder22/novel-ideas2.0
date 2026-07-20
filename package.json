@@ -24,11 +24,13 @@
     "test:v2:googlebooks-preteen-publication-identity-audit": "node scripts/run-v2-googlebooks-preteen-publication-identity-regressions.mjs",
     "test:v2:googlebooks-preteen-publication-shape-false-reject-audit": "node scripts/run-v2-googlebooks-preteen-publication-shape-false-reject-audit-regressions.mjs",
     "test:v2:googlebooks-preteen-publication-shape-narrative-rescue": "node scripts/run-v2-googlebooks-preteen-publication-shape-narrative-rescue-regressions.mjs",
+    "test:v2:googlebooks-preteen-query-routing": "node scripts/run-v2-googlebooks-preteen-query-routing-regressions.mjs",
     "test:v2:googlebooks-short-signals": "node scripts/run-v2-googlebooks-short-signal-boundary-regressions.mjs",
     "test:v2:openlibrary-presets": "node scripts/run-v2-openlibrary-presets.mjs",
     "test:v2:openlibrary-routing-regressions": "node scripts/run-v2-openlibrary-routing-regressions.mjs",
     "audit:v2:googlebooks-kids-query-comparison": "node scripts/run-v2-googlebooks-kids-query-comparison.mjs",
-    "audit:v2:googlebooks-kids-pre-scoring-rejections": "node scripts/run-v2-googlebooks-kids-k2-pre-scoring-rejection-audit.mjs"
+    "audit:v2:googlebooks-kids-pre-scoring-rejections": "node scripts/run-v2-googlebooks-kids-k2-pre-scoring-rejection-audit.mjs",
+    "audit:v2:googlebooks-preteen-kids-label-mismatch": "node scripts/run-v2-googlebooks-preteen-kids-label-mismatch-audit.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -70,4 +72,3 @@
   },
   "private": true
 }
-
