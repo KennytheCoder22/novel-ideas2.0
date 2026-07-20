@@ -440,6 +440,13 @@ export interface SourceDiagnosticV2 {
   teenGoogleBooksMeaningfulTasteQuerySupportedWeakMatches?: string[];
   teenGoogleBooksMeaningfulTasteUnrelatedTitles?: string[];
   teenGoogleBooksMeaningfulTasteActivelyConflictingTitles?: string[];
+  teenGoogleBooksTasteTierSelectionDecisionByTitle?: Record<string, string>;
+  teenGoogleBooksTasteTierSelectionReasonByTitle?: Record<string, string>;
+  teenGoogleBooksWeakCandidateUsedForUnderfillByTitle?: Record<string, boolean>;
+  teenGoogleBooksStrongOrSecondaryAvailableCount?: number;
+  teenGoogleBooksCounterfactualFinalTitles?: string[];
+  teenGoogleBooksCounterfactualFinalCount?: number;
+  teenGoogleBooksCounterfactualUnderfill?: boolean;
   adultGoogleBooksSignalMatchTraceByTitle?: Record<string, unknown[]>;
   adultGoogleBooksSignalMatchedFieldByTitle?: Record<string, Record<string, string[]>>;
   adultGoogleBooksSignalMatchedTextByTitle?: Record<string, Record<string, string[]>>;
