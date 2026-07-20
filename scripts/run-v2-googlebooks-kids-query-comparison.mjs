@@ -41,6 +41,8 @@ const { analyzeGoogleBooksVolumeForAudit } = require(
 const { applyKidsGoogleBooksPreScoringGate } = require(
   resolve(recommenderDir, "engine.ts"),
 );
+const { scoreCandidates } = require(resolve(recommenderDir, "score.ts"));
+const { selectRecommendations } = require(resolve(recommenderDir, "select.ts"));
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -118,6 +120,8 @@ const QUERY_FAMILIES = [
   { id: "theme-rhyming-picture-book",      group: "theme", query: "kids rhyming picture book" },
   { id: "theme-adventure-early-reader",    group: "theme", query: "kids adventure early reader" },
   { id: "theme-humor-early-reader",        group: "theme", query: "kids humorous early reader" },
+  { id: "theme-magic-adventure",           group: "theme", query: "kids magic adventure" },
+  { id: "theme-dragon-adventure-reader",   group: "theme", query: "kids dragon adventure early reader" },
 
   // ── Subject / category anchors ────────────────────────────────────────────
   { id: "subject-juvenile-fiction",        group: "subject", query: "subject:juvenile fiction" },
@@ -125,6 +129,47 @@ const QUERY_FAMILIES = [
   { id: "subject-juvenile-adventure",      group: "subject", query: "subject:juvenile fiction adventure" },
   { id: "subject-childrens-stories",       group: "subject", query: "subject:children's stories" },
   { id: "subject-picture-book",            group: "subject", query: "subject:picture books fiction" },
+];
+
+const NARRATIVE_SHAPES = new Set(["novel", "series_installment", "story_collection"]);
+
+const CASCADE_ROUTES = [
+  {
+    id: "route-general",
+    label: "General Kids formats",
+    queryIds: [
+      "baseline-generic-picture-book",
+      "baseline-generic-early-reader",
+      "baseline-read-aloud",
+    ],
+  },
+  {
+    id: "route-fantasy-variants",
+    label: "Fantasy variants",
+    queryIds: [
+      "baseline-fantasy-picture-book",
+      "baseline-fantasy-early-reader",
+      "theme-magic-adventure",
+    ],
+  },
+  {
+    id: "route-adventure-stack",
+    label: "Adventure stack",
+    queryIds: [
+      "baseline-adventure-picture-book",
+      "theme-adventure-early-reader",
+      "format-chapter-book",
+    ],
+  },
+  {
+    id: "route-friendship-humor-rhyme",
+    label: "Friendship/Humor/Rhyming",
+    queryIds: [
+      "theme-friendship-picture-book",
+      "theme-humor-picture-book",
+      "theme-rhyming-picture-book",
+    ],
+  },
 ];
 
 // ─── API fetch ────────────────────────────────────────────────────────────────
@@ -208,6 +253,80 @@ function buildCandidate(volumeInfo, item, analysis, queryText) {
   };
 }
 
+function combinations(values) {
+  const out = [];
+  const n = values.length;
+  for (let mask = 1; mask < (1 << n); mask += 1) {
+    const picked = [];
+    for (let i = 0; i < n; i += 1) {
+      if (mask & (1 << i)) picked.push(values[i]);
+    }
+    if (picked.length >= 2) out.push(picked);
+  }
+  return out;
+}
+
+function evaluateCascade(route, chosenQueryIds, queryById) {
+  const pooledEditions = [];
+  for (const queryId of chosenQueryIds) {
+    const query = queryById.get(queryId);
+    if (!query || query.error) continue;
+    pooledEditions.push(...query.editions);
+  }
+
+  const uniqueByVolume = new Map();
+  for (const ed of pooledEditions) {
+    if (!uniqueByVolume.has(ed.volumeId)) uniqueByVolume.set(ed.volumeId, ed);
+  }
+  const uniqueRaw = [...uniqueByVolume.values()];
+  const rawTotal = pooledEditions.length;
+  const duplicatePct = rawTotal > 0
+    ? Math.round(((rawTotal - uniqueRaw.length) / rawTotal) * 1000) / 10
+    : 0;
+
+  const narrativeRaw = uniqueRaw.filter((ed) => NARRATIVE_SHAPES.has(ed.publicationShape));
+  const shapePass = uniqueRaw.filter((ed) => ed.shapeAdmitted);
+  const shapePassCandidates = shapePass.map((ed) => ed.candidate);
+
+  let preScoringCandidates = [];
+  let selection = { selected: [], diagnostics: {} };
+  if (shapePassCandidates.length > 0) {
+    const gate = applyKidsGoogleBooksPreScoringGate(shapePassCandidates, neutralKidsProfile);
+    preScoringCandidates = gate.candidates;
+    if (preScoringCandidates.length > 0) {
+      const scored = scoreCandidates(preScoringCandidates, neutralKidsProfile);
+      selection = selectRecommendations(scored, neutralKidsProfile, 10);
+    }
+  }
+
+  const finalTitles = selection.selected.map((c) => c.title);
+  const finalAuthors = new Set(selection.selected.map((c) => String((c.creators || [])[0] || "").trim()).filter(Boolean));
+  const finalCategories = new Set(
+    selection.selected
+      .flatMap((c) => Array.isArray(c.genres) ? c.genres : [])
+      .map((g) => String(g || "").trim())
+      .filter(Boolean),
+  );
+
+  return {
+    routeId: route.id,
+    routeLabel: route.label,
+    queryIds: chosenQueryIds,
+    querySetLabel: chosenQueryIds.join(" + "),
+    uniqueRawNarrativeCandidates: narrativeRaw.length,
+    uniquePublicationShapePasses: shapePass.length,
+    uniqueK2PreScoringPasses: preScoringCandidates.length,
+    uniqueFinalEligibilityPasses: selection.selected.length,
+    duplicatePct,
+    finalProductionRecommendations: finalTitles,
+    finalRecommendationDiversity: {
+      uniqueTitles: new Set(finalTitles).size,
+      uniqueLeadAuthors: finalAuthors.size,
+      uniqueGenres: finalCategories.size,
+    },
+  };
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const results = [];
@@ -241,22 +360,30 @@ for (const family of QUERY_FAMILIES) {
   // Run Kids pre-scoring gate on all shape-admitted candidates
   let preScoringPassed = [];
   let preScoringDiag = {};
+  let finalSelected = [];
   if (candidates.length > 0) {
     const gate = applyKidsGoogleBooksPreScoringGate(candidates, neutralKidsProfile);
-    preScoringPassed = gate.candidates.map((c) => c.title);
+    preScoringPassed = gate.candidates.map((c) => c.id);
     preScoringDiag = gate.diagnostics;
+    if (gate.candidates.length > 0) {
+      const scored = scoreCandidates(gate.candidates, neutralKidsProfile);
+      const selection = selectRecommendations(scored, neutralKidsProfile, 10);
+      finalSelected = selection.selected.map((c) => c.id);
+    }
   }
 
   const preScoringPassedSet = new Set(preScoringPassed);
 
   const editionRows = editions.map(({ analysis, candidate }) => {
+    const volumeId = String(candidate.sourceId || "").trim();
     const shapeAdmitted = analysis.admittedAfterSourcePolicy;
     const audienceKids = analysis.inferredAudienceBand === "kids";
-    const preScoringPass = preScoringPassedSet.has(analysis.title);
+    const preScoringPass = preScoringPassedSet.has(candidate.id);
     const rejectionReason = shapeAdmitted && !preScoringPass
       ? (preScoringDiag?.rejectedBeforeScoringByTitle?.[analysis.title] || "not_evaluated")
       : analysis.publicationShapeDropReason || analysis.artifactDropReason || (shapeAdmitted ? null : "shape_rejected");
     return {
+      volumeId,
       title: analysis.title,
       authors: analysis.authors.slice(0, 2).join(", "),
       categories: analysis.categories.join(" | "),
@@ -267,6 +394,7 @@ for (const family of QUERY_FAMILIES) {
       audienceKids,
       preScoringPass,
       rejectionReason,
+      candidate,
     };
   });
 
@@ -274,6 +402,9 @@ for (const family of QUERY_FAMILIES) {
   const shapeAdmittedCount = editionRows.filter((e) => e.shapeAdmitted).length;
   const audienceKidsCount = editionRows.filter((e) => e.audienceKids).length;
   const preScoringPassCount = editionRows.filter((e) => e.preScoringPass).length;
+  const finalSelectedSet = new Set(finalSelected);
+  const finalEligibilityPassCount = editionRows.filter((e) => finalSelectedSet.has(e.candidate.id)).length;
+  const finalReturnedTitles = editionRows.filter((e) => finalSelectedSet.has(e.candidate.id)).map((e) => e.title);
 
   const row = {
     id: family.id,
@@ -284,17 +415,20 @@ for (const family of QUERY_FAMILIES) {
     shapeAdmittedCount,
     audienceKidsCount,
     preScoringPassCount,
+    finalEligibilityPassCount,
+    finalReturnedTitles,
     shapeYieldPct: rawCount ? Math.round(shapeAdmittedCount / rawCount * 100) : 0,
     audienceYieldPct: rawCount ? Math.round(audienceKidsCount / rawCount * 100) : 0,
     k2YieldPct: rawCount ? Math.round(preScoringPassCount / rawCount * 100) : 0,
     k2YieldAbsolute: preScoringPassCount,
-    preScoringPassedTitles: preScoringPassed,
+    preScoringPassedIds: preScoringPassed,
+    preScoringPassedTitles: editionRows.filter((e) => e.preScoringPass).map((e) => e.title),
     editions: editionRows,
   };
   results.push(row);
 
   console.log(
-    `raw=${rawCount} shape=${shapeAdmittedCount} audience_kids=${audienceKidsCount} pre_scoring=${preScoringPassCount} (${row.k2YieldPct}%)`,
+    `raw=${rawCount} shape=${shapeAdmittedCount} audience_kids=${audienceKidsCount} pre_scoring=${preScoringPassCount} final=${finalEligibilityPassCount} (${row.k2YieldPct}%)`,
   );
 }
 
@@ -354,6 +488,38 @@ for (const [reason, count] of [...allRejections.entries()].sort((a, b) => b[1] -
   console.log(`  ${count.toString().padStart(4)}  ${reason}`);
 }
 
+// ─── Cascade-combination analysis ──────────────────────────────────────────────
+
+const queryById = new Map(results.map((r) => [r.id, r]));
+const cascadeRows = [];
+for (const route of CASCADE_ROUTES) {
+  const combos = combinations(route.queryIds);
+  for (const combo of combos) {
+    cascadeRows.push(evaluateCascade(route, combo, queryById));
+  }
+}
+const cascadeSorted = [...cascadeRows].sort((a, b) => {
+  if (b.uniqueFinalEligibilityPasses !== a.uniqueFinalEligibilityPasses) {
+    return b.uniqueFinalEligibilityPasses - a.uniqueFinalEligibilityPasses;
+  }
+  if (b.uniqueK2PreScoringPasses !== a.uniqueK2PreScoringPasses) {
+    return b.uniqueK2PreScoringPasses - a.uniqueK2PreScoringPasses;
+  }
+  return b.uniquePublicationShapePasses - a.uniquePublicationShapePasses;
+});
+
+console.log("\n=== CASCADE COMBINATIONS (ranked by final eligibility, then pre-scoring) ===");
+console.log(
+  `${"Route".padEnd(28)} ${"Combo".padEnd(74)} ${"NarrRaw".padStart(7)} ${"Shape".padStart(6)} ${"PreScr".padStart(7)} ${"Final".padStart(6)} ${"Dup%".padStart(6)}`,
+);
+console.log("─".repeat(150));
+for (const row of cascadeSorted) {
+  const comboLabel = row.queryIds.join(" + ");
+  console.log(
+    `${row.routeLabel.padEnd(28)} ${comboLabel.padEnd(74)} ${String(row.uniqueRawNarrativeCandidates).padStart(7)} ${String(row.uniquePublicationShapePasses).padStart(6)} ${String(row.uniqueK2PreScoringPasses).padStart(7)} ${String(row.uniqueFinalEligibilityPasses).padStart(6)} ${String(row.duplicatePct).padStart(5)}%`,
+  );
+}
+
 // ─── Write outputs ────────────────────────────────────────────────────────────
 
 const outDir = resolve(scriptDir, "output");
@@ -361,12 +527,17 @@ mkdirSync(outDir, { recursive: true });
 
 const jsonOut = resolve(outDir, "kids-query-comparison.json");
 const csvOut = resolve(outDir, "kids-query-comparison.csv");
+const cascadeCsvOut = resolve(outDir, "kids-query-cascade-comparison.csv");
 
 const output = {
   generatedAt: new Date().toISOString(),
   totalQueries: results.length,
   rankedByK2YieldAbsolute: sorted.filter((r) => !r.error).map((r) => r.id),
   results,
+  cascades: {
+    routes: CASCADE_ROUTES,
+    rankedByFinalThenPreScoring: cascadeSorted,
+  },
   aggregate: {
     groupAverages: Object.fromEntries(
       groups.map((group) => {
@@ -389,7 +560,7 @@ const output = {
 writeFileSync(jsonOut, JSON.stringify(output, null, 2));
 console.log(`\nJSON written to: ${jsonOut}`);
 
-const csvHeader = "id,group,query,apiTotalItems,rawCount,shapeAdmittedCount,audienceKidsCount,preScoringPassCount,shapeYieldPct,audienceYieldPct,k2YieldPct";
+const csvHeader = "id,group,query,apiTotalItems,rawCount,shapeAdmittedCount,audienceKidsCount,preScoringPassCount,finalEligibilityPassCount,shapeYieldPct,audienceYieldPct,k2YieldPct";
 const csvRows = results
   .filter((r) => !r.error)
   .sort((a, b) => b.preScoringPassCount - a.preScoringPassCount)
@@ -398,9 +569,27 @@ const csvRows = results
       r.id, r.group,
       `"${r.query}"`,
       r.apiTotalItems, r.rawCount,
-      r.shapeAdmittedCount, r.audienceKidsCount, r.preScoringPassCount,
+      r.shapeAdmittedCount, r.audienceKidsCount, r.preScoringPassCount, r.finalEligibilityPassCount,
       r.shapeYieldPct, r.audienceYieldPct, r.k2YieldPct,
     ].join(","),
   );
 writeFileSync(csvOut, [csvHeader, ...csvRows].join("\n"));
 console.log(`CSV written to: ${csvOut}`);
+
+const cascadeCsvHeader = "routeId,routeLabel,querySetLabel,queryIds,uniqueRawNarrativeCandidates,uniquePublicationShapePasses,uniqueK2PreScoringPasses,uniqueFinalEligibilityPasses,duplicatePct,finalTitles,uniqueLeadAuthors,uniqueGenres";
+const cascadeCsvRows = cascadeSorted.map((row) => [
+  row.routeId,
+  `"${row.routeLabel}"`,
+  `"${row.querySetLabel}"`,
+  `"${row.queryIds.join("|")}"`,
+  row.uniqueRawNarrativeCandidates,
+  row.uniquePublicationShapePasses,
+  row.uniqueK2PreScoringPasses,
+  row.uniqueFinalEligibilityPasses,
+  row.duplicatePct,
+  `"${row.finalProductionRecommendations.join(" | ").replace(/"/g, "\"\"")}"`,
+  row.finalRecommendationDiversity.uniqueLeadAuthors,
+  row.finalRecommendationDiversity.uniqueGenres,
+].join(","));
+writeFileSync(cascadeCsvOut, [cascadeCsvHeader, ...cascadeCsvRows].join("\n"));
+console.log(`Cascade CSV written to: ${cascadeCsvOut}`);
