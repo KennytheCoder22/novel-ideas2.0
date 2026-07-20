@@ -166,6 +166,7 @@ function runFlow(ageBand, rawRows, limit = 5) {
     normalizedCandidates: normalized,
     scoredCandidates: scored,
     selectedCandidates: selection.selected,
+    selectionDiagnostics: selection.rejectedReasons,
     returnedTitles: selection.selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => candidate.title),
   });
   return { profile, normalized, scored, selection, diagnostics };
@@ -210,6 +211,51 @@ for (const ageBand of ["kids", "preteens"]) {
   assertNotIncludes([run.diagnostics.googleBooksAgeBandDropReasonByTitle[title]], "googlebooks_mature_content_not_allowed_for_teens", "Teen should not use Kids/Pre-Teen mature-content reasons");
   assertEqual(run.diagnostics.googleBooksMaturityDecisionByTitle[title], "explicit_mature_content_tracked_separately_for_teens", "Teen maturity treatment should be explicit and independent");
   console.log("PASS teens: explicit mature content is tracked separately from deck identity");
+}
+
+{
+  const title = "Teen Kids-Labeled YA Novel Candidate";
+  const run = runFlow("teens", [rawGoogleBook("teens", title, {
+    audienceBand: "kids",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    queryText: "young adult fantasy fiction novel",
+    originalPlannedQuery: "young adult fantasy fiction novel",
+    googleBooksPublicationShape: "novel",
+    googleBooksNarrativeConfidence: 7,
+    googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
+    genres: ["Young Adult Fiction / Fantasy", "Young Adult Fiction / Action & Adventure"],
+    description: "A young adult fantasy novel follows a teen heroine through a dangerous rebellion and school conspiracy.",
+  })]);
+  assertEqual(run.normalized[0].maturityBand, "kids", "Teen rescue should not mutate source audience normalization");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Teen reconciliation should rescue YA narrative books mislabeled as kids");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationDecisionByTitle[title], "rescued", "Teen reconciliation decision should be explicitly diagnosed as rescued");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationReasonByTitle[title], "teen_googlebooks_audience_reconciliation_rescue", "Teen reconciliation reason should record the rescue path");
+  assertIncludes(run.selection.rejectedReasons.googleBooksFinalEligibilityEvidenceByTitle[title], "teen_audience_reconciliation:rescued", "Final eligibility evidence should include teen reconciliation status");
+  console.log("PASS teens: kids-labeled YA narratives can be rescued via audience reconciliation");
+}
+
+{
+  const title = "Teen Kids-Labeled Early Reader Candidate";
+  const run = runFlow("teens", [rawGoogleBook("teens", title, {
+    audienceBand: "kids",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    queryText: "young adult fantasy fiction novel",
+    originalPlannedQuery: "young adult fantasy fiction novel",
+    googleBooksPublicationShape: "novel",
+    googleBooksNarrativeConfidence: 7,
+    googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
+    genres: ["Juvenile Fiction / Readers / Beginner", "Picture books"],
+    description: "A picture book for beginning readers in grade 2 follows a class through an early reader adventure.",
+  })]);
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "maturity_band_mismatch", "Teen reconciliation must not rescue explicit early-reader books");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationDecisionByTitle[title], "rejected", "Teen reconciliation should record a blocked rescue decision");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationReasonByTitle[title], "teen_audience_reconciliation_explicit_early_reader_markers", "Teen reconciliation should explain the block reason");
+  assertIncludes(run.selection.rejectedReasons.googleBooksFinalEligibilityEvidenceByTitle[title], "teen_audience_reconciliation:rejected", "Final eligibility evidence should record rejected teen reconciliation");
+  console.log("PASS teens: explicit early-reader evidence remains an enforced reject");
 }
 
 {

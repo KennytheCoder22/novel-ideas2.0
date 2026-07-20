@@ -401,6 +401,12 @@ export interface SourceDiagnosticV2 {
   teensGoogleBooksRejectedBeforeScoringByTitle?: Record<string, string>;
   teensGoogleBooksEnteredScoringTitles?: string[];
   teensGoogleBooksPreScoringSummary?: Record<string, unknown>;
+  teenGoogleBooksAudienceReconciliationDecision?: string;
+  teenGoogleBooksAudienceReconciliationReason?: string;
+  teenGoogleBooksAudienceReconciliationEvidence?: string[];
+  teenGoogleBooksAudienceReconciliationDecisionByTitle?: Record<string, string>;
+  teenGoogleBooksAudienceReconciliationReasonByTitle?: Record<string, string>;
+  teenGoogleBooksAudienceReconciliationEvidenceByTitle?: Record<string, string[]>;
   adultGoogleBooksSignalMatchTraceByTitle?: Record<string, unknown[]>;
   adultGoogleBooksSignalMatchedFieldByTitle?: Record<string, Record<string, string[]>>;
   adultGoogleBooksSignalMatchedTextByTitle?: Record<string, Record<string, string[]>>;
