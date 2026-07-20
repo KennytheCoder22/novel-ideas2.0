@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Pre-Teen Google Books kids-label mismatch audit (report-driven)
  *
  * Diagnostic-only:
@@ -354,13 +354,15 @@ writeFileSync(csvOut, [csvHeader, ...csvRows].join("\n"));
 console.log(`CSV written to: ${csvOut}`);
 
 const observationRows = perReport.flatMap((report) => report.rows || []);
-const currentRunKey = new Date().toISOString();
+const runAt = new Date().toISOString();
+
 let history = {
-  generatedAt: currentRunKey,
+  generatedAt: runAt,
   runs: [],
   seenObservationKeys: [],
+  uniqueTitleRegistry: {},
   lifetimeCounts: {
-    total: 0,
+    uniqueTitleTotal: 0,
     clearly_k2: 0,
     clearly_preteen: 0,
     works_for_both: 0,
@@ -371,34 +373,78 @@ let history = {
 if (!resetHistory && existsSync(historyPath)) {
   try {
     const parsed = JSON.parse(readFileSync(historyPath, "utf8"));
-    if (parsed && typeof parsed === "object") history = { ...history, ...parsed };
+    if (parsed && typeof parsed === "object" && parsed.uniqueTitleRegistry) {
+      history = { ...history, ...parsed };
+    }
+    // Old schema without uniqueTitleRegistry is intentionally ignored (starts fresh)
   } catch {
     // keep fresh history on parse failure
   }
 }
 
-const seen = new Set(arrayValue(history.seenObservationKeys).map((value) => String(value)));
-let newlyAdded = 0;
+const seenObs = new Set(arrayValue(history.seenObservationKeys).map((v) => String(v)));
+if (!history.uniqueTitleRegistry || typeof history.uniqueTitleRegistry !== "object") {
+  history.uniqueTitleRegistry = {};
+}
+const registry = history.uniqueTitleRegistry;
+
+let newlyAddedObs = 0;
+let newlyAddedTitles = 0;
+
 for (const row of observationRows) {
-  const observationKey = `${row.report}::${row.title}`;
-  if (seen.has(observationKey)) continue;
-  seen.add(observationKey);
-  newlyAdded += 1;
-  history.lifetimeCounts.total += 1;
-  if (row.classification === "clearly_k2") history.lifetimeCounts.clearly_k2 += 1;
-  else if (row.classification === "clearly_preteen") history.lifetimeCounts.clearly_preteen += 1;
-  else if (row.classification === "works_for_both") history.lifetimeCounts.works_for_both += 1;
-  else history.lifetimeCounts.ambiguous += 1;
+  const obsKey = `${row.report}::${row.title}`;
+  if (!seenObs.has(obsKey)) {
+    seenObs.add(obsKey);
+    newlyAddedObs += 1;
+  }
+
+  if (!registry[row.title]) {
+    // First time we see this title — add to registry and bump unique-title counts
+    registry[row.title] = {
+      classification: row.classification,
+      identityConfidence: row.identityConfidence,
+      firstSeenAt: runAt,
+      lastSeenAt: runAt,
+    };
+    newlyAddedTitles += 1;
+    history.lifetimeCounts.uniqueTitleTotal += 1;
+    if (row.classification === "clearly_k2") history.lifetimeCounts.clearly_k2 += 1;
+    else if (row.classification === "clearly_preteen") history.lifetimeCounts.clearly_preteen += 1;
+    else if (row.classification === "works_for_both") history.lifetimeCounts.works_for_both += 1;
+    else history.lifetimeCounts.ambiguous += 1;
+  } else {
+    // Subsequent observation of the same title — update lastSeenAt
+    registry[row.title].lastSeenAt = runAt;
+    // If this run has higher identity confidence, update classification
+    const prevConf = Number(registry[row.title].identityConfidence || 0);
+    if (row.identityConfidence > prevConf) {
+      const oldClass = registry[row.title].classification;
+      const newClass = row.classification;
+      registry[row.title].classification = newClass;
+      registry[row.title].identityConfidence = row.identityConfidence;
+      if (oldClass !== newClass) {
+        if (oldClass === "clearly_k2") history.lifetimeCounts.clearly_k2 -= 1;
+        else if (oldClass === "clearly_preteen") history.lifetimeCounts.clearly_preteen -= 1;
+        else if (oldClass === "works_for_both") history.lifetimeCounts.works_for_both -= 1;
+        else history.lifetimeCounts.ambiguous -= 1;
+        if (newClass === "clearly_k2") history.lifetimeCounts.clearly_k2 += 1;
+        else if (newClass === "clearly_preteen") history.lifetimeCounts.clearly_preteen += 1;
+        else if (newClass === "works_for_both") history.lifetimeCounts.works_for_both += 1;
+        else history.lifetimeCounts.ambiguous += 1;
+      }
+    }
+  }
 }
 
-history.generatedAt = currentRunKey;
-history.seenObservationKeys = Array.from(seen);
+history.generatedAt = runAt;
+history.seenObservationKeys = Array.from(seenObs);
 history.runs = [
   ...arrayValue(history.runs),
   {
-    runAt: currentRunKey,
+    runAt,
     reports: reportPaths,
-    addedObservations: newlyAdded,
+    addedObservations: newlyAddedObs,
+    newlyAddedUniqueTitles: newlyAddedTitles,
     currentRunCounts: {
       total: totalMismatchRejects,
       clearly_k2: clearlyK2Count,
@@ -411,10 +457,33 @@ history.runs = [
 
 writeFileSync(historyPath, JSON.stringify(history, null, 2));
 console.log(`History written to: ${historyPath}`);
-console.log("\n=== LIFETIME KIDS-LABELED MISMATCH SUMMARY ===");
-console.log(`current sample: ${totalMismatchRejects}`);
-console.log(`lifetime sample: ${history.lifetimeCounts.total}`);
-console.log(`  clearly_k2: ${history.lifetimeCounts.clearly_k2}`);
-console.log(`  clearly_preteen: ${history.lifetimeCounts.clearly_preteen}`);
-console.log(`  works_for_both: ${history.lifetimeCounts.works_for_both}`);
-console.log(`  ambiguous: ${history.lifetimeCounts.ambiguous}`);
+
+const lifetimeTotal = history.lifetimeCounts.uniqueTitleTotal;
+const lifetimePreteenOrBoth = history.lifetimeCounts.clearly_preteen + history.lifetimeCounts.works_for_both;
+const allDates = Object.values(registry)
+  .flatMap((r) => [r.firstSeenAt, r.lastSeenAt])
+  .filter(Boolean)
+  .sort();
+const firstSeen = allDates.length > 0 ? allDates[0].slice(0, 10) : "(none)";
+const lastSeen = runAt.slice(0, 10);
+
+console.log("\n=== LIFETIME KIDS-LABELED MISMATCH SUMMARY (unique titles) ===");
+console.log("| Metric                 | Running total |");
+console.log("| ---------------------- | ------------- |");
+console.log(`| Unique mismatch titles | ${String(lifetimeTotal).padStart(13)} |`);
+console.log(`| Clearly K-2            | ${String(history.lifetimeCounts.clearly_k2).padStart(13)} |`);
+console.log(`| Works for both         | ${String(history.lifetimeCounts.works_for_both).padStart(13)} |`);
+console.log(`| Clearly Pre-Teen       | ${String(history.lifetimeCounts.clearly_preteen).padStart(13)} |`);
+console.log(`| Ambiguous              | ${String(history.lifetimeCounts.ambiguous).padStart(13)} |`);
+console.log(`| Pre-Teen or both       | ${String(lifetimePreteenOrBoth).padStart(13)} |`);
+console.log(`| First-seen date        | ${firstSeen.padStart(13)} |`);
+console.log(`| Last-seen date         | ${lastSeen.padStart(13)} |`);
+if (lifetimeTotal >= 30) {
+  console.log(`\nNOTE: ${lifetimeTotal} unique titles — strong evidence; difficult to dismiss if pattern holds.`);
+} else if (lifetimeTotal >= 20) {
+  console.log(`\nNOTE: ${lifetimeTotal} unique titles — strong evidence.`);
+} else if (lifetimeTotal >= 10) {
+  console.log(`\nNOTE: ${lifetimeTotal} unique titles — sufficient to begin discussing policy changes.`);
+} else {
+  console.log(`\nNOTE: ${lifetimeTotal} unique titles (target: 10 to start discussion, 20 for strong evidence, 30+ to act).`);
+}

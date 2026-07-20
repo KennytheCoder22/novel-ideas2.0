@@ -1,14 +1,18 @@
 {
-  "generatedAt": "2026-07-20T03:20:10.798Z",
+  "generatedAt": "2026-07-20T07:59:21.323Z",
   "runs": [
     {
-      "runAt": "2026-07-20T03:20:10.798Z",
+      "runAt": "2026-07-20T07:59:21.323Z",
       "reports": [
         "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-96035b50-bb96-411e-88d5-93fc7bd6b2ff.txt",
         "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-956add5e-e024-4ddd-b6a0-4838ce9f237b.txt",
-        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-d8c233b6-9531-46d3-857d-3d15746b0daf.txt"
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-d8c233b6-9531-46d3-857d-3d15746b0daf.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-d8698f77-e774-4d7c-a2b9-06d8a3850467.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-a9ca0f38-7d93-4169-a832-bb8783c068a1.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-d5e21704-9bdf-40e9-ac5d-7859364bb391.txt"
       ],
-      "addedObservations": 6,
+      "addedObservations": 15,
+      "newlyAddedUniqueTitles": 5,
       "currentRunCounts": {
         "total": 5,
         "clearly_k2": 0,
@@ -24,13 +28,54 @@
     "pasted-text-956add5e-e024-4ddd-b6a0-4838ce9f237b.txt::Miss Impossible",
     "pasted-text-d8c233b6-9531-46d3-857d-3d15746b0daf.txt::Spark Hunter",
     "pasted-text-d8c233b6-9531-46d3-857d-3d15746b0daf.txt::R.I.P. Nanny Tobbins",
-    "pasted-text-d8c233b6-9531-46d3-857d-3d15746b0daf.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine"
+    "pasted-text-d8c233b6-9531-46d3-857d-3d15746b0daf.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-d8698f77-e774-4d7c-a2b9-06d8a3850467.txt::Spark Hunter",
+    "pasted-text-d8698f77-e774-4d7c-a2b9-06d8a3850467.txt::R.I.P. Nanny Tobbins",
+    "pasted-text-d8698f77-e774-4d7c-a2b9-06d8a3850467.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-a9ca0f38-7d93-4169-a832-bb8783c068a1.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-a9ca0f38-7d93-4169-a832-bb8783c068a1.txt::The Good, the Bad, and the Bossy",
+    "pasted-text-a9ca0f38-7d93-4169-a832-bb8783c068a1.txt::Miss Impossible",
+    "pasted-text-d5e21704-9bdf-40e9-ac5d-7859364bb391.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-d5e21704-9bdf-40e9-ac5d-7859364bb391.txt::The Good, the Bad, and the Bossy",
+    "pasted-text-d5e21704-9bdf-40e9-ac5d-7859364bb391.txt::Miss Impossible"
   ],
+  "uniqueTitleRegistry": {
+    "The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine": {
+      "classification": "works_for_both",
+      "identityConfidence": 0.85,
+      "firstSeenAt": "2026-07-20T07:59:21.323Z",
+      "lastSeenAt": "2026-07-20T07:59:21.323Z"
+    },
+    "The Good, the Bad, and the Bossy": {
+      "classification": "works_for_both",
+      "identityConfidence": 0.65,
+      "firstSeenAt": "2026-07-20T07:59:21.323Z",
+      "lastSeenAt": "2026-07-20T07:59:21.323Z"
+    },
+    "Miss Impossible": {
+      "classification": "works_for_both",
+      "identityConfidence": 0.65,
+      "firstSeenAt": "2026-07-20T07:59:21.323Z",
+      "lastSeenAt": "2026-07-20T07:59:21.323Z"
+    },
+    "Spark Hunter": {
+      "classification": "clearly_preteen",
+      "identityConfidence": 0.85,
+      "firstSeenAt": "2026-07-20T07:59:21.323Z",
+      "lastSeenAt": "2026-07-20T07:59:21.323Z"
+    },
+    "R.I.P. Nanny Tobbins": {
+      "classification": "works_for_both",
+      "identityConfidence": 0.65,
+      "firstSeenAt": "2026-07-20T07:59:21.323Z",
+      "lastSeenAt": "2026-07-20T07:59:21.323Z"
+    }
+  },
   "lifetimeCounts": {
-    "total": 6,
+    "uniqueTitleTotal": 5,
     "clearly_k2": 0,
     "clearly_preteen": 1,
-    "works_for_both": 5,
+    "works_for_both": 4,
     "ambiguous": 0
   }
 }
