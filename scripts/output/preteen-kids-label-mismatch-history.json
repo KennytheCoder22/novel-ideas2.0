@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-20T07:59:21.323Z",
+  "generatedAt": "2026-07-20T08:10:24.900Z",
   "runs": [
     {
       "runAt": "2026-07-20T07:59:21.323Z",
@@ -13,6 +13,23 @@
       ],
       "addedObservations": 15,
       "newlyAddedUniqueTitles": 5,
+      "currentRunCounts": {
+        "total": 5,
+        "clearly_k2": 0,
+        "clearly_preteen": 1,
+        "works_for_both": 4,
+        "ambiguous": 0
+      }
+    },
+    {
+      "runAt": "2026-07-20T08:10:24.900Z",
+      "reports": [
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-f1bd1612-f138-44b2-a959-456d24d69617.txt"
+      ],
+      "addedObservations": 8,
+      "newlyAddedUniqueTitles": 0,
       "currentRunCounts": {
         "total": 5,
         "clearly_k2": 0,
@@ -37,38 +54,46 @@
     "pasted-text-a9ca0f38-7d93-4169-a832-bb8783c068a1.txt::Miss Impossible",
     "pasted-text-d5e21704-9bdf-40e9-ac5d-7859364bb391.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
     "pasted-text-d5e21704-9bdf-40e9-ac5d-7859364bb391.txt::The Good, the Bad, and the Bossy",
-    "pasted-text-d5e21704-9bdf-40e9-ac5d-7859364bb391.txt::Miss Impossible"
+    "pasted-text-d5e21704-9bdf-40e9-ac5d-7859364bb391.txt::Miss Impossible",
+    "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt::Spark Hunter",
+    "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt::R.I.P. Nanny Tobbins",
+    "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt::The Good, the Bad, and the Bossy",
+    "pasted-text-a7de9b8a-1c28-4f57-bd02-56507608ee3b.txt::Miss Impossible",
+    "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt::Spark Hunter",
+    "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt::R.I.P. Nanny Tobbins",
+    "pasted-text-f1bd1612-f138-44b2-a959-456d24d69617.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine"
   ],
   "uniqueTitleRegistry": {
     "The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine": {
       "classification": "works_for_both",
       "identityConfidence": 0.85,
       "firstSeenAt": "2026-07-20T07:59:21.323Z",
-      "lastSeenAt": "2026-07-20T07:59:21.323Z"
+      "lastSeenAt": "2026-07-20T08:10:24.900Z"
     },
     "The Good, the Bad, and the Bossy": {
       "classification": "works_for_both",
       "identityConfidence": 0.65,
       "firstSeenAt": "2026-07-20T07:59:21.323Z",
-      "lastSeenAt": "2026-07-20T07:59:21.323Z"
+      "lastSeenAt": "2026-07-20T08:10:24.900Z"
     },
     "Miss Impossible": {
       "classification": "works_for_both",
       "identityConfidence": 0.65,
       "firstSeenAt": "2026-07-20T07:59:21.323Z",
-      "lastSeenAt": "2026-07-20T07:59:21.323Z"
+      "lastSeenAt": "2026-07-20T08:10:24.900Z"
     },
     "Spark Hunter": {
       "classification": "clearly_preteen",
       "identityConfidence": 0.85,
       "firstSeenAt": "2026-07-20T07:59:21.323Z",
-      "lastSeenAt": "2026-07-20T07:59:21.323Z"
+      "lastSeenAt": "2026-07-20T08:10:24.900Z"
     },
     "R.I.P. Nanny Tobbins": {
       "classification": "works_for_both",
       "identityConfidence": 0.65,
       "firstSeenAt": "2026-07-20T07:59:21.323Z",
-      "lastSeenAt": "2026-07-20T07:59:21.323Z"
+      "lastSeenAt": "2026-07-20T08:10:24.900Z"
     }
   },
   "lifetimeCounts": {
