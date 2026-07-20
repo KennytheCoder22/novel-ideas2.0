@@ -1,0 +1,681 @@
+{
+  "generatedAt": "2026-07-20T23:36:42.798Z",
+  "inputs": [
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+  ],
+  "aggregate": {
+    "totalSessionsAnalyzed": 3,
+    "teenGbSessions": 3,
+    "sessionBreakdown": {
+      "underfillNotNeeded": 2,
+      "underfillRequired": 1,
+      "fullyStarved": 0
+    },
+    "sessionPercentages": {
+      "underfillNotNeededPct": 66.7,
+      "underfillRequiredPct": 33.3,
+      "fullyStarvedPct": 0
+    },
+    "averages": {
+      "avgStrongOrSecondaryAvailable": 2.67,
+      "avgCounterfactualFinalCount": 4.67,
+      "avgWeakUnderfillCountWhenRequired": 2
+    },
+    "candidateClassificationCounts": {
+      "strong_match": 1,
+      "defensible_secondary_match": 7,
+      "query_supported_but_weak": 11,
+      "unrelated": 0,
+      "actively_conflicting": 0,
+      "excluded_non_taste": 2
+    },
+    "weakUnderfillTitleFrequencyRanked": [
+      {
+        "title": "Pretties with Ugly Thoughts",
+        "count": 1
+      },
+      {
+        "title": "Last Chance Books",
+        "count": 1
+      },
+      {
+        "title": "Your Eyes in Stars",
+        "count": 1
+      },
+      {
+        "title": "Someone Like Summer",
+        "count": 1
+      },
+      {
+        "title": "Malcolm and Juliet",
+        "count": 1
+      },
+      {
+        "title": "Crowned (A Conyza Bennett story, Book 3)",
+        "count": 1
+      }
+    ],
+    "titlesOnlyReachableViaUnderfill": [
+      {
+        "title": "Pretties with Ugly Thoughts",
+        "timesInFinal": 1,
+        "timesAsUnderfill": 1,
+        "seenInReports": 1,
+        "dominantClassification": "query_supported_but_weak"
+      },
+      {
+        "title": "Last Chance Books",
+        "timesInFinal": 1,
+        "timesAsUnderfill": 1,
+        "seenInReports": 1,
+        "dominantClassification": "query_supported_but_weak"
+      },
+      {
+        "title": "Your Eyes in Stars",
+        "timesInFinal": 1,
+        "timesAsUnderfill": 1,
+        "seenInReports": 2,
+        "dominantClassification": "query_supported_but_weak"
+      },
+      {
+        "title": "Malcolm and Juliet",
+        "timesInFinal": 1,
+        "timesAsUnderfill": 1,
+        "seenInReports": 1,
+        "dominantClassification": "query_supported_but_weak"
+      },
+      {
+        "title": "Crowned (A Conyza Bennett story, Book 3)",
+        "timesInFinal": 1,
+        "timesAsUnderfill": 1,
+        "seenInReports": 1,
+        "dominantClassification": "query_supported_but_weak"
+      }
+    ]
+  },
+  "perReport": [
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "deckKey": "ms_hs",
+      "teenGbCandidatesFound": true,
+      "strongOrSecondaryAvailableCount": 3,
+      "counterfactualFinalCount": 5,
+      "counterfactualUnderfill": false,
+      "weakUnderfillTitles": [
+        "Pretties with Ugly Thoughts",
+        "Last Chance Books"
+      ],
+      "counterfactualFinalTitles": [
+        "The Giver Illustrated Gift Edition",
+        "You",
+        "Someone Like Summer",
+        "Pretties with Ugly Thoughts",
+        "Last Chance Books"
+      ],
+      "classificationHistogram": {
+        "query_supported_but_weak": 5,
+        "defensible_secondary_match": 2,
+        "strong_match": 1
+      },
+      "rows": [
+        {
+          "title": "The Role of Nature in the Works of Octavia Butler",
+          "decision": "excluded_non_taste_final_eligibility",
+          "reason": "teen_googlebooks_publication_identity_literary_study",
+          "classification": "query_supported_but_weak",
+          "netScore": 17.675,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        },
+        {
+          "title": "Divergent Official Illustrated Movie Companion",
+          "decision": "excluded_non_taste_final_eligibility",
+          "reason": "teen_googlebooks_publication_identity_supplemental_companion",
+          "classification": "query_supported_but_weak",
+          "netScore": 15.869,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        },
+        {
+          "title": "You",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 18.119,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Pretties with Ugly Thoughts",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_weak_underfill_fallback",
+          "classification": "query_supported_but_weak",
+          "netScore": 15.869,
+          "usedAsUnderfill": true,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "The Giver Illustrated Gift Edition",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_strong_match_priority",
+          "classification": "strong_match",
+          "netScore": 16.497,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Last Chance Books",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_weak_underfill_fallback",
+          "classification": "query_supported_but_weak",
+          "netScore": 15.869,
+          "usedAsUnderfill": true,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Your Eyes in Stars",
+          "decision": "excluded_from_counterfactual_final",
+          "reason": "weak_not_needed_after_higher_ranked_weak_underfill",
+          "classification": "query_supported_but_weak",
+          "netScore": 18.119,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        },
+        {
+          "title": "Someone Like Summer",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 15.241,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        }
+      ]
+    },
+    {
+      "report": "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+      "presetTestName": "Test B",
+      "deckKey": "ms_hs",
+      "teenGbCandidatesFound": true,
+      "strongOrSecondaryAvailableCount": 2,
+      "counterfactualFinalCount": 4,
+      "counterfactualUnderfill": true,
+      "weakUnderfillTitles": [
+        "Your Eyes in Stars",
+        "Someone Like Summer"
+      ],
+      "counterfactualFinalTitles": [
+        "To The Wild Sky: Text Classics",
+        "You",
+        "Your Eyes in Stars",
+        "Someone Like Summer"
+      ],
+      "classificationHistogram": {
+        "defensible_secondary_match": 2,
+        "query_supported_but_weak": 2
+      },
+      "rows": [
+        {
+          "title": "To The Wild Sky: Text Classics",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 11.522,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "You",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 12.241,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Your Eyes in Stars",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_weak_underfill_fallback",
+          "classification": "query_supported_but_weak",
+          "netScore": 13.941,
+          "usedAsUnderfill": true,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Someone Like Summer",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_weak_underfill_fallback",
+          "classification": "query_supported_but_weak",
+          "netScore": 11.284,
+          "usedAsUnderfill": true,
+          "inCounterfactualFinal": true
+        }
+      ]
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "deckKey": "ms_hs",
+      "teenGbCandidatesFound": true,
+      "strongOrSecondaryAvailableCount": 3,
+      "counterfactualFinalCount": 5,
+      "counterfactualUnderfill": false,
+      "weakUnderfillTitles": [
+        "Malcolm and Juliet",
+        "Crowned (A Conyza Bennett story, Book 3)"
+      ],
+      "counterfactualFinalTitles": [
+        "The Loser's Guide to Life and Love",
+        "Chain of Thorns",
+        "The Unbeatable Lily Hong",
+        "Malcolm and Juliet",
+        "Crowned (A Conyza Bennett story, Book 3)"
+      ],
+      "classificationHistogram": {
+        "query_supported_but_weak": 6,
+        "defensible_secondary_match": 3
+      },
+      "rows": [
+        {
+          "title": "Malcolm and Juliet",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_weak_underfill_fallback",
+          "classification": "query_supported_but_weak",
+          "netScore": 14.469,
+          "usedAsUnderfill": true,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Crowned (A Conyza Bennett story, Book 3)",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_weak_underfill_fallback",
+          "classification": "query_supported_but_weak",
+          "netScore": 14.469,
+          "usedAsUnderfill": true,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "The Loser's Guide to Life and Love",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 13.566,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Chain of Thorns",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 13.566,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+          "decision": "excluded_from_counterfactual_final",
+          "reason": "weak_not_needed_after_higher_ranked_weak_underfill",
+          "classification": "query_supported_but_weak",
+          "netScore": 9.209,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        },
+        {
+          "title": "The Unbeatable Lily Hong",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 8.934,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Starclimber",
+          "decision": "excluded_from_counterfactual_final",
+          "reason": "weak_not_needed_after_higher_ranked_weak_underfill",
+          "classification": "query_supported_but_weak",
+          "netScore": 7.456,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        },
+        {
+          "title": "Wolfborn",
+          "decision": "excluded_from_counterfactual_final",
+          "reason": "weak_not_needed_after_higher_ranked_weak_underfill",
+          "classification": "query_supported_but_weak",
+          "netScore": 7.456,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        },
+        {
+          "title": "Waer",
+          "decision": "excluded_from_counterfactual_final",
+          "reason": "weak_not_needed_after_higher_ranked_weak_underfill",
+          "classification": "query_supported_but_weak",
+          "netScore": 5.206,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        }
+      ]
+    }
+  ],
+  "allCandidates": [
+    {
+      "title": "You",
+      "seenInReports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+        "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt"
+      ],
+      "seenCount": 2,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 2,
+      "classifications": {
+        "defensible_secondary_match": 2
+      },
+      "tierSelectionReasons": {
+        "selected_defensible_secondary_after_strong": 2
+      },
+      "maxNetScore": 18.119,
+      "minNetScore": 12.241
+    },
+    {
+      "title": "Your Eyes in Stars",
+      "seenInReports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+        "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt"
+      ],
+      "seenCount": 2,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 2
+      },
+      "tierSelectionReasons": {
+        "weak_not_needed_after_higher_ranked_weak_underfill": 1,
+        "selected_weak_underfill_fallback": 1
+      },
+      "maxNetScore": 18.119,
+      "minNetScore": 13.941
+    },
+    {
+      "title": "Someone Like Summer",
+      "seenInReports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+        "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt"
+      ],
+      "seenCount": 2,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 2,
+      "classifications": {
+        "defensible_secondary_match": 1,
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "selected_defensible_secondary_after_strong": 1,
+        "selected_weak_underfill_fallback": 1
+      },
+      "maxNetScore": 15.241,
+      "minNetScore": 11.284
+    },
+    {
+      "title": "The Role of Nature in the Works of Octavia Butler",
+      "seenInReports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "teen_googlebooks_publication_identity_literary_study": 1
+      },
+      "maxNetScore": 17.675,
+      "minNetScore": 17.675
+    },
+    {
+      "title": "Divergent Official Illustrated Movie Companion",
+      "seenInReports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "teen_googlebooks_publication_identity_supplemental_companion": 1
+      },
+      "maxNetScore": 15.869,
+      "minNetScore": 15.869
+    },
+    {
+      "title": "Pretties with Ugly Thoughts",
+      "seenInReports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "selected_weak_underfill_fallback": 1
+      },
+      "maxNetScore": 15.869,
+      "minNetScore": 15.869
+    },
+    {
+      "title": "The Giver Illustrated Gift Edition",
+      "seenInReports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "strong_match": 1
+      },
+      "tierSelectionReasons": {
+        "selected_strong_match_priority": 1
+      },
+      "maxNetScore": 16.497,
+      "minNetScore": 16.497
+    },
+    {
+      "title": "Last Chance Books",
+      "seenInReports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "selected_weak_underfill_fallback": 1
+      },
+      "maxNetScore": 15.869,
+      "minNetScore": 15.869
+    },
+    {
+      "title": "To The Wild Sky: Text Classics",
+      "seenInReports": [
+        "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "defensible_secondary_match": 1
+      },
+      "tierSelectionReasons": {
+        "selected_defensible_secondary_after_strong": 1
+      },
+      "maxNetScore": 11.522,
+      "minNetScore": 11.522
+    },
+    {
+      "title": "Malcolm and Juliet",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "selected_weak_underfill_fallback": 1
+      },
+      "maxNetScore": 14.469,
+      "minNetScore": 14.469
+    },
+    {
+      "title": "Crowned (A Conyza Bennett story, Book 3)",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "selected_weak_underfill_fallback": 1
+      },
+      "maxNetScore": 14.469,
+      "minNetScore": 14.469
+    },
+    {
+      "title": "The Loser's Guide to Life and Love",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "defensible_secondary_match": 1
+      },
+      "tierSelectionReasons": {
+        "selected_defensible_secondary_after_strong": 1
+      },
+      "maxNetScore": 13.566,
+      "minNetScore": 13.566
+    },
+    {
+      "title": "Chain of Thorns",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "defensible_secondary_match": 1
+      },
+      "tierSelectionReasons": {
+        "selected_defensible_secondary_after_strong": 1
+      },
+      "maxNetScore": 13.566,
+      "minNetScore": 13.566
+    },
+    {
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "weak_not_needed_after_higher_ranked_weak_underfill": 1
+      },
+      "maxNetScore": 9.209,
+      "minNetScore": 9.209
+    },
+    {
+      "title": "The Unbeatable Lily Hong",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "defensible_secondary_match": 1
+      },
+      "tierSelectionReasons": {
+        "selected_defensible_secondary_after_strong": 1
+      },
+      "maxNetScore": 8.934,
+      "minNetScore": 8.934
+    },
+    {
+      "title": "Starclimber",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "weak_not_needed_after_higher_ranked_weak_underfill": 1
+      },
+      "maxNetScore": 7.456,
+      "minNetScore": 7.456
+    },
+    {
+      "title": "Wolfborn",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "weak_not_needed_after_higher_ranked_weak_underfill": 1
+      },
+      "maxNetScore": 7.456,
+      "minNetScore": 7.456
+    },
+    {
+      "title": "Waer",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+      ],
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      },
+      "tierSelectionReasons": {
+        "weak_not_needed_after_higher_ranked_weak_underfill": 1
+      },
+      "maxNetScore": 5.206,
+      "minNetScore": 5.206
+    }
+  ]
+}
