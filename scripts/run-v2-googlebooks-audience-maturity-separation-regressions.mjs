@@ -225,8 +225,8 @@ for (const ageBand of ["kids", "preteens"]) {
     googleBooksPublicationShape: "novel",
     googleBooksNarrativeConfidence: 7,
     googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
-    genres: ["Young Adult Fiction / Fantasy", "Young Adult Fiction / Action & Adventure"],
-    description: "A young adult fantasy novel follows a teen heroine through a dangerous rebellion and school conspiracy.",
+    genres: ["Young Adult Fiction / Mystery & Suspense", "Young Adult Fiction / Thrillers & Suspense"],
+    description: "A young adult mystery and thriller follows a teen detective uncovering a dangerous conspiracy through investigation.",
   })]);
   assertEqual(run.normalized[0].maturityBand, "kids", "Teen rescue should not mutate source audience normalization");
   assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Teen reconciliation should rescue YA narrative books mislabeled as kids");

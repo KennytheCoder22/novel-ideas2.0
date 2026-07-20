@@ -4862,23 +4862,21 @@ function teenGoogleBooksSignalFieldMatches(candidate: ScoredCandidate, signal: s
 function classifyTeenGoogleBooksMeaningfulTasteAlignment(input: {
   likedSignals: string[];
   dislikedSignals: string[];
-  documentBackedSignals: string[];
+  specificDocSignals: string[];
+  hasDocGenre: boolean;
   netScore: number;
-  genreSignals: string[];
-  toneSignals: string[];
   categoryOnlySignals: string[];
 }): "strong_match" | "defensible_secondary_match" | "query_supported_but_weak" | "unrelated" | "actively_conflicting" {
   const likedCount = input.likedSignals.length;
   const dislikedCount = input.dislikedSignals.length;
-  const docCount = input.documentBackedSignals.length;
-  const hasCompoundGenre = input.genreSignals.length >= 2;
-  const broadToneOnly = input.toneSignals.length > 0 && input.genreSignals.length === 0;
-  if (dislikedCount > 0 && input.netScore < 0) return "actively_conflicting";
-  if (docCount >= 2 && likedCount >= 2 && input.netScore >= 2 && (hasCompoundGenre || !broadToneOnly)) return "strong_match";
-  if (docCount >= 1 && likedCount >= 1 && input.netScore > 0) return "defensible_secondary_match";
-  if (likedCount === 0 && input.netScore <= 0) return "unrelated";
-  if (docCount === 0 || categoryOnlySignals.length >= likedCount || broadToneOnly) return "query_supported_but_weak";
-  return "defensible_secondary_match";
+  const specificDocCount = input.specificDocSignals.length;
+  if (dislikedCount > likedCount && input.netScore < 0) return "actively_conflicting";
+  if (specificDocCount >= 1 && input.hasDocGenre && input.netScore > 0) return "strong_match";
+  if (specificDocCount >= 2 && input.netScore > 0) return "strong_match";
+  if (specificDocCount >= 1 && input.netScore >= 0) return "defensible_secondary_match";
+  if (likedCount >= 1 && input.netScore >= 0) return "query_supported_but_weak";
+  if (dislikedCount > 0 && input.netScore < -2) return "actively_conflicting";
+  return "unrelated";
 }
 
 function addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
@@ -4896,6 +4894,7 @@ function addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates: Scored
   const teenGoogleBooksToneSignalsByTitle: Record<string, string[]> = {};
   const teenGoogleBooksCategoryOnlySignalsByTitle: Record<string, string[]> = {};
   const teenGoogleBooksQueryFamilyOnlySignalsByTitle: Record<string, string[]> = {};
+  const teenGoogleBooksDocumentNativeSpecificSignalsByTitle: Record<string, string[]> = {};
   const teenGoogleBooksBroadToneOnlyByTitle: Record<string, boolean> = {};
   const teenGoogleBooksNetMeaningfulAlignmentScoreByTitle: Record<string, number> = {};
   const teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle: Record<string, boolean> = {};
@@ -4911,6 +4910,7 @@ function addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates: Scored
   const themeProfileSignals = new Set(profile.themes.map((row) => normalized(row.value)));
   const toneProfileSignals = new Set(profile.tone.map((row) => normalized(row.value)));
   const broadTonePattern = /^(dramatic?|drama|dark|warm|hopeful|emotional|atmospheric|intense|gritty|uplifting|playful|moody)$/;
+  const genericContextSignals = new Set(["indie genre", "mshs", "teen", "book", "fiction", "school", "drama", "family", "identity", "film", "comedy", "community", "series", "young adult", "ya"]);
 
   for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
     const title = candidate.title;
@@ -4934,15 +4934,18 @@ function addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates: Scored
       signalFieldMatches[signal] = fields;
       return fields.length === 0;
     });
+    const documentNativeSignals = likedSignals.filter((signal) => (signalFieldMatches[signal] || []).length > 0);
+    const candidateNativeSpecificSignals = documentNativeSignals.filter((signal) => !genericContextSignals.has(normalized(signal)));
+    const docGenreSignals = candidateNativeSpecificSignals.filter((signal) => genreProfileSignals.has(normalized(signal)));
+    const hasDocGenre = docGenreSignals.length >= 1;
     const broadToneOnly = likedSignals.length > 0 && toneSignals.length === likedSignals.length && genreSignals.length === 0 && themeSignals.length === 0;
-    const wouldPassWithoutQueryDerivedEvidence = documentBackedSignals.length > 0;
+    const wouldPassWithoutQueryDerivedEvidence = candidateNativeSpecificSignals.length >= 1;
     const classification = classifyTeenGoogleBooksMeaningfulTasteAlignment({
       likedSignals,
       dislikedSignals,
-      documentBackedSignals,
+      specificDocSignals: candidateNativeSpecificSignals,
+      hasDocGenre,
       netScore: netAlignmentScore,
-      genreSignals,
-      toneSignals,
       categoryOnlySignals,
     });
 
@@ -4950,13 +4953,14 @@ function addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates: Scored
     candidateTastePenaltyByTitle[title] = Math.round(avoidPenalty * 1000) / 1000;
     candidateMatchedLikedSignalsByTitle[title] = likedSignals;
     candidateMatchedDislikedSignalsByTitle[title] = dislikedSignals;
-    documentBackedTasteSignalsByTitle[title] = documentBackedSignals;
+    documentBackedTasteSignalsByTitle[title] = candidateNativeSpecificSignals;
     teenGoogleBooksSignalFieldsByTitle[title] = signalFieldMatches;
     teenGoogleBooksGenreSignalsByTitle[title] = genreSignals;
     teenGoogleBooksThemeSignalsByTitle[title] = themeSignals;
     teenGoogleBooksToneSignalsByTitle[title] = toneSignals;
     teenGoogleBooksCategoryOnlySignalsByTitle[title] = categoryOnlySignals;
     teenGoogleBooksQueryFamilyOnlySignalsByTitle[title] = queryFamilyOnlySignals;
+    teenGoogleBooksDocumentNativeSpecificSignalsByTitle[title] = candidateNativeSpecificSignals;
     teenGoogleBooksBroadToneOnlyByTitle[title] = broadToneOnly;
     teenGoogleBooksNetMeaningfulAlignmentScoreByTitle[title] = netAlignmentScore;
     teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle[title] = wouldPassWithoutQueryDerivedEvidence;
@@ -4992,6 +4996,7 @@ function addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates: Scored
   diagnostics.teenGoogleBooksToneSignalsByTitle = teenGoogleBooksToneSignalsByTitle;
   diagnostics.teenGoogleBooksCategoryOnlySignalsByTitle = teenGoogleBooksCategoryOnlySignalsByTitle;
   diagnostics.teenGoogleBooksQueryFamilyOnlySignalsByTitle = teenGoogleBooksQueryFamilyOnlySignalsByTitle;
+  diagnostics.teenGoogleBooksDocumentNativeSpecificSignalsByTitle = teenGoogleBooksDocumentNativeSpecificSignalsByTitle;
   diagnostics.teenGoogleBooksBroadToneOnlyByTitle = teenGoogleBooksBroadToneOnlyByTitle;
   diagnostics.teenGoogleBooksNetMeaningfulAlignmentScoreByTitle = teenGoogleBooksNetMeaningfulAlignmentScoreByTitle;
   diagnostics.teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle = teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle;
