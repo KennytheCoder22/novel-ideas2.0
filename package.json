@@ -28,7 +28,8 @@
     "test:v2:openlibrary-presets": "node scripts/run-v2-openlibrary-presets.mjs",
     "test:v2:openlibrary-routing-regressions": "node scripts/run-v2-openlibrary-routing-regressions.mjs",
     "audit:v2:googlebooks-kids-query-comparison": "node scripts/run-v2-googlebooks-kids-query-comparison.mjs",
-    "audit:v2:googlebooks-kids-pre-scoring-rejections": "node scripts/run-v2-googlebooks-kids-k2-pre-scoring-rejection-audit.mjs"
+    "audit:v2:googlebooks-kids-pre-scoring-rejections": "node scripts/run-v2-googlebooks-kids-k2-pre-scoring-rejection-audit.mjs",
+    "audit:v2:googlebooks-preteen-kids-label-mismatch": "node scripts/run-v2-googlebooks-preteen-kids-label-mismatch-audit.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -70,4 +71,3 @@
   },
   "private": true
 }
-
