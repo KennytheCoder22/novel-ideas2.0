@@ -4905,6 +4905,9 @@ function addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates: Scored
   const teenGoogleBooksMeaningfulTasteQuerySupportedWeakMatches: string[] = [];
   const teenGoogleBooksMeaningfulTasteUnrelatedTitles: string[] = [];
   const teenGoogleBooksMeaningfulTasteActivelyConflictingTitles: string[] = [];
+  const teenGoogleBooksTasteTierSelectionDecisionByTitle: Record<string, string> = {};
+  const teenGoogleBooksTasteTierSelectionReasonByTitle: Record<string, string> = {};
+  const teenGoogleBooksWeakCandidateUsedForUnderfillByTitle: Record<string, boolean> = {};
 
   const genreProfileSignals = new Set(profile.genreFamily.map((row) => normalized(row.value)));
   const themeProfileSignals = new Set(profile.themes.map((row) => normalized(row.value)));
@@ -4985,6 +4988,79 @@ function addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates: Scored
     };
   }
 
+  const teenGoogleBooksCounterfactualMinimumCleanResults = 5;
+  const teenGoogleBooksEligibleForTierSelection = rankedCandidates
+    .filter((candidate) => candidate.source === "googleBooks")
+    .filter((candidate) => {
+      const title = candidate.title;
+      const finalEligibilityFailureReason = candidate.rejectedReasons.find((entry) => Boolean(nonAdultGoogleBooksFinalEligibilityGate(entry, profile.ageBand))) || "";
+      if (finalEligibilityFailureReason) {
+        teenGoogleBooksTasteTierSelectionDecisionByTitle[title] = "excluded_non_taste_final_eligibility";
+        teenGoogleBooksTasteTierSelectionReasonByTitle[title] = finalEligibilityFailureReason;
+        teenGoogleBooksWeakCandidateUsedForUnderfillByTitle[title] = false;
+        return false;
+      }
+      return true;
+    });
+  const teenGoogleBooksStrongCandidates = teenGoogleBooksEligibleForTierSelection
+    .filter((candidate) => teenGoogleBooksMeaningfulTasteClassificationByTitle[candidate.title] === "strong_match");
+  const teenGoogleBooksDefensibleSecondaryCandidates = teenGoogleBooksEligibleForTierSelection
+    .filter((candidate) => teenGoogleBooksMeaningfulTasteClassificationByTitle[candidate.title] === "defensible_secondary_match");
+  const teenGoogleBooksWeakCandidates = teenGoogleBooksEligibleForTierSelection
+    .filter((candidate) => teenGoogleBooksMeaningfulTasteClassificationByTitle[candidate.title] === "query_supported_but_weak");
+  const teenGoogleBooksStrongOrSecondaryAvailableCount = teenGoogleBooksStrongCandidates.length + teenGoogleBooksDefensibleSecondaryCandidates.length;
+  const teenGoogleBooksCounterfactualTargetCount = Math.min(
+    teenGoogleBooksCounterfactualMinimumCleanResults,
+    teenGoogleBooksEligibleForTierSelection.length,
+  );
+  const teenGoogleBooksCounterfactualFinalCandidates = [
+    ...teenGoogleBooksStrongCandidates,
+    ...teenGoogleBooksDefensibleSecondaryCandidates,
+  ].slice(0, teenGoogleBooksCounterfactualTargetCount);
+  if (teenGoogleBooksCounterfactualFinalCandidates.length < teenGoogleBooksCounterfactualTargetCount) {
+    const requiredWeakUnderfill = teenGoogleBooksCounterfactualTargetCount - teenGoogleBooksCounterfactualFinalCandidates.length;
+    teenGoogleBooksCounterfactualFinalCandidates.push(...teenGoogleBooksWeakCandidates.slice(0, requiredWeakUnderfill));
+  }
+  const teenGoogleBooksCounterfactualFinalTitles = teenGoogleBooksCounterfactualFinalCandidates.map((candidate) => candidate.title);
+  const teenGoogleBooksCounterfactualSelected = new Set(teenGoogleBooksCounterfactualFinalTitles.map((title) => normalized(title)));
+  for (const candidate of teenGoogleBooksEligibleForTierSelection) {
+    const title = candidate.title;
+    const classification = teenGoogleBooksMeaningfulTasteClassificationByTitle[title] || "unrelated";
+    const selectedByCounterfactual = teenGoogleBooksCounterfactualSelected.has(normalized(title));
+    if (selectedByCounterfactual) {
+      teenGoogleBooksTasteTierSelectionDecisionByTitle[title] = "selected_in_counterfactual_final";
+      if (classification === "strong_match") {
+        teenGoogleBooksTasteTierSelectionReasonByTitle[title] = "selected_strong_match_priority";
+        teenGoogleBooksWeakCandidateUsedForUnderfillByTitle[title] = false;
+      } else if (classification === "defensible_secondary_match") {
+        teenGoogleBooksTasteTierSelectionReasonByTitle[title] = "selected_defensible_secondary_after_strong";
+        teenGoogleBooksWeakCandidateUsedForUnderfillByTitle[title] = false;
+      } else if (classification === "query_supported_but_weak") {
+        teenGoogleBooksTasteTierSelectionReasonByTitle[title] = "selected_weak_underfill_fallback";
+        teenGoogleBooksWeakCandidateUsedForUnderfillByTitle[title] = true;
+      } else {
+        teenGoogleBooksTasteTierSelectionReasonByTitle[title] = "selected_unexpected_classification";
+        teenGoogleBooksWeakCandidateUsedForUnderfillByTitle[title] = false;
+      }
+      continue;
+    }
+    teenGoogleBooksTasteTierSelectionDecisionByTitle[title] = "excluded_from_counterfactual_final";
+    teenGoogleBooksWeakCandidateUsedForUnderfillByTitle[title] = false;
+    if (classification === "query_supported_but_weak") {
+      teenGoogleBooksTasteTierSelectionReasonByTitle[title] = teenGoogleBooksStrongOrSecondaryAvailableCount >= teenGoogleBooksCounterfactualTargetCount
+        ? "weak_suppressed_strong_or_secondary_available"
+        : "weak_not_needed_after_higher_ranked_weak_underfill";
+    } else if (classification === "strong_match") {
+      teenGoogleBooksTasteTierSelectionReasonByTitle[title] = "strong_ranked_below_counterfactual_capacity";
+    } else if (classification === "defensible_secondary_match") {
+      teenGoogleBooksTasteTierSelectionReasonByTitle[title] = "secondary_ranked_below_counterfactual_capacity";
+    } else if (classification === "actively_conflicting") {
+      teenGoogleBooksTasteTierSelectionReasonByTitle[title] = "excluded_actively_conflicting";
+    } else {
+      teenGoogleBooksTasteTierSelectionReasonByTitle[title] = "excluded_not_meaningfully_aligned";
+    }
+  }
+
   diagnostics.candidateTasteMatchScoreByTitle = candidateTasteMatchScoreByTitle;
   diagnostics.candidateTastePenaltyByTitle = candidateTastePenaltyByTitle;
   diagnostics.candidateMatchedLikedSignalsByTitle = candidateMatchedLikedSignalsByTitle;
@@ -5007,6 +5083,13 @@ function addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates: Scored
   diagnostics.teenGoogleBooksMeaningfulTasteQuerySupportedWeakMatches = uniqueSignals(teenGoogleBooksMeaningfulTasteQuerySupportedWeakMatches);
   diagnostics.teenGoogleBooksMeaningfulTasteUnrelatedTitles = uniqueSignals(teenGoogleBooksMeaningfulTasteUnrelatedTitles);
   diagnostics.teenGoogleBooksMeaningfulTasteActivelyConflictingTitles = uniqueSignals(teenGoogleBooksMeaningfulTasteActivelyConflictingTitles);
+  diagnostics.teenGoogleBooksTasteTierSelectionDecisionByTitle = teenGoogleBooksTasteTierSelectionDecisionByTitle;
+  diagnostics.teenGoogleBooksTasteTierSelectionReasonByTitle = teenGoogleBooksTasteTierSelectionReasonByTitle;
+  diagnostics.teenGoogleBooksWeakCandidateUsedForUnderfillByTitle = teenGoogleBooksWeakCandidateUsedForUnderfillByTitle;
+  diagnostics.teenGoogleBooksStrongOrSecondaryAvailableCount = teenGoogleBooksStrongOrSecondaryAvailableCount;
+  diagnostics.teenGoogleBooksCounterfactualFinalTitles = teenGoogleBooksCounterfactualFinalTitles;
+  diagnostics.teenGoogleBooksCounterfactualFinalCount = teenGoogleBooksCounterfactualFinalTitles.length;
+  diagnostics.teenGoogleBooksCounterfactualUnderfill = teenGoogleBooksCounterfactualFinalTitles.length < teenGoogleBooksCounterfactualMinimumCleanResults;
 }
 
 type AdultGoogleBooksEligibility = {
