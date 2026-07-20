@@ -429,6 +429,7 @@ export interface SourceDiagnosticV2 {
   teenGoogleBooksToneSignalsByTitle?: Record<string, string[]>;
   teenGoogleBooksCategoryOnlySignalsByTitle?: Record<string, string[]>;
   teenGoogleBooksQueryFamilyOnlySignalsByTitle?: Record<string, string[]>;
+  teenGoogleBooksDocumentNativeSpecificSignalsByTitle?: Record<string, string[]>;
   teenGoogleBooksBroadToneOnlyByTitle?: Record<string, boolean>;
   teenGoogleBooksNetMeaningfulAlignmentScoreByTitle?: Record<string, number>;
   teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle?: Record<string, boolean>;
