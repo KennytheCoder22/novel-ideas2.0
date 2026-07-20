@@ -1,0 +1,201 @@
+{
+  "generatedAt": "2026-07-20T23:36:42.813Z",
+  "runs": [],
+  "seenObservationKeys": [
+    "session::pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+    "session::pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+    "session::pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+  ],
+  "titleRegistry": {
+    "The Role of Nature in the Works of Octavia Butler": {
+      "firstSeenAt": "2026-07-20T23:36:42.812Z",
+      "lastSeenAt": "2026-07-20T23:36:42.812Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      }
+    },
+    "Divergent Official Illustrated Movie Companion": {
+      "firstSeenAt": "2026-07-20T23:36:42.812Z",
+      "lastSeenAt": "2026-07-20T23:36:42.812Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      }
+    },
+    "You": {
+      "firstSeenAt": "2026-07-20T23:36:42.812Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 2,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 2,
+      "classifications": {
+        "defensible_secondary_match": 2
+      }
+    },
+    "Pretties with Ugly Thoughts": {
+      "firstSeenAt": "2026-07-20T23:36:42.812Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 1
+      }
+    },
+    "The Giver Illustrated Gift Edition": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "strong_match": 1
+      }
+    },
+    "Last Chance Books": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 1
+      }
+    },
+    "Your Eyes in Stars": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 2,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 2
+      }
+    },
+    "Someone Like Summer": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 2,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 2,
+      "classifications": {
+        "defensible_secondary_match": 1,
+        "query_supported_but_weak": 1
+      }
+    },
+    "To The Wild Sky: Text Classics": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "defensible_secondary_match": 1
+      }
+    },
+    "Malcolm and Juliet": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 1
+      }
+    },
+    "Crowned (A Conyza Bennett story, Book 3)": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 1
+      }
+    },
+    "The Loser's Guide to Life and Love": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "defensible_secondary_match": 1
+      }
+    },
+    "Chain of Thorns": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "defensible_secondary_match": 1
+      }
+    },
+    "The Red Queen: The Obernewtyn Chronicles Volume 7": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      }
+    },
+    "The Unbeatable Lily Hong": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "defensible_secondary_match": 1
+      }
+    },
+    "Starclimber": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      }
+    },
+    "Wolfborn": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      }
+    },
+    "Waer": {
+      "firstSeenAt": "2026-07-20T23:36:42.813Z",
+      "lastSeenAt": "2026-07-20T23:36:42.813Z",
+      "seenCount": 1,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 0,
+      "classifications": {
+        "query_supported_but_weak": 1
+      }
+    }
+  },
+  "lifetimeCounts": {
+    "sessions": 3,
+    "teenGbSessions": 3,
+    "underfillRequiredSessions": 1,
+    "noUnderfillNeededSessions": 2,
+    "fullyStarvedSessions": 0,
+    "uniqueTitlesObserved": 18,
+    "totalWeakUnderfillOccurrences": 6
+  }
+}
