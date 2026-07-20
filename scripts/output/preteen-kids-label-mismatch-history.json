@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-20T08:10:24.900Z",
+  "generatedAt": "2026-07-20T18:23:57.619Z",
   "runs": [
     {
       "runAt": "2026-07-20T07:59:21.323Z",
@@ -37,6 +37,29 @@
         "works_for_both": 4,
         "ambiguous": 0
       }
+    },
+    {
+      "runAt": "2026-07-20T18:23:57.619Z",
+      "reports": [
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-439a969f-620b-4692-8c20-3303f5ffa921.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-6f944dff-e065-4415-b0ec-ee4da45803ac.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt",
+        "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt"
+      ],
+      "addedObservations": 24,
+      "newlyAddedUniqueTitles": 1,
+      "currentRunCounts": {
+        "total": 6,
+        "clearly_k2": 0,
+        "clearly_preteen": 2,
+        "works_for_both": 4,
+        "ambiguous": 0
+      }
     }
   ],
   "seenObservationKeys": [
@@ -62,44 +85,74 @@
     "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
     "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt::Spark Hunter",
     "pasted-text-20a887b9-c561-4c50-8c49-76b31fd12897.txt::R.I.P. Nanny Tobbins",
-    "pasted-text-f1bd1612-f138-44b2-a959-456d24d69617.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine"
+    "pasted-text-f1bd1612-f138-44b2-a959-456d24d69617.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt::The Good, the Bad, and the Bossy",
+    "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt::Miss Impossible",
+    "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt::Spark Hunter",
+    "pasted-text-81d1a027-7fa0-4bef-8d71-c8390a5b37a7.txt::R.I.P. Nanny Tobbins",
+    "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt::The Good, the Bad, and the Bossy",
+    "pasted-text-72ef5918-9d70-473a-97f0-c4b1ec63f103.txt::Miss Impossible",
+    "pasted-text-439a969f-620b-4692-8c20-3303f5ffa921.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt::The Good, the Bad, and the Bossy",
+    "pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt::Miss Impossible",
+    "pasted-text-28db61bb-a1cd-4885-90a6-9a5c24ce800b.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt::The Good, the Bad, and the Bossy",
+    "pasted-text-8b4ec4b7-70fb-41a2-b905-d4d29e2c7c54.txt::Miss Impossible",
+    "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt::Spark Hunter",
+    "pasted-text-b90d846f-d498-49c8-8c1d-999f8daa0139.txt::ParaNorthern",
+    "pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt::Spark Hunter",
+    "pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt::R.I.P. Nanny Tobbins",
+    "pasted-text-d05c8e22-0f7d-4fe8-bbb7-4b128e0747ba.txt::The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine",
+    "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt::Spark Hunter",
+    "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt::R.I.P. Nanny Tobbins",
+    "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt::The Good, the Bad, and the Bossy",
+    "pasted-text-63355b4a-0836-4688-b900-c69b8d6834f9.txt::Miss Impossible"
   ],
   "uniqueTitleRegistry": {
     "The Crooked Oak Mysteries (5) – The Creatures of Killburn Mine": {
       "classification": "works_for_both",
       "identityConfidence": 0.85,
       "firstSeenAt": "2026-07-20T07:59:21.323Z",
-      "lastSeenAt": "2026-07-20T08:10:24.900Z"
+      "lastSeenAt": "2026-07-20T18:23:57.619Z"
     },
     "The Good, the Bad, and the Bossy": {
       "classification": "works_for_both",
       "identityConfidence": 0.65,
       "firstSeenAt": "2026-07-20T07:59:21.323Z",
-      "lastSeenAt": "2026-07-20T08:10:24.900Z"
+      "lastSeenAt": "2026-07-20T18:23:57.619Z"
     },
     "Miss Impossible": {
       "classification": "works_for_both",
       "identityConfidence": 0.65,
       "firstSeenAt": "2026-07-20T07:59:21.323Z",
-      "lastSeenAt": "2026-07-20T08:10:24.900Z"
+      "lastSeenAt": "2026-07-20T18:23:57.619Z"
     },
     "Spark Hunter": {
       "classification": "clearly_preteen",
       "identityConfidence": 0.85,
       "firstSeenAt": "2026-07-20T07:59:21.323Z",
-      "lastSeenAt": "2026-07-20T08:10:24.900Z"
+      "lastSeenAt": "2026-07-20T18:23:57.619Z"
     },
     "R.I.P. Nanny Tobbins": {
       "classification": "works_for_both",
       "identityConfidence": 0.65,
       "firstSeenAt": "2026-07-20T07:59:21.323Z",
-      "lastSeenAt": "2026-07-20T08:10:24.900Z"
+      "lastSeenAt": "2026-07-20T18:23:57.619Z"
+    },
+    "ParaNorthern": {
+      "classification": "clearly_preteen",
+      "identityConfidence": 0.85,
+      "firstSeenAt": "2026-07-20T18:23:57.619Z",
+      "lastSeenAt": "2026-07-20T18:23:57.619Z"
     }
   },
   "lifetimeCounts": {
-    "uniqueTitleTotal": 5,
+    "uniqueTitleTotal": 6,
     "clearly_k2": 0,
-    "clearly_preteen": 1,
+    "clearly_preteen": 2,
     "works_for_both": 4,
     "ambiguous": 0
   }

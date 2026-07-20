@@ -598,13 +598,16 @@ function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones:
   const primaryGenre = genreAnchors[0];
   const secondaryGenre = genreAnchors[1];
   const adjacentGenre = googleBooksAdjacentGenre(primaryGenre);
+  // When the resolved genre anchor already contains the word "fiction" (e.g. "science fiction"),
+  // omit the standalone "fiction" token so we don't produce "science fiction fiction novel".
+  const primaryGenreHasFiction = !!(primaryGenre && /\bfiction\b/.test(normalizedTerm(primaryGenre)));
   const primaryQuery = uniqueTerms([
     ...(useAgePrefix ? [agePrefix] : []),
     ...(profile.ageBand === "adult"
       ? [googleBooksAdultNarrativeQuery(primaryGenre, primaryDescriptor)]
       : [
         ...(primaryGenre ? [primaryGenre] : []),
-        "fiction",
+        ...(primaryGenreHasFiction ? [] : ["fiction"]),
         "novel",
       ]),
   ]).join(" ");
@@ -631,7 +634,7 @@ function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones:
       : [
         ...(primaryGenre ? [primaryGenre] : []),
         "contemporary",
-        "fiction",
+        ...(primaryGenreHasFiction ? [] : ["fiction"]),
         "novel",
       ]),
   ]).join(" ");
