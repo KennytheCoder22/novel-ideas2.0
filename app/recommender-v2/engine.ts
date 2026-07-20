@@ -621,6 +621,12 @@ export function buildGoogleBooksAgeBandInfrastructureDiagnostics(input: {
     const sourceAgeLabels = uniqueStrings((googleBooksResult?.rawItems || []).map((item) => (item as Record<string, unknown>)?.ageBand), 20);
     const maturityBandValues = uniqueStrings(normalizedGoogleBooks.map((candidate) => candidate.maturityBand), 20);
 
+    const preteenSearchPlanDiagnostics = currentDeck === "preteens"
+      ? Object.fromEntries(
+          Object.entries(input.searchPlan.diagnostics)
+            .filter(([key]) => key.startsWith("preteen")),
+        )
+      : {};
     queryPlanningByDeck[currentDeck] = {
       status: !googleBooksPlan
         ? "failed"
@@ -641,6 +647,7 @@ export function buildGoogleBooksAgeBandInfrastructureDiagnostics(input: {
           : plannedQueries.length
             ? ""
             : "query_planning_failure_no_googlebooks_intents",
+      ...preteenSearchPlanDiagnostics,
     };
     dispatchByDeck[currentDeck] = {
       status: sourceStatus,

@@ -614,33 +614,98 @@ function buildGoogleBooksIntents(profile: TasteProfile, genres: string[], tones:
         "novel",
       ]),
   ]).join(" ");
+  const resolvedPrimaryQuery = primaryQuery || (useAgePrefix ? `${agePrefix} fiction novel` : "fiction novel");
+  const resolvedAdjacentQuery = adjacentOrToneQuery || (useAgePrefix
+    ? [agePrefix, primaryGenre || "fiction", "novel"].filter(Boolean).join(" ")
+    : [primaryGenre || "fiction", "novel"].filter(Boolean).join(" "));
+  const resolvedFallbackQuery = fallbackQuery || (useAgePrefix ? [agePrefix, "fiction", "novel"].filter(Boolean).join(" ") : "literary fiction novel");
+
+  // Build preteens query-routing diagnostics so session reports can explain why
+  // a profile landed on a generic family instead of a richer genre anchor.
+  // These fields are visible in googleBooksAgeBandQueryPlanningByDeck.preteens.*
+  const preteenDiagnostics: Record<string, unknown> = {};
+  if (profile.ageBand === "preteens") {
+    const anchorBySignal: Record<string, string> = {};
+    for (const g of genres) {
+      anchorBySignal[g] = googleBooksGenreAnchor(g) ?? "discarded_no_anchor_match";
+    }
+    const discardedGenreSignals = genres.filter((g) => googleBooksGenreAnchor(g) === undefined);
+    const adjacentFamilyForDiagnostics = secondaryGenre && secondaryGenre !== primaryGenre
+      ? secondaryGenre
+      : adjacentGenre ?? "none";
+    const adjacentQueryFamily = secondaryGenre && secondaryGenre !== primaryGenre
+      ? secondaryGenre
+      : adjacentGenre
+        ? adjacentGenre
+        : primaryGenre ?? "general";
+    const queryFamilyByQuery: Record<string, string> = {};
+    queryFamilyByQuery[resolvedPrimaryQuery] = primaryGenre ?? "general";
+    if (resolvedAdjacentQuery !== resolvedPrimaryQuery) {
+      queryFamilyByQuery[resolvedAdjacentQuery] = adjacentQueryFamily;
+    }
+    if (resolvedFallbackQuery !== resolvedPrimaryQuery && resolvedFallbackQuery !== resolvedAdjacentQuery) {
+      queryFamilyByQuery[resolvedFallbackQuery] = primaryGenre ?? "general";
+    }
+    const genreSignalScoreHistogram: Record<string, string> = {};
+    for (const g of [...genres, ...themes, ...tones]) {
+      const anchor = googleBooksGenreAnchor(g);
+      genreSignalScoreHistogram[g] = anchor ? `recognized_anchor:${anchor}` : "discarded_no_anchor_match";
+    }
+    preteenDiagnostics.preteenGoogleBooksGenreSignals = genres;
+    preteenDiagnostics.preteenGoogleBooksThemeSignals = themes;
+    preteenDiagnostics.preteenGoogleBooksToneSignals = tones;
+    preteenDiagnostics.preteenGoogleBooksGenreAnchorBySignal = anchorBySignal;
+    preteenDiagnostics.preteenGoogleBooksGenreAnchorsResolved = genreAnchors;
+    preteenDiagnostics.preteenGoogleBooksDiscardedGenreSignals = discardedGenreSignals;
+    preteenDiagnostics.preteenGoogleBooksPrimaryGenre = primaryGenre ?? "none";
+    preteenDiagnostics.preteenGoogleBooksSecondaryGenre = secondaryGenre ?? "none";
+    preteenDiagnostics.preteenGoogleBooksAdjacentGenre = adjacentFamilyForDiagnostics;
+    preteenDiagnostics.preteenGoogleBooksQueryPlanReason = genreAnchors.length > 0
+      ? `primary_family_resolved:${primaryGenre}`
+      : "no_recognized_genre_anchors_generic_fallback";
+    preteenDiagnostics.preteenGoogleBooksWinningMargin = genreAnchors.length >= 2
+      ? "tied_multi_anchor"
+      : genreAnchors.length === 1
+        ? "single_anchor_clear_winner"
+        : "no_anchor_generic_fallback";
+    preteenDiagnostics.preteenGoogleBooksQueryFamilyByQuery = queryFamilyByQuery;
+    preteenDiagnostics.preteenGoogleBooksPlannedQueryList = Array.from(new Set([
+      resolvedPrimaryQuery,
+      resolvedAdjacentQuery,
+      resolvedFallbackQuery,
+    ].filter(Boolean)));
+    preteenDiagnostics.preteenGoogleBooksSignalScoreHistogram = genreSignalScoreHistogram;
+    preteenDiagnostics.preteenGoogleBooksSkippedSignalCount = discardedGenreSignals.length;
+    preteenDiagnostics.preteenGoogleBooksDiscardedSignalNote = discardedGenreSignals.length > 0
+      ? `${discardedGenreSignals.join(", ")} not recognized by googleBooksGenreAnchor; add mapping to route to a richer family`
+      : "all_genre_signals_recognized";
+  }
+
   return {
     intents: [
       {
         id: "family-fiction-primary",
-        query: primaryQuery || (useAgePrefix ? `${agePrefix} fiction novel` : "fiction novel"),
+        query: resolvedPrimaryQuery,
         facets: [...genres, ...tones, ...themes].filter(Boolean),
         priority: 1,
         rationale: ["built_from_top_taste_profile_signals", "google_books_narrative_query"],
       },
       {
         id: "adjacent-or-tone-fiction",
-        query: adjacentOrToneQuery || (useAgePrefix
-          ? [agePrefix, primaryGenre || "fiction", "novel"].filter(Boolean).join(" ")
-          : [primaryGenre || "fiction", "novel"].filter(Boolean).join(" ")),
+        query: resolvedAdjacentQuery,
         facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
         priority: 0.85,
         rationale: ["adjacent_family_or_tone_expansion", "google_books_narrative_query"],
       },
       {
         id: "fallback-fiction-broad",
-        query: fallbackQuery || (useAgePrefix ? [agePrefix, "fiction", "novel"].filter(Boolean).join(" ") : "literary fiction novel"),
+        query: resolvedFallbackQuery,
         facets: [profile.maturityBand, ...formats, ...genres.slice(0, 1)].filter(Boolean),
         priority: 0.55,
         rationale: ["broad_fallback_when_underfilled", "google_books_narrative_query"],
       },
     ],
-    diagnostics: {},
+    diagnostics: preteenDiagnostics,
   };
 }
 
