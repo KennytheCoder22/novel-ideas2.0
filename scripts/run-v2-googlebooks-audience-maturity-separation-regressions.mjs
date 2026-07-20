@@ -233,6 +233,8 @@ for (const ageBand of ["kids", "preteens"]) {
   assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationDecisionByTitle[title], "rescued", "Teen reconciliation decision should be explicitly diagnosed as rescued");
   assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationReasonByTitle[title], "teen_googlebooks_audience_reconciliation_rescue", "Teen reconciliation reason should record the rescue path");
   assertIncludes(run.selection.rejectedReasons.googleBooksFinalEligibilityEvidenceByTitle[title], "teen_audience_reconciliation:rescued", "Final eligibility evidence should include teen reconciliation status");
+  assertNotEqual(run.selection.rejectedReasons.teenGoogleBooksMeaningfulTasteClassificationByTitle[title], undefined, "Teen meaningful taste classification should be emitted for Google Books");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle[title], true, "Teen YA rescue candidate should be document-backed, not query-only");
   console.log("PASS teens: kids-labeled YA narratives can be rescued via audience reconciliation");
 }
 
@@ -256,6 +258,71 @@ for (const ageBand of ["kids", "preteens"]) {
   assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationReasonByTitle[title], "teen_audience_reconciliation_explicit_early_reader_markers", "Teen reconciliation should explain the block reason");
   assertIncludes(run.selection.rejectedReasons.googleBooksFinalEligibilityEvidenceByTitle[title], "teen_audience_reconciliation:rejected", "Final eligibility evidence should record rejected teen reconciliation");
   console.log("PASS teens: explicit early-reader evidence remains an enforced reject");
+}
+
+{
+  const title = "Teen Companion Candidate";
+  const run = runFlow("teens", [rawGoogleBook("teens", title, {
+    title: "Divergent Official Illustrated Movie Companion",
+    audienceBand: "teens",
+    maturityBand: "teens",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    queryText: "young adult dystopian fiction novel",
+    originalPlannedQuery: "young adult dystopian fiction novel",
+    googleBooksPublicationShape: "novel",
+    googleBooksNarrativeConfidence: 7,
+    googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
+    genres: ["Young Adult Fiction / Dystopian", "Young Adult Fiction / Science Fiction"],
+    description: "Official illustrated movie companion to the blockbuster adaptation.",
+  })]);
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle["Divergent Official Illustrated Movie Companion"], "teen_googlebooks_publication_identity_supplemental_companion", "Teen publication identity should reject companion materials");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksPublicationIdentityDecisionByTitle["Divergent Official Illustrated Movie Companion"], "rejected", "Teen publication identity should record companion rejection");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksPublicationIdentityClassificationByTitle["Divergent Official Illustrated Movie Companion"], "supplemental_companion_edition", "Teen publication identity should classify companion materials");
+  console.log("PASS teens: supplemental companion materials are blocked");
+}
+
+{
+  const title = "Teen Literary Study Candidate";
+  const run = runFlow("teens", [rawGoogleBook("teens", title, {
+    title: "The Role of Nature in the Works of Octavia Butler",
+    audienceBand: "teens",
+    maturityBand: "teens",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    queryText: "young adult dystopian fiction novel",
+    originalPlannedQuery: "young adult dystopian fiction novel",
+    googleBooksPublicationShape: "novel",
+    googleBooksNarrativeConfidence: 7,
+    googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
+    genres: ["Young Adult Fiction / Dystopian"],
+    description: "A study of ecological themes in Butler novels with special reference to narrative method.",
+  })]);
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle["The Role of Nature in the Works of Octavia Butler"], "teen_googlebooks_publication_identity_literary_study", "Teen publication identity should reject literary-study artifacts");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksPublicationIdentityDecisionByTitle["The Role of Nature in the Works of Octavia Butler"], "rejected", "Teen publication identity should record literary-study rejection");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksPublicationIdentityClassificationByTitle["The Role of Nature in the Works of Octavia Butler"], "literary_criticism_or_study", "Teen publication identity should classify literary-study artifacts");
+  console.log("PASS teens: literary study artifacts are blocked");
+}
+
+{
+  const title = "Teen Illustrated Narrative Edition Candidate";
+  const run = runFlow("teens", [rawGoogleBook("teens", title, {
+    title: "The Giver Illustrated Gift Edition",
+    audienceBand: "teens",
+    maturityBand: "teens",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    queryText: "young adult dystopian fiction novel",
+    originalPlannedQuery: "young adult dystopian fiction novel",
+    googleBooksPublicationShape: "novel",
+    googleBooksNarrativeConfidence: 7,
+    googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
+    genres: ["Young Adult Fiction / Dystopian"],
+    description: "An illustrated gift edition of the classic dystopian young adult novel.",
+  })]);
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle["The Giver Illustrated Gift Edition"], "selected_googlebooks_candidate", "Illustrated narrative editions should remain eligible when not companion/study artifacts");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksPublicationIdentityDecisionByTitle["The Giver Illustrated Gift Edition"], "passed", "Teen publication identity should preserve narrative illustrated editions");
+  console.log("PASS teens: illustrated narrative editions remain eligible");
 }
 
 {

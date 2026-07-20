@@ -47,6 +47,14 @@ type TeenGoogleBooksAudienceReconciliationAudit = {
   evidence: string[];
 };
 
+type TeenGoogleBooksPublicationIdentityAudit = {
+  allowed: boolean;
+  reason: string;
+  decision: string;
+  classification: string;
+  evidence: string[];
+};
+
 function teenGoogleBooksAudienceReconciliationAudit(candidate: ScoredCandidate, profile: TasteProfile): TeenGoogleBooksAudienceReconciliationAudit {
   if (profile.ageBand !== "teens" || candidate.source !== "googleBooks") {
     return { allowed: false, reason: "not_applicable", evidence: [] };
@@ -107,6 +115,77 @@ function teenGoogleBooksAudienceReconciliationAudit(candidate: ScoredCandidate, 
   if (!Number.isFinite(narrativeConfidence) || narrativeConfidence < 5.5) return { allowed: false, reason: "teen_audience_reconciliation_narrative_confidence_below_threshold", evidence };
   if (storyEvidence.length < 2) return { allowed: false, reason: "teen_audience_reconciliation_insufficient_story_evidence", evidence };
   return { allowed: true, reason: "teen_googlebooks_audience_reconciliation_rescue", evidence };
+}
+
+function teenGoogleBooksPublicationIdentityAudit(candidate: ScoredCandidate, profile: TasteProfile): TeenGoogleBooksPublicationIdentityAudit {
+  if (profile.ageBand !== "teens" || candidate.source !== "googleBooks") {
+    return { allowed: true, reason: "not_applicable", decision: "not_applicable", classification: "not_applicable", evidence: [] };
+  }
+  const diagnostics = (candidate.diagnostics || {}) as Record<string, unknown>;
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const title = String(candidate.title || "").trim();
+  const subtitle = String(candidate.subtitle || raw.subtitle || "").trim();
+  const description = String(candidate.description || raw.description || "").trim();
+  const publicationShape = String(diagnostics.googleBooksPublicationShape || raw.googleBooksPublicationShape || "").trim().toLowerCase();
+  const explicitNonNarrativeIdentity = Array.isArray(diagnostics.googleBooksExplicitNonNarrativeIdentity)
+    ? diagnostics.googleBooksExplicitNonNarrativeIdentity.map((entry) => String(entry || "")).filter(Boolean)
+    : [];
+  const subjectOfStudy = Boolean(diagnostics.googleBooksSubjectOfStudyTitle || raw.googleBooksSubjectOfStudyTitle);
+  const curatedGuide = Boolean(diagnostics.googleBooksCuratedBookGuideIdentity || raw.googleBooksCuratedBookGuideIdentity);
+  const genericCategory = Boolean(diagnostics.googleBooksGenericCategoryTitle || raw.googleBooksGenericCategoryTitle);
+  const volumeInfo = raw.volumeInfo && typeof raw.volumeInfo === "object"
+    ? raw.volumeInfo as Record<string, unknown>
+    : {};
+  const categories = [
+    ...candidate.genres,
+    ...(Array.isArray(volumeInfo.categories) ? volumeInfo.categories.map((entry) => String(entry || "")) : []),
+  ].filter(Boolean);
+  const text = [title, subtitle, description, categories.join(" | ")]
+    .map((entry) => String(entry || "").toLowerCase())
+    .join(" ");
+  const evidence = [
+    `publication_shape:${publicationShape || "unknown"}`,
+    `explicit_non_narrative_identity_count:${explicitNonNarrativeIdentity.length}`,
+    `subject_of_study:${subjectOfStudy ? "yes" : "no"}`,
+    `curated_guide:${curatedGuide ? "yes" : "no"}`,
+    `generic_category_title:${genericCategory ? "yes" : "no"}`,
+  ];
+
+  const reject = (reason: string, classification: string, patternEvidence?: string): TeenGoogleBooksPublicationIdentityAudit => ({
+    allowed: false,
+    reason,
+    decision: "rejected",
+    classification,
+    evidence: patternEvidence ? [...evidence, `matched:${patternEvidence}`] : evidence,
+  });
+
+  if (subjectOfStudy) return reject("teen_googlebooks_publication_identity_subject_of_study_flag", "literary_criticism_or_study");
+  if (curatedGuide) return reject("teen_googlebooks_publication_identity_curated_guide_flag", "guide_reference");
+  if (genericCategory) return reject("teen_googlebooks_publication_identity_generic_category_flag", "catalog_or_promotional_collection");
+  if (explicitNonNarrativeIdentity.length > 0) return reject("teen_googlebooks_publication_identity_explicit_non_narrative_identity_flag", "non_narrative_reference_or_compilation");
+
+  if (/\b(official illustrated movie companion|official movie companion|movie companion|official companion)\b/.test(text)) {
+    return reject("teen_googlebooks_publication_identity_supplemental_companion", "supplemental_companion_edition", "supplemental_companion_title_pattern");
+  }
+  if (/\b(the role of .* in the works of|special reference to|analysis of|study of|critical study|in the works of)\b/.test(text)) {
+    return reject("teen_googlebooks_publication_identity_literary_study", "literary_criticism_or_study", "literary_study_pattern");
+  }
+  if (/\b(spring\s+\d{4}\s+young adult debut novels|debut novels|booklist'?s?\s+\d+\s+best\s+young\s+adult\s+books\s+since)\b/.test(text)) {
+    return reject("teen_googlebooks_publication_identity_catalog_or_promotional_collection", "catalog_or_promotional_collection", "catalog_or_promotional_pattern");
+  }
+  if (/\b(writers?\s+market|guide to literary agents|literary agents? \d+(?:st|nd|rd|th)? edition|handbook)\b/.test(text)) {
+    return reject("teen_googlebooks_publication_identity_guide_or_market_reference", "guide_reference", "guide_or_market_reference_pattern");
+  }
+  if (["writing_guide", "critical_study", "nonfiction", "public_domain_compilation"].includes(publicationShape)) {
+    return reject("teen_googlebooks_publication_identity_non_narrative_shape", "non_narrative_reference_or_compilation", "non_narrative_publication_shape");
+  }
+
+  const classification = publicationShape === "series_installment"
+    ? "series_installment"
+    : publicationShape === "story_collection"
+      ? "legitimate_short_story_anthology"
+      : "narrative_novel_or_uncertain";
+  return { allowed: true, reason: "teen_googlebooks_publication_identity_passed", decision: "passed", classification, evidence };
 }
 
 function rootTitle(title: string): string {
@@ -4757,29 +4836,172 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
   diagnostics.teenOpenLibraryLaterSeriesDeferredTitles = uniqueSignals(teenOpenLibraryLaterSeriesDeferredTitles);
   diagnostics.teenOpenLibraryLaterSeriesAcceptedAfterUnderfillTitles = uniqueSignals(teenOpenLibraryLaterSeriesAcceptedAfterUnderfillTitles);
   diagnostics.teenOpenLibraryLaterSeriesRejectedByReason = teenOpenLibraryLaterSeriesRejectedByReason;
+}
+
+function teenGoogleBooksSignalFieldMatches(candidate: ScoredCandidate, signal: string): string[] {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const volumeInfo = raw.volumeInfo && typeof raw.volumeInfo === "object"
+    ? raw.volumeInfo as Record<string, unknown>
+    : {};
+  const fields: Array<[string, string[]]> = [
+    ["title", [candidate.title]],
+    ["subtitle", [candidate.subtitle || String(raw.subtitle || "")]],
+    ["description", [candidate.description || String(raw.description || ""), String(volumeInfo.description || "")]],
+    ["categories", [
+      ...candidate.genres,
+      ...(Array.isArray(volumeInfo.categories) ? volumeInfo.categories.map((entry) => String(entry || "")) : []),
+    ]],
+  ];
+  const matched: string[] = [];
+  for (const [field, values] of fields) {
+    if (values.some((value) => signalPresentInText(value, signal))) matched.push(field);
+  }
+  return matched;
+}
+
+function classifyTeenGoogleBooksMeaningfulTasteAlignment(input: {
+  likedSignals: string[];
+  dislikedSignals: string[];
+  documentBackedSignals: string[];
+  netScore: number;
+  genreSignals: string[];
+  toneSignals: string[];
+  categoryOnlySignals: string[];
+}): "strong_match" | "defensible_secondary_match" | "query_supported_but_weak" | "unrelated" | "actively_conflicting" {
+  const likedCount = input.likedSignals.length;
+  const dislikedCount = input.dislikedSignals.length;
+  const docCount = input.documentBackedSignals.length;
+  const hasCompoundGenre = input.genreSignals.length >= 2;
+  const broadToneOnly = input.toneSignals.length > 0 && input.genreSignals.length === 0;
+  if (dislikedCount > 0 && input.netScore < 0) return "actively_conflicting";
+  if (docCount >= 2 && likedCount >= 2 && input.netScore >= 2 && (hasCompoundGenre || !broadToneOnly)) return "strong_match";
+  if (docCount >= 1 && likedCount >= 1 && input.netScore > 0) return "defensible_secondary_match";
+  if (likedCount === 0 && input.netScore <= 0) return "unrelated";
+  if (docCount === 0 || categoryOnlySignals.length >= likedCount || broadToneOnly) return "query_supported_but_weak";
+  return "defensible_secondary_match";
+}
+
+function addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "teens" || !rankedCandidates.some((candidate) => candidate.source === "googleBooks")) return;
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const selectedTitles = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalized(candidate.title)));
+  const candidateTasteMatchScoreByTitle: Record<string, number> = {};
+  const candidateTastePenaltyByTitle: Record<string, number> = {};
+  const candidateMatchedLikedSignalsByTitle: Record<string, string[]> = {};
+  const candidateMatchedDislikedSignalsByTitle: Record<string, string[]> = {};
+  const documentBackedTasteSignalsByTitle: Record<string, string[]> = {};
+  const teenGoogleBooksSignalFieldsByTitle: Record<string, Record<string, string[]>> = {};
+  const teenGoogleBooksGenreSignalsByTitle: Record<string, string[]> = {};
+  const teenGoogleBooksThemeSignalsByTitle: Record<string, string[]> = {};
+  const teenGoogleBooksToneSignalsByTitle: Record<string, string[]> = {};
+  const teenGoogleBooksCategoryOnlySignalsByTitle: Record<string, string[]> = {};
+  const teenGoogleBooksQueryFamilyOnlySignalsByTitle: Record<string, string[]> = {};
+  const teenGoogleBooksBroadToneOnlyByTitle: Record<string, boolean> = {};
+  const teenGoogleBooksNetMeaningfulAlignmentScoreByTitle: Record<string, number> = {};
+  const teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle: Record<string, boolean> = {};
+  const teenGoogleBooksMeaningfulTasteClassificationByTitle: Record<string, string> = {};
+  const teenGoogleBooksMeaningfulTasteClassificationHistogram: Record<string, number> = {};
+  const teenGoogleBooksMeaningfulTasteStrongMatches: string[] = [];
+  const teenGoogleBooksMeaningfulTasteDefensibleSecondaryMatches: string[] = [];
+  const teenGoogleBooksMeaningfulTasteQuerySupportedWeakMatches: string[] = [];
+  const teenGoogleBooksMeaningfulTasteUnrelatedTitles: string[] = [];
+  const teenGoogleBooksMeaningfulTasteActivelyConflictingTitles: string[] = [];
+
+  const genreProfileSignals = new Set(profile.genreFamily.map((row) => normalized(row.value)));
+  const themeProfileSignals = new Set(profile.themes.map((row) => normalized(row.value)));
+  const toneProfileSignals = new Set(profile.tone.map((row) => normalized(row.value)));
+  const broadTonePattern = /^(dramatic?|drama|dark|warm|hopeful|emotional|atmospheric|intense|gritty|uplifting|playful|moody)$/;
+
+  for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
+    const title = candidate.title;
+    const likedSignals = uniqueSignals((Array.isArray(candidate.diagnostics?.metadataBackedMatchedLikedSignals) ? candidate.diagnostics.metadataBackedMatchedLikedSignals : []).map(String));
+    const dislikedSignals = uniqueSignals((Array.isArray(candidate.diagnostics?.metadataBackedMatchedDislikedSignals) ? candidate.diagnostics.metadataBackedMatchedDislikedSignals : []).map(String));
+    const documentBackedSignals = uniqueSignals((Array.isArray(candidate.diagnostics?.documentBackedTasteSignals) ? candidate.diagnostics.documentBackedTasteSignals : likedSignals).map(String));
+    const positiveTasteScore = Number(candidate.diagnostics?.positiveTasteScore ?? (Number(candidate.scoreBreakdown?.genreFacetMatch || 0) + Number(candidate.scoreBreakdown?.positiveTasteMatch || 0)));
+    const avoidPenalty = Math.abs(Number(candidate.scoreBreakdown?.avoidSignalPenalty || 0));
+    const netAlignmentScore = Math.round((positiveTasteScore - avoidPenalty) * 1000) / 1000;
+    const genreSignals = likedSignals.filter((signal) => genreProfileSignals.has(normalized(signal)));
+    const themeSignals = likedSignals.filter((signal) => themeProfileSignals.has(normalized(signal)));
+    const toneSignals = likedSignals.filter((signal) => toneProfileSignals.has(normalized(signal)) || broadTonePattern.test(normalized(signal)));
+    const signalFieldMatches: Record<string, string[]> = {};
+    const categoryOnlySignals = likedSignals.filter((signal) => {
+      const fields = teenGoogleBooksSignalFieldMatches(candidate, signal);
+      signalFieldMatches[signal] = fields;
+      return fields.length > 0 && fields.every((field) => field === "categories");
+    });
+    const queryFamilyOnlySignals = likedSignals.filter((signal) => {
+      const fields = signalFieldMatches[signal] || teenGoogleBooksSignalFieldMatches(candidate, signal);
+      signalFieldMatches[signal] = fields;
+      return fields.length === 0;
+    });
+    const broadToneOnly = likedSignals.length > 0 && toneSignals.length === likedSignals.length && genreSignals.length === 0 && themeSignals.length === 0;
+    const wouldPassWithoutQueryDerivedEvidence = documentBackedSignals.length > 0;
+    const classification = classifyTeenGoogleBooksMeaningfulTasteAlignment({
+      likedSignals,
+      dislikedSignals,
+      documentBackedSignals,
+      netScore: netAlignmentScore,
+      genreSignals,
+      toneSignals,
+      categoryOnlySignals,
+    });
+
+    candidateTasteMatchScoreByTitle[title] = Math.round(positiveTasteScore * 1000) / 1000;
+    candidateTastePenaltyByTitle[title] = Math.round(avoidPenalty * 1000) / 1000;
+    candidateMatchedLikedSignalsByTitle[title] = likedSignals;
+    candidateMatchedDislikedSignalsByTitle[title] = dislikedSignals;
+    documentBackedTasteSignalsByTitle[title] = documentBackedSignals;
+    teenGoogleBooksSignalFieldsByTitle[title] = signalFieldMatches;
+    teenGoogleBooksGenreSignalsByTitle[title] = genreSignals;
+    teenGoogleBooksThemeSignalsByTitle[title] = themeSignals;
+    teenGoogleBooksToneSignalsByTitle[title] = toneSignals;
+    teenGoogleBooksCategoryOnlySignalsByTitle[title] = categoryOnlySignals;
+    teenGoogleBooksQueryFamilyOnlySignalsByTitle[title] = queryFamilyOnlySignals;
+    teenGoogleBooksBroadToneOnlyByTitle[title] = broadToneOnly;
+    teenGoogleBooksNetMeaningfulAlignmentScoreByTitle[title] = netAlignmentScore;
+    teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle[title] = wouldPassWithoutQueryDerivedEvidence;
+    teenGoogleBooksMeaningfulTasteClassificationByTitle[title] = classification;
+    teenGoogleBooksMeaningfulTasteClassificationHistogram[classification] = Number(teenGoogleBooksMeaningfulTasteClassificationHistogram[classification] || 0) + 1;
+    if (classification === "strong_match") teenGoogleBooksMeaningfulTasteStrongMatches.push(title);
+    else if (classification === "defensible_secondary_match") teenGoogleBooksMeaningfulTasteDefensibleSecondaryMatches.push(title);
+    else if (classification === "query_supported_but_weak") teenGoogleBooksMeaningfulTasteQuerySupportedWeakMatches.push(title);
+    else if (classification === "unrelated") teenGoogleBooksMeaningfulTasteUnrelatedTitles.push(title);
+    else if (classification === "actively_conflicting") teenGoogleBooksMeaningfulTasteActivelyConflictingTitles.push(title);
+
+    candidate.diagnostics = {
+      ...(candidate.diagnostics || {}),
+      teenGoogleBooksMeaningfulTasteClassification: classification,
+      teenGoogleBooksNetMeaningfulAlignmentScore: netAlignmentScore,
+      teenGoogleBooksWouldPassWithoutQueryDerivedEvidence: wouldPassWithoutQueryDerivedEvidence,
+      teenGoogleBooksSignalFieldMatches: signalFieldMatches,
+      teenGoogleBooksCategoryOnlySignals: categoryOnlySignals,
+      teenGoogleBooksQueryFamilyOnlySignals: queryFamilyOnlySignals,
+      teenGoogleBooksBroadToneOnly: broadToneOnly,
+      teenGoogleBooksSelectedFinal: selectedTitles.has(normalized(title)),
+    };
+  }
+
+  diagnostics.candidateTasteMatchScoreByTitle = candidateTasteMatchScoreByTitle;
+  diagnostics.candidateTastePenaltyByTitle = candidateTastePenaltyByTitle;
+  diagnostics.candidateMatchedLikedSignalsByTitle = candidateMatchedLikedSignalsByTitle;
+  diagnostics.candidateMatchedDislikedSignalsByTitle = candidateMatchedDislikedSignalsByTitle;
   diagnostics.documentBackedTasteSignalsByTitle = documentBackedTasteSignalsByTitle;
-  diagnostics.positiveTasteScoreByTitle = positiveTasteScoreByTitle;
-  diagnostics.teenOpenLibraryEligibilityAllowedByTitle = teenOpenLibraryEligibilityAllowedByTitle;
-  diagnostics.teenOpenLibraryEligibilityReasonByTitle = teenOpenLibraryEligibilityReasonByTitle;
-  diagnostics.finalEligibilityAcceptedTitles = finalEligibilityAcceptedTitles;
-  diagnostics.finalEligibilityRejectedTitlesByReason = finalEligibilityRejectedTitlesByReason;
-  diagnostics.finalEligibilityCleanCandidateCount = finalEligibilityAcceptedTitles.length;
-  diagnostics.candidateTasteMatchScoreByTitle = positiveTasteScoreByTitle;
-  diagnostics.meaningfulTasteEligibleTitles = meaningfulTasteEligibleTitles;
-  diagnostics.candidateMatchedLikedSignalsByTitle = documentBackedTasteSignalsByTitle;
-  diagnostics.candidateMatchedDislikedSignalsByTitle = Object.fromEntries(
-    rankedCandidates
-      .filter((row) => row.source === "openLibrary")
-      .map((candidate) => {
-        const nonTitleMetadataText = teenOpenLibraryNonTitleMetadataText(candidate);
-        return [candidate.title, teenOpenLibraryDiagnosticSignals(candidate, "metadataBackedMatchedDislikedSignals")
-          .filter((signal) => !TEEN_OPENLIBRARY_GENERIC_TASTE_SIGNAL.test(signal) && !TEEN_OPENLIBRARY_CONTEXT_ONLY_TASTE_SIGNAL.test(signal))
-          .filter((signal) => teenOpenLibrarySignalSupportedByNonTitleMetadata(signal, nonTitleMetadataText))];
-      }),
-  );
-  diagnostics.finalScoreComponentsByTitle = finalScoreComponentsByTitle;
-  diagnostics.finalRankingReasonByTitle = finalRankingReasonByTitle;
-  diagnostics.finalEligibilityGateApplied = true;
+  diagnostics.teenGoogleBooksSignalFieldsByTitle = teenGoogleBooksSignalFieldsByTitle;
+  diagnostics.teenGoogleBooksGenreSignalsByTitle = teenGoogleBooksGenreSignalsByTitle;
+  diagnostics.teenGoogleBooksThemeSignalsByTitle = teenGoogleBooksThemeSignalsByTitle;
+  diagnostics.teenGoogleBooksToneSignalsByTitle = teenGoogleBooksToneSignalsByTitle;
+  diagnostics.teenGoogleBooksCategoryOnlySignalsByTitle = teenGoogleBooksCategoryOnlySignalsByTitle;
+  diagnostics.teenGoogleBooksQueryFamilyOnlySignalsByTitle = teenGoogleBooksQueryFamilyOnlySignalsByTitle;
+  diagnostics.teenGoogleBooksBroadToneOnlyByTitle = teenGoogleBooksBroadToneOnlyByTitle;
+  diagnostics.teenGoogleBooksNetMeaningfulAlignmentScoreByTitle = teenGoogleBooksNetMeaningfulAlignmentScoreByTitle;
+  diagnostics.teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle = teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle;
+  diagnostics.teenGoogleBooksMeaningfulTasteClassificationByTitle = teenGoogleBooksMeaningfulTasteClassificationByTitle;
+  diagnostics.teenGoogleBooksMeaningfulTasteClassificationHistogram = teenGoogleBooksMeaningfulTasteClassificationHistogram;
+  diagnostics.teenGoogleBooksMeaningfulTasteStrongMatches = uniqueSignals(teenGoogleBooksMeaningfulTasteStrongMatches);
+  diagnostics.teenGoogleBooksMeaningfulTasteDefensibleSecondaryMatches = uniqueSignals(teenGoogleBooksMeaningfulTasteDefensibleSecondaryMatches);
+  diagnostics.teenGoogleBooksMeaningfulTasteQuerySupportedWeakMatches = uniqueSignals(teenGoogleBooksMeaningfulTasteQuerySupportedWeakMatches);
+  diagnostics.teenGoogleBooksMeaningfulTasteUnrelatedTitles = uniqueSignals(teenGoogleBooksMeaningfulTasteUnrelatedTitles);
+  diagnostics.teenGoogleBooksMeaningfulTasteActivelyConflictingTitles = uniqueSignals(teenGoogleBooksMeaningfulTasteActivelyConflictingTitles);
 }
 
 type AdultGoogleBooksEligibility = {
@@ -7244,6 +7466,17 @@ function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string
     const eligibility = teenOpenLibraryMeaningfulTasteEligibility(candidate, profile);
     if (!eligibility.allowed) return eligibility.reason || "teen_openlibrary_no_meaningful_metadata_taste";
   }
+  if (profile.ageBand === "teens" && candidate.source === "googleBooks") {
+    const publicationIdentity = teenGoogleBooksPublicationIdentityAudit(candidate, profile);
+    candidate.diagnostics = {
+      ...(candidate.diagnostics || {}),
+      teenGoogleBooksPublicationIdentityDecision: publicationIdentity.decision,
+      teenGoogleBooksPublicationIdentityReason: publicationIdentity.reason,
+      teenGoogleBooksPublicationIdentityClassification: publicationIdentity.classification,
+      teenGoogleBooksPublicationIdentityEvidence: publicationIdentity.evidence,
+    };
+    if (!publicationIdentity.allowed) return publicationIdentity.reason;
+  }
   if (profile.ageBand === "adult" && candidate.source === "openLibrary") {
     const eligibility = adultOpenLibraryMeaningfulTasteEligibility(candidate, profile);
     if (!eligibility.allowed) return eligibility.reason || "adult_openlibrary_no_meaningful_metadata_taste";
@@ -8289,6 +8522,7 @@ function addPreteenGoogleBooksPublicationIdentityObservability(rankedCandidates:
 }
 function nonAdultGoogleBooksFinalEligibilityGate(reason: string, ageBand: string): string {
   if (/googlebooks_mature_content|maturity_band_mismatch/i.test(reason)) return "audience_maturity_final_eligibility";
+  if (/^teen_googlebooks_publication_identity_/i.test(reason)) return "teen_publication_identity_final_guard";
   if (/^k2_(?:unknown_or_non_k2_audience_without_credible_k2_evidence|missing_child_readable_narrative_or_format_identity|decisive_adult_or_ya_contradiction)$/i.test(reason)) return "kids_googlebooks_audience_format_final_eligibility";
   if (/^k2_(?:suspicious_title_artifact|non_narrative_informational_artifact|missing_story_picture_reader_relevance)$/i.test(reason)) return "kids_clean_final_eligibility";
   if (/^preteen_googlebooks_publication_identity/i.test(reason)) return "preteen_publication_identity_final_guard";
@@ -8322,6 +8556,10 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
   const teenAudienceReconciliationDecisionByTitle = { ...((diagnostics.teenGoogleBooksAudienceReconciliationDecisionByTitle || {}) as Record<string, string>) };
   const teenAudienceReconciliationReasonByTitle = { ...((diagnostics.teenGoogleBooksAudienceReconciliationReasonByTitle || {}) as Record<string, string>) };
   const teenAudienceReconciliationEvidenceByTitle = { ...((diagnostics.teenGoogleBooksAudienceReconciliationEvidenceByTitle || {}) as Record<string, string[]>) };
+  const teenPublicationIdentityDecisionByTitle = { ...((diagnostics.teenGoogleBooksPublicationIdentityDecisionByTitle || {}) as Record<string, string>) };
+  const teenPublicationIdentityReasonByTitle = { ...((diagnostics.teenGoogleBooksPublicationIdentityReasonByTitle || {}) as Record<string, string>) };
+  const teenPublicationIdentityClassificationByTitle = { ...((diagnostics.teenGoogleBooksPublicationIdentityClassificationByTitle || {}) as Record<string, string>) };
+  const teenPublicationIdentityEvidenceByTitle = { ...((diagnostics.teenGoogleBooksPublicationIdentityEvidenceByTitle || {}) as Record<string, string[]>) };
   const selectedTitles = new Set(selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => normalized(candidate.title)));
 
   for (const candidate of rankedCandidates.filter((row) => row.source === "googleBooks")) {
@@ -8346,6 +8584,20 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
     const acceptedReason = profile.ageBand === "kids"
       ? "kids_googlebooks_independent_audience_and_format_final_eligibility_passed"
       : `${profile.ageBand}_googlebooks_named_final_eligibility_passed`;
+    const teenPublicationIdentityDecision = String(candidate.diagnostics?.teenGoogleBooksPublicationIdentityDecision || "").trim();
+    const teenPublicationIdentityReason = String(candidate.diagnostics?.teenGoogleBooksPublicationIdentityReason || "").trim();
+    const teenPublicationIdentityClassification = String(candidate.diagnostics?.teenGoogleBooksPublicationIdentityClassification || "").trim();
+    const teenPublicationIdentityEvidence = Array.isArray(candidate.diagnostics?.teenGoogleBooksPublicationIdentityEvidence)
+      ? (candidate.diagnostics.teenGoogleBooksPublicationIdentityEvidence as unknown[]).map((entry) => String(entry || "")).filter(Boolean)
+      : [];
+    if (profile.ageBand === "teens" && candidate.source === "googleBooks" && teenPublicationIdentityDecision) {
+      teenPublicationIdentityDecisionByTitle[title] = teenPublicationIdentityDecision;
+      teenPublicationIdentityReasonByTitle[title] = teenPublicationIdentityReason || (teenPublicationIdentityDecision === "passed"
+        ? "teen_googlebooks_publication_identity_passed"
+        : "teen_googlebooks_publication_identity_rejected");
+      teenPublicationIdentityClassificationByTitle[title] = teenPublicationIdentityClassification || "uncertain";
+      teenPublicationIdentityEvidenceByTitle[title] = teenPublicationIdentityEvidence;
+    }
     const teenReconciliationDecision = String(candidate.diagnostics?.teenGoogleBooksAudienceReconciliationDecision || "").trim();
     const teenReconciliationReason = String(candidate.diagnostics?.teenGoogleBooksAudienceReconciliationReason || "").trim();
     const teenReconciliationEvidence = Array.isArray(candidate.diagnostics?.teenGoogleBooksAudienceReconciliationEvidence)
@@ -8369,6 +8621,14 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
         ...teenReconciliationEvidence.map((entry) => `teen_audience_reconciliation_evidence:${entry}`),
       ]
       : [];
+    const teenPublicationIdentityEvidenceMarkers = profile.ageBand === "teens" && candidate.source === "googleBooks" && teenPublicationIdentityDecision
+      ? [
+        `teen_publication_identity:${teenPublicationIdentityDecision}`,
+        `teen_publication_identity_reason:${teenPublicationIdentityReasonByTitle[title] || teenPublicationIdentityReason || "unknown"}`,
+        `teen_publication_identity_classification:${teenPublicationIdentityClassificationByTitle[title] || teenPublicationIdentityClassification || "uncertain"}`,
+        ...teenPublicationIdentityEvidence.map((entry) => `teen_publication_identity_evidence:${entry}`),
+      ]
+      : [];
     if (selectedCandidate) {
       finalEligibilityDecisionByTitle[title] = "accepted";
       finalEligibilityReasonByTitle[title] = acceptedRescueReason ? `${acceptedReason}_via:${acceptedRescueReason}` : acceptedReason;
@@ -8379,7 +8639,7 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
           : `${profile.ageBand}_googlebooks_final_eligibility`;
       finalEligibilityEvidenceByTitle[title] = profile.ageBand === "kids"
         ? kidsFinalEligibilityEvidence
-        : [`requested_deck:${profile.ageBand}`, acceptedRescueReason ? `accepted_rescue:${acceptedRescueReason}` : "named_final_eligibility_passed", ...teenReconciliationEvidenceMarkers];
+        : [`requested_deck:${profile.ageBand}`, acceptedRescueReason ? `accepted_rescue:${acceptedRescueReason}` : "named_final_eligibility_passed", ...teenPublicationIdentityEvidenceMarkers, ...teenReconciliationEvidenceMarkers];
       postRankingGateByTitle[title] = "selected";
       postRankingGateReasonByTitle[title] = acceptedRescueReason || "accepted";
       finalSelectionDecisionByTitle[title] = "selected";
@@ -8397,7 +8657,7 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
             ? (candidate.diagnostics.kidsGoogleBooksCleanFinalGateEvidence as string[]).map((e) => `clean_final_gate:${e}`)
             : []),
         ]
-        : [`requested_deck:${profile.ageBand}`, `named_gate:${gate}`, ...teenReconciliationEvidenceMarkers];
+        : [`requested_deck:${profile.ageBand}`, `named_gate:${gate}`, ...teenPublicationIdentityEvidenceMarkers, ...teenReconciliationEvidenceMarkers];
       postRankingGateByTitle[title] = "final_eligibility";
       postRankingGateReasonByTitle[title] = finalEligibilityFailureReason;
       finalSelectionDecisionByTitle[title] = `not_reached:${gate}`;
@@ -8410,7 +8670,7 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
         : `${profile.ageBand}_googlebooks_final_eligibility`;
       finalEligibilityEvidenceByTitle[title] = profile.ageBand === "kids"
         ? kidsFinalEligibilityEvidence
-        : [`requested_deck:${profile.ageBand}`, "named_final_eligibility_passed", ...teenReconciliationEvidenceMarkers];
+        : [`requested_deck:${profile.ageBand}`, "named_final_eligibility_passed", ...teenPublicationIdentityEvidenceMarkers, ...teenReconciliationEvidenceMarkers];
       const exclusionReason = selectionReason || "ranked_below_final_selection";
       postRankingGateByTitle[title] = nonAdultGoogleBooksSelectionGate(exclusionReason);
       postRankingGateReasonByTitle[title] = exclusionReason;
@@ -8430,6 +8690,10 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
   diagnostics.teenGoogleBooksAudienceReconciliationDecisionByTitle = teenAudienceReconciliationDecisionByTitle;
   diagnostics.teenGoogleBooksAudienceReconciliationReasonByTitle = teenAudienceReconciliationReasonByTitle;
   diagnostics.teenGoogleBooksAudienceReconciliationEvidenceByTitle = teenAudienceReconciliationEvidenceByTitle;
+  diagnostics.teenGoogleBooksPublicationIdentityDecisionByTitle = teenPublicationIdentityDecisionByTitle;
+  diagnostics.teenGoogleBooksPublicationIdentityReasonByTitle = teenPublicationIdentityReasonByTitle;
+  diagnostics.teenGoogleBooksPublicationIdentityClassificationByTitle = teenPublicationIdentityClassificationByTitle;
+  diagnostics.teenGoogleBooksPublicationIdentityEvidenceByTitle = teenPublicationIdentityEvidenceByTitle;
 }
 
 export function selectRecommendations(candidates: ScoredCandidate[], profile: TasteProfile, limit = 10): { selected: ScoredCandidate[]; rejectedReasons: Record<string, number> } {
@@ -8780,6 +9044,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   addMiddleGradesSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addKidsSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addTeenOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
+  addTeenGoogleBooksMeaningfulTasteObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultOpenLibrarySelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultGoogleBooksSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addPreteenGoogleBooksPublicationIdentityObservability(rankedCandidates, selected, rejectedReasons, profile);
