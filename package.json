@@ -41,6 +41,8 @@
     "audit:v2:googlebooks-general-shadow-counterfactual": "node scripts/run-v2-googlebooks-general-shadow-counterfactual.mjs",
     "audit:v2:teen-googlebooks-fallback-root-cause-breakdown": "node scripts/run-v2-teen-googlebooks-fallback-root-cause-breakdown.mjs",
     "audit:v2:teen-googlebooks-expanded-fallback-audit": "node scripts/run-v2-teen-googlebooks-expanded-fallback-audit.mjs",
+    "audit:v2:mystery-primary-query-publication-shape": "node scripts/run-v2-mystery-primary-query-publication-shape-audit.mjs",
+    "audit:v2:mystery-primary-query-abcd": "node scripts/run-v2-mystery-primary-query-abcd-retrieval-experiment.mjs",
     "audit:v2:googlebooks-scifi-production-query-ab": "node scripts/run-v2-googlebooks-scifi-production-query-ab.mjs",
     "audit:v2:googlebooks-recall-efficiency": "node scripts/run-v2-googlebooks-recall-efficiency-diagnostic.mjs",
     "audit:v2:googlebooks-kids-pre-scoring-rejections": "node scripts/run-v2-googlebooks-kids-k2-pre-scoring-rejection-audit.mjs",
