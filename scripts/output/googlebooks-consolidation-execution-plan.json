@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T05:38:16.178Z",
+  "generatedAt": "2026-07-21T06:02:48.785Z",
   "sourceAudit": "googlebooks-behavioral-equivalence-audit.json",
   "summary": {
     "total": 12,
@@ -8,20 +8,20 @@
     "noveltyProofApplied": true,
     "noveltyProofDecision": "noSubstantiveDifference",
     "byBehavioralClass": {
-      "behaviorally_equivalent_duplication": 4,
-      "same_name_different_semantics": 3,
+      "behaviorally_equivalent_duplication": 3,
+      "same_name_different_semantics": 4,
       "truly_shared": 3,
       "age_specific_by_necessity": 1,
       "adult_production_teen_diagnostic": 1
     },
     "byConfidenceState": {
-      "Architectural": 8,
-      "Hypothesis": 3,
+      "Architectural": 7,
+      "Hypothesis": 4,
       "Falsified": 1
     },
     "nextActiveCapability": {
-      "capability": "Canonical cue promotion",
-      "implementationOrder": 203,
+      "capability": "Final slate identity auditing",
+      "implementationOrder": 204,
       "confidenceState": "Architectural",
       "executionStatus": "pending"
     },
@@ -35,34 +35,6 @@
     ]
   },
   "rows": [
-    {
-      "capability": "Canonical cue promotion",
-      "behavioralClass": "behaviorally_equivalent_duplication",
-      "behavioralClassLabel": "Behaviorally equivalent duplication",
-      "expectedRecommendationQualityGain": "Low",
-      "maintenanceGain": "High",
-      "regressionRisk": "Medium",
-      "productionStatus": "adult=production_or_core; teen=production_or_core",
-      "prerequisiteTests": [
-        "run-v2-googlebooks-narrative-strength-ranking-regressions.mjs",
-        "run-v2-googlebooks-final-slate-identity-audit-regressions.mjs"
-      ],
-      "proposedSharedPrimitive": "promoteCanonicalNarrativeCues({ extractedSignals, profile, policy })",
-      "agePolicyConfigurationRequired": "Family vocabulary and cue polarity map per age band.",
-      "implementationOrder": 203,
-      "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
-      "recommendation": "Extract shared primitive and parametrize age policy",
-      "stage": "scoring/family mapping",
-      "effectSurface": "family weighting and diagnostics",
-      "preflightCheckpoint": null,
-      "executionStatus": "pending",
-      "active": true,
-      "confidenceState": "Architectural",
-      "behaviorChange": "unknown",
-      "parityVerified": false,
-      "parityBaselineSignature": null,
-      "implementationCommit": null
-    },
     {
       "capability": "Final slate identity auditing",
       "behavioralClass": "behaviorally_equivalent_duplication",
@@ -89,7 +61,8 @@
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
-      "implementationCommit": null
+      "implementationCommit": null,
+      "reclassificationEvidence": null
     },
     {
       "capability": "Counterfactual final slate",
@@ -118,7 +91,41 @@
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
-      "implementationCommit": null
+      "implementationCommit": null,
+      "reclassificationEvidence": null
+    },
+    {
+      "capability": "Canonical cue promotion",
+      "behavioralClass": "same_name_different_semantics",
+      "behavioralClassLabel": "Same name, different semantics",
+      "expectedRecommendationQualityGain": "Medium",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-narrative-strength-ranking-regressions.mjs",
+        "run-v2-googlebooks-final-slate-identity-audit-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "promoteCanonicalNarrativeCues({ extractedSignals, profile, policy })",
+      "agePolicyConfigurationRequired": "Family vocabulary and cue polarity map per age band.",
+      "implementationOrder": 303,
+      "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
+      "recommendation": "Reclassified by #203 equivalence gate: define shared interface/mechanism only; do not force parity-preserving consolidation.",
+      "stage": "scoring/family mapping",
+      "effectSurface": "family weighting and diagnostics",
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true,
+      "confidenceState": "Hypothesis",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null,
+      "reclassificationEvidence": {
+        "gateArtifact": "googlebooks-203-canonical-cue-equivalence-gate.json",
+        "gateDecision": "materially_different_behavior_reclassify",
+        "rationale": "Adult has production canonical-family promotion with explicit promotion decisions; Teen exposes document-native specific signals without canonical-promotion diagnostics/mechanism."
+      }
     },
     {
       "capability": "Query quality comparison",
@@ -147,7 +154,8 @@
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
-      "implementationCommit": null
+      "implementationCommit": null,
+      "reclassificationEvidence": null
     },
     {
       "capability": "Family-scoped query competition",
@@ -176,7 +184,8 @@
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
-      "implementationCommit": null
+      "implementationCommit": null,
+      "reclassificationEvidence": null
     },
     {
       "capability": "Marginal decision-worthy yield",
@@ -204,7 +213,8 @@
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
-      "implementationCommit": null
+      "implementationCommit": null,
+      "reclassificationEvidence": null
     },
     {
       "capability": "Query promotion / replacement",
@@ -232,7 +242,8 @@
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
-      "implementationCommit": null
+      "implementationCommit": null,
+      "reclassificationEvidence": null
     },
     {
       "capability": "Narrative-strength scoring",
@@ -260,7 +271,8 @@
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
-      "implementationCommit": null
+      "implementationCommit": null,
+      "reclassificationEvidence": null
     },
     {
       "capability": "Meaningful taste tiers",
@@ -289,7 +301,8 @@
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
-      "implementationCommit": null
+      "implementationCommit": null,
+      "reclassificationEvidence": null
     },
     {
       "capability": "Adult content weighting branch",
@@ -318,7 +331,8 @@
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
-      "implementationCommit": null
+      "implementationCommit": null,
+      "reclassificationEvidence": null
     },
     {
       "capability": "Evidence-origin reconciliation audit",
@@ -363,7 +377,8 @@
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
-      "implementationCommit": null
+      "implementationCommit": null,
+      "reclassificationEvidence": null
     },
     {
       "capability": "Semantic phrase extraction",
@@ -392,7 +407,8 @@
       "behaviorChange": "none",
       "parityVerified": true,
       "parityBaselineSignature": "bcea3ee2e21ffbee",
-      "implementationCommit": "8a9f6f03cfdf20ee0653681864b6f0c9f6927520"
+      "implementationCommit": "8a9f6f03cfdf20ee0653681864b6f0c9f6927520",
+      "reclassificationEvidence": null
     }
   ]
 }

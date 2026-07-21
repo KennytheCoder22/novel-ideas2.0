@@ -40,6 +40,12 @@ const parity202Verified = parity202?.verdict === "PARITY_PASSED"
   && Number(parity202?.failedChecks || 0) === 0
   && parityBaseline?.baselineComplete === true
   && parity202Signature === "bcea3ee2e21ffbee";
+const cue203GatePath = resolve(outDir, "googlebooks-203-canonical-cue-equivalence-gate.json");
+const cue203Gate = existsSync(cue203GatePath)
+  ? JSON.parse(readFileSync(cue203GatePath, "utf8"))
+  : null;
+const cue203Decision = String(cue203Gate?.decision?.decision || "");
+const cue203Reclassify = cue203Decision === "materially_different_behavior_reclassify";
 
 function confidenceStateForRow(row) {
   if (row.executionStatus === "closed_falsified") return "Falsified";
@@ -242,6 +248,9 @@ const capabilityOverrides = {
 };
 
 const planRows = rows.map((r) => {
+  const effectiveBehavioralClass = r.capability === "Canonical cue promotion" && cue203Reclassify
+    ? "same_name_different_semantics"
+    : r.behavioralClassification;
   const base = classDefaults[r.behavioralClassification] || {
     expectedRecommendationQualityGain: "Unknown",
     maintenanceGain: "Unknown",
@@ -251,7 +260,11 @@ const planRows = rows.map((r) => {
   const ov = capabilityOverrides[r.capability] || {};
   const noveltyGate = capabilityNoveltyGate[r.capability] || null;
 
-  const implementationOrder = (classOrder[r.behavioralClassification] || 999) * 100 + Number(ov.implementationOrderHint || 50);
+  const effectiveBase = classDefaults[effectiveBehavioralClass] || base;
+  const implementationOrderHint = r.capability === "Canonical cue promotion" && cue203Reclassify
+    ? 3
+    : Number(ov.implementationOrderHint || 50);
+  const implementationOrder = (classOrder[effectiveBehavioralClass] || 999) * 100 + implementationOrderHint;
 
   const is101 = r.capability === "Evidence-origin reconciliation audit";
   const closedFalsified = is101 && noveltyCloses101;
@@ -260,13 +273,13 @@ const planRows = rows.map((r) => {
 
   return {
     capability: r.capability,
-    behavioralClass: r.behavioralClassification,
-    behavioralClassLabel: classLabel[r.behavioralClassification] || r.behavioralClassification,
+    behavioralClass: effectiveBehavioralClass,
+    behavioralClassLabel: classLabel[effectiveBehavioralClass] || effectiveBehavioralClass,
     expectedRecommendationQualityGain: closedFalsified
       ? "None (falsified)"
-      : (ov.expectedRecommendationQualityGain || base.expectedRecommendationQualityGain),
-    maintenanceGain: ov.maintenanceGain || base.maintenanceGain,
-    regressionRisk: ov.regressionRisk || base.regressionRisk,
+      : (ov.expectedRecommendationQualityGain || effectiveBase.expectedRecommendationQualityGain),
+    maintenanceGain: ov.maintenanceGain || effectiveBase.maintenanceGain,
+    regressionRisk: ov.regressionRisk || effectiveBase.regressionRisk,
     productionStatus: `adult=${r.productionStatus?.adult || "unknown"}; teen=${r.productionStatus?.teen || "unknown"}`,
     prerequisiteTests: ov.prerequisiteTests || [
       "run-v2-googlebooks-final-eligibility-regressions.mjs",
@@ -277,10 +290,12 @@ const planRows = rows.map((r) => {
     implementationOrder,
     acceptanceCriteria: closedFalsified
       ? "Not applicable. Closed by Phase 0 novelty proof (noSubstantiveDifference)."
-      : (ov.acceptanceCriteria || base.acceptanceCriteria),
+      : (ov.acceptanceCriteria || effectiveBase.acceptanceCriteria),
     recommendation: closedFalsified
       ? "Closed/falsified. Skip implementation and proceed to first parity-preserving consolidation."
-      : r.recommendation,
+      : r.capability === "Canonical cue promotion" && cue203Reclassify
+        ? "Reclassified by #203 equivalence gate: define shared interface/mechanism only; do not force parity-preserving consolidation."
+        : r.recommendation,
     stage: r.stage,
     effectSurface: r.effectSurface,
     preflightCheckpoint: noveltyGate,
@@ -296,6 +311,13 @@ const planRows = rows.map((r) => {
     parityBaselineSignature: is202 ? parity202Signature || null : null,
     implementationCommit: completed202
       ? (String(parity202?.candidateCommit || "").trim() || null)
+      : null,
+    reclassificationEvidence: r.capability === "Canonical cue promotion"
+      ? {
+          gateArtifact: existsSync(cue203GatePath) ? "googlebooks-203-canonical-cue-equivalence-gate.json" : null,
+          gateDecision: cue203Decision || null,
+          rationale: cue203Gate?.decision?.rationale || null,
+        }
       : null,
   };
 });

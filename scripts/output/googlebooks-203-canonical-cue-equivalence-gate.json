@@ -1,0 +1,955 @@
+{
+  "generatedAt": "2026-07-21T06:02:26.698Z",
+  "capability": "#203 Canonical cue promotion",
+  "inventory": {
+    "sourcePath": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\app\\recommender-v2\\select.ts",
+    "hasAdultPromotionFunction": true,
+    "hasAdultAgeGuard": true,
+    "hasTeenCanonicalPromotionFunction": false,
+    "hasTeenCanonicalPromotionDiagnostics": false,
+    "adultCueDefinitionApproxCount": 62,
+    "adultCanonicalCueSetSize": 20,
+    "adultUsesFields": [
+      "title",
+      "subtitle",
+      "categories",
+      "genres",
+      "description (filtered segments)"
+    ],
+    "teenExposedSignalsField": "teenGoogleBooksDocumentNativeSpecificSignalsByTitle"
+  },
+  "aggregate": {
+    "fixtureCount": 10,
+    "adultCasesWithPromotionEvidence": 8,
+    "adultCasesWithAppliedPromotion": 3,
+    "adultCasesWithEligibilityChangeByPromotion": 7,
+    "adultCasesWithMeaningfulAlignmentChangeByPromotion": 0,
+    "teenCasesWithCanonicalPromotionDiagnostics": 0,
+    "teenCasesWithDocumentNativeSpecificSignals": 6
+  },
+  "fixtureRows": [
+    {
+      "caseId": "cue-present-description",
+      "label": "canonical cue present and mapped",
+      "cueSituation": "canonical cue present and mapped",
+      "adult": {
+        "promotionFamilies": [],
+        "promotionFields": [
+          "categories",
+          "genres",
+          "description"
+        ],
+        "promotionPhrases": [
+          "mystery",
+          "thriller",
+          "suspense",
+          "detective",
+          "investigation",
+          "murder"
+        ],
+        "promotionDecisionCount": 12,
+        "promotionApplied": false,
+        "meaningfulTastePassed": true,
+        "finalEligibilityDecision": "accepted",
+        "eligibilityChangedByPromotion": true,
+        "meaningfulAlignmentChangedByPromotion": false,
+        "promotionDecisions": [
+          {
+            "phrase": "mystery",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "mystery",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "mystery",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "thriller",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "thriller",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "suspense",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "suspense",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "detective",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "detective",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "detective",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "investigation",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "murder",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          }
+        ]
+      },
+      "teen": {
+        "hasCanonicalPromotionDiagnostics": false,
+        "signalFields": {
+          "mystery": [
+            "description"
+          ],
+          "thriller": [],
+          "detective": [
+            "description"
+          ],
+          "book": []
+        },
+        "documentNativeSpecificSignals": [
+          "mystery",
+          "detective"
+        ],
+        "meaningfulClassification": "strong_match",
+        "finalEligibilityDecision": "accepted"
+      }
+    },
+    {
+      "caseId": "cue-absent",
+      "label": "canonical cue absent",
+      "cueSituation": "canonical cue absent",
+      "adult": {
+        "promotionFamilies": [
+          "drama_contemporary"
+        ],
+        "promotionFields": [
+          "categories",
+          "genres"
+        ],
+        "promotionPhrases": [
+          "literary"
+        ],
+        "promotionDecisionCount": 2,
+        "promotionApplied": true,
+        "meaningfulTastePassed": false,
+        "finalEligibilityDecision": "rejected",
+        "eligibilityChangedByPromotion": false,
+        "meaningfulAlignmentChangedByPromotion": false,
+        "promotionDecisions": [
+          {
+            "phrase": "literary",
+            "expectedFamily": "drama_contemporary",
+            "promotedAs": "none",
+            "productionPolarity": "not_profile_family",
+            "applied": true,
+            "decision": "promoted_candidate_family_without_profile_polarity",
+            "meaningfulAlignmentBefore": "failed:no_document_backed_liked_signals",
+            "meaningfulAlignmentAfter": "failed:no_document_backed_liked_signals",
+            "finalEligibilityBefore": "rejected:adult_googlebooks_missing_meaningful_document_taste_alignment",
+            "finalEligibilityAfter": "rejected:adult_googlebooks_missing_meaningful_document_taste_alignment"
+          },
+          {
+            "phrase": "literary",
+            "expectedFamily": "drama_contemporary",
+            "promotedAs": "none",
+            "productionPolarity": "not_profile_family",
+            "applied": false,
+            "decision": "not_promoted_family_already_promoted_by_another_cue",
+            "meaningfulAlignmentBefore": "failed:no_document_backed_liked_signals",
+            "meaningfulAlignmentAfter": "failed:no_document_backed_liked_signals",
+            "finalEligibilityBefore": "rejected:adult_googlebooks_missing_meaningful_document_taste_alignment",
+            "finalEligibilityAfter": "rejected:adult_googlebooks_missing_meaningful_document_taste_alignment"
+          }
+        ]
+      },
+      "teen": {
+        "hasCanonicalPromotionDiagnostics": false,
+        "signalFields": {
+          "book": []
+        },
+        "documentNativeSpecificSignals": [],
+        "meaningfulClassification": "query_supported_but_weak",
+        "finalEligibilityDecision": "accepted"
+      }
+    },
+    {
+      "caseId": "cue-ambiguous",
+      "label": "ambiguous cue",
+      "cueSituation": "ambiguous cue",
+      "adult": {
+        "promotionFamilies": [],
+        "promotionFields": [],
+        "promotionPhrases": [],
+        "promotionDecisionCount": 0,
+        "promotionApplied": false,
+        "meaningfulTastePassed": false,
+        "finalEligibilityDecision": "rejected",
+        "eligibilityChangedByPromotion": false,
+        "meaningfulAlignmentChangedByPromotion": false,
+        "promotionDecisions": []
+      },
+      "teen": {
+        "hasCanonicalPromotionDiagnostics": false,
+        "signalFields": {
+          "book": []
+        },
+        "documentNativeSpecificSignals": [],
+        "meaningfulClassification": "query_supported_but_weak",
+        "finalEligibilityDecision": "accepted"
+      }
+    },
+    {
+      "caseId": "cue-negated",
+      "label": "negated cue",
+      "cueSituation": "negated cue",
+      "adult": {
+        "promotionFamilies": [
+          "drama_contemporary"
+        ],
+        "promotionFields": [
+          "description",
+          "title",
+          "categories",
+          "genres"
+        ],
+        "promotionPhrases": [
+          "mystery",
+          "thriller",
+          "literary"
+        ],
+        "promotionDecisionCount": 5,
+        "promotionApplied": true,
+        "meaningfulTastePassed": true,
+        "finalEligibilityDecision": "accepted",
+        "eligibilityChangedByPromotion": true,
+        "meaningfulAlignmentChangedByPromotion": false,
+        "promotionDecisions": [
+          {
+            "phrase": "mystery",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "thriller",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "thriller",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "literary",
+            "expectedFamily": "drama_contemporary",
+            "promotedAs": "none",
+            "productionPolarity": "not_profile_family",
+            "applied": true,
+            "decision": "promoted_candidate_family_without_profile_polarity",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "literary",
+            "expectedFamily": "drama_contemporary",
+            "promotedAs": "none",
+            "productionPolarity": "not_profile_family",
+            "applied": false,
+            "decision": "not_promoted_family_already_promoted_by_another_cue",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          }
+        ]
+      },
+      "teen": {
+        "hasCanonicalPromotionDiagnostics": false,
+        "signalFields": {
+          "thriller": [
+            "description"
+          ],
+          "mystery": [
+            "description"
+          ],
+          "book": []
+        },
+        "documentNativeSpecificSignals": [
+          "thriller",
+          "mystery"
+        ],
+        "meaningfulClassification": "strong_match",
+        "finalEligibilityDecision": "accepted"
+      }
+    },
+    {
+      "caseId": "cue-title",
+      "label": "cue in title",
+      "cueSituation": "cue in title",
+      "adult": {
+        "promotionFamilies": [],
+        "promotionFields": [
+          "title"
+        ],
+        "promotionPhrases": [
+          "murder"
+        ],
+        "promotionDecisionCount": 1,
+        "promotionApplied": false,
+        "meaningfulTastePassed": true,
+        "finalEligibilityDecision": "accepted",
+        "eligibilityChangedByPromotion": true,
+        "meaningfulAlignmentChangedByPromotion": false,
+        "promotionDecisions": [
+          {
+            "phrase": "murder",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override"
+          }
+        ]
+      },
+      "teen": {
+        "hasCanonicalPromotionDiagnostics": false,
+        "signalFields": {
+          "mystery": [
+            "description"
+          ],
+          "murder": [],
+          "book": []
+        },
+        "documentNativeSpecificSignals": [
+          "mystery"
+        ],
+        "meaningfulClassification": "strong_match",
+        "finalEligibilityDecision": "accepted"
+      }
+    },
+    {
+      "caseId": "cue-subtitle",
+      "label": "cue in subtitle",
+      "cueSituation": "cue in subtitle",
+      "adult": {
+        "promotionFamilies": [],
+        "promotionFields": [
+          "subtitle"
+        ],
+        "promotionPhrases": [
+          "suspense"
+        ],
+        "promotionDecisionCount": 1,
+        "promotionApplied": false,
+        "meaningfulTastePassed": true,
+        "finalEligibilityDecision": "accepted",
+        "eligibilityChangedByPromotion": true,
+        "meaningfulAlignmentChangedByPromotion": false,
+        "promotionDecisions": [
+          {
+            "phrase": "suspense",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override"
+          }
+        ]
+      },
+      "teen": {
+        "hasCanonicalPromotionDiagnostics": false,
+        "signalFields": {
+          "suspense": [],
+          "book": []
+        },
+        "documentNativeSpecificSignals": [],
+        "meaningfulClassification": "query_supported_but_weak",
+        "finalEligibilityDecision": "accepted"
+      }
+    },
+    {
+      "caseId": "cue-categories",
+      "label": "cue in category",
+      "cueSituation": "cue in category",
+      "adult": {
+        "promotionFamilies": [],
+        "promotionFields": [
+          "categories",
+          "genres"
+        ],
+        "promotionPhrases": [
+          "mystery",
+          "thriller",
+          "suspense",
+          "detective"
+        ],
+        "promotionDecisionCount": 8,
+        "promotionApplied": false,
+        "meaningfulTastePassed": true,
+        "finalEligibilityDecision": "accepted",
+        "eligibilityChangedByPromotion": true,
+        "meaningfulAlignmentChangedByPromotion": false,
+        "promotionDecisions": [
+          {
+            "phrase": "mystery",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "mystery",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "thriller",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "thriller",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "suspense",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "suspense",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "detective",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "detective",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          }
+        ]
+      },
+      "teen": {
+        "hasCanonicalPromotionDiagnostics": false,
+        "signalFields": {
+          "thriller": [],
+          "mystery": [],
+          "book": []
+        },
+        "documentNativeSpecificSignals": [],
+        "meaningfulClassification": "query_supported_but_weak",
+        "finalEligibilityDecision": "accepted"
+      }
+    },
+    {
+      "caseId": "cue-multiple-competing",
+      "label": "multiple competing cues",
+      "cueSituation": "multiple competing cues",
+      "adult": {
+        "promotionFamilies": [
+          "mystery_crime_thriller",
+          "horror_paranormal"
+        ],
+        "promotionFields": [
+          "description",
+          "categories",
+          "genres"
+        ],
+        "promotionPhrases": [
+          "murder",
+          "supernatural",
+          "historical",
+          "romance"
+        ],
+        "promotionDecisionCount": 8,
+        "promotionApplied": true,
+        "meaningfulTastePassed": true,
+        "finalEligibilityDecision": "accepted",
+        "eligibilityChangedByPromotion": true,
+        "meaningfulAlignmentChangedByPromotion": false,
+        "promotionDecisions": [
+          {
+            "phrase": "murder",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": true,
+            "decision": "promoted_canonical_narrative_family",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override"
+          },
+          {
+            "phrase": "supernatural",
+            "expectedFamily": "horror_paranormal",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": true,
+            "decision": "promoted_canonical_narrative_family",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override"
+          },
+          {
+            "phrase": "historical",
+            "expectedFamily": "historical",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override"
+          },
+          {
+            "phrase": "historical",
+            "expectedFamily": "historical",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override"
+          },
+          {
+            "phrase": "historical",
+            "expectedFamily": "historical",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override"
+          },
+          {
+            "phrase": "romance",
+            "expectedFamily": "romance",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override"
+          },
+          {
+            "phrase": "romance",
+            "expectedFamily": "romance",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override"
+          },
+          {
+            "phrase": "romance",
+            "expectedFamily": "romance",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed_with_strong_narrative_override"
+          }
+        ]
+      },
+      "teen": {
+        "hasCanonicalPromotionDiagnostics": false,
+        "signalFields": {
+          "romance": [
+            "description"
+          ],
+          "historical": [
+            "description"
+          ],
+          "book": []
+        },
+        "documentNativeSpecificSignals": [
+          "romance",
+          "historical"
+        ],
+        "meaningfulClassification": "strong_match",
+        "finalEligibilityDecision": "accepted"
+      }
+    },
+    {
+      "caseId": "cue-already-present-family",
+      "label": "already-present family evidence",
+      "cueSituation": "already-present family evidence",
+      "adult": {
+        "promotionFamilies": [],
+        "promotionFields": [
+          "categories",
+          "genres",
+          "description",
+          "title"
+        ],
+        "promotionPhrases": [
+          "mystery",
+          "thriller",
+          "detective"
+        ],
+        "promotionDecisionCount": 7,
+        "promotionApplied": false,
+        "meaningfulTastePassed": true,
+        "finalEligibilityDecision": "accepted",
+        "eligibilityChangedByPromotion": true,
+        "meaningfulAlignmentChangedByPromotion": false,
+        "promotionDecisions": [
+          {
+            "phrase": "mystery",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "mystery",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "thriller",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "detective",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "detective",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "detective",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          },
+          {
+            "phrase": "detective",
+            "expectedFamily": "mystery_crime_thriller",
+            "promotedAs": "liked",
+            "productionPolarity": "binary_liked",
+            "applied": false,
+            "decision": "not_promoted_family_already_extracted",
+            "meaningfulAlignmentBefore": "passed:positive_net_liked_family_document_backed",
+            "meaningfulAlignmentAfter": "passed:positive_net_liked_family_document_backed",
+            "finalEligibilityBefore": "not_blocked_by_meaningful_alignment_before_promotion",
+            "finalEligibilityAfter": "accepted:adult_googlebooks_minimal_final_gate_passed"
+          }
+        ]
+      },
+      "teen": {
+        "hasCanonicalPromotionDiagnostics": false,
+        "signalFields": {
+          "detective": [
+            "description"
+          ],
+          "thriller": [
+            "description"
+          ],
+          "mystery": [
+            "description"
+          ],
+          "book": []
+        },
+        "documentNativeSpecificSignals": [
+          "detective",
+          "thriller",
+          "mystery"
+        ],
+        "meaningfulClassification": "strong_match",
+        "finalEligibilityDecision": "accepted"
+      }
+    },
+    {
+      "caseId": "cue-eligibility-change-or-diagnostic-only",
+      "label": "promotion changes eligibility or remains diagnostic-only",
+      "cueSituation": "promotion changes eligibility or diagnostic-only",
+      "adult": {
+        "promotionFamilies": [],
+        "promotionFields": [],
+        "promotionPhrases": [],
+        "promotionDecisionCount": 0,
+        "promotionApplied": false,
+        "meaningfulTastePassed": false,
+        "finalEligibilityDecision": "rejected",
+        "eligibilityChangedByPromotion": false,
+        "meaningfulAlignmentChangedByPromotion": false,
+        "promotionDecisions": []
+      },
+      "teen": {
+        "hasCanonicalPromotionDiagnostics": false,
+        "signalFields": {
+          "conspiracy": [
+            "description"
+          ],
+          "book": []
+        },
+        "documentNativeSpecificSignals": [
+          "conspiracy"
+        ],
+        "meaningfulClassification": "strong_match",
+        "finalEligibilityDecision": "accepted"
+      }
+    }
+  ],
+  "decision": {
+    "decision": "materially_different_behavior_reclassify",
+    "recommendation": "Do not consolidate #203 as equivalent duplication; treat as shared-mechanism/different-policy or reclassify.",
+    "rationale": "Adult has production canonical-family promotion with explicit promotion decisions; Teen exposes document-native specific signals without canonical-promotion diagnostics/mechanism."
+  },
+  "equivalenceAnswer": "genuinely different behavior (Adult production promotion vs Teen signal classification)"
+}

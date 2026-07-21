@@ -1,0 +1,11 @@
+caseId,label,cueSituation,adultPromotionDecisionCount,adultPromotionApplied,adultMeaningfulTastePassed,adultFinalEligibilityDecision,adultEligibilityChangedByPromotion,adultMeaningfulAlignmentChangedByPromotion,teenHasCanonicalPromotionDiagnostics,teenDocumentNativeSpecificSignalsCount,teenMeaningfulClassification,teenFinalEligibilityDecision
+cue-present-description,"canonical cue present and mapped","canonical cue present and mapped",12,false,true,"accepted",true,false,false,2,"strong_match","accepted"
+cue-absent,"canonical cue absent","canonical cue absent",2,true,false,"rejected",false,false,false,0,"query_supported_but_weak","accepted"
+cue-ambiguous,"ambiguous cue","ambiguous cue",0,false,false,"rejected",false,false,false,0,"query_supported_but_weak","accepted"
+cue-negated,"negated cue","negated cue",5,true,true,"accepted",true,false,false,2,"strong_match","accepted"
+cue-title,"cue in title","cue in title",1,false,true,"accepted",true,false,false,1,"strong_match","accepted"
+cue-subtitle,"cue in subtitle","cue in subtitle",1,false,true,"accepted",true,false,false,0,"query_supported_but_weak","accepted"
+cue-categories,"cue in category","cue in category",8,false,true,"accepted",true,false,false,0,"query_supported_but_weak","accepted"
+cue-multiple-competing,"multiple competing cues","multiple competing cues",8,true,true,"accepted",true,false,false,2,"strong_match","accepted"
+cue-already-present-family,"already-present family evidence","already-present family evidence",7,false,true,"accepted",true,false,false,3,"strong_match","accepted"
+cue-eligibility-change-or-diagnostic-only,"promotion changes eligibility or remains diagnostic-only","promotion changes eligibility or diagnostic-only",0,false,false,"rejected",false,false,false,1,"strong_match","accepted"
