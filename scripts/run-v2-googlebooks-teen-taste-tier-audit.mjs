@@ -179,16 +179,18 @@ for (const reportPath of reportPaths) {
   strongOrSecondaryAvailableCounts.push(safeStrong);
   counterfactualFinalCounts.push(safeFinalCount);
 
+  const weakUnderfillTitles = counterfactualFinalTitles.filter((t) => weakUnderfillByTitle[t] === true);
+  const weakFallbackUsed = weakUnderfillTitles.length > 0;
+
   if (safeFinalCount === 0) {
     fullyStarvedSessions += 1;
-  } else if (safeUnderfill) {
+  } else if (weakFallbackUsed) {
     underfillRequiredSessions += 1;
   } else {
     noUnderfillNeededSessions += 1;
   }
 
-  const weakUnderfillTitles = counterfactualFinalTitles.filter((t) => weakUnderfillByTitle[t] === true);
-  if (safeUnderfill) {
+  if (weakFallbackUsed) {
     underfillWeakCountsWhenUsed.push(weakUnderfillTitles.length);
   }
 
@@ -362,7 +364,7 @@ for (const r of perReport) {
   const strong = Number(hist.strong_match || 0);
   const secondary = Number(hist.defensible_secondary_match || 0);
   const weak = Number(hist.query_supported_but_weak || 0);
-  const underfillMark = r.counterfactualUnderfill ? " ⚠ underfill" : "";
+  const underfillMark = r.weakUnderfillTitles.length > 0 ? " [weak fallback]" : (r.counterfactualUnderfill ? " [underfill]" : "");
   console.log(
     `  [${r.presetTestName}] final=${r.counterfactualFinalCount} strong=${strong} secondary=${secondary} weak=${weak}` +
     ` strongOrSec=${r.strongOrSecondaryAvailableCount}${underfillMark}`,
@@ -461,8 +463,8 @@ for (const r of perReport) {
     history.lifetimeCounts.sessions += 1;
     if (r.teenGbCandidatesFound) {
       history.lifetimeCounts.teenGbSessions += 1;
-      if (r.counterfactualUnderfill) history.lifetimeCounts.underfillRequiredSessions += 1;
-      else if (r.counterfactualFinalCount === 0) history.lifetimeCounts.fullyStarvedSessions += 1;
+      if (r.counterfactualFinalCount === 0) history.lifetimeCounts.fullyStarvedSessions += 1;
+      else if ((r.weakUnderfillTitles || []).length > 0) history.lifetimeCounts.underfillRequiredSessions += 1;
       else history.lifetimeCounts.noUnderfillNeededSessions += 1;
     }
     newObs += 1;
@@ -507,3 +509,8 @@ console.log(`  Lifetime underfill-required: ${history.lifetimeCounts.underfillRe
 console.log(`  Lifetime no-underfill-needed: ${history.lifetimeCounts.noUnderfillNeededSessions}`);
 console.log(`  Lifetime unique titles: ${history.lifetimeCounts.uniqueTitlesObserved}`);
 console.log(`  Lifetime weak underfill occurrences: ${history.lifetimeCounts.totalWeakUnderfillOccurrences}`);
+
+
+
+
+

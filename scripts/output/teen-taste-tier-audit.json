@@ -1,32 +1,35 @@
 {
-  "generatedAt": "2026-07-20T23:36:42.798Z",
+  "generatedAt": "2026-07-21T00:18:24.031Z",
   "inputs": [
     "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
     "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
-    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt"
   ],
   "aggregate": {
-    "totalSessionsAnalyzed": 3,
-    "teenGbSessions": 3,
+    "totalSessionsAnalyzed": 6,
+    "teenGbSessions": 6,
     "sessionBreakdown": {
-      "underfillNotNeeded": 2,
-      "underfillRequired": 1,
+      "underfillNotNeeded": 1,
+      "underfillRequired": 5,
       "fullyStarved": 0
     },
     "sessionPercentages": {
-      "underfillNotNeededPct": 66.7,
-      "underfillRequiredPct": 33.3,
+      "underfillNotNeededPct": 16.7,
+      "underfillRequiredPct": 83.3,
       "fullyStarvedPct": 0
     },
     "averages": {
-      "avgStrongOrSecondaryAvailable": 2.67,
-      "avgCounterfactualFinalCount": 4.67,
-      "avgWeakUnderfillCountWhenRequired": 2
+      "avgStrongOrSecondaryAvailable": 3.67,
+      "avgCounterfactualFinalCount": 4.83,
+      "avgWeakUnderfillCountWhenRequired": 1.8
     },
     "candidateClassificationCounts": {
-      "strong_match": 1,
-      "defensible_secondary_match": 7,
-      "query_supported_but_weak": 11,
+      "strong_match": 6,
+      "defensible_secondary_match": 16,
+      "query_supported_but_weak": 17,
       "unrelated": 0,
       "actively_conflicting": 0,
       "excluded_non_taste": 2
@@ -54,6 +57,18 @@
       },
       {
         "title": "Crowned (A Conyza Bennett story, Book 3)",
+        "count": 1
+      },
+      {
+        "title": "Wolfborn",
+        "count": 1
+      },
+      {
+        "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+        "count": 1
+      },
+      {
+        "title": "Starclimber",
         "count": 1
       }
     ],
@@ -362,9 +377,400 @@
           "inCounterfactualFinal": false
         }
       ]
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "deckKey": "ms_hs",
+      "teenGbCandidatesFound": true,
+      "strongOrSecondaryAvailableCount": 4,
+      "counterfactualFinalCount": 5,
+      "counterfactualUnderfill": false,
+      "weakUnderfillTitles": [
+        "Wolfborn"
+      ],
+      "counterfactualFinalTitles": [
+        "Chain of Thorns",
+        "The Unbeatable Lily Hong",
+        "Starclimber",
+        "The Sky in Silver Lace: Text Classics",
+        "Wolfborn"
+      ],
+      "classificationHistogram": {
+        "defensible_secondary_match": 4,
+        "query_supported_but_weak": 3
+      },
+      "rows": [
+        {
+          "title": "Chain of Thorns",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 15.253,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "The Unbeatable Lily Hong",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 14.35,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Starclimber",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 12.819,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Wolfborn",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_weak_underfill_fallback",
+          "classification": "query_supported_but_weak",
+          "netScore": 13.669,
+          "usedAsUnderfill": true,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Waer",
+          "decision": "excluded_from_counterfactual_final",
+          "reason": "weak_not_needed_after_higher_ranked_weak_underfill",
+          "classification": "query_supported_but_weak",
+          "netScore": 12.544,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        },
+        {
+          "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+          "decision": "excluded_from_counterfactual_final",
+          "reason": "weak_not_needed_after_higher_ranked_weak_underfill",
+          "classification": "query_supported_but_weak",
+          "netScore": 11.916,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        },
+        {
+          "title": "The Sky in Silver Lace: Text Classics",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 12.191,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        }
+      ]
+    },
+    {
+      "report": "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+      "presetTestName": "Test B",
+      "deckKey": "ms_hs",
+      "teenGbCandidatesFound": true,
+      "strongOrSecondaryAvailableCount": 7,
+      "counterfactualFinalCount": 5,
+      "counterfactualUnderfill": false,
+      "weakUnderfillTitles": [],
+      "counterfactualFinalTitles": [
+        "The Unbeatable Lily Hong",
+        "To The Wild Sky: Text Classics",
+        "Waer",
+        "Starclimber",
+        "The Red Queen: The Obernewtyn Chronicles Volume 7"
+      ],
+      "classificationHistogram": {
+        "strong_match": 5,
+        "defensible_secondary_match": 2
+      },
+      "rows": [
+        {
+          "title": "The Unbeatable Lily Hong",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_strong_match_priority",
+          "classification": "strong_match",
+          "netScore": 14.819,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "To The Wild Sky: Text Classics",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_strong_match_priority",
+          "classification": "strong_match",
+          "netScore": 13.837,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Chain of Thorns",
+          "decision": "excluded_from_counterfactual_final",
+          "reason": "secondary_ranked_below_counterfactual_capacity",
+          "classification": "defensible_secondary_match",
+          "netScore": 13.916,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        },
+        {
+          "title": "Waer",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_strong_match_priority",
+          "classification": "strong_match",
+          "netScore": 12.216,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Starclimber",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_strong_match_priority",
+          "classification": "strong_match",
+          "netScore": 10.462,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Wolfborn",
+          "decision": "excluded_from_counterfactual_final",
+          "reason": "secondary_ranked_below_counterfactual_capacity",
+          "classification": "defensible_secondary_match",
+          "netScore": 11.313,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        },
+        {
+          "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_strong_match_priority",
+          "classification": "strong_match",
+          "netScore": 10.462,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        }
+      ]
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "deckKey": "ms_hs",
+      "teenGbCandidatesFound": true,
+      "strongOrSecondaryAvailableCount": 3,
+      "counterfactualFinalCount": 5,
+      "counterfactualUnderfill": false,
+      "weakUnderfillTitles": [
+        "The Red Queen: The Obernewtyn Chronicles Volume 7",
+        "Starclimber"
+      ],
+      "counterfactualFinalTitles": [
+        "Chain of Thorns",
+        "The Unbeatable Lily Hong",
+        "Wolfborn",
+        "The Red Queen: The Obernewtyn Chronicles Volume 7",
+        "Starclimber"
+      ],
+      "classificationHistogram": {
+        "defensible_secondary_match": 3,
+        "query_supported_but_weak": 3
+      },
+      "rows": [
+        {
+          "title": "Chain of Thorns",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 13.559,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "The Unbeatable Lily Hong",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 11.859,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_weak_underfill_fallback",
+          "classification": "query_supported_but_weak",
+          "netScore": 11.559,
+          "usedAsUnderfill": true,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Wolfborn",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_defensible_secondary_after_strong",
+          "classification": "defensible_secondary_match",
+          "netScore": 11.009,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Starclimber",
+          "decision": "selected_in_counterfactual_final",
+          "reason": "selected_weak_underfill_fallback",
+          "classification": "query_supported_but_weak",
+          "netScore": 9.309,
+          "usedAsUnderfill": true,
+          "inCounterfactualFinal": true
+        },
+        {
+          "title": "Waer",
+          "decision": "excluded_from_counterfactual_final",
+          "reason": "weak_not_needed_after_higher_ranked_weak_underfill",
+          "classification": "query_supported_but_weak",
+          "netScore": 8.184,
+          "usedAsUnderfill": false,
+          "inCounterfactualFinal": false
+        }
+      ]
     }
   ],
   "allCandidates": [
+    {
+      "title": "Chain of Thorns",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+        "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+        "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt"
+      ],
+      "seenCount": 4,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 3,
+      "classifications": {
+        "defensible_secondary_match": 4
+      },
+      "tierSelectionReasons": {
+        "selected_defensible_secondary_after_strong": 3,
+        "secondary_ranked_below_counterfactual_capacity": 1
+      },
+      "maxNetScore": 15.253,
+      "minNetScore": 13.559
+    },
+    {
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+        "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+        "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt"
+      ],
+      "seenCount": 4,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 2,
+      "classifications": {
+        "query_supported_but_weak": 3,
+        "strong_match": 1
+      },
+      "tierSelectionReasons": {
+        "weak_not_needed_after_higher_ranked_weak_underfill": 2,
+        "selected_strong_match_priority": 1,
+        "selected_weak_underfill_fallback": 1
+      },
+      "maxNetScore": 11.916,
+      "minNetScore": 9.209
+    },
+    {
+      "title": "The Unbeatable Lily Hong",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+        "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+        "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt"
+      ],
+      "seenCount": 4,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 4,
+      "classifications": {
+        "defensible_secondary_match": 3,
+        "strong_match": 1
+      },
+      "tierSelectionReasons": {
+        "selected_defensible_secondary_after_strong": 3,
+        "selected_strong_match_priority": 1
+      },
+      "maxNetScore": 14.819,
+      "minNetScore": 8.934
+    },
+    {
+      "title": "Starclimber",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+        "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+        "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt"
+      ],
+      "seenCount": 4,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 3,
+      "classifications": {
+        "query_supported_but_weak": 2,
+        "defensible_secondary_match": 1,
+        "strong_match": 1
+      },
+      "tierSelectionReasons": {
+        "weak_not_needed_after_higher_ranked_weak_underfill": 1,
+        "selected_defensible_secondary_after_strong": 1,
+        "selected_strong_match_priority": 1,
+        "selected_weak_underfill_fallback": 1
+      },
+      "maxNetScore": 12.819,
+      "minNetScore": 7.456
+    },
+    {
+      "title": "Wolfborn",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+        "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+        "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt"
+      ],
+      "seenCount": 4,
+      "usedAsUnderfillCount": 1,
+      "inCounterfactualFinalCount": 2,
+      "classifications": {
+        "query_supported_but_weak": 2,
+        "defensible_secondary_match": 2
+      },
+      "tierSelectionReasons": {
+        "weak_not_needed_after_higher_ranked_weak_underfill": 1,
+        "selected_weak_underfill_fallback": 1,
+        "secondary_ranked_below_counterfactual_capacity": 1,
+        "selected_defensible_secondary_after_strong": 1
+      },
+      "maxNetScore": 13.669,
+      "minNetScore": 7.456
+    },
+    {
+      "title": "Waer",
+      "seenInReports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+        "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+        "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt"
+      ],
+      "seenCount": 4,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 1,
+      "classifications": {
+        "query_supported_but_weak": 3,
+        "strong_match": 1
+      },
+      "tierSelectionReasons": {
+        "weak_not_needed_after_higher_ranked_weak_underfill": 3,
+        "selected_strong_match_priority": 1
+      },
+      "maxNetScore": 12.544,
+      "minNetScore": 5.206
+    },
     {
       "title": "You",
       "seenInReports": [
@@ -421,6 +827,26 @@
       },
       "maxNetScore": 15.241,
       "minNetScore": 11.284
+    },
+    {
+      "title": "To The Wild Sky: Text Classics",
+      "seenInReports": [
+        "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+        "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt"
+      ],
+      "seenCount": 2,
+      "usedAsUnderfillCount": 0,
+      "inCounterfactualFinalCount": 2,
+      "classifications": {
+        "defensible_secondary_match": 1,
+        "strong_match": 1
+      },
+      "tierSelectionReasons": {
+        "selected_defensible_secondary_after_strong": 1,
+        "selected_strong_match_priority": 1
+      },
+      "maxNetScore": 13.837,
+      "minNetScore": 11.522
     },
     {
       "title": "The Role of Nature in the Works of Octavia Butler",
@@ -508,23 +934,6 @@
       "minNetScore": 15.869
     },
     {
-      "title": "To The Wild Sky: Text Classics",
-      "seenInReports": [
-        "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt"
-      ],
-      "seenCount": 1,
-      "usedAsUnderfillCount": 0,
-      "inCounterfactualFinalCount": 1,
-      "classifications": {
-        "defensible_secondary_match": 1
-      },
-      "tierSelectionReasons": {
-        "selected_defensible_secondary_after_strong": 1
-      },
-      "maxNetScore": 11.522,
-      "minNetScore": 11.522
-    },
-    {
       "title": "Malcolm and Juliet",
       "seenInReports": [
         "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
@@ -576,9 +985,9 @@
       "minNetScore": 13.566
     },
     {
-      "title": "Chain of Thorns",
+      "title": "The Sky in Silver Lace: Text Classics",
       "seenInReports": [
-        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
+        "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt"
       ],
       "seenCount": 1,
       "usedAsUnderfillCount": 0,
@@ -589,93 +998,8 @@
       "tierSelectionReasons": {
         "selected_defensible_secondary_after_strong": 1
       },
-      "maxNetScore": 13.566,
-      "minNetScore": 13.566
-    },
-    {
-      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
-      "seenInReports": [
-        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
-      ],
-      "seenCount": 1,
-      "usedAsUnderfillCount": 0,
-      "inCounterfactualFinalCount": 0,
-      "classifications": {
-        "query_supported_but_weak": 1
-      },
-      "tierSelectionReasons": {
-        "weak_not_needed_after_higher_ranked_weak_underfill": 1
-      },
-      "maxNetScore": 9.209,
-      "minNetScore": 9.209
-    },
-    {
-      "title": "The Unbeatable Lily Hong",
-      "seenInReports": [
-        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
-      ],
-      "seenCount": 1,
-      "usedAsUnderfillCount": 0,
-      "inCounterfactualFinalCount": 1,
-      "classifications": {
-        "defensible_secondary_match": 1
-      },
-      "tierSelectionReasons": {
-        "selected_defensible_secondary_after_strong": 1
-      },
-      "maxNetScore": 8.934,
-      "minNetScore": 8.934
-    },
-    {
-      "title": "Starclimber",
-      "seenInReports": [
-        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
-      ],
-      "seenCount": 1,
-      "usedAsUnderfillCount": 0,
-      "inCounterfactualFinalCount": 0,
-      "classifications": {
-        "query_supported_but_weak": 1
-      },
-      "tierSelectionReasons": {
-        "weak_not_needed_after_higher_ranked_weak_underfill": 1
-      },
-      "maxNetScore": 7.456,
-      "minNetScore": 7.456
-    },
-    {
-      "title": "Wolfborn",
-      "seenInReports": [
-        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
-      ],
-      "seenCount": 1,
-      "usedAsUnderfillCount": 0,
-      "inCounterfactualFinalCount": 0,
-      "classifications": {
-        "query_supported_but_weak": 1
-      },
-      "tierSelectionReasons": {
-        "weak_not_needed_after_higher_ranked_weak_underfill": 1
-      },
-      "maxNetScore": 7.456,
-      "minNetScore": 7.456
-    },
-    {
-      "title": "Waer",
-      "seenInReports": [
-        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt"
-      ],
-      "seenCount": 1,
-      "usedAsUnderfillCount": 0,
-      "inCounterfactualFinalCount": 0,
-      "classifications": {
-        "query_supported_but_weak": 1
-      },
-      "tierSelectionReasons": {
-        "weak_not_needed_after_higher_ranked_weak_underfill": 1
-      },
-      "maxNetScore": 5.206,
-      "minNetScore": 5.206
+      "maxNetScore": 12.191,
+      "minNetScore": 12.191
     }
   ]
 }
