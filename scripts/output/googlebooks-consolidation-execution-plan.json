@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-07-21T04:18:12.514Z",
+  "generatedAt": "2026-07-21T05:38:16.178Z",
   "sourceAudit": "googlebooks-behavioral-equivalence-audit.json",
   "summary": {
     "total": 12,
-    "activeCount": 11,
-    "closedFalsifiedCount": 1,
+    "activeCount": 10,
+    "closedFalsifiedCount": 2,
     "noveltyProofApplied": true,
     "noveltyProofDecision": "noSubstantiveDifference",
     "byBehavioralClass": {
@@ -20,8 +20,8 @@
       "Falsified": 1
     },
     "nextActiveCapability": {
-      "capability": "Semantic phrase extraction",
-      "implementationOrder": 202,
+      "capability": "Canonical cue promotion",
+      "implementationOrder": 203,
       "confidenceState": "Architectural",
       "executionStatus": "pending"
     },
@@ -35,31 +35,6 @@
     ]
   },
   "rows": [
-    {
-      "capability": "Semantic phrase extraction",
-      "behavioralClass": "behaviorally_equivalent_duplication",
-      "behavioralClassLabel": "Behaviorally equivalent duplication",
-      "expectedRecommendationQualityGain": "Low",
-      "maintenanceGain": "High",
-      "regressionRisk": "Medium",
-      "productionStatus": "adult=production_or_core; teen=production_or_core",
-      "prerequisiteTests": [
-        "run-v2-googlebooks-short-signal-boundary-regressions.mjs",
-        "run-v2-googlebooks-teen-weak-metadata-sufficiency-audit.mjs",
-        "run-v2-googlebooks-query-quality-regressions.mjs"
-      ],
-      "proposedSharedPrimitive": "extractGoogleBooksSignalFieldMatches({ candidate, signalLexicon, policy })",
-      "agePolicyConfigurationRequired": "Age-band lexicon + generic-context blacklist passed by config.",
-      "implementationOrder": 202,
-      "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
-      "recommendation": "Extract shared primitive and parametrize age policy",
-      "stage": "scoring/diagnostics",
-      "effectSurface": "diagnostic + potential ranking hooks",
-      "preflightCheckpoint": null,
-      "executionStatus": "pending",
-      "active": true,
-      "confidenceState": "Architectural"
-    },
     {
       "capability": "Canonical cue promotion",
       "behavioralClass": "behaviorally_equivalent_duplication",
@@ -82,7 +57,11 @@
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Architectural"
+      "confidenceState": "Architectural",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
     },
     {
       "capability": "Final slate identity auditing",
@@ -106,7 +85,11 @@
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Architectural"
+      "confidenceState": "Architectural",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
     },
     {
       "capability": "Counterfactual final slate",
@@ -131,7 +114,11 @@
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Architectural"
+      "confidenceState": "Architectural",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
     },
     {
       "capability": "Query quality comparison",
@@ -156,7 +143,11 @@
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Hypothesis"
+      "confidenceState": "Hypothesis",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
     },
     {
       "capability": "Family-scoped query competition",
@@ -181,7 +172,11 @@
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Hypothesis"
+      "confidenceState": "Hypothesis",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
     },
     {
       "capability": "Marginal decision-worthy yield",
@@ -205,7 +200,11 @@
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Hypothesis"
+      "confidenceState": "Hypothesis",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
     },
     {
       "capability": "Query promotion / replacement",
@@ -229,7 +228,11 @@
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Architectural"
+      "confidenceState": "Architectural",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
     },
     {
       "capability": "Narrative-strength scoring",
@@ -253,7 +256,11 @@
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Architectural"
+      "confidenceState": "Architectural",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
     },
     {
       "capability": "Meaningful taste tiers",
@@ -278,7 +285,11 @@
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Architectural"
+      "confidenceState": "Architectural",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
     },
     {
       "capability": "Adult content weighting branch",
@@ -303,7 +314,11 @@
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Architectural"
+      "confidenceState": "Architectural",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
     },
     {
       "capability": "Evidence-origin reconciliation audit",
@@ -344,7 +359,40 @@
       },
       "executionStatus": "closed_falsified",
       "active": false,
-      "confidenceState": "Falsified"
+      "confidenceState": "Falsified",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null
+    },
+    {
+      "capability": "Semantic phrase extraction",
+      "behavioralClass": "behaviorally_equivalent_duplication",
+      "behavioralClassLabel": "Behaviorally equivalent duplication",
+      "expectedRecommendationQualityGain": "Low",
+      "maintenanceGain": "High",
+      "regressionRisk": "Medium",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-short-signal-boundary-regressions.mjs",
+        "run-v2-googlebooks-teen-weak-metadata-sufficiency-audit.mjs",
+        "run-v2-googlebooks-query-quality-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "extractGoogleBooksSignalFieldMatches({ candidate, signalLexicon, policy })",
+      "agePolicyConfigurationRequired": "Age-band lexicon + generic-context blacklist passed by config.",
+      "implementationOrder": 202,
+      "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
+      "recommendation": "Extract shared primitive and parametrize age policy",
+      "stage": "scoring/diagnostics",
+      "effectSurface": "diagnostic + potential ranking hooks",
+      "preflightCheckpoint": null,
+      "executionStatus": "completed",
+      "active": false,
+      "confidenceState": "Architectural",
+      "behaviorChange": "none",
+      "parityVerified": true,
+      "parityBaselineSignature": "bcea3ee2e21ffbee",
+      "implementationCommit": "8a9f6f03cfdf20ee0653681864b6f0c9f6927520"
     }
   ]
 }

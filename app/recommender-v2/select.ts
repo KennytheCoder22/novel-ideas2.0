@@ -1,5 +1,5 @@
 import type { NormalizedCandidate, ScoredCandidate, TasteProfile } from "./types";
-import { signalPresentInText } from "./score";
+import { semanticSignalMatchedFieldsByField, signalPresentInText } from "./score";
 import { annotatePreteenGoogleBooksPublicationIdentity, preteenGoogleBooksPublicationIdentityAudit } from "./preteenGoogleBooksPublicationIdentity";
 
 type DeferredCandidate = { candidate: ScoredCandidate; reason: string };
@@ -4843,20 +4843,19 @@ function teenGoogleBooksSignalFieldMatches(candidate: ScoredCandidate, signal: s
   const volumeInfo = raw.volumeInfo && typeof raw.volumeInfo === "object"
     ? raw.volumeInfo as Record<string, unknown>
     : {};
-  const fields: Array<[string, string[]]> = [
-    ["title", [candidate.title]],
-    ["subtitle", [candidate.subtitle || String(raw.subtitle || "")]],
-    ["description", [candidate.description || String(raw.description || ""), String(volumeInfo.description || "")]],
-    ["categories", [
+  const fields = [
+    { field: "title", values: [candidate.title] },
+    { field: "subtitle", values: [candidate.subtitle || String(raw.subtitle || "")] },
+    { field: "description", values: [candidate.description || String(raw.description || ""), String(volumeInfo.description || "")] },
+    { field: "categories", values: [
       ...candidate.genres,
       ...(Array.isArray(volumeInfo.categories) ? volumeInfo.categories.map((entry) => String(entry || "")) : []),
-    ]],
+    ] },
   ];
-  const matched: string[] = [];
-  for (const [field, values] of fields) {
-    if (values.some((value) => signalPresentInText(value, signal))) matched.push(field);
-  }
-  return matched;
+  return semanticSignalMatchedFieldsByField(fields, signal, {
+    normalizeSignal: false,
+    normalizeFieldText: false,
+  });
 }
 
 function classifyTeenGoogleBooksMeaningfulTasteAlignment(input: {

@@ -27,6 +27,19 @@ const noveltyProof = existsSync(noveltyProofPath)
   : null;
 const noveltyCloses101 = noveltyProof?.decisionRuleResolution === "noSubstantiveDifference"
   || noveltyProof?.noveltyOutcome === "already_falsified_by_prior_counterfactual";
+const parity202Path = resolve(outDir, "googlebooks-202-parity-compare.json");
+const parity202 = existsSync(parity202Path)
+  ? JSON.parse(readFileSync(parity202Path, "utf8"))
+  : null;
+const parityBaselinePath = resolve(outDir, "googlebooks-202-parity-baseline.json");
+const parityBaseline = existsSync(parityBaselinePath)
+  ? JSON.parse(readFileSync(parityBaselinePath, "utf8"))
+  : null;
+const parity202Signature = String(parityBaseline?.signatures?.overallBaseline || "");
+const parity202Verified = parity202?.verdict === "PARITY_PASSED"
+  && Number(parity202?.failedChecks || 0) === 0
+  && parityBaseline?.baselineComplete === true
+  && parity202Signature === "bcea3ee2e21ffbee";
 
 function confidenceStateForRow(row) {
   if (row.executionStatus === "closed_falsified") return "Falsified";
@@ -242,6 +255,8 @@ const planRows = rows.map((r) => {
 
   const is101 = r.capability === "Evidence-origin reconciliation audit";
   const closedFalsified = is101 && noveltyCloses101;
+  const is202 = r.capability === "Semantic phrase extraction";
+  const completed202 = is202 && parity202Verified;
 
   return {
     capability: r.capability,
@@ -269,9 +284,19 @@ const planRows = rows.map((r) => {
     stage: r.stage,
     effectSurface: r.effectSurface,
     preflightCheckpoint: noveltyGate,
-    executionStatus: closedFalsified ? "closed_falsified" : "pending",
-    active: !closedFalsified,
+    executionStatus: closedFalsified
+      ? "closed_falsified"
+      : completed202
+        ? "completed"
+        : "pending",
+    active: !(closedFalsified || completed202),
     confidenceState: "Hypothesis",
+    behaviorChange: completed202 ? "none" : "unknown",
+    parityVerified: completed202,
+    parityBaselineSignature: is202 ? parity202Signature || null : null,
+    implementationCommit: completed202
+      ? (String(parity202?.candidateCommit || "").trim() || null)
+      : null,
   };
 });
 
@@ -363,6 +388,10 @@ const csvHeader = [
   "prerequisiteTests",
   "executionStatus",
   "confidenceState",
+  "behaviorChange",
+  "parityVerified",
+  "parityBaselineSignature",
+  "implementationCommit",
   "active",
   "preflightCheckpointRequired",
   "preflightCheckpointTitle",
@@ -388,6 +417,10 @@ const csvRows = planRows.map((r) => [
   `"${r.prerequisiteTests.join(" | ").replace(/"/g, '""')}"`,
   r.executionStatus,
   r.confidenceState,
+  r.behaviorChange,
+  r.parityVerified ? "true" : "false",
+  `"${String(r.parityBaselineSignature || "").replace(/"/g, '""')}"`,
+  `"${String(r.implementationCommit || "").replace(/"/g, '""')}"`,
   r.active ? "true" : "false",
   r.preflightCheckpoint ? "yes" : "no",
   `"${(r.preflightCheckpoint?.title || "").replace(/"/g, '""')}"`,
