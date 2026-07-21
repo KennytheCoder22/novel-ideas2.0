@@ -1,0 +1,2454 @@
+{
+  "generatedAt": "2026-07-21T01:37:15.903Z",
+  "inputs": [
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt"
+  ],
+  "totals": {
+    "weakCount": 32,
+    "weakUsedForUnderfillCount": 19,
+    "reasonCounts": {
+      "publication_identity_rejected": 4,
+      "query_only_unresolved": 28
+    },
+    "metadataSparsityIndicators": {
+      "noDescription": 0,
+      "noIsbn": 0,
+      "zeroNativeSpecificSignals": 32,
+      "queryOnlyWithoutNative": 32,
+      "externalGenreWithoutNative": 32
+    }
+  },
+  "perReport": [
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "weakCount": 5,
+      "weakUsedForUnderfillCount": 2,
+      "reasonCounts": {
+        "publication_identity_rejected": 2,
+        "query_only_unresolved": 3
+      }
+    },
+    {
+      "report": "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+      "presetTestName": "Test B",
+      "weakCount": 2,
+      "weakUsedForUnderfillCount": 2,
+      "reasonCounts": {
+        "query_only_unresolved": 2
+      }
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "weakCount": 6,
+      "weakUsedForUnderfillCount": 2,
+      "reasonCounts": {
+        "query_only_unresolved": 6
+      }
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "weakCount": 3,
+      "weakUsedForUnderfillCount": 1,
+      "reasonCounts": {
+        "query_only_unresolved": 3
+      }
+    },
+    {
+      "report": "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+      "presetTestName": "Test B",
+      "weakCount": 0,
+      "weakUsedForUnderfillCount": 0,
+      "reasonCounts": {}
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "weakCount": 3,
+      "weakUsedForUnderfillCount": 2,
+      "reasonCounts": {
+        "query_only_unresolved": 3
+      }
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "weakCount": 8,
+      "weakUsedForUnderfillCount": 5,
+      "reasonCounts": {
+        "publication_identity_rejected": 2,
+        "query_only_unresolved": 6
+      }
+    },
+    {
+      "report": "pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+      "presetTestName": "Test B",
+      "weakCount": 2,
+      "weakUsedForUnderfillCount": 2,
+      "reasonCounts": {
+        "query_only_unresolved": 2
+      }
+    },
+    {
+      "report": "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt",
+      "presetTestName": "Test C",
+      "weakCount": 3,
+      "weakUsedForUnderfillCount": 3,
+      "reasonCounts": {
+        "query_only_unresolved": 3
+      }
+    }
+  ],
+  "repeatedWeakTitles": [
+    {
+      "title": "Your Eyes in Stars",
+      "seenCount": 4,
+      "usedForUnderfillCount": 3,
+      "reasons": {
+        "query_only_unresolved": 4
+      },
+      "reports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+        "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+        "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+        "pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt"
+      ]
+    },
+    {
+      "title": "Someone Like Summer",
+      "seenCount": 3,
+      "usedForUnderfillCount": 2,
+      "reasons": {
+        "query_only_unresolved": 3
+      },
+      "reports": [
+        "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+        "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+        "pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt"
+      ]
+    },
+    {
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "seenCount": 3,
+      "usedForUnderfillCount": 1,
+      "reasons": {
+        "query_only_unresolved": 3
+      },
+      "reports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+        "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt"
+      ]
+    },
+    {
+      "title": "Waer",
+      "seenCount": 3,
+      "usedForUnderfillCount": 0,
+      "reasons": {
+        "query_only_unresolved": 3
+      },
+      "reports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+        "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt"
+      ]
+    },
+    {
+      "title": "Pretties with Ugly Thoughts",
+      "seenCount": 2,
+      "usedForUnderfillCount": 2,
+      "reasons": {
+        "query_only_unresolved": 2
+      },
+      "reports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+        "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt"
+      ]
+    },
+    {
+      "title": "Last Chance Books",
+      "seenCount": 2,
+      "usedForUnderfillCount": 2,
+      "reasons": {
+        "query_only_unresolved": 2
+      },
+      "reports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+        "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt"
+      ]
+    },
+    {
+      "title": "Crowned (A Conyza Bennett story, Book 3)",
+      "seenCount": 2,
+      "usedForUnderfillCount": 2,
+      "reasons": {
+        "query_only_unresolved": 2
+      },
+      "reports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt"
+      ]
+    },
+    {
+      "title": "Starclimber",
+      "seenCount": 2,
+      "usedForUnderfillCount": 1,
+      "reasons": {
+        "query_only_unresolved": 2
+      },
+      "reports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt"
+      ]
+    },
+    {
+      "title": "Wolfborn",
+      "seenCount": 2,
+      "usedForUnderfillCount": 1,
+      "reasons": {
+        "query_only_unresolved": 2
+      },
+      "reports": [
+        "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+        "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt"
+      ]
+    },
+    {
+      "title": "The Role of Nature in the Works of Octavia Butler",
+      "seenCount": 2,
+      "usedForUnderfillCount": 0,
+      "reasons": {
+        "publication_identity_rejected": 2
+      },
+      "reports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+        "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt"
+      ]
+    },
+    {
+      "title": "Divergent Official Illustrated Movie Companion",
+      "seenCount": 2,
+      "usedForUnderfillCount": 0,
+      "reasons": {
+        "publication_identity_rejected": 2
+      },
+      "reports": [
+        "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+        "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt"
+      ]
+    }
+  ],
+  "focusTitleRows": [
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "Your Eyes in Stars",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "unknown",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "dystopian action",
+        "mystery psychological",
+        "indie genre",
+        "book",
+        "mystery"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopian action",
+        "mystery psychological"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "teen",
+        "book",
+        "dystopian"
+      ],
+      "netScore": 18.119,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+      "presetTestName": "Test B",
+      "title": "Your Eyes in Stars",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "unknown",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 7,
+      "queryFamilyOnlySignals": [
+        "adventure humor",
+        "narrative mystery",
+        "indie genre",
+        "playful",
+        "adventure",
+        "comedy",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "adventure humor",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 5,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "teen",
+        "adventure",
+        "comedy"
+      ],
+      "netScore": 13.941,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "series_installment",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "action comedy",
+        "fantasy epic",
+        "indie genre",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "action comedy",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "fantasy action",
+        "indie genre"
+      ],
+      "netScore": 9.209,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Starclimber",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "action comedy",
+        "fantasy epic",
+        "indie genre",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "action comedy",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "fantasy action",
+        "indie genre"
+      ],
+      "netScore": 7.456,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "series_installment",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "fantasy adventure",
+        "historical drama",
+        "indie genre",
+        "mshs",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "fantasy adventure",
+        "historical drama"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "fantasy",
+        "indie genre",
+        "mshs"
+      ],
+      "netScore": 11.916,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "series_installment",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "drama coming of age",
+        "fantasy epic",
+        "indie genre",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "drama coming of age",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "adventure",
+        "fantasy"
+      ],
+      "netScore": 11.559,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "title": "Starclimber",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "drama coming of age",
+        "fantasy epic",
+        "indie genre",
+        "drama",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "drama coming of age",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 5,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "science fiction adventure",
+        "adventure",
+        "fantasy"
+      ],
+      "netScore": 9.309,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Your Eyes in Stars",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "unknown",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "dystopia action",
+        "narrative mystery",
+        "indie genre",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopia action",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "teen"
+      ],
+      "netScore": 14.166,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "The Giver Illustrated Gift Edition",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "dystopia action",
+        "narrative mystery",
+        "indie genre",
+        "mshs",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopia action",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 4,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description",
+        "character_role_setting_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "mshs",
+        "dark"
+      ],
+      "netScore": 10.791,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+      "presetTestName": "Test B",
+      "title": "Your Eyes in Stars",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "unknown",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "drama contemporary",
+        "mystery supernatural",
+        "indie genre",
+        "book",
+        "mystery"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "drama contemporary",
+        "mystery supernatural"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "teen"
+      ],
+      "netScore": 13.144,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt",
+      "presetTestName": "Test C",
+      "title": "Love Is Hell",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 7,
+      "queryFamilyOnlySignals": [
+        "romance coming of age",
+        "drama contemporary",
+        "indie genre",
+        "mshs",
+        "romance",
+        "book",
+        "drama"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "romance coming of age",
+        "drama contemporary"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "character_event_conflict_description",
+        "character_role_setting_description"
+      ],
+      "dislikedSignalCount": 6,
+      "dislikedSignals": [
+        "book",
+        "drama contemporary",
+        "indie genre",
+        "mshs",
+        "adventure",
+        "drama"
+      ],
+      "netScore": 17.003,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    }
+  ],
+  "rows": [
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "The Role of Nature in the Works of Octavia Butler",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_non_taste_final_eligibility",
+      "tierReason": "teen_googlebooks_publication_identity_literary_study",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "rejected",
+      "finalEligibilityReason": "teen_googlebooks_publication_identity_literary_study",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 6,
+      "queryFamilyOnlySignals": [
+        "dystopian action",
+        "mystery psychological",
+        "indie genre",
+        "mshs",
+        "book",
+        "mystery"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopian action",
+        "mystery psychological"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "mshs",
+        "book",
+        "dystopian"
+      ],
+      "netScore": 17.675,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "publication_identity_rejected"
+    },
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "Pretties with Ugly Thoughts",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "dystopian action",
+        "mystery psychological",
+        "indie genre",
+        "mshs",
+        "mystery"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopian action",
+        "mystery psychological"
+      ],
+      "storyNarrativeEvidenceCount": 4,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description",
+        "character_role_setting_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "mshs",
+        "adventure",
+        "book",
+        "dystopian"
+      ],
+      "netScore": 15.869,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "Divergent Official Illustrated Movie Companion",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_non_taste_final_eligibility",
+      "tierReason": "teen_googlebooks_publication_identity_supplemental_companion",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "rejected",
+      "finalEligibilityReason": "teen_googlebooks_publication_identity_supplemental_companion",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 6,
+      "queryFamilyOnlySignals": [
+        "dystopian action",
+        "mystery psychological",
+        "indie genre",
+        "mshs",
+        "book",
+        "mystery"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopian action",
+        "mystery psychological"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "mshs",
+        "book",
+        "dystopian"
+      ],
+      "netScore": 15.869,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "publication_identity_rejected"
+    },
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "Last Chance Books",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "dystopian action",
+        "mystery psychological",
+        "indie genre",
+        "mshs",
+        "mystery"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopian action",
+        "mystery psychological"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "mshs",
+        "book",
+        "dystopian"
+      ],
+      "netScore": 15.869,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "Your Eyes in Stars",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "unknown",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "dystopian action",
+        "mystery psychological",
+        "indie genre",
+        "book",
+        "mystery"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopian action",
+        "mystery psychological"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "teen",
+        "book",
+        "dystopian"
+      ],
+      "netScore": 18.119,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+      "presetTestName": "Test B",
+      "title": "Your Eyes in Stars",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "unknown",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 7,
+      "queryFamilyOnlySignals": [
+        "adventure humor",
+        "narrative mystery",
+        "indie genre",
+        "playful",
+        "adventure",
+        "comedy",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "adventure humor",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 5,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "teen",
+        "adventure",
+        "comedy"
+      ],
+      "netScore": 13.941,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+      "presetTestName": "Test B",
+      "title": "Someone Like Summer",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 6,
+      "queryFamilyOnlySignals": [
+        "adventure humor",
+        "narrative mystery",
+        "indie genre",
+        "playful",
+        "adventure",
+        "comedy"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "adventure humor",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "adventure",
+        "comedy"
+      ],
+      "netScore": 11.284,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Malcolm and Juliet",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "action comedy",
+        "fantasy epic",
+        "indie genre",
+        "mshs",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "action comedy",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "mshs",
+        "teen"
+      ],
+      "netScore": 14.469,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Crowned (A Conyza Bennett story, Book 3)",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "series_installment",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "action comedy",
+        "fantasy epic",
+        "indie genre",
+        "mshs",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "action comedy",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "mshs",
+        "teen"
+      ],
+      "netScore": 14.469,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "series_installment",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "action comedy",
+        "fantasy epic",
+        "indie genre",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "action comedy",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "fantasy action",
+        "indie genre"
+      ],
+      "netScore": 9.209,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Starclimber",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "action comedy",
+        "fantasy epic",
+        "indie genre",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "action comedy",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "fantasy action",
+        "indie genre"
+      ],
+      "netScore": 7.456,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Wolfborn",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "action comedy",
+        "fantasy epic",
+        "indie genre",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "action comedy",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "fantasy action",
+        "indie genre"
+      ],
+      "netScore": 7.456,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Waer",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "action comedy",
+        "fantasy epic",
+        "indie genre",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "action comedy",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 5,
+      "dislikedSignals": [
+        "book",
+        "fantasy action",
+        "indie genre",
+        "community",
+        "dark"
+      ],
+      "netScore": 5.206,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "title": "Wolfborn",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 6,
+      "queryFamilyOnlySignals": [
+        "fantasy adventure",
+        "historical drama",
+        "indie genre",
+        "mshs",
+        "drama",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "fantasy adventure",
+        "historical drama"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "fantasy",
+        "indie genre",
+        "mshs"
+      ],
+      "netScore": 13.669,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "title": "Waer",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 6,
+      "queryFamilyOnlySignals": [
+        "fantasy adventure",
+        "historical drama",
+        "indie genre",
+        "mshs",
+        "drama",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "fantasy adventure",
+        "historical drama"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 5,
+      "dislikedSignals": [
+        "book",
+        "fantasy",
+        "indie genre",
+        "mshs",
+        "dark"
+      ],
+      "netScore": 12.544,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "series_installment",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "fantasy adventure",
+        "historical drama",
+        "indie genre",
+        "mshs",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "fantasy adventure",
+        "historical drama"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "fantasy",
+        "indie genre",
+        "mshs"
+      ],
+      "netScore": 11.916,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "series_installment",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "drama coming of age",
+        "fantasy epic",
+        "indie genre",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "drama coming of age",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "adventure",
+        "fantasy"
+      ],
+      "netScore": 11.559,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "title": "Starclimber",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "drama coming of age",
+        "fantasy epic",
+        "indie genre",
+        "drama",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "drama coming of age",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 5,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "science fiction adventure",
+        "adventure",
+        "fantasy"
+      ],
+      "netScore": 9.309,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "title": "Waer",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed_via:teen_googlebooks_audience_reconciliation_rescue",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "drama coming of age",
+        "fantasy epic",
+        "indie genre",
+        "drama",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "drama coming of age",
+        "fantasy epic"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 6,
+      "dislikedSignals": [
+        "book",
+        "family",
+        "indie genre",
+        "adventure",
+        "dark",
+        "fantasy"
+      ],
+      "netScore": 8.184,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Divergent Official Illustrated Movie Companion",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_non_taste_final_eligibility",
+      "tierReason": "teen_googlebooks_publication_identity_supplemental_companion",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "rejected",
+      "finalEligibilityReason": "teen_googlebooks_publication_identity_supplemental_companion",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 6,
+      "queryFamilyOnlySignals": [
+        "dystopia action",
+        "narrative mystery",
+        "indie genre",
+        "mshs",
+        "movie",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopia action",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "mshs",
+        "film"
+      ],
+      "netScore": 13.288,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "publication_identity_rejected"
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "You",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 3,
+      "queryFamilyOnlySignals": [
+        "dystopia action",
+        "narrative mystery",
+        "indie genre"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopia action",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "teen"
+      ],
+      "netScore": 13.263,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Pretties with Ugly Thoughts",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "dystopia action",
+        "narrative mystery",
+        "indie genre",
+        "mshs"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopia action",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 4,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description",
+        "character_role_setting_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "mshs"
+      ],
+      "netScore": 11.013,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Last Chance Books",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "dystopia action",
+        "narrative mystery",
+        "indie genre",
+        "mshs"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopia action",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "mshs"
+      ],
+      "netScore": 11.916,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Your Eyes in Stars",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "unknown",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "dystopia action",
+        "narrative mystery",
+        "indie genre",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopia action",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "teen"
+      ],
+      "netScore": 14.166,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "The Giver Illustrated Gift Edition",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "dystopia action",
+        "narrative mystery",
+        "indie genre",
+        "mshs",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopia action",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 4,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description",
+        "character_role_setting_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "mshs",
+        "dark"
+      ],
+      "netScore": 10.791,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "The Role of Nature in the Works of Octavia Butler",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_non_taste_final_eligibility",
+      "tierReason": "teen_googlebooks_publication_identity_literary_study",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "rejected",
+      "finalEligibilityReason": "teen_googlebooks_publication_identity_literary_study",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "dystopia action",
+        "narrative mystery",
+        "indie genre",
+        "mshs",
+        "book"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopia action",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 4,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "mshs",
+        "series"
+      ],
+      "netScore": 11.013,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "publication_identity_rejected"
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Someone Like Summer",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "excluded_from_counterfactual_final",
+      "tierReason": "weak_not_needed_after_higher_ranked_weak_underfill",
+      "weakUsedForUnderfill": false,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 3,
+      "queryFamilyOnlySignals": [
+        "dystopia action",
+        "narrative mystery",
+        "indie genre"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "dystopia action",
+        "narrative mystery"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "dark"
+      ],
+      "netScore": 9.534,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+      "presetTestName": "Test B",
+      "title": "Your Eyes in Stars",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "unknown",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 5,
+      "queryFamilyOnlySignals": [
+        "drama contemporary",
+        "mystery supernatural",
+        "indie genre",
+        "book",
+        "mystery"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "drama contemporary",
+        "mystery supernatural"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 3,
+      "dislikedSignals": [
+        "book",
+        "indie genre",
+        "teen"
+      ],
+      "netScore": 13.144,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+      "presetTestName": "Test B",
+      "title": "Someone Like Summer",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 4,
+      "queryFamilyOnlySignals": [
+        "drama contemporary",
+        "mystery supernatural",
+        "indie genre",
+        "mystery"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "drama contemporary",
+        "mystery supernatural"
+      ],
+      "storyNarrativeEvidenceCount": 2,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 2,
+      "dislikedSignals": [
+        "book",
+        "indie genre"
+      ],
+      "netScore": 10.488,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt",
+      "presetTestName": "Test C",
+      "title": "Crowned (A Conyza Bennett story, Book 3)",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "series_installment",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 7,
+      "queryFamilyOnlySignals": [
+        "romance coming of age",
+        "drama contemporary",
+        "indie genre",
+        "mshs",
+        "romance",
+        "book",
+        "drama"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "romance coming of age",
+        "drama contemporary"
+      ],
+      "storyNarrativeEvidenceCount": 1,
+      "storyNarrativeEvidence": [
+        "plot_setup_description"
+      ],
+      "dislikedSignalCount": 6,
+      "dislikedSignals": [
+        "book",
+        "drama contemporary",
+        "indie genre",
+        "mshs",
+        "teen",
+        "drama"
+      ],
+      "netScore": 20.509,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt",
+      "presetTestName": "Test C",
+      "title": "Love Is Hell",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 7,
+      "queryFamilyOnlySignals": [
+        "romance coming of age",
+        "drama contemporary",
+        "indie genre",
+        "mshs",
+        "romance",
+        "book",
+        "drama"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "romance coming of age",
+        "drama contemporary"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "character_event_conflict_description",
+        "character_role_setting_description"
+      ],
+      "dislikedSignalCount": 6,
+      "dislikedSignals": [
+        "book",
+        "drama contemporary",
+        "indie genre",
+        "mshs",
+        "adventure",
+        "drama"
+      ],
+      "netScore": 17.003,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    },
+    {
+      "report": "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt",
+      "presetTestName": "Test C",
+      "title": "Sydney Bridge Upside Down: Text Classics",
+      "classification": "query_supported_but_weak",
+      "tierDecision": "selected_in_counterfactual_final",
+      "tierReason": "selected_weak_underfill_fallback",
+      "weakUsedForUnderfill": true,
+      "finalEligibilityDecision": "accepted",
+      "finalEligibilityReason": "teens_googlebooks_named_final_eligibility_passed",
+      "publicationShape": "novel",
+      "descriptionPresent": true,
+      "descriptionLength": null,
+      "isbnPresent": true,
+      "candidateNativeSpecificSignalCount": 0,
+      "candidateNativeSpecificSignals": [],
+      "queryFamilyOnlySignalCount": 6,
+      "queryFamilyOnlySignals": [
+        "romance coming of age",
+        "drama contemporary",
+        "indie genre",
+        "mshs",
+        "romance",
+        "drama"
+      ],
+      "categoryOnlySignalCount": 0,
+      "categoryOnlySignals": [],
+      "genreSignalCount": 2,
+      "genreSignals": [
+        "romance coming of age",
+        "drama contemporary"
+      ],
+      "storyNarrativeEvidenceCount": 3,
+      "storyNarrativeEvidence": [
+        "narrative_synopsis_description",
+        "plot_setup_description",
+        "character_event_conflict_description"
+      ],
+      "dislikedSignalCount": 5,
+      "dislikedSignals": [
+        "book",
+        "drama contemporary",
+        "indie genre",
+        "mshs",
+        "drama"
+      ],
+      "netScore": 17.003,
+      "wouldPassWithoutQueryEvidence": false,
+      "categoriesTasteEvidencePresent": false,
+      "titleOrSubtitleOnlyEvidenceLikely": false,
+      "externalOrNormalizedGenreWithoutGoogleNative": true,
+      "metadataSparse": false,
+      "weakReason": "query_only_unresolved"
+    }
+  ]
+}
