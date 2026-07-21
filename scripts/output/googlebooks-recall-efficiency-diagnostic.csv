@@ -1,0 +1,6 @@
+queryFamily,queryCount,rawApiResults,narrativeCandidates,publicationIdentityPasses,scoredCandidates,selectedRecommendations,narrativeYieldPct,publicationSurvivalPct,selectionEfficiencyPct,overallRecallEfficiencyPct,publicationShapeRejectionHistogram,dominantRejectionReason,dominantLossStage,dominantLossCount,likelyAction
+mystery,2,40,6,6,6,5,15,100,83.3,12.5,"{""writing_guide"":3,""critical_study"":2,""nonfiction"":2,""reference"":4,""genre_survey"":2,""unknown"":6}",missing_author,pre_publication,34,No action
+general,1,20,0,0,0,0,0,0,0,0,"{""writing_guide"":5,""anthology"":1,""critical_study"":4,""nonfiction"":2,""public_domain_compilation"":2}",missing_author,pre_publication,20,Query refinement
+science_fiction,1,20,0,0,0,0,0,0,0,0,"{""critical_study"":2,""reference"":1,""writing_guide"":4,""nonfiction"":2,""anthology"":2,""unknown"":5}",missing_author,pre_publication,20,Query refinement
+horror,1,20,3,3,3,3,15,100,100,15,"{""critical_study"":3,""reference"":3,""nonfiction"":2,""unknown"":1,""story_collection"":1,""public_domain_compilation"":4}",publication_shape_public_domain_compilation,pre_publication,17,No action
+thriller,1,20,4,4,4,4,20,100,100,20,"{""writing_guide"":5,""unknown"":1,""nonfiction"":1,""public_domain_compilation"":1}",missing_author,pre_publication,16,No action

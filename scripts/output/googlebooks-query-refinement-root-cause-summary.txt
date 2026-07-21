@@ -1,0 +1,21 @@
+GOOGLE BOOKS QUERY REFINEMENT ROOT CAUSE
+
+Family: science_fiction
+Primary cause: poor query wording
+Ranked queries (publication pass, then narrative yield):
+1. [alt_1] "young adult" dystopian novel | raw=100 narrative=36 publicationPass=36 survival=100% dominantReject=missing_author delta=pass +25, yield +25pp
+2. [current] young adult science fiction novel | raw=100 narrative=11 publicationPass=11 survival=100% dominantReject=missing_author delta=pass +0, yield +0pp
+3. [alt_3] "young adult" space opera novel | raw=100 narrative=10 publicationPass=10 survival=100% dominantReject=missing_author delta=pass -1, yield -1pp
+4. [alt_4] "young adult" science fiction adventure novel | raw=100 narrative=5 publicationPass=5 survival=100% dominantReject=missing_author delta=pass -6, yield -6pp
+5. [alt_2] "young adult" speculative fiction novel | raw=100 narrative=4 publicationPass=4 survival=100% dominantReject=missing_author delta=pass -7, yield -7pp
+6. [alt_5] "young adult" sci fi novel | raw=100 narrative=3 publicationPass=3 survival=100% dominantReject=missing_author delta=pass -8, yield -8pp
+
+Family: general
+Primary cause: combination
+Ranked queries (publication pass, then narrative yield):
+1. [alt_4] "young adult" contemporary romance novel | raw=100 narrative=10 publicationPass=10 survival=100% dominantReject=publication_shape_writing_guide delta=pass +3, yield +3pp
+2. [current] young adult contemporary fiction novel | raw=100 narrative=7 publicationPass=7 survival=100% dominantReject=publication_shape_writing_guide delta=pass +0, yield +0pp
+3. [alt_2] "young adult" coming of age novel | raw=100 narrative=6 publicationPass=6 survival=100% dominantReject=missing_author delta=pass -1, yield -1pp
+4. [alt_1] "young adult" contemporary novel | raw=100 narrative=0 publicationPass=0 survival=0% dominantReject=missing_author delta=pass -7, yield -7pp
+5. [alt_3] "young adult" realistic fiction novel | raw=100 narrative=0 publicationPass=0 survival=0% dominantReject=missing_author delta=pass -7, yield -7pp
+6. [alt_5] "young adult" social issues novel | raw=100 narrative=0 publicationPass=0 survival=0% dominantReject=missing_author delta=pass -7, yield -7pp

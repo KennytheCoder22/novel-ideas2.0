@@ -1,0 +1,21 @@
+{
+  "title": "Phase 2 Charter — Recommendation Quality",
+  "frozenAt": "2026-07-21T01:35:54.275-07:00",
+  "objective": "Improve user-visible recommendation quality through measured, production-validated changes while preserving architectural stability.",
+  "principles": [
+    "Architecture changes require exceptional justification.",
+    "Every optimization begins with a measured bottleneck.",
+    "Analytical diagnostics generate hypotheses.",
+    "Production validation determines promotion.",
+    "Closed investigations remain closed until new evidence warrants reopening.",
+    "Optimize for user-visible outcomes rather than intermediate metrics."
+  ],
+  "successMetrics": [
+    "Higher recommendation relevance.",
+    "Reduced fallback dependence.",
+    "Increased first-query success.",
+    "Improved slate quality.",
+    "No regression in production stability."
+  ]
+}
+

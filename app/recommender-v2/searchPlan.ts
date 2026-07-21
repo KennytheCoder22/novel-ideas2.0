@@ -433,7 +433,14 @@ type TeenGoogleBooksQueryCandidate = {
 function teenGoogleBooksCanonicalFamilyQuery(agePrefix: string, family?: string): string | undefined {
   const normalizedFamily = normalizedTerm(family || "");
   if (!normalizedFamily) return undefined;
-  if (normalizedFamily === "science fiction") return `${agePrefix} science fiction novel`;
+  if (normalizedFamily === "science fiction") {
+    const override = String(process.env.V2_TEEN_GB_SCIFI_PRIMARY_QUERY_OVERRIDE || "").trim();
+    if (agePrefix === "young adult") {
+      if (override) return override;
+      return `${agePrefix} science fiction novel`;
+    }
+    return uniqueTerms([agePrefix, normalizedFamily, "fiction", "novel"], 4).join(" ");
+  }
   if (normalizedFamily === "fiction") return `${agePrefix} fiction novel`;
   return uniqueTerms([agePrefix, normalizedFamily, "fiction", "novel"], 4).join(" ");
 }
@@ -483,6 +490,8 @@ function buildTeenGoogleBooksIntents(profile: TasteProfile, genres: string[], to
   const primaryGenre = genreAnchors[0];
   const secondaryGenre = genreAnchors[1];
   const adjacentGenre = googleBooksAdjacentGenre(primaryGenre);
+  const scienceFictionOverride = String(process.env.V2_TEEN_GB_SCIFI_PRIMARY_QUERY_OVERRIDE || "").trim();
+  const scienceFictionOverrideApplied = Boolean(scienceFictionOverride) && primaryGenre === "science fiction";
   const primaryQuery = teenGoogleBooksCanonicalFamilyQuery(agePrefix, primaryGenre);
   const adjacentFamily = secondaryGenre && secondaryGenre !== primaryGenre
     ? secondaryGenre
@@ -560,6 +569,8 @@ function buildTeenGoogleBooksIntents(profile: TasteProfile, genres: string[], to
       teenGoogleBooksQueryRungByQuery: rungByQuery,
       teenGoogleBooksDuplicateSuppressionReasons: duplicateSuppressionReasons,
       teenGoogleBooksOmittedThirdQueryReason: thirdQuery.reason,
+      teenGoogleBooksScienceFictionPrimaryQueryOverrideApplied: scienceFictionOverrideApplied,
+      teenGoogleBooksScienceFictionPrimaryQueryOverrideValue: scienceFictionOverrideApplied ? scienceFictionOverride : "",
     },
   };
 }

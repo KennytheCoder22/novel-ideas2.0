@@ -1,0 +1,28 @@
+{
+  "milestone": "Phase 2 Baseline — Quality Governance Established",
+  "phaseStatus": "Architecture & Governance Phase Complete",
+  "frozenAt": "2026-07-21T01:34:13.074-07:00",
+  "phaseCompleteCriteria": {
+    "stableRoutingArchitecture": true,
+    "stableRecommendationPipeline": true,
+    "productionDiagnostics": true,
+    "analyticalDiagnostics": true,
+    "productionABValidationFramework": true,
+    "investigationRegistry": true,
+    "opportunityRanking": true,
+    "confidenceModel": true,
+    "explicitClosureSemantics": true,
+    "frozenOptimizationBaseline": true
+  },
+  "governancePillars": [
+    "Repeatable diagnostic methodology (measure before changing)",
+    "Production-validation requirement (analytical wins do not auto-ship)",
+    "Investigation registry (closed questions remain closed until new evidence)"
+  ],
+  "requiredQuestionsForEveryOptimization": [
+    "What measured bottleneck are we addressing?",
+    "How will we measure success?",
+    "Did production improve?",
+    "If not, what did we learn?"
+  ]
+}

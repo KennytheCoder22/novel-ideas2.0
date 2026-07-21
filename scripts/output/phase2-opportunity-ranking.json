@@ -1,0 +1,101 @@
+{
+  "generatedAt": "2026-07-21T01:31:33.886-07:00",
+  "phase2InvestigationClosure": {
+    "opportunity": "Google Books General publication identity",
+    "status": "Resolved",
+    "decision": "Working as Intended",
+    "evidence": [
+      "Largest rejection class is publication_shape_nonfiction (54.5%), which is a legitimate non-narrative boundary.",
+      "Earlier replay identified only one plausible false reject among publication-identity rejects.",
+      "Single-rule relaxations produced unacceptable false-accept risk.",
+      "Strict shadow-mode counterfactual admitted zero candidates.",
+      "Downstream impact remained zero: selected additions 0, replacements 0, score delta 0, diversity delta 0."
+    ]
+  },
+  "opportunities": [
+    {
+      "opportunity": "Teen Google Books fallback dependence reduction",
+      "expectedUserImpact": "High",
+      "engineeringEffort": "Medium",
+      "evidenceStrength": "High",
+      "recommendedPriority": "P1",
+      "priorityLane": "P1-A",
+      "evidence": "Production A/B improved acceptedAfterSourcePolicy (+8) and scored (+8), but fallback usage stayed unchanged and selected delta was only +1."
+    },
+    {
+      "opportunity": "Teen Open Library recall freeze/starvation boundary (mechanism-classified)",
+      "expectedUserImpact": "High",
+      "engineeringEffort": "Medium",
+      "evidenceStrength": "Medium",
+      "recommendedPriority": "P1",
+      "priorityLane": "P1-B",
+      "evidence": "Recurring freeze/starvation symptoms remain. Next pass must classify starvation by mechanism (transport/proxy timeout, empty upstream, normalization collapse, publication filtering, diversity exhaustion, underfill after scoring, other)."
+    },
+    {
+      "opportunity": "Google Books family-specific query refinement framework (generalized production A/B harness)",
+      "expectedUserImpact": "Medium-High",
+      "engineeringEffort": "Medium",
+      "evidenceStrength": "Medium-High",
+      "recommendedPriority": "P2",
+      "evidence": "Science-fiction case proved query variants can improve upstream counts while downstream gains may dissipate. A reusable family->variants->production A/B->promote/reject loop is now higher leverage than one-off tuning."
+    },
+    {
+      "opportunity": "Open Library recall yield analysis by route and age band",
+      "expectedUserImpact": "Medium-High",
+      "engineeringEffort": "Medium",
+      "evidenceStrength": "Medium",
+      "recommendedPriority": "P2",
+      "evidence": "Need route-normalized recall diagnostics (e.g., Teen Fantasy, Teen Mystery, Teen Horror, Teen Contemporary, Adult Historical, Adult Mixed Speculative) to identify dominant loss boundaries precisely."
+    },
+    {
+      "opportunity": "Kids Google Books pre-scoring rejection boundary",
+      "expectedUserImpact": "Medium",
+      "engineeringEffort": "Medium",
+      "evidenceStrength": "Medium",
+      "recommendedPriority": "P2",
+      "evidence": "Prior Kids diagnostics flagged measurable pre-scoring rejection boundaries worth targeted recall-quality investigation after P1 lanes."
+    },
+    {
+      "opportunity": "Open Library normalization loss audit",
+      "expectedUserImpact": "Medium",
+      "engineeringEffort": "Medium",
+      "evidenceStrength": "Low-Medium",
+      "recommendedPriority": "Monitor",
+      "evidence": "Potential attrition boundary, but current evidence remains weaker than recall/fallback bottlenecks."
+    },
+    {
+      "opportunity": "Adult Open Library sparse-exception behavior",
+      "expectedUserImpact": "Medium",
+      "engineeringEffort": "Medium",
+      "evidenceStrength": "Medium",
+      "recommendedPriority": "Monitor",
+      "evidence": "Instrumentation is present; collect production incidence and downstream impact before policy changes."
+    },
+    {
+      "opportunity": "Pre-Teen Google Books publication-shape rescue effectiveness",
+      "expectedUserImpact": "Medium",
+      "engineeringEffort": "Low",
+      "evidenceStrength": "Medium",
+      "recommendedPriority": "Monitor",
+      "evidence": "Rescue path exists; continue drift monitoring for false-accept pressure and sustained slate benefit."
+    },
+    {
+      "opportunity": "Open Library ranking/selection tuning",
+      "expectedUserImpact": "Medium",
+      "engineeringEffort": "High",
+      "evidenceStrength": "Low",
+      "recommendedPriority": "P3",
+      "evidence": "Lower leverage until upstream recall and starvation mechanisms are improved."
+    },
+    {
+      "opportunity": "Google Books General publication identity",
+      "expectedUserImpact": "Low",
+      "engineeringEffort": "N/A",
+      "evidenceStrength": "High",
+      "recommendedPriority": "Closed",
+      "closureStatus": "Resolved — Working as Intended",
+      "evidence": "Investigation complete; strict counterfactual admitted zero candidates and produced no downstream improvement."
+    }
+  ]
+}
+

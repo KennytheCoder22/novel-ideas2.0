@@ -1,0 +1,385 @@
+{
+  "generatedAt": "2026-07-21T07:56:19.753Z",
+  "inputs": [
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-abd87e5d-304b-4b0c-b530-a6e9621e3786.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-99e4d17e-cab8-4674-b35c-2f3759a0fc78.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-e79bbae6-b9f6-4c89-a503-dd949bc87918.txt"
+  ],
+  "totals": {
+    "families": 5,
+    "queryRows": 6,
+    "rawApiResults": 120,
+    "selectedRecommendations": 12
+  },
+  "summaryByRecallLoss": [
+    {
+      "queryFamily": "mystery",
+      "recallLossCount": 35,
+      "recallLossRate": 87.5,
+      "dominantLossStage": "pre_publication",
+      "likelyAction": "No action"
+    },
+    {
+      "queryFamily": "general",
+      "recallLossCount": 20,
+      "recallLossRate": 100,
+      "dominantLossStage": "pre_publication",
+      "likelyAction": "Query refinement"
+    },
+    {
+      "queryFamily": "science_fiction",
+      "recallLossCount": 20,
+      "recallLossRate": 100,
+      "dominantLossStage": "pre_publication",
+      "likelyAction": "Query refinement"
+    },
+    {
+      "queryFamily": "horror",
+      "recallLossCount": 17,
+      "recallLossRate": 85,
+      "dominantLossStage": "pre_publication",
+      "likelyAction": "No action"
+    },
+    {
+      "queryFamily": "thriller",
+      "recallLossCount": 16,
+      "recallLossRate": 80,
+      "dominantLossStage": "pre_publication",
+      "likelyAction": "No action"
+    }
+  ],
+  "familyRows": [
+    {
+      "queryFamily": "mystery",
+      "queryCount": 2,
+      "rawApiResults": 40,
+      "narrativeCandidates": 6,
+      "publicationIdentityPasses": 6,
+      "scoredCandidates": 6,
+      "selectedRecommendations": 5,
+      "publicationShapeRejectionHistogram": {
+        "writing_guide": 3,
+        "critical_study": 2,
+        "nonfiction": 2,
+        "reference": 4,
+        "genre_survey": 2,
+        "unknown": 6
+      },
+      "rejectionReasonHistogram": {
+        "duplicate_volume_id": 3,
+        "publication_shape_writing_guide": 3,
+        "publication_shape_critical_study": 2,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_reference": 4,
+        "missing_author": 12,
+        "publication_shape_genre_survey": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 6
+      },
+      "narrativeYield": 15,
+      "publicationSurvival": 100,
+      "selectionEfficiency": 83.3,
+      "overallRecallEfficiency": 12.5,
+      "dominantRejectionReason": "missing_author",
+      "dominantRejectionCount": 12,
+      "dominantLossStage": "pre_publication",
+      "dominantLossCount": 34,
+      "likelyAction": "No action"
+    },
+    {
+      "queryFamily": "general",
+      "queryCount": 1,
+      "rawApiResults": 20,
+      "narrativeCandidates": 0,
+      "publicationIdentityPasses": 0,
+      "scoredCandidates": 0,
+      "selectedRecommendations": 0,
+      "publicationShapeRejectionHistogram": {
+        "writing_guide": 5,
+        "anthology": 1,
+        "critical_study": 4,
+        "nonfiction": 2,
+        "public_domain_compilation": 2
+      },
+      "rejectionReasonHistogram": {
+        "publication_shape_writing_guide": 5,
+        "publication_shape_anthology": 1,
+        "publication_shape_critical_study": 4,
+        "publication_shape_nonfiction": 2,
+        "missing_author": 6,
+        "publication_shape_public_domain_compilation": 2
+      },
+      "narrativeYield": 0,
+      "publicationSurvival": 0,
+      "selectionEfficiency": 0,
+      "overallRecallEfficiency": 0,
+      "dominantRejectionReason": "missing_author",
+      "dominantRejectionCount": 6,
+      "dominantLossStage": "pre_publication",
+      "dominantLossCount": 20,
+      "likelyAction": "Query refinement"
+    },
+    {
+      "queryFamily": "science_fiction",
+      "queryCount": 1,
+      "rawApiResults": 20,
+      "narrativeCandidates": 0,
+      "publicationIdentityPasses": 0,
+      "scoredCandidates": 0,
+      "selectedRecommendations": 0,
+      "publicationShapeRejectionHistogram": {
+        "critical_study": 2,
+        "reference": 1,
+        "writing_guide": 4,
+        "nonfiction": 2,
+        "anthology": 2,
+        "unknown": 5
+      },
+      "rejectionReasonHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "narrativeYield": 0,
+      "publicationSurvival": 0,
+      "selectionEfficiency": 0,
+      "overallRecallEfficiency": 0,
+      "dominantRejectionReason": "missing_author",
+      "dominantRejectionCount": 4,
+      "dominantLossStage": "pre_publication",
+      "dominantLossCount": 20,
+      "likelyAction": "Query refinement"
+    },
+    {
+      "queryFamily": "horror",
+      "queryCount": 1,
+      "rawApiResults": 20,
+      "narrativeCandidates": 3,
+      "publicationIdentityPasses": 3,
+      "scoredCandidates": 3,
+      "selectedRecommendations": 3,
+      "publicationShapeRejectionHistogram": {
+        "critical_study": 3,
+        "reference": 3,
+        "nonfiction": 2,
+        "unknown": 1,
+        "story_collection": 1,
+        "public_domain_compilation": 4
+      },
+      "rejectionReasonHistogram": {
+        "publication_shape_critical_study": 3,
+        "publication_shape_reference": 3,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "non_narrative_description_shape": 1,
+        "missing_author": 3,
+        "publication_shape_public_domain_compilation": 4
+      },
+      "narrativeYield": 15,
+      "publicationSurvival": 100,
+      "selectionEfficiency": 100,
+      "overallRecallEfficiency": 15,
+      "dominantRejectionReason": "publication_shape_public_domain_compilation",
+      "dominantRejectionCount": 4,
+      "dominantLossStage": "pre_publication",
+      "dominantLossCount": 17,
+      "likelyAction": "No action"
+    },
+    {
+      "queryFamily": "thriller",
+      "queryCount": 1,
+      "rawApiResults": 20,
+      "narrativeCandidates": 4,
+      "publicationIdentityPasses": 4,
+      "scoredCandidates": 4,
+      "selectedRecommendations": 4,
+      "publicationShapeRejectionHistogram": {
+        "writing_guide": 5,
+        "unknown": 1,
+        "nonfiction": 1,
+        "public_domain_compilation": 1
+      },
+      "rejectionReasonHistogram": {
+        "publication_shape_writing_guide": 5,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "missing_author": 8,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 1
+      },
+      "narrativeYield": 20,
+      "publicationSurvival": 100,
+      "selectionEfficiency": 100,
+      "overallRecallEfficiency": 20,
+      "dominantRejectionReason": "missing_author",
+      "dominantRejectionCount": 8,
+      "dominantLossStage": "pre_publication",
+      "dominantLossCount": 16,
+      "likelyAction": "No action"
+    }
+  ],
+  "queryRows": [
+    {
+      "report": "pasted-text-abd87e5d-304b-4b0c-b530-a6e9621e3786.txt",
+      "family": "general",
+      "query": "young adult contemporary fiction novel",
+      "rawApiResults": 20,
+      "narrativeCandidates": 0,
+      "publicationIdentityPasses": 0,
+      "scoredCandidates": 0,
+      "selectedRecommendations": 0,
+      "publicationShapeRejectionHistogram": {
+        "writing_guide": 5,
+        "anthology": 1,
+        "critical_study": 4,
+        "nonfiction": 2,
+        "public_domain_compilation": 2
+      },
+      "rejectionReasonHistogram": {
+        "publication_shape_writing_guide": 5,
+        "publication_shape_anthology": 1,
+        "publication_shape_critical_study": 4,
+        "publication_shape_nonfiction": 2,
+        "missing_author": 6,
+        "publication_shape_public_domain_compilation": 2
+      }
+    },
+    {
+      "report": "pasted-text-abd87e5d-304b-4b0c-b530-a6e9621e3786.txt",
+      "family": "horror",
+      "query": "young adult horror fiction novel",
+      "rawApiResults": 20,
+      "narrativeCandidates": 3,
+      "publicationIdentityPasses": 3,
+      "scoredCandidates": 3,
+      "selectedRecommendations": 3,
+      "publicationShapeRejectionHistogram": {
+        "critical_study": 3,
+        "reference": 3,
+        "nonfiction": 2,
+        "unknown": 1,
+        "story_collection": 1,
+        "public_domain_compilation": 4
+      },
+      "rejectionReasonHistogram": {
+        "publication_shape_critical_study": 3,
+        "publication_shape_reference": 3,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "non_narrative_description_shape": 1,
+        "missing_author": 3,
+        "publication_shape_public_domain_compilation": 4
+      }
+    },
+    {
+      "report": "pasted-text-99e4d17e-cab8-4674-b35c-2f3759a0fc78.txt",
+      "family": "thriller",
+      "query": "young adult thriller fiction novel",
+      "rawApiResults": 20,
+      "narrativeCandidates": 4,
+      "publicationIdentityPasses": 4,
+      "scoredCandidates": 4,
+      "selectedRecommendations": 4,
+      "publicationShapeRejectionHistogram": {
+        "writing_guide": 5,
+        "unknown": 1,
+        "nonfiction": 1,
+        "public_domain_compilation": 1
+      },
+      "rejectionReasonHistogram": {
+        "publication_shape_writing_guide": 5,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "missing_author": 8,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 1
+      }
+    },
+    {
+      "report": "pasted-text-99e4d17e-cab8-4674-b35c-2f3759a0fc78.txt",
+      "family": "mystery",
+      "query": "young adult mystery fiction novel",
+      "rawApiResults": 20,
+      "narrativeCandidates": 3,
+      "publicationIdentityPasses": 3,
+      "scoredCandidates": 3,
+      "selectedRecommendations": 2,
+      "publicationShapeRejectionHistogram": {
+        "writing_guide": 2,
+        "critical_study": 1,
+        "nonfiction": 1,
+        "reference": 2,
+        "genre_survey": 1,
+        "unknown": 3
+      },
+      "rejectionReasonHistogram": {
+        "duplicate_volume_id": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_critical_study": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_reference": 2,
+        "missing_author": 6,
+        "publication_shape_genre_survey": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 3
+      }
+    },
+    {
+      "report": "pasted-text-e79bbae6-b9f6-4c89-a503-dd949bc87918.txt",
+      "family": "science_fiction",
+      "query": "young adult science fiction novel",
+      "rawApiResults": 20,
+      "narrativeCandidates": 0,
+      "publicationIdentityPasses": 0,
+      "scoredCandidates": 0,
+      "selectedRecommendations": 0,
+      "publicationShapeRejectionHistogram": {
+        "critical_study": 2,
+        "reference": 1,
+        "writing_guide": 4,
+        "nonfiction": 2,
+        "anthology": 2,
+        "unknown": 5
+      },
+      "rejectionReasonHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      }
+    },
+    {
+      "report": "pasted-text-e79bbae6-b9f6-4c89-a503-dd949bc87918.txt",
+      "family": "mystery",
+      "query": "young adult mystery fiction novel",
+      "rawApiResults": 20,
+      "narrativeCandidates": 3,
+      "publicationIdentityPasses": 3,
+      "scoredCandidates": 3,
+      "selectedRecommendations": 3,
+      "publicationShapeRejectionHistogram": {
+        "writing_guide": 1,
+        "critical_study": 1,
+        "nonfiction": 1,
+        "reference": 2,
+        "genre_survey": 1,
+        "unknown": 3
+      },
+      "rejectionReasonHistogram": {
+        "duplicate_volume_id": 2,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_reference": 2,
+        "missing_author": 6,
+        "publication_shape_genre_survey": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 3
+      }
+    }
+  ]
+}

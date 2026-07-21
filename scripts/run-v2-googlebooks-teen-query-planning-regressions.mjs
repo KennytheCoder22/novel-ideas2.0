@@ -163,6 +163,23 @@ function googleBooksPlan(ageBand, genreFamilyValues) {
   );
 }
 
+// Teen science-fiction experiment hook: override only changes the Teen primary science-fiction query.
+{
+  process.env.V2_TEEN_GB_SCIFI_PRIMARY_QUERY_OVERRIDE = "\"young adult\" dystopian novel";
+  const result = googleBooksPlan("teens", ["science fiction", "contemporary"]);
+  assertDeepEqual(
+    result.queries,
+    ["\"young adult\" dystopian novel", "young adult contemporary fiction novel"],
+    "teens science fiction override should affect only the primary query",
+  );
+  assertEqual(
+    result.diagnostics.teenGoogleBooksScienceFictionPrimaryQueryOverrideApplied,
+    true,
+    "override diagnostics flag should be true",
+  );
+  delete process.env.V2_TEEN_GB_SCIFI_PRIMARY_QUERY_OVERRIDE;
+}
+
 console.log(JSON.stringify({
   name: "teen google books query planning regressions",
   pass: true,

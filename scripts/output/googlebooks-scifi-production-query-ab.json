@@ -1,0 +1,227 @@
+{
+  "generatedAt": "2026-07-21T08:14:44.221Z",
+  "currentQuery": "young adult science fiction novel",
+  "candidateQuery": "\"young adult\" dystopian novel",
+  "profiles": [
+    {
+      "id": "test-c-reconstructed",
+      "label": "Test C reconstructed"
+    },
+    {
+      "id": "space-opera-positive",
+      "label": "Space-opera weighted"
+    },
+    {
+      "id": "speculative-mixed",
+      "label": "Speculative mixed profile"
+    }
+  ],
+  "baselineRows": [
+    {
+      "variant": "baseline",
+      "profileId": "test-c-reconstructed",
+      "profileLabel": "Test C reconstructed",
+      "primaryQuery": "young adult science fiction novel",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "publicationShapeDropHistogram": {},
+      "scoredCandidates": 0,
+      "totalScoredCandidates": 6,
+      "selectedRecommendations": 6,
+      "selectedFromPrimaryQuery": 0,
+      "fallbackUsed": true,
+      "underfillOrStarvation": false,
+      "finalRecommendationQuality": {
+        "averageScore": 21.865,
+        "minScore": 20.94,
+        "maxScore": 22.9
+      }
+    },
+    {
+      "variant": "baseline",
+      "profileId": "space-opera-positive",
+      "profileLabel": "Space-opera weighted",
+      "primaryQuery": "young adult science fiction novel",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "publicationShapeDropHistogram": {},
+      "scoredCandidates": 0,
+      "totalScoredCandidates": 3,
+      "selectedRecommendations": 3,
+      "selectedFromPrimaryQuery": 0,
+      "fallbackUsed": true,
+      "underfillOrStarvation": true,
+      "finalRecommendationQuality": {
+        "averageScore": 15.11,
+        "minScore": 13.71,
+        "maxScore": 15.81
+      }
+    },
+    {
+      "variant": "baseline",
+      "profileId": "speculative-mixed",
+      "profileLabel": "Speculative mixed profile",
+      "primaryQuery": "young adult science fiction novel",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "publicationShapeDropHistogram": {},
+      "scoredCandidates": 0,
+      "totalScoredCandidates": 6,
+      "selectedRecommendations": 6,
+      "selectedFromPrimaryQuery": 0,
+      "fallbackUsed": true,
+      "underfillOrStarvation": false,
+      "finalRecommendationQuality": {
+        "averageScore": 9.923,
+        "minScore": 8.54,
+        "maxScore": 11.04
+      }
+    }
+  ],
+  "candidateRows": [
+    {
+      "variant": "candidate",
+      "profileId": "test-c-reconstructed",
+      "profileLabel": "Test C reconstructed",
+      "primaryQuery": "\"young adult\" dystopian novel",
+      "rawApiCount": 10,
+      "acceptedAfterSourcePolicy": 4,
+      "publicationShapeDropHistogram": {},
+      "scoredCandidates": 4,
+      "totalScoredCandidates": 10,
+      "selectedRecommendations": 6,
+      "selectedFromPrimaryQuery": 2,
+      "fallbackUsed": true,
+      "underfillOrStarvation": false,
+      "finalRecommendationQuality": {
+        "averageScore": 22.789,
+        "minScore": 21.85,
+        "maxScore": 24.15
+      }
+    },
+    {
+      "variant": "candidate",
+      "profileId": "space-opera-positive",
+      "profileLabel": "Space-opera weighted",
+      "primaryQuery": "\"young adult\" dystopian novel",
+      "rawApiCount": 12,
+      "acceptedAfterSourcePolicy": 4,
+      "publicationShapeDropHistogram": {},
+      "scoredCandidates": 4,
+      "totalScoredCandidates": 7,
+      "selectedRecommendations": 4,
+      "selectedFromPrimaryQuery": 2,
+      "fallbackUsed": true,
+      "underfillOrStarvation": true,
+      "finalRecommendationQuality": {
+        "averageScore": 17.995,
+        "minScore": 15.81,
+        "maxScore": 20.78
+      }
+    },
+    {
+      "variant": "candidate",
+      "profileId": "speculative-mixed",
+      "profileLabel": "Speculative mixed profile",
+      "primaryQuery": "\"young adult\" dystopian novel",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "publicationShapeDropHistogram": {},
+      "scoredCandidates": 0,
+      "totalScoredCandidates": 6,
+      "selectedRecommendations": 6,
+      "selectedFromPrimaryQuery": 0,
+      "fallbackUsed": true,
+      "underfillOrStarvation": false,
+      "finalRecommendationQuality": {
+        "averageScore": 9.923,
+        "minScore": 8.54,
+        "maxScore": 11.04
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "profileId": "test-c-reconstructed",
+      "profileLabel": "Test C reconstructed",
+      "baselinePrimaryQuery": "young adult science fiction novel",
+      "candidatePrimaryQuery": "\"young adult\" dystopian novel",
+      "acceptedAfterSourcePolicyBaseline": 0,
+      "acceptedAfterSourcePolicyCandidate": 4,
+      "acceptedAfterSourcePolicyDelta": 4,
+      "scoredCandidatesBaseline": 0,
+      "scoredCandidatesCandidate": 4,
+      "scoredCandidatesDelta": 4,
+      "selectedBaseline": 6,
+      "selectedCandidate": 6,
+      "selectedDelta": 0,
+      "fallbackUsedBaseline": true,
+      "fallbackUsedCandidate": true,
+      "fallbackImproved": false,
+      "qualityAverageBaseline": 21.865,
+      "qualityAverageCandidate": 22.789,
+      "qualityAverageDelta": 0.924,
+      "underfillBaseline": false,
+      "underfillCandidate": false,
+      "meetsPromotionSignals": true
+    },
+    {
+      "profileId": "space-opera-positive",
+      "profileLabel": "Space-opera weighted",
+      "baselinePrimaryQuery": "young adult science fiction novel",
+      "candidatePrimaryQuery": "\"young adult\" dystopian novel",
+      "acceptedAfterSourcePolicyBaseline": 0,
+      "acceptedAfterSourcePolicyCandidate": 4,
+      "acceptedAfterSourcePolicyDelta": 4,
+      "scoredCandidatesBaseline": 0,
+      "scoredCandidatesCandidate": 4,
+      "scoredCandidatesDelta": 4,
+      "selectedBaseline": 3,
+      "selectedCandidate": 4,
+      "selectedDelta": 1,
+      "fallbackUsedBaseline": true,
+      "fallbackUsedCandidate": true,
+      "fallbackImproved": false,
+      "qualityAverageBaseline": 15.11,
+      "qualityAverageCandidate": 17.995,
+      "qualityAverageDelta": 2.885,
+      "underfillBaseline": true,
+      "underfillCandidate": true,
+      "meetsPromotionSignals": true
+    },
+    {
+      "profileId": "speculative-mixed",
+      "profileLabel": "Speculative mixed profile",
+      "baselinePrimaryQuery": "young adult science fiction novel",
+      "candidatePrimaryQuery": "\"young adult\" dystopian novel",
+      "acceptedAfterSourcePolicyBaseline": 0,
+      "acceptedAfterSourcePolicyCandidate": 0,
+      "acceptedAfterSourcePolicyDelta": 0,
+      "scoredCandidatesBaseline": 0,
+      "scoredCandidatesCandidate": 0,
+      "scoredCandidatesDelta": 0,
+      "selectedBaseline": 6,
+      "selectedCandidate": 6,
+      "selectedDelta": 0,
+      "fallbackUsedBaseline": true,
+      "fallbackUsedCandidate": true,
+      "fallbackImproved": false,
+      "qualityAverageBaseline": 9.923,
+      "qualityAverageCandidate": 9.923,
+      "qualityAverageDelta": 0,
+      "underfillBaseline": false,
+      "underfillCandidate": false,
+      "meetsPromotionSignals": false
+    }
+  ],
+  "aggregate": {
+    "acceptedAfterSourcePolicyDelta": 8,
+    "scoredCandidatesDelta": 8,
+    "selectedDelta": 1,
+    "qualityAverageDelta": 3.809,
+    "fallbackImprovedProfiles": 0,
+    "underfilledCandidateProfiles": 1,
+    "profilesMeetingPromotionSignals": 2,
+    "promotionRecommendation": "do_not_promote_candidate_query"
+  }
+}

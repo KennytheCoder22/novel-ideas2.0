@@ -621,9 +621,10 @@ export function buildGoogleBooksAgeBandInfrastructureDiagnostics(input: {
     const sourceAgeLabels = uniqueStrings((googleBooksResult?.rawItems || []).map((item) => (item as Record<string, unknown>)?.ageBand), 20);
     const maturityBandValues = uniqueStrings(normalizedGoogleBooks.map((candidate) => candidate.maturityBand), 20);
 
+    const searchPlanDiagnostics = (input.searchPlan?.diagnostics || {}) as Record<string, unknown>;
     const preteenSearchPlanDiagnostics = currentDeck === "preteens"
       ? Object.fromEntries(
-          Object.entries(input.searchPlan.diagnostics)
+          Object.entries(searchPlanDiagnostics)
             .filter(([key]) => key.startsWith("preteen")),
         )
       : {};

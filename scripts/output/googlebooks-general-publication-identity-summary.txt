@@ -1,0 +1,23 @@
+Google Books General publication-identity diagnostic
+Primary General query: young adult fiction novel
+Production baseline raw: 20
+Production baseline publication passes: 5
+Production baseline narrative candidates: 4
+Replay top100 publication-identity rejects: 90
+Replay top100 likely false rejects: 1
+
+Top publication-identity loss rules:
+- publication_shape_nonfiction: 6 (54.5%)
+- publication_shape_writing_guide: 2 (18.2%)
+- publication_shape_anthology: 1 (9.1%)
+- publication_shape_critical_study: 1 (9.1%)
+- publication_shape_unknown_insufficient_narrative_identity: 1 (9.1%)
+
+Single-rule relaxation simulations:
+- publication_shape_unknown_insufficient_narrative_identity: +20 candidates, likely_false_accept +20, false_accept_rate 100%
+- publication_shape_anthology: +2 candidates, likely_false_accept +2, false_accept_rate 100%
+- publication_shape_nonfiction: +2 candidates, likely_false_accept +2, false_accept_rate 100%
+- publication_shape_writing_guide: +2 candidates, likely_false_accept +2, false_accept_rate 100%
+- publication_shape_critical_study: +1 candidates, likely_false_accept +1, false_accept_rate 100%
+
+Recommended first experiment: none

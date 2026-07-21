@@ -1,0 +1,171 @@
+{
+  "generatedAt": "2026-07-21T08:26:23.858Z",
+  "aggregate": {
+    "profilesEvaluated": 3,
+    "blockedProfiles": 0,
+    "blockers": [],
+    "shadowAdmissions": 0,
+    "likelyTrueNarratives": 0,
+    "likelyFalseAccepts": 0,
+    "scoredAdditions": 0,
+    "selectedAdditions": 0,
+    "selectedReplacements": 0,
+    "averageScoreDelta": 0,
+    "diversityDeltaAuthors": 0,
+    "diversityDeltaTitleRoots": 0,
+    "falseAcceptRatePct": 0,
+    "decision": "no_action"
+  },
+  "profileResults": [
+    {
+      "profileId": "general-contemporary-core",
+      "profileLabel": "General contemporary core",
+      "generalPrimaryQuery": "young adult fiction novel",
+      "baseline": {
+        "selectedTitles": [
+          "Came Back to Show You I Could Fly: Text Classics",
+          "To The Wild Sky: Text Classics",
+          "All in the Blue Unclouded Weather: Text Classics"
+        ],
+        "selectedCount": 3,
+        "averageScore": 20.553,
+        "diversity": {
+          "uniqueAuthors": 2,
+          "uniqueTitleRoots": 3
+        }
+      },
+      "counterfactual": {
+        "selectedTitles": [
+          "Came Back to Show You I Could Fly: Text Classics",
+          "To The Wild Sky: Text Classics",
+          "All in the Blue Unclouded Weather: Text Classics"
+        ],
+        "selectedCount": 3,
+        "averageScore": 20.553,
+        "diversity": {
+          "uniqueAuthors": 2,
+          "uniqueTitleRoots": 3
+        }
+      },
+      "deltas": {
+        "selectedAdditions": [],
+        "selectedReplacements": [],
+        "averageScoreDelta": 0,
+        "diversityDelta": {
+          "uniqueAuthors": 0,
+          "uniqueTitleRoots": 0
+        }
+      },
+      "shadowAdmissions": {
+        "candidateUnknownRejectsExamined": 19,
+        "admittedCount": 0,
+        "likelyTrueNarratives": 0,
+        "likelyFalseAccepts": 0,
+        "scoredAdditions": 0,
+        "selectedAdditions": 0,
+        "selectedReplacements": 0
+      },
+      "shadowCandidateDiagnostics": []
+    },
+    {
+      "profileId": "general-coming-of-age",
+      "profileLabel": "General coming-of-age",
+      "generalPrimaryQuery": "young adult fiction novel",
+      "baseline": {
+        "selectedTitles": [
+          "Came Back to Show You I Could Fly: Text Classics",
+          "To The Wild Sky: Text Classics",
+          "All in the Blue Unclouded Weather: Text Classics"
+        ],
+        "selectedCount": 3,
+        "averageScore": 20.553,
+        "diversity": {
+          "uniqueAuthors": 2,
+          "uniqueTitleRoots": 3
+        }
+      },
+      "counterfactual": {
+        "selectedTitles": [
+          "Came Back to Show You I Could Fly: Text Classics",
+          "To The Wild Sky: Text Classics",
+          "All in the Blue Unclouded Weather: Text Classics"
+        ],
+        "selectedCount": 3,
+        "averageScore": 20.553,
+        "diversity": {
+          "uniqueAuthors": 2,
+          "uniqueTitleRoots": 3
+        }
+      },
+      "deltas": {
+        "selectedAdditions": [],
+        "selectedReplacements": [],
+        "averageScoreDelta": 0,
+        "diversityDelta": {
+          "uniqueAuthors": 0,
+          "uniqueTitleRoots": 0
+        }
+      },
+      "shadowAdmissions": {
+        "candidateUnknownRejectsExamined": 19,
+        "admittedCount": 0,
+        "likelyTrueNarratives": 0,
+        "likelyFalseAccepts": 0,
+        "scoredAdditions": 0,
+        "selectedAdditions": 0,
+        "selectedReplacements": 0
+      },
+      "shadowCandidateDiagnostics": []
+    },
+    {
+      "profileId": "general-realistic-fiction",
+      "profileLabel": "General realistic fiction",
+      "generalPrimaryQuery": "young adult fiction novel",
+      "baseline": {
+        "selectedTitles": [
+          "To The Wild Sky: Text Classics",
+          "All in the Blue Unclouded Weather: Text Classics",
+          "Dresses of Red and Gold: Text Classics"
+        ],
+        "selectedCount": 3,
+        "averageScore": 20.237,
+        "diversity": {
+          "uniqueAuthors": 2,
+          "uniqueTitleRoots": 3
+        }
+      },
+      "counterfactual": {
+        "selectedTitles": [
+          "To The Wild Sky: Text Classics",
+          "All in the Blue Unclouded Weather: Text Classics",
+          "Dresses of Red and Gold: Text Classics"
+        ],
+        "selectedCount": 3,
+        "averageScore": 20.237,
+        "diversity": {
+          "uniqueAuthors": 2,
+          "uniqueTitleRoots": 3
+        }
+      },
+      "deltas": {
+        "selectedAdditions": [],
+        "selectedReplacements": [],
+        "averageScoreDelta": 0,
+        "diversityDelta": {
+          "uniqueAuthors": 0,
+          "uniqueTitleRoots": 0
+        }
+      },
+      "shadowAdmissions": {
+        "candidateUnknownRejectsExamined": 18,
+        "admittedCount": 0,
+        "likelyTrueNarratives": 0,
+        "likelyFalseAccepts": 0,
+        "scoredAdditions": 0,
+        "selectedAdditions": 0,
+        "selectedReplacements": 0
+      },
+      "shadowCandidateDiagnostics": []
+    }
+  ]
+}

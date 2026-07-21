@@ -197,7 +197,7 @@ const GOOGLE_BOOKS_QUERY_EXCLUSION_TERMS = [
   "-catalog",
 ];
 
-function googleBooksAdultNarrativeFetchQuery(query: string): string {
+export function googleBooksAdultNarrativeFetchQuery(query: string): string {
   const normalized = normalizeQuery(query);
   if (!normalized) return "";
   const phrases: Array<{ phrase: string; quoted: string }> = [
@@ -243,7 +243,7 @@ function normalizePublicationIdentityTitle(value: unknown): string {
   return normalizeText(value).replace(/^(?:the|a|an)\s+/, "").trim();
 }
 
-function queryFamilyFromQuery(query: string): string {
+export function queryFamilyFromQuery(query: string): string {
   const normalized = normalizeQuery(query);
   if (/\b(thriller|suspense|conspiracy|manhunt|abduction)\b/.test(normalized)) return "thriller";
   if (/\b(mystery|detective|whodunit|private investigator)\b/.test(normalized)) return "mystery";
@@ -485,7 +485,7 @@ function googleBooksPeriodicalIdentityEvidence(
   return [];
 }
 
-function googleBooksPublicationShapeDropReason(analysis: GoogleBooksPublicationShapeAnalysis): string | undefined {
+export function googleBooksPublicationShapeDropReason(analysis: GoogleBooksPublicationShapeAnalysis): string | undefined {
   if (GOOGLE_BOOKS_NON_NARRATIVE_SHAPES.has(analysis.shape)) return `publication_shape_${analysis.shape}`;
   if (analysis.shape === "anthology" || analysis.shape === "essay_collection") return `publication_shape_${analysis.shape}`;
   if (analysis.shape === "unknown" && !analysis.unknownShapeEligibility) return analysis.unknownShapeRejectedReason || "publication_shape_unknown_insufficient_narrative_identity";
@@ -803,7 +803,7 @@ function kidsGoogleBooksPublicationAuditRecord(params: {
   };
 }
 
-function inferGoogleBooksPublicationShape(params: {
+export function inferGoogleBooksPublicationShape(params: {
   title: string;
   subtitle?: string;
   description?: string;
