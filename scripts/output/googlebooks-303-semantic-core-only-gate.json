@@ -1,0 +1,799 @@
+{
+  "generatedAt": "2026-07-21T06:48:39.873Z",
+  "capability": "#303 semantic core only",
+  "question": "If policy is removed, do Adult and Teen still produce the same canonical evidence records?",
+  "aggregate": {
+    "fixtureCount": 11,
+    "parityFixtureCount": 2,
+    "nonParityFixtureCount": 9,
+    "totalAdultRecords": 30,
+    "totalTeenRecords": 35,
+    "totalSharedRecords": 0,
+    "recordParityRatio": 0
+  },
+  "rows": [
+    {
+      "caseId": "direct-canonical-phrase",
+      "label": "direct canonical phrase",
+      "adultRecords": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "mystery",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "thriller",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "detective",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "conspiracy",
+          "matchedField": "description",
+          "matchedText": "conspiracy",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        }
+      ],
+      "teenRecords": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "conspiracy",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        }
+      ],
+      "comparison": {
+        "adultRecordCount": 4,
+        "teenRecordCount": 4,
+        "sharedRecordCount": 0,
+        "parity": false,
+        "adultOnlyRecordKeys": [
+          "mystery|description|mystery|regex pattern match|mystery crime thriller|1",
+          "thriller|description|thriller|regex pattern match|mystery crime thriller|1",
+          "detective|description|detective|regex pattern match|mystery crime thriller|1",
+          "conspiracy|description|conspiracy|regex pattern match|mystery crime thriller|1"
+        ],
+        "teenOnlyRecordKeys": [
+          "mystery|description|a mystery thriller follows a detective through a conspiracy|signal field token match|mystery crime thriller|1",
+          "thriller|description|a mystery thriller follows a detective through a conspiracy|signal field token match|mystery crime thriller|1",
+          "detective|description|a mystery thriller follows a detective through a conspiracy|signal field token match|mystery crime thriller|1",
+          "conspiracy|description|a mystery thriller follows a detective through a conspiracy|signal field token match|mystery crime thriller|1"
+        ]
+      }
+    },
+    {
+      "caseId": "approved-alias",
+      "label": "approved alias",
+      "adultRecords": [
+        {
+          "detectedCue": "investigation",
+          "matchedField": "description",
+          "matchedText": "investigation",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "killer",
+          "matchedField": "description",
+          "matchedText": "killer",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "serial killer",
+          "matchedField": "description",
+          "matchedText": "serial killer",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        }
+      ],
+      "teenRecords": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "A serial killer investigation terrifies a small city.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "investigation",
+          "matchedField": "description",
+          "matchedText": "A serial killer investigation terrifies a small city.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "killer",
+          "matchedField": "description",
+          "matchedText": "A serial killer investigation terrifies a small city.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "serial killer",
+          "matchedField": "description",
+          "matchedText": "A serial killer investigation terrifies a small city.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        }
+      ],
+      "comparison": {
+        "adultRecordCount": 3,
+        "teenRecordCount": 4,
+        "sharedRecordCount": 0,
+        "parity": false,
+        "adultOnlyRecordKeys": [
+          "investigation|description|investigation|regex pattern match|mystery crime thriller|1",
+          "killer|description|killer|regex pattern match|mystery crime thriller|1",
+          "serial killer|description|serial killer|regex pattern match|mystery crime thriller|1"
+        ],
+        "teenOnlyRecordKeys": [
+          "mystery|description|a serial killer investigation terrifies a small city|signal field token match|mystery crime thriller|1",
+          "investigation|description|a serial killer investigation terrifies a small city|signal field token match|mystery crime thriller|1",
+          "killer|description|a serial killer investigation terrifies a small city|signal field token match|mystery crime thriller|1",
+          "serial killer|description|a serial killer investigation terrifies a small city|signal field token match|mystery crime thriller|1"
+        ]
+      }
+    },
+    {
+      "caseId": "punctuation-acronym-variants",
+      "label": "punctuation and acronym variants",
+      "adultRecords": [
+        {
+          "detectedCue": "science fiction",
+          "matchedField": "description",
+          "matchedText": "science fiction",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "science_fiction",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "space",
+          "matchedField": "description",
+          "matchedText": "space",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "science_fiction",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "survival",
+          "matchedField": "subtitle",
+          "matchedText": "survival",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "adventure_action",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "survival",
+          "matchedField": "description",
+          "matchedText": "survival",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "adventure_action",
+          "normalizationConfidence": 1
+        }
+      ],
+      "teenRecords": [
+        {
+          "detectedCue": "science fiction",
+          "matchedField": "description",
+          "matchedText": "A science fiction crew fights for survival in deep space.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "science_fiction",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "space",
+          "matchedField": "description",
+          "matchedText": "A science fiction crew fights for survival in deep space.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "science_fiction",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "adventure",
+          "matchedField": "subtitle",
+          "matchedText": "A Sci-Fi survival novel",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "adventure_action",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "adventure",
+          "matchedField": "description",
+          "matchedText": "A science fiction crew fights for survival in deep space.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "adventure_action",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "survival",
+          "matchedField": "subtitle",
+          "matchedText": "A Sci-Fi survival novel",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "adventure_action",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "survival",
+          "matchedField": "description",
+          "matchedText": "A science fiction crew fights for survival in deep space.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "adventure_action",
+          "normalizationConfidence": 1
+        }
+      ],
+      "comparison": {
+        "adultRecordCount": 4,
+        "teenRecordCount": 6,
+        "sharedRecordCount": 0,
+        "parity": false,
+        "adultOnlyRecordKeys": [
+          "science fiction|description|science fiction|regex pattern match|science fiction|1",
+          "space|description|space|regex pattern match|science fiction|1",
+          "survival|subtitle|survival|regex pattern match|adventure action|1",
+          "survival|description|survival|regex pattern match|adventure action|1"
+        ],
+        "teenOnlyRecordKeys": [
+          "science fiction|description|a science fiction crew fights for survival in deep space|signal field token match|science fiction|1",
+          "space|description|a science fiction crew fights for survival in deep space|signal field token match|science fiction|1",
+          "adventure|subtitle|a sci fi survival novel|signal field token match|adventure action|1",
+          "adventure|description|a science fiction crew fights for survival in deep space|signal field token match|adventure action|1",
+          "survival|subtitle|a sci fi survival novel|signal field token match|adventure action|1",
+          "survival|description|a science fiction crew fights for survival in deep space|signal field token match|adventure action|1"
+        ]
+      }
+    },
+    {
+      "caseId": "cue-in-title-subtitle-categories-description",
+      "label": "cue in title/subtitle/categories/description",
+      "adultRecords": [
+        {
+          "detectedCue": "haunted",
+          "matchedField": "description",
+          "matchedText": "haunted",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "horror_paranormal",
+          "normalizationConfidence": 1
+        }
+      ],
+      "teenRecords": [
+        {
+          "detectedCue": "haunted",
+          "matchedField": "description",
+          "matchedText": "A haunted town confronts a ghostly force.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "horror_paranormal",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "ghost",
+          "matchedField": "description",
+          "matchedText": "A haunted town confronts a ghostly force.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "horror_paranormal",
+          "normalizationConfidence": 1
+        }
+      ],
+      "comparison": {
+        "adultRecordCount": 1,
+        "teenRecordCount": 2,
+        "sharedRecordCount": 0,
+        "parity": false,
+        "adultOnlyRecordKeys": [
+          "haunted|description|haunted|regex pattern match|horror paranormal|1"
+        ],
+        "teenOnlyRecordKeys": [
+          "haunted|description|a haunted town confronts a ghostly force|signal field token match|horror paranormal|1",
+          "ghost|description|a haunted town confronts a ghostly force|signal field token match|horror paranormal|1"
+        ]
+      }
+    },
+    {
+      "caseId": "multiple-cues-one-family",
+      "label": "multiple cues map to one family",
+      "adultRecords": [
+        {
+          "detectedCue": "crime",
+          "matchedField": "description",
+          "matchedText": "crime",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "detective",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "investigation",
+          "matchedField": "description",
+          "matchedText": "investigates",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "murder",
+          "matchedField": "description",
+          "matchedText": "murder",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "noir",
+          "matchedField": "description",
+          "matchedText": "noir",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        }
+      ],
+      "teenRecords": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "A detective investigates murder and crime in a noir city.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "crime",
+          "matchedField": "description",
+          "matchedText": "A detective investigates murder and crime in a noir city.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "A detective investigates murder and crime in a noir city.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "murder",
+          "matchedField": "description",
+          "matchedText": "A detective investigates murder and crime in a noir city.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "noir",
+          "matchedField": "description",
+          "matchedText": "A detective investigates murder and crime in a noir city.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        }
+      ],
+      "comparison": {
+        "adultRecordCount": 5,
+        "teenRecordCount": 5,
+        "sharedRecordCount": 0,
+        "parity": false,
+        "adultOnlyRecordKeys": [
+          "crime|description|crime|regex pattern match|mystery crime thriller|1",
+          "detective|description|detective|regex pattern match|mystery crime thriller|1",
+          "investigation|description|investigates|regex pattern match|mystery crime thriller|1",
+          "murder|description|murder|regex pattern match|mystery crime thriller|1",
+          "noir|description|noir|regex pattern match|mystery crime thriller|1"
+        ],
+        "teenOnlyRecordKeys": [
+          "mystery|description|a detective investigates murder and crime in a noir city|signal field token match|mystery crime thriller|1",
+          "crime|description|a detective investigates murder and crime in a noir city|signal field token match|mystery crime thriller|1",
+          "detective|description|a detective investigates murder and crime in a noir city|signal field token match|mystery crime thriller|1",
+          "murder|description|a detective investigates murder and crime in a noir city|signal field token match|mystery crime thriller|1",
+          "noir|description|a detective investigates murder and crime in a noir city|signal field token match|mystery crime thriller|1"
+        ]
+      }
+    },
+    {
+      "caseId": "ambiguous-multi-family-cue-set",
+      "label": "cue set spans multiple families",
+      "adultRecords": [
+        {
+          "detectedCue": "murder",
+          "matchedField": "description",
+          "matchedText": "murder",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "supernatural",
+          "matchedField": "description",
+          "matchedText": "supernatural",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "horror_paranormal",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "historical",
+          "matchedField": "description",
+          "matchedText": "historical",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "historical",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "romance",
+          "matchedField": "description",
+          "matchedText": "romance",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "romance",
+          "normalizationConfidence": 1
+        }
+      ],
+      "teenRecords": [
+        {
+          "detectedCue": "murder",
+          "matchedField": "description",
+          "matchedText": "A historical romance with murder and supernatural rumors.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "supernatural",
+          "matchedField": "description",
+          "matchedText": "A historical romance with murder and supernatural rumors.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "horror_paranormal",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "historical",
+          "matchedField": "description",
+          "matchedText": "A historical romance with murder and supernatural rumors.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "historical",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "romance",
+          "matchedField": "description",
+          "matchedText": "A historical romance with murder and supernatural rumors.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "romance",
+          "normalizationConfidence": 1
+        }
+      ],
+      "comparison": {
+        "adultRecordCount": 4,
+        "teenRecordCount": 4,
+        "sharedRecordCount": 0,
+        "parity": false,
+        "adultOnlyRecordKeys": [
+          "murder|description|murder|regex pattern match|mystery crime thriller|1",
+          "supernatural|description|supernatural|regex pattern match|horror paranormal|1",
+          "historical|description|historical|regex pattern match|historical|1",
+          "romance|description|romance|regex pattern match|romance|1"
+        ],
+        "teenOnlyRecordKeys": [
+          "murder|description|a historical romance with murder and supernatural rumors|signal field token match|mystery crime thriller|1",
+          "supernatural|description|a historical romance with murder and supernatural rumors|signal field token match|horror paranormal|1",
+          "historical|description|a historical romance with murder and supernatural rumors|signal field token match|historical|1",
+          "romance|description|a historical romance with murder and supernatural rumors|signal field token match|romance|1"
+        ]
+      }
+    },
+    {
+      "caseId": "already-present-family-evidence",
+      "label": "already-present family evidence",
+      "adultRecords": [
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "thriller",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "detective",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        }
+      ],
+      "teenRecords": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "A detective thriller where every suspect has a motive.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "A detective thriller where every suspect has a motive.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "A detective thriller where every suspect has a motive.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        }
+      ],
+      "comparison": {
+        "adultRecordCount": 2,
+        "teenRecordCount": 3,
+        "sharedRecordCount": 0,
+        "parity": false,
+        "adultOnlyRecordKeys": [
+          "thriller|description|thriller|regex pattern match|mystery crime thriller|1",
+          "detective|description|detective|regex pattern match|mystery crime thriller|1"
+        ],
+        "teenOnlyRecordKeys": [
+          "mystery|description|a detective thriller where every suspect has a motive|signal field token match|mystery crime thriller|1",
+          "thriller|description|a detective thriller where every suspect has a motive|signal field token match|mystery crime thriller|1",
+          "detective|description|a detective thriller where every suspect has a motive|signal field token match|mystery crime thriller|1"
+        ]
+      }
+    },
+    {
+      "caseId": "negated-or-contextual-mention",
+      "label": "negated/contextual mention",
+      "adultRecords": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "mystery",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "thriller",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "drama",
+          "matchedField": "description",
+          "matchedText": "drama",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "drama_contemporary",
+          "normalizationConfidence": 1
+        }
+      ],
+      "teenRecords": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "This is not a thriller and not a mystery, but a family drama.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "This is not a thriller and not a mystery, but a family drama.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "drama",
+          "matchedField": "description",
+          "matchedText": "This is not a thriller and not a mystery, but a family drama.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "drama_contemporary",
+          "normalizationConfidence": 1
+        }
+      ],
+      "comparison": {
+        "adultRecordCount": 3,
+        "teenRecordCount": 3,
+        "sharedRecordCount": 0,
+        "parity": false,
+        "adultOnlyRecordKeys": [
+          "mystery|description|mystery|regex pattern match|mystery crime thriller|1",
+          "thriller|description|thriller|regex pattern match|mystery crime thriller|1",
+          "drama|description|drama|regex pattern match|drama contemporary|1"
+        ],
+        "teenOnlyRecordKeys": [
+          "mystery|description|this is not a thriller and not a mystery but a family drama|signal field token match|mystery crime thriller|1",
+          "thriller|description|this is not a thriller and not a mystery but a family drama|signal field token match|mystery crime thriller|1",
+          "drama|description|this is not a thriller and not a mystery but a family drama|signal field token match|drama contemporary|1"
+        ]
+      }
+    },
+    {
+      "caseId": "weak-generic-must-not-promote",
+      "label": "weak generic phrase",
+      "adultRecords": [],
+      "teenRecords": [],
+      "comparison": {
+        "adultRecordCount": 0,
+        "teenRecordCount": 0,
+        "sharedRecordCount": 0,
+        "parity": true,
+        "adultOnlyRecordKeys": [],
+        "teenOnlyRecordKeys": []
+      }
+    },
+    {
+      "caseId": "conflicting-positive-negative-cues",
+      "label": "conflicting positive and negative cues",
+      "adultRecords": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "mystery",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "thriller",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "detective",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "murder",
+          "matchedField": "description",
+          "matchedText": "murders",
+          "matchMethod": "regex_pattern_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        }
+      ],
+      "teenRecords": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller with detective clues and serial murders.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller with detective clues and serial murders.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller with detective clues and serial murders.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        },
+        {
+          "detectedCue": "murder",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller with detective clues and serial murders.",
+          "matchMethod": "signal_field_token_match",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationConfidence": 1
+        }
+      ],
+      "comparison": {
+        "adultRecordCount": 4,
+        "teenRecordCount": 4,
+        "sharedRecordCount": 0,
+        "parity": false,
+        "adultOnlyRecordKeys": [
+          "mystery|description|mystery|regex pattern match|mystery crime thriller|1",
+          "thriller|description|thriller|regex pattern match|mystery crime thriller|1",
+          "detective|description|detective|regex pattern match|mystery crime thriller|1",
+          "murder|description|murders|regex pattern match|mystery crime thriller|1"
+        ],
+        "teenOnlyRecordKeys": [
+          "mystery|description|a mystery thriller with detective clues and serial murders|signal field token match|mystery crime thriller|1",
+          "thriller|description|a mystery thriller with detective clues and serial murders|signal field token match|mystery crime thriller|1",
+          "detective|description|a mystery thriller with detective clues and serial murders|signal field token match|mystery crime thriller|1",
+          "murder|description|a mystery thriller with detective clues and serial murders|signal field token match|mystery crime thriller|1"
+        ]
+      }
+    },
+    {
+      "caseId": "no-match-control",
+      "label": "no-match control",
+      "adultRecords": [],
+      "teenRecords": [],
+      "comparison": {
+        "adultRecordCount": 0,
+        "teenRecordCount": 0,
+        "sharedRecordCount": 0,
+        "parity": true,
+        "adultOnlyRecordKeys": [],
+        "teenOnlyRecordKeys": []
+      }
+    }
+  ],
+  "decision": {
+    "decision": "semantic_extraction_differs",
+    "rationale": "Detection/normalization records differ between Adult regex extraction and Teen signal-field extraction when policy layers are removed.",
+    "outcomes": {
+      "shared_semantic_core_hidden_inside_policy": "Extract shared semantic normalization engine and keep age-specific policy wrappers.",
+      "semantic_extraction_differs": "Keep #303 classified as same_name_different_semantics; do not pursue shared normalization engine."
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-07-21T07:27:48.947Z",
+  "capability": "#599 Adult content weighting branch",
+  "evidence": {
+    "adultGuardPresent": true,
+    "adultWeightedPolarityFunction": true,
+    "adultProductionPolarityFunction": true,
+    "teenWeightedCounterfactualEquivalent": false
+  },
+  "decision": {
+    "decision": "adult_only_capability_age_specific",
+    "rationale": "Age-band guard + adult-only weighted polarity logic indicate intentional age-specific policy branch.",
+    "outcomes": {
+      "equivalent_duplication": "Treat as shared branch candidate.",
+      "shared_mechanism_age_policy_outputs": "Shared mechanism with age-specialized policy output.",
+      "adult_only_capability_age_specific": "Keep age-specific branch and exclude from consolidation."
+    }
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T06:12:30.845Z",
+  "generatedAt": "2026-07-21T07:27:49.038Z",
   "sourceAudit": "googlebooks-behavioral-equivalence-audit.json",
   "summary": {
     "total": 12,
@@ -8,21 +8,27 @@
     "noveltyProofApplied": true,
     "noveltyProofDecision": "noSubstantiveDifference",
     "byBehavioralClass": {
-      "behaviorally_equivalent_duplication": 2,
-      "same_name_different_semantics": 5,
-      "truly_shared": 3,
+      "same_name_different_semantics": 9,
       "age_specific_by_necessity": 1,
-      "adult_production_teen_diagnostic": 1
+      "adult_production_teen_diagnostic": 1,
+      "behaviorally_equivalent_duplication": 1
     },
     "byConfidenceState": {
-      "Architectural": 6,
-      "Hypothesis": 5,
+      "Hypothesis": 9,
+      "Architectural": 2,
       "Falsified": 1
     },
+    "byArchitectureClassification": {
+      "Divergence": 6,
+      "Mechanism": 3,
+      "Pipeline": 1,
+      "Falsified": 1,
+      "Primitive": 1
+    },
     "nextActiveCapability": {
-      "capability": "Counterfactual final slate",
-      "implementationOrder": 205,
-      "confidenceState": "Architectural",
+      "capability": "Canonical cue promotion",
+      "implementationOrder": 303,
+      "confidenceState": "Hypothesis",
       "executionStatus": "pending"
     },
     "executionPhases": [
@@ -35,36 +41,6 @@
     ]
   },
   "rows": [
-    {
-      "capability": "Counterfactual final slate",
-      "behavioralClass": "behaviorally_equivalent_duplication",
-      "behavioralClassLabel": "Behaviorally equivalent duplication",
-      "expectedRecommendationQualityGain": "Low",
-      "maintenanceGain": "High",
-      "regressionRisk": "Medium",
-      "productionStatus": "adult=production_or_core; teen=production_or_core",
-      "prerequisiteTests": [
-        "run-v2-googlebooks-teen-taste-tier-audit.mjs",
-        "run-v2-googlebooks-teen-trusted-reconciliation-counterfactual.mjs",
-        "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs"
-      ],
-      "proposedSharedPrimitive": "simulateTieredFinalSlate({ candidates, tiers, minCleanCount, policy })",
-      "agePolicyConfigurationRequired": "Tier definitions and underfill policy per age band.",
-      "implementationOrder": 205,
-      "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
-      "recommendation": "Extract shared primitive and parametrize age policy",
-      "stage": "selection audit",
-      "effectSurface": "diagnostic/reporting",
-      "preflightCheckpoint": null,
-      "executionStatus": "pending",
-      "active": true,
-      "confidenceState": "Architectural",
-      "behaviorChange": "unknown",
-      "parityVerified": false,
-      "parityBaselineSignature": null,
-      "implementationCommit": null,
-      "reclassificationEvidence": null
-    },
     {
       "capability": "Canonical cue promotion",
       "behavioralClass": "same_name_different_semantics",
@@ -81,7 +57,7 @@
       "agePolicyConfigurationRequired": "Family vocabulary and cue polarity map per age band.",
       "implementationOrder": 303,
       "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
-      "recommendation": "Reclassified by #203 equivalence gate: define shared interface/mechanism only; do not force parity-preserving consolidation.",
+      "recommendation": "Reclassified by #303 semantic-boundary gate: policy-contaminated semantic split; do not force parity-preserving consolidation.",
       "stage": "scoring/family mapping",
       "effectSurface": "family weighting and diagnostics",
       "preflightCheckpoint": null,
@@ -93,10 +69,14 @@
       "parityBaselineSignature": null,
       "implementationCommit": null,
       "reclassificationEvidence": {
-        "gateArtifact": "googlebooks-203-canonical-cue-equivalence-gate.json",
-        "gateDecision": "materially_different_behavior_reclassify",
-        "rationale": "Adult has production canonical-family promotion with explicit promotion decisions; Teen exposes document-native specific signals without canonical-promotion diagnostics/mechanism."
-      }
+        "gateArtifact": "googlebooks-303-canonical-cue-semantic-boundary-gate.json",
+        "gateDecision": "policy_contaminated_transform_split",
+        "rationale": "Adult canonical cue path and Teen signal path do not emit equivalent normalized canonical evidence prior to policy."
+      },
+      "architectureClassification": "Divergence",
+      "architectureEvidence": "googlebooks-303-canonical-cue-semantic-boundary-gate.json",
+      "architectureStability": "Adult and Teen currently derive different canonical evidence records from the same documents before policy (validated by #303 semantic-boundary and semantic-core-only gates).",
+      "architectureFutureTrigger": "Reopen only if recommendation philosophy is unified or a new shared semantic ontology replaces age-specific cue models."
     },
     {
       "capability": "Final slate identity auditing",
@@ -129,7 +109,49 @@
         "gateArtifact": "googlebooks-204-final-slate-identity-role-gate.json",
         "gateDecision": "adult_production_audit_teen_eligibility_policy",
         "rationale": "Adult combines broad final-slate audit diagnostics with identity enforcement, while Teen applies publication-identity as direct final-eligibility policy with narrower classification semantics."
-      }
+      },
+      "architectureClassification": "Divergence",
+      "architectureEvidence": "googlebooks-204-final-slate-identity-role-gate.json",
+      "architectureStability": "Role/equivalence gates show similar naming but materially different semantics or decision boundaries.",
+      "architectureFutureTrigger": "Reopen if policy wrappers are redesigned around a shared semantic contract with deterministic parity evidence."
+    },
+    {
+      "capability": "Counterfactual final slate",
+      "behavioralClass": "same_name_different_semantics",
+      "behavioralClassLabel": "Same name, different semantics",
+      "expectedRecommendationQualityGain": "Medium",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-teen-taste-tier-audit.mjs",
+        "run-v2-googlebooks-teen-trusted-reconciliation-counterfactual.mjs",
+        "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs"
+      ],
+      "proposedSharedPrimitive": "simulateTieredFinalSlate({ candidates, tiers, minCleanCount, policy })",
+      "agePolicyConfigurationRequired": "Tier definitions and underfill policy per age band.",
+      "implementationOrder": 305,
+      "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
+      "recommendation": "Reclassified by #205 role gate: Adult and Teen counterfactuals answer different hypothetical questions; define contract only and avoid parity-preserving consolidation.",
+      "stage": "selection audit",
+      "effectSurface": "diagnostic/reporting",
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true,
+      "confidenceState": "Hypothesis",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null,
+      "reclassificationEvidence": {
+        "gateArtifact": "googlebooks-205-counterfactual-final-slate-role-gate.json",
+        "gateDecision": "different_hypothetical_questions",
+        "rationale": "Teen counterfactual models tiered final-slate composition (strong/secondary/weak-underfill and query-derived evidence treatment), while Adult counterfactual models weighted-polarity family decisions per candidate. They answer different hypothetical questions despite similar naming."
+      },
+      "architectureClassification": "Divergence",
+      "architectureEvidence": "googlebooks-205-counterfactual-final-slate-role-gate.json",
+      "architectureStability": "Role/equivalence gates show similar naming but materially different semantics or decision boundaries.",
+      "architectureFutureTrigger": "Reopen if policy wrappers are redesigned around a shared semantic contract with deterministic parity evidence."
     },
     {
       "capability": "Query quality comparison",
@@ -148,7 +170,7 @@
       "agePolicyConfigurationRequired": "Definition of decision-worthy candidate by age band.",
       "implementationOrder": 306,
       "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
-      "recommendation": "Define shared contract before unification",
+      "recommendation": "Reclassified by #306 role gate: shared query-quality mechanism with age-specific policy output differences; keep separate wrappers.",
       "stage": "retrieval planning",
       "effectSurface": "retrieval (currently mixed production+diagnostic)",
       "preflightCheckpoint": null,
@@ -159,7 +181,15 @@
       "parityVerified": false,
       "parityBaselineSignature": null,
       "implementationCommit": null,
-      "reclassificationEvidence": null
+      "reclassificationEvidence": {
+        "gateArtifact": "googlebooks-306-query-quality-role-gate.json",
+        "gateDecision": "shared_mechanism_age_policy_outputs",
+        "rationale": "Query-quality core appears shared, but age-band policy changes resulting per-query quality outputs."
+      },
+      "architectureClassification": "Mechanism",
+      "architectureEvidence": "googlebooks-306-query-quality-role-gate.json",
+      "architectureStability": "Query-quality telemetry collection and core metrics are shared, while age-band policy interpretation diverges downstream.",
+      "architectureFutureTrigger": "Reopen if age-band quality interpretation is unified or query-quality policy moves into a single cross-band decision model."
     },
     {
       "capability": "Family-scoped query competition",
@@ -178,7 +208,7 @@
       "agePolicyConfigurationRequired": "Family competition objective function and early-stop policy.",
       "implementationOrder": 307,
       "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
-      "recommendation": "Define shared contract before unification",
+      "recommendation": "Reclassified by #307 role gate: family competition uses shared mechanism with age-specific interpretation.",
       "stage": "retrieval planning",
       "effectSurface": "retrieval policy",
       "preflightCheckpoint": null,
@@ -189,7 +219,15 @@
       "parityVerified": false,
       "parityBaselineSignature": null,
       "implementationCommit": null,
-      "reclassificationEvidence": null
+      "reclassificationEvidence": {
+        "gateArtifact": "googlebooks-307-family-query-competition-role-gate.json",
+        "gateDecision": "shared_mechanism_age_policy_outputs",
+        "rationale": "Family competition depends on shared per-query telemetry, while age-band policy changes comparative family outcomes."
+      },
+      "architectureClassification": "Mechanism",
+      "architectureEvidence": "googlebooks-307-family-query-competition-role-gate.json",
+      "architectureStability": "Query-quality telemetry collection and core metrics are shared, while age-band policy interpretation diverges downstream.",
+      "architectureFutureTrigger": "Reopen if age-band quality interpretation is unified or query-quality policy moves into a single cross-band decision model."
     },
     {
       "capability": "Marginal decision-worthy yield",
@@ -207,7 +245,7 @@
       "agePolicyConfigurationRequired": "Decision-worthy class mapping per age band.",
       "implementationOrder": 308,
       "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
-      "recommendation": "Define shared contract before unification",
+      "recommendation": "Reclassified by #308 role gate: Adult and Teen marginal-yield analyses answer different questions; keep separate.",
       "stage": "retrieval audit",
       "effectSurface": "retrieval policy / diagnostic",
       "preflightCheckpoint": null,
@@ -218,15 +256,23 @@
       "parityVerified": false,
       "parityBaselineSignature": null,
       "implementationCommit": null,
-      "reclassificationEvidence": null
+      "reclassificationEvidence": {
+        "gateArtifact": "googlebooks-308-marginal-yield-role-gate.json",
+        "gateDecision": "different_hypothetical_questions",
+        "rationale": "Adult and Teen metrics optimize different objectives despite similar query-performance vocabulary."
+      },
+      "architectureClassification": "Divergence",
+      "architectureEvidence": "googlebooks-308-marginal-yield-role-gate.json",
+      "architectureStability": "Role/equivalence gates show similar naming but materially different semantics or decision boundaries.",
+      "architectureFutureTrigger": "Reopen if policy wrappers are redesigned around a shared semantic contract with deterministic parity evidence."
     },
     {
       "capability": "Query promotion / replacement",
-      "behavioralClass": "truly_shared",
-      "behavioralClassLabel": "Truly shared",
-      "expectedRecommendationQualityGain": "Low",
-      "maintenanceGain": "Low",
-      "regressionRisk": "Low",
+      "behavioralClass": "same_name_different_semantics",
+      "behavioralClassLabel": "Same name, different semantics",
+      "expectedRecommendationQualityGain": "Medium",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
       "productionStatus": "adult=production_or_core; teen=production_or_core",
       "prerequisiteTests": [
         "run-v2-googlebooks-query-quality-regressions.mjs",
@@ -234,28 +280,36 @@
       ],
       "proposedSharedPrimitive": "promoteOrReplaceQuery({ familyStats, cueStats, policy })",
       "agePolicyConfigurationRequired": "Promotion thresholds and replacement policy.",
-      "implementationOrder": 409,
-      "acceptanceCriteria": "No redesign; only regression protection and policy-config boundary checks.",
-      "recommendation": "Keep shared core; move policy to age-band config",
+      "implementationOrder": 309,
+      "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
+      "recommendation": "Reclassified by #409 role gate: query promotion/replacement runs on a shared mechanism with age-specific policy interpretation.",
       "stage": "retrieval planning",
       "effectSurface": "retrieval/ranking handoff",
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Architectural",
+      "confidenceState": "Hypothesis",
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
       "implementationCommit": null,
-      "reclassificationEvidence": null
+      "reclassificationEvidence": {
+        "gateArtifact": "googlebooks-409-query-promotion-replacement-role-gate.json",
+        "gateDecision": "shared_mechanism_age_policy_outputs",
+        "rationale": "Adult and Teen share the same query promotion/replacement execution order and attempted-query mechanism."
+      },
+      "architectureClassification": "Mechanism",
+      "architectureEvidence": "googlebooks-409-query-promotion-replacement-role-gate.json",
+      "architectureStability": "Query-quality telemetry collection and core metrics are shared, while age-band policy interpretation diverges downstream.",
+      "architectureFutureTrigger": "Reopen if age-band quality interpretation is unified or query-quality policy moves into a single cross-band decision model."
     },
     {
       "capability": "Narrative-strength scoring",
-      "behavioralClass": "truly_shared",
-      "behavioralClassLabel": "Truly shared",
-      "expectedRecommendationQualityGain": "Low",
-      "maintenanceGain": "Low",
-      "regressionRisk": "Low",
+      "behavioralClass": "same_name_different_semantics",
+      "behavioralClassLabel": "Same name, different semantics",
+      "expectedRecommendationQualityGain": "Medium",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
       "productionStatus": "adult=production_or_core; teen=production_or_core",
       "prerequisiteTests": [
         "run-v2-googlebooks-narrative-strength-ranking-regressions.mjs",
@@ -263,28 +317,36 @@
       ],
       "proposedSharedPrimitive": "computeNarrativeStrengthScore({ candidate, policy })",
       "agePolicyConfigurationRequired": "Component weights and minimum confidence per age band.",
-      "implementationOrder": 410,
-      "acceptanceCriteria": "No redesign; only regression protection and policy-config boundary checks.",
-      "recommendation": "Keep shared core; move policy to age-band config",
+      "implementationOrder": 310,
+      "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
+      "recommendation": "Reclassified by #410 role gate: narrative-strength responsibilities are in different pipeline layers.",
       "stage": "scoring/ranking",
       "effectSurface": "ranking + eligibility support",
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Architectural",
+      "confidenceState": "Hypothesis",
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
       "implementationCommit": null,
-      "reclassificationEvidence": null
+      "reclassificationEvidence": {
+        "gateArtifact": "googlebooks-410-narrative-strength-role-gate.json",
+        "gateDecision": "different_pipeline_layer",
+        "rationale": "Narrative-strength scoring is production ranking in Adult but upstream confidence support in Teen, i.e., different pipeline layer responsibilities."
+      },
+      "architectureClassification": "Divergence",
+      "architectureEvidence": "googlebooks-410-narrative-strength-role-gate.json",
+      "architectureStability": "Role/equivalence gates show similar naming but materially different semantics or decision boundaries.",
+      "architectureFutureTrigger": "Reopen if policy wrappers are redesigned around a shared semantic contract with deterministic parity evidence."
     },
     {
       "capability": "Meaningful taste tiers",
-      "behavioralClass": "truly_shared",
-      "behavioralClassLabel": "Truly shared",
-      "expectedRecommendationQualityGain": "Low",
-      "maintenanceGain": "Low",
-      "regressionRisk": "Low",
+      "behavioralClass": "same_name_different_semantics",
+      "behavioralClassLabel": "Same name, different semantics",
+      "expectedRecommendationQualityGain": "Medium",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
       "productionStatus": "adult=production_or_core; teen=production_or_core",
       "prerequisiteTests": [
         "run-v2-googlebooks-teen-taste-tier-audit.mjs",
@@ -293,20 +355,28 @@
       ],
       "proposedSharedPrimitive": "classifyMeaningfulTasteTier({ signals, score, provenance, policy })",
       "agePolicyConfigurationRequired": "Tier thresholds and provenance guardrails per age band.",
-      "implementationOrder": 411,
-      "acceptanceCriteria": "No redesign; only regression protection and policy-config boundary checks.",
-      "recommendation": "Keep shared core; move policy to age-band config",
+      "implementationOrder": 311,
+      "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
+      "recommendation": "Reclassified by #411 role gate: meaningful taste tiers answer different age-band questions.",
       "stage": "selection quality tiering",
       "effectSurface": "selection/ranking/reporting",
       "preflightCheckpoint": null,
       "executionStatus": "pending",
       "active": true,
-      "confidenceState": "Architectural",
+      "confidenceState": "Hypothesis",
       "behaviorChange": "unknown",
       "parityVerified": false,
       "parityBaselineSignature": null,
       "implementationCommit": null,
-      "reclassificationEvidence": null
+      "reclassificationEvidence": {
+        "gateArtifact": "googlebooks-411-meaningful-taste-tiers-role-gate.json",
+        "gateDecision": "different_hypothetical_questions",
+        "rationale": "Adult and Teen meaningful-taste models answer different selection questions despite overlapping terminology."
+      },
+      "architectureClassification": "Divergence",
+      "architectureEvidence": "googlebooks-411-meaningful-taste-tiers-role-gate.json",
+      "architectureStability": "Role/equivalence gates show similar naming but materially different semantics or decision boundaries.",
+      "architectureFutureTrigger": "Reopen if policy wrappers are redesigned around a shared semantic contract with deterministic parity evidence."
     },
     {
       "capability": "Adult content weighting branch",
@@ -325,7 +395,7 @@
       "agePolicyConfigurationRequired": "Explicitly separate adult mature-content policy from teen safety policy.",
       "implementationOrder": 599,
       "acceptanceCriteria": "Capability remains separate; policy invariants and tests prevent accidental unification.",
-      "recommendation": "Keep separate policy branch with explicit invariants",
+      "recommendation": "Reclassified by #599 role gate: keep adult content weighting as explicit age-specific policy branch.",
       "stage": "eligibility/policy",
       "effectSurface": "eligibility",
       "preflightCheckpoint": null,
@@ -336,7 +406,15 @@
       "parityVerified": false,
       "parityBaselineSignature": null,
       "implementationCommit": null,
-      "reclassificationEvidence": null
+      "reclassificationEvidence": {
+        "gateArtifact": "googlebooks-599-adult-content-weighting-branch-role-gate.json",
+        "gateDecision": "adult_only_capability_age_specific",
+        "rationale": "Age-band guard + adult-only weighted polarity logic indicate intentional age-specific policy branch."
+      },
+      "architectureClassification": "Pipeline",
+      "architectureEvidence": "googlebooks-599-adult-content-weighting-branch-role-gate.json",
+      "architectureStability": "Capability is intentionally age-specific and tied to policy constraints.",
+      "architectureFutureTrigger": "Reopen only if age-band policy separation is intentionally removed."
     },
     {
       "capability": "Evidence-origin reconciliation audit",
@@ -382,7 +460,11 @@
       "parityVerified": false,
       "parityBaselineSignature": null,
       "implementationCommit": null,
-      "reclassificationEvidence": null
+      "reclassificationEvidence": null,
+      "architectureClassification": "Falsified",
+      "architectureEvidence": "googlebooks-101-novelty-proof.json",
+      "architectureStability": "Prior counterfactual and novelty-proof outcomes show no substantive untested behavior difference.",
+      "architectureFutureTrigger": "Reopen only if upstream architecture introduces new evidence channels or stage placement that invalidates novelty assumptions."
     },
     {
       "capability": "Semantic phrase extraction",
@@ -412,7 +494,11 @@
       "parityVerified": true,
       "parityBaselineSignature": "bcea3ee2e21ffbee",
       "implementationCommit": "8a9f6f03cfdf20ee0653681864b6f0c9f6927520",
-      "reclassificationEvidence": null
+      "reclassificationEvidence": null,
+      "architectureClassification": "Primitive",
+      "architectureEvidence": "googlebooks-202-parity-baseline.json + googlebooks-202-parity-compare.json",
+      "architectureStability": "Parity signature is locked and comparator enforces zero-drift behavior.",
+      "architectureFutureTrigger": "Reopen if lexicon/token-boundary architecture changes or parity signature drift is intentionally introduced."
     }
   ]
 }

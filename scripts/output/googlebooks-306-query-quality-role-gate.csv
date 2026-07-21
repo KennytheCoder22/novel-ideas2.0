@@ -1,0 +1,2 @@
+decision,adultStatus,teenStatus,queryQualityEquivalent,adultAliasEquivalent,narrativeYieldEquivalent,narrativeEfficiencyEquivalent,queryDiffCount,adultAliasDiffCount
+shared_mechanism_age_policy_outputs,succeeded,succeeded,false,false,false,false,1,1

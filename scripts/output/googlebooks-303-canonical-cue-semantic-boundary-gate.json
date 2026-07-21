@@ -1,0 +1,1991 @@
+{
+  "generatedAt": "2026-07-21T06:41:14.387Z",
+  "capability": "#303 Canonical cue promotion semantic boundary gate",
+  "inventory": {
+    "sourcePath": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\app\\recommender-v2\\select.ts",
+    "hasAdultCanonicalCueLexicon": true,
+    "hasAdultCanonicalPromotionFunction": true,
+    "hasTeenCanonicalCueLexicon": false,
+    "hasTeenCanonicalPromotionFunction": false,
+    "hasTeenCanonicalNormalizationDiagnostics": false,
+    "hasTeenSignalFieldDiagnostics": true
+  },
+  "aggregate": {
+    "fixtureCount": 11,
+    "adultCanonicalRecords": 61,
+    "teenCanonicalRecords": 30,
+    "sharedCanonicalRecords": 23,
+    "parityFixtureCount": 2,
+    "nonParityFixtureCount": 9,
+    "adultOnlyCanonicalKeyCount": 38,
+    "teenOnlyCanonicalKeyCount": 7,
+    "teenCanonicalCoverageRate": 0.3770491803278688
+  },
+  "rows": [
+    {
+      "caseId": "direct-canonical-phrase",
+      "label": "direct canonical phrase",
+      "expectedScenario": "cue maps directly to canonical family",
+      "sharedNormalizationOracle": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "conspiracy",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "approved_alias_phrase",
+          "confidence": 1
+        }
+      ],
+      "adult": {
+        "records": [
+          {
+            "detectedCue": "mystery",
+            "matchedField": "title",
+            "matchedText": "harbor mystery",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "mystery",
+            "matchedField": "categories",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "mystery",
+            "matchedField": "genres",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "mystery",
+            "matchedField": "description",
+            "matchedText": "a mystery thriller follows a detective through a conspiracy",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "thriller",
+            "matchedField": "description",
+            "matchedText": "a mystery thriller follows a detective through a conspiracy",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:thriller->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "categories",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "genres",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "description",
+            "matchedText": "a mystery thriller follows a detective through a conspiracy",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          }
+        ]
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "conspiracy",
+            "matchedField": "description",
+            "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "approved_alias_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "description",
+            "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "mystery",
+            "matchedField": "description",
+            "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "thriller",
+            "matchedField": "description",
+            "matchedText": "A mystery thriller follows a detective through a conspiracy.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 8,
+        "teenCanonicalCount": 4,
+        "sharedCanonicalCount": 3,
+        "adultOnlyCanonicalKeys": [
+          "mystery|title|mystery crime thriller",
+          "mystery|categories|mystery crime thriller",
+          "mystery|genres|mystery crime thriller",
+          "detective|categories|mystery crime thriller",
+          "detective|genres|mystery crime thriller"
+        ],
+        "teenOnlyCanonicalKeys": [
+          "conspiracy|description|mystery crime thriller"
+        ],
+        "parityAtNormalization": false
+      }
+    },
+    {
+      "caseId": "approved-alias",
+      "label": "approved alias",
+      "expectedScenario": "alias phrase normalizes to canonical family",
+      "sharedNormalizationOracle": [
+        {
+          "detectedCue": "investigation",
+          "matchedField": "description",
+          "matchedText": "A serial killer investigation terrifies a small city.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "killer",
+          "matchedField": "description",
+          "matchedText": "A serial killer investigation terrifies a small city.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "cue_lexicon_mapping",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "serial killer",
+          "matchedField": "description",
+          "matchedText": "A serial killer investigation terrifies a small city.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "approved_alias_phrase",
+          "confidence": 1
+        }
+      ],
+      "adult": {
+        "records": [
+          {
+            "detectedCue": "thriller",
+            "matchedField": "categories",
+            "matchedText": "fiction thrillers",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:thriller->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "thriller",
+            "matchedField": "genres",
+            "matchedText": "fiction thrillers",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:thriller->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          }
+        ]
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "investigation",
+            "matchedField": "description",
+            "matchedText": "A serial killer investigation terrifies a small city.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "serial killer",
+            "matchedField": "description",
+            "matchedText": "A serial killer investigation terrifies a small city.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "approved_alias_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 2,
+        "teenCanonicalCount": 2,
+        "sharedCanonicalCount": 0,
+        "adultOnlyCanonicalKeys": [
+          "thriller|categories|mystery crime thriller",
+          "thriller|genres|mystery crime thriller"
+        ],
+        "teenOnlyCanonicalKeys": [
+          "investigation|description|mystery crime thriller",
+          "serial killer|description|mystery crime thriller"
+        ],
+        "parityAtNormalization": false
+      }
+    },
+    {
+      "caseId": "punctuation-acronym-variants",
+      "label": "punctuation and acronym variants",
+      "expectedScenario": "sci-fi punctuation variants should map consistently",
+      "sharedNormalizationOracle": [
+        {
+          "detectedCue": "science fiction",
+          "matchedField": "description",
+          "matchedText": "A science fiction crew fights for survival in deep space.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "science_fiction",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "space",
+          "matchedField": "description",
+          "matchedText": "A science fiction crew fights for survival in deep space.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "science_fiction",
+          "normalizationReason": "cue_lexicon_mapping",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "survival",
+          "matchedField": "subtitle",
+          "matchedText": "A Sci-Fi survival novel",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "adventure_action",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "survival",
+          "matchedField": "description",
+          "matchedText": "A science fiction crew fights for survival in deep space.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "adventure_action",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        }
+      ],
+      "adult": {
+        "records": [
+          {
+            "detectedCue": "science fiction",
+            "matchedField": "categories",
+            "matchedText": "fiction science fiction general",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "science_fiction",
+            "normalizationReason": "canonical_cue:science fiction->science_fiction",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "science fiction",
+            "matchedField": "genres",
+            "matchedText": "fiction science fiction general",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "science_fiction",
+            "normalizationReason": "canonical_cue:science fiction->science_fiction",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "science fiction",
+            "matchedField": "description",
+            "matchedText": "a science fiction crew fights for survival in deep space",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "science_fiction",
+            "normalizationReason": "canonical_cue:science fiction->science_fiction",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "sci-fi",
+            "matchedField": "subtitle",
+            "matchedText": "a sci fi survival novel",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "science_fiction",
+            "normalizationReason": "canonical_cue:sci fi->science_fiction",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "space",
+            "matchedField": "description",
+            "matchedText": "a science fiction crew fights for survival in deep space",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "science_fiction",
+            "normalizationReason": "canonical_cue:space->science_fiction",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "survival",
+            "matchedField": "subtitle",
+            "matchedText": "a sci fi survival novel",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "adventure_action",
+            "normalizationReason": "canonical_cue:survival->adventure_action",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "survival",
+            "matchedField": "description",
+            "matchedText": "a science fiction crew fights for survival in deep space",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "adventure_action",
+            "normalizationReason": "canonical_cue:survival->adventure_action",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          }
+        ]
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "sci fi",
+            "matchedField": "description",
+            "matchedText": "A science fiction crew fights for survival in deep space.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "science_fiction",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "science fiction",
+            "matchedField": "description",
+            "matchedText": "A science fiction crew fights for survival in deep space.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "science_fiction",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "space",
+            "matchedField": "description",
+            "matchedText": "A science fiction crew fights for survival in deep space.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "science_fiction",
+            "normalizationReason": "cue_lexicon_mapping",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "survival",
+            "matchedField": "subtitle",
+            "matchedText": "A Sci-Fi survival novel",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "adventure_action",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "survival",
+            "matchedField": "description",
+            "matchedText": "A science fiction crew fights for survival in deep space.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "adventure_action",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 7,
+        "teenCanonicalCount": 5,
+        "sharedCanonicalCount": 4,
+        "adultOnlyCanonicalKeys": [
+          "science fiction|categories|science fiction",
+          "science fiction|genres|science fiction",
+          "sci fi|subtitle|science fiction"
+        ],
+        "teenOnlyCanonicalKeys": [
+          "sci fi|description|science fiction"
+        ],
+        "parityAtNormalization": false
+      }
+    },
+    {
+      "caseId": "cue-in-title-subtitle-categories-description",
+      "label": "cue in title/subtitle/categories/description",
+      "expectedScenario": "field detection coverage across primary metadata fields",
+      "sharedNormalizationOracle": [
+        {
+          "detectedCue": "haunted",
+          "matchedField": "description",
+          "matchedText": "A haunted town confronts a ghostly force.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "horror_paranormal",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        }
+      ],
+      "adult": {
+        "records": [
+          {
+            "detectedCue": "horror",
+            "matchedField": "subtitle",
+            "matchedText": "a horror novel",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "horror_paranormal",
+            "normalizationReason": "canonical_cue:horror->horror_paranormal",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "horror",
+            "matchedField": "categories",
+            "matchedText": "fiction horror supernatural",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "horror_paranormal",
+            "normalizationReason": "canonical_cue:horror->horror_paranormal",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "horror",
+            "matchedField": "genres",
+            "matchedText": "fiction horror supernatural",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "horror_paranormal",
+            "normalizationReason": "canonical_cue:horror->horror_paranormal",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "ghost",
+            "matchedField": "title",
+            "matchedText": "ghost harbor",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "horror_paranormal",
+            "normalizationReason": "canonical_cue:ghost->horror_paranormal",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "supernatural",
+            "matchedField": "categories",
+            "matchedText": "fiction horror supernatural",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "horror_paranormal",
+            "normalizationReason": "canonical_cue:supernatural->horror_paranormal",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "supernatural",
+            "matchedField": "genres",
+            "matchedText": "fiction horror supernatural",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "horror_paranormal",
+            "normalizationReason": "canonical_cue:supernatural->horror_paranormal",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          }
+        ]
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "ghost",
+            "matchedField": "description",
+            "matchedText": "A haunted town confronts a ghostly force.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "horror_paranormal",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "haunted",
+            "matchedField": "description",
+            "matchedText": "A haunted town confronts a ghostly force.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "horror_paranormal",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 6,
+        "teenCanonicalCount": 2,
+        "sharedCanonicalCount": 0,
+        "adultOnlyCanonicalKeys": [
+          "horror|subtitle|horror paranormal",
+          "horror|categories|horror paranormal",
+          "horror|genres|horror paranormal",
+          "ghost|title|horror paranormal",
+          "supernatural|categories|horror paranormal",
+          "supernatural|genres|horror paranormal"
+        ],
+        "teenOnlyCanonicalKeys": [
+          "ghost|description|horror paranormal",
+          "haunted|description|horror paranormal"
+        ],
+        "parityAtNormalization": false
+      }
+    },
+    {
+      "caseId": "multiple-cues-one-family",
+      "label": "multiple cues map to one family",
+      "expectedScenario": "multiple phrase variants normalize to same family",
+      "sharedNormalizationOracle": [
+        {
+          "detectedCue": "crime",
+          "matchedField": "description",
+          "matchedText": "A detective investigates murder and crime in a noir city.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "A detective investigates murder and crime in a noir city.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "investigation",
+          "matchedField": "description",
+          "matchedText": "A detective investigates murder and crime in a noir city.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "murder",
+          "matchedField": "description",
+          "matchedText": "A detective investigates murder and crime in a noir city.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "noir",
+          "matchedField": "description",
+          "matchedText": "A detective investigates murder and crime in a noir city.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "cue_lexicon_mapping",
+          "confidence": 1
+        }
+      ],
+      "adult": {
+        "records": [
+          {
+            "detectedCue": "mystery",
+            "matchedField": "categories",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "mystery",
+            "matchedField": "genres",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "crime",
+            "matchedField": "description",
+            "matchedText": "a detective investigates murder and crime in a noir city",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:crime->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "categories",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "genres",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "description",
+            "matchedText": "a detective investigates murder and crime in a noir city",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "investigation",
+            "matchedField": "description",
+            "matchedText": "a detective investigates murder and crime in a noir city",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:investigation->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "murder",
+            "matchedField": "description",
+            "matchedText": "a detective investigates murder and crime in a noir city",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:murder->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "noir",
+            "matchedField": "description",
+            "matchedText": "a detective investigates murder and crime in a noir city",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:noir->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          }
+        ]
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "crime",
+            "matchedField": "description",
+            "matchedText": "A detective investigates murder and crime in a noir city.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "description",
+            "matchedText": "A detective investigates murder and crime in a noir city.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "murder",
+            "matchedField": "description",
+            "matchedText": "A detective investigates murder and crime in a noir city.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "noir",
+            "matchedField": "description",
+            "matchedText": "A detective investigates murder and crime in a noir city.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "cue_lexicon_mapping",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 9,
+        "teenCanonicalCount": 4,
+        "sharedCanonicalCount": 4,
+        "adultOnlyCanonicalKeys": [
+          "mystery|categories|mystery crime thriller",
+          "mystery|genres|mystery crime thriller",
+          "detective|categories|mystery crime thriller",
+          "detective|genres|mystery crime thriller",
+          "investigation|description|mystery crime thriller"
+        ],
+        "teenOnlyCanonicalKeys": [],
+        "parityAtNormalization": false
+      }
+    },
+    {
+      "caseId": "ambiguous-multi-family-cue-set",
+      "label": "cue set spans multiple families",
+      "expectedScenario": "same record includes cross-family cues",
+      "sharedNormalizationOracle": [
+        {
+          "detectedCue": "murder",
+          "matchedField": "description",
+          "matchedText": "A historical romance with murder and supernatural rumors.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "supernatural",
+          "matchedField": "description",
+          "matchedText": "A historical romance with murder and supernatural rumors.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "horror_paranormal",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "historical",
+          "matchedField": "description",
+          "matchedText": "A historical romance with murder and supernatural rumors.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "historical",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "romance",
+          "matchedField": "description",
+          "matchedText": "A historical romance with murder and supernatural rumors.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "romance",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        }
+      ],
+      "adult": {
+        "records": [
+          {
+            "detectedCue": "murder",
+            "matchedField": "description",
+            "matchedText": "a historical romance with murder and supernatural rumors",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:murder->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": true,
+            "policyEffect": {
+              "promotedAs": "none",
+              "productionPolarity": "not_profile_family",
+              "decision": "promoted_candidate_family_without_profile_polarity"
+            }
+          },
+          {
+            "detectedCue": "supernatural",
+            "matchedField": "description",
+            "matchedText": "a historical romance with murder and supernatural rumors",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "horror_paranormal",
+            "normalizationReason": "canonical_cue:supernatural->horror_paranormal",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "historical",
+            "matchedField": "categories",
+            "matchedText": "fiction historical fiction romance historical",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "historical",
+            "normalizationReason": "canonical_cue:historical->historical",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "historical",
+            "matchedField": "genres",
+            "matchedText": "fiction historical fiction romance historical",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "historical",
+            "normalizationReason": "canonical_cue:historical->historical",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "historical",
+            "matchedField": "description",
+            "matchedText": "a historical romance with murder and supernatural rumors",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "historical",
+            "normalizationReason": "canonical_cue:historical->historical",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "romance",
+            "matchedField": "categories",
+            "matchedText": "fiction historical fiction romance historical",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "romance",
+            "normalizationReason": "canonical_cue:romance->romance",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "romance",
+            "matchedField": "genres",
+            "matchedText": "fiction historical fiction romance historical",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "romance",
+            "normalizationReason": "canonical_cue:romance->romance",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "romance",
+            "matchedField": "description",
+            "matchedText": "a historical romance with murder and supernatural rumors",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "romance",
+            "normalizationReason": "canonical_cue:romance->romance",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          }
+        ]
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "historical",
+            "matchedField": "description",
+            "matchedText": "A historical romance with murder and supernatural rumors.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "historical",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "murder",
+            "matchedField": "description",
+            "matchedText": "A historical romance with murder and supernatural rumors.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "romance",
+            "matchedField": "description",
+            "matchedText": "A historical romance with murder and supernatural rumors.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "romance",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "supernatural",
+            "matchedField": "description",
+            "matchedText": "A historical romance with murder and supernatural rumors.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "horror_paranormal",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 8,
+        "teenCanonicalCount": 4,
+        "sharedCanonicalCount": 4,
+        "adultOnlyCanonicalKeys": [
+          "historical|categories|historical",
+          "historical|genres|historical",
+          "romance|categories|romance",
+          "romance|genres|romance"
+        ],
+        "teenOnlyCanonicalKeys": [],
+        "parityAtNormalization": false
+      }
+    },
+    {
+      "caseId": "already-present-family-evidence",
+      "label": "already-present family evidence",
+      "expectedScenario": "promotion may be redundant after extraction",
+      "sharedNormalizationOracle": [
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "A detective thriller where every suspect has a motive.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "A detective thriller where every suspect has a motive.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        }
+      ],
+      "adult": {
+        "records": [
+          {
+            "detectedCue": "mystery",
+            "matchedField": "categories",
+            "matchedText": "fiction mystery detective police procedural",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "mystery",
+            "matchedField": "genres",
+            "matchedText": "fiction mystery detective police procedural",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "thriller",
+            "matchedField": "description",
+            "matchedText": "a detective thriller where every suspect has a motive",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:thriller->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "title",
+            "matchedText": "the final detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "categories",
+            "matchedText": "fiction mystery detective police procedural",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "genres",
+            "matchedText": "fiction mystery detective police procedural",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "description",
+            "matchedText": "a detective thriller where every suspect has a motive",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          }
+        ]
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "detective",
+            "matchedField": "description",
+            "matchedText": "A detective thriller where every suspect has a motive.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "mystery",
+            "matchedField": "description",
+            "matchedText": "A detective thriller where every suspect has a motive.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "thriller",
+            "matchedField": "description",
+            "matchedText": "A detective thriller where every suspect has a motive.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 7,
+        "teenCanonicalCount": 3,
+        "sharedCanonicalCount": 2,
+        "adultOnlyCanonicalKeys": [
+          "mystery|categories|mystery crime thriller",
+          "mystery|genres|mystery crime thriller",
+          "detective|title|mystery crime thriller",
+          "detective|categories|mystery crime thriller",
+          "detective|genres|mystery crime thriller"
+        ],
+        "teenOnlyCanonicalKeys": [
+          "mystery|description|mystery crime thriller"
+        ],
+        "parityAtNormalization": false
+      }
+    },
+    {
+      "caseId": "negated-or-contextual-mention",
+      "label": "negated/contextual mention",
+      "expectedScenario": "context can alter downstream policy usage",
+      "sharedNormalizationOracle": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "This is not a thriller and not a mystery, but a family drama.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "This is not a thriller and not a mystery, but a family drama.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "drama",
+          "matchedField": "description",
+          "matchedText": "This is not a thriller and not a mystery, but a family drama.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "drama_contemporary",
+          "normalizationReason": "cue_lexicon_mapping",
+          "confidence": 1
+        }
+      ],
+      "adult": {
+        "records": [
+          {
+            "detectedCue": "mystery",
+            "matchedField": "description",
+            "matchedText": "this is not a thriller and not a mystery but a family drama",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "thriller",
+            "matchedField": "title",
+            "matchedText": "not a thriller",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:thriller->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "thriller",
+            "matchedField": "description",
+            "matchedText": "this is not a thriller and not a mystery but a family drama",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:thriller->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "strongly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "drama",
+            "matchedField": "description",
+            "matchedText": "this is not a thriller and not a mystery but a family drama",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "drama_contemporary",
+            "normalizationReason": "canonical_cue:drama->drama_contemporary",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "literary",
+            "matchedField": "categories",
+            "matchedText": "fiction literary",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "drama_contemporary",
+            "normalizationReason": "canonical_cue:literary->drama_contemporary",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "literary",
+            "matchedField": "genres",
+            "matchedText": "fiction literary",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "drama_contemporary",
+            "normalizationReason": "canonical_cue:literary->drama_contemporary",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "weakly_liked",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          }
+        ]
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "mystery",
+            "matchedField": "description",
+            "matchedText": "This is not a thriller and not a mystery, but a family drama.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "thriller",
+            "matchedField": "description",
+            "matchedText": "This is not a thriller and not a mystery, but a family drama.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 6,
+        "teenCanonicalCount": 2,
+        "sharedCanonicalCount": 2,
+        "adultOnlyCanonicalKeys": [
+          "thriller|title|mystery crime thriller",
+          "drama|description|drama contemporary",
+          "literary|categories|drama contemporary",
+          "literary|genres|drama contemporary"
+        ],
+        "teenOnlyCanonicalKeys": [],
+        "parityAtNormalization": false
+      }
+    },
+    {
+      "caseId": "weak-generic-must-not-promote",
+      "label": "weak generic phrase",
+      "expectedScenario": "generic promotional language should not canonically promote",
+      "sharedNormalizationOracle": [],
+      "adult": {
+        "records": []
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "gripping",
+            "matchedField": "description",
+            "matchedText": "A gripping page turner perfect for readers who love bold storytelling.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "",
+            "normalizationReason": "no_canonical_mapping",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "perfect for readers",
+            "matchedField": "description",
+            "matchedText": "A gripping page turner perfect for readers who love bold storytelling.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "",
+            "normalizationReason": "no_canonical_mapping",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 0,
+        "teenCanonicalCount": 0,
+        "sharedCanonicalCount": 0,
+        "adultOnlyCanonicalKeys": [],
+        "teenOnlyCanonicalKeys": [],
+        "parityAtNormalization": true
+      }
+    },
+    {
+      "caseId": "conflicting-positive-negative-cues",
+      "label": "conflicting positive and negative cues",
+      "expectedScenario": "same family receives both support and conflict signals",
+      "sharedNormalizationOracle": [
+        {
+          "detectedCue": "mystery",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller with hated detective tropes and serial murders.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "thriller",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller with hated detective tropes and serial murders.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "detective",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller with hated detective tropes and serial murders.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        },
+        {
+          "detectedCue": "murder",
+          "matchedField": "description",
+          "matchedText": "A mystery thriller with hated detective tropes and serial murders.",
+          "matchMethod": "cue_regex_pattern",
+          "canonicalFamily": "mystery_crime_thriller",
+          "normalizationReason": "canonical_phrase",
+          "confidence": 1
+        }
+      ],
+      "adult": {
+        "records": [
+          {
+            "detectedCue": "mystery",
+            "matchedField": "categories",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "mixed_positive",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "mystery",
+            "matchedField": "genres",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "mixed_positive",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "mystery",
+            "matchedField": "description",
+            "matchedText": "a mystery thriller with hated detective tropes and serial murders",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:mystery->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "mixed_positive",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "thriller",
+            "matchedField": "description",
+            "matchedText": "a mystery thriller with hated detective tropes and serial murders",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:thriller->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "mixed_positive",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "categories",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "mixed_positive",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "genres",
+            "matchedText": "fiction mystery detective",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "mixed_positive",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "detective",
+            "matchedField": "description",
+            "matchedText": "a mystery thriller with hated detective tropes and serial murders",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:detective->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "mixed_positive",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          },
+          {
+            "detectedCue": "murder",
+            "matchedField": "description",
+            "matchedText": "a mystery thriller with hated detective tropes and serial murders",
+            "matchMethod": "adult_canonical_cue_promotion_regex",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_cue:murder->mystery_crime_thriller",
+            "confidence": 0,
+            "promotionApplied": false,
+            "policyEffect": {
+              "promotedAs": "liked",
+              "productionPolarity": "mixed_positive",
+              "decision": "not_promoted_family_already_extracted"
+            }
+          }
+        ]
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "detective",
+            "matchedField": "description",
+            "matchedText": "A mystery thriller with hated detective tropes and serial murders.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "murder",
+            "matchedField": "description",
+            "matchedText": "A mystery thriller with hated detective tropes and serial murders.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "mystery",
+            "matchedField": "description",
+            "matchedText": "A mystery thriller with hated detective tropes and serial murders.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          },
+          {
+            "detectedCue": "thriller",
+            "matchedField": "description",
+            "matchedText": "A mystery thriller with hated detective tropes and serial murders.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "mystery_crime_thriller",
+            "normalizationReason": "canonical_phrase",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 8,
+        "teenCanonicalCount": 4,
+        "sharedCanonicalCount": 4,
+        "adultOnlyCanonicalKeys": [
+          "mystery|categories|mystery crime thriller",
+          "mystery|genres|mystery crime thriller",
+          "detective|categories|mystery crime thriller",
+          "detective|genres|mystery crime thriller"
+        ],
+        "teenOnlyCanonicalKeys": [],
+        "parityAtNormalization": false
+      }
+    },
+    {
+      "caseId": "no-match-control",
+      "label": "no-match control",
+      "expectedScenario": "no canonical cue detection",
+      "sharedNormalizationOracle": [],
+      "adult": {
+        "records": []
+      },
+      "teen": {
+        "records": [
+          {
+            "detectedCue": "finance",
+            "matchedField": "description",
+            "matchedText": "A general nonfiction account of municipal finance.",
+            "matchMethod": "teen_signal_field_match",
+            "canonicalFamily": "",
+            "normalizationReason": "no_canonical_mapping",
+            "confidence": 1,
+            "promotionApplied": false,
+            "policyEffect": {
+              "classification": "strong_match",
+              "tierReason": "selected_strong_match_priority"
+            }
+          }
+        ]
+      },
+      "normalizationComparison": {
+        "adultCanonicalCount": 0,
+        "teenCanonicalCount": 0,
+        "sharedCanonicalCount": 0,
+        "adultOnlyCanonicalKeys": [],
+        "teenOnlyCanonicalKeys": [],
+        "parityAtNormalization": true
+      }
+    }
+  ],
+  "decision": {
+    "decision": "policy_contaminated_transform_split",
+    "rationale": "Adult canonical cue path and Teen signal path do not emit equivalent normalized canonical evidence prior to policy.",
+    "outcomes": {
+      "shared_semantic_transform_with_age_specific_policy_wrappers": "Extract shared detection+normalization primitive only; keep Adult/Teen policy wrappers separate.",
+      "policy_contaminated_transform_split": "Reclassify as semantic split; do not force consolidation.",
+      "parity_candidate": "Freeze parity baseline and proceed with narrow consolidation.",
+      "adult_only_canonicalization_capability": "Keep age-specific and remove from active consolidation."
+    }
+  }
+}

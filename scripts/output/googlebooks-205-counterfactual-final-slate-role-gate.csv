@@ -1,0 +1,11 @@
+caseId,label,adultActualFinalCount,adultCounterfactualFinalCount,adultNewlyAdmittedCount,adultNewlyRemovedCount,adultPolarityEffect,adultWeakRescueEffect,teenActualFinalCount,teenCounterfactualFinalCount,teenNewlyAdmittedCount,teenNewlyRemovedCount,teenRankingOrderChangedSameMembers,teenWeakRescueEffect,teenQueryDerivedEvidenceEffect,teenIdentityEffect
+no-counterfactual-difference,"no counterfactual difference",1,1,0,0,true,false,3,3,0,0,false,false,false,false
+one-newly-admitted-title,"one newly admitted title",1,1,0,0,true,false,3,5,3,1,false,true,true,false
+one-newly-removed-title,"one newly removed title",1,1,0,0,true,false,3,5,2,0,false,true,true,false
+ranking-only-change,"ranking-only change",1,1,0,0,true,false,3,5,2,0,false,false,false,false
+underfill-to-full,"underfilled slate becoming full",1,1,0,0,true,false,3,5,2,0,false,true,true,false
+full-to-underfill,"full slate becoming underfilled",0,0,0,0,true,false,3,5,2,0,false,true,true,false
+identity-policy-counterfactual,"identity-policy counterfactual",1,1,0,0,true,false,1,1,0,0,false,false,true,true
+taste-threshold-counterfactual,"taste-threshold counterfactual",1,1,0,0,true,false,3,5,2,0,false,true,true,false
+weak-evidence-rescue-counterfactual,"weak-evidence rescue counterfactual",1,1,0,0,true,false,3,5,2,0,false,true,true,false
+multiple-simultaneous-changes,"multiple simultaneous changes",1,2,1,0,true,false,3,4,1,0,false,true,true,true

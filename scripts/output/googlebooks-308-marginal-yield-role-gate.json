@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-07-21T07:27:47.840Z",
+  "capability": "#308 Marginal decision-worthy yield",
+  "evidence": {
+    "adultUsesNarrativeYield": true,
+    "adultUsesNarrativeEfficiency": true,
+    "teenUsesStrongSecondaryLabels": true,
+    "teenUsesMarginalStrongSecondaryMetric": true,
+    "teenUsesRecurringHeadSuppression": true
+  },
+  "decision": {
+    "decision": "different_hypothetical_questions",
+    "rationale": "Adult and Teen metrics optimize different objectives despite similar query-performance vocabulary.",
+    "outcomes": {
+      "equivalent_duplication": "Treat as parity-capable duplication candidate.",
+      "shared_mechanism_age_policy_outputs": "Shared measurement mechanism with age-policy interpretation differences.",
+      "different_hypothetical_questions": "Reclassify as different semantics/pipeline objective."
+    }
+  }
+}

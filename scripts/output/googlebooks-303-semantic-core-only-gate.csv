@@ -1,0 +1,12 @@
+caseId,label,adultRecordCount,teenRecordCount,sharedRecordCount,parity
+direct-canonical-phrase,"direct canonical phrase",4,4,0,false
+approved-alias,"approved alias",3,4,0,false
+punctuation-acronym-variants,"punctuation and acronym variants",4,6,0,false
+cue-in-title-subtitle-categories-description,"cue in title/subtitle/categories/description",1,2,0,false
+multiple-cues-one-family,"multiple cues map to one family",5,5,0,false
+ambiguous-multi-family-cue-set,"cue set spans multiple families",4,4,0,false
+already-present-family-evidence,"already-present family evidence",2,3,0,false
+negated-or-contextual-mention,"negated/contextual mention",3,3,0,false
+weak-generic-must-not-promote,"weak generic phrase",0,0,0,true
+conflicting-positive-negative-cues,"conflicting positive and negative cues",4,4,0,false
+no-match-control,"no-match control",0,0,0,true
