@@ -46,6 +46,14 @@ const cue203Gate = existsSync(cue203GatePath)
   : null;
 const cue203Decision = String(cue203Gate?.decision?.decision || "");
 const cue203Reclassify = cue203Decision === "materially_different_behavior_reclassify";
+const identity204GatePath = resolve(outDir, "googlebooks-204-final-slate-identity-role-gate.json");
+const identity204Gate = existsSync(identity204GatePath)
+  ? JSON.parse(readFileSync(identity204GatePath, "utf8"))
+  : null;
+const identity204Decision = String(identity204Gate?.decision?.decision || "");
+const identity204AsDifferentSemantics = identity204Decision === "adult_production_audit_teen_eligibility_policy"
+  || identity204Decision === "shared_classifier_age_specific_enforcement";
+const identity204AsAgeSpecific = identity204Decision === "adult_only_capability_age_specific";
 
 function confidenceStateForRow(row) {
   if (row.executionStatus === "closed_falsified") return "Falsified";
@@ -250,7 +258,11 @@ const capabilityOverrides = {
 const planRows = rows.map((r) => {
   const effectiveBehavioralClass = r.capability === "Canonical cue promotion" && cue203Reclassify
     ? "same_name_different_semantics"
-    : r.behavioralClassification;
+    : r.capability === "Final slate identity auditing" && identity204AsDifferentSemantics
+      ? "same_name_different_semantics"
+      : r.capability === "Final slate identity auditing" && identity204AsAgeSpecific
+        ? "age_specific_by_necessity"
+        : r.behavioralClassification;
   const base = classDefaults[r.behavioralClassification] || {
     expectedRecommendationQualityGain: "Unknown",
     maintenanceGain: "Unknown",
@@ -263,6 +275,8 @@ const planRows = rows.map((r) => {
   const effectiveBase = classDefaults[effectiveBehavioralClass] || base;
   const implementationOrderHint = r.capability === "Canonical cue promotion" && cue203Reclassify
     ? 3
+    : r.capability === "Final slate identity auditing" && (identity204AsDifferentSemantics || identity204AsAgeSpecific)
+      ? 4
     : Number(ov.implementationOrderHint || 50);
   const implementationOrder = (classOrder[effectiveBehavioralClass] || 999) * 100 + implementationOrderHint;
 
@@ -295,6 +309,10 @@ const planRows = rows.map((r) => {
       ? "Closed/falsified. Skip implementation and proceed to first parity-preserving consolidation."
       : r.capability === "Canonical cue promotion" && cue203Reclassify
         ? "Reclassified by #203 equivalence gate: define shared interface/mechanism only; do not force parity-preserving consolidation."
+        : r.capability === "Final slate identity auditing" && identity204AsDifferentSemantics
+          ? "Reclassified by #204 role gate: treat as shared identity-assessment contract with separate age-policy enforcement; do not force parity-preserving consolidation."
+          : r.capability === "Final slate identity auditing" && identity204AsAgeSpecific
+            ? "Reclassified by #204 role gate: keep age-specific (adult-focused) and remove from active consolidation."
         : r.recommendation,
     stage: r.stage,
     effectSurface: r.effectSurface,
@@ -318,6 +336,12 @@ const planRows = rows.map((r) => {
           gateDecision: cue203Decision || null,
           rationale: cue203Gate?.decision?.rationale || null,
         }
+      : r.capability === "Final slate identity auditing"
+        ? {
+            gateArtifact: existsSync(identity204GatePath) ? "googlebooks-204-final-slate-identity-role-gate.json" : null,
+            gateDecision: identity204Decision || null,
+            rationale: identity204Gate?.decision?.rationale || null,
+          }
       : null,
   };
 });

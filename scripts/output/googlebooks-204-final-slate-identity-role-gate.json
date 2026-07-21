@@ -1,0 +1,794 @@
+{
+  "generatedAt": "2026-07-21T06:12:15.796Z",
+  "capability": "#204 Final slate identity auditing",
+  "inventory": {
+    "sourcePath": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\app\\recommender-v2\\select.ts",
+    "hasAdultFinalSlateAuditFunction": true,
+    "hasAdultIdentityEnforcementFunction": true,
+    "hasTeenPublicationIdentityAuditFunction": true,
+    "hasTeenPublicationIdentityByTitleDiagnostics": true,
+    "adultFinalSlateIdentityDiagnosticMaps": [
+      "adultGoogleBooksFinalSlateIdentityByTitle",
+      "adultGoogleBooksFinalSlateIdentityConfidenceByTitle",
+      "adultGoogleBooksFinalSlateIdentityAgreementByTitle",
+      "adultGoogleBooksIdentityEnforcementDecisionByTitle",
+      "adultGoogleBooksIdentityEnforcementReasonByTitle"
+    ],
+    "teenPublicationIdentityDiagnosticMaps": [
+      "teenGoogleBooksPublicationIdentityDecisionByTitle",
+      "teenGoogleBooksPublicationIdentityReasonByTitle",
+      "teenGoogleBooksPublicationIdentityClassificationByTitle",
+      "teenGoogleBooksPublicationIdentityEvidenceByTitle"
+    ]
+  },
+  "aggregate": {
+    "fixtureCount": 10,
+    "adultDistinctIdentities": [
+      "best_of_or_annual_collection",
+      "bibliography_catalog_or_reference",
+      "identity_uncertain",
+      "individual_narrative_work",
+      "literary_criticism_or_subject_study",
+      "narrative_series_volume",
+      "periodical_or_serial_issue",
+      "reading_guide_or_companion",
+      "short_story_collection"
+    ],
+    "teenDistinctClassifications": [
+      "catalog_or_promotional_collection",
+      "guide_reference",
+      "legitimate_short_story_anthology",
+      "literary_criticism_or_study",
+      "narrative_novel_or_uncertain",
+      "series_installment"
+    ],
+    "adultRejectedByIdentityEnforcementCount": 2,
+    "teenRejectedByPublicationIdentityCount": 5,
+    "adultHasAgreementAuditSignals": true,
+    "teenHasAgreementAuditSignals": false,
+    "adultProductionEnforcementByTitlePresent": true,
+    "teenProductionEnforcementByEligibilityReasonPresent": true
+  },
+  "rows": [
+    {
+      "caseId": "narrative-novel",
+      "label": "narrative novel",
+      "adult": {
+        "auditIdentity": "individual_narrative_work",
+        "auditConfidence": 0.895,
+        "auditAgreement": "identity_agrees_with_current_behavior",
+        "auditRootCause": "identity_agrees_with_current_behavior",
+        "auditEvidenceNonEmptyBuckets": 7,
+        "enforcementDecision": "accepted",
+        "enforcementReason": "adult_googlebooks_identity_accepted_individual_narrative_work",
+        "identityByTitle": "individual_narrative_work",
+        "confidenceByTitle": 0.895,
+        "agreementByTitle": "identity_agrees_with_current_behavior",
+        "evidenceByTitle": {
+          "titleIdentityEvidence": [],
+          "subtitleIdentityEvidence": [],
+          "categoryIdentityEvidence": [
+            "fiction or genre category"
+          ],
+          "descriptionIdentityEvidence": [],
+          "narrativeSynopsisEvidence": [
+            "story level description"
+          ],
+          "academicFraming": [],
+          "editorContributorFraming": [],
+          "storiesByFraming": [],
+          "collectionAnthologyEvidence": [
+            "genre scope metadata"
+          ],
+          "subjectOfAuthorFraming": [],
+          "publisherEvidence": [],
+          "recordQualityEvidence": [
+            "page_count:320",
+            "publisher:Gate House",
+            "published:2024"
+          ],
+          "currentPublicationShapeEvidence": [
+            "novel or narrative fiction shape"
+          ],
+          "currentDominantPublicationShapeEvidence": [],
+          "currentStoryLevelNarrativeEvidence": [
+            "story level description"
+          ],
+          "finalEligibilityEvidence": [
+            "genre scope metadata",
+            "narrative description shape",
+            "narrative subtitle or description marker",
+            "first class fiction category",
+            "character event synopsis without academic framing",
+            "fiction category or genre"
+          ]
+        },
+        "productionEnforcementDecisionByTitle": "accepted",
+        "productionEnforcementReasonByTitle": "adult_googlebooks_identity_accepted_individual_narrative_work",
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "adult_googlebooks_minimal_final_gate_passed",
+        "finalSelectionDecisionByTitle": "selected"
+      },
+      "teen": {
+        "identityDecisionByTitle": "passed",
+        "identityReasonByTitle": "teen_googlebooks_publication_identity_passed",
+        "identityClassificationByTitle": "narrative_novel_or_uncertain",
+        "identityEvidenceByTitle": [
+          "publication_shape:novel",
+          "explicit_non_narrative_identity_count:0",
+          "subject_of_study:no",
+          "curated_guide:no",
+          "generic_category_title:no"
+        ],
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "teens_googlebooks_named_final_eligibility_passed",
+        "finalSelectionDecisionByTitle": "selected",
+        "productionEnforcementObserved": false
+      }
+    },
+    {
+      "caseId": "series-installment",
+      "label": "series installment",
+      "adult": {
+        "auditIdentity": "narrative_series_volume",
+        "auditConfidence": 0.96,
+        "auditAgreement": "identity_agrees_with_current_behavior",
+        "auditRootCause": "identity_agrees_with_current_behavior",
+        "auditEvidenceNonEmptyBuckets": 8,
+        "enforcementDecision": "accepted",
+        "enforcementReason": "adult_googlebooks_identity_accepted_narrative_series_volume",
+        "identityByTitle": "narrative_series_volume",
+        "confidenceByTitle": 0.96,
+        "agreementByTitle": "identity_agrees_with_current_behavior",
+        "evidenceByTitle": {
+          "titleIdentityEvidence": [
+            "numbered narrative series volume"
+          ],
+          "subtitleIdentityEvidence": [],
+          "categoryIdentityEvidence": [
+            "fiction or genre category"
+          ],
+          "descriptionIdentityEvidence": [],
+          "narrativeSynopsisEvidence": [
+            "story level description"
+          ],
+          "academicFraming": [],
+          "editorContributorFraming": [],
+          "storiesByFraming": [],
+          "collectionAnthologyEvidence": [
+            "genre scope metadata"
+          ],
+          "subjectOfAuthorFraming": [],
+          "publisherEvidence": [],
+          "recordQualityEvidence": [
+            "page_count:320",
+            "publisher:Gate House",
+            "published:2024"
+          ],
+          "currentPublicationShapeEvidence": [
+            "series installment fixture"
+          ],
+          "currentDominantPublicationShapeEvidence": [],
+          "currentStoryLevelNarrativeEvidence": [
+            "story level description"
+          ],
+          "finalEligibilityEvidence": [
+            "genre scope metadata",
+            "narrative description shape",
+            "first class fiction category",
+            "character event synopsis without academic framing",
+            "fiction category or genre"
+          ]
+        },
+        "productionEnforcementDecisionByTitle": "accepted",
+        "productionEnforcementReasonByTitle": "adult_googlebooks_identity_accepted_narrative_series_volume",
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "adult_googlebooks_minimal_final_gate_passed",
+        "finalSelectionDecisionByTitle": "selected"
+      },
+      "teen": {
+        "identityDecisionByTitle": "passed",
+        "identityReasonByTitle": "teen_googlebooks_publication_identity_passed",
+        "identityClassificationByTitle": "series_installment",
+        "identityEvidenceByTitle": [
+          "publication_shape:series_installment",
+          "explicit_non_narrative_identity_count:0",
+          "subject_of_study:no",
+          "curated_guide:no",
+          "generic_category_title:no"
+        ],
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "teens_googlebooks_named_final_eligibility_passed",
+        "finalSelectionDecisionByTitle": "selected",
+        "productionEnforcementObserved": false
+      }
+    },
+    {
+      "caseId": "story-collection-anthology",
+      "label": "story collection or anthology",
+      "adult": {
+        "auditIdentity": "short_story_collection",
+        "auditConfidence": 0.89,
+        "auditAgreement": "likely_collection_false_accept",
+        "auditRootCause": "final_eligibility_allowed_collection_identity",
+        "auditEvidenceNonEmptyBuckets": 6,
+        "enforcementDecision": "unchanged",
+        "enforcementReason": "adult_googlebooks_identity_unenforced_short_story_collection",
+        "identityByTitle": "short_story_collection",
+        "confidenceByTitle": 0.89,
+        "agreementByTitle": "likely_collection_false_accept",
+        "evidenceByTitle": {
+          "titleIdentityEvidence": [],
+          "subtitleIdentityEvidence": [],
+          "categoryIdentityEvidence": [
+            "fiction or genre category"
+          ],
+          "descriptionIdentityEvidence": [],
+          "narrativeSynopsisEvidence": [],
+          "academicFraming": [],
+          "editorContributorFraming": [],
+          "storiesByFraming": [
+            "stories by or short story collection framing"
+          ],
+          "collectionAnthologyEvidence": [
+            "anthology or edited metadata",
+            "genre scope metadata",
+            "collection or anthology title shape"
+          ],
+          "subjectOfAuthorFraming": [],
+          "publisherEvidence": [],
+          "recordQualityEvidence": [
+            "page_count:320",
+            "publisher:Gate House",
+            "published:2024"
+          ],
+          "currentPublicationShapeEvidence": [
+            "story collection fixture"
+          ],
+          "currentDominantPublicationShapeEvidence": [],
+          "currentStoryLevelNarrativeEvidence": [],
+          "finalEligibilityEvidence": [
+            "anthology or edited metadata",
+            "genre scope metadata",
+            "first class fiction category",
+            "fiction category or genre"
+          ]
+        },
+        "productionEnforcementDecisionByTitle": "unchanged",
+        "productionEnforcementReasonByTitle": "adult_googlebooks_identity_unenforced_short_story_collection",
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "adult_googlebooks_minimal_final_gate_passed",
+        "finalSelectionDecisionByTitle": "selected"
+      },
+      "teen": {
+        "identityDecisionByTitle": "passed",
+        "identityReasonByTitle": "teen_googlebooks_publication_identity_passed",
+        "identityClassificationByTitle": "legitimate_short_story_anthology",
+        "identityEvidenceByTitle": [
+          "publication_shape:story_collection",
+          "explicit_non_narrative_identity_count:0",
+          "subject_of_study:no",
+          "curated_guide:no",
+          "generic_category_title:no"
+        ],
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "teens_googlebooks_named_final_eligibility_passed",
+        "finalSelectionDecisionByTitle": "selected",
+        "productionEnforcementObserved": false
+      }
+    },
+    {
+      "caseId": "literary-study-criticism",
+      "label": "literary study or criticism",
+      "adult": {
+        "auditIdentity": "literary_criticism_or_subject_study",
+        "auditConfidence": 0.98,
+        "auditAgreement": "likely_non_narrative_false_accept",
+        "auditRootCause": "final_eligibility_allowed_literary_criticism_or_subject_study",
+        "auditEvidenceNonEmptyBuckets": 6,
+        "enforcementDecision": "rejected",
+        "enforcementReason": "adult_googlebooks_identity_rejected_literary_criticism_or_subject_study",
+        "identityByTitle": "bibliography_catalog_or_reference",
+        "confidenceByTitle": 0.98,
+        "agreementByTitle": "identity_agrees_with_current_behavior",
+        "evidenceByTitle": {
+          "titleIdentityEvidence": [],
+          "subtitleIdentityEvidence": [],
+          "categoryIdentityEvidence": [
+            "adult googlebooks artifact literary criticism reference",
+            "adult googlebooks artifact literary criticism category",
+            "fiction or genre category"
+          ],
+          "descriptionIdentityEvidence": [],
+          "narrativeSynopsisEvidence": [],
+          "academicFraming": [
+            "subject of study title framing",
+            "academic or criticism metadata"
+          ],
+          "editorContributorFraming": [],
+          "storiesByFraming": [],
+          "collectionAnthologyEvidence": [
+            "genre scope metadata"
+          ],
+          "subjectOfAuthorFraming": [],
+          "publisherEvidence": [],
+          "recordQualityEvidence": [
+            "page_count:320",
+            "publisher:Gate House",
+            "published:2024"
+          ],
+          "currentPublicationShapeEvidence": [
+            "critical study fixture"
+          ],
+          "currentDominantPublicationShapeEvidence": [],
+          "currentStoryLevelNarrativeEvidence": [],
+          "finalEligibilityEvidence": [
+            "adult googlebooks artifact literary criticism reference",
+            "adult googlebooks artifact literary criticism category",
+            "genre scope metadata",
+            "adult incompatible metadata"
+          ]
+        },
+        "productionEnforcementDecisionByTitle": "unchanged",
+        "productionEnforcementReasonByTitle": "adult_googlebooks_identity_unenforced_bibliography_catalog_or_reference",
+        "finalEligibilityDecisionByTitle": "rejected",
+        "finalEligibilityReasonByTitle": "adult_googlebooks_artifact_or_reference_shape",
+        "finalSelectionDecisionByTitle": ""
+      },
+      "teen": {
+        "identityDecisionByTitle": "rejected",
+        "identityReasonByTitle": "teen_googlebooks_publication_identity_subject_of_study_flag",
+        "identityClassificationByTitle": "literary_criticism_or_study",
+        "identityEvidenceByTitle": [
+          "publication_shape:critical_study",
+          "explicit_non_narrative_identity_count:0",
+          "subject_of_study:yes",
+          "curated_guide:no",
+          "generic_category_title:no"
+        ],
+        "finalEligibilityDecisionByTitle": "rejected",
+        "finalEligibilityReasonByTitle": "teen_googlebooks_publication_identity_subject_of_study_flag",
+        "finalSelectionDecisionByTitle": "not_reached:teen_publication_identity_final_guard",
+        "productionEnforcementObserved": true
+      }
+    },
+    {
+      "caseId": "companion-guide",
+      "label": "companion/guide",
+      "adult": {
+        "auditIdentity": "reading_guide_or_companion",
+        "auditConfidence": 0.94,
+        "auditAgreement": "likely_non_narrative_false_accept",
+        "auditRootCause": "final_eligibility_allowed_reading_guide_or_companion",
+        "auditEvidenceNonEmptyBuckets": 4,
+        "enforcementDecision": "unchanged",
+        "enforcementReason": "adult_googlebooks_identity_unenforced_reading_guide_or_companion",
+        "identityByTitle": "reading_guide_or_companion",
+        "confidenceByTitle": 0.94,
+        "agreementByTitle": "identity_agrees_with_current_behavior",
+        "evidenceByTitle": {
+          "titleIdentityEvidence": [],
+          "subtitleIdentityEvidence": [],
+          "categoryIdentityEvidence": [
+            "reference metadata",
+            "adult googlebooks artifact literary criticism reference",
+            "reference or companion framing"
+          ],
+          "descriptionIdentityEvidence": [],
+          "narrativeSynopsisEvidence": [],
+          "academicFraming": [],
+          "editorContributorFraming": [],
+          "storiesByFraming": [],
+          "collectionAnthologyEvidence": [],
+          "subjectOfAuthorFraming": [],
+          "publisherEvidence": [],
+          "recordQualityEvidence": [
+            "page_count:320",
+            "publisher:Gate House",
+            "published:2024"
+          ],
+          "currentPublicationShapeEvidence": [
+            "writing guide fixture"
+          ],
+          "currentDominantPublicationShapeEvidence": [],
+          "currentStoryLevelNarrativeEvidence": [],
+          "finalEligibilityEvidence": [
+            "adult googlebooks artifact literary criticism reference",
+            "adult incompatible metadata"
+          ]
+        },
+        "productionEnforcementDecisionByTitle": "unchanged",
+        "productionEnforcementReasonByTitle": "adult_googlebooks_identity_unenforced_reading_guide_or_companion",
+        "finalEligibilityDecisionByTitle": "rejected",
+        "finalEligibilityReasonByTitle": "adult_googlebooks_artifact_or_reference_shape",
+        "finalSelectionDecisionByTitle": ""
+      },
+      "teen": {
+        "identityDecisionByTitle": "rejected",
+        "identityReasonByTitle": "teen_googlebooks_publication_identity_curated_guide_flag",
+        "identityClassificationByTitle": "guide_reference",
+        "identityEvidenceByTitle": [
+          "publication_shape:writing_guide",
+          "explicit_non_narrative_identity_count:0",
+          "subject_of_study:no",
+          "curated_guide:yes",
+          "generic_category_title:no"
+        ],
+        "finalEligibilityDecisionByTitle": "rejected",
+        "finalEligibilityReasonByTitle": "teen_googlebooks_publication_identity_curated_guide_flag",
+        "finalSelectionDecisionByTitle": "not_reached:teen_publication_identity_final_guard",
+        "productionEnforcementObserved": true
+      }
+    },
+    {
+      "caseId": "catalog-promotional-collection",
+      "label": "catalog or promotional collection",
+      "adult": {
+        "auditIdentity": "best_of_or_annual_collection",
+        "auditConfidence": 0.98,
+        "auditAgreement": "likely_collection_false_accept",
+        "auditRootCause": "final_eligibility_allowed_collection_identity",
+        "auditEvidenceNonEmptyBuckets": 6,
+        "enforcementDecision": "rejected",
+        "enforcementReason": "adult_googlebooks_identity_rejected_best_of_or_annual_collection",
+        "identityByTitle": "best_of_or_annual_collection",
+        "confidenceByTitle": 0.98,
+        "agreementByTitle": "likely_collection_false_accept",
+        "evidenceByTitle": {
+          "titleIdentityEvidence": [],
+          "subtitleIdentityEvidence": [],
+          "categoryIdentityEvidence": [
+            "reference or companion framing",
+            "fiction or genre category"
+          ],
+          "descriptionIdentityEvidence": [
+            "promotional or publisher artifact framing"
+          ],
+          "narrativeSynopsisEvidence": [],
+          "academicFraming": [],
+          "editorContributorFraming": [],
+          "storiesByFraming": [],
+          "collectionAnthologyEvidence": [
+            "numbered annual issue shape"
+          ],
+          "subjectOfAuthorFraming": [],
+          "publisherEvidence": [],
+          "recordQualityEvidence": [
+            "page_count:320",
+            "publisher:Gate House",
+            "published:2024"
+          ],
+          "currentPublicationShapeEvidence": [
+            "catalog fixture"
+          ],
+          "currentDominantPublicationShapeEvidence": [],
+          "currentStoryLevelNarrativeEvidence": [],
+          "finalEligibilityEvidence": [
+            "numbered annual issue shape",
+            "first class fiction category",
+            "fiction category or genre"
+          ]
+        },
+        "productionEnforcementDecisionByTitle": "rejected",
+        "productionEnforcementReasonByTitle": "adult_googlebooks_identity_rejected_best_of_or_annual_collection",
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "adult_googlebooks_minimal_final_gate_passed",
+        "finalSelectionDecisionByTitle": "passed_eligibility_not_selected"
+      },
+      "teen": {
+        "identityDecisionByTitle": "rejected",
+        "identityReasonByTitle": "teen_googlebooks_publication_identity_generic_category_flag",
+        "identityClassificationByTitle": "catalog_or_promotional_collection",
+        "identityEvidenceByTitle": [
+          "publication_shape:catalog",
+          "explicit_non_narrative_identity_count:0",
+          "subject_of_study:no",
+          "curated_guide:no",
+          "generic_category_title:yes"
+        ],
+        "finalEligibilityDecisionByTitle": "rejected",
+        "finalEligibilityReasonByTitle": "teen_googlebooks_publication_identity_generic_category_flag",
+        "finalSelectionDecisionByTitle": "not_reached:teen_publication_identity_final_guard",
+        "productionEnforcementObserved": true
+      }
+    },
+    {
+      "caseId": "generic-category-title",
+      "label": "generic category title",
+      "adult": {
+        "auditIdentity": "bibliography_catalog_or_reference",
+        "auditConfidence": 0.965,
+        "auditAgreement": "likely_non_narrative_false_accept",
+        "auditRootCause": "final_eligibility_allowed_bibliography_catalog_or_reference",
+        "auditEvidenceNonEmptyBuckets": 5,
+        "enforcementDecision": "unchanged",
+        "enforcementReason": "adult_googlebooks_identity_unenforced_bibliography_catalog_or_reference",
+        "identityByTitle": "bibliography_catalog_or_reference",
+        "confidenceByTitle": 0.965,
+        "agreementByTitle": "likely_non_narrative_false_accept",
+        "evidenceByTitle": {
+          "titleIdentityEvidence": [],
+          "subtitleIdentityEvidence": [],
+          "categoryIdentityEvidence": [
+            "fiction or genre category"
+          ],
+          "descriptionIdentityEvidence": [],
+          "narrativeSynopsisEvidence": [],
+          "academicFraming": [],
+          "editorContributorFraming": [],
+          "storiesByFraming": [],
+          "collectionAnthologyEvidence": [
+            "genre scope metadata"
+          ],
+          "subjectOfAuthorFraming": [],
+          "publisherEvidence": [],
+          "recordQualityEvidence": [
+            "page_count:320",
+            "publisher:Gate House",
+            "published:2024"
+          ],
+          "currentPublicationShapeEvidence": [
+            "catalog fixture"
+          ],
+          "currentDominantPublicationShapeEvidence": [],
+          "currentStoryLevelNarrativeEvidence": [],
+          "finalEligibilityEvidence": [
+            "genre scope metadata",
+            "narrative subtitle or description marker",
+            "first class fiction category",
+            "fiction category or genre"
+          ]
+        },
+        "productionEnforcementDecisionByTitle": "unchanged",
+        "productionEnforcementReasonByTitle": "adult_googlebooks_identity_unenforced_bibliography_catalog_or_reference",
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "adult_googlebooks_minimal_final_gate_passed",
+        "finalSelectionDecisionByTitle": "selected"
+      },
+      "teen": {
+        "identityDecisionByTitle": "rejected",
+        "identityReasonByTitle": "teen_googlebooks_publication_identity_generic_category_flag",
+        "identityClassificationByTitle": "catalog_or_promotional_collection",
+        "identityEvidenceByTitle": [
+          "publication_shape:catalog",
+          "explicit_non_narrative_identity_count:0",
+          "subject_of_study:no",
+          "curated_guide:no",
+          "generic_category_title:yes"
+        ],
+        "finalEligibilityDecisionByTitle": "rejected",
+        "finalEligibilityReasonByTitle": "teen_googlebooks_publication_identity_generic_category_flag",
+        "finalSelectionDecisionByTitle": "not_reached:teen_publication_identity_final_guard",
+        "productionEnforcementObserved": true
+      }
+    },
+    {
+      "caseId": "periodical",
+      "label": "periodical",
+      "adult": {
+        "auditIdentity": "periodical_or_serial_issue",
+        "auditConfidence": 0.98,
+        "auditAgreement": "likely_non_narrative_false_accept",
+        "auditRootCause": "final_eligibility_allowed_periodical_or_serial_issue",
+        "auditEvidenceNonEmptyBuckets": 6,
+        "enforcementDecision": "unchanged",
+        "enforcementReason": "adult_googlebooks_identity_unenforced_periodical_or_serial_issue",
+        "identityByTitle": "periodical_or_serial_issue",
+        "confidenceByTitle": 0.98,
+        "agreementByTitle": "identity_agrees_with_current_behavior",
+        "evidenceByTitle": {
+          "titleIdentityEvidence": [],
+          "subtitleIdentityEvidence": [],
+          "categoryIdentityEvidence": [
+            "adult googlebooks artifact periodical",
+            "fiction or genre category"
+          ],
+          "descriptionIdentityEvidence": [
+            "category periodical",
+            "periodical publication framing"
+          ],
+          "narrativeSynopsisEvidence": [],
+          "academicFraming": [],
+          "editorContributorFraming": [],
+          "storiesByFraming": [],
+          "collectionAnthologyEvidence": [
+            "genre scope metadata"
+          ],
+          "subjectOfAuthorFraming": [],
+          "publisherEvidence": [],
+          "recordQualityEvidence": [
+            "page_count:320",
+            "publisher:Gate House",
+            "published:2024"
+          ],
+          "currentPublicationShapeEvidence": [
+            "periodical fixture"
+          ],
+          "currentDominantPublicationShapeEvidence": [],
+          "currentStoryLevelNarrativeEvidence": [],
+          "finalEligibilityEvidence": [
+            "adult googlebooks artifact periodical",
+            "genre scope metadata",
+            "first class fiction category",
+            "fiction category or genre"
+          ]
+        },
+        "productionEnforcementDecisionByTitle": "unchanged",
+        "productionEnforcementReasonByTitle": "adult_googlebooks_identity_unenforced_periodical_or_serial_issue",
+        "finalEligibilityDecisionByTitle": "rejected",
+        "finalEligibilityReasonByTitle": "adult_googlebooks_artifact_or_reference_shape",
+        "finalSelectionDecisionByTitle": ""
+      },
+      "teen": {
+        "identityDecisionByTitle": "passed",
+        "identityReasonByTitle": "teen_googlebooks_publication_identity_passed",
+        "identityClassificationByTitle": "narrative_novel_or_uncertain",
+        "identityEvidenceByTitle": [
+          "publication_shape:periodical",
+          "explicit_non_narrative_identity_count:0",
+          "subject_of_study:no",
+          "curated_guide:no",
+          "generic_category_title:no"
+        ],
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "teens_googlebooks_named_final_eligibility_passed",
+        "finalSelectionDecisionByTitle": "selected",
+        "productionEnforcementObserved": false
+      }
+    },
+    {
+      "caseId": "ambiguous-unknown-shape",
+      "label": "ambiguous/unknown publication shape",
+      "adult": {
+        "auditIdentity": "identity_uncertain",
+        "auditConfidence": 0.58,
+        "auditAgreement": "uncertain_identity_needs_review",
+        "auditRootCause": "audit_identity_uncertain",
+        "auditEvidenceNonEmptyBuckets": 4,
+        "enforcementDecision": "unchanged",
+        "enforcementReason": "adult_googlebooks_identity_unenforced_identity_uncertain",
+        "identityByTitle": "identity_uncertain",
+        "confidenceByTitle": 0.58,
+        "agreementByTitle": "uncertain_identity_needs_review",
+        "evidenceByTitle": {
+          "titleIdentityEvidence": [],
+          "subtitleIdentityEvidence": [],
+          "categoryIdentityEvidence": [
+            "fiction or genre category"
+          ],
+          "descriptionIdentityEvidence": [],
+          "narrativeSynopsisEvidence": [],
+          "academicFraming": [],
+          "editorContributorFraming": [],
+          "storiesByFraming": [],
+          "collectionAnthologyEvidence": [],
+          "subjectOfAuthorFraming": [],
+          "publisherEvidence": [],
+          "recordQualityEvidence": [
+            "page_count:320",
+            "publisher:Gate House",
+            "published:2024"
+          ],
+          "currentPublicationShapeEvidence": [
+            "unknown fixture"
+          ],
+          "currentDominantPublicationShapeEvidence": [],
+          "currentStoryLevelNarrativeEvidence": [],
+          "finalEligibilityEvidence": [
+            "first class fiction category",
+            "fiction category or genre"
+          ]
+        },
+        "productionEnforcementDecisionByTitle": "unchanged",
+        "productionEnforcementReasonByTitle": "adult_googlebooks_identity_unenforced_identity_uncertain",
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "adult_googlebooks_minimal_final_gate_passed",
+        "finalSelectionDecisionByTitle": "selected"
+      },
+      "teen": {
+        "identityDecisionByTitle": "passed",
+        "identityReasonByTitle": "teen_googlebooks_publication_identity_passed",
+        "identityClassificationByTitle": "narrative_novel_or_uncertain",
+        "identityEvidenceByTitle": [
+          "publication_shape:unknown",
+          "explicit_non_narrative_identity_count:0",
+          "subject_of_study:no",
+          "curated_guide:no",
+          "generic_category_title:no"
+        ],
+        "finalEligibilityDecisionByTitle": "accepted",
+        "finalEligibilityReasonByTitle": "teens_googlebooks_named_final_eligibility_passed",
+        "finalSelectionDecisionByTitle": "selected",
+        "productionEnforcementObserved": false
+      }
+    },
+    {
+      "caseId": "conflicting-narrative-artifact",
+      "label": "conflicting narrative and artifact evidence",
+      "adult": {
+        "auditIdentity": "reading_guide_or_companion",
+        "auditConfidence": 0.98,
+        "auditAgreement": "likely_non_narrative_false_accept",
+        "auditRootCause": "final_eligibility_allowed_reading_guide_or_companion",
+        "auditEvidenceNonEmptyBuckets": 6,
+        "enforcementDecision": "unchanged",
+        "enforcementReason": "adult_googlebooks_identity_unenforced_reading_guide_or_companion",
+        "identityByTitle": "reading_guide_or_companion",
+        "confidenceByTitle": 0.98,
+        "agreementByTitle": "identity_agrees_with_current_behavior",
+        "evidenceByTitle": {
+          "titleIdentityEvidence": [],
+          "subtitleIdentityEvidence": [],
+          "categoryIdentityEvidence": [
+            "reference metadata",
+            "adult googlebooks artifact writer reference",
+            "adult googlebooks instructional craft metadata shape",
+            "reference or companion framing",
+            "fiction or genre category"
+          ],
+          "descriptionIdentityEvidence": [],
+          "narrativeSynopsisEvidence": [],
+          "academicFraming": [
+            "adult googlebooks instructional craft metadata shape"
+          ],
+          "editorContributorFraming": [],
+          "storiesByFraming": [],
+          "collectionAnthologyEvidence": [
+            "genre scope metadata"
+          ],
+          "subjectOfAuthorFraming": [],
+          "publisherEvidence": [],
+          "recordQualityEvidence": [
+            "page_count:320",
+            "publisher:Gate House",
+            "published:2024"
+          ],
+          "currentPublicationShapeEvidence": [
+            "writing guide fixture"
+          ],
+          "currentDominantPublicationShapeEvidence": [],
+          "currentStoryLevelNarrativeEvidence": [],
+          "finalEligibilityEvidence": [
+            "adult googlebooks artifact writer reference",
+            "adult googlebooks instructional craft metadata shape",
+            "genre scope metadata",
+            "narrative subtitle or description marker",
+            "first class fiction category",
+            "fiction category or genre"
+          ]
+        },
+        "productionEnforcementDecisionByTitle": "unchanged",
+        "productionEnforcementReasonByTitle": "adult_googlebooks_identity_unenforced_reading_guide_or_companion",
+        "finalEligibilityDecisionByTitle": "rejected",
+        "finalEligibilityReasonByTitle": "adult_googlebooks_artifact_or_reference_shape",
+        "finalSelectionDecisionByTitle": ""
+      },
+      "teen": {
+        "identityDecisionByTitle": "rejected",
+        "identityReasonByTitle": "teen_googlebooks_publication_identity_curated_guide_flag",
+        "identityClassificationByTitle": "guide_reference",
+        "identityEvidenceByTitle": [
+          "publication_shape:writing_guide",
+          "explicit_non_narrative_identity_count:0",
+          "subject_of_study:no",
+          "curated_guide:yes",
+          "generic_category_title:no"
+        ],
+        "finalEligibilityDecisionByTitle": "rejected",
+        "finalEligibilityReasonByTitle": "teen_googlebooks_publication_identity_curated_guide_flag",
+        "finalSelectionDecisionByTitle": "not_reached:teen_publication_identity_final_guard",
+        "productionEnforcementObserved": true
+      }
+    }
+  ],
+  "decision": {
+    "decision": "adult_production_audit_teen_eligibility_policy",
+    "rationale": "Adult combines broad final-slate audit diagnostics with identity enforcement, while Teen applies publication-identity as direct final-eligibility policy with narrower classification semantics.",
+    "outcomes": {
+      "behaviorally_equivalent_duplication": "Freeze parity and consolidate.",
+      "shared_classifier_age_specific_enforcement": "Extract identity assessment mechanism only; keep separate age-policy enforcement wrappers.",
+      "adult_production_audit_teen_eligibility_policy": "Reclassify as different semantics; do not force parity-preserving consolidation.",
+      "adult_only_capability_age_specific": "Keep age-specific and remove from active consolidation."
+    }
+  }
+}

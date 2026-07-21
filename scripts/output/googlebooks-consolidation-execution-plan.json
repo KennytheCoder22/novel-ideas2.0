@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T06:02:48.785Z",
+  "generatedAt": "2026-07-21T06:12:30.845Z",
   "sourceAudit": "googlebooks-behavioral-equivalence-audit.json",
   "summary": {
     "total": 12,
@@ -8,20 +8,20 @@
     "noveltyProofApplied": true,
     "noveltyProofDecision": "noSubstantiveDifference",
     "byBehavioralClass": {
-      "behaviorally_equivalent_duplication": 3,
-      "same_name_different_semantics": 4,
+      "behaviorally_equivalent_duplication": 2,
+      "same_name_different_semantics": 5,
       "truly_shared": 3,
       "age_specific_by_necessity": 1,
       "adult_production_teen_diagnostic": 1
     },
     "byConfidenceState": {
-      "Architectural": 7,
-      "Hypothesis": 4,
+      "Architectural": 6,
+      "Hypothesis": 5,
       "Falsified": 1
     },
     "nextActiveCapability": {
-      "capability": "Final slate identity auditing",
-      "implementationOrder": 204,
+      "capability": "Counterfactual final slate",
+      "implementationOrder": 205,
       "confidenceState": "Architectural",
       "executionStatus": "pending"
     },
@@ -35,35 +35,6 @@
     ]
   },
   "rows": [
-    {
-      "capability": "Final slate identity auditing",
-      "behavioralClass": "behaviorally_equivalent_duplication",
-      "behavioralClassLabel": "Behaviorally equivalent duplication",
-      "expectedRecommendationQualityGain": "Low",
-      "maintenanceGain": "High",
-      "regressionRisk": "Medium",
-      "productionStatus": "adult=production_or_core; teen=production_or_core",
-      "prerequisiteTests": [
-        "run-v2-googlebooks-final-slate-identity-audit-regressions.mjs",
-        "run-v2-googlebooks-final-eligibility-regressions.mjs"
-      ],
-      "proposedSharedPrimitive": "auditFinalSlateIdentity({ candidate, eligibilityContext, policy })",
-      "agePolicyConfigurationRequired": "Identity rejection categories and confidence thresholds per age band.",
-      "implementationOrder": 204,
-      "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
-      "recommendation": "Extract shared primitive and parametrize age policy",
-      "stage": "post-selection audit",
-      "effectSurface": "eligibility + reporting",
-      "preflightCheckpoint": null,
-      "executionStatus": "pending",
-      "active": true,
-      "confidenceState": "Architectural",
-      "behaviorChange": "unknown",
-      "parityVerified": false,
-      "parityBaselineSignature": null,
-      "implementationCommit": null,
-      "reclassificationEvidence": null
-    },
     {
       "capability": "Counterfactual final slate",
       "behavioralClass": "behaviorally_equivalent_duplication",
@@ -125,6 +96,39 @@
         "gateArtifact": "googlebooks-203-canonical-cue-equivalence-gate.json",
         "gateDecision": "materially_different_behavior_reclassify",
         "rationale": "Adult has production canonical-family promotion with explicit promotion decisions; Teen exposes document-native specific signals without canonical-promotion diagnostics/mechanism."
+      }
+    },
+    {
+      "capability": "Final slate identity auditing",
+      "behavioralClass": "same_name_different_semantics",
+      "behavioralClassLabel": "Same name, different semantics",
+      "expectedRecommendationQualityGain": "Medium",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-final-slate-identity-audit-regressions.mjs",
+        "run-v2-googlebooks-final-eligibility-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "auditFinalSlateIdentity({ candidate, eligibilityContext, policy })",
+      "agePolicyConfigurationRequired": "Identity rejection categories and confidence thresholds per age band.",
+      "implementationOrder": 304,
+      "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
+      "recommendation": "Reclassified by #204 role gate: treat as shared identity-assessment contract with separate age-policy enforcement; do not force parity-preserving consolidation.",
+      "stage": "post-selection audit",
+      "effectSurface": "eligibility + reporting",
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true,
+      "confidenceState": "Hypothesis",
+      "behaviorChange": "unknown",
+      "parityVerified": false,
+      "parityBaselineSignature": null,
+      "implementationCommit": null,
+      "reclassificationEvidence": {
+        "gateArtifact": "googlebooks-204-final-slate-identity-role-gate.json",
+        "gateDecision": "adult_production_audit_teen_eligibility_policy",
+        "rationale": "Adult combines broad final-slate audit diagnostics with identity enforcement, while Teen applies publication-identity as direct final-eligibility policy with narrower classification semantics."
       }
     },
     {
