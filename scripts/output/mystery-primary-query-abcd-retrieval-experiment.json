@@ -1,0 +1,1382 @@
+{
+  "generatedAt": "2026-07-21T23:20:57.603Z",
+  "profiles": [
+    {
+      "id": "mystery-classic-whodunit",
+      "label": "Classic whodunit mystery"
+    },
+    {
+      "id": "mystery-psychological-thriller",
+      "label": "Psychological thriller mystery"
+    },
+    {
+      "id": "mystery-cozy-amateur",
+      "label": "Cozy amateur detective mystery"
+    }
+  ],
+  "variants": [
+    {
+      "id": "control",
+      "label": "Control (current)",
+      "query": ""
+    },
+    {
+      "id": "A",
+      "label": "Candidate A",
+      "query": "teen mystery thriller novel"
+    },
+    {
+      "id": "B",
+      "label": "Candidate B",
+      "query": "young adult detective novel"
+    },
+    {
+      "id": "C",
+      "label": "Candidate C",
+      "query": "young adult suspense novel"
+    }
+  ],
+  "aggregates": [
+    {
+      "variantId": "control",
+      "variantLabel": "Control (current)",
+      "queryUsed": "young adult mystery fiction novel",
+      "avgRawApiCount": 20,
+      "avgStructuralLoss": 6,
+      "avgPublicationIdentityLoss": 11,
+      "avgArtifactLoss": 0,
+      "avgAcceptedAfterSourcePolicy": 3,
+      "avgFinalSelected": 5.67,
+      "avgRelevanceScore": 21.745,
+      "minRelevanceScore": 16.74,
+      "totalLowConfidenceSelected": 0,
+      "totalG1": 50,
+      "totalG2": 0,
+      "totalAmbiguous": 12,
+      "totalDuplicateAuthorPairs": 0,
+      "avgTotalFetchMs": 1285.33,
+      "failedOrEmptyFetches": 0
+    },
+    {
+      "variantId": "A",
+      "variantLabel": "Candidate A",
+      "queryUsed": "teen mystery thriller novel",
+      "avgRawApiCount": 20,
+      "avgStructuralLoss": 3,
+      "avgPublicationIdentityLoss": 10,
+      "avgArtifactLoss": 0,
+      "avgAcceptedAfterSourcePolicy": 7,
+      "avgFinalSelected": 6,
+      "avgRelevanceScore": 25.124,
+      "minRelevanceScore": 22.91,
+      "totalLowConfidenceSelected": 0,
+      "totalG1": 41,
+      "totalG2": 0,
+      "totalAmbiguous": 21,
+      "totalDuplicateAuthorPairs": 0,
+      "avgTotalFetchMs": 1327.67,
+      "failedOrEmptyFetches": 0
+    },
+    {
+      "variantId": "B",
+      "variantLabel": "Candidate B",
+      "queryUsed": "young adult detective novel",
+      "avgRawApiCount": 20,
+      "avgStructuralLoss": 6,
+      "avgPublicationIdentityLoss": 9,
+      "avgArtifactLoss": 0,
+      "avgAcceptedAfterSourcePolicy": 5,
+      "avgFinalSelected": 6,
+      "avgRelevanceScore": 22.093,
+      "minRelevanceScore": 16.74,
+      "totalLowConfidenceSelected": 0,
+      "totalG1": 48,
+      "totalG2": 6,
+      "totalAmbiguous": 5,
+      "totalDuplicateAuthorPairs": 0,
+      "avgTotalFetchMs": 1284,
+      "failedOrEmptyFetches": 0
+    },
+    {
+      "variantId": "C",
+      "variantLabel": "Candidate C",
+      "queryUsed": "young adult suspense novel",
+      "avgRawApiCount": 6.67,
+      "avgStructuralLoss": 0.33,
+      "avgPublicationIdentityLoss": 2.33,
+      "avgArtifactLoss": 0,
+      "avgAcceptedAfterSourcePolicy": 4,
+      "avgFinalSelected": 4.33,
+      "avgRelevanceScore": 20.974,
+      "minRelevanceScore": 16.45,
+      "totalLowConfidenceSelected": 0,
+      "totalG1": 31,
+      "totalG2": 0,
+      "totalAmbiguous": 4,
+      "totalDuplicateAuthorPairs": 0,
+      "avgTotalFetchMs": 982.67,
+      "failedOrEmptyFetches": 4
+    }
+  ],
+  "gateResults": [
+    {
+      "variantId": "A",
+      "variantLabel": "Candidate A",
+      "acceptedDelta": 4,
+      "gate1_accepted_improvement": {
+        "passed": true,
+        "detail": "Δ=4.00, avg=7 (threshold: +2.0 or ≥5)"
+      },
+      "gate2_zero_g2": {
+        "passed": true,
+        "detail": "G2 count: 0"
+      },
+      "gate3_relevance": {
+        "passed": true,
+        "detail": "score 25.124 vs control 21.745"
+      },
+      "gate4_weak_fit": {
+        "passed": true,
+        "detail": "low-confidence selected: 0 vs control 0"
+      },
+      "gate5_diversity": {
+        "passed": true,
+        "detail": "dup-author pairs: 0 vs control 0"
+      },
+      "gate6_consistent": {
+        "passed": true,
+        "detail": "improvement holds across all 3 profiles"
+      },
+      "allGatesPassed": true,
+      "promotionRecommendation": "promote"
+    },
+    {
+      "variantId": "B",
+      "variantLabel": "Candidate B",
+      "acceptedDelta": 2,
+      "gate1_accepted_improvement": {
+        "passed": true,
+        "detail": "Δ=2.00, avg=5 (threshold: +2.0 or ≥5)"
+      },
+      "gate2_zero_g2": {
+        "passed": false,
+        "detail": "G2 count: 6"
+      },
+      "gate3_relevance": {
+        "passed": true,
+        "detail": "score 22.093 vs control 21.745"
+      },
+      "gate4_weak_fit": {
+        "passed": true,
+        "detail": "low-confidence selected: 0 vs control 0"
+      },
+      "gate5_diversity": {
+        "passed": true,
+        "detail": "dup-author pairs: 0 vs control 0"
+      },
+      "gate6_consistent": {
+        "passed": true,
+        "detail": "improvement holds across all 3 profiles"
+      },
+      "allGatesPassed": false,
+      "promotionRecommendation": "do_not_promote"
+    },
+    {
+      "variantId": "C",
+      "variantLabel": "Candidate C",
+      "acceptedDelta": 1,
+      "gate1_accepted_improvement": {
+        "passed": false,
+        "detail": "Δ=1.00, avg=4 (threshold: +2.0 or ≥5)"
+      },
+      "gate2_zero_g2": {
+        "passed": true,
+        "detail": "G2 count: 0"
+      },
+      "gate3_relevance": {
+        "passed": false,
+        "detail": "score 20.974 vs control 21.745"
+      },
+      "gate4_weak_fit": {
+        "passed": true,
+        "detail": "low-confidence selected: 0 vs control 0"
+      },
+      "gate5_diversity": {
+        "passed": true,
+        "detail": "dup-author pairs: 0 vs control 0"
+      },
+      "gate6_consistent": {
+        "passed": false,
+        "detail": "improvement holds across all 3 profiles"
+      },
+      "allGatesPassed": false,
+      "promotionRecommendation": "do_not_promote"
+    }
+  ],
+  "allRuns": [
+    {
+      "variantId": "control",
+      "rows": [
+        {
+          "variant": "control",
+          "profileId": "mystery-classic-whodunit",
+          "profileLabel": "Classic whodunit mystery",
+          "primaryQuery": "young adult mystery fiction novel",
+          "overrideApplied": false,
+          "rawApiCount": 20,
+          "structuralLoss": 6,
+          "publicationIdentityLoss": 11,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 3,
+          "finalSelected": 6,
+          "quality": {
+            "averageScore": 20.313,
+            "minScore": 18.79,
+            "maxScore": 22.61,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 18,
+            "G2": 0,
+            "ambiguous": 5
+          },
+          "g2Examples": [],
+          "rejectionExamples": {
+            "pubReasons": [
+              "publication_shape_writing_guide×3",
+              "publication_shape_unknown_insufficient_narrative_identity×3",
+              "publication_shape_reference×2",
+              "publication_shape_critical_study×1"
+            ],
+            "examples": [
+              {
+                "title": "Novel & Short Story Writer's Market 40th Edition",
+                "reason": "publication_shape_writing_guide",
+                "nc": 5.5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Guide to Literary Agents 30th Edition",
+                "reason": "publication_shape_writing_guide",
+                "nc": 0,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Detective Fiction for Young Readers",
+                "reason": "publication_shape_critical_study",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Writer's Market 100th Edition",
+                "reason": "publication_shape_writing_guide",
+                "nc": 2,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Developing Library Collections for Today's Young Adults",
+                "reason": "publication_shape_nonfiction",
+                "nc": 2,
+                "g1g2": "G1"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 20,
+            "structural": 6,
+            "afterStructural": 14,
+            "publication": 11,
+            "afterPublication": 3,
+            "artifact": 0,
+            "accepted": 3,
+            "biggestDropGate": "publication_identity",
+            "biggestDropCount": 11
+          },
+          "latency": {
+            "totalFetchMs": 1392,
+            "failedFetches": 0,
+            "emptyFetches": 0
+          },
+          "rejectionReasonsFull": {
+            "publication_shape_writing_guide": 3,
+            "publication_shape_critical_study": 1,
+            "publication_shape_nonfiction": 1,
+            "publication_shape_reference": 2,
+            "missing_author": 6,
+            "publication_shape_genre_survey": 1,
+            "publication_shape_unknown_insufficient_narrative_identity": 3
+          },
+          "wallClockMs": 1547
+        },
+        {
+          "variant": "control",
+          "profileId": "mystery-psychological-thriller",
+          "profileLabel": "Psychological thriller mystery",
+          "primaryQuery": "young adult mystery fiction novel",
+          "overrideApplied": false,
+          "rawApiCount": 20,
+          "structuralLoss": 6,
+          "publicationIdentityLoss": 11,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 3,
+          "finalSelected": 6,
+          "quality": {
+            "averageScore": 24.822,
+            "minScore": 21.29,
+            "maxScore": 28.06,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 12,
+            "G2": 0,
+            "ambiguous": 4
+          },
+          "g2Examples": [],
+          "rejectionExamples": {
+            "pubReasons": [
+              "publication_shape_writing_guide×3",
+              "publication_shape_unknown_insufficient_narrative_identity×3",
+              "publication_shape_reference×2",
+              "publication_shape_critical_study×1"
+            ],
+            "examples": [
+              {
+                "title": "Novel & Short Story Writer's Market 40th Edition",
+                "reason": "publication_shape_writing_guide",
+                "nc": 5.5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Guide to Literary Agents 30th Edition",
+                "reason": "publication_shape_writing_guide",
+                "nc": 0,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Detective Fiction for Young Readers",
+                "reason": "publication_shape_critical_study",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Writer's Market 100th Edition",
+                "reason": "publication_shape_writing_guide",
+                "nc": 2,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Developing Library Collections for Today's Young Adults",
+                "reason": "publication_shape_nonfiction",
+                "nc": 2,
+                "g1g2": "G1"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 20,
+            "structural": 6,
+            "afterStructural": 14,
+            "publication": 11,
+            "afterPublication": 3,
+            "artifact": 0,
+            "accepted": 3,
+            "biggestDropGate": "publication_identity",
+            "biggestDropCount": 11
+          },
+          "latency": {
+            "totalFetchMs": 884,
+            "failedFetches": 0,
+            "emptyFetches": 0
+          },
+          "rejectionReasonsFull": {
+            "publication_shape_writing_guide": 3,
+            "publication_shape_critical_study": 1,
+            "publication_shape_nonfiction": 1,
+            "publication_shape_reference": 2,
+            "missing_author": 6,
+            "publication_shape_genre_survey": 1,
+            "publication_shape_unknown_insufficient_narrative_identity": 3
+          },
+          "wallClockMs": 939
+        },
+        {
+          "variant": "control",
+          "profileId": "mystery-cozy-amateur",
+          "profileLabel": "Cozy amateur detective mystery",
+          "primaryQuery": "young adult mystery fiction novel",
+          "overrideApplied": false,
+          "rawApiCount": 20,
+          "structuralLoss": 6,
+          "publicationIdentityLoss": 11,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 3,
+          "finalSelected": 5,
+          "quality": {
+            "averageScore": 20.1,
+            "minScore": 16.74,
+            "maxScore": 24.69,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 20,
+            "G2": 0,
+            "ambiguous": 3
+          },
+          "g2Examples": [],
+          "rejectionExamples": {
+            "pubReasons": [
+              "publication_shape_writing_guide×3",
+              "publication_shape_unknown_insufficient_narrative_identity×3",
+              "publication_shape_reference×2",
+              "publication_shape_critical_study×1"
+            ],
+            "examples": [
+              {
+                "title": "Novel & Short Story Writer's Market 40th Edition",
+                "reason": "publication_shape_writing_guide",
+                "nc": 5.5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Guide to Literary Agents 30th Edition",
+                "reason": "publication_shape_writing_guide",
+                "nc": 0,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Detective Fiction for Young Readers",
+                "reason": "publication_shape_critical_study",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Writer's Market 100th Edition",
+                "reason": "publication_shape_writing_guide",
+                "nc": 2,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Developing Library Collections for Today's Young Adults",
+                "reason": "publication_shape_nonfiction",
+                "nc": 0,
+                "g1g2": "G1"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 20,
+            "structural": 6,
+            "afterStructural": 14,
+            "publication": 11,
+            "afterPublication": 3,
+            "artifact": 0,
+            "accepted": 3,
+            "biggestDropGate": "publication_identity",
+            "biggestDropCount": 11
+          },
+          "latency": {
+            "totalFetchMs": 1330,
+            "failedFetches": 0,
+            "emptyFetches": 0
+          },
+          "rejectionReasonsFull": {
+            "publication_shape_writing_guide": 3,
+            "publication_shape_critical_study": 1,
+            "publication_shape_nonfiction": 1,
+            "publication_shape_reference": 2,
+            "missing_author": 6,
+            "publication_shape_genre_survey": 1,
+            "publication_shape_unknown_insufficient_narrative_identity": 3
+          },
+          "wallClockMs": 1370
+        }
+      ]
+    },
+    {
+      "variantId": "A",
+      "rows": [
+        {
+          "variant": "A",
+          "profileId": "mystery-classic-whodunit",
+          "profileLabel": "Classic whodunit mystery",
+          "primaryQuery": "teen mystery thriller novel",
+          "overrideApplied": false,
+          "rawApiCount": 20,
+          "structuralLoss": 3,
+          "publicationIdentityLoss": 10,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 7,
+          "finalSelected": 6,
+          "quality": {
+            "averageScore": 23.227,
+            "minScore": 22.91,
+            "maxScore": 23.91,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 13,
+            "G2": 0,
+            "ambiguous": 8
+          },
+          "g2Examples": [],
+          "rejectionExamples": {
+            "pubReasons": [
+              "publication_shape_unknown_insufficient_narrative_identity×6",
+              "publication_shape_writing_guide×1",
+              "publication_shape_critical_study×1",
+              "publication_shape_reference×1"
+            ],
+            "examples": [
+              {
+                "title": "Focus On: 100 Most Popular 2010s Adventure Films",
+                "reason": "publication_shape_unknown_insufficient_narrative_identity",
+                "nc": 0,
+                "g1g2": "ambiguous"
+              },
+              {
+                "title": "2015 Novel & Short Story Writer's Market",
+                "reason": "publication_shape_writing_guide",
+                "nc": 6.5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Sisters, Schoolgirls, and Sleuths",
+                "reason": "publication_shape_critical_study",
+                "nc": 4,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Bodies from the Library 5: Forgotten Stories of Mystery and ",
+                "reason": "publication_shape_unknown_insufficient_narrative_identity",
+                "nc": 1,
+                "g1g2": "ambiguous"
+              },
+              {
+                "title": "In Safe Hands (A DCI Anna Tate Crime Thriller, Book 1)",
+                "reason": "publication_shape_unknown_insufficient_narrative_identity",
+                "nc": 1,
+                "g1g2": "ambiguous"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 20,
+            "structural": 3,
+            "afterStructural": 17,
+            "publication": 10,
+            "afterPublication": 7,
+            "artifact": 0,
+            "accepted": 7,
+            "biggestDropGate": "publication_identity",
+            "biggestDropCount": 10
+          },
+          "latency": {
+            "totalFetchMs": 1501,
+            "failedFetches": 0,
+            "emptyFetches": 0
+          },
+          "rejectionReasonsFull": {
+            "publication_shape_unknown_insufficient_narrative_identity": 6,
+            "publication_shape_writing_guide": 1,
+            "publication_shape_critical_study": 1,
+            "publication_shape_reference": 1,
+            "publication_shape_periodical": 1,
+            "missing_author": 3
+          },
+          "wallClockMs": 1568
+        },
+        {
+          "variant": "A",
+          "profileId": "mystery-psychological-thriller",
+          "profileLabel": "Psychological thriller mystery",
+          "primaryQuery": "teen mystery thriller novel",
+          "overrideApplied": false,
+          "rawApiCount": 20,
+          "structuralLoss": 3,
+          "publicationIdentityLoss": 10,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 7,
+          "finalSelected": 6,
+          "quality": {
+            "averageScore": 27.477,
+            "minScore": 27.16,
+            "maxScore": 28.16,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 12,
+            "G2": 0,
+            "ambiguous": 7
+          },
+          "g2Examples": [],
+          "rejectionExamples": {
+            "pubReasons": [
+              "publication_shape_unknown_insufficient_narrative_identity×6",
+              "publication_shape_writing_guide×1",
+              "publication_shape_critical_study×1",
+              "publication_shape_reference×1"
+            ],
+            "examples": [
+              {
+                "title": "Focus On: 100 Most Popular 2010s Adventure Films",
+                "reason": "publication_shape_unknown_insufficient_narrative_identity",
+                "nc": 0,
+                "g1g2": "ambiguous"
+              },
+              {
+                "title": "2015 Novel & Short Story Writer's Market",
+                "reason": "publication_shape_writing_guide",
+                "nc": 6.5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Sisters, Schoolgirls, and Sleuths",
+                "reason": "publication_shape_critical_study",
+                "nc": 4,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Bodies from the Library 5: Forgotten Stories of Mystery and ",
+                "reason": "publication_shape_unknown_insufficient_narrative_identity",
+                "nc": 1,
+                "g1g2": "ambiguous"
+              },
+              {
+                "title": "In Safe Hands (A DCI Anna Tate Crime Thriller, Book 1)",
+                "reason": "publication_shape_unknown_insufficient_narrative_identity",
+                "nc": 1,
+                "g1g2": "ambiguous"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 20,
+            "structural": 3,
+            "afterStructural": 17,
+            "publication": 10,
+            "afterPublication": 7,
+            "artifact": 0,
+            "accepted": 7,
+            "biggestDropGate": "publication_identity",
+            "biggestDropCount": 10
+          },
+          "latency": {
+            "totalFetchMs": 1116,
+            "failedFetches": 0,
+            "emptyFetches": 0
+          },
+          "rejectionReasonsFull": {
+            "publication_shape_unknown_insufficient_narrative_identity": 6,
+            "publication_shape_writing_guide": 1,
+            "publication_shape_critical_study": 1,
+            "publication_shape_reference": 1,
+            "publication_shape_periodical": 1,
+            "missing_author": 3
+          },
+          "wallClockMs": 1166
+        },
+        {
+          "variant": "A",
+          "profileId": "mystery-cozy-amateur",
+          "profileLabel": "Cozy amateur detective mystery",
+          "primaryQuery": "teen mystery thriller novel",
+          "overrideApplied": false,
+          "rawApiCount": 20,
+          "structuralLoss": 3,
+          "publicationIdentityLoss": 10,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 7,
+          "finalSelected": 6,
+          "quality": {
+            "averageScore": 24.668,
+            "minScore": 23.61,
+            "maxScore": 26.86,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 16,
+            "G2": 0,
+            "ambiguous": 6
+          },
+          "g2Examples": [],
+          "rejectionExamples": {
+            "pubReasons": [
+              "publication_shape_unknown_insufficient_narrative_identity×6",
+              "publication_shape_writing_guide×1",
+              "publication_shape_critical_study×1",
+              "publication_shape_reference×1"
+            ],
+            "examples": [
+              {
+                "title": "Focus On: 100 Most Popular 2010s Adventure Films",
+                "reason": "publication_shape_unknown_insufficient_narrative_identity",
+                "nc": 0,
+                "g1g2": "ambiguous"
+              },
+              {
+                "title": "2015 Novel & Short Story Writer's Market",
+                "reason": "publication_shape_writing_guide",
+                "nc": 6.5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Sisters, Schoolgirls, and Sleuths",
+                "reason": "publication_shape_critical_study",
+                "nc": 4,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Bodies from the Library 5: Forgotten Stories of Mystery and ",
+                "reason": "publication_shape_unknown_insufficient_narrative_identity",
+                "nc": 1,
+                "g1g2": "ambiguous"
+              },
+              {
+                "title": "In Safe Hands (A DCI Anna Tate Crime Thriller, Book 1)",
+                "reason": "publication_shape_unknown_insufficient_narrative_identity",
+                "nc": 1,
+                "g1g2": "ambiguous"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 20,
+            "structural": 3,
+            "afterStructural": 17,
+            "publication": 10,
+            "afterPublication": 7,
+            "artifact": 0,
+            "accepted": 7,
+            "biggestDropGate": "publication_identity",
+            "biggestDropCount": 10
+          },
+          "latency": {
+            "totalFetchMs": 1180,
+            "failedFetches": 0,
+            "emptyFetches": 0
+          },
+          "rejectionReasonsFull": {
+            "publication_shape_unknown_insufficient_narrative_identity": 6,
+            "publication_shape_writing_guide": 1,
+            "publication_shape_critical_study": 1,
+            "publication_shape_reference": 1,
+            "publication_shape_periodical": 1,
+            "missing_author": 3
+          },
+          "wallClockMs": 1249
+        }
+      ]
+    },
+    {
+      "variantId": "B",
+      "rows": [
+        {
+          "variant": "B",
+          "profileId": "mystery-classic-whodunit",
+          "profileLabel": "Classic whodunit mystery",
+          "primaryQuery": "young adult detective novel",
+          "overrideApplied": false,
+          "rawApiCount": 20,
+          "structuralLoss": 6,
+          "publicationIdentityLoss": 9,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 5,
+          "finalSelected": 6,
+          "quality": {
+            "averageScore": 21.042,
+            "minScore": 19.14,
+            "maxScore": 24.36,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 16,
+            "G2": 2,
+            "ambiguous": 2
+          },
+          "g2Examples": [
+            {
+              "title": "LGBTQ Young Adult Fiction",
+              "reason": "publication_shape_academic_text",
+              "nc": 4
+            },
+            {
+              "title": "Literary Digest: a Repository of Contemporaneous Thought and Research as Presented in the Periodical Literature of the World",
+              "reason": "publication_shape_miscellany",
+              "nc": 4
+            }
+          ],
+          "rejectionExamples": {
+            "pubReasons": [
+              "publication_shape_academic_text×3",
+              "publication_shape_unknown_insufficient_story_evidence×2",
+              "publication_shape_critical_study×1",
+              "publication_shape_reference×1"
+            ],
+            "examples": [
+              {
+                "title": "Detective Fiction for Young Readers",
+                "reason": "publication_shape_critical_study",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "LGBTQ Young Adult Fiction",
+                "reason": "publication_shape_academic_text",
+                "nc": 4,
+                "g1g2": "G2"
+              },
+              {
+                "title": "Serial Crime Fiction",
+                "reason": "publication_shape_academic_text",
+                "nc": 1,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Encyclopedia of Nordic Crime Fiction",
+                "reason": "publication_shape_reference",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Women and Crime in Post-Transitional South African Crime Fic",
+                "reason": "publication_shape_academic_text",
+                "nc": 1,
+                "g1g2": "G1"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 20,
+            "structural": 6,
+            "afterStructural": 14,
+            "publication": 9,
+            "afterPublication": 5,
+            "artifact": 0,
+            "accepted": 5,
+            "biggestDropGate": "publication_identity",
+            "biggestDropCount": 9
+          },
+          "latency": {
+            "totalFetchMs": 1402,
+            "failedFetches": 0,
+            "emptyFetches": 0
+          },
+          "rejectionReasonsFull": {
+            "publication_shape_critical_study": 1,
+            "publication_shape_academic_text": 3,
+            "publication_shape_reference": 1,
+            "publication_shape_unknown_insufficient_narrative_identity": 1,
+            "missing_author": 6,
+            "publication_shape_unknown_insufficient_story_evidence": 2,
+            "publication_shape_miscellany": 1
+          },
+          "wallClockMs": 1466
+        },
+        {
+          "variant": "B",
+          "profileId": "mystery-psychological-thriller",
+          "profileLabel": "Psychological thriller mystery",
+          "primaryQuery": "young adult detective novel",
+          "overrideApplied": false,
+          "rawApiCount": 20,
+          "structuralLoss": 6,
+          "publicationIdentityLoss": 9,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 5,
+          "finalSelected": 6,
+          "quality": {
+            "averageScore": 24.9,
+            "minScore": 21.29,
+            "maxScore": 27.16,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 13,
+            "G2": 2,
+            "ambiguous": 2
+          },
+          "g2Examples": [
+            {
+              "title": "LGBTQ Young Adult Fiction",
+              "reason": "publication_shape_academic_text",
+              "nc": 4
+            },
+            {
+              "title": "Literary Digest: a Repository of Contemporaneous Thought and Research as Presented in the Periodical Literature of the World",
+              "reason": "publication_shape_miscellany",
+              "nc": 4
+            }
+          ],
+          "rejectionExamples": {
+            "pubReasons": [
+              "publication_shape_academic_text×3",
+              "publication_shape_unknown_insufficient_story_evidence×2",
+              "publication_shape_critical_study×1",
+              "publication_shape_reference×1"
+            ],
+            "examples": [
+              {
+                "title": "Detective Fiction for Young Readers",
+                "reason": "publication_shape_critical_study",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "LGBTQ Young Adult Fiction",
+                "reason": "publication_shape_academic_text",
+                "nc": 4,
+                "g1g2": "G2"
+              },
+              {
+                "title": "Serial Crime Fiction",
+                "reason": "publication_shape_academic_text",
+                "nc": 1,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Encyclopedia of Nordic Crime Fiction",
+                "reason": "publication_shape_reference",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Women and Crime in Post-Transitional South African Crime Fic",
+                "reason": "publication_shape_academic_text",
+                "nc": 1,
+                "g1g2": "G1"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 20,
+            "structural": 6,
+            "afterStructural": 14,
+            "publication": 9,
+            "afterPublication": 5,
+            "artifact": 0,
+            "accepted": 5,
+            "biggestDropGate": "publication_identity",
+            "biggestDropCount": 9
+          },
+          "latency": {
+            "totalFetchMs": 1164,
+            "failedFetches": 0,
+            "emptyFetches": 0
+          },
+          "rejectionReasonsFull": {
+            "publication_shape_critical_study": 1,
+            "publication_shape_academic_text": 3,
+            "publication_shape_reference": 1,
+            "publication_shape_unknown_insufficient_narrative_identity": 1,
+            "missing_author": 6,
+            "publication_shape_unknown_insufficient_story_evidence": 2,
+            "publication_shape_miscellany": 1
+          },
+          "wallClockMs": 1190
+        },
+        {
+          "variant": "B",
+          "profileId": "mystery-cozy-amateur",
+          "profileLabel": "Cozy amateur detective mystery",
+          "primaryQuery": "young adult detective novel",
+          "overrideApplied": false,
+          "rawApiCount": 20,
+          "structuralLoss": 6,
+          "publicationIdentityLoss": 9,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 5,
+          "finalSelected": 6,
+          "quality": {
+            "averageScore": 20.338,
+            "minScore": 16.74,
+            "maxScore": 24.16,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 19,
+            "G2": 2,
+            "ambiguous": 1
+          },
+          "g2Examples": [
+            {
+              "title": "LGBTQ Young Adult Fiction",
+              "reason": "publication_shape_academic_text",
+              "nc": 4
+            },
+            {
+              "title": "Literary Digest: a Repository of Contemporaneous Thought and Research as Presented in the Periodical Literature of the World",
+              "reason": "publication_shape_miscellany",
+              "nc": 4
+            }
+          ],
+          "rejectionExamples": {
+            "pubReasons": [
+              "publication_shape_academic_text×3",
+              "publication_shape_unknown_insufficient_story_evidence×2",
+              "publication_shape_critical_study×1",
+              "publication_shape_reference×1"
+            ],
+            "examples": [
+              {
+                "title": "Detective Fiction for Young Readers",
+                "reason": "publication_shape_critical_study",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "LGBTQ Young Adult Fiction",
+                "reason": "publication_shape_academic_text",
+                "nc": 4,
+                "g1g2": "G2"
+              },
+              {
+                "title": "Serial Crime Fiction",
+                "reason": "publication_shape_academic_text",
+                "nc": 1,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Encyclopedia of Nordic Crime Fiction",
+                "reason": "publication_shape_reference",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Women and Crime in Post-Transitional South African Crime Fic",
+                "reason": "publication_shape_academic_text",
+                "nc": 1,
+                "g1g2": "G1"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 20,
+            "structural": 6,
+            "afterStructural": 14,
+            "publication": 9,
+            "afterPublication": 5,
+            "artifact": 0,
+            "accepted": 5,
+            "biggestDropGate": "publication_identity",
+            "biggestDropCount": 9
+          },
+          "latency": {
+            "totalFetchMs": 1143,
+            "failedFetches": 0,
+            "emptyFetches": 0
+          },
+          "rejectionReasonsFull": {
+            "publication_shape_critical_study": 1,
+            "publication_shape_academic_text": 3,
+            "publication_shape_reference": 1,
+            "publication_shape_unknown_insufficient_narrative_identity": 1,
+            "missing_author": 6,
+            "publication_shape_unknown_insufficient_story_evidence": 2,
+            "publication_shape_miscellany": 1
+          },
+          "wallClockMs": 1196
+        }
+      ]
+    },
+    {
+      "variantId": "C",
+      "rows": [
+        {
+          "variant": "C",
+          "profileId": "mystery-classic-whodunit",
+          "profileLabel": "Classic whodunit mystery",
+          "primaryQuery": "young adult suspense novel",
+          "overrideApplied": false,
+          "rawApiCount": 0,
+          "structuralLoss": 0,
+          "publicationIdentityLoss": 0,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 0,
+          "finalSelected": 6,
+          "quality": {
+            "averageScore": 18.933,
+            "minScore": 17.94,
+            "maxScore": 19.94,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 10,
+            "G2": 0,
+            "ambiguous": 2
+          },
+          "g2Examples": [],
+          "rejectionExamples": {
+            "pubReasons": [],
+            "examples": [
+              {
+                "title": "Female Heroes in Young Adult Fantasy Fiction",
+                "reason": "publication_shape_critical_study",
+                "nc": 3,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Understanding (Post)feminist Girlhood Through Young Adult Fa",
+                "reason": "publication_shape_critical_study",
+                "nc": 2,
+                "g1g2": "G1"
+              },
+              {
+                "title": "The Best American Science Fiction and Fantasy 2024",
+                "reason": "publication_shape_anthology",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Fantasy Literature for Children and Young Adults",
+                "reason": "publication_shape_critical_study",
+                "nc": 4,
+                "g1g2": "G1"
+              },
+              {
+                "title": "500 Great Books For Teens",
+                "reason": "publication_shape_critical_study",
+                "nc": 2,
+                "g1g2": "G1"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 0,
+            "structural": 0,
+            "afterStructural": 0,
+            "publication": 0,
+            "afterPublication": 0,
+            "artifact": 0,
+            "accepted": 0,
+            "biggestDropGate": "structural",
+            "biggestDropCount": 0
+          },
+          "latency": {
+            "totalFetchMs": 972,
+            "failedFetches": 1,
+            "emptyFetches": 1
+          },
+          "rejectionReasonsFull": {},
+          "wallClockMs": 1011
+        },
+        {
+          "variant": "C",
+          "profileId": "mystery-psychological-thriller",
+          "profileLabel": "Psychological thriller mystery",
+          "primaryQuery": "young adult suspense novel",
+          "overrideApplied": false,
+          "rawApiCount": 20,
+          "structuralLoss": 1,
+          "publicationIdentityLoss": 7,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 12,
+          "finalSelected": 6,
+          "quality": {
+            "averageScore": 27.54,
+            "minScore": 26.86,
+            "maxScore": 28.49,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 12,
+            "G2": 0,
+            "ambiguous": 2
+          },
+          "g2Examples": [],
+          "rejectionExamples": {
+            "pubReasons": [
+              "publication_shape_nonfiction×2",
+              "publication_shape_writing_guide×1",
+              "publication_shape_reference×1",
+              "publication_shape_genre_survey×1"
+            ],
+            "examples": [
+              {
+                "title": "Go Teen Writers",
+                "reason": "publication_shape_nonfiction",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Writer's Market 100th Edition",
+                "reason": "publication_shape_writing_guide",
+                "nc": 2,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Developing Library Collections for Today's Young Adults",
+                "reason": "publication_shape_nonfiction",
+                "nc": 2,
+                "g1g2": "G1"
+              },
+              {
+                "title": "The Continuum Encyclopedia of Children's Literature",
+                "reason": "publication_shape_reference",
+                "nc": 1,
+                "g1g2": "G1"
+              },
+              {
+                "title": "No Place Like Rome",
+                "reason": "publication_shape_genre_survey",
+                "nc": 6,
+                "g1g2": "G1"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 20,
+            "structural": 1,
+            "afterStructural": 19,
+            "publication": 7,
+            "afterPublication": 12,
+            "artifact": 0,
+            "accepted": 12,
+            "biggestDropGate": "publication_identity",
+            "biggestDropCount": 7
+          },
+          "latency": {
+            "totalFetchMs": 1282,
+            "failedFetches": 0,
+            "emptyFetches": 0
+          },
+          "rejectionReasonsFull": {
+            "publication_shape_nonfiction": 2,
+            "publication_shape_writing_guide": 1,
+            "publication_shape_reference": 1,
+            "publication_shape_genre_survey": 1,
+            "publication_shape_anthology": 1,
+            "missing_author": 1,
+            "publication_shape_unknown_insufficient_narrative_identity": 1
+          },
+          "wallClockMs": 1358
+        },
+        {
+          "variant": "C",
+          "profileId": "mystery-cozy-amateur",
+          "profileLabel": "Cozy amateur detective mystery",
+          "primaryQuery": "young adult suspense novel",
+          "overrideApplied": false,
+          "rawApiCount": 0,
+          "structuralLoss": 0,
+          "publicationIdentityLoss": 0,
+          "artifactLoss": 0,
+          "acceptedAfterSourcePolicy": 0,
+          "finalSelected": 1,
+          "quality": {
+            "averageScore": 16.45,
+            "minScore": 16.45,
+            "maxScore": 16.45,
+            "lowConfidenceCount": 0
+          },
+          "authorPressure": {
+            "duplicateAuthorPairs": 0,
+            "uniqueAuthors": 0
+          },
+          "g1g2Counts": {
+            "G1": 9,
+            "G2": 0,
+            "ambiguous": 0
+          },
+          "g2Examples": [],
+          "rejectionExamples": {
+            "pubReasons": [],
+            "examples": [
+              {
+                "title": "The Twilight of the Gothic?",
+                "reason": "publication_shape_critical_study",
+                "nc": 2,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Writers' Handbook 2025",
+                "reason": "publication_shape_reference",
+                "nc": 5,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Developing Library Collections for Today's Young Adults",
+                "reason": "publication_shape_nonfiction",
+                "nc": 0,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Writing for Young People",
+                "reason": "publication_shape_nonfiction",
+                "nc": 0,
+                "g1g2": "G1"
+              },
+              {
+                "title": "Translating Horror",
+                "reason": "publication_shape_unknown_insufficient_story_evidence",
+                "nc": 1,
+                "g1g2": "G1"
+              }
+            ]
+          },
+          "waterfall": {
+            "rawApiCount": 0,
+            "structural": 0,
+            "afterStructural": 0,
+            "publication": 0,
+            "afterPublication": 0,
+            "artifact": 0,
+            "accepted": 0,
+            "biggestDropGate": "structural",
+            "biggestDropCount": 0
+          },
+          "latency": {
+            "totalFetchMs": 563,
+            "failedFetches": 1,
+            "emptyFetches": 1
+          },
+          "rejectionReasonsFull": {},
+          "wallClockMs": 579
+        }
+      ]
+    }
+  ]
+}

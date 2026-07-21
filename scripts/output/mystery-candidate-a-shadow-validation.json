@@ -1,0 +1,553 @@
+{
+  "generatedAt": "2026-07-21T23:27:01.364Z",
+  "profiles": [
+    {
+      "id": "mystery-classic-whodunit",
+      "label": "Classic whodunit"
+    },
+    {
+      "id": "mystery-psychological-thriller",
+      "label": "Psychological thriller"
+    },
+    {
+      "id": "mystery-detective-crime",
+      "label": "Detective and crime"
+    },
+    {
+      "id": "mystery-cozy-amateur",
+      "label": "Cozy amateur-sleuth"
+    }
+  ],
+  "variants": [
+    {
+      "id": "control",
+      "label": "Control",
+      "query": ""
+    },
+    {
+      "id": "candidate_a",
+      "label": "Candidate A",
+      "query": "teen mystery thriller novel"
+    }
+  ],
+  "aggregates": [
+    {
+      "variantId": "control",
+      "variantLabel": "Control",
+      "queryUsed": "young adult mystery fiction novel",
+      "avgGbAcceptedPrimary": 3,
+      "avgFinalSelected": 6,
+      "avgScore": 20.93,
+      "totalWeakFit": 0,
+      "totalDupAuthor": 0,
+      "fallbackActivatedCount": 4,
+      "fallbackRequiredCount": 4,
+      "fullSlateCount": 4,
+      "avgGbContrib": 3.25,
+      "avgOlContrib": 2.75
+    },
+    {
+      "variantId": "candidate_a",
+      "variantLabel": "Candidate A",
+      "queryUsed": "teen mystery thriller novel",
+      "avgGbAcceptedPrimary": 7,
+      "avgFinalSelected": 6,
+      "avgScore": 23.23,
+      "totalWeakFit": 0,
+      "totalDupAuthor": 0,
+      "fallbackActivatedCount": 4,
+      "fallbackRequiredCount": 0,
+      "fullSlateCount": 4,
+      "avgGbContrib": 5.5,
+      "avgOlContrib": 0.5
+    }
+  ],
+  "confirmationGates": {
+    "s1": true,
+    "s2": true,
+    "s3": true,
+    "s4": true,
+    "s5": true,
+    "s6": true,
+    "allConfirmed": true,
+    "s1Profiles": 4,
+    "s2Profiles": 4,
+    "s6Profiles": 4
+  },
+  "allRuns": [
+    {
+      "variantId": "control",
+      "rows": [
+        {
+          "variantId": "control",
+          "profileId": "mystery-classic-whodunit",
+          "profileLabel": "Classic whodunit",
+          "primaryQuery": "young adult mystery fiction novel",
+          "gbRaw": 20,
+          "gbAcceptedPrimary": 3,
+          "gbFallbackActivated": true,
+          "gbFallbackAccepted": 6,
+          "gbRequiredFallback": true,
+          "gbContrib": 4,
+          "olContrib": 2,
+          "otherContrib": 0,
+          "finalSelected": 6,
+          "avgScore": 21.15,
+          "minScore": 19.14,
+          "weakFitCount": 0,
+          "dupAuthorPairs": 0,
+          "selectedTitles": [
+            {
+              "title": "A Good Girl's Guide to Murder",
+              "score": 23.610000000000003,
+              "authors": [],
+              "sourceId": "/works/OL20646061W"
+            },
+            {
+              "title": "You",
+              "score": 22.61,
+              "authors": [],
+              "sourceId": "googleBooks:63i2heCqFRQC"
+            },
+            {
+              "title": "Someone Like Summer",
+              "score": 22.26,
+              "authors": [],
+              "sourceId": "googleBooks:ZHO6G2ldiVsC"
+            },
+            {
+              "title": "Waer",
+              "score": 19.94,
+              "authors": [],
+              "sourceId": "googleBooks:K03NEQAAQBAJ"
+            },
+            {
+              "title": "See You Later",
+              "score": 19.34,
+              "authors": [],
+              "sourceId": "/works/OL1000820W"
+            },
+            {
+              "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+              "score": 19.14,
+              "authors": [],
+              "sourceId": "googleBooks:K9naCQAAQBAJ"
+            }
+          ],
+          "wallClockMs": 2247
+        },
+        {
+          "variantId": "control",
+          "profileId": "mystery-psychological-thriller",
+          "profileLabel": "Psychological thriller",
+          "primaryQuery": "young adult mystery fiction novel",
+          "gbRaw": 20,
+          "gbAcceptedPrimary": 3,
+          "gbFallbackActivated": true,
+          "gbFallbackAccepted": 4,
+          "gbRequiredFallback": true,
+          "gbContrib": 3,
+          "olContrib": 3,
+          "otherContrib": 0,
+          "finalSelected": 6,
+          "avgScore": 25.453,
+          "minScore": 24.04,
+          "weakFitCount": 0,
+          "dupAuthorPairs": 0,
+          "selectedTitles": [
+            {
+              "title": "You",
+              "score": 27.509999999999998,
+              "authors": [],
+              "sourceId": "googleBooks:63i2heCqFRQC"
+            },
+            {
+              "title": "Someone Like Summer",
+              "score": 26.31,
+              "authors": [],
+              "sourceId": "googleBooks:ZHO6G2ldiVsC"
+            },
+            {
+              "title": "See You Later",
+              "score": 25.22,
+              "authors": [],
+              "sourceId": "/works/OL1000820W"
+            },
+            {
+              "title": "From Andrew, with Love : One Dead Teen",
+              "score": 24.82,
+              "authors": [],
+              "sourceId": "/works/OL26296589W"
+            },
+            {
+              "title": "Our Fault",
+              "score": 24.82,
+              "authors": [],
+              "sourceId": "/works/OL24341413W"
+            },
+            {
+              "title": "A Good Arriving",
+              "score": 24.040000000000003,
+              "authors": [],
+              "sourceId": "googleBooks:2_00L6X8LY4C"
+            }
+          ],
+          "wallClockMs": 2198
+        },
+        {
+          "variantId": "control",
+          "profileId": "mystery-detective-crime",
+          "profileLabel": "Detective and crime",
+          "primaryQuery": "young adult mystery fiction novel",
+          "gbRaw": 20,
+          "gbAcceptedPrimary": 3,
+          "gbFallbackActivated": true,
+          "gbFallbackAccepted": 1,
+          "gbRequiredFallback": true,
+          "gbContrib": 3,
+          "olContrib": 3,
+          "otherContrib": 0,
+          "finalSelected": 6,
+          "avgScore": 21.837,
+          "minScore": 15.95,
+          "weakFitCount": 0,
+          "dupAuthorPairs": 0,
+          "selectedTitles": [
+            {
+              "title": "To The Wild Sky: Text Classics",
+              "score": 24.32,
+              "authors": [],
+              "sourceId": "googleBooks:oknNEQAAQBAJ"
+            },
+            {
+              "title": "You",
+              "score": 23.859999999999996,
+              "authors": [],
+              "sourceId": "googleBooks:63i2heCqFRQC"
+            },
+            {
+              "title": "Someone Like Summer",
+              "score": 23.509999999999998,
+              "authors": [],
+              "sourceId": "googleBooks:ZHO6G2ldiVsC"
+            },
+            {
+              "title": "Blood Sport",
+              "score": 22.83,
+              "authors": [],
+              "sourceId": "/works/OL16480105W"
+            },
+            {
+              "title": "Mysterious skin",
+              "score": 20.55,
+              "authors": [],
+              "sourceId": "/works/OL2621734W"
+            },
+            {
+              "title": "Saving the World and Other Extreme Sports",
+              "score": 15.95,
+              "authors": [],
+              "sourceId": "/works/OL5337360W"
+            }
+          ],
+          "wallClockMs": 2467
+        },
+        {
+          "variantId": "control",
+          "profileId": "mystery-cozy-amateur",
+          "profileLabel": "Cozy amateur-sleuth",
+          "primaryQuery": "young adult mystery fiction novel",
+          "gbRaw": 20,
+          "gbAcceptedPrimary": 3,
+          "gbFallbackActivated": true,
+          "gbFallbackAccepted": 6,
+          "gbRequiredFallback": true,
+          "gbContrib": 3,
+          "olContrib": 3,
+          "otherContrib": 0,
+          "finalSelected": 6,
+          "avgScore": 15.28,
+          "minScore": 13.99,
+          "weakFitCount": 0,
+          "dupAuthorPairs": 0,
+          "selectedTitles": [
+            {
+              "title": "You",
+              "score": 17.46,
+              "authors": [],
+              "sourceId": "googleBooks:63i2heCqFRQC"
+            },
+            {
+              "title": "See You Later",
+              "score": 15.540000000000003,
+              "authors": [],
+              "sourceId": "/works/OL1000820W"
+            },
+            {
+              "title": "Your Eyes in Stars",
+              "score": 15.360000000000001,
+              "authors": [],
+              "sourceId": "googleBooks:F_JZ8esDyZoC"
+            },
+            {
+              "title": "Our Fault",
+              "score": 15.14,
+              "authors": [],
+              "sourceId": "/works/OL24341413W"
+            },
+            {
+              "title": "Sensational",
+              "score": 14.190000000000001,
+              "authors": [],
+              "sourceId": "/works/OL20844276W"
+            },
+            {
+              "title": "Chain of Thorns",
+              "score": 13.99,
+              "authors": [],
+              "sourceId": "googleBooks:i-xtEAAAQBAJ"
+            }
+          ],
+          "wallClockMs": 913
+        }
+      ]
+    },
+    {
+      "variantId": "candidate_a",
+      "rows": [
+        {
+          "variantId": "candidate_a",
+          "profileId": "mystery-classic-whodunit",
+          "profileLabel": "Classic whodunit",
+          "primaryQuery": "teen mystery thriller novel",
+          "gbRaw": 20,
+          "gbAcceptedPrimary": 7,
+          "gbFallbackActivated": true,
+          "gbFallbackAccepted": 6,
+          "gbRequiredFallback": false,
+          "gbContrib": 5,
+          "olContrib": 1,
+          "otherContrib": 0,
+          "finalSelected": 6,
+          "avgScore": 23.343,
+          "minScore": 22.91,
+          "weakFitCount": 0,
+          "dupAuthorPairs": 0,
+          "selectedTitles": [
+            {
+              "title": "Borderline",
+              "score": 23.91,
+              "authors": [],
+              "sourceId": "googleBooks:PPf4drP0eNcC"
+            },
+            {
+              "title": "The Mystery of Hollow Places",
+              "score": 23.810000000000002,
+              "authors": [],
+              "sourceId": "googleBooks:sdUWCAAAQBAJ"
+            },
+            {
+              "title": "A Good Girl's Guide to Murder",
+              "score": 23.610000000000003,
+              "authors": [],
+              "sourceId": "/works/OL20646061W"
+            },
+            {
+              "title": "Dead Secret (Maggie Jamieson thriller, Book 4)",
+              "score": 22.91,
+              "authors": [],
+              "sourceId": "googleBooks:pGv9DwAAQBAJ"
+            },
+            {
+              "title": "High Crimes: A totally gripping unputdownable crime thriller",
+              "score": 22.91,
+              "authors": [],
+              "sourceId": "googleBooks:-WYfEQAAQBAJ"
+            },
+            {
+              "title": "In the Dark",
+              "score": 22.91,
+              "authors": [],
+              "sourceId": "googleBooks:34qf9Udt8KYC"
+            }
+          ],
+          "wallClockMs": 2231
+        },
+        {
+          "variantId": "candidate_a",
+          "profileId": "mystery-psychological-thriller",
+          "profileLabel": "Psychological thriller",
+          "primaryQuery": "teen mystery thriller novel",
+          "gbRaw": 20,
+          "gbAcceptedPrimary": 7,
+          "gbFallbackActivated": true,
+          "gbFallbackAccepted": 3,
+          "gbRequiredFallback": false,
+          "gbContrib": 5,
+          "olContrib": 1,
+          "otherContrib": 0,
+          "finalSelected": 6,
+          "avgScore": 26.695,
+          "minScore": 25.22,
+          "weakFitCount": 0,
+          "dupAuthorPairs": 0,
+          "selectedTitles": [
+            {
+              "title": "Borderline",
+              "score": 27.61,
+              "authors": [],
+              "sourceId": "googleBooks:PPf4drP0eNcC"
+            },
+            {
+              "title": "The Mystery of Hollow Places",
+              "score": 27.509999999999998,
+              "authors": [],
+              "sourceId": "googleBooks:sdUWCAAAQBAJ"
+            },
+            {
+              "title": "Dead Secret (Maggie Jamieson thriller, Book 4)",
+              "score": 26.61,
+              "authors": [],
+              "sourceId": "googleBooks:pGv9DwAAQBAJ"
+            },
+            {
+              "title": "In the Dark",
+              "score": 26.61,
+              "authors": [],
+              "sourceId": "googleBooks:34qf9Udt8KYC"
+            },
+            {
+              "title": "The Never Game (Colter Shaw Thriller, Book 1)",
+              "score": 26.61,
+              "authors": [],
+              "sourceId": "googleBooks:TNl-DwAAQBAJ"
+            },
+            {
+              "title": "See You Later",
+              "score": 25.22,
+              "authors": [],
+              "sourceId": "/works/OL1000820W"
+            }
+          ],
+          "wallClockMs": 1687
+        },
+        {
+          "variantId": "candidate_a",
+          "profileId": "mystery-detective-crime",
+          "profileLabel": "Detective and crime",
+          "primaryQuery": "teen mystery thriller novel",
+          "gbRaw": 20,
+          "gbAcceptedPrimary": 7,
+          "gbFallbackActivated": true,
+          "gbFallbackAccepted": 1,
+          "gbRequiredFallback": false,
+          "gbContrib": 6,
+          "olContrib": 0,
+          "otherContrib": 0,
+          "finalSelected": 6,
+          "avgScore": 25.07,
+          "minScore": 24.16,
+          "weakFitCount": 0,
+          "dupAuthorPairs": 0,
+          "selectedTitles": [
+            {
+              "title": "The Mystery of Hollow Places",
+              "score": 26.759999999999998,
+              "authors": [],
+              "sourceId": "googleBooks:sdUWCAAAQBAJ"
+            },
+            {
+              "title": "High Crimes: A totally gripping unputdownable crime thriller",
+              "score": 25.86,
+              "authors": [],
+              "sourceId": "googleBooks:-WYfEQAAQBAJ"
+            },
+            {
+              "title": "Borderline",
+              "score": 25.159999999999997,
+              "authors": [],
+              "sourceId": "googleBooks:PPf4drP0eNcC"
+            },
+            {
+              "title": "To The Wild Sky: Text Classics",
+              "score": 24.32,
+              "authors": [],
+              "sourceId": "googleBooks:oknNEQAAQBAJ"
+            },
+            {
+              "title": "Dead Secret (Maggie Jamieson thriller, Book 4)",
+              "score": 24.159999999999997,
+              "authors": [],
+              "sourceId": "googleBooks:pGv9DwAAQBAJ"
+            },
+            {
+              "title": "In the Dark",
+              "score": 24.159999999999997,
+              "authors": [],
+              "sourceId": "googleBooks:34qf9Udt8KYC"
+            }
+          ],
+          "wallClockMs": 2596
+        },
+        {
+          "variantId": "candidate_a",
+          "profileId": "mystery-cozy-amateur",
+          "profileLabel": "Cozy amateur-sleuth",
+          "primaryQuery": "teen mystery thriller novel",
+          "gbRaw": 20,
+          "gbAcceptedPrimary": 7,
+          "gbFallbackActivated": true,
+          "gbFallbackAccepted": 6,
+          "gbRequiredFallback": false,
+          "gbContrib": 6,
+          "olContrib": 0,
+          "otherContrib": 0,
+          "finalSelected": 6,
+          "avgScore": 17.818,
+          "minScore": 16.21,
+          "weakFitCount": 0,
+          "dupAuthorPairs": 0,
+          "selectedTitles": [
+            {
+              "title": "Borderline",
+              "score": 18.76,
+              "authors": [],
+              "sourceId": "googleBooks:PPf4drP0eNcC"
+            },
+            {
+              "title": "The Mystery of Hollow Places",
+              "score": 18.66,
+              "authors": [],
+              "sourceId": "googleBooks:sdUWCAAAQBAJ"
+            },
+            {
+              "title": "Dead Secret (Maggie Jamieson thriller, Book 4)",
+              "score": 17.76,
+              "authors": [],
+              "sourceId": "googleBooks:pGv9DwAAQBAJ"
+            },
+            {
+              "title": "High Crimes: A totally gripping unputdownable crime thriller",
+              "score": 17.76,
+              "authors": [],
+              "sourceId": "googleBooks:-WYfEQAAQBAJ"
+            },
+            {
+              "title": "The Never Game (Colter Shaw Thriller, Book 1)",
+              "score": 17.76,
+              "authors": [],
+              "sourceId": "googleBooks:TNl-DwAAQBAJ"
+            },
+            {
+              "title": "Books for All",
+              "score": 16.21,
+              "authors": [],
+              "sourceId": "googleBooks:N70VAQAAIAAJ"
+            }
+          ],
+          "wallClockMs": 1149
+        }
+      ]
+    }
+  ]
+}

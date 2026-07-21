@@ -1,0 +1,91 @@
+═══════════════════════════════════════════════════════════════════
+ Mystery primary query — publication-shape waterfall audit
+ Query: young adult mystery fiction novel
+═══════════════════════════════════════════════════════════════════
+
+Profiles run ......................... 3
+Unique titles analyzed ............... 31
+
+── Gate-by-gate waterfall (averaged across 3 runs) ─────────────────
+  20  raw Google Books results
+  ↓  structural (malformed/dedup/missing)  -6
+  14  entered publication analysis
+  ↓  publication identity gate             -11
+  3  passed publication identity
+  ↓  artifact / other source-policy        -0
+  3  acceptedAfterSourcePolicy  ← target for improvement
+
+  Biggest drop gate: publication_identity (−11)
+
+── Rejection reason breakdown ───────────────────────────────────────
+  missing_author                                       avg 6
+  publication_shape_writing_guide                      avg 3
+  publication_shape_unknown_insufficient_narrative_identity avg 3
+  publication_shape_reference                          avg 2
+  publication_shape_critical_study                     avg 1
+  publication_shape_nonfiction                         avg 1
+  publication_shape_genre_survey                       avg 1
+
+── Publication shape histogram (all 20 books) ───────────────────────
+  unknown                                      4.0 avg
+  writing_guide                                3.0 avg
+  reference                                    2.0 avg
+  novel                                        2.0 avg
+  critical_study                               1.0 avg
+  nonfiction                                   1.0 avg
+  genre_survey                                 1.0 avg
+
+── G1 / G2 classification of rejection reasons (reason-level) ──────
+  G1 (non-narrative class clearly wrong for query)  8.0 avg
+  G2 (narrative title incorrectly rejected)         0.0 avg
+  Ambiguous (insufficient metadata)                 3.0 avg
+
+── G1 / G2 classification of rejected named titles ─────────────────
+  Note: rejected title names come from publicationShapeRejectedBeforeRankingByTitle
+  which spans ALL queries (primary + fallback); count-level waterfall above
+  is the authoritative per-primary-query source.
+  G1 retrieval failure (correct rejection)  22
+  G2 downstream rejection (false reject)    0
+  Ambiguous                                  6
+  Structural (no title data)                 6
+
+  VERDICT: G1 dominant — retrieval failure. Primary query returns
+  non-narrative content. Query term is the bottleneck.
+
+── Per-title detail ─────────────────────────────────────────────────
+  [✓ = accepted (primary query) | G1 = retrieval failure | G2 = false reject | ? = ambiguous]
+  Note: rejected titles are from all queries (queryAttribution: mixed_all_queries).
+
+  ✓   nc= 6.5  novel                                      You
+  ✓   nc= 5.5  novel                                      Someone Like Summer
+  ✓   nc= 2.5  unknown                                    Your Eyes in Stars
+  ?   nc= 1.5  unknown                                    Snakes Don't Miss Their Mothers [publication_shape_unknown_insufficient_narrative_identity]
+  ?   nc= 1.5  unknown                                    Dinky Hocker Shoots Smack! [publication_shape_unknown_insufficient_narrative_identity]
+  ?   nc= 1.5  unknown                                    Teeth [publication_shape_unknown_insufficient_narrative_identity]
+  ?   nc= 1.5  unknown                                    Dreaming Again [publication_shape_unknown_insufficient_narrative_identity]
+  ?   nc=   1  unknown                                    Death Comes to St Ives (The Edge of the World Detective Agen [publication_shape_unknown_insufficient_narrative_identity]
+  ?   nc=   1  unknown                                    Perfect Silence (A DI Callanach Thriller, Book 4) [publication_shape_unknown_insufficient_narrative_identity]
+  G1  nc= 5.5  writing_guide                              Novel & Short Story Writer's Market 40th Edition [publication_shape_writing_guide]
+  G1  nc=   0  writing_guide                              Guide to Literary Agents 30th Edition [publication_shape_writing_guide]
+  G1  nc=   5  critical_study                             Detective Fiction for Young Readers [publication_shape_critical_study]
+  G1  nc=   2  writing_guide                              Writer's Market 100th Edition [publication_shape_writing_guide]
+  G1  nc=   2  nonfiction                                 Developing Library Collections for Today's Young Adults [publication_shape_nonfiction]
+  G1  nc=   7  reference                                  DC Graphic Novels for Young Adults Sneak Previews: The Oracl [publication_shape_reference]
+  G1  nc=   6  genre_survey                               No Place Like Rome [publication_shape_genre_survey]
+  G1  nc=   0  reference                                  Among Our Books [publication_shape_reference]
+  G1  nc=   3  critical_study                             Female Heroes in Young Adult Fantasy Fiction [publication_shape_critical_study]
+  G1  nc=   2  critical_study                             Understanding (Post)feminist Girlhood Through Young Adult Fa [publication_shape_critical_study]
+  G1  nc=   5  anthology                                  The Best American Science Fiction and Fantasy 2024 [publication_shape_anthology]
+  G1  nc=   4  critical_study                             Fantasy Literature for Children and Young Adults [publication_shape_critical_study]
+  G1  nc=   2  critical_study                             500 Great Books For Teens [publication_shape_critical_study]
+  G1  nc=   0  reference                                  Internet Kids & Family Yellow Pages, 2001 Edition [publication_shape_reference]
+  G1  nc=   1  anthology                                  Nebula Awards Showcase 2014 [publication_shape_anthology]
+  G1  nc=   5  critical_study                             "Blade Runner" and the Cyberpunk Narrative. Is Cyberpunk a D [publication_shape_critical_study]
+  G1  nc=   1  unknown                                    Shock and Awe [publication_shape_unknown_insufficient_story_evidence]
+  G1  nc=   1  literary_history                           The role of fantasy literature in the juvenile reading habit [publication_shape_literary_history]
+  G1  nc=   1  writing_guide                              Guide to Literary Agents 2018 [publication_shape_writing_guide]
+  G1  nc= 2.5  writing_guide                              Novel & Short Story Writer's Market 2019 [publication_shape_writing_guide]
+  G1  nc=   0  nonfiction                                 Careers in Publishing [publication_shape_nonfiction]
+  G1  nc=   0  public_domain_compilation                  Michigan Library Bulletin [publication_shape_public_domain_compilation]
+
+═══════════════════════════════════════════════════════════════════

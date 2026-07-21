@@ -1,0 +1,107 @@
+═══════════════════════════════════════════════════════════════════
+ Mystery primary query A/B/C/D retrieval experiment
+  Profiles: 3  |  Variants: 4  |  Limit: 6
+═══════════════════════════════════════════════════════════════════
+
+── Aggregate comparison ─────────────────────────────────────────────
+  Variant               Query used                                    raw   -struct   -pubid   accepted   selected    score    G1    G2   lowconf   dupAuth
+  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  control: Control (current)  young adult mystery fiction novel              20         6       11          3       5.67   21.745    50     0         0         0
+  A: Candidate A        teen mystery thriller novel                    20         3       10     7 (+4)          6  25.124 (+3.38)    41     0         0         0
+  B: Candidate B        young adult detective novel                    20         6        9     5 (+2)          6  22.093 (+0.35)    48     6         0         0
+  C: Candidate C        young adult suspense novel                   6.67      0.33     2.33     4 (+1)       4.33  20.974 (-0.77)    31     0         0         0
+
+── Gate-by-gate waterfall (avg across 3 profiles) ──────────────────
+  control — "young adult mystery fiction novel"
+    20 raw  →  −6 structural  →  14 entered pub-id
+    →  −11 publication-identity  →  3 accepted
+
+  A — "teen mystery thriller novel"
+    20 raw  →  −3 structural  →  17 entered pub-id
+    →  −10 publication-identity  →  7 accepted
+
+  B — "young adult detective novel"
+    20 raw  →  −6 structural  →  14 entered pub-id
+    →  −9 publication-identity  →  5 accepted
+
+  C — "young adult suspense novel"
+    6.67 raw  →  −0.33 structural  →  6.34 entered pub-id
+    →  −2.33 publication-identity  →  4 accepted
+
+── Per-profile breakdown ────────────────────────────────────────────
+  mystery-classic-whodunit
+    control   accepted=3 (+0)  selected=6  score=20.313  G1=18 G2=0 ambig=5  1547ms
+    A         accepted=7 (+4)  selected=6  score=23.227  G1=13 G2=0 ambig=8  1568ms
+    B         accepted=5 (+2)  selected=6  score=21.042  G1=16 G2=2 ambig=2  1466ms
+    C         accepted=0 (-3)  selected=6  score=18.933  G1=10 G2=0 ambig=2  1011ms
+
+  mystery-psychological-thriller
+    control   accepted=3 (+0)  selected=6  score=24.822  G1=12 G2=0 ambig=4  939ms
+    A         accepted=7 (+4)  selected=6  score=27.477  G1=12 G2=0 ambig=7  1166ms
+    B         accepted=5 (+2)  selected=6  score=24.9  G1=13 G2=2 ambig=2  1190ms
+    C         accepted=12 (+9)  selected=6  score=27.54  G1=12 G2=0 ambig=2  1358ms
+
+  mystery-cozy-amateur
+    control   accepted=3 (+0)  selected=5  score=20.1  G1=20 G2=0 ambig=3  1370ms
+    A         accepted=7 (+4)  selected=6  score=24.668  G1=16 G2=0 ambig=6  1249ms
+    B         accepted=5 (+2)  selected=6  score=20.338  G1=19 G2=2 ambig=1  1196ms
+    C         accepted=0 (-3)  selected=1  score=16.45  G1=9 G2=0 ambig=0  579ms
+
+── Rejection reason samples (publication-identity, primary query) ────
+  control "young adult mystery fiction novel"
+    Top pub-id reasons: publication_shape_writing_guide×3 | publication_shape_unknown_insufficient_narrative_identity×3 | publication_shape_reference×2 | publication_shape_critical_study×1
+
+  A "teen mystery thriller novel"
+    Top pub-id reasons: publication_shape_unknown_insufficient_narrative_identity×6 | publication_shape_writing_guide×1 | publication_shape_critical_study×1 | publication_shape_reference×1
+
+  B "young adult detective novel"
+    Top pub-id reasons: publication_shape_academic_text×3 | publication_shape_unknown_insufficient_story_evidence×2 | publication_shape_critical_study×1 | publication_shape_reference×1
+    G2 false rejects:
+      "LGBTQ Young Adult Fiction" [publication_shape_academic_text] nc=4
+      "Literary Digest: a Repository of Contemporaneous Thought and Research as Presented in the Periodical Literature of the World" [publication_shape_miscellany] nc=4
+
+  C "young adult suspense novel"
+    Top pub-id reasons: (none)
+
+── Promotion gate results ───────────────────────────────────────────
+  Thresholds:
+    Gate 1: avg accepted ≥ control + 2.0  OR  ≥ 5
+    Gate 2: G2 false rejects = 0
+    Gate 3: avg relevance score ≥ control
+    Gate 4: low-confidence selections ≤ control
+    Gate 5: duplicate-author pairs ≤ control
+    Gate 6: improvement consistent across all 3 profiles
+
+  A — Candidate A
+    Gate 1 (accepted):    ✓  Δ=4.00, avg=7 (threshold: +2.0 or ≥5)
+    Gate 2 (G2 zero):     ✓  G2 count: 0
+    Gate 3 (quality):     ✓  score 25.124 vs control 21.745
+    Gate 4 (weak-fit):    ✓  low-confidence selected: 0 vs control 0
+    Gate 5 (diversity):   ✓  dup-author pairs: 0 vs control 0
+    Gate 6 (consistent):  ✓  improvement holds across all 3 profiles
+    → PROMOTE
+
+  B — Candidate B
+    Gate 1 (accepted):    ✓  Δ=2.00, avg=5 (threshold: +2.0 or ≥5)
+    Gate 2 (G2 zero):     ✗  G2 count: 6
+    Gate 3 (quality):     ✓  score 22.093 vs control 21.745
+    Gate 4 (weak-fit):    ✓  low-confidence selected: 0 vs control 0
+    Gate 5 (diversity):   ✓  dup-author pairs: 0 vs control 0
+    Gate 6 (consistent):  ✓  improvement holds across all 3 profiles
+    → DO_NOT_PROMOTE
+
+  C — Candidate C
+    Gate 1 (accepted):    ✗  Δ=1.00, avg=4 (threshold: +2.0 or ≥5)
+    Gate 2 (G2 zero):     ✓  G2 count: 0
+    Gate 3 (quality):     ✗  score 20.974 vs control 21.745
+    Gate 4 (weak-fit):    ✓  low-confidence selected: 0 vs control 0
+    Gate 5 (diversity):   ✓  dup-author pairs: 0 vs control 0
+    Gate 6 (consistent):  ✗  improvement holds across all 3 profiles
+    → DO_NOT_PROMOTE
+
+═══════════════════════════════════════════════════════════════════
+ VERDICT
+═══════════════════════════════════════════════════════════════════
+  PROMOTE: A — Candidate A
+  All 6 gates passed.
+═══════════════════════════════════════════════════════════════════

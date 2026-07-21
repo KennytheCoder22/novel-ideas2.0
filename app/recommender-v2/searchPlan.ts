@@ -441,6 +441,12 @@ function teenGoogleBooksCanonicalFamilyQuery(agePrefix: string, family?: string)
     }
     return uniqueTerms([agePrefix, normalizedFamily, "fiction", "novel"], 4).join(" ");
   }
+  if (normalizedFamily === "mystery") {
+    if (agePrefix === "young adult") {
+      return "teen mystery thriller novel";
+    }
+    return uniqueTerms([agePrefix, normalizedFamily, "fiction", "novel"], 4).join(" ");
+  }
   if (normalizedFamily === "fiction") return `${agePrefix} fiction novel`;
   return uniqueTerms([agePrefix, normalizedFamily, "fiction", "novel"], 4).join(" ");
 }
