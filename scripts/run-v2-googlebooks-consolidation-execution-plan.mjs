@@ -71,8 +71,28 @@ const classDefaults = {
   },
 };
 
+const capabilityNoveltyGate = {
+  "Evidence-origin reconciliation audit": {
+    title: "#101 novelty proof",
+    rationale: "Prior Teen trusted-reconciliation counterfactual showed 0 weak-to-secondary promotions and no weak-underfill/slate improvements.",
+    requiredBeforeImplementation: true,
+    noveltyProofRequirements: [
+      "List Adult production inputs/transformations not present in prior Teen trusted-reconciliation counterfactual.",
+      "Identify newly available evidence fields and newly accepted provenance types (if any).",
+      "Identify changed pipeline stage and whether behavior impacts acquisition/query continuation vs post-hoc reclassification.",
+      "Provide candidate-level examples where evidence would differ and why prior 0-promotion result does not already falsify #101.",
+    ],
+    decisionRule: {
+      noSubstantiveDifference: "Mark #101 as already falsified by prior counterfactual; skip production integration and continue with first parity-preserving consolidation.",
+      substantiveDifference: "Run diagnostic corpus counterfactual for the new behavior and evaluate existing #101 acceptance criteria.",
+      architecturalOnlyDifference: "Reclassify #101 as maintenance work, not recommendation-quality experiment.",
+    },
+  },
+};
+
 const capabilityOverrides = {
   "Evidence-origin reconciliation audit": {
+    expectedRecommendationQualityGain: "TBD (novelty proof required)",
     proposedSharedPrimitive: "applyEvidenceOriginReconciliation({ candidate, signals, provenance, policy })",
     prerequisiteTests: [
       "run-v2-googlebooks-teen-evidence-origin-reconciliation-audit.mjs",
@@ -82,7 +102,7 @@ const capabilityOverrides = {
     ],
     agePolicyConfigurationRequired: "Teen provenance policy: forbid query/route/profile context; allow only candidate-native + verified metadata.",
     implementationOrderHint: 1,
-    acceptanceCriteria: "Counterfactual and production shadow mode both show reduced weak-underfill dependence with no publication-identity or maturity regressions.",
+    acceptanceCriteria: "Only if novelty is proven: counterfactual and production shadow mode both show reduced weak-underfill dependence with no publication-identity or maturity regressions.",
   },
   "Semantic phrase extraction": {
     proposedSharedPrimitive: "extractGoogleBooksSignalFieldMatches({ candidate, signalLexicon, policy })",
@@ -199,6 +219,7 @@ const planRows = rows.map((r) => {
     acceptanceCriteria: "Define acceptance criteria",
   };
   const ov = capabilityOverrides[r.capability] || {};
+  const noveltyGate = capabilityNoveltyGate[r.capability] || null;
 
   const implementationOrder = (classOrder[r.behavioralClassification] || 999) * 100 + Number(ov.implementationOrderHint || 50);
 
@@ -221,6 +242,7 @@ const planRows = rows.map((r) => {
     recommendation: r.recommendation,
     stage: r.stage,
     effectSurface: r.effectSurface,
+    preflightCheckpoint: noveltyGate,
   };
 });
 
@@ -233,7 +255,8 @@ const summary = {
     return acc;
   }, {}),
   executionPhases: [
-    "1. Adult production / Teen diagnostic integration experiment",
+    "0. #101 novelty proof gate (must pass before any Adult-production/Teen-diagnostic integration work)",
+    "1. Adult production / Teen diagnostic integration experiment (only if #101 novelty gate passes)",
     "2. Behaviorally equivalent duplication consolidations (parity-preserving)",
     "3. Shared interface contracts for same-name/different-semantics capabilities",
     "4. Regression-protect already shared capabilities",
@@ -275,6 +298,10 @@ const csvHeader = [
   "proposedSharedPrimitive",
   "agePolicyConfigurationRequired",
   "prerequisiteTests",
+  "preflightCheckpointRequired",
+  "preflightCheckpointTitle",
+  "noveltyProofRequirements",
+  "preflightDecisionRule",
   "acceptanceCriteria",
   "recommendation",
 ].join(",");
@@ -293,6 +320,10 @@ const csvRows = planRows.map((r) => [
   `"${r.proposedSharedPrimitive.replace(/"/g, '""')}"`,
   `"${r.agePolicyConfigurationRequired.replace(/"/g, '""')}"`,
   `"${r.prerequisiteTests.join(" | ").replace(/"/g, '""')}"`,
+  r.preflightCheckpoint ? "yes" : "no",
+  `"${(r.preflightCheckpoint?.title || "").replace(/"/g, '""')}"`,
+  `"${(r.preflightCheckpoint?.noveltyProofRequirements || []).join(" | ").replace(/"/g, '""')}"`,
+  `"${(r.preflightCheckpoint ? Object.entries(r.preflightCheckpoint.decisionRule).map(([k, v]) => `${k}: ${v}`).join(" || ") : "").replace(/"/g, '""')}"`,
   `"${r.acceptanceCriteria.replace(/"/g, '""')}"`,
   `"${r.recommendation.replace(/"/g, '""')}"`,
 ].join(","));

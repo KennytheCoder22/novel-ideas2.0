@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T02:51:13.013Z",
+  "generatedAt": "2026-07-21T03:00:29.443Z",
   "sourceAudit": "googlebooks-behavioral-equivalence-audit.json",
   "summary": {
     "total": 12,
@@ -11,7 +11,8 @@
       "age_specific_by_necessity": 1
     },
     "executionPhases": [
-      "1. Adult production / Teen diagnostic integration experiment",
+      "0. #101 novelty proof gate (must pass before any Adult-production/Teen-diagnostic integration work)",
+      "1. Adult production / Teen diagnostic integration experiment (only if #101 novelty gate passes)",
       "2. Behaviorally equivalent duplication consolidations (parity-preserving)",
       "3. Shared interface contracts for same-name/different-semantics capabilities",
       "4. Regression-protect already shared capabilities",
@@ -23,7 +24,7 @@
       "capability": "Evidence-origin reconciliation audit",
       "behavioralClass": "adult_production_teen_diagnostic",
       "behavioralClassLabel": "Adult production / Teen diagnostic",
-      "expectedRecommendationQualityGain": "High",
+      "expectedRecommendationQualityGain": "TBD (novelty proof required)",
       "maintenanceGain": "Medium",
       "regressionRisk": "High",
       "productionStatus": "adult=production_or_core; teen=diagnostic_only",
@@ -36,10 +37,26 @@
       "proposedSharedPrimitive": "applyEvidenceOriginReconciliation({ candidate, signals, provenance, policy })",
       "agePolicyConfigurationRequired": "Teen provenance policy: forbid query/route/profile context; allow only candidate-native + verified metadata.",
       "implementationOrder": 101,
-      "acceptanceCriteria": "Counterfactual and production shadow mode both show reduced weak-underfill dependence with no publication-identity or maturity regressions.",
+      "acceptanceCriteria": "Only if novelty is proven: counterfactual and production shadow mode both show reduced weak-underfill dependence with no publication-identity or maturity regressions.",
       "recommendation": "Promote Teen path from diagnostic to production integration",
       "stage": "diagnostic audit",
-      "effectSurface": "diagnostic/reporting"
+      "effectSurface": "diagnostic/reporting",
+      "preflightCheckpoint": {
+        "title": "#101 novelty proof",
+        "rationale": "Prior Teen trusted-reconciliation counterfactual showed 0 weak-to-secondary promotions and no weak-underfill/slate improvements.",
+        "requiredBeforeImplementation": true,
+        "noveltyProofRequirements": [
+          "List Adult production inputs/transformations not present in prior Teen trusted-reconciliation counterfactual.",
+          "Identify newly available evidence fields and newly accepted provenance types (if any).",
+          "Identify changed pipeline stage and whether behavior impacts acquisition/query continuation vs post-hoc reclassification.",
+          "Provide candidate-level examples where evidence would differ and why prior 0-promotion result does not already falsify #101."
+        ],
+        "decisionRule": {
+          "noSubstantiveDifference": "Mark #101 as already falsified by prior counterfactual; skip production integration and continue with first parity-preserving consolidation.",
+          "substantiveDifference": "Run diagnostic corpus counterfactual for the new behavior and evaluate existing #101 acceptance criteria.",
+          "architecturalOnlyDifference": "Reclassify #101 as maintenance work, not recommendation-quality experiment."
+        }
+      }
     },
     {
       "capability": "Semantic phrase extraction",
@@ -60,7 +77,8 @@
       "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
       "recommendation": "Extract shared primitive and parametrize age policy",
       "stage": "scoring/diagnostics",
-      "effectSurface": "diagnostic + potential ranking hooks"
+      "effectSurface": "diagnostic + potential ranking hooks",
+      "preflightCheckpoint": null
     },
     {
       "capability": "Canonical cue promotion",
@@ -80,7 +98,8 @@
       "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
       "recommendation": "Extract shared primitive and parametrize age policy",
       "stage": "scoring/family mapping",
-      "effectSurface": "family weighting and diagnostics"
+      "effectSurface": "family weighting and diagnostics",
+      "preflightCheckpoint": null
     },
     {
       "capability": "Final slate identity auditing",
@@ -100,7 +119,8 @@
       "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
       "recommendation": "Extract shared primitive and parametrize age policy",
       "stage": "post-selection audit",
-      "effectSurface": "eligibility + reporting"
+      "effectSurface": "eligibility + reporting",
+      "preflightCheckpoint": null
     },
     {
       "capability": "Counterfactual final slate",
@@ -121,7 +141,8 @@
       "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
       "recommendation": "Extract shared primitive and parametrize age policy",
       "stage": "selection audit",
-      "effectSurface": "diagnostic/reporting"
+      "effectSurface": "diagnostic/reporting",
+      "preflightCheckpoint": null
     },
     {
       "capability": "Query quality comparison",
@@ -142,7 +163,8 @@
       "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
       "recommendation": "Define shared contract before unification",
       "stage": "retrieval planning",
-      "effectSurface": "retrieval (currently mixed production+diagnostic)"
+      "effectSurface": "retrieval (currently mixed production+diagnostic)",
+      "preflightCheckpoint": null
     },
     {
       "capability": "Family-scoped query competition",
@@ -163,7 +185,8 @@
       "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
       "recommendation": "Define shared contract before unification",
       "stage": "retrieval planning",
-      "effectSurface": "retrieval policy"
+      "effectSurface": "retrieval policy",
+      "preflightCheckpoint": null
     },
     {
       "capability": "Marginal decision-worthy yield",
@@ -183,7 +206,8 @@
       "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
       "recommendation": "Define shared contract before unification",
       "stage": "retrieval audit",
-      "effectSurface": "retrieval policy / diagnostic"
+      "effectSurface": "retrieval policy / diagnostic",
+      "preflightCheckpoint": null
     },
     {
       "capability": "Query promotion / replacement",
@@ -203,7 +227,8 @@
       "acceptanceCriteria": "No redesign; only regression protection and policy-config boundary checks.",
       "recommendation": "Keep shared core; move policy to age-band config",
       "stage": "retrieval planning",
-      "effectSurface": "retrieval/ranking handoff"
+      "effectSurface": "retrieval/ranking handoff",
+      "preflightCheckpoint": null
     },
     {
       "capability": "Narrative-strength scoring",
@@ -223,7 +248,8 @@
       "acceptanceCriteria": "No redesign; only regression protection and policy-config boundary checks.",
       "recommendation": "Keep shared core; move policy to age-band config",
       "stage": "scoring/ranking",
-      "effectSurface": "ranking + eligibility support"
+      "effectSurface": "ranking + eligibility support",
+      "preflightCheckpoint": null
     },
     {
       "capability": "Meaningful taste tiers",
@@ -244,7 +270,8 @@
       "acceptanceCriteria": "No redesign; only regression protection and policy-config boundary checks.",
       "recommendation": "Keep shared core; move policy to age-band config",
       "stage": "selection quality tiering",
-      "effectSurface": "selection/ranking/reporting"
+      "effectSurface": "selection/ranking/reporting",
+      "preflightCheckpoint": null
     },
     {
       "capability": "Adult content weighting branch",
@@ -265,7 +292,8 @@
       "acceptanceCriteria": "Capability remains separate; policy invariants and tests prevent accidental unification.",
       "recommendation": "Keep separate policy branch with explicit invariants",
       "stage": "eligibility/policy",
-      "effectSurface": "eligibility"
+      "effectSurface": "eligibility",
+      "preflightCheckpoint": null
     }
   ]
 }
