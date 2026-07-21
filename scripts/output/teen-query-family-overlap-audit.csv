@@ -1,0 +1,7 @@
+family,queryCount,uniqueCandidates,sharedWithOtherFamiliesPercent,strongCandidates,secondaryCandidates,weakCandidates,strongPlusSecondaryCandidates,distinctTasteSignals,reportsSeen
+fantasy,1,6,0,4,4,4,8,6,4
+romance,1,6,16.7,0,2,3,2,2,1
+science_fiction,1,5,0,1,0,5,1,4,2
+general,3,4,25,1,2,2,3,6,6
+mystery,1,3,0,0,2,3,2,7,4
+historical,1,1,0,0,1,0,1,2,1

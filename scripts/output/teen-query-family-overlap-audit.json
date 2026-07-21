@@ -1,0 +1,452 @@
+{
+  "generatedAt": "2026-07-21T01:57:00.819Z",
+  "inputs": [
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt"
+  ],
+  "familySummary": [
+    {
+      "family": "fantasy",
+      "queryCount": 1,
+      "uniqueCandidates": 6,
+      "sharedWithOtherFamiliesPercent": 0,
+      "strongCandidates": 4,
+      "secondaryCandidates": 4,
+      "weakCandidates": 4,
+      "strongPlusSecondaryCandidates": 8,
+      "distinctTasteSignals": 6,
+      "reportsSeen": 4
+    },
+    {
+      "family": "romance",
+      "queryCount": 1,
+      "uniqueCandidates": 6,
+      "sharedWithOtherFamiliesPercent": 16.7,
+      "strongCandidates": 0,
+      "secondaryCandidates": 2,
+      "weakCandidates": 3,
+      "strongPlusSecondaryCandidates": 2,
+      "distinctTasteSignals": 2,
+      "reportsSeen": 1
+    },
+    {
+      "family": "science_fiction",
+      "queryCount": 1,
+      "uniqueCandidates": 5,
+      "sharedWithOtherFamiliesPercent": 0,
+      "strongCandidates": 1,
+      "secondaryCandidates": 0,
+      "weakCandidates": 5,
+      "strongPlusSecondaryCandidates": 1,
+      "distinctTasteSignals": 4,
+      "reportsSeen": 2
+    },
+    {
+      "family": "general",
+      "queryCount": 3,
+      "uniqueCandidates": 4,
+      "sharedWithOtherFamiliesPercent": 25,
+      "strongCandidates": 1,
+      "secondaryCandidates": 2,
+      "weakCandidates": 2,
+      "strongPlusSecondaryCandidates": 3,
+      "distinctTasteSignals": 6,
+      "reportsSeen": 6
+    },
+    {
+      "family": "mystery",
+      "queryCount": 1,
+      "uniqueCandidates": 3,
+      "sharedWithOtherFamiliesPercent": 0,
+      "strongCandidates": 0,
+      "secondaryCandidates": 2,
+      "weakCandidates": 3,
+      "strongPlusSecondaryCandidates": 2,
+      "distinctTasteSignals": 7,
+      "reportsSeen": 4
+    },
+    {
+      "family": "historical",
+      "queryCount": 1,
+      "uniqueCandidates": 1,
+      "sharedWithOtherFamiliesPercent": 0,
+      "strongCandidates": 0,
+      "secondaryCandidates": 1,
+      "weakCandidates": 0,
+      "strongPlusSecondaryCandidates": 1,
+      "distinctTasteSignals": 2,
+      "reportsSeen": 1
+    }
+  ],
+  "overlapMatrix": [
+    {
+      "familyA": "fantasy",
+      "familyB": "general",
+      "intersectionCount": 0,
+      "unionCount": 10,
+      "jaccard": 0
+    },
+    {
+      "familyA": "fantasy",
+      "familyB": "historical",
+      "intersectionCount": 0,
+      "unionCount": 7,
+      "jaccard": 0
+    },
+    {
+      "familyA": "fantasy",
+      "familyB": "mystery",
+      "intersectionCount": 0,
+      "unionCount": 9,
+      "jaccard": 0
+    },
+    {
+      "familyA": "fantasy",
+      "familyB": "romance",
+      "intersectionCount": 0,
+      "unionCount": 12,
+      "jaccard": 0
+    },
+    {
+      "familyA": "fantasy",
+      "familyB": "science_fiction",
+      "intersectionCount": 0,
+      "unionCount": 11,
+      "jaccard": 0
+    },
+    {
+      "familyA": "general",
+      "familyB": "historical",
+      "intersectionCount": 0,
+      "unionCount": 5,
+      "jaccard": 0
+    },
+    {
+      "familyA": "general",
+      "familyB": "mystery",
+      "intersectionCount": 0,
+      "unionCount": 7,
+      "jaccard": 0
+    },
+    {
+      "familyA": "general",
+      "familyB": "romance",
+      "intersectionCount": 1,
+      "unionCount": 9,
+      "jaccard": 0.1111
+    },
+    {
+      "familyA": "general",
+      "familyB": "science_fiction",
+      "intersectionCount": 0,
+      "unionCount": 9,
+      "jaccard": 0
+    },
+    {
+      "familyA": "historical",
+      "familyB": "mystery",
+      "intersectionCount": 0,
+      "unionCount": 4,
+      "jaccard": 0
+    },
+    {
+      "familyA": "historical",
+      "familyB": "romance",
+      "intersectionCount": 0,
+      "unionCount": 7,
+      "jaccard": 0
+    },
+    {
+      "familyA": "historical",
+      "familyB": "science_fiction",
+      "intersectionCount": 0,
+      "unionCount": 6,
+      "jaccard": 0
+    },
+    {
+      "familyA": "mystery",
+      "familyB": "romance",
+      "intersectionCount": 0,
+      "unionCount": 9,
+      "jaccard": 0
+    },
+    {
+      "familyA": "mystery",
+      "familyB": "science_fiction",
+      "intersectionCount": 0,
+      "unionCount": 8,
+      "jaccard": 0
+    },
+    {
+      "familyA": "romance",
+      "familyB": "science_fiction",
+      "intersectionCount": 0,
+      "unionCount": 11,
+      "jaccard": 0
+    }
+  ],
+  "highOverlapPairs": [],
+  "lowOverlapPairs": [
+    {
+      "familyA": "fantasy",
+      "familyB": "general",
+      "intersectionCount": 0,
+      "unionCount": 10,
+      "jaccard": 0
+    },
+    {
+      "familyA": "fantasy",
+      "familyB": "historical",
+      "intersectionCount": 0,
+      "unionCount": 7,
+      "jaccard": 0
+    },
+    {
+      "familyA": "fantasy",
+      "familyB": "mystery",
+      "intersectionCount": 0,
+      "unionCount": 9,
+      "jaccard": 0
+    },
+    {
+      "familyA": "fantasy",
+      "familyB": "romance",
+      "intersectionCount": 0,
+      "unionCount": 12,
+      "jaccard": 0
+    },
+    {
+      "familyA": "fantasy",
+      "familyB": "science_fiction",
+      "intersectionCount": 0,
+      "unionCount": 11,
+      "jaccard": 0
+    },
+    {
+      "familyA": "general",
+      "familyB": "historical",
+      "intersectionCount": 0,
+      "unionCount": 5,
+      "jaccard": 0
+    },
+    {
+      "familyA": "general",
+      "familyB": "mystery",
+      "intersectionCount": 0,
+      "unionCount": 7,
+      "jaccard": 0
+    },
+    {
+      "familyA": "general",
+      "familyB": "science_fiction",
+      "intersectionCount": 0,
+      "unionCount": 9,
+      "jaccard": 0
+    },
+    {
+      "familyA": "historical",
+      "familyB": "mystery",
+      "intersectionCount": 0,
+      "unionCount": 4,
+      "jaccard": 0
+    },
+    {
+      "familyA": "historical",
+      "familyB": "romance",
+      "intersectionCount": 0,
+      "unionCount": 7,
+      "jaccard": 0
+    },
+    {
+      "familyA": "historical",
+      "familyB": "science_fiction",
+      "intersectionCount": 0,
+      "unionCount": 6,
+      "jaccard": 0
+    },
+    {
+      "familyA": "mystery",
+      "familyB": "romance",
+      "intersectionCount": 0,
+      "unionCount": 9,
+      "jaccard": 0
+    },
+    {
+      "familyA": "mystery",
+      "familyB": "science_fiction",
+      "intersectionCount": 0,
+      "unionCount": 8,
+      "jaccard": 0
+    },
+    {
+      "familyA": "romance",
+      "familyB": "science_fiction",
+      "intersectionCount": 0,
+      "unionCount": 11,
+      "jaccard": 0
+    },
+    {
+      "familyA": "general",
+      "familyB": "romance",
+      "intersectionCount": 1,
+      "unionCount": 9,
+      "jaccard": 0.1111
+    }
+  ],
+  "repeatedTitlesAcrossReports": [
+    {
+      "titleKey": "you",
+      "reportsSeen": 4
+    },
+    {
+      "titleKey": "someone like summer",
+      "reportsSeen": 4
+    },
+    {
+      "titleKey": "your eyes in stars",
+      "reportsSeen": 4
+    },
+    {
+      "titleKey": "chain of thorns",
+      "reportsSeen": 4
+    },
+    {
+      "titleKey": "the red queen: the obernewtyn chronicles volume 7",
+      "reportsSeen": 4
+    },
+    {
+      "titleKey": "waer",
+      "reportsSeen": 4
+    },
+    {
+      "titleKey": "the unbeatable lily hong",
+      "reportsSeen": 4
+    },
+    {
+      "titleKey": "wolfborn",
+      "reportsSeen": 4
+    },
+    {
+      "titleKey": "starclimber",
+      "reportsSeen": 4
+    },
+    {
+      "titleKey": "pretties with ugly thoughts",
+      "reportsSeen": 2
+    },
+    {
+      "titleKey": "the giver illustrated gift edition",
+      "reportsSeen": 2
+    },
+    {
+      "titleKey": "divergent official illustrated movie companion",
+      "reportsSeen": 2
+    },
+    {
+      "titleKey": "last chance books",
+      "reportsSeen": 2
+    },
+    {
+      "titleKey": "the role of nature in the works of octavia butler",
+      "reportsSeen": 2
+    },
+    {
+      "titleKey": "to the wild sky: text classics",
+      "reportsSeen": 2
+    },
+    {
+      "titleKey": "crowned (a conyza bennett story, book 3)",
+      "reportsSeen": 2
+    }
+  ],
+  "perReport": [
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "familyCandidateCounts": {
+        "science_fiction": 5,
+        "mystery": 3
+      },
+      "uniqueCandidateCount": 8
+    },
+    {
+      "report": "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+      "presetTestName": "Test B",
+      "familyCandidateCounts": {
+        "general": 1,
+        "mystery": 3
+      },
+      "uniqueCandidateCount": 4
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "familyCandidateCounts": {
+        "general": 3,
+        "fantasy": 6
+      },
+      "uniqueCandidateCount": 9
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "familyCandidateCounts": {
+        "fantasy": 6,
+        "historical": 1
+      },
+      "uniqueCandidateCount": 7
+    },
+    {
+      "report": "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+      "presetTestName": "Test B",
+      "familyCandidateCounts": {
+        "fantasy": 6,
+        "general": 1
+      },
+      "uniqueCandidateCount": 7
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "familyCandidateCounts": {
+        "general": 0,
+        "fantasy": 6
+      },
+      "uniqueCandidateCount": 6
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "familyCandidateCounts": {
+        "science_fiction": 5,
+        "mystery": 3
+      },
+      "uniqueCandidateCount": 8
+    },
+    {
+      "report": "pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+      "presetTestName": "Test B",
+      "familyCandidateCounts": {
+        "general": 0,
+        "mystery": 3
+      },
+      "uniqueCandidateCount": 3
+    },
+    {
+      "report": "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt",
+      "presetTestName": "Test C",
+      "familyCandidateCounts": {
+        "romance": 6,
+        "general": 0
+      },
+      "uniqueCandidateCount": 6
+    }
+  ]
+}
