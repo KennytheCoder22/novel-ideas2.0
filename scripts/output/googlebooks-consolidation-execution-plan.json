@@ -1,0 +1,271 @@
+{
+  "generatedAt": "2026-07-21T02:51:13.013Z",
+  "sourceAudit": "googlebooks-behavioral-equivalence-audit.json",
+  "summary": {
+    "total": 12,
+    "byBehavioralClass": {
+      "adult_production_teen_diagnostic": 1,
+      "behaviorally_equivalent_duplication": 4,
+      "same_name_different_semantics": 3,
+      "truly_shared": 3,
+      "age_specific_by_necessity": 1
+    },
+    "executionPhases": [
+      "1. Adult production / Teen diagnostic integration experiment",
+      "2. Behaviorally equivalent duplication consolidations (parity-preserving)",
+      "3. Shared interface contracts for same-name/different-semantics capabilities",
+      "4. Regression-protect already shared capabilities",
+      "5. Preserve age-specific policy branch"
+    ]
+  },
+  "rows": [
+    {
+      "capability": "Evidence-origin reconciliation audit",
+      "behavioralClass": "adult_production_teen_diagnostic",
+      "behavioralClassLabel": "Adult production / Teen diagnostic",
+      "expectedRecommendationQualityGain": "High",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
+      "productionStatus": "adult=production_or_core; teen=diagnostic_only",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-teen-evidence-origin-reconciliation-audit.mjs",
+        "run-v2-googlebooks-teen-trusted-reconciliation-counterfactual.mjs",
+        "run-v2-googlebooks-audience-maturity-separation-regressions.mjs",
+        "run-v2-googlebooks-final-eligibility-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "applyEvidenceOriginReconciliation({ candidate, signals, provenance, policy })",
+      "agePolicyConfigurationRequired": "Teen provenance policy: forbid query/route/profile context; allow only candidate-native + verified metadata.",
+      "implementationOrder": 101,
+      "acceptanceCriteria": "Counterfactual and production shadow mode both show reduced weak-underfill dependence with no publication-identity or maturity regressions.",
+      "recommendation": "Promote Teen path from diagnostic to production integration",
+      "stage": "diagnostic audit",
+      "effectSurface": "diagnostic/reporting"
+    },
+    {
+      "capability": "Semantic phrase extraction",
+      "behavioralClass": "behaviorally_equivalent_duplication",
+      "behavioralClassLabel": "Behaviorally equivalent duplication",
+      "expectedRecommendationQualityGain": "Low",
+      "maintenanceGain": "High",
+      "regressionRisk": "Medium",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-short-signal-boundary-regressions.mjs",
+        "run-v2-googlebooks-teen-weak-metadata-sufficiency-audit.mjs",
+        "run-v2-googlebooks-query-quality-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "extractGoogleBooksSignalFieldMatches({ candidate, signalLexicon, policy })",
+      "agePolicyConfigurationRequired": "Age-band lexicon + generic-context blacklist passed by config.",
+      "implementationOrder": 202,
+      "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
+      "recommendation": "Extract shared primitive and parametrize age policy",
+      "stage": "scoring/diagnostics",
+      "effectSurface": "diagnostic + potential ranking hooks"
+    },
+    {
+      "capability": "Canonical cue promotion",
+      "behavioralClass": "behaviorally_equivalent_duplication",
+      "behavioralClassLabel": "Behaviorally equivalent duplication",
+      "expectedRecommendationQualityGain": "Low",
+      "maintenanceGain": "High",
+      "regressionRisk": "Medium",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-narrative-strength-ranking-regressions.mjs",
+        "run-v2-googlebooks-final-slate-identity-audit-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "promoteCanonicalNarrativeCues({ extractedSignals, profile, policy })",
+      "agePolicyConfigurationRequired": "Family vocabulary and cue polarity map per age band.",
+      "implementationOrder": 203,
+      "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
+      "recommendation": "Extract shared primitive and parametrize age policy",
+      "stage": "scoring/family mapping",
+      "effectSurface": "family weighting and diagnostics"
+    },
+    {
+      "capability": "Final slate identity auditing",
+      "behavioralClass": "behaviorally_equivalent_duplication",
+      "behavioralClassLabel": "Behaviorally equivalent duplication",
+      "expectedRecommendationQualityGain": "Low",
+      "maintenanceGain": "High",
+      "regressionRisk": "Medium",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-final-slate-identity-audit-regressions.mjs",
+        "run-v2-googlebooks-final-eligibility-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "auditFinalSlateIdentity({ candidate, eligibilityContext, policy })",
+      "agePolicyConfigurationRequired": "Identity rejection categories and confidence thresholds per age band.",
+      "implementationOrder": 204,
+      "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
+      "recommendation": "Extract shared primitive and parametrize age policy",
+      "stage": "post-selection audit",
+      "effectSurface": "eligibility + reporting"
+    },
+    {
+      "capability": "Counterfactual final slate",
+      "behavioralClass": "behaviorally_equivalent_duplication",
+      "behavioralClassLabel": "Behaviorally equivalent duplication",
+      "expectedRecommendationQualityGain": "Low",
+      "maintenanceGain": "High",
+      "regressionRisk": "Medium",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-teen-taste-tier-audit.mjs",
+        "run-v2-googlebooks-teen-trusted-reconciliation-counterfactual.mjs",
+        "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs"
+      ],
+      "proposedSharedPrimitive": "simulateTieredFinalSlate({ candidates, tiers, minCleanCount, policy })",
+      "agePolicyConfigurationRequired": "Tier definitions and underfill policy per age band.",
+      "implementationOrder": 205,
+      "acceptanceCriteria": "Adult and Teen outputs are bit-for-bit identical pre/post refactor (decisions, ranking order, diagnostics, reason codes).",
+      "recommendation": "Extract shared primitive and parametrize age policy",
+      "stage": "selection audit",
+      "effectSurface": "diagnostic/reporting"
+    },
+    {
+      "capability": "Query quality comparison",
+      "behavioralClass": "same_name_different_semantics",
+      "behavioralClassLabel": "Same name, different semantics",
+      "expectedRecommendationQualityGain": "Medium",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
+      "productionStatus": "adult=diagnostic_only; teen=diagnostic_only",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-query-quality-regressions.mjs",
+        "run-v2-googlebooks-teen-query-family-overlap-audit.mjs",
+        "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs"
+      ],
+      "proposedSharedPrimitive": "evaluateQueryQuality({ query, candidates, priorUnion, policy })",
+      "agePolicyConfigurationRequired": "Definition of decision-worthy candidate by age band.",
+      "implementationOrder": 306,
+      "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
+      "recommendation": "Define shared contract before unification",
+      "stage": "retrieval planning",
+      "effectSurface": "retrieval (currently mixed production+diagnostic)"
+    },
+    {
+      "capability": "Family-scoped query competition",
+      "behavioralClass": "same_name_different_semantics",
+      "behavioralClassLabel": "Same name, different semantics",
+      "expectedRecommendationQualityGain": "Medium",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
+      "productionStatus": "adult=diagnostic_only; teen=diagnostic_only",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-teen-query-family-overlap-audit.mjs",
+        "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs",
+        "run-v2-googlebooks-query-quality-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "rankQueryFamiliesByMarginalYield({ families, union, policy })",
+      "agePolicyConfigurationRequired": "Family competition objective function and early-stop policy.",
+      "implementationOrder": 307,
+      "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
+      "recommendation": "Define shared contract before unification",
+      "stage": "retrieval planning",
+      "effectSurface": "retrieval policy"
+    },
+    {
+      "capability": "Marginal decision-worthy yield",
+      "behavioralClass": "same_name_different_semantics",
+      "behavioralClassLabel": "Same name, different semantics",
+      "expectedRecommendationQualityGain": "Medium",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
+      "productionStatus": "adult=diagnostic_only; teen=diagnostic_only",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs",
+        "run-v2-googlebooks-query-quality-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "computeMarginalYield({ queryResult, priorUnion, classifications, policy })",
+      "agePolicyConfigurationRequired": "Decision-worthy class mapping per age band.",
+      "implementationOrder": 308,
+      "acceptanceCriteria": "Shared interface contract adopted with unchanged age-band behavior and explicit semantic differences documented.",
+      "recommendation": "Define shared contract before unification",
+      "stage": "retrieval audit",
+      "effectSurface": "retrieval policy / diagnostic"
+    },
+    {
+      "capability": "Query promotion / replacement",
+      "behavioralClass": "truly_shared",
+      "behavioralClassLabel": "Truly shared",
+      "expectedRecommendationQualityGain": "Low",
+      "maintenanceGain": "Low",
+      "regressionRisk": "Low",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-query-quality-regressions.mjs",
+        "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs"
+      ],
+      "proposedSharedPrimitive": "promoteOrReplaceQuery({ familyStats, cueStats, policy })",
+      "agePolicyConfigurationRequired": "Promotion thresholds and replacement policy.",
+      "implementationOrder": 409,
+      "acceptanceCriteria": "No redesign; only regression protection and policy-config boundary checks.",
+      "recommendation": "Keep shared core; move policy to age-band config",
+      "stage": "retrieval planning",
+      "effectSurface": "retrieval/ranking handoff"
+    },
+    {
+      "capability": "Narrative-strength scoring",
+      "behavioralClass": "truly_shared",
+      "behavioralClassLabel": "Truly shared",
+      "expectedRecommendationQualityGain": "Low",
+      "maintenanceGain": "Low",
+      "regressionRisk": "Low",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-narrative-strength-ranking-regressions.mjs",
+        "run-v2-googlebooks-final-eligibility-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "computeNarrativeStrengthScore({ candidate, policy })",
+      "agePolicyConfigurationRequired": "Component weights and minimum confidence per age band.",
+      "implementationOrder": 410,
+      "acceptanceCriteria": "No redesign; only regression protection and policy-config boundary checks.",
+      "recommendation": "Keep shared core; move policy to age-band config",
+      "stage": "scoring/ranking",
+      "effectSurface": "ranking + eligibility support"
+    },
+    {
+      "capability": "Meaningful taste tiers",
+      "behavioralClass": "truly_shared",
+      "behavioralClassLabel": "Truly shared",
+      "expectedRecommendationQualityGain": "Low",
+      "maintenanceGain": "Low",
+      "regressionRisk": "Low",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-teen-taste-tier-audit.mjs",
+        "run-v2-googlebooks-teen-weak-metadata-sufficiency-audit.mjs",
+        "run-v2-googlebooks-final-eligibility-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "classifyMeaningfulTasteTier({ signals, score, provenance, policy })",
+      "agePolicyConfigurationRequired": "Tier thresholds and provenance guardrails per age band.",
+      "implementationOrder": 411,
+      "acceptanceCriteria": "No redesign; only regression protection and policy-config boundary checks.",
+      "recommendation": "Keep shared core; move policy to age-band config",
+      "stage": "selection quality tiering",
+      "effectSurface": "selection/ranking/reporting"
+    },
+    {
+      "capability": "Adult content weighting branch",
+      "behavioralClass": "age_specific_by_necessity",
+      "behavioralClassLabel": "Age-specific by necessity",
+      "expectedRecommendationQualityGain": "None",
+      "maintenanceGain": "Low",
+      "regressionRisk": "High",
+      "productionStatus": "adult=production_or_core; teen=production_or_core",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-audience-maturity-separation-regressions.mjs",
+        "run-v2-googlebooks-final-eligibility-regressions.mjs",
+        "run-v2-googlebooks-age-band-infrastructure-audit-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "applyAgeBandContentPolicy({ candidate, ageBandPolicy })",
+      "agePolicyConfigurationRequired": "Explicitly separate adult mature-content policy from teen safety policy.",
+      "implementationOrder": 599,
+      "acceptanceCriteria": "Capability remains separate; policy invariants and tests prevent accidental unification.",
+      "recommendation": "Keep separate policy branch with explicit invariants",
+      "stage": "eligibility/policy",
+      "effectSurface": "eligibility"
+    }
+  ]
+}
