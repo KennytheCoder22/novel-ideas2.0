@@ -1,0 +1,1124 @@
+{
+  "generatedAt": "2026-07-21T04:37:09.111Z",
+  "baselineCommit": "fedec68ac6b11017852006e3813b725c9dd7bb4e",
+  "fixtureCorpusVersion": "202-v1",
+  "prerequisiteRegressions": {
+    "run-v2-googlebooks-short-signal-boundary-regressions.mjs": {
+      "status": "pass",
+      "output": "Adult Google Books short-signal boundary regressions passed"
+    },
+    "run-v2-googlebooks-query-quality-regressions.mjs": {
+      "status": "pass",
+      "output": "}"
+    },
+    "run-v2-googlebooks-teen-weak-metadata-sufficiency-audit.mjs": {
+      "status": "skipped_requires_report_args",
+      "note": "Report-driven audit; must be run separately with --report <path> flags and compared output-to-output."
+    }
+  },
+  "baselineComplete": true,
+  "baselineCompleteNote": "All code-driven prerequisite regressions passed. Baseline is ready for use as a parity oracle.",
+  "signatures": {
+    "overallBaseline": "bcea3ee2e21ffbee",
+    "adultFixtureSet": "67faa52184c8af4d",
+    "teenFixtureSet": "da782ba734d0f273"
+  },
+  "adultFixtures": [
+    {
+      "fixtureName": "adult_ai_token_boundary",
+      "candidateTitle": "AI Token Boundary",
+      "ageBand": "adult",
+      "likedSignals": [
+        "ai"
+      ],
+      "dislikedSignals": [],
+      "score": 6.33,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "ai"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "ai",
+            "normalizedSignal": "ai",
+            "field": "title",
+            "matchedText": "AI",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "ai": [
+            "title"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "ai": [
+            "AI"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "ai": [
+            "unicode_token_boundary"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "ai",
+            "normalizedSignal": "ai",
+            "field": "title",
+            "matchedText": "AI",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "ai": [
+            "title"
+          ]
+        },
+        "matchedTexts": {
+          "ai": [
+            "AI"
+          ]
+        },
+        "matchedMethods": {
+          "ai": [
+            "unicode_token_boundary"
+          ]
+        }
+      },
+      "contentSignature": "00b33d6082c05067"
+    },
+    {
+      "fixtureName": "adult_ai_punctuated_acronym",
+      "candidateTitle": "AI Punctuated Acronym",
+      "ageBand": "adult",
+      "likedSignals": [
+        "ai"
+      ],
+      "dislikedSignals": [],
+      "score": 6.33,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "ai"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "ai",
+            "normalizedSignal": "ai",
+            "field": "title",
+            "matchedText": "AI",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "ai": [
+            "title"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "ai": [
+            "AI"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "ai": [
+            "unicode_token_boundary"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "ai",
+            "normalizedSignal": "ai",
+            "field": "title",
+            "matchedText": "AI",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "ai": [
+            "title"
+          ]
+        },
+        "matchedTexts": {
+          "ai": [
+            "AI"
+          ]
+        },
+        "matchedMethods": {
+          "ai": [
+            "unicode_token_boundary"
+          ]
+        }
+      },
+      "contentSignature": "00b33d6082c05067"
+    },
+    {
+      "fixtureName": "adult_ai_alias_phrase",
+      "candidateTitle": "AI Alias Phrase",
+      "ageBand": "adult",
+      "likedSignals": [
+        "ai"
+      ],
+      "dislikedSignals": [],
+      "score": 6.33,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "ai"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "ai",
+            "normalizedSignal": "ai",
+            "field": "title",
+            "matchedText": "AI",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "ai": [
+            "title"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "ai": [
+            "AI"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "ai": [
+            "unicode_token_boundary"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "ai",
+            "normalizedSignal": "ai",
+            "field": "title",
+            "matchedText": "AI",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "ai": [
+            "title"
+          ]
+        },
+        "matchedTexts": {
+          "ai": [
+            "AI"
+          ]
+        },
+        "matchedMethods": {
+          "ai": [
+            "unicode_token_boundary"
+          ]
+        }
+      },
+      "contentSignature": "00b33d6082c05067"
+    },
+    {
+      "fixtureName": "adult_ai_substring_reject",
+      "candidateTitle": "AI Substring Reject",
+      "ageBand": "adult",
+      "likedSignals": [
+        "ai"
+      ],
+      "dislikedSignals": [],
+      "score": 3.58,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "ai"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "ai",
+            "normalizedSignal": "ai",
+            "field": "title",
+            "matchedText": "AI",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "ai": [
+            "title"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "ai": [
+            "AI"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "ai": [
+            "unicode_token_boundary"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "ai",
+            "normalizedSignal": "ai",
+            "field": "title",
+            "matchedText": "AI",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "ai": [
+            "title"
+          ]
+        },
+        "matchedTexts": {
+          "ai": [
+            "AI"
+          ]
+        },
+        "matchedMethods": {
+          "ai": [
+            "unicode_token_boundary"
+          ]
+        }
+      },
+      "contentSignature": "00b33d6082c05067"
+    },
+    {
+      "fixtureName": "adult_war_valid_standalone",
+      "candidateTitle": "War Valid Standalone",
+      "ageBand": "adult",
+      "likedSignals": [
+        "war"
+      ],
+      "dislikedSignals": [],
+      "score": 6.33,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "war"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "war",
+            "normalizedSignal": "war",
+            "field": "title",
+            "matchedText": "War",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "war": [
+            "title"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "war": [
+            "War"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "war": [
+            "unicode_token_boundary"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "war",
+            "normalizedSignal": "war",
+            "field": "title",
+            "matchedText": "War",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "war": [
+            "title"
+          ]
+        },
+        "matchedTexts": {
+          "war": [
+            "War"
+          ]
+        },
+        "matchedMethods": {
+          "war": [
+            "unicode_token_boundary"
+          ]
+        }
+      },
+      "contentSignature": "b0f265e2db34f1dd"
+    },
+    {
+      "fixtureName": "adult_war_invalid_embedded",
+      "candidateTitle": "War Invalid Embedded",
+      "ageBand": "adult",
+      "likedSignals": [
+        "war"
+      ],
+      "dislikedSignals": [],
+      "score": 3.58,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "war"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "war",
+            "normalizedSignal": "war",
+            "field": "title",
+            "matchedText": "War",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "war": [
+            "title"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "war": [
+            "War"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "war": [
+            "unicode_token_boundary"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "war",
+            "normalizedSignal": "war",
+            "field": "title",
+            "matchedText": "War",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "war": [
+            "title"
+          ]
+        },
+        "matchedTexts": {
+          "war": [
+            "War"
+          ]
+        },
+        "matchedMethods": {
+          "war": [
+            "unicode_token_boundary"
+          ]
+        }
+      },
+      "contentSignature": "b0f265e2db34f1dd"
+    },
+    {
+      "fixtureName": "adult_science_fiction_multiword",
+      "candidateTitle": "Science Fiction Multiword",
+      "ageBand": "adult",
+      "likedSignals": [
+        "science fiction"
+      ],
+      "dislikedSignals": [],
+      "score": 7.23,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "science fiction"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "science fiction",
+            "normalizedSignal": "science fiction",
+            "field": "title",
+            "matchedText": "science fiction",
+            "method": "existing_semantic_match",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "science fiction": [
+            "title"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "science fiction": [
+            "science fiction"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "science fiction": [
+            "existing_semantic_match"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "science fiction",
+            "normalizedSignal": "science fiction",
+            "field": "title",
+            "matchedText": "science fiction",
+            "method": "existing_semantic_match",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "science fiction": [
+            "title"
+          ]
+        },
+        "matchedTexts": {
+          "science fiction": [
+            "science fiction"
+          ]
+        },
+        "matchedMethods": {
+          "science fiction": [
+            "existing_semantic_match"
+          ]
+        }
+      },
+      "contentSignature": "d60e5e2fd79a8015"
+    },
+    {
+      "fixtureName": "adult_psychological_thriller_multiword",
+      "candidateTitle": "Psychological Thriller Multiword",
+      "ageBand": "adult",
+      "likedSignals": [
+        "psychological thriller"
+      ],
+      "dislikedSignals": [],
+      "score": 7.23,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "psychological thriller"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "psychological thriller",
+            "normalizedSignal": "psychological thriller",
+            "field": "title",
+            "matchedText": "psychological thriller",
+            "method": "existing_semantic_match",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "psychological thriller": [
+            "title"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "psychological thriller": [
+            "psychological thriller"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "psychological thriller": [
+            "existing_semantic_match"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "psychological thriller",
+            "normalizedSignal": "psychological thriller",
+            "field": "title",
+            "matchedText": "psychological thriller",
+            "method": "existing_semantic_match",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "psychological thriller": [
+            "title"
+          ]
+        },
+        "matchedTexts": {
+          "psychological thriller": [
+            "psychological thriller"
+          ]
+        },
+        "matchedMethods": {
+          "psychological thriller": [
+            "existing_semantic_match"
+          ]
+        }
+      },
+      "contentSignature": "fb34cfb22e46e474"
+    },
+    {
+      "fixtureName": "adult_disliked_art_embedded",
+      "candidateTitle": "Disliked Art Embedded",
+      "ageBand": "adult",
+      "likedSignals": [
+        "thriller"
+      ],
+      "dislikedSignals": [
+        "art"
+      ],
+      "score": 4.98,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "thriller"
+        ],
+        "metadataBackedMatchedDislikedSignals": [
+          "art"
+        ],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "thriller",
+            "normalizedSignal": "thriller",
+            "field": "description",
+            "matchedText": "thriller",
+            "method": "existing_semantic_match",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          },
+          {
+            "signal": "art",
+            "normalizedSignal": "art",
+            "field": "title",
+            "matchedText": "Art",
+            "method": "unicode_token_boundary",
+            "signalBucket": "avoidSignals",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "thriller": [
+            "description"
+          ],
+          "art": [
+            "title"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "thriller": [
+            "thriller"
+          ],
+          "art": [
+            "Art"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "thriller": [
+            "existing_semantic_match"
+          ],
+          "art": [
+            "unicode_token_boundary"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "thriller",
+            "normalizedSignal": "thriller",
+            "field": "description",
+            "matchedText": "thriller",
+            "method": "existing_semantic_match",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          },
+          {
+            "signal": "art",
+            "normalizedSignal": "art",
+            "field": "title",
+            "matchedText": "Art",
+            "method": "unicode_token_boundary",
+            "signalBucket": "avoidSignals",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "thriller": [
+            "description"
+          ],
+          "art": [
+            "title"
+          ]
+        },
+        "matchedTexts": {
+          "thriller": [
+            "thriller"
+          ],
+          "art": [
+            "Art"
+          ]
+        },
+        "matchedMethods": {
+          "thriller": [
+            "existing_semantic_match"
+          ],
+          "art": [
+            "unicode_token_boundary"
+          ]
+        }
+      },
+      "contentSignature": "18290e932864259e"
+    },
+    {
+      "fixtureName": "adult_multi_signal_trace",
+      "candidateTitle": "Multi Signal Trace",
+      "ageBand": "adult",
+      "likedSignals": [
+        "ai",
+        "thriller"
+      ],
+      "dislikedSignals": [],
+      "score": 11.209999999999999,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "ai",
+          "thriller"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "ai",
+            "normalizedSignal": "ai",
+            "field": "description",
+            "matchedText": "AI",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          },
+          {
+            "signal": "thriller",
+            "normalizedSignal": "thriller",
+            "field": "description",
+            "matchedText": "thriller",
+            "method": "existing_semantic_match",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "ai": [
+            "description"
+          ],
+          "thriller": [
+            "description"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "ai": [
+            "AI"
+          ],
+          "thriller": [
+            "thriller"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "ai": [
+            "unicode_token_boundary"
+          ],
+          "thriller": [
+            "existing_semantic_match"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "ai",
+            "normalizedSignal": "ai",
+            "field": "description",
+            "matchedText": "AI",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          },
+          {
+            "signal": "thriller",
+            "normalizedSignal": "thriller",
+            "field": "description",
+            "matchedText": "thriller",
+            "method": "existing_semantic_match",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "ai": [
+            "description"
+          ],
+          "thriller": [
+            "description"
+          ]
+        },
+        "matchedTexts": {
+          "ai": [
+            "AI"
+          ],
+          "thriller": [
+            "thriller"
+          ]
+        },
+        "matchedMethods": {
+          "ai": [
+            "unicode_token_boundary"
+          ],
+          "thriller": [
+            "existing_semantic_match"
+          ]
+        }
+      },
+      "contentSignature": "a8c804d0638ad163"
+    },
+    {
+      "fixtureName": "adult_signal_in_category",
+      "candidateTitle": "Signal In Category",
+      "ageBand": "adult",
+      "likedSignals": [
+        "dark fantasy"
+      ],
+      "dislikedSignals": [],
+      "score": 7.23,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "dark fantasy"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "dark fantasy",
+            "normalizedSignal": "dark fantasy",
+            "field": "genres",
+            "matchedText": "dark fantasy",
+            "method": "existing_semantic_match",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "dark fantasy": [
+            "genres"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "dark fantasy": [
+            "dark fantasy"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "dark fantasy": [
+            "existing_semantic_match"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "dark fantasy",
+            "normalizedSignal": "dark fantasy",
+            "field": "genres",
+            "matchedText": "dark fantasy",
+            "method": "existing_semantic_match",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "dark fantasy": [
+            "genres"
+          ]
+        },
+        "matchedTexts": {
+          "dark fantasy": [
+            "dark fantasy"
+          ]
+        },
+        "matchedMethods": {
+          "dark fantasy": [
+            "existing_semantic_match"
+          ]
+        }
+      },
+      "contentSignature": "2c2b4555a262d0d2"
+    },
+    {
+      "fixtureName": "adult_rpg_alias",
+      "candidateTitle": "RPG Alias",
+      "ageBand": "adult",
+      "likedSignals": [
+        "rpg"
+      ],
+      "dislikedSignals": [],
+      "score": 6.18,
+      "scoredFields": {
+        "metadataBackedMatchedLikedSignals": [
+          "rpg"
+        ],
+        "metadataBackedMatchedDislikedSignals": [],
+        "adultGoogleBooksSignalMatchTrace": [
+          {
+            "signal": "rpg",
+            "normalizedSignal": "rpg",
+            "field": "title",
+            "matchedText": "RPG",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "adultGoogleBooksSignalMatchedField": {
+          "rpg": [
+            "title"
+          ]
+        },
+        "adultGoogleBooksSignalMatchedText": {
+          "rpg": [
+            "RPG"
+          ]
+        },
+        "adultGoogleBooksSignalMatchMethod": {
+          "rpg": [
+            "unicode_token_boundary"
+          ]
+        },
+        "adultGoogleBooksRejectedShortSignalMatches": []
+      },
+      "perTitle": {
+        "matchedTrace": [
+          {
+            "signal": "rpg",
+            "normalizedSignal": "rpg",
+            "field": "title",
+            "matchedText": "RPG",
+            "method": "unicode_token_boundary",
+            "signalBucket": "genreFamily",
+            "accepted": true
+          }
+        ],
+        "matchedFields": {
+          "rpg": [
+            "title"
+          ]
+        },
+        "matchedTexts": {
+          "rpg": [
+            "RPG"
+          ]
+        },
+        "matchedMethods": {
+          "rpg": [
+            "unicode_token_boundary"
+          ]
+        }
+      },
+      "contentSignature": "28024a17b8be8e20"
+    }
+  ],
+  "teenFixtures": [
+    {
+      "fixtureName": "teen_signal_description_only",
+      "candidateTitle": "Teen Dystopian Description",
+      "ageBand": "teen",
+      "likedSignals": [
+        "dystopian"
+      ],
+      "score": 6.180000000000001,
+      "selectionFields": {
+        "teenGoogleBooksSignalFieldsByTitle": {
+          "Teen Dystopian Description": {
+            "dystopian": [
+              "description"
+            ]
+          }
+        }
+      },
+      "perTitleSignalFields": {
+        "dystopian": [
+          "description"
+        ]
+      },
+      "contentSignature": "5d3a178ef4381b2e"
+    },
+    {
+      "fixtureName": "teen_signal_category_only",
+      "candidateTitle": "Teen Mystery Category",
+      "ageBand": "teen",
+      "likedSignals": [
+        "mystery"
+      ],
+      "score": 6.180000000000001,
+      "selectionFields": {
+        "teenGoogleBooksSignalFieldsByTitle": {
+          "Teen Mystery Category": {
+            "mystery": [
+              "description"
+            ]
+          }
+        }
+      },
+      "perTitleSignalFields": {
+        "mystery": [
+          "description"
+        ]
+      },
+      "contentSignature": "8c88745ea7219a2d"
+    },
+    {
+      "fixtureName": "teen_signal_title",
+      "candidateTitle": "Fantasy Quest Teen",
+      "ageBand": "teen",
+      "likedSignals": [
+        "fantasy"
+      ],
+      "score": 6.180000000000001,
+      "selectionFields": {
+        "teenGoogleBooksSignalFieldsByTitle": {
+          "Fantasy Quest Teen": {
+            "fantasy": []
+          }
+        }
+      },
+      "perTitleSignalFields": {
+        "fantasy": []
+      },
+      "contentSignature": "589e07c088ce3ce3"
+    },
+    {
+      "fixtureName": "teen_signal_multi_field",
+      "candidateTitle": "Teen Romance Multi Field",
+      "ageBand": "teen",
+      "likedSignals": [
+        "romance"
+      ],
+      "score": 5.23,
+      "selectionFields": {
+        "teenGoogleBooksSignalFieldsByTitle": {
+          "Teen Romance Multi Field": {
+            "romance": [
+              "description"
+            ]
+          }
+        }
+      },
+      "perTitleSignalFields": {
+        "romance": [
+          "description"
+        ]
+      },
+      "contentSignature": "3debc92e91aa884e"
+    },
+    {
+      "fixtureName": "teen_signal_subtitle_only",
+      "candidateTitle": "Teen Subtitle Fixture",
+      "ageBand": "teen",
+      "likedSignals": [
+        "thriller"
+      ],
+      "score": 6.180000000000001,
+      "selectionFields": {
+        "teenGoogleBooksSignalFieldsByTitle": {
+          "Teen Subtitle Fixture": {
+            "thriller": []
+          }
+        }
+      },
+      "perTitleSignalFields": {
+        "thriller": []
+      },
+      "contentSignature": "ddf148ee32ee71be"
+    },
+    {
+      "fixtureName": "teen_signal_no_match",
+      "candidateTitle": "Teen No Match",
+      "ageBand": "teen",
+      "likedSignals": [
+        "science fiction"
+      ],
+      "score": -0.04999999999999999,
+      "selectionFields": {
+        "teenGoogleBooksSignalFieldsByTitle": {
+          "Teen No Match": {}
+        }
+      },
+      "perTitleSignalFields": {},
+      "contentSignature": "1b69d784c8703c60"
+    },
+    {
+      "fixtureName": "teen_signal_multiword",
+      "candidateTitle": "Teen Multiword YA",
+      "ageBand": "teen",
+      "likedSignals": [
+        "young adult"
+      ],
+      "score": 5.23,
+      "selectionFields": {
+        "teenGoogleBooksSignalFieldsByTitle": {
+          "Teen Multiword YA": {
+            "young adult": [
+              "description"
+            ]
+          }
+        }
+      },
+      "perTitleSignalFields": {
+        "young adult": [
+          "description"
+        ]
+      },
+      "contentSignature": "f3e991dfd97427b6"
+    }
+  ]
+}
