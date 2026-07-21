@@ -1,0 +1,8 @@
+report,presetTestName,family,query,accepted,strong,secondary,weak,unknown,newToSession,marginalStrongSecondary,seenEarlierCorpus,marginalUniqueYieldPct,marginalDecisionWorthyYieldPct,recurringHeadCount,recurringHeadSharePct,topTitleRecurrenceRatePct
+"pasted-text-82d04e4f-5d42-4077-8615-65b6990418c9.txt","Test A",romance,"young adult romance fiction novel",6,0,1,4,1,6,1,0,100,16.7,0,0,33.3
+"pasted-text-82d04e4f-5d42-4077-8615-65b6990418c9.txt","Test A",fantasy,"young adult fantasy fiction novel",6,0,2,4,0,6,2,0,100,33.3,6,100,100
+"pasted-text-d5ec45da-824b-4aa5-8936-5ddbeb025d4b.txt","Test B",fantasy,"young adult fantasy fiction novel",0,0,0,0,0,0,0,0,0,0,0,0,0
+"pasted-text-d5ec45da-824b-4aa5-8936-5ddbeb025d4b.txt","Test B",general,"young adult adventure fiction novel",1,0,1,0,0,1,1,0,100,100,0,0,33.3
+"pasted-text-d5ec45da-824b-4aa5-8936-5ddbeb025d4b.txt","Test B",fantasy,"young adult fantasy adventure novel",3,0,1,2,0,3,1,1,100,33.3,1,33.3,100
+"pasted-text-57255e32-0334-4547-ad86-0b9254c2030d.txt","Test C",general,"young adult contemporary fiction novel",0,0,0,0,0,0,0,0,0,0,0,0,0
+"pasted-text-57255e32-0334-4547-ad86-0b9254c2030d.txt","Test C",fantasy,"young adult fantasy fiction novel",6,0,2,4,0,6,2,6,100,33.3,6,100,100
