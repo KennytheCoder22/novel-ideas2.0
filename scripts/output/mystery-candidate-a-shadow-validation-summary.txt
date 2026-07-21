@@ -1,0 +1,85 @@
+═══════════════════════════════════════════════════════════════════
+ Mystery Candidate A — shadow production validation
+ Full pipeline (all sources enabled) • 4 mystery profiles
+═══════════════════════════════════════════════════════════════════
+
+── Aggregate comparison ─────────────────────────────────────────────
+                  query                                        GBprim   selected    score   weakfit   fbAct   gbC   olC
+  control         young adult mystery fiction novel                 3          6    20.93         0     4/4  3.25  2.75
+  candidate_a     teen mystery thriller novel                  7 (+4)     6 (+0)  23.23 (+2.3)         0     4/4   5.5   0.5
+
+── Per-profile comparison ───────────────────────────────────────────
+  mystery-classic-whodunit
+    control      GBprim=3 (+0)  selected=6 (+0) (GB=4 OL=2)  score=21.15  fallback=true(required)  weakfit=0
+    candidate_a  GBprim=7 (+4)  selected=6 (+0) (GB=5 OL=1)  score=23.343  fallback=true  weakfit=0
+
+  mystery-psychological-thriller
+    control      GBprim=3 (+0)  selected=6 (+0) (GB=3 OL=3)  score=25.453  fallback=true(required)  weakfit=0
+    candidate_a  GBprim=7 (+4)  selected=6 (+0) (GB=5 OL=1)  score=26.695  fallback=true  weakfit=0
+
+  mystery-detective-crime
+    control      GBprim=3 (+0)  selected=6 (+0) (GB=3 OL=3)  score=21.837  fallback=true(required)  weakfit=0
+    candidate_a  GBprim=7 (+4)  selected=6 (+0) (GB=6 OL=0)  score=25.07  fallback=true  weakfit=0
+
+  mystery-cozy-amateur
+    control      GBprim=3 (+0)  selected=6 (+0) (GB=3 OL=3)  score=15.28  fallback=true(required)  weakfit=0
+    candidate_a  GBprim=7 (+4)  selected=6 (+0) (GB=6 OL=0)  score=17.818  fallback=true  weakfit=0
+
+── Candidate A selected slates ──────────────────────────────────────
+  mystery-classic-whodunit
+    23.910    Borderline
+    23.810    The Mystery of Hollow Places
+    23.610    A Good Girl's Guide to Murder
+    22.910    Dead Secret (Maggie Jamieson thriller, Book 4)
+    22.910    High Crimes: A totally gripping unputdownable crime thriller
+    22.910    In the Dark
+
+  mystery-psychological-thriller
+    27.610    Borderline
+    27.510    The Mystery of Hollow Places
+    26.610    Dead Secret (Maggie Jamieson thriller, Book 4)
+    26.610    In the Dark
+    26.610    The Never Game (Colter Shaw Thriller, Book 1)
+    25.220    See You Later
+
+  mystery-detective-crime
+    26.760    The Mystery of Hollow Places
+    25.860    High Crimes: A totally gripping unputdownable crime thriller
+    25.160    Borderline
+    24.320    To The Wild Sky: Text Classics
+    24.160    Dead Secret (Maggie Jamieson thriller, Book 4)
+    24.160    In the Dark
+
+  mystery-cozy-amateur
+    18.760    Borderline
+    18.660    The Mystery of Hollow Places
+    17.760    Dead Secret (Maggie Jamieson thriller, Book 4)
+    17.760    High Crimes: A totally gripping unputdownable crime thriller
+    17.760    The Never Game (Colter Shaw Thriller, Book 1)
+    16.210    Books for All
+
+── Confirmation gates ───────────────────────────────────────────────
+  S1. GB primary accepted ≥ control+2 for ≥ 3/4 profiles:  ✓  (4/4 profiles pass)
+  S2. Final selected ≥ control for ≥ 3/4 profiles:         ✓  (4/4 profiles pass)
+  S3. Avg score ≥ control − 0.5:                            ✓  (23.23 vs control 20.93)
+  S4. Weak-fit selections ≤ control:                        ✓  (0 vs control 0)
+  S5. Fallback activation ≤ control:                        ✓  (4/4 vs control 4/4)
+  S6. Selected ≥ 5 for ≥ 3/4 profiles:                      ✓  (4/4 profiles pass)
+
+═══════════════════════════════════════════════════════════════════
+ SHADOW VALIDATION VERDICT
+═══════════════════════════════════════════════════════════════════
+  CONFIRMED — Candidate A shadow validation passes.
+  Production promotion recommended.
+
+  Recommended change to searchPlan.ts:
+    Replace mystery primary query default:
+      Before: return `${agePrefix} mystery fiction novel`;
+      After:  return "teen mystery thriller novel";
+    Remove V2_TEEN_GB_MYSTERY_PRIMARY_QUERY_OVERRIDE env-var override.
+
+  Close investigation as: Production Validated.
+  Before: avg GB primary accepted = 3
+  After:  avg GB primary accepted = 7
+  Score delta: +2.3
+═══════════════════════════════════════════════════════════════════

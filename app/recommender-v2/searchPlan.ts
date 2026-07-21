@@ -442,10 +442,8 @@ function teenGoogleBooksCanonicalFamilyQuery(agePrefix: string, family?: string)
     return uniqueTerms([agePrefix, normalizedFamily, "fiction", "novel"], 4).join(" ");
   }
   if (normalizedFamily === "mystery") {
-    const override = String(process.env.V2_TEEN_GB_MYSTERY_PRIMARY_QUERY_OVERRIDE || "").trim();
     if (agePrefix === "young adult") {
-      if (override) return override;
-      return `${agePrefix} mystery fiction novel`;
+      return "teen mystery thriller novel";
     }
     return uniqueTerms([agePrefix, normalizedFamily, "fiction", "novel"], 4).join(" ");
   }
@@ -500,8 +498,6 @@ function buildTeenGoogleBooksIntents(profile: TasteProfile, genres: string[], to
   const adjacentGenre = googleBooksAdjacentGenre(primaryGenre);
   const scienceFictionOverride = String(process.env.V2_TEEN_GB_SCIFI_PRIMARY_QUERY_OVERRIDE || "").trim();
   const scienceFictionOverrideApplied = Boolean(scienceFictionOverride) && primaryGenre === "science fiction";
-  const mysteryOverride = String(process.env.V2_TEEN_GB_MYSTERY_PRIMARY_QUERY_OVERRIDE || "").trim();
-  const mysteryOverrideApplied = Boolean(mysteryOverride) && primaryGenre === "mystery";
   const primaryQuery = teenGoogleBooksCanonicalFamilyQuery(agePrefix, primaryGenre);
   const adjacentFamily = secondaryGenre && secondaryGenre !== primaryGenre
     ? secondaryGenre
@@ -581,8 +577,6 @@ function buildTeenGoogleBooksIntents(profile: TasteProfile, genres: string[], to
       teenGoogleBooksOmittedThirdQueryReason: thirdQuery.reason,
       teenGoogleBooksScienceFictionPrimaryQueryOverrideApplied: scienceFictionOverrideApplied,
       teenGoogleBooksScienceFictionPrimaryQueryOverrideValue: scienceFictionOverrideApplied ? scienceFictionOverride : "",
-      teenGoogleBooksMysteryPrimaryQueryOverrideApplied: mysteryOverrideApplied,
-      teenGoogleBooksMysteryPrimaryQueryOverrideValue: mysteryOverrideApplied ? mysteryOverride : "",
     },
   };
 }

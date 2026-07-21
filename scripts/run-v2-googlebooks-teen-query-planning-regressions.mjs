@@ -110,12 +110,12 @@ function googleBooksPlan(ageBand, genreFamilyValues) {
   const result = googleBooksPlan("teens", ["historical", "mystery"]);
   assertDeepEqual(
     result.queries,
-    ["young adult historical fiction novel", "young adult mystery fiction novel", "young adult historical mystery novel"],
+    ["young adult historical fiction novel", "teen mystery thriller novel", "young adult historical mystery novel"],
     "teens historical + mystery final query list",
   );
   assertNotIncludes(result.queries, "young adult historical contemporary fiction", "historical + mystery must not use broad contemporary third query");
   assertEqual(result.diagnostics.teenGoogleBooksQueryFamilyByQuery["young adult historical fiction novel"], "historical", "historical family should be recorded");
-  assertEqual(result.diagnostics.teenGoogleBooksQueryFamilyByQuery["young adult mystery fiction novel"], "mystery", "mystery family should be recorded");
+  assertEqual(result.diagnostics.teenGoogleBooksQueryFamilyByQuery["teen mystery thriller novel"], "mystery", "mystery family should be recorded");
   assertEqual(result.diagnostics.teenGoogleBooksQueryFamilyByQuery["young adult historical mystery novel"], "historical_mystery", "historical mystery family should be recorded");
   assertEqual(result.diagnostics.teenGoogleBooksQueryRungByQuery["young adult historical mystery novel"], "third", "historical mystery third rung should be recorded");
   assertEqual(result.diagnostics.teenGoogleBooksOmittedThirdQueryReason, "replaced_third_query:historical_mystery_template", "historical + mystery should record replacement reason");
