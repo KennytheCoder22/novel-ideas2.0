@@ -82,7 +82,6 @@ function asObject(v) { return v && typeof v === "object" && !Array.isArray(v) ? 
 function asArray(v) { return Array.isArray(v) ? v : []; }
 
 const WEAK_FIT_THRESHOLD = 0.4;
-const OVERRIDE_ENV = "V2_TEEN_GB_MYSTERY_PRIMARY_QUERY_OVERRIDE";
 const LIMIT = 6;
 
 // ── Profiles: all 4 mystery families from the 26-profile corpus ───────────────
@@ -244,13 +243,7 @@ const VARIANTS = [
 const allResults = [];
 
 for (const variant of VARIANTS) {
-  console.log(`\nVariant: ${variant.label} "${variant.query || "young adult mystery fiction novel"}"`);
-
-  if (variant.query) {
-    process.env[OVERRIDE_ENV] = variant.query;
-  } else {
-    delete process.env[OVERRIDE_ENV];
-  }
+  console.log(`\nVariant: ${variant.label} "${variant.query || "production mystery query"}"`);
 
   const variantRows = [];
 
@@ -287,7 +280,6 @@ for (const variant of VARIANTS) {
     );
   }
 
-  delete process.env[OVERRIDE_ENV];
   allResults.push({ variant, rows: variantRows });
 }
 
@@ -439,7 +431,6 @@ if (allConfirmed) {
   lines.push("    Replace mystery primary query default:");
   lines.push("      Before: return `${agePrefix} mystery fiction novel`;");
   lines.push("      After:  return \"teen mystery thriller novel\";");
-  lines.push("    Remove V2_TEEN_GB_MYSTERY_PRIMARY_QUERY_OVERRIDE env-var override.");
   lines.push("");
   lines.push("  Close investigation as: Production Validated.");
   lines.push(`  Before: avg GB primary accepted = ${CONTROL_AGG.avgGbAcceptedPrimary}`);
