@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-07-21T04:18:12.694Z",
+  "sourceExecutionPlan": "googlebooks-consolidation-execution-plan.json",
+  "hypothesis": {
+    "id": "#202",
+    "capability": "Semantic phrase extraction",
+    "behavioralClass": "behaviorally_equivalent_duplication",
+    "confidenceState": "Architectural",
+    "objectiveType": "behavior-preserving consolidation",
+    "hypothesisStatement": "Extract one shared semantic phrase extraction primitive for Adult and Teen Google Books with no recommendation, ranking, or diagnostic behavior change.",
+    "expectedBehavioralChange": {
+      "recommendationOutputs": "no change",
+      "candidateRankings": "no change",
+      "finalEligibilityDecisions": "no change",
+      "diagnostics": "no change"
+    },
+    "expectedMaintenanceChange": {
+      "duplicateCode": "decrease",
+      "sharedPrimitiveCount": "increase by 1",
+      "ageBandPolicySeparation": "preserved",
+      "complexityDirection": "decrease"
+    },
+    "successCriteria": [
+      "Recommendation parity = 100% (pre/post identical outputs on baseline corpus and regression fixtures).",
+      "Diagnostics parity = 100% (all emitted maps/counters/reason codes identical pre/post).",
+      "Ranking parity = 100% (ordering unchanged for all compared candidate sets).",
+      "Regression parity = 100% for prerequisite script set.",
+      "At least one duplicated extraction path removed in favor of one shared primitive."
+    ],
+    "mustNotMove": [
+      "No eligibility threshold changes.",
+      "No routing/query/source/polarity behavior changes.",
+      "No age-band policy semantics changes."
+    ],
+    "falsificationCriteria": [
+      "Any recommendation output diff (titles, order, inclusion/exclusion reasons).",
+      "Any diagnostic key/value diff outside explicit metadata timestamp fields.",
+      "Any regression failure in prerequisite script suite.",
+      "No measurable duplication reduction despite code changes."
+    ],
+    "decisionRule": {
+      "allParityChecksPassAndDuplicationReduced": "Implemented (Proven)",
+      "parityPassesButDuplicationNotReduced": "Deferred (insufficient maintenance gain)",
+      "anyParityCheckFails": "Falsified (do not merge as #202)"
+    },
+    "parityBaselineProtocol": {
+      "baselineCapturedFromCommit": "5fc2d38ffcb1bc3751f002a6892ab2f2c7842dea",
+      "baselineArtifactRoot": "scripts/output (pre-change snapshots retained for diff)",
+      "requiredComparators": [
+        "recommendation outputs",
+        "candidate ranking order",
+        "diagnostic maps/counters/reason codes",
+        "prerequisite regression script outcomes"
+      ],
+      "prerequisiteScripts": [
+        "run-v2-googlebooks-short-signal-boundary-regressions.mjs",
+        "run-v2-googlebooks-teen-weak-metadata-sufficiency-audit.mjs",
+        "run-v2-googlebooks-query-quality-regressions.mjs"
+      ],
+      "note": "Capture pre-change outputs for each prerequisite script, then rerun post-change and require parity."
+    }
+  }
+}

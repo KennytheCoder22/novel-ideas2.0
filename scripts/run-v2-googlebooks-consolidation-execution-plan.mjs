@@ -28,6 +28,17 @@ const noveltyProof = existsSync(noveltyProofPath)
 const noveltyCloses101 = noveltyProof?.decisionRuleResolution === "noSubstantiveDifference"
   || noveltyProof?.noveltyOutcome === "already_falsified_by_prior_counterfactual";
 
+function confidenceStateForRow(row) {
+  if (row.executionStatus === "closed_falsified") return "Falsified";
+  if (row.executionStatus === "implemented_proven") return "Proven";
+  if (row.behavioralClass === "behaviorally_equivalent_duplication") return "Architectural";
+  if (row.behavioralClass === "truly_shared") return "Architectural";
+  if (row.behavioralClass === "age_specific_by_necessity") return "Architectural";
+  if (row.behavioralClass === "same_name_different_semantics") return "Hypothesis";
+  if (row.behavioralClass === "adult_production_teen_diagnostic") return "Supported";
+  return "Hypothesis";
+}
+
 const classOrder = {
   adult_production_teen_diagnostic: 1,
   behaviorally_equivalent_duplication: 2,
@@ -260,8 +271,13 @@ const planRows = rows.map((r) => {
     preflightCheckpoint: noveltyGate,
     executionStatus: closedFalsified ? "closed_falsified" : "pending",
     active: !closedFalsified,
+    confidenceState: "Hypothesis",
   };
 });
+
+for (const row of planRows) {
+  row.confidenceState = confidenceStateForRow(row);
+}
 
 planRows.sort((a, b) => {
   if (a.active !== b.active) return a.active ? -1 : 1;
@@ -270,6 +286,7 @@ planRows.sort((a, b) => {
 
 const activeRows = planRows.filter((row) => row.active);
 const closedRows = planRows.filter((row) => !row.active);
+const nextActive = activeRows[0] || null;
 
 const summary = {
   total: planRows.length,
@@ -281,6 +298,18 @@ const summary = {
     acc[row.behavioralClass] = Number(acc[row.behavioralClass] || 0) + 1;
     return acc;
   }, {}),
+  byConfidenceState: planRows.reduce((acc, row) => {
+    acc[row.confidenceState] = Number(acc[row.confidenceState] || 0) + 1;
+    return acc;
+  }, {}),
+  nextActiveCapability: nextActive
+    ? {
+        capability: nextActive.capability,
+        implementationOrder: nextActive.implementationOrder,
+        confidenceState: nextActive.confidenceState,
+        executionStatus: nextActive.executionStatus,
+      }
+    : null,
   executionPhases: [
     noveltyCloses101
       ? "0. #101 closed/falsified by novelty proof (noSubstantiveDifference)"
@@ -299,6 +328,7 @@ console.log("=== GOOGLE BOOKS CONSOLIDATION EXECUTION PLAN ===");
 console.log(`Capabilities planned: ${summary.total}`);
 console.log(`Active items: ${summary.activeCount}`);
 console.log(`Closed/falsified items: ${summary.closedFalsifiedCount}`);
+console.log(`Next active item: ${summary.nextActiveCapability ? `#${summary.nextActiveCapability.implementationOrder} ${summary.nextActiveCapability.capability}` : "none"}`);
 console.log("Execution phases:");
 for (const phase of summary.executionPhases) console.log(`  ${phase}`);
 console.log("\nTop-ranked work items:");
@@ -332,6 +362,7 @@ const csvHeader = [
   "agePolicyConfigurationRequired",
   "prerequisiteTests",
   "executionStatus",
+  "confidenceState",
   "active",
   "preflightCheckpointRequired",
   "preflightCheckpointTitle",
@@ -356,6 +387,7 @@ const csvRows = planRows.map((r) => [
   `"${r.agePolicyConfigurationRequired.replace(/"/g, '""')}"`,
   `"${r.prerequisiteTests.join(" | ").replace(/"/g, '""')}"`,
   r.executionStatus,
+  r.confidenceState,
   r.active ? "true" : "false",
   r.preflightCheckpoint ? "yes" : "no",
   `"${(r.preflightCheckpoint?.title || "").replace(/"/g, '""')}"`,
