@@ -11,7 +11,7 @@
  *   scripts/output/googlebooks-consolidation-execution-plan.csv
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,6 +21,12 @@ const outDir = resolve(scriptDir, "output");
 const inputPath = resolve(outDir, "googlebooks-behavioral-equivalence-audit.json");
 const source = JSON.parse(readFileSync(inputPath, "utf8"));
 const rows = Array.isArray(source?.rows) ? source.rows : [];
+const noveltyProofPath = resolve(outDir, "googlebooks-101-novelty-proof.json");
+const noveltyProof = existsSync(noveltyProofPath)
+  ? JSON.parse(readFileSync(noveltyProofPath, "utf8"))
+  : null;
+const noveltyCloses101 = noveltyProof?.decisionRuleResolution === "noSubstantiveDifference"
+  || noveltyProof?.noveltyOutcome === "already_falsified_by_prior_counterfactual";
 
 const classOrder = {
   adult_production_teen_diagnostic: 1,
@@ -223,11 +229,16 @@ const planRows = rows.map((r) => {
 
   const implementationOrder = (classOrder[r.behavioralClassification] || 999) * 100 + Number(ov.implementationOrderHint || 50);
 
+  const is101 = r.capability === "Evidence-origin reconciliation audit";
+  const closedFalsified = is101 && noveltyCloses101;
+
   return {
     capability: r.capability,
     behavioralClass: r.behavioralClassification,
     behavioralClassLabel: classLabel[r.behavioralClassification] || r.behavioralClassification,
-    expectedRecommendationQualityGain: ov.expectedRecommendationQualityGain || base.expectedRecommendationQualityGain,
+    expectedRecommendationQualityGain: closedFalsified
+      ? "None (falsified)"
+      : (ov.expectedRecommendationQualityGain || base.expectedRecommendationQualityGain),
     maintenanceGain: ov.maintenanceGain || base.maintenanceGain,
     regressionRisk: ov.regressionRisk || base.regressionRisk,
     productionStatus: `adult=${r.productionStatus?.adult || "unknown"}; teen=${r.productionStatus?.teen || "unknown"}`,
@@ -238,25 +249,45 @@ const planRows = rows.map((r) => {
     proposedSharedPrimitive: ov.proposedSharedPrimitive || `unify${r.capability.replace(/[^a-zA-Z0-9]+/g, "")}`,
     agePolicyConfigurationRequired: ov.agePolicyConfigurationRequired || "Age-band policy object for thresholds/vocabulary/provenance rules.",
     implementationOrder,
-    acceptanceCriteria: ov.acceptanceCriteria || base.acceptanceCriteria,
-    recommendation: r.recommendation,
+    acceptanceCriteria: closedFalsified
+      ? "Not applicable. Closed by Phase 0 novelty proof (noSubstantiveDifference)."
+      : (ov.acceptanceCriteria || base.acceptanceCriteria),
+    recommendation: closedFalsified
+      ? "Closed/falsified. Skip implementation and proceed to first parity-preserving consolidation."
+      : r.recommendation,
     stage: r.stage,
     effectSurface: r.effectSurface,
     preflightCheckpoint: noveltyGate,
+    executionStatus: closedFalsified ? "closed_falsified" : "pending",
+    active: !closedFalsified,
   };
 });
 
-planRows.sort((a, b) => a.implementationOrder - b.implementationOrder || a.capability.localeCompare(b.capability));
+planRows.sort((a, b) => {
+  if (a.active !== b.active) return a.active ? -1 : 1;
+  return a.implementationOrder - b.implementationOrder || a.capability.localeCompare(b.capability);
+});
+
+const activeRows = planRows.filter((row) => row.active);
+const closedRows = planRows.filter((row) => !row.active);
 
 const summary = {
   total: planRows.length,
+  activeCount: activeRows.length,
+  closedFalsifiedCount: closedRows.length,
+  noveltyProofApplied: noveltyCloses101,
+  noveltyProofDecision: noveltyProof?.decisionRuleResolution || "not_available",
   byBehavioralClass: planRows.reduce((acc, row) => {
     acc[row.behavioralClass] = Number(acc[row.behavioralClass] || 0) + 1;
     return acc;
   }, {}),
   executionPhases: [
-    "0. #101 novelty proof gate (must pass before any Adult-production/Teen-diagnostic integration work)",
-    "1. Adult production / Teen diagnostic integration experiment (only if #101 novelty gate passes)",
+    noveltyCloses101
+      ? "0. #101 closed/falsified by novelty proof (noSubstantiveDifference)"
+      : "0. #101 novelty proof gate (must pass before any Adult-production/Teen-diagnostic integration work)",
+    noveltyCloses101
+      ? "1. Proceed to first behaviorally equivalent duplication consolidation"
+      : "1. Adult production / Teen diagnostic integration experiment (only if #101 novelty gate passes)",
     "2. Behaviorally equivalent duplication consolidations (parity-preserving)",
     "3. Shared interface contracts for same-name/different-semantics capabilities",
     "4. Regression-protect already shared capabilities",
@@ -266,10 +297,12 @@ const summary = {
 
 console.log("=== GOOGLE BOOKS CONSOLIDATION EXECUTION PLAN ===");
 console.log(`Capabilities planned: ${summary.total}`);
+console.log(`Active items: ${summary.activeCount}`);
+console.log(`Closed/falsified items: ${summary.closedFalsifiedCount}`);
 console.log("Execution phases:");
 for (const phase of summary.executionPhases) console.log(`  ${phase}`);
 console.log("\nTop-ranked work items:");
-for (const row of planRows.slice(0, 8)) {
+for (const row of activeRows.slice(0, 8)) {
   console.log(`  #${row.implementationOrder} ${row.capability} | ${row.behavioralClassLabel} | gain=${row.expectedRecommendationQualityGain} risk=${row.regressionRisk}`);
 }
 
@@ -298,6 +331,8 @@ const csvHeader = [
   "proposedSharedPrimitive",
   "agePolicyConfigurationRequired",
   "prerequisiteTests",
+  "executionStatus",
+  "active",
   "preflightCheckpointRequired",
   "preflightCheckpointTitle",
   "noveltyProofRequirements",
@@ -320,6 +355,8 @@ const csvRows = planRows.map((r) => [
   `"${r.proposedSharedPrimitive.replace(/"/g, '""')}"`,
   `"${r.agePolicyConfigurationRequired.replace(/"/g, '""')}"`,
   `"${r.prerequisiteTests.join(" | ").replace(/"/g, '""')}"`,
+  r.executionStatus,
+  r.active ? "true" : "false",
   r.preflightCheckpoint ? "yes" : "no",
   `"${(r.preflightCheckpoint?.title || "").replace(/"/g, '""')}"`,
   `"${(r.preflightCheckpoint?.noveltyProofRequirements || []).join(" | ").replace(/"/g, '""')}"`,

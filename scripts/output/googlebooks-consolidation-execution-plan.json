@@ -1,18 +1,22 @@
 {
-  "generatedAt": "2026-07-21T03:00:29.443Z",
+  "generatedAt": "2026-07-21T03:32:21.826Z",
   "sourceAudit": "googlebooks-behavioral-equivalence-audit.json",
   "summary": {
     "total": 12,
+    "activeCount": 11,
+    "closedFalsifiedCount": 1,
+    "noveltyProofApplied": true,
+    "noveltyProofDecision": "noSubstantiveDifference",
     "byBehavioralClass": {
-      "adult_production_teen_diagnostic": 1,
       "behaviorally_equivalent_duplication": 4,
       "same_name_different_semantics": 3,
       "truly_shared": 3,
-      "age_specific_by_necessity": 1
+      "age_specific_by_necessity": 1,
+      "adult_production_teen_diagnostic": 1
     },
     "executionPhases": [
-      "0. #101 novelty proof gate (must pass before any Adult-production/Teen-diagnostic integration work)",
-      "1. Adult production / Teen diagnostic integration experiment (only if #101 novelty gate passes)",
+      "0. #101 closed/falsified by novelty proof (noSubstantiveDifference)",
+      "1. Proceed to first behaviorally equivalent duplication consolidation",
       "2. Behaviorally equivalent duplication consolidations (parity-preserving)",
       "3. Shared interface contracts for same-name/different-semantics capabilities",
       "4. Regression-protect already shared capabilities",
@@ -20,44 +24,6 @@
     ]
   },
   "rows": [
-    {
-      "capability": "Evidence-origin reconciliation audit",
-      "behavioralClass": "adult_production_teen_diagnostic",
-      "behavioralClassLabel": "Adult production / Teen diagnostic",
-      "expectedRecommendationQualityGain": "TBD (novelty proof required)",
-      "maintenanceGain": "Medium",
-      "regressionRisk": "High",
-      "productionStatus": "adult=production_or_core; teen=diagnostic_only",
-      "prerequisiteTests": [
-        "run-v2-googlebooks-teen-evidence-origin-reconciliation-audit.mjs",
-        "run-v2-googlebooks-teen-trusted-reconciliation-counterfactual.mjs",
-        "run-v2-googlebooks-audience-maturity-separation-regressions.mjs",
-        "run-v2-googlebooks-final-eligibility-regressions.mjs"
-      ],
-      "proposedSharedPrimitive": "applyEvidenceOriginReconciliation({ candidate, signals, provenance, policy })",
-      "agePolicyConfigurationRequired": "Teen provenance policy: forbid query/route/profile context; allow only candidate-native + verified metadata.",
-      "implementationOrder": 101,
-      "acceptanceCriteria": "Only if novelty is proven: counterfactual and production shadow mode both show reduced weak-underfill dependence with no publication-identity or maturity regressions.",
-      "recommendation": "Promote Teen path from diagnostic to production integration",
-      "stage": "diagnostic audit",
-      "effectSurface": "diagnostic/reporting",
-      "preflightCheckpoint": {
-        "title": "#101 novelty proof",
-        "rationale": "Prior Teen trusted-reconciliation counterfactual showed 0 weak-to-secondary promotions and no weak-underfill/slate improvements.",
-        "requiredBeforeImplementation": true,
-        "noveltyProofRequirements": [
-          "List Adult production inputs/transformations not present in prior Teen trusted-reconciliation counterfactual.",
-          "Identify newly available evidence fields and newly accepted provenance types (if any).",
-          "Identify changed pipeline stage and whether behavior impacts acquisition/query continuation vs post-hoc reclassification.",
-          "Provide candidate-level examples where evidence would differ and why prior 0-promotion result does not already falsify #101."
-        ],
-        "decisionRule": {
-          "noSubstantiveDifference": "Mark #101 as already falsified by prior counterfactual; skip production integration and continue with first parity-preserving consolidation.",
-          "substantiveDifference": "Run diagnostic corpus counterfactual for the new behavior and evaluate existing #101 acceptance criteria.",
-          "architecturalOnlyDifference": "Reclassify #101 as maintenance work, not recommendation-quality experiment."
-        }
-      }
-    },
     {
       "capability": "Semantic phrase extraction",
       "behavioralClass": "behaviorally_equivalent_duplication",
@@ -78,7 +44,9 @@
       "recommendation": "Extract shared primitive and parametrize age policy",
       "stage": "scoring/diagnostics",
       "effectSurface": "diagnostic + potential ranking hooks",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
     },
     {
       "capability": "Canonical cue promotion",
@@ -99,7 +67,9 @@
       "recommendation": "Extract shared primitive and parametrize age policy",
       "stage": "scoring/family mapping",
       "effectSurface": "family weighting and diagnostics",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
     },
     {
       "capability": "Final slate identity auditing",
@@ -120,7 +90,9 @@
       "recommendation": "Extract shared primitive and parametrize age policy",
       "stage": "post-selection audit",
       "effectSurface": "eligibility + reporting",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
     },
     {
       "capability": "Counterfactual final slate",
@@ -142,7 +114,9 @@
       "recommendation": "Extract shared primitive and parametrize age policy",
       "stage": "selection audit",
       "effectSurface": "diagnostic/reporting",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
     },
     {
       "capability": "Query quality comparison",
@@ -164,7 +138,9 @@
       "recommendation": "Define shared contract before unification",
       "stage": "retrieval planning",
       "effectSurface": "retrieval (currently mixed production+diagnostic)",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
     },
     {
       "capability": "Family-scoped query competition",
@@ -186,7 +162,9 @@
       "recommendation": "Define shared contract before unification",
       "stage": "retrieval planning",
       "effectSurface": "retrieval policy",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
     },
     {
       "capability": "Marginal decision-worthy yield",
@@ -207,7 +185,9 @@
       "recommendation": "Define shared contract before unification",
       "stage": "retrieval audit",
       "effectSurface": "retrieval policy / diagnostic",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
     },
     {
       "capability": "Query promotion / replacement",
@@ -228,7 +208,9 @@
       "recommendation": "Keep shared core; move policy to age-band config",
       "stage": "retrieval planning",
       "effectSurface": "retrieval/ranking handoff",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
     },
     {
       "capability": "Narrative-strength scoring",
@@ -249,7 +231,9 @@
       "recommendation": "Keep shared core; move policy to age-band config",
       "stage": "scoring/ranking",
       "effectSurface": "ranking + eligibility support",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
     },
     {
       "capability": "Meaningful taste tiers",
@@ -271,7 +255,9 @@
       "recommendation": "Keep shared core; move policy to age-band config",
       "stage": "selection quality tiering",
       "effectSurface": "selection/ranking/reporting",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
     },
     {
       "capability": "Adult content weighting branch",
@@ -293,7 +279,49 @@
       "recommendation": "Keep separate policy branch with explicit invariants",
       "stage": "eligibility/policy",
       "effectSurface": "eligibility",
-      "preflightCheckpoint": null
+      "preflightCheckpoint": null,
+      "executionStatus": "pending",
+      "active": true
+    },
+    {
+      "capability": "Evidence-origin reconciliation audit",
+      "behavioralClass": "adult_production_teen_diagnostic",
+      "behavioralClassLabel": "Adult production / Teen diagnostic",
+      "expectedRecommendationQualityGain": "None (falsified)",
+      "maintenanceGain": "Medium",
+      "regressionRisk": "High",
+      "productionStatus": "adult=production_or_core; teen=diagnostic_only",
+      "prerequisiteTests": [
+        "run-v2-googlebooks-teen-evidence-origin-reconciliation-audit.mjs",
+        "run-v2-googlebooks-teen-trusted-reconciliation-counterfactual.mjs",
+        "run-v2-googlebooks-audience-maturity-separation-regressions.mjs",
+        "run-v2-googlebooks-final-eligibility-regressions.mjs"
+      ],
+      "proposedSharedPrimitive": "applyEvidenceOriginReconciliation({ candidate, signals, provenance, policy })",
+      "agePolicyConfigurationRequired": "Teen provenance policy: forbid query/route/profile context; allow only candidate-native + verified metadata.",
+      "implementationOrder": 101,
+      "acceptanceCriteria": "Not applicable. Closed by Phase 0 novelty proof (noSubstantiveDifference).",
+      "recommendation": "Closed/falsified. Skip implementation and proceed to first parity-preserving consolidation.",
+      "stage": "diagnostic audit",
+      "effectSurface": "diagnostic/reporting",
+      "preflightCheckpoint": {
+        "title": "#101 novelty proof",
+        "rationale": "Prior Teen trusted-reconciliation counterfactual showed 0 weak-to-secondary promotions and no weak-underfill/slate improvements.",
+        "requiredBeforeImplementation": true,
+        "noveltyProofRequirements": [
+          "List Adult production inputs/transformations not present in prior Teen trusted-reconciliation counterfactual.",
+          "Identify newly available evidence fields and newly accepted provenance types (if any).",
+          "Identify changed pipeline stage and whether behavior impacts acquisition/query continuation vs post-hoc reclassification.",
+          "Provide candidate-level examples where evidence would differ and why prior 0-promotion result does not already falsify #101."
+        ],
+        "decisionRule": {
+          "noSubstantiveDifference": "Mark #101 as already falsified by prior counterfactual; skip production integration and continue with first parity-preserving consolidation.",
+          "substantiveDifference": "Run diagnostic corpus counterfactual for the new behavior and evaluate existing #101 acceptance criteria.",
+          "architecturalOnlyDifference": "Reclassify #101 as maintenance work, not recommendation-quality experiment."
+        }
+      },
+      "executionStatus": "closed_falsified",
+      "active": false
     }
   ]
 }
