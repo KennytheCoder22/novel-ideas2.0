@@ -2168,6 +2168,69 @@ function buildMiddleGradesPipelineAudit(sourceResults: SourceResult[], normalize
   };
 }
 
+function openLibraryFinalLineageKey(query: unknown, queryCascadeIndex: unknown): string {
+  const normalizedQuery = String(query || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const normalizedIndex = Number.isFinite(Number(queryCascadeIndex)) ? String(Number(queryCascadeIndex)) : "";
+  return `${normalizedIndex}:${normalizedQuery}`;
+}
+
+function openLibraryFinalLineageItem(item: unknown): { key: string; title: string } {
+  const row = (item || {}) as Record<string, unknown>;
+  const diagnostics = (row.diagnostics || {}) as Record<string, unknown>;
+  const raw = (row.raw || {}) as Record<string, unknown>;
+  const query = diagnostics.queryText || row.queryText || raw.queryText || raw.postFinalEligibilityRecoveryQuery;
+  const queryCascadeIndex = diagnostics.queryCascadeIndex ?? row.queryCascadeIndex ?? raw.queryCascadeIndex;
+  return {
+    key: openLibraryFinalLineageKey(query, queryCascadeIndex),
+    title: String(row.title || raw.title || "").trim(),
+  };
+}
+
+function addOpenLibraryFinalLineageItem(
+  groups: Map<string, { count: number; titles: string[] }>,
+  item: unknown,
+): void {
+  const lineage = openLibraryFinalLineageItem(item);
+  if (!lineage.key || lineage.key === ":") return;
+  const group = groups.get(lineage.key) || { count: 0, titles: [] };
+  group.count += 1;
+  if (lineage.title && !group.titles.includes(lineage.title)) group.titles.push(lineage.title);
+  groups.set(lineage.key, group);
+}
+
+export function applyOpenLibraryPerQueryFinalLineage(sourceResults: SourceResult[], selected: ScoredCandidate[]): void {
+  const openLibrary = sourceResults.find((result) => result.source === "openLibrary");
+  const fetches = openLibrary?.diagnostics.fetches || [];
+  if (!openLibrary || !fetches.length) return;
+
+  const mergedByQuery = new Map<string, { count: number; titles: string[] }>();
+  const finalByQuery = new Map<string, { count: number; titles: string[] }>();
+  for (const item of openLibrary.rawItems) addOpenLibraryFinalLineageItem(mergedByQuery, item);
+  for (const candidate of selected.filter((row) => row.source === "openLibrary")) addOpenLibraryFinalLineageItem(finalByQuery, candidate);
+
+  for (const fetch of fetches) {
+    fetch.mergedCandidates = 0;
+    fetch.finalContribution = 0;
+    fetch.mergedCandidateTitles = [];
+    fetch.finalContributionTitles = [];
+  }
+
+  const keys = new Set([...mergedByQuery.keys(), ...finalByQuery.keys()]);
+  for (const key of keys) {
+    const matching = fetches.filter((fetch) => !fetch.diagnosticOnly && openLibraryFinalLineageKey(fetch.query, fetch.queryCascadeIndex) === key);
+    const target = [...matching].reverse().find((fetch) => Number(fetch.acceptedAfterSourcePolicy || 0) > 0)
+      || [...matching].reverse().find((fetch) => !fetch.timedOut && !fetch.failedReason && Number(fetch.docsReturned || 0) > 0)
+      || matching[matching.length - 1];
+    if (!target) continue;
+    const merged = mergedByQuery.get(key) || { count: 0, titles: [] };
+    const final = finalByQuery.get(key) || { count: 0, titles: [] };
+    target.mergedCandidates = merged.count;
+    target.mergedCandidateTitles = merged.titles;
+    target.finalContribution = final.count;
+    target.finalContributionTitles = final.titles;
+  }
+}
+
 export async function runRecommenderV2(session: SwipeSessionV2): Promise<RecommendationResultV2> {
   const startedAt = nowIso();
   const requestId = session.requestId || `v2-${Date.now()}`;
@@ -3559,6 +3622,9 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueSelectedTitles = selectedRescuedTitles;
     rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueNotSelectedReasonByTitle = notSelectedReasonByTitle;
     rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueSummary = rescueSummary;
+  }
+  if (tasteProfile.ageBand === "teens") {
+    applyOpenLibraryPerQueryFinalLineage(sourceResults, selected);
   }
   markPipelineObjects(selected, "selected", requestId);
   stages.push(stageDiagnostic("selected", { selected: selected.length }, { rejectedReasons }));
