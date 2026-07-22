@@ -109,6 +109,14 @@ export interface SourceFetchDiagnosticV2 {
   responseBodyPrefix?: string;
   failedReason?: string;
   docsReturned?: number;
+  rawRetrieved?: number;
+  structuralRejects?: number;
+  acceptedAfterSourcePolicy?: number;
+  mergedCandidates?: number;
+  finalContribution?: number;
+  acceptedAfterSourcePolicyTitles?: string[];
+  mergedCandidateTitles?: string[];
+  finalContributionTitles?: string[];
   firstReturnedTitles?: string[];
   responseShape?: "docs_array" | "missing_docs_array";
   diagnosticOnly?: boolean;

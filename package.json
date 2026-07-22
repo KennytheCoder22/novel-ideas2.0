@@ -26,7 +26,8 @@
     "test:v2:googlebooks-preteen-publication-shape-narrative-rescue": "node scripts/run-v2-googlebooks-preteen-publication-shape-narrative-rescue-regressions.mjs",
     "test:v2:googlebooks-short-signals": "node scripts/run-v2-googlebooks-short-signal-boundary-regressions.mjs",
     "test:v2:openlibrary-presets": "node scripts/run-v2-openlibrary-presets.mjs",
-    "test:v2:openlibrary-routing-regressions": "node scripts/run-v2-openlibrary-routing-regressions.mjs"
+    "test:v2:openlibrary-routing-regressions": "node scripts/run-v2-openlibrary-routing-regressions.mjs",
+    "test:v2:openlibrary-query-lineage": "node scripts/run-v2-openlibrary-routing-regressions.mjs --query-lineage-only"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

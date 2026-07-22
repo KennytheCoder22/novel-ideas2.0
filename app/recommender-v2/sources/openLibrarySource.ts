@@ -1390,6 +1390,72 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   }
 }
 
+function openLibraryLineageQueryKey(query: unknown, queryCascadeIndex: unknown): string {
+  const normalizedQuery = String(query || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const normalizedIndex = Number.isFinite(Number(queryCascadeIndex)) ? String(Number(queryCascadeIndex)) : "";
+  return `${normalizedIndex}:${normalizedQuery}`;
+}
+
+function openLibraryLineageItemKey(item: unknown): string {
+  const row = (item || {}) as Record<string, unknown>;
+  return openLibraryLineageQueryKey(row.queryText, row.queryCascadeIndex);
+}
+
+function incrementOpenLibraryLineageGroup(
+  groups: Map<string, { count: number; titles: string[] }>,
+  item: unknown,
+): void {
+  const row = (item || {}) as Record<string, unknown>;
+  const key = openLibraryLineageItemKey(row);
+  if (!key || key === ":") return;
+  const group = groups.get(key) || { count: 0, titles: [] };
+  group.count += 1;
+  const title = String(row.title || "").trim();
+  if (title && !group.titles.includes(title)) group.titles.push(title);
+  groups.set(key, group);
+}
+
+function lineageFetchForQuery(fetches: SourceFetchDiagnosticV2[], key: string): SourceFetchDiagnosticV2 | undefined {
+  const matching = fetches.filter((fetch) => !fetch.diagnosticOnly && openLibraryLineageQueryKey(fetch.query, fetch.queryCascadeIndex) === key);
+  return [...matching].reverse().find((fetch) => !fetch.timedOut && !fetch.failedReason && Number(fetch.docsReturned || 0) > 0)
+    || matching[matching.length - 1];
+}
+
+export function applyOpenLibraryPerQuerySourceLineage(
+  fetches: SourceFetchDiagnosticV2[],
+  acceptedAfterSourcePolicyItems: unknown[],
+  mergedCandidateItems: unknown[],
+): void {
+  const acceptedByQuery = new Map<string, { count: number; titles: string[] }>();
+  const mergedByQuery = new Map<string, { count: number; titles: string[] }>();
+  for (const item of acceptedAfterSourcePolicyItems) incrementOpenLibraryLineageGroup(acceptedByQuery, item);
+  for (const item of mergedCandidateItems) incrementOpenLibraryLineageGroup(mergedByQuery, item);
+
+  for (const fetch of fetches) {
+    fetch.rawRetrieved = Number(fetch.docsReturned || 0);
+    fetch.structuralRejects = Number(fetch.docsReturned || 0);
+    fetch.acceptedAfterSourcePolicy = 0;
+    fetch.mergedCandidates = 0;
+    fetch.finalContribution = 0;
+    fetch.acceptedAfterSourcePolicyTitles = [];
+    fetch.mergedCandidateTitles = [];
+    fetch.finalContributionTitles = [];
+  }
+
+  const keys = new Set([...acceptedByQuery.keys(), ...mergedByQuery.keys()]);
+  for (const key of keys) {
+    const target = lineageFetchForQuery(fetches, key);
+    if (!target) continue;
+    const accepted = acceptedByQuery.get(key) || { count: 0, titles: [] };
+    const merged = mergedByQuery.get(key) || { count: 0, titles: [] };
+    target.acceptedAfterSourcePolicy = accepted.count;
+    target.acceptedAfterSourcePolicyTitles = accepted.titles;
+    target.mergedCandidates = merged.count;
+    target.mergedCandidateTitles = merged.titles;
+    target.structuralRejects = Math.max(0, Number(target.rawRetrieved || 0) - accepted.count);
+  }
+}
+
 function openLibraryEmptyReason(rawItems: unknown[], rawApiResultCount: number, dropReasons: Record<string, number>, fetches: SourceFetchDiagnosticV2[], failedReason: string): string | undefined {
   if (rawItems.length > 0) return undefined;
   const mainFetch = fetches.find((fetch) => !fetch.diagnosticOnly);
@@ -5218,6 +5284,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       ? uniqueStrings(queries, 20)
       : uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20);
     const statusForHandoff: SourceResult["status"] = openLibraryScoringHandoffItems.length ? "succeeded" : status;
+    if (ageProfile.key === "teen") {
+      applyOpenLibraryPerQuerySourceLineage(fetches, rawItems, openLibraryScoringHandoffItems);
+    }
     return {
       source: "openLibrary",
       status: statusForHandoff,
