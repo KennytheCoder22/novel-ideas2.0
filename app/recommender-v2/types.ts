@@ -79,6 +79,7 @@ export interface SearchPlan {
 
 export interface SourceFetchDiagnosticV2 {
   query: string;
+  requestUrl?: string;
   fetchStartedAt?: string;
   fetchFinishedAt?: string;
   attemptNumber?: number;
@@ -104,12 +105,21 @@ export interface SourceFetchDiagnosticV2 {
   elapsedMs?: number;
   timedOut: boolean;
   httpStatus?: number;
+  responseDate?: string;
+  responseCacheControl?: string;
+  responseCacheAge?: string;
+  responseVia?: string;
+  responseEtag?: string;
+  responseLastModified?: string;
+  responseXCache?: string;
   fetchPath?: "direct" | "proxy";
   proxyAttempts?: number;
   responseBodyPrefix?: string;
   failedReason?: string;
   docsReturned?: number;
   rawRetrieved?: number;
+  returnedWorkIds?: string[];
+  returnedWorkTitles?: string[];
   structuralRejects?: number;
   acceptedAfterSourcePolicy?: number;
   mergedCandidates?: number;

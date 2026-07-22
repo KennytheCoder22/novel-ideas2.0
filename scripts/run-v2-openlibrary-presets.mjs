@@ -421,6 +421,17 @@ async function main() {
   }
   compileHarnessDependencies();
   const { applyOpenLibraryPerQueryFinalLineage, mergeOpenLibrarySourceItemsForDiagnostics, runRecommenderV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/engine.js`).href);
+  if (process.argv.includes("--teen-fantasy-stability")) {
+    const [tasteProfileModule, openLibraryModule] = await Promise.all([
+      import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href),
+      import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibrarySource.js`).href),
+    ]);
+    await runTeenFantasyStability({
+      buildTasteProfile: tasteProfileModule.buildTasteProfile,
+      openLibrarySourceAdapter: openLibraryModule.openLibrarySourceAdapter,
+    });
+    return;
+  }
   if (process.argv.includes("--teen-fantasy-phase-2")) {
     const [tasteProfileModule, openLibraryModule, normalizeModule, scoreModule, selectModule] = await Promise.all([
       import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href),
@@ -704,5 +715,107 @@ async function runTeenFantasyPhase2({
     experiment: "OL-F1 Phase 2 Teen Fantasy retrieval combinations",
     control: "B-E reuse one captured source pool per query; differences are merge/selection-only",
     strategies,
+  }));
+}
+
+async function runTeenFantasyStability({ buildTasteProfile, openLibrarySourceAdapter }) {
+  const preset = PRESETS.find((row) => row.deck === "Teen Fantasy OL-F1");
+  const queries = [
+    "young adult fantasy series",
+    "young adult magical adventure",
+    "teen fantasy adventure",
+  ];
+  const orders = [
+    queries,
+    [queries[1], queries[2], queries[0]],
+    [queries[2], queries[0], queries[1]],
+    queries,
+  ];
+  const baselineByQuery = new Map();
+  const attempts = [];
+
+  for (const [roundIndex, order] of orders.entries()) {
+    for (const [orderIndex, query] of order.entries()) {
+      const queryIndex = queries.indexOf(query);
+      const profile = buildTasteProfile({
+        ageBand: "teens",
+        signals: preset.signals,
+        limit: 5,
+        diagnostics: {
+          forceTeenPostFinalEligibilityRecovery: true,
+          forceTeenPostFinalEligibilityRecoveryQueries: [query],
+          forceTeenPostFinalEligibilityRecoveryQueryOffset: queryIndex,
+          disableTeenSourceUnderfillRecovery: true,
+        },
+      });
+      const plan = {
+        source: "openLibrary",
+        enabled: true,
+        status: "planned",
+        timeoutMs: 8_000,
+        intents: [{ id: `ol-f1a-${roundIndex}-${orderIndex}`, query, facets: [], priority: 1, rationale: ["OL-F1A identical-request stability"] }],
+      };
+      const callStartedAt = new Date().toISOString();
+      const startedMs = Date.now();
+      const sourceResult = await openLibrarySourceAdapter.search(plan, { profile });
+      const adapterElapsedMs = Date.now() - startedMs;
+      const fetches = (sourceResult.diagnostics?.fetches || []).filter((fetch) => !fetch.diagnosticOnly && String(fetch.query || "").toLowerCase() === query.toLowerCase());
+      const terminalFetch = fetches[fetches.length - 1] || {};
+      const returnedWorkIds = Array.isArray(terminalFetch.returnedWorkIds) ? terminalFetch.returnedWorkIds.map(String) : [];
+      if (!baselineByQuery.has(query) && returnedWorkIds.length) baselineByQuery.set(query, returnedWorkIds);
+      const baseline = baselineByQuery.get(query) || [];
+      const acceptedWorkIds = sourceResult.rawItems.map((item) => String(item?.sourceId || item?.key || "")).filter(Boolean);
+      attempts.push({
+        round: roundIndex + 1,
+        requestOrder: orderIndex + 1,
+        query,
+        callStartedAt,
+        adapterElapsedMs,
+        sourceStatus: sourceResult.status,
+        exactRequest: terminalFetch.requestUrl,
+        fetchPath: terminalFetch.fetchPath,
+        clientTimeoutMs: terminalFetch.clientTimeoutMs,
+        attemptNumber: terminalFetch.attemptNumber,
+        retryAttempted: Boolean(terminalFetch.retryAttempted || fetches.length > 1),
+        retrySucceeded: Boolean(terminalFetch.retrySucceeded),
+        fetchAttemptsForQuery: fetches.length,
+        proxyAttempts: terminalFetch.proxyAttempts,
+        timedOut: Boolean(terminalFetch.timedOut),
+        failedReason: terminalFetch.failedReason,
+        abortOrigin: terminalFetch.abortOrigin,
+        abortReason: terminalFetch.abortReason,
+        fetchStartedAt: terminalFetch.fetchStartedAt,
+        fetchFinishedAt: terminalFetch.fetchFinishedAt,
+        elapsedMs: terminalFetch.elapsedMs,
+        httpStatus: terminalFetch.httpStatus,
+        responseHeadersReceived: terminalFetch.responseHeadersReceived,
+        bodyCompleted: terminalFetch.bodyCompleted,
+        cache: {
+          date: terminalFetch.responseDate,
+          cacheControl: terminalFetch.responseCacheControl,
+          age: terminalFetch.responseCacheAge,
+          via: terminalFetch.responseVia,
+          etag: terminalFetch.responseEtag,
+          lastModified: terminalFetch.responseLastModified,
+          xCache: terminalFetch.responseXCache,
+        },
+        documentCount: Number(terminalFetch.docsReturned || 0),
+        returnedWorkIds,
+        returnedWorkTitles: terminalFetch.returnedWorkTitles || [],
+        missingVsFirstSuccessful: baseline.filter((id) => !returnedWorkIds.includes(id)),
+        addedVsFirstSuccessful: returnedWorkIds.filter((id) => !baseline.includes(id)),
+        orderChangedVsFirstSuccessful: baseline.length === returnedWorkIds.length && baseline.some((id, index) => returnedWorkIds[index] !== id),
+        acceptedAfterSourcePolicy: Number(terminalFetch.acceptedAfterSourcePolicy || 0),
+        acceptedWorkIds,
+      });
+    }
+  }
+
+  console.log(JSON.stringify({
+    experiment: "OL-F1A Open Library identical-request stability",
+    profile: preset.deck,
+    rounds: orders.length,
+    orderRotated: true,
+    attempts,
   }));
 }

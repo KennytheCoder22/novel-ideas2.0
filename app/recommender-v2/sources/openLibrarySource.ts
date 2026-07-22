@@ -1288,6 +1288,7 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   const abortControllerId = `openlibrary-fetch-${++openLibraryAbortControllerSequence}`;
   const diagnostic: SourceFetchDiagnosticV2 = {
     query,
+    requestUrl: url,
     fetchStartedAt,
     requestStart: fetchStartedAt,
     attemptNumber,
@@ -1334,6 +1335,13 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   try {
     const response = await fetch(url, { signal: queryController.signal });
     diagnostic.httpStatus = response.status;
+    diagnostic.responseDate = response.headers.get("date") || undefined;
+    diagnostic.responseCacheControl = response.headers.get("cache-control") || undefined;
+    diagnostic.responseCacheAge = response.headers.get("age") || undefined;
+    diagnostic.responseVia = response.headers.get("via") || undefined;
+    diagnostic.responseEtag = response.headers.get("etag") || undefined;
+    diagnostic.responseLastModified = response.headers.get("last-modified") || undefined;
+    diagnostic.responseXCache = response.headers.get("x-cache") || undefined;
     diagnostic.responseHeadersReceived = nowIso();
     diagnostic.bodyStarted = nowIso();
     const text = await response.text();
@@ -1364,6 +1372,8 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
       diagnostic.responseShape = "docs_array";
       diagnostic.docsReturned = docs.length;
       diagnostic.firstReturnedTitles = uniqueStrings(docs.map((doc: any) => doc?.title), 5);
+      diagnostic.returnedWorkIds = docs.map((doc: any) => String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || "").trim());
+      diagnostic.returnedWorkTitles = docs.map((doc: any) => String(doc?.title || "").trim());
       return { docs, diagnostic };
     } catch (error: any) {
       diagnostic.responseBodyPrefix = bodyPrefix(text);
