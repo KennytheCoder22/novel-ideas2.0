@@ -1,4 +1,4 @@
 profileId,profileLabel,baselinePrimaryQuery,candidatePrimaryQuery,acceptedAfterSourcePolicyBaseline,acceptedAfterSourcePolicyCandidate,acceptedAfterSourcePolicyDelta,scoredCandidatesBaseline,scoredCandidatesCandidate,scoredCandidatesDelta,selectedBaseline,selectedCandidate,selectedDelta,fallbackUsedBaseline,fallbackUsedCandidate,qualityAverageBaseline,qualityAverageCandidate,qualityAverageDelta,underfillBaseline,underfillCandidate,meetsPromotionSignals
-test-c-reconstructed,"Test C reconstructed","young adult science fiction novel","""young adult"" dystopian novel",0,4,4,0,4,4,6,6,0,true,true,21.865,22.789,0.924,false,false,true
-space-opera-positive,"Space-opera weighted","young adult science fiction novel","""young adult"" dystopian novel",0,4,4,0,4,4,3,4,1,true,true,15.11,17.995,2.885,true,true,true
-speculative-mixed,"Speculative mixed profile","young adult science fiction novel","""young adult"" dystopian novel",0,0,0,0,0,0,6,6,0,true,true,9.923,9.923,0,false,false,false
+test-c-reconstructed,"Test C reconstructed","young adult science fiction novel","""young adult"" dystopian novel",0,4,4,0,4,4,6,2,-4,true,false,21.865,24.005,2.14,false,true,true
+space-opera-positive,"Space-opera weighted","young adult science fiction novel","""young adult"" dystopian novel",0,4,4,0,4,4,6,6,0,true,true,16.637,17.993,1.356,false,false,true
+speculative-mixed,"Speculative mixed profile","young adult science fiction novel","""young adult"" dystopian novel",0,4,4,0,4,4,6,6,0,true,true,9.923,10.515,0.592,false,false,true

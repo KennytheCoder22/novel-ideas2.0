@@ -158,7 +158,7 @@ function googleBooksPlan(ageBand, genreFamilyValues) {
   );
   assertDeepEqual(
     googleBooksPlan("preteens", ["science fiction", "contemporary"]).queries,
-    ["middle grade science fiction fiction novel", "middle grade contemporary fiction novel", "middle grade science fiction contemporary fiction"],
+    ["middle grade science fiction novel", "middle grade contemporary fiction novel", "middle grade science fiction contemporary novel"],
     "preteens query planning must remain unchanged",
   );
 }

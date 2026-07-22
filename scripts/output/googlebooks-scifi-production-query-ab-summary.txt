@@ -2,12 +2,12 @@ Google Books Science Fiction production query A/B
 Current query: young adult science fiction novel
 Candidate query: "young adult" dystopian novel
 
-test-c-reconstructed: accepted 0 -> 4 (Δ +4), scored 0 -> 4, selected 6 -> 6, fallback true -> true, quality 21.865 -> 22.789
-space-opera-positive: accepted 0 -> 4 (Δ +4), scored 0 -> 4, selected 3 -> 4, fallback true -> true, quality 15.11 -> 17.995
-speculative-mixed: accepted 0 -> 0 (Δ +0), scored 0 -> 0, selected 6 -> 6, fallback true -> true, quality 9.923 -> 9.923
+test-c-reconstructed: accepted 0 -> 4 (Δ +4), scored 0 -> 4, selected 6 -> 2, fallback true -> false, quality 21.865 -> 24.005
+space-opera-positive: accepted 0 -> 4 (Δ +4), scored 0 -> 4, selected 6 -> 6, fallback true -> true, quality 16.637 -> 17.993
+speculative-mixed: accepted 0 -> 4 (Δ +4), scored 0 -> 4, selected 6 -> 6, fallback true -> true, quality 9.923 -> 10.515
 
-Aggregate accepted-after-source-policy delta: 8
-Aggregate scored-candidates delta: 8
-Aggregate selected delta: 1
-Aggregate quality-average delta: 3.809
-Promotion recommendation: do_not_promote_candidate_query
+Aggregate accepted-after-source-policy delta: 12
+Aggregate scored-candidates delta: 12
+Aggregate selected delta: -4
+Aggregate quality-average delta: 4.088
+Promotion recommendation: promote_candidate_query_for_science_fiction

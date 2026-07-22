@@ -361,20 +361,13 @@ const MYSTERY_PROFILES = [
 ];
 
 const LIMIT = 6;
-const OVERRIDE_ENV = "V2_TEEN_GB_MYSTERY_PRIMARY_QUERY_OVERRIDE";
 
 // ── Run all variants ──────────────────────────────────────────────────────────
 
 const allVariantResults = [];
 
 for (const variant of VARIANTS) {
-  console.log(`\nVariant ${variant.id}: "${variant.query || "young adult mystery fiction novel (control)"}"`);
-
-  if (variant.query) {
-    process.env[OVERRIDE_ENV] = variant.query;
-  } else {
-    delete process.env[OVERRIDE_ENV];
-  }
+  console.log(`\nVariant ${variant.id}: "${variant.query || "production mystery query"}"`);
 
   const variantRows = [];
 
@@ -410,7 +403,6 @@ for (const variant of VARIANTS) {
     );
   }
 
-  delete process.env[OVERRIDE_ENV];
   allVariantResults.push({ variant, rows: variantRows });
 }
 
