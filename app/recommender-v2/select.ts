@@ -4254,6 +4254,18 @@ function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, p
   return { allowed: true, ...resultEvidence };
 }
 
+function teenOpenLibraryFinalRejectionCategory(candidate: ScoredCandidate, eligibility: TeenOpenLibraryTasteEligibility, selected: boolean): string {
+  const eligibilityReason = String(eligibility.reason || "");
+  const selectionReasons = candidate.rejectedReasons.join(" ");
+  if (selected) return "selected";
+  if (/duplicate|same_root|root_collapsed/i.test(selectionReasons)) return "duplicate_suppression";
+  if (/same_author|same_series|series|variety|deferred|family_cap|format_cap/i.test(selectionReasons)) return "variety_constraints";
+  if (/context_or_generic_only|title_only_metadata_taste/i.test(eligibilityReason)) return "generic_context_only_taste_evidence";
+  if (/single_generic_signal_without_strong_authority/i.test(eligibilityReason)) return "confidence_threshold";
+  if (/no_positive_metadata_taste|no_metadata_liked_signals|single_broad_metadata_taste|single_signal_negated|multi_signal_mostly_negated|disliked_metadata_outweighs_liked/i.test(eligibilityReason)) return "minimum_overlap_gate";
+  return "another_eligibility_rule";
+}
+
 function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
   if (profile.ageBand !== "teens" || !rankedCandidates.some((candidate) => candidate.source === "openLibrary")) return;
   const diagnostics = rejectedReasons as Record<string, unknown>;
@@ -4295,6 +4307,8 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
   const finalRankingReasonByTitle: Record<string, string> = {};
   const finalEligibilityAcceptedTitles: string[] = [];
   const meaningfulTasteEligibleTitles: string[] = [];
+  const teenOpenLibraryFinalRejectionAudit: Array<Record<string, unknown>> = [];
+  const teenOpenLibraryFinalRejectionHistogram: Record<string, number> = {};
 
   for (const candidate of rankedCandidates.filter((row) => row.source === "openLibrary")) {
     const eligibility = teenOpenLibraryMeaningfulTasteEligibility(candidate, profile);
@@ -4375,6 +4389,35 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
     finalRankingReasonByTitle[candidate.title] = selectedTitles.has(normalized(candidate.title))
       ? "selected_clean_teen_openlibrary_candidate"
       : candidate.rejectedReasons.join(",") || teenOpenLibraryEligibilityReasonByTitle[candidate.title] || "ranked_below_final_selection";
+    const selectedCandidate = selectedTitles.has(normalized(candidate.title));
+    const rejectionCategory = teenOpenLibraryFinalRejectionCategory(candidate, eligibility, selectedCandidate);
+    const routeOverlapSignals = Array.isArray(candidate.diagnostics?.queryTextSignalsRemovedFromTasteMatch)
+      ? candidate.diagnostics.queryTextSignalsRemovedFromTasteMatch.map(String)
+      : [];
+    teenOpenLibraryFinalRejectionAudit.push({
+      title: candidate.title,
+      originatingQuery: String(candidate.diagnostics?.queryText || ""),
+      queryFamily: String(candidate.diagnostics?.queryFamily || ""),
+      routingReason: String(candidate.diagnostics?.routingReason || ""),
+      score: Math.round(candidate.score * 1000) / 1000,
+      positiveTasteScore: Math.round(positiveTasteScore * 1000) / 1000,
+      positiveTasteEvidence: eligibility.contentSignals,
+      allMetadataBackedLikedSignals: eligibility.signals,
+      negativeTasteEvidence: nonTitleDislikedSignals,
+      overlappingDislikedEvidence: eligibility.overlappingDislikedContentSignals,
+      authoritySignals: eligibility.authoritySignals,
+      reliableTeenFitSignals: eligibility.reliableTeenFitSignals,
+      narrativeFictionShape: eligibility.narrativeFictionShape,
+      nonNarrativeShapeReasons: eligibility.nonNarrativeShapeReasons,
+      adultOrCrossoverShapeReasons: eligibility.adultOrCrossoverShapeReasons,
+      avoidSignalPenalty: Number(candidate.scoreBreakdown?.avoidSignalPenalty || 0),
+      routeOverlapSignals,
+      finalEligibilityAllowed: eligibility.allowed,
+      rejectionReason: eligibility.allowed ? (selectedCandidate ? "selected" : finalRankingReasonByTitle[candidate.title]) : eligibility.reason || "teen_openlibrary_no_meaningful_metadata_taste",
+      selectionRejectionReasons: candidate.rejectedReasons.filter((reason) => reason !== "selected"),
+      rejectionCategory,
+    });
+    if (!selectedCandidate) teenOpenLibraryFinalRejectionHistogram[rejectionCategory] = Number(teenOpenLibraryFinalRejectionHistogram[rejectionCategory] || 0) + 1;
     candidate.diagnostics.teenOpenLibraryFinalEligibilityAllowed = eligibility.allowed;
     candidate.diagnostics.teenOpenLibraryFinalEligibilityReason = teenOpenLibraryEligibilityReasonByTitle[candidate.title];
     candidate.diagnostics.teenOpenLibraryNonTitleTasteSignals = eligibility.nonTitleSignals;
@@ -4456,6 +4499,8 @@ function addTeenOpenLibrarySelectionObservability(rankedCandidates: ScoredCandid
   );
   diagnostics.finalScoreComponentsByTitle = finalScoreComponentsByTitle;
   diagnostics.finalRankingReasonByTitle = finalRankingReasonByTitle;
+  diagnostics.teenOpenLibraryFinalRejectionAudit = teenOpenLibraryFinalRejectionAudit;
+  diagnostics.teenOpenLibraryFinalRejectionHistogram = teenOpenLibraryFinalRejectionHistogram;
   diagnostics.finalEligibilityGateApplied = true;
 }
 

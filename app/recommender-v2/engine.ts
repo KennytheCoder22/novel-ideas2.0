@@ -119,6 +119,12 @@ function mergeSourceItems(primary: unknown[], recovery: unknown[]): unknown[] {
   return Array.from(byKey.values());
 }
 
+// Diagnostics-only entry point for controlled retrieval-composition audits.
+// Production recommendation flows continue to call mergeSourceItems directly.
+export function mergeOpenLibrarySourceItemsForDiagnostics(groups: unknown[][]): unknown[] {
+  return groups.reduce((merged, group) => mergeSourceItems(merged, group), [] as unknown[]);
+}
+
 function uniqueStrings(values: unknown[], limit = 80): string[] {
   const seen = new Set<string>();
   const strings: string[] = [];
