@@ -117,12 +117,12 @@ async function main() {
   assertEqual(swipeDeckSource.includes("finalEligibilityCleanCandidateCount: finalEligibilityCleanCandidateCountForReport"), true, "v2 wrapper should export final eligibility count from selected V2 items");
   console.log(JSON.stringify({ name: "router returned-items audit exposes actual return-path lineage", pass: true }));
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
-  const { runRecommenderV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/engine.js`).href);
+  const { applyOpenLibraryPerQueryFinalLineage, runRecommenderV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/engine.js`).href);
   const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);
   const { selectRecommendations } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/select.js`).href);
   const { scoreCandidates } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/score.js`).href);
   const { normalizeSourceResults } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/normalize.js`).href);
-  const { buildOpenLibraryQueryPlansForRegression, openLibrarySourceAdapter } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibrarySource.js`).href);
+  const { applyOpenLibraryPerQuerySourceLineage, buildOpenLibraryQueryPlansForRegression, openLibrarySourceAdapter } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibrarySource.js`).href);
   const { openLibraryProfileForAgeBand } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibraryProfiles.js`).href);
   const adultProfile = openLibraryProfileForAgeBand("adult");
   assertEqual(adultProfile.lockedBaseline, true, "adult Open Library profile should be locked");
@@ -131,7 +131,142 @@ async function main() {
   assertEqual(middleGradesProfile.lockedBaseline, true, "middle grades Open Library profile should now be locked");
   assertEqual(middleGradesProfile.behaviorLabel, "middle_grades_openlibrary_locked_baseline", "middle grades Open Library profile should expose locked label");
   const teenProfile = openLibraryProfileForAgeBand("teens");
+  const lineageFetches = [
+    { query: "teen mystery", queryCascadeIndex: 0, docsReturned: 3, timedOut: false },
+    { query: "teen fantasy", queryCascadeIndex: 1, docsReturned: 2, timedOut: false },
+  ];
+  const lineageAcceptedItems = [
+    { title: "Mystery One", queryText: "teen mystery", queryCascadeIndex: 0 },
+    { title: "Mystery Two", queryText: "teen mystery", queryCascadeIndex: 0 },
+    { title: "Fantasy One", queryText: "teen fantasy", queryCascadeIndex: 1 },
+  ];
+  const lineageMergedItems = [
+    lineageAcceptedItems[0],
+    lineageAcceptedItems[2],
+  ];
+  const acceptedItemsSnapshot = JSON.stringify(lineageAcceptedItems);
+  applyOpenLibraryPerQuerySourceLineage(lineageFetches, lineageAcceptedItems, lineageMergedItems);
+  assertEqual(lineageFetches[0].rawRetrieved, 3, "per-query lineage should preserve raw retrieved count");
+  assertEqual(lineageFetches[0].structuralRejects, 1, "per-query lineage should derive structural rejects from raw minus source-policy accepted");
+  assertEqual(lineageFetches[0].acceptedAfterSourcePolicy, 2, "first query should report source-policy accepted candidates");
+  assertEqual(lineageFetches[0].mergedCandidates, 1, "first query should report merged candidates");
+  assertEqual(lineageFetches[1].acceptedAfterSourcePolicy, 1, "second query should report source-policy accepted candidates");
+  const acceptedAfterSourcePolicyTotal = lineageFetches.reduce((sum, fetch) => sum + Number(fetch.acceptedAfterSourcePolicy || 0), 0);
+  assertEqual(acceptedAfterSourcePolicyTotal, lineageAcceptedItems.length, "per-query source-policy counts should reconcile with aggregate accepted candidates");
+  assertEqual(JSON.stringify(lineageAcceptedItems), acceptedItemsSnapshot, "source-lineage annotation must not mutate candidates");
 
+  const lineageSelected = [
+    fakeScoredCandidate({
+      id: "mystery-one",
+      title: "Mystery One",
+      diagnostics: { queryText: "teen mystery", queryCascadeIndex: 0 },
+    }),
+    fakeScoredCandidate({
+      id: "fantasy-one",
+      title: "Fantasy One",
+      diagnostics: { queryText: "teen fantasy", queryCascadeIndex: 1 },
+    }),
+  ];
+  const selectedSnapshot = JSON.stringify(lineageSelected);
+  const lineageSourceResults = [{
+    source: "openLibrary",
+    status: "succeeded",
+    rawItems: lineageMergedItems,
+    diagnostics: {
+      source: "openLibrary",
+      status: "succeeded",
+      planned: true,
+      attempted: true,
+      timedOut: false,
+      rawCount: lineageMergedItems.length,
+      queries: ["teen mystery", "teen fantasy"],
+      fetches: lineageFetches,
+    },
+  }];
+  applyOpenLibraryPerQueryFinalLineage(lineageSourceResults, lineageSelected);
+  assertEqual(lineageFetches.reduce((sum, fetch) => sum + Number(fetch.mergedCandidates || 0), 0), lineageMergedItems.length, "per-query merged counts should reconcile with aggregate merged candidates");
+  assertEqual(lineageFetches.reduce((sum, fetch) => sum + Number(fetch.finalContribution || 0), 0), lineageSelected.length, "per-query final contribution should reconcile with selected Open Library recommendations");
+  assertEqual(lineageFetches[0].finalContribution, 1, "first query should report final contribution");
+  assertEqual(lineageFetches[1].finalContribution, 1, "second query should report final contribution");
+  assertEqual(JSON.stringify(lineageSelected), selectedSnapshot, "final-lineage annotation must leave recommendation output byte-for-byte unchanged");
+  console.log(JSON.stringify({
+    name: "teen Open Library per-query lineage reconciles without changing recommendations",
+    pass: true,
+    acceptedAfterSourcePolicyTotal,
+    mergedTotal: lineageMergedItems.length,
+    finalContributionTotal: lineageSelected.length,
+  }));
+
+  const originalLineageFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    const docs = Array.from({ length: 6 }, (_, offset) => {
+      const index = offset + 1;
+      return {
+        ...fakeDoc(query, index),
+        key: `/works/teen-lineage-${index}`,
+        title: `Teen Lineage ${index}`,
+        author_name: [`Teen Lineage Author ${index}`],
+        subject: ["Young adult fiction", "Teen", "Fantasy", "Adventure", "School stories"],
+        language: ["eng"],
+        first_publish_year: 2015 + index,
+        description: "A teen hero begins a fantasy adventure with friends at school.",
+      };
+    });
+    docs.push({ ...fakeDoc(query, 99), key: "/works/teen-lineage-missing-title", title: "" });
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "teens",
+      signals: [
+        { action: "like", title: "Teen Fantasy Quest", genres: ["fantasy"], themes: ["adventure", "school", "friendship"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    const perQueryFetches = (result.diagnostics.fetches || []).filter((fetch) => !fetch.diagnosticOnly);
+    const integratedAcceptedTotal = perQueryFetches.reduce((sum, fetch) => sum + Number(fetch.acceptedAfterSourcePolicy || 0), 0);
+    const integratedMergedTotal = perQueryFetches.reduce((sum, fetch) => sum + Number(fetch.mergedCandidates || 0), 0);
+    assertEqual(perQueryFetches.every((fetch) => typeof fetch.acceptedAfterSourcePolicy === "number"), true, "adapter should serialize acceptedAfterSourcePolicy for every attempted Teen query");
+    assertEqual(integratedAcceptedTotal, Number(result.diagnostics.teenOpenLibraryDocsEligibleBeforeHandoffCount || 0), "adapter per-query accepted counts should reconcile with the unchanged aggregate eligible count");
+    assertEqual(integratedMergedTotal, result.rawItems.length, "adapter per-query merged counts should reconcile with the unchanged source result count");
+    assertEqual(result.rawItems.map((item) => item.title).every((title) => /^Teen Lineage/.test(String(title))), true, "lineage bookkeeping must not admit the rejected missing-title row");
+    console.log(JSON.stringify({
+      name: "teen Open Library adapter serializes reconciled per-query lineage",
+      pass: true,
+      queries: perQueryFetches.map((fetch) => fetch.query),
+      integratedAcceptedTotal,
+      integratedMergedTotal,
+    }));
+    const engineResult = await runRecommenderV2({
+      requestId: "teen-openlibrary-query-lineage-regression",
+      ageBand: "teens",
+      limit: 5,
+      enabledSources: { openLibrary: true },
+      signals: [
+        { action: "like", title: "Teen Fantasy Quest", genres: ["fantasy"], themes: ["adventure", "school", "friendship"], format: "book" },
+      ],
+    });
+    const engineSourceDiagnostics = (engineResult.diagnostics.sources || []).find((source) => source.source === "openLibrary") || {};
+    const engineFetches = (engineSourceDiagnostics.fetches || []).filter((fetch) => !fetch.diagnosticOnly);
+    const engineSelectedCount = engineResult.items.filter((item) => item.source === "openLibrary").length;
+    const engineAcceptedTotal = engineFetches.reduce((sum, fetch) => sum + Number(fetch.acceptedAfterSourcePolicy || 0), 0);
+    const engineMergedTotal = engineFetches.reduce((sum, fetch) => sum + Number(fetch.mergedCandidates || 0), 0);
+    const engineFinalTotal = engineFetches.reduce((sum, fetch) => sum + Number(fetch.finalContribution || 0), 0);
+    assertEqual(engineFetches.every((fetch) => typeof fetch.finalContribution === "number"), true, "engine should serialize finalContribution for every attempted Teen query");
+    assertEqual(engineAcceptedTotal, Number(engineSourceDiagnostics.openLibraryDocsEligibleForScoringCount || 0), "engine per-query accepted counts should reconcile with aggregate source-policy acceptance");
+    assertEqual(engineMergedTotal, Number(engineSourceDiagnostics.rawCount || 0), "engine per-query merged counts should reconcile with aggregate merged source rows");
+    assertEqual(engineFinalTotal, engineSelectedCount, "engine per-query final contributions should reconcile with final Teen Open Library recommendations");
+    console.log(JSON.stringify({ name: "teen Open Library engine serializes complete per-query waterfall", pass: true, engineAcceptedTotal, engineMergedTotal, engineFinalTotal }));
+
+  } finally {
+    globalThis.fetch = originalLineageFetch;
+  }
+  if (process.argv.includes("--query-lineage-only")) return;
   const queryOnlyTasteProfile = buildTasteProfile({
     ageBand: "preteens",
     signals: [
@@ -935,6 +1070,14 @@ async function main() {
       }
       if (isolationCase.ageBand !== "adult") {
         assertEqual(Boolean(result.diagnostics.dropReasons?.adult_underfill_recovery_query_attempted), false, `${isolationCase.name} should not run adult underfill recovery outside adults`);
+      }
+      if (isolationCase.ageBand === "teens") {
+        const perQueryFetches = (result.diagnostics.fetches || []).filter((fetch) => !fetch.diagnosticOnly);
+        const perQueryAcceptedTotal = perQueryFetches.reduce((sum, fetch) => sum + Number(fetch.acceptedAfterSourcePolicy || 0), 0);
+        const perQueryMergedTotal = perQueryFetches.reduce((sum, fetch) => sum + Number(fetch.mergedCandidates || 0), 0);
+        assertEqual(perQueryFetches.every((fetch) => typeof fetch.acceptedAfterSourcePolicy === "number"), true, "every attempted Teen query should report acceptedAfterSourcePolicy");
+        assertEqual(perQueryAcceptedTotal, Number(result.diagnostics.teenOpenLibraryDocsEligibleBeforeHandoffCount || 0), "Teen per-query accepted counts should reconcile with the aggregate eligible source count");
+        assertEqual(perQueryMergedTotal, result.rawItems.length, "Teen per-query merged counts should reconcile with source handoff items");
       }
       const illegalQueryPattern = isolationCase.ageBand === "teens"
         ? /children|middle grade/i
