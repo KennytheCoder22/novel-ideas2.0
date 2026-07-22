@@ -52,7 +52,8 @@
     "audit:v2:googlebooks-preteen-maturity-policy-experiment": "node scripts/run-v2-googlebooks-preteen-maturity-policy-experiment.mjs",
     "audit:v2:teen-openlibrary-timeouts": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs",
     "audit:v2:teen-openlibrary-timeout-budget-matrix": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs --budget-matrix",
-    "audit:v2:teen-openlibrary-targeted-retry-experiment": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs --targeted-retry-experiment"
+    "audit:v2:teen-openlibrary-targeted-retry-experiment": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs --targeted-retry-experiment",
+    "audit:v2:teen-openlibrary-counterfactual-impact": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs --counterfactual-impact"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

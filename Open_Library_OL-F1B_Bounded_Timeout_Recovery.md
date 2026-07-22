@@ -8,7 +8,7 @@ No Strategy D promotion is included in this step.
 
 ## What was implemented
 
-A bounded Open Library post-header timeout recovery path was added for Teen Open Library lineage/recovery observability, along with regression plumbing for query-level lineage validation.
+A bounded Open Library first-main-fetch timeout retry path was added for Adult Open Library, along with Teen Open Library lineage/recovery observability and regression plumbing for query-level lineage validation.
 
 The implementation is intentionally bounded:
 
@@ -55,7 +55,8 @@ Command:
 
 Result:
 
-- Passed with the same stable 4/4 retrieval behavior and identical accepted counts per query family listed above.
+- Historical Codex capture reported 4/4 successful rounds for all three constituent queries.
+- Later live reruns can still produce occasional `teen fantasy adventure` per-query timeout events; those runs confirm Teen is not using the new first-run retry gate.
 
 ### Existing Open Library query-lineage regression
 
