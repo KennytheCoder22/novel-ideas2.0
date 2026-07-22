@@ -49,7 +49,8 @@
     "audit:v2:googlebooks-recall-efficiency": "node scripts/run-v2-googlebooks-recall-efficiency-diagnostic.mjs",
     "audit:v2:googlebooks-kids-pre-scoring-rejections": "node scripts/run-v2-googlebooks-kids-k2-pre-scoring-rejection-audit.mjs",
     "audit:v2:googlebooks-preteen-kids-label-mismatch": "node scripts/run-v2-googlebooks-preteen-kids-label-mismatch-audit.mjs",
-    "audit:v2:googlebooks-preteen-maturity-policy-experiment": "node scripts/run-v2-googlebooks-preteen-maturity-policy-experiment.mjs"
+    "audit:v2:googlebooks-preteen-maturity-policy-experiment": "node scripts/run-v2-googlebooks-preteen-maturity-policy-experiment.mjs",
+    "audit:v2:teen-openlibrary-timeouts": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

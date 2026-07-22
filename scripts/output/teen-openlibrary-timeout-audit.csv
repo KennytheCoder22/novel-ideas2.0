@@ -1,0 +1,244 @@
+runId,round,scopeFamily,requiredFamily,profileId,profileLabel,queryText,queryFamily,queryCascadeIndex,attemptNumber,elapsedMs,timedOut,abortOrigin,responseHeadersReceived,bodyCompleted,docsReturned,acceptedAfterSourcePolicy,finalContribution,contributedToFinalSlate,failedReason,lifecycleStage
+fantasy-r1,1,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,1111,false,,true,true,8,2,1,true,,completed
+fantasy-r1,1,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,291,false,,true,true,8,3,1,true,,completed
+fantasy-r1,1,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,657,false,,true,true,8,0,0,false,,completed
+fantasy-r1,1,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,279,false,,true,true,8,4,0,false,,completed
+fantasy-r1,1,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,1148,false,,true,true,8,3,0,false,,completed
+fantasy-r1,1,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,302,false,,true,true,8,2,0,false,,completed
+mystery_thriller-r1,1,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,364,false,,true,true,8,6,5,true,,completed
+horror_paranormal-r1,1,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,1412,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r1,1,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,378,false,,true,true,8,4,0,false,,completed
+speculative_scifi-r1,1,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,504,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r1,1,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,178,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r1,1,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,448,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+contemporary-r1,1,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,208,false,,true,true,8,7,2,true,,completed
+contemporary-r1,1,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,499,false,,true,true,8,4,1,true,,completed
+romance-r1,1,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,341,false,,true,true,8,5,2,true,,completed
+romance-r1,1,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,209,false,,true,true,1,1,0,false,,completed
+adventure_historical-r1,1,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,647,false,,true,true,8,2,0,false,,completed
+adventure_historical-r1,1,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,302,false,,true,true,8,7,3,true,,completed
+adventure_historical-r1,1,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,579,false,,true,true,8,0,0,false,,completed
+adventure_historical-r1,1,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,1183,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+mystery_thriller-r2,2,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,166,false,,true,true,8,6,5,true,,completed
+horror_paranormal-r2,2,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,743,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r2,2,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,1008,false,,true,true,8,4,0,false,,completed
+speculative_scifi-r2,2,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,552,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r2,2,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,487,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r2,2,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,289,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+contemporary-r2,2,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,209,false,,true,true,8,7,2,true,,completed
+contemporary-r2,2,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,269,false,,true,true,8,4,1,true,,completed
+romance-r2,2,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,671,false,,true,true,8,5,2,true,,completed
+romance-r2,2,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,147,false,,true,true,1,1,0,false,,completed
+adventure_historical-r2,2,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,298,false,,true,true,8,2,0,false,,completed
+adventure_historical-r2,2,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,139,false,,true,true,8,7,3,true,,completed
+adventure_historical-r2,2,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,371,false,,true,true,8,0,0,false,,completed
+adventure_historical-r2,2,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,304,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+fantasy-r2,2,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,753,false,,true,true,8,2,1,true,,completed
+fantasy-r2,2,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,481,false,,true,true,8,3,1,true,,completed
+fantasy-r2,2,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,812,false,,true,true,8,0,0,false,,completed
+fantasy-r2,2,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,321,false,,true,true,8,4,0,false,,completed
+fantasy-r2,2,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,401,false,,true,true,8,3,0,false,,completed
+fantasy-r2,2,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,1129,false,,true,true,8,2,0,false,,completed
+horror_paranormal-r3,3,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,371,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r3,3,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,606,false,,true,true,8,4,0,false,,completed
+speculative_scifi-r3,3,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,811,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r3,3,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,550,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r3,3,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,285,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+contemporary-r3,3,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,189,false,,true,true,8,7,2,true,,completed
+contemporary-r3,3,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,886,false,,true,true,8,4,1,true,,completed
+romance-r3,3,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,234,false,,true,true,8,5,2,true,,completed
+romance-r3,3,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,127,false,,true,true,1,1,0,false,,completed
+adventure_historical-r3,3,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,140,false,,true,true,8,2,0,false,,completed
+adventure_historical-r3,3,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,118,false,,true,true,8,7,3,true,,completed
+adventure_historical-r3,3,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,511,false,,true,true,8,0,0,false,,completed
+adventure_historical-r3,3,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,125,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+fantasy-r3,3,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,462,false,,true,true,8,2,1,true,,completed
+fantasy-r3,3,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,187,false,,true,true,8,3,1,true,,completed
+fantasy-r3,3,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,346,false,,true,true,8,0,0,false,,completed
+fantasy-r3,3,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,88,false,,true,true,8,4,0,false,,completed
+fantasy-r3,3,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,196,false,,true,true,8,3,0,false,,completed
+fantasy-r3,3,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,886,false,,true,true,8,2,0,false,,completed
+mystery_thriller-r3,3,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,214,false,,true,true,8,6,5,true,,completed
+speculative_scifi-r4,4,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,231,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r4,4,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,105,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r4,4,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,113,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+contemporary-r4,4,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,634,false,,true,true,8,7,2,true,,completed
+contemporary-r4,4,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,846,false,,true,true,8,4,1,true,,completed
+romance-r4,4,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,446,false,,true,true,8,5,2,true,,completed
+romance-r4,4,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,135,false,,true,true,1,1,0,false,,completed
+adventure_historical-r4,4,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,1045,false,,true,true,8,2,0,false,,completed
+adventure_historical-r4,4,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,227,false,,true,true,8,7,3,true,,completed
+adventure_historical-r4,4,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,984,false,,true,true,8,0,0,false,,completed
+adventure_historical-r4,4,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,119,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+fantasy-r4,4,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,297,false,,true,true,8,2,1,true,,completed
+fantasy-r4,4,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,615,false,,true,true,8,3,1,true,,completed
+fantasy-r4,4,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,1194,false,,true,true,8,0,0,false,,completed
+fantasy-r4,4,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,231,false,,true,true,8,4,0,false,,completed
+fantasy-r4,4,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,592,false,,true,true,8,3,0,false,,completed
+fantasy-r4,4,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,894,false,,true,true,8,2,0,false,,completed
+mystery_thriller-r4,4,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,420,false,,true,true,8,6,5,true,,completed
+horror_paranormal-r4,4,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,261,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r4,4,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,370,false,,true,true,8,4,0,false,,completed
+contemporary-r5,5,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,160,false,,true,true,8,7,2,true,,completed
+contemporary-r5,5,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,563,false,,true,true,8,4,1,true,,completed
+romance-r5,5,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,151,false,,true,true,8,5,2,true,,completed
+romance-r5,5,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,505,false,,true,true,1,1,0,false,,completed
+adventure_historical-r5,5,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,500,false,,true,true,8,2,0,false,,completed
+adventure_historical-r5,5,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,304,false,,true,true,8,7,3,true,,completed
+adventure_historical-r5,5,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,297,false,,true,true,8,0,0,false,,completed
+adventure_historical-r5,5,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,178,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+fantasy-r5,5,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,333,false,,true,true,8,2,1,true,,completed
+fantasy-r5,5,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,233,false,,true,true,8,3,1,true,,completed
+fantasy-r5,5,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,1233,false,,true,true,8,0,0,false,,completed
+fantasy-r5,5,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,82,false,,true,true,8,4,0,false,,completed
+fantasy-r5,5,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,589,false,,true,true,8,3,0,false,,completed
+fantasy-r5,5,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,279,false,,true,true,8,2,0,false,,completed
+mystery_thriller-r5,5,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,182,false,,true,true,8,6,5,true,,completed
+horror_paranormal-r5,5,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,180,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r5,5,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,140,false,,true,true,8,4,0,false,,completed
+speculative_scifi-r5,5,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,147,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r5,5,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,187,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r5,5,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,95,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+romance-r6,6,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,108,false,,true,true,8,5,2,true,,completed
+romance-r6,6,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,85,false,,true,true,1,1,0,false,,completed
+adventure_historical-r6,6,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,150,false,,true,true,8,2,0,false,,completed
+adventure_historical-r6,6,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,159,false,,true,true,8,7,3,true,,completed
+adventure_historical-r6,6,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,313,false,,true,true,8,0,0,false,,completed
+adventure_historical-r6,6,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,138,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+fantasy-r6,6,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,77,false,,true,true,8,2,1,true,,completed
+fantasy-r6,6,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,141,false,,true,true,8,3,1,true,,completed
+fantasy-r6,6,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,367,false,,true,true,8,0,0,false,,completed
+fantasy-r6,6,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,172,false,,true,true,8,4,0,false,,completed
+fantasy-r6,6,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,212,false,,true,true,8,3,0,false,,completed
+fantasy-r6,6,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,1221,false,,true,true,8,2,0,false,,completed
+mystery_thriller-r6,6,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,209,false,,true,true,8,6,5,true,,completed
+horror_paranormal-r6,6,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,133,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r6,6,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,374,false,,true,true,8,4,0,false,,completed
+speculative_scifi-r6,6,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,197,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r6,6,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,137,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r6,6,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,96,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+contemporary-r6,6,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,158,false,,true,true,8,7,2,true,,completed
+contemporary-r6,6,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,178,false,,true,true,8,4,1,true,,completed
+adventure_historical-r7,7,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,401,false,,true,true,8,2,0,false,,completed
+adventure_historical-r7,7,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,156,false,,true,true,8,7,3,true,,completed
+adventure_historical-r7,7,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,477,false,,true,true,8,0,0,false,,completed
+adventure_historical-r7,7,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,109,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+fantasy-r7,7,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,194,false,,true,true,8,2,1,true,,completed
+fantasy-r7,7,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,371,false,,true,true,8,3,1,true,,completed
+fantasy-r7,7,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,593,false,,true,true,8,0,0,false,,completed
+fantasy-r7,7,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,182,false,,true,true,8,4,0,false,,completed
+fantasy-r7,7,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,290,false,,true,true,8,3,0,false,,completed
+fantasy-r7,7,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,304,false,,true,true,8,2,0,false,,completed
+mystery_thriller-r7,7,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,158,false,,true,true,8,6,5,true,,completed
+horror_paranormal-r7,7,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,318,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r7,7,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,429,false,,true,true,8,4,0,false,,completed
+speculative_scifi-r7,7,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,255,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r7,7,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,175,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r7,7,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,131,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+contemporary-r7,7,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,189,false,,true,true,8,7,2,true,,completed
+contemporary-r7,7,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,296,false,,true,true,8,4,1,true,,completed
+romance-r7,7,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,821,false,,true,true,8,5,2,true,,completed
+romance-r7,7,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,100,false,,true,true,1,1,0,false,,completed
+fantasy-r8,8,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,72,false,,true,true,8,2,1,true,,completed
+fantasy-r8,8,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,351,false,,true,true,8,3,1,true,,completed
+fantasy-r8,8,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,382,false,,true,true,8,0,0,false,,completed
+fantasy-r8,8,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,61,false,,true,true,8,4,0,false,,completed
+fantasy-r8,8,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,181,false,,true,true,8,3,0,false,,completed
+fantasy-r8,8,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,202,false,,true,true,8,2,0,false,,completed
+mystery_thriller-r8,8,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,2020,true,local_timeout,false,false,0,0,0,false,per_query_timeout,pre_headers
+mystery_thriller-r8,8,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,young adult mystery,mystery_thriller,1,1,299,false,,true,true,8,4,1,true,,completed
+mystery_thriller-r8,8,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,psychological mystery,mystery_thriller,2,1,908,false,,true,true,8,1,0,false,,completed
+mystery_thriller-r8,8,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,young adult mystery thriller,mystery_thriller,3,1,2012,true,local_timeout,false,false,0,0,0,false,per_query_timeout,pre_headers
+horror_paranormal-r8,8,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,2010,true,local_timeout,false,false,0,0,0,false,per_query_timeout,pre_headers
+horror_paranormal-r8,8,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,971,false,,true,true,8,4,0,false,,completed
+horror_paranormal-r8,8,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,psychological mystery,mystery_thriller,2,1,841,false,,true,true,8,1,0,false,,completed
+speculative_scifi-r8,8,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,2013,true,local_timeout,false,false,0,0,0,false,per_query_timeout,pre_headers
+speculative_scifi-r8,8,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,297,false,,true,true,0,0,0,false,,completed
+contemporary-r8,8,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,418,false,,true,true,8,7,2,true,,completed
+contemporary-r8,8,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,354,false,,true,true,8,4,1,true,,completed
+romance-r8,8,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,293,false,,true,true,8,5,2,true,,completed
+romance-r8,8,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,100,false,,true,true,1,1,0,false,,completed
+adventure_historical-r8,8,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,189,false,,true,true,8,2,0,false,,completed
+adventure_historical-r8,8,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,170,false,,true,true,8,7,3,true,,completed
+adventure_historical-r8,8,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,1903,false,,true,true,8,0,0,false,,completed
+adventure_historical-r8,8,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,235,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+mystery_thriller-r9,9,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,476,false,,true,true,8,6,5,true,,completed
+horror_paranormal-r9,9,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,121,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r9,9,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,1604,false,,true,true,8,4,0,false,,completed
+speculative_scifi-r9,9,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,316,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r9,9,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,179,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r9,9,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,137,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+contemporary-r9,9,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,554,false,,true,true,8,7,2,true,,completed
+contemporary-r9,9,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,2008,true,local_timeout,false,false,0,0,0,false,per_query_timeout,pre_headers
+romance-r9,9,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,398,false,,true,true,8,5,2,true,,completed
+romance-r9,9,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,682,false,,true,true,1,1,0,false,,completed
+adventure_historical-r9,9,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,365,false,,true,true,8,2,0,false,,completed
+adventure_historical-r9,9,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,219,false,,true,true,8,7,3,true,,completed
+adventure_historical-r9,9,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,1579,false,,true,true,8,0,0,false,,completed
+adventure_historical-r9,9,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,160,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+fantasy-r9,9,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,133,false,,true,true,8,2,1,true,,completed
+fantasy-r9,9,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,567,false,,true,true,8,3,1,true,,completed
+fantasy-r9,9,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,766,false,,true,true,8,0,0,false,,completed
+fantasy-r9,9,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,120,false,,true,true,8,4,0,false,,completed
+fantasy-r9,9,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,1215,false,,true,true,8,3,0,false,,completed
+fantasy-r9,9,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,595,false,,true,true,8,2,0,false,,completed
+horror_paranormal-r10,10,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,262,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r10,10,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,309,false,,true,true,8,4,0,false,,completed
+speculative_scifi-r10,10,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,193,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r10,10,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,180,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r10,10,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,290,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+contemporary-r10,10,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,232,false,,true,true,8,7,2,true,,completed
+contemporary-r10,10,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,237,false,,true,true,8,4,1,true,,completed
+romance-r10,10,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,842,false,,true,true,8,5,2,true,,completed
+romance-r10,10,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,71,false,,true,true,1,1,0,false,,completed
+adventure_historical-r10,10,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,197,false,,true,true,8,2,0,false,,completed
+adventure_historical-r10,10,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,98,false,,true,true,8,7,3,true,,completed
+adventure_historical-r10,10,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,726,false,,true,true,8,0,0,false,,completed
+adventure_historical-r10,10,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,282,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+fantasy-r10,10,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,995,false,,true,true,8,2,1,true,,completed
+fantasy-r10,10,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,218,false,,true,true,8,3,1,true,,completed
+fantasy-r10,10,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,1494,false,,true,true,8,0,0,false,,completed
+fantasy-r10,10,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,115,false,,true,true,8,4,0,false,,completed
+fantasy-r10,10,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,679,false,,true,true,8,3,0,false,,completed
+fantasy-r10,10,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,446,false,,true,true,8,2,0,false,,completed
+mystery_thriller-r10,10,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,395,false,,true,true,8,6,5,true,,completed
+speculative_scifi-r11,11,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,1805,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r11,11,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,297,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r11,11,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,101,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+contemporary-r11,11,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,95,false,,true,true,8,7,2,true,,completed
+contemporary-r11,11,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,562,false,,true,true,8,4,1,true,,completed
+romance-r11,11,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,948,false,,true,true,8,5,2,true,,completed
+romance-r11,11,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,494,false,,true,true,1,1,0,false,,completed
+adventure_historical-r11,11,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,684,false,,true,true,8,2,0,false,,completed
+adventure_historical-r11,11,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,148,false,,true,true,8,7,3,true,,completed
+adventure_historical-r11,11,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,313,false,,true,true,8,0,0,false,,completed
+adventure_historical-r11,11,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,134,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+fantasy-r11,11,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,839,false,,true,true,8,2,1,true,,completed
+fantasy-r11,11,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,402,false,,true,true,8,3,1,true,,completed
+fantasy-r11,11,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,1089,false,,true,true,8,0,0,false,,completed
+fantasy-r11,11,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,94,false,,true,true,8,4,0,false,,completed
+fantasy-r11,11,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,502,false,,true,true,8,3,0,false,,completed
+fantasy-r11,11,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,532,false,,true,true,8,2,0,false,,completed
+mystery_thriller-r11,11,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,650,false,,true,true,8,6,5,true,,completed
+horror_paranormal-r11,11,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,195,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r11,11,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,174,false,,true,true,8,4,0,false,,completed
+contemporary-r12,12,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,teen realistic fiction,contemporary_drama,0,1,271,false,,true,true,8,7,2,true,,completed
+contemporary-r12,12,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,young adult contemporary romance,contemporary_drama,1,1,157,false,,true,true,8,4,1,true,,completed
+romance-r12,12,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,young adult romance,romance_historical,0,1,845,false,,true,true,8,5,2,true,,completed
+romance-r12,12,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,romance general cute fun,romance_historical,1,1,92,false,,true,true,1,1,0,false,,completed
+adventure_historical-r12,12,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen historical fiction,romance_historical,0,1,124,false,,true,true,8,2,0,false,,completed
+adventure_historical-r12,12,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,teen realistic fiction,contemporary_drama,1,1,97,false,,true,true,8,7,3,true,,completed
+adventure_historical-r12,12,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult historical adventure,adventure,2,1,612,false,,true,true,8,0,0,false,,completed
+adventure_historical-r12,12,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,young adult fantasy,emergency_fallback,1,1,153,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
+fantasy-r12,12,fantasy,fantasy,fantasy-high-epic,High epic fantasy,fantasy school,fantasy,0,1,1051,false,,true,true,8,2,1,true,,completed
+fantasy-r12,12,fantasy,fantasy,fantasy-high-epic,High epic fantasy,science fiction dystopian,speculative,1,1,168,false,,true,true,8,3,1,true,,completed
+fantasy-r12,12,fantasy,fantasy,fantasy-high-epic,High epic fantasy,action adventure,adventure,2,1,250,false,,true,true,8,0,0,false,,completed
+fantasy-r12,12,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy,fantasy,3,1,477,false,,true,true,8,4,0,false,,completed
+fantasy-r12,12,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult contemporary fantasy,contemporary_drama,4,1,561,false,,true,true,8,3,0,false,,completed
+fantasy-r12,12,fantasy,fantasy,fantasy-high-epic,High epic fantasy,young adult fantasy adventure,fantasy,6,1,210,false,,true,true,8,2,0,false,,completed
+mystery_thriller-r12,12,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,teen mystery thriller,mystery_thriller,0,1,309,false,,true,true,8,6,5,true,,completed
+horror_paranormal-r12,12,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult horror,horror_paranormal,0,1,741,false,,true,true,8,4,3,true,,completed
+horror_paranormal-r12,12,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,young adult mystery,mystery_thriller,1,1,233,false,,true,true,8,4,0,false,,completed
+speculative_scifi-r12,12,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventure,speculative,0,1,809,false,,true,true,8,0,0,false,,completed
+speculative_scifi-r12,12,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,science fiction adventurous fast-paced alien war,speculative,1,1,435,false,,true,true,0,0,0,false,,completed
+speculative_scifi-r12,12,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,young adult fantasy,emergency_fallback,2,1,104,false,,true,true,8,0,0,false,emergency_fallback_probe_returned_docs,completed
