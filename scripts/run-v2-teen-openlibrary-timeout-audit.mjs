@@ -37,6 +37,7 @@ const outDir = resolve(scriptDir, "output");
 const roundsArg = process.argv.find((arg) => arg.startsWith("--rounds="));
 const rounds = Math.max(1, Number.parseInt((roundsArg || "--rounds=12").split("=")[1], 10) || 12);
 const budgetMatrixMode = process.argv.includes("--budget-matrix");
+const targetedRetryExperimentMode = process.argv.includes("--targeted-retry-experiment");
 const limit = 5;
 
 const { runRecommenderV2 } = require(resolve(repoRoot, "app/recommender-v2/engine.ts"));
@@ -89,6 +90,17 @@ function lifecycleStage(fetch) {
   if (!fetch.responseHeadersReceived) return "pre_headers";
   if (!fetch.bodyCompleted) return "headers_received_body_incomplete";
   return "post_body_completion";
+}
+
+function parseQueryFromRequestUrl(requestUrl) {
+  try {
+    const parsed = requestUrl.startsWith("http")
+      ? new URL(requestUrl)
+      : new URL(requestUrl, "https://local.invalid");
+    return String(parsed.searchParams.get("q") || "").trim();
+  } catch {
+    return "";
+  }
 }
 
 const aggregateBy = (items, keyFn) => {
@@ -171,6 +183,7 @@ async function runOneAuditAttempt({ scenario, familyCase, round }) {
       profileId: familyCase.profile.id,
       profileLabel: familyCase.profile.label,
       queryText: String(fetch.query || ""),
+      requestUrl: String(fetch.requestUrl || ""),
       queryFamily: String(fetch.queryFamily || "unknown"),
       queryCascadeIndex: Number.isFinite(Number(fetch.queryCascadeIndex)) ? Number(fetch.queryCascadeIndex) : -1,
       attemptNumber: toNumber(fetch.attemptNumber, 1),
@@ -282,9 +295,361 @@ function summarizeScenario(records, runSummaries) {
   };
 }
 
+async function runTargetedRetryExperiment() {
+  const scenario = { budgetLabel: "production", timeoutDeltaMs: 0 };
+  const rows = [];
+  const retryEvents = [];
+  const runErrors = [];
+  console.log(`Running Teen Open Library targeted retry experiment: ${rounds} rounds x ${cases.length} families`);
+  for (let round = 1; round <= rounds; round += 1) {
+    const orderOffset = (round - 1) % cases.length;
+    const roundCases = [...cases.slice(orderOffset), ...cases.slice(0, orderOffset)];
+    console.log(`Round ${round}/${rounds}`);
+    for (const familyCase of roundCases) {
+      const controlId = `control-${familyCase.scopeFamily}-r${round}`;
+      const experimentalId = `experimental-${familyCase.scopeFamily}-r${round}`;
+      let controlRun;
+      try {
+        controlRun = await runOneAuditAttempt({ scenario, familyCase, round });
+      } catch (error) {
+        runErrors.push({
+          runId: controlId,
+          round,
+          scopeFamily: familyCase.scopeFamily,
+          profileId: familyCase.profile.id,
+          mode: "control",
+          error: String(error?.message || error || "unknown_error"),
+        });
+        process.stdout.write(`  ${familyCase.scopeFamily}: control ERROR (${String(error?.message || error)})\n`);
+        continue;
+      }
+
+      const controlEligible = controlRun.records.filter((row) =>
+        row.timedOut
+        && row.attemptNumber === 1
+        && row.abortOrigin === "local_timeout"
+        && !row.responseHeadersReceived
+        && !row.bodyCompleted,
+      );
+      const controlEligibleCount = controlEligible.length;
+
+      const originalFetch = globalThis.fetch;
+      const retriedRequestKeys = new Set();
+      const retryProbeEvents = [];
+      globalThis.fetch = async (url, options = {}) => {
+        const requestUrl = String(url || "");
+        const requestStart = Date.now();
+        try {
+          return await originalFetch(url, options);
+        } catch (firstError) {
+          const signal = options?.signal;
+          const isOpenLibraryRequest = /openlibrary/i.test(requestUrl);
+          const isEligibleTimeout = Boolean(
+            isOpenLibraryRequest
+            && signal?.aborted
+            && signal?.reason === "per_query_timeout",
+          );
+          const retryKey = `${requestUrl}::${parseQueryFromRequestUrl(requestUrl)}`;
+          if (!isEligibleTimeout || retriedRequestKeys.has(retryKey)) throw firstError;
+          retriedRequestKeys.add(retryKey);
+          const firstElapsedMs = Date.now() - requestStart;
+          const retryTimeoutMs = Math.max(250, Math.round(firstElapsedMs));
+          const retryController = new AbortController();
+          const retryTimer = setTimeout(() => retryController.abort("per_query_timeout_retry"), retryTimeoutMs);
+          const retryEvent = {
+            runId: experimentalId,
+            round,
+            scopeFamily: familyCase.scopeFamily,
+            requiredFamily: familyCase.requiredFamily,
+            profileId: familyCase.profile.id,
+            queryText: parseQueryFromRequestUrl(requestUrl),
+            requestUrl,
+            firstAttemptTimedOut: true,
+            firstAttemptElapsedMs: firstElapsedMs,
+            retryAttempted: true,
+            retryTimeoutMs,
+            retrySucceeded: false,
+            retryElapsedMs: 0,
+            retryHttpStatus: 0,
+            retryError: "",
+          };
+          try {
+            const retryStartedAt = Date.now();
+            const retryResponse = await originalFetch(url, { ...options, signal: retryController.signal });
+            retryEvent.retryElapsedMs = Date.now() - retryStartedAt;
+            retryEvent.retryHttpStatus = Number(retryResponse?.status || 0);
+            retryEvent.retrySucceeded = Boolean(retryResponse?.ok);
+            retryProbeEvents.push(retryEvent);
+            if (retryResponse?.ok) return retryResponse;
+            throw firstError;
+          } catch (retryError) {
+            retryEvent.retryElapsedMs = retryEvent.retryElapsedMs || retryTimeoutMs;
+            retryEvent.retryError = String(retryError?.message || retryError || "retry_failed");
+            retryProbeEvents.push(retryEvent);
+            throw firstError;
+          } finally {
+            clearTimeout(retryTimer);
+          }
+        }
+      };
+
+      let experimentalRun;
+      try {
+        experimentalRun = await runOneAuditAttempt({ scenario: { ...scenario, budgetLabel: "experimental_retry" }, familyCase, round });
+      } catch (error) {
+        runErrors.push({
+          runId: experimentalId,
+          round,
+          scopeFamily: familyCase.scopeFamily,
+          profileId: familyCase.profile.id,
+          mode: "experimental",
+          error: String(error?.message || error || "unknown_error"),
+        });
+        process.stdout.write(`  ${familyCase.scopeFamily}: experimental ERROR (${String(error?.message || error)})\n`);
+        globalThis.fetch = originalFetch;
+        continue;
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+
+      const controlElapsed = Number(controlRun.runSummary.elapsedRunMs || 0);
+      const experimentalElapsed = Number(experimentalRun.runSummary.elapsedRunMs || 0);
+      const addedWallClockMs = experimentalElapsed - controlElapsed;
+      const controlWindowSlowdown = controlEligibleCount >= 2;
+      const experimentalWindowSlowdown = retryProbeEvents.length >= 2;
+      const slowdownWindowObserved = controlWindowSlowdown || experimentalWindowSlowdown;
+
+      const experimentalFetchesByQuery = aggregateBy(experimentalRun.records, (row) => row.queryText.toLowerCase());
+      for (const event of retryProbeEvents) {
+        const queryKey = String(event.queryText || "").toLowerCase();
+        const matchingGroup = experimentalFetchesByQuery.find((entry) => entry.key === queryKey)?.group || [];
+        const firstNonTimeout = matchingGroup.find((row) => !row.timedOut);
+        const recoveredRawDocs = toNumber(firstNonTimeout?.docsReturned, 0);
+        const recoveredAccepted = toNumber(firstNonTimeout?.acceptedAfterSourcePolicy, 0);
+        const recoveredFinalContribution = toNumber(firstNonTimeout?.finalContribution, 0);
+        retryEvents.push({
+          ...event,
+          queryFamily: String(firstNonTimeout?.queryFamily || "unknown"),
+          queryCascadeIndex: Number.isFinite(Number(firstNonTimeout?.queryCascadeIndex)) ? Number(firstNonTimeout?.queryCascadeIndex) : -1,
+          recoveredRawDocs,
+          recoveredAcceptedAfterSourcePolicy: recoveredAccepted,
+          recoveredFinalContribution,
+          slowdownWindowObserved,
+          controlEligibleTimeoutCountInRun: controlEligibleCount,
+          experimentalRetryCountInRun: retryProbeEvents.length,
+        });
+      }
+
+      const recoveredRawDocsRun = retryEvents
+        .filter((row) => row.runId === experimentalId && row.retrySucceeded)
+        .reduce((sum, row) => sum + Number(row.recoveredRawDocs || 0), 0);
+      const recoveredAcceptedRun = retryEvents
+        .filter((row) => row.runId === experimentalId && row.retrySucceeded)
+        .reduce((sum, row) => sum + Number(row.recoveredAcceptedAfterSourcePolicy || 0), 0);
+      const recoveredFinalContributionRun = retryEvents
+        .filter((row) => row.runId === experimentalId && row.retrySucceeded)
+        .reduce((sum, row) => sum + Number(row.recoveredFinalContribution || 0), 0);
+
+      rows.push({
+        round,
+        scopeFamily: familyCase.scopeFamily,
+        requiredFamily: familyCase.requiredFamily,
+        profileId: familyCase.profile.id,
+        profileLabel: familyCase.profile.label,
+        controlRunId: controlId,
+        experimentalRunId: experimentalId,
+        controlElapsedMs: controlElapsed,
+        experimentalElapsedMs: experimentalElapsed,
+        addedWallClockMs,
+        controlEligibleTimeoutCount: controlEligibleCount,
+        retryAttemptCount: retryProbeEvents.length,
+        retrySuccessCount: retryProbeEvents.filter((row) => row.retrySucceeded).length,
+        recoveredRawDocs: recoveredRawDocsRun,
+        recoveredAcceptedAfterSourcePolicy: recoveredAcceptedRun,
+        recoveredFinalContribution: recoveredFinalContributionRun,
+        slowdownWindowObserved,
+      });
+      process.stdout.write(
+        `  ${familyCase.scopeFamily}: controlTimeouts=${controlEligibleCount} retries=${retryProbeEvents.length} retrySuccess=${retryProbeEvents.filter((row) => row.retrySucceeded).length} addedMs=${addedWallClockMs}\n`,
+      );
+    }
+  }
+
+  const firstAttemptTimeoutCount = rows.reduce((sum, row) => sum + Number(row.controlEligibleTimeoutCount || 0), 0);
+  const retryAttemptCount = rows.reduce((sum, row) => sum + Number(row.retryAttemptCount || 0), 0);
+  const retrySuccessCount = rows.reduce((sum, row) => sum + Number(row.retrySuccessCount || 0), 0);
+  const recoveredRawDocs = rows.reduce((sum, row) => sum + Number(row.recoveredRawDocs || 0), 0);
+  const recoveredAcceptedAfterSourcePolicy = rows.reduce((sum, row) => sum + Number(row.recoveredAcceptedAfterSourcePolicy || 0), 0);
+  const recoveredFinalContribution = rows.reduce((sum, row) => sum + Number(row.recoveredFinalContribution || 0), 0);
+  const addedWallClockMs = rows.reduce((sum, row) => sum + Number(row.addedWallClockMs || 0), 0);
+  const addedWallClockSeconds = addedWallClockMs / 1000;
+  const recoveredAcceptedPerAdditionalSecond = addedWallClockSeconds > 0
+    ? recoveredAcceptedAfterSourcePolicy / addedWallClockSeconds
+    : null;
+
+  const retrySuccessByFamily = aggregateBy(retryEvents, (row) => row.scopeFamily).map(({ key, group }) => ({
+    scopeFamily: key,
+    attempts: group.length,
+    successes: group.filter((row) => row.retrySucceeded).length,
+    successRate: group.length ? group.filter((row) => row.retrySucceeded).length / group.length : 0,
+    recoveredAcceptedAfterSourcePolicy: group.reduce((sum, row) => sum + Number(row.recoveredAcceptedAfterSourcePolicy || 0), 0),
+  })).sort((a, b) => b.successRate - a.successRate || b.successes - a.successes);
+
+  const retrySuccessByWording = aggregateBy(retryEvents, (row) => row.queryText.toLowerCase()).map(({ key, group }) => ({
+    queryText: key,
+    attempts: group.length,
+    successes: group.filter((row) => row.retrySucceeded).length,
+    successRate: group.length ? group.filter((row) => row.retrySucceeded).length / group.length : 0,
+    families: [...new Set(group.map((row) => row.scopeFamily))],
+  })).sort((a, b) => b.successRate - a.successRate || b.successes - a.successes);
+
+  const retrySuccessByCascadeIndex = aggregateBy(retryEvents, (row) => String(row.queryCascadeIndex)).map(({ key, group }) => ({
+    queryCascadeIndex: Number(key),
+    attempts: group.length,
+    successes: group.filter((row) => row.retrySucceeded).length,
+    successRate: group.length ? group.filter((row) => row.retrySucceeded).length / group.length : 0,
+  })).sort((a, b) => a.queryCascadeIndex - b.queryCascadeIndex);
+
+  const slowdownWindowSummary = {
+    runsWithSlowdownWindow: rows.filter((row) => row.slowdownWindowObserved).length,
+    retryAttemptsInSlowdownWindow: retryEvents.filter((row) => row.slowdownWindowObserved).length,
+    retrySuccessesInSlowdownWindow: retryEvents.filter((row) => row.slowdownWindowObserved && row.retrySucceeded).length,
+    retryAttemptsOutsideSlowdownWindow: retryEvents.filter((row) => !row.slowdownWindowObserved).length,
+    retrySuccessesOutsideSlowdownWindow: retryEvents.filter((row) => !row.slowdownWindowObserved && row.retrySucceeded).length,
+  };
+
+  mkdirSync(outDir, { recursive: true });
+  const outputPrefix = "teen-openlibrary-targeted-retry-experiment";
+  const jsonOut = resolve(outDir, `${outputPrefix}.json`);
+  const csvOut = resolve(outDir, `${outputPrefix}.csv`);
+  const summaryOut = resolve(outDir, `${outputPrefix}-summary.txt`);
+
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    mode: "targeted_retry_experiment",
+    rounds,
+    limit,
+    familyCases: cases.map((item) => ({
+      scopeFamily: item.scopeFamily,
+      requiredFamily: item.requiredFamily,
+      profileId: item.profile.id,
+      profileLabel: item.profile.label,
+    })),
+    totals: {
+      firstAttemptTimeoutCount,
+      retryAttemptCount,
+      retrySuccessCount,
+      retrySuccessRate: retryAttemptCount ? retrySuccessCount / retryAttemptCount : 0,
+      recoveredRawDocs,
+      recoveredAcceptedAfterSourcePolicy,
+      recoveredFinalContribution,
+      addedWallClockMs,
+      recoveredAcceptedPerAdditionalSecond,
+      recoveredAcceptedPerAdditionalSecondLabel: addedWallClockSeconds > 0
+        ? recoveredAcceptedPerAdditionalSecond.toFixed(3)
+        : recoveredAcceptedAfterSourcePolicy > 0
+          ? "non_positive_additional_cost"
+          : "not_applicable",
+    },
+    retrySuccessByFamily,
+    retrySuccessByWording,
+    retrySuccessByCascadeIndex,
+    slowdownWindowSummary,
+    runErrors,
+    rows,
+    retryEvents,
+  };
+  writeFileSync(jsonOut, JSON.stringify(payload, null, 2));
+
+  const csvHeader = [
+    "round",
+    "scopeFamily",
+    "requiredFamily",
+    "profileId",
+    "profileLabel",
+    "controlRunId",
+    "experimentalRunId",
+    "controlElapsedMs",
+    "experimentalElapsedMs",
+    "addedWallClockMs",
+    "controlEligibleTimeoutCount",
+    "retryAttemptCount",
+    "retrySuccessCount",
+    "recoveredRawDocs",
+    "recoveredAcceptedAfterSourcePolicy",
+    "recoveredFinalContribution",
+    "slowdownWindowObserved",
+  ].join(",");
+  const csvRows = rows.map((row) => [
+    row.round,
+    row.scopeFamily,
+    row.requiredFamily,
+    row.profileId,
+    csvEscape(row.profileLabel),
+    row.controlRunId,
+    row.experimentalRunId,
+    row.controlElapsedMs,
+    row.experimentalElapsedMs,
+    row.addedWallClockMs,
+    row.controlEligibleTimeoutCount,
+    row.retryAttemptCount,
+    row.retrySuccessCount,
+    row.recoveredRawDocs,
+    row.recoveredAcceptedAfterSourcePolicy,
+    row.recoveredFinalContribution,
+    row.slowdownWindowObserved,
+  ].join(","));
+  writeFileSync(csvOut, `${csvHeader}\n${csvRows.join("\n")}\n`);
+
+  const summaryLines = [
+    "═══════════════════════════════════════════════════════════════════",
+    " OL-F2 Phase 3 — Teen targeted retry experiment",
+    "═══════════════════════════════════════════════════════════════════",
+    "",
+    `Rounds run ........................ ${rounds}`,
+    `Family cases ...................... ${cases.length}`,
+    `Runs completed .................... ${rows.length}`,
+    `Errors ............................ ${runErrors.length}`,
+    "",
+    "── Control vs experimental totals ───────────────────────────────",
+    `First-attempt timeout count ....... ${firstAttemptTimeoutCount}`,
+    `Retry-attempt count ............... ${retryAttemptCount}`,
+    `Retry-success count ............... ${retrySuccessCount}`,
+    `Retry-success rate ................ ${(100 * (retryAttemptCount ? retrySuccessCount / retryAttemptCount : 0)).toFixed(1)}%`,
+    `Recovered raw docs ................ ${recoveredRawDocs}`,
+    `Recovered accepted candidates ..... ${recoveredAcceptedAfterSourcePolicy}`,
+    `Recovered final contributions ..... ${recoveredFinalContribution}`,
+    `Added wall-clock ms ............... ${Math.round(addedWallClockMs)}`,
+    `Recovered accepted / addl second .. ${addedWallClockSeconds > 0 ? recoveredAcceptedPerAdditionalSecond.toFixed(3) : (recoveredAcceptedAfterSourcePolicy > 0 ? "non_positive_additional_cost" : "not_applicable")}`,
+    "",
+    "── Retry success by family ──────────────────────────────────────",
+    ...retrySuccessByFamily.map((row) => `  ${row.scopeFamily.padEnd(24)} attempts=${String(row.attempts).padStart(3)} successes=${String(row.successes).padStart(3)} rate=${(100 * row.successRate).toFixed(1)}%`),
+    "",
+    "── Retry success by cascade index ───────────────────────────────",
+    ...retrySuccessByCascadeIndex.map((row) => `  cascadeIndex=${String(row.queryCascadeIndex).padStart(2)} attempts=${String(row.attempts).padStart(3)} successes=${String(row.successes).padStart(3)} rate=${(100 * row.successRate).toFixed(1)}%`),
+    "",
+    "── Slowdown window check ────────────────────────────────────────",
+    `Runs with multi-timeout window ..... ${slowdownWindowSummary.runsWithSlowdownWindow}`,
+    `Retry attempts in slowdown window .. ${slowdownWindowSummary.retryAttemptsInSlowdownWindow}`,
+    `Retry successes in slowdown window . ${slowdownWindowSummary.retrySuccessesInSlowdownWindow}`,
+    `Retry attempts outside window ...... ${slowdownWindowSummary.retryAttemptsOutsideSlowdownWindow}`,
+    `Retry successes outside window ..... ${slowdownWindowSummary.retrySuccessesOutsideSlowdownWindow}`,
+    "",
+    `JSON:    ${jsonOut}`,
+    `CSV:     ${csvOut}`,
+  ];
+  writeFileSync(summaryOut, `${summaryLines.join("\n")}\n`);
+  console.log(`Audit complete:\n  ${jsonOut}\n  ${csvOut}\n  ${summaryOut}`);
+}
+
 const records = [];
 const runSummaries = [];
 const runErrors = [];
+
+if (targetedRetryExperimentMode) {
+  await runTargetedRetryExperiment();
+  process.exit(0);
+}
 
 console.log(
   budgetMatrixMode
