@@ -497,7 +497,11 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   const openLibraryMetadataOnlyEvidence = candidate.source === "openLibrary"
     && (profile.ageBand === "preteens" || profile.ageBand === "teens" || profile.ageBand === "adult");
   const adultGoogleBooksMetadataOnlyEvidence = candidate.source === "googleBooks" && profile.ageBand === "adult";
-  const text = openLibraryMetadataOnlyEvidence || adultGoogleBooksMetadataOnlyEvidence ? metadataText : candidateText(candidate);
+  const adultKitsuMetadataOnlyEvidence = candidate.source === "kitsu" && profile.ageBand === "adult";
+  const adultComicVineMetadataOnlyEvidence = candidate.source === "comicVine" && profile.ageBand === "adult";
+  const text = openLibraryMetadataOnlyEvidence || adultGoogleBooksMetadataOnlyEvidence || adultKitsuMetadataOnlyEvidence || adultComicVineMetadataOnlyEvidence
+    ? metadataText
+    : candidateText(candidate);
   const normalizedTitle = normalized(candidate.title);
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const metadataCount = candidate.genres.length + candidate.themes.length;
@@ -563,8 +567,17 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const teenOpenLibrary = profile.ageBand === "teens" && candidate.source === "openLibrary";
     const adultOpenLibrary = profile.ageBand === "adult" && candidate.source === "openLibrary";
     const adultGoogleBooks = profile.ageBand === "adult" && candidate.source === "googleBooks";
+    const adultKitsu = profile.ageBand === "adult" && candidate.source === "kitsu";
+    const adultComicVine = profile.ageBand === "adult" && candidate.source === "comicVine";
     const adultNyt = profile.ageBand === "adult" && candidate.source === "nyt";
-    const metadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary || adultOpenLibrary || adultGoogleBooks || adultNyt;
+    const metadataOnlyEvidence = middleGradesOpenLibrary
+      || kidsOpenLibrary
+      || teenOpenLibrary
+      || adultOpenLibrary
+      || adultGoogleBooks
+      || adultKitsu
+      || adultComicVine
+      || adultNyt;
     const text = metadataOnlyEvidence ? metadataText : fullText;
     const adultGoogleBooksFields = adultGoogleBooks ? candidateMetadataFields(candidate) : [];
     const adultGoogleBooksSignalTrace: AdultGoogleBooksSignalMatchTrace[] = [];
@@ -659,6 +672,10 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
             ? "adult_openlibrary_ranked_by_metadata_only_document_evidence"
             : adultGoogleBooks
              ? "adult_googlebooks_ranked_by_document_metadata"
+             : adultKitsu
+               ? "adult_kitsu_ranked_by_document_metadata"
+               : adultComicVine
+                 ? "adult_comicvine_ranked_by_document_metadata"
             : undefined,
         teenOpenLibraryMetadataOnlyEvidence: teenOpenLibrary || undefined,
         teenOpenLibraryExcludedRetrievalEvidence: teenOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
@@ -666,6 +683,10 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
         adultOpenLibraryExcludedRetrievalEvidence: adultOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
         adultGoogleBooksMetadataOnlyEvidence: adultGoogleBooks || undefined,
         adultGoogleBooksExcludedRetrievalEvidence: adultGoogleBooks ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+        adultKitsuMetadataOnlyEvidence: adultKitsu || undefined,
+        adultKitsuExcludedRetrievalEvidence: adultKitsu ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+        adultComicVineMetadataOnlyEvidence: adultComicVine || undefined,
+        adultComicVineExcludedRetrievalEvidence: adultComicVine ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
         adultGoogleBooksSignalMatchTrace: adultGoogleBooks ? adultGoogleBooksSignalTrace : undefined,
         adultGoogleBooksSignalMatchedField: adultGoogleBooks ? adultGoogleBooksTraceBySignal(adultGoogleBooksSignalTrace, "field") : undefined,
         adultGoogleBooksSignalMatchedText: adultGoogleBooks ? adultGoogleBooksTraceBySignal(adultGoogleBooksSignalTrace, "matchedText") : undefined,
