@@ -1,0 +1,7 @@
+experimentId,experimentLabel,queries,acceptedAfterSourcePolicyUniqueMean,acceptedAfterSourcePolicyUniqueStddev,contributionUniqueMean,contributionUniqueStddev,uniqueTitlesMean,uniqueAuthorsMean,duplicateRateMean,entropy
+single-baseline,"Single baseline","young adult science fiction novel",0,0,0,0,0,0,0,0
+single-broad,"Single broad","young adult sci fi",4.17,1.86,3.5,1.71,4.17,5.83,0,0
+single-dystopian,"Single dystopian","YA dystopian",6.08,1.89,4.25,1.36,6.08,6.08,0,0
+composite-broad-dystopian,"Composite broad+dystopian","young adult sci fi | YA dystopian",10.25,2.52,7.75,2.31,10.25,11.92,0,0.2817
+composite-broad-dystopian-space-opera,"Composite broad+dystopian+space-opera","young adult sci fi | YA dystopian | YA space opera",15.75,3.51,8.83,2.23,15.75,12.83,0,0.4531
+composite-broad-dystopian-speculative,"Composite broad+dystopian+speculative","young adult sci fi | YA dystopian | YA speculative fiction",12.5,2.99,10,2.94,12.5,14.17,0,0.4276

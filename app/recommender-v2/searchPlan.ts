@@ -451,6 +451,39 @@ function teenGoogleBooksCanonicalFamilyQuery(agePrefix: string, family?: string)
   return uniqueTerms([agePrefix, normalizedFamily, "fiction", "novel"], 4).join(" ");
 }
 
+function teenGoogleBooksScienceFictionCompositeOverrideQueries(): string[] {
+  const raw = String(process.env.V2_TEEN_GB_SCIFI_COMPOSITE_QUERIES_OVERRIDE || "").trim();
+  if (!raw) return [];
+  const parts = raw
+    .split("|")
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const query of parts) {
+    const normalized = normalizedTerm(query);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    unique.push(query);
+    if (unique.length >= 3) break;
+  }
+  return unique;
+}
+
+function teenGoogleBooksScienceFictionOverrideFamily(query: string): string {
+  const normalized = normalizedTerm(query);
+  if (normalized.includes("dystopian")) return "dystopian";
+  if (normalized.includes("space opera")) return "space_opera";
+  if (normalized.includes("speculative")) return "speculative";
+  if (normalized.includes("sci fi") || normalized.includes("science fiction")) return "science_fiction";
+  return "science_fiction";
+}
+
+function teenGoogleBooksScienceFictionProductionCompositeQueries(primaryOverride?: string): string[] {
+  const primary = String(primaryOverride || "").trim() || "young adult sci fi";
+  return [primary, "YA dystopian", "YA speculative fiction"];
+}
+
 function teenGoogleBooksDistinctThirdQuery(
   agePrefix: string,
   primaryGenre?: string,
@@ -498,6 +531,16 @@ function buildTeenGoogleBooksIntents(profile: TasteProfile, genres: string[], to
   const adjacentGenre = googleBooksAdjacentGenre(primaryGenre);
   const scienceFictionOverride = String(process.env.V2_TEEN_GB_SCIFI_PRIMARY_QUERY_OVERRIDE || "").trim();
   const scienceFictionOverrideApplied = Boolean(scienceFictionOverride) && primaryGenre === "science fiction";
+  const scienceFictionCompositeOverrideQueries = primaryGenre === "science fiction"
+    ? teenGoogleBooksScienceFictionCompositeOverrideQueries()
+    : [];
+  const scienceFictionCompositeOverrideApplied = scienceFictionCompositeOverrideQueries.length > 0;
+  const scienceFictionProductionCompositeApplied = primaryGenre === "science fiction"
+    && agePrefix === "young adult"
+    && !scienceFictionCompositeOverrideApplied;
+  const scienceFictionProductionCompositeQueries = scienceFictionProductionCompositeApplied
+    ? teenGoogleBooksScienceFictionProductionCompositeQueries(scienceFictionOverrideApplied ? scienceFictionOverride : "")
+    : [];
   const primaryQuery = teenGoogleBooksCanonicalFamilyQuery(agePrefix, primaryGenre);
   const adjacentFamily = secondaryGenre && secondaryGenre !== primaryGenre
     ? secondaryGenre
@@ -506,27 +549,52 @@ function buildTeenGoogleBooksIntents(profile: TasteProfile, genres: string[], to
       : undefined;
   const adjacentQuery = teenGoogleBooksCanonicalFamilyQuery(agePrefix, adjacentFamily);
   const thirdQuery = teenGoogleBooksDistinctThirdQuery(agePrefix, primaryGenre, secondaryGenre, adjacentGenre);
-  const candidates: TeenGoogleBooksQueryCandidate[] = [
-    {
-      id: "family-fiction-primary",
-      query: primaryQuery || `${agePrefix} fiction novel`,
-      family: primaryGenre || "fiction",
-      rung: "primary",
-      priority: 1,
-      facets: [...genres, ...tones, ...themes].filter(Boolean),
-      rationale: ["built_from_top_taste_profile_signals", "google_books_narrative_query"],
-    },
-    {
-      id: "adjacent-or-tone-fiction",
-      query: adjacentQuery || `${agePrefix} fiction novel`,
-      family: adjacentFamily || "fiction",
-      rung: "adjacent",
-      priority: 0.85,
+  const candidates: TeenGoogleBooksQueryCandidate[] = scienceFictionCompositeOverrideApplied
+    ? scienceFictionCompositeOverrideQueries.map((query, index) => ({
+      id: `override-scifi-query-${index + 1}`,
+      query,
+      family: teenGoogleBooksScienceFictionOverrideFamily(query),
+      rung: index === 0 ? "primary" : index === 1 ? "adjacent" : "third",
+      priority: index === 0 ? 1 : index === 1 ? 0.85 : 0.55,
       facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
-      rationale: ["adjacent_family_or_tone_expansion", "google_books_narrative_query"],
-    },
-  ];
-  if (thirdQuery.query) {
+      rationale: ["diagnostic_scifi_composite_query_override", "google_books_narrative_query"],
+    }))
+    : scienceFictionProductionCompositeApplied
+      ? scienceFictionProductionCompositeQueries.map((query, index) => ({
+        id: `scifi-production-family-${index + 1}`,
+        query,
+        family: teenGoogleBooksScienceFictionOverrideFamily(query),
+        rung: index === 0 ? "primary" : index === 1 ? "adjacent" : "third",
+        priority: index === 0 ? 1 : index === 1 ? 0.85 : 0.55,
+        facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
+        rationale: ["teen_scifi_route_defined_query_family", "google_books_narrative_query"],
+      }))
+    : [
+      {
+        id: "family-fiction-primary",
+        query: primaryQuery || `${agePrefix} fiction novel`,
+        family: primaryGenre || "fiction",
+        rung: "primary",
+        priority: 1,
+        facets: [...genres, ...tones, ...themes].filter(Boolean),
+        rationale: ["built_from_top_taste_profile_signals", "google_books_narrative_query"],
+      },
+      {
+        id: "adjacent-or-tone-fiction",
+        query: adjacentQuery || `${agePrefix} fiction novel`,
+        family: adjacentFamily || "fiction",
+        rung: "adjacent",
+        priority: 0.85,
+        facets: [...genres.slice(0, 2), ...tones.slice(0, 1), ...themes.slice(0, 1)].filter(Boolean),
+        rationale: ["adjacent_family_or_tone_expansion", "google_books_narrative_query"],
+      },
+    ];
+  const teenThirdQueryReason = scienceFictionCompositeOverrideApplied
+    ? "replaced_with_scifi_composite_override"
+    : scienceFictionProductionCompositeApplied
+      ? "replaced_with_scifi_production_composite_family"
+      : thirdQuery.reason;
+  if (!scienceFictionCompositeOverrideApplied && !scienceFictionProductionCompositeApplied && thirdQuery.query) {
     candidates.push({
       id: "fallback-fiction-broad",
       query: thirdQuery.query,
@@ -574,9 +642,14 @@ function buildTeenGoogleBooksIntents(profile: TasteProfile, genres: string[], to
       teenGoogleBooksQueryFamilyByQuery: familyByQuery,
       teenGoogleBooksQueryRungByQuery: rungByQuery,
       teenGoogleBooksDuplicateSuppressionReasons: duplicateSuppressionReasons,
-      teenGoogleBooksOmittedThirdQueryReason: thirdQuery.reason,
+      teenGoogleBooksOmittedThirdQueryReason: teenThirdQueryReason,
       teenGoogleBooksScienceFictionPrimaryQueryOverrideApplied: scienceFictionOverrideApplied,
       teenGoogleBooksScienceFictionPrimaryQueryOverrideValue: scienceFictionOverrideApplied ? scienceFictionOverride : "",
+      teenGoogleBooksScienceFictionCompositeOverrideApplied: scienceFictionCompositeOverrideApplied,
+      teenGoogleBooksScienceFictionCompositeOverrideQueries: scienceFictionCompositeOverrideQueries,
+      teenGoogleBooksScienceFictionProductionCompositeApplied: scienceFictionProductionCompositeApplied,
+      teenGoogleBooksScienceFictionProductionCompositeQueries: scienceFictionProductionCompositeQueries,
+      teenGoogleBooksScienceFictionLegacyPrimaryQuery: "young adult science fiction novel",
     },
   };
 }

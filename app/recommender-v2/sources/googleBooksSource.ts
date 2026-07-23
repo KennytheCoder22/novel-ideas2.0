@@ -81,6 +81,40 @@ type PreteenGoogleBooksPublicationShapeAuditRecord = {
   confidence: number;
 };
 
+type GoogleBooksPreNormalizationRejectAuditDisposition =
+  | "correct_reject"
+  | "likely_false_reject"
+  | "metadata_insufficient"
+  | "requires_rule_change"
+  | "parser_improvement";
+
+type GoogleBooksPreNormalizationRejectAuditRow = {
+  sourceId: string;
+  query: string;
+  queryFamily: string;
+  queryCascadeIndex: number;
+  title: string;
+  subtitle: string;
+  authorField: string[];
+  allContributorFields: Record<string, string[]>;
+  categories: string[];
+  publisher: string;
+  publishedDate: string;
+  publicationYear?: number;
+  isbnPresent: boolean;
+  descriptionPresent: boolean;
+  descriptionExcerpt: string;
+  currentPublicationShapeClassification: string;
+  exactRejectionReason: string;
+  thresholdFailed: string;
+  narrativeCuesDiscovered: string[];
+  corroboratingCuesDiscovered: string[];
+  narrativeEvidencePresentButNotDetected: string[];
+  likelyRealNarrativeFiction: "yes" | "no" | "ambiguous";
+  recommendedDisposition: GoogleBooksPreNormalizationRejectAuditDisposition;
+  smallestAdditionalEvidenceForAdmission: string;
+};
+
 const GOOGLE_BOOKS_NON_NARRATIVE_SHAPES = new Set<GoogleBooksPublicationShape>([
   "periodical",
   "reference",
@@ -111,6 +145,103 @@ const GOOGLE_BOOKS_ACADEMIC_PUBLISHER_PATTERN = /\b(university press|cambridge u
 function incrementCounter(map: Record<string, number>, key: string): void {
   if (!key) return;
   map[key] = Number(map[key] || 0) + 1;
+}
+
+function collectGoogleBooksContributorFields(volumeInfo: Record<string, unknown>): Record<string, string[]> {
+  const contributorFields: Record<string, string[]> = {};
+  for (const [field, value] of Object.entries(volumeInfo)) {
+    if (!/(author|contributor|editor|narrator|illustrator|translator|creator)/i.test(field)) continue;
+    if (Array.isArray(value)) {
+      const extracted = value
+        .map((entry) => {
+          if (typeof entry === "string") return entry;
+          if (!entry || typeof entry !== "object") return "";
+          const rec = entry as Record<string, unknown>;
+          return String(rec.name || rec.value || rec.id || "").trim();
+        })
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean);
+      if (extracted.length > 0) contributorFields[field] = extracted;
+      continue;
+    }
+    const single = String(value || "").trim();
+    if (single) contributorFields[field] = [single];
+  }
+  return contributorFields;
+}
+
+function preNormalizationDispositionForDropReason(reason: string): GoogleBooksPreNormalizationRejectAuditDisposition {
+  if (!reason) return "metadata_insufficient";
+  if (reason === "missing_author") return "metadata_insufficient";
+  if (reason.startsWith("publication_shape_unknown_insufficient_")) return "parser_improvement";
+  if (reason === "publication_shape_unknown_insufficient_story_evidence") return "parser_improvement";
+  if (
+    reason.startsWith("publication_shape_writing_guide")
+    || reason.startsWith("publication_shape_critical_study")
+    || reason.startsWith("publication_shape_nonfiction")
+    || reason.startsWith("publication_shape_reference")
+    || reason.startsWith("publication_shape_anthology")
+    || reason.startsWith("publication_shape_periodical")
+    || reason.startsWith("publication_shape_literary_history")
+    || reason.startsWith("publication_shape_generic_category_catalog")
+    || reason.startsWith("publication_shape_readers_advisory")
+    || reason.startsWith("publication_shape_genre_survey")
+    || reason.startsWith("publication_shape_public_domain_compilation")
+    || reason.startsWith("publication_shape_miscellany")
+  ) {
+    return "correct_reject";
+  }
+  if (reason === "duplicate_volume_id") return "correct_reject";
+  if (reason === "missing_title" || reason === "malformed_api_record" || reason === "non_book_response_shape") {
+    return "metadata_insufficient";
+  }
+  return "requires_rule_change";
+}
+
+function likelyNarrativeFictionForDropReason(reason: string, unknownNarrativeCorroboration: string[]): "yes" | "no" | "ambiguous" {
+  if (!reason) return "ambiguous";
+  if (
+    reason.startsWith("publication_shape_writing_guide")
+    || reason.startsWith("publication_shape_critical_study")
+    || reason.startsWith("publication_shape_nonfiction")
+    || reason.startsWith("publication_shape_reference")
+    || reason.startsWith("publication_shape_periodical")
+    || reason.startsWith("publication_shape_literary_history")
+    || reason.startsWith("publication_shape_readers_advisory")
+    || reason.startsWith("publication_shape_genre_survey")
+    || reason.startsWith("publication_shape_public_domain_compilation")
+    || reason.startsWith("publication_shape_generic_category_catalog")
+    || reason.startsWith("publication_shape_miscellany")
+  ) {
+    return "no";
+  }
+  if (reason === "publication_shape_unknown_insufficient_narrative_identity") {
+    if (unknownNarrativeCorroboration.includes("explicit_novel_identity") || unknownNarrativeCorroboration.includes("series_installment_identity")) {
+      return "yes";
+    }
+    return "ambiguous";
+  }
+  if (reason === "publication_shape_unknown_insufficient_story_evidence") return "ambiguous";
+  if (reason === "publication_shape_anthology") return "ambiguous";
+  if (reason === "missing_author") return "ambiguous";
+  return "ambiguous";
+}
+
+function smallestAdditionalEvidenceForAdmission(
+  reason: string,
+  thresholdFailed: string,
+): string {
+  if (reason === "publication_shape_unknown_insufficient_story_evidence") {
+    return "add_one_independent_narrative_corroboration_cue";
+  }
+  if (reason === "publication_shape_unknown_insufficient_narrative_identity") {
+    return "add_one_story_level_narrative_cue";
+  }
+  if (reason === "missing_author") {
+    return "recover_author_or_contributor_identity_from_source_metadata";
+  }
+  if (thresholdFailed) return thresholdFailed;
+  return "";
 }
 
 function shapeHistogramCount(histogram: Record<string, number>, shapes: string[]): number {
@@ -1322,6 +1453,9 @@ function emptyDiagnostics(
     googleBooksCuratedBookGuideEvidenceByTitle: {},
     googleBooksPeriodicalIdentityEvidenceByTitle: {},
     googleBooksPeriodicalIdentityDecisionByTitle: {},
+    googleBooksPreNormalizationRejectAuditRows: [],
+    googleBooksPreNormalizationRejectAuditBySourceId: {},
+    googleBooksPreNormalizationRejectAuditByTitle: {},
     preteenGoogleBooksPublicationShapeAuditByTitle: {},
     preteenGoogleBooksPublicationShapeRejectedTitles: [],
     preteenGoogleBooksPublicationShapeRejectedReasonByTitle: {},
@@ -1549,6 +1683,8 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const queriesAttempted: string[] = [];
     const fetches: SourceFetchDiagnosticV2[] = [];
     const publicationYearByTitle: Record<string, number> = {};
+    const creatorsByTitle: Record<string, string[]> = {};
+    const categoriesByTitle: Record<string, string[]> = {};
     const descriptionPresentByTitle: Record<string, boolean> = {};
     const isbnPresentByTitle: Record<string, boolean> = {};
     const ratingsCountByTitle: Record<string, number> = {};
@@ -1588,6 +1724,9 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     const curatedBookGuideEvidenceByTitle: Record<string, string[]> = {};
     const periodicalIdentityEvidenceByTitle: Record<string, string[]> = {};
     const periodicalIdentityDecisionByTitle: Record<string, string> = {};
+    const preNormalizationRejectAuditRows: GoogleBooksPreNormalizationRejectAuditRow[] = [];
+    const preNormalizationRejectAuditBySourceId: Record<string, GoogleBooksPreNormalizationRejectAuditRow> = {};
+    const preNormalizationRejectAuditByTitle: Record<string, GoogleBooksPreNormalizationRejectAuditRow> = {};
     const preteenPublicationShapeAuditByTitle: Record<string, PreteenGoogleBooksPublicationShapeAuditRecord> = {};
     const preteenPublicationShapeRejectedTitles: string[] = [];
     const preteenPublicationShapeRejectedReasonByTitle: Record<string, string> = {};
@@ -1651,6 +1790,68 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
     let timedOutQueryCount = 0;
     let abortedQueryCount = 0;
     let successfulQueryCount = 0;
+
+    const recordPreNormalizationReject = (params: {
+      sourceId: string;
+      query: string;
+      queryFamily: string;
+      queryCascadeIndex: number;
+      title: string;
+      subtitle: string;
+      authorField: string[];
+      contributorFields: Record<string, string[]>;
+      categories: string[];
+      publisher: string;
+      publishedDate: string;
+      publicationYear?: number;
+      isbnPresent: boolean;
+      description: string;
+      rejectionReason: string;
+      publicationShapeClassification?: string;
+      thresholdFailed?: string;
+      narrativeCues?: string[];
+      corroboratingCues?: string[];
+      narrativeEvidencePresentButNotDetected?: string[];
+      unknownNarrativeCorroboration?: string[];
+      smallestAdditionalEvidenceForAdmission?: string;
+    }): void => {
+      const thresholdFailed = String(params.thresholdFailed || params.rejectionReason || "").trim();
+      const reason = String(params.rejectionReason || "").trim();
+      const narrativeCues = Array.isArray(params.narrativeCues) ? params.narrativeCues : [];
+      const corroboratingCues = Array.isArray(params.corroboratingCues) ? params.corroboratingCues : [];
+      const row: GoogleBooksPreNormalizationRejectAuditRow = {
+        sourceId: params.sourceId || "",
+        query: params.query,
+        queryFamily: params.queryFamily,
+        queryCascadeIndex: params.queryCascadeIndex,
+        title: params.title,
+        subtitle: params.subtitle,
+        authorField: params.authorField,
+        allContributorFields: params.contributorFields,
+        categories: params.categories,
+        publisher: params.publisher,
+        publishedDate: params.publishedDate,
+        publicationYear: params.publicationYear,
+        isbnPresent: params.isbnPresent,
+        descriptionPresent: Boolean(String(params.description || "").trim()),
+        descriptionExcerpt: String(params.description || "").trim().slice(0, 320),
+        currentPublicationShapeClassification: params.publicationShapeClassification || "unknown_unclassified",
+        exactRejectionReason: reason,
+        thresholdFailed,
+        narrativeCuesDiscovered: narrativeCues,
+        corroboratingCuesDiscovered: corroboratingCues,
+        narrativeEvidencePresentButNotDetected: Array.isArray(params.narrativeEvidencePresentButNotDetected)
+          ? params.narrativeEvidencePresentButNotDetected
+          : [],
+        likelyRealNarrativeFiction: likelyNarrativeFictionForDropReason(reason, params.unknownNarrativeCorroboration || []),
+        recommendedDisposition: preNormalizationDispositionForDropReason(reason),
+        smallestAdditionalEvidenceForAdmission: params.smallestAdditionalEvidenceForAdmission
+          || smallestAdditionalEvidenceForAdmission(reason, thresholdFailed),
+      };
+      preNormalizationRejectAuditRows.push(row);
+      if (row.sourceId) preNormalizationRejectAuditBySourceId[row.sourceId] = row;
+      if (row.title) preNormalizationRejectAuditByTitle[row.title] = row;
+    };
 
     const primaryQueries = queries.filter((intent) => intent.intentId !== "fallback-fiction-broad");
     const fallbackQueries = queries.filter((intent) => intent.intentId === "fallback-fiction-broad");
@@ -1749,6 +1950,23 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       rawApiResultCount += items.length;
       for (const item of items) {
         if (!item || typeof item !== "object") {
+          recordPreNormalizationReject({
+            sourceId: "",
+            query: originalQuery,
+            queryFamily: plannedIntent.queryFamily,
+            queryCascadeIndex: plannedIntent.queryCascadeIndex,
+            title: "",
+            subtitle: "",
+            authorField: [],
+            contributorFields: {},
+            categories: [],
+            publisher: "",
+            publishedDate: "",
+            isbnPresent: false,
+            description: "",
+            rejectionReason: "malformed_api_record",
+            thresholdFailed: "malformed_api_record",
+          });
           dropReasons.malformed_api_record = Number(dropReasons.malformed_api_record || 0) + 1;
           incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "malformed_api_record");
           perQueryQuality[originalQuery].rejectedCandidateCount += 1;
@@ -1760,6 +1978,23 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         const volumeInfo = (row.volumeInfo && typeof row.volumeInfo === "object") ? (row.volumeInfo as Record<string, unknown>) : null;
         const kind = String(row.kind || "");
         if (!volumeInfo || (kind && !/volume/i.test(kind))) {
+          recordPreNormalizationReject({
+            sourceId: volumeId || "",
+            query: originalQuery,
+            queryFamily: plannedIntent.queryFamily,
+            queryCascadeIndex: plannedIntent.queryCascadeIndex,
+            title: "",
+            subtitle: "",
+            authorField: [],
+            contributorFields: {},
+            categories: [],
+            publisher: "",
+            publishedDate: "",
+            isbnPresent: false,
+            description: "",
+            rejectionReason: "malformed_api_record",
+            thresholdFailed: "malformed_api_record",
+          });
           dropReasons.malformed_api_record = Number(dropReasons.malformed_api_record || 0) + 1;
           incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "malformed_api_record");
           perQueryQuality[originalQuery].rejectedCandidateCount += 1;
@@ -1767,6 +2002,24 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           continue;
         }
         if (!volumeId) {
+          recordPreNormalizationReject({
+            sourceId: "",
+            query: originalQuery,
+            queryFamily: plannedIntent.queryFamily,
+            queryCascadeIndex: plannedIntent.queryCascadeIndex,
+            title: String(volumeInfo.title || "").trim(),
+            subtitle: String(volumeInfo.subtitle || "").trim(),
+            authorField: stringArray(volumeInfo.authors),
+            contributorFields: collectGoogleBooksContributorFields(volumeInfo),
+            categories: stringArray(volumeInfo.categories),
+            publisher: String(volumeInfo.publisher || "").trim(),
+            publishedDate: String(volumeInfo.publishedDate || "").trim(),
+            publicationYear: parsePublicationYear(volumeInfo.publishedDate),
+            isbnPresent: Array.isArray(volumeInfo.industryIdentifiers) && volumeInfo.industryIdentifiers.length > 0,
+            description: descriptionFromVolume(row, volumeInfo),
+            rejectionReason: "malformed_api_record",
+            thresholdFailed: "missing_source_id",
+          });
           dropReasons.malformed_api_record = Number(dropReasons.malformed_api_record || 0) + 1;
           incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "malformed_api_record");
           perQueryQuality[originalQuery].rejectedCandidateCount += 1;
@@ -1774,6 +2027,24 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           continue;
         }
         if (seenVolumeIds.has(volumeId)) {
+          recordPreNormalizationReject({
+            sourceId: volumeId,
+            query: originalQuery,
+            queryFamily: plannedIntent.queryFamily,
+            queryCascadeIndex: plannedIntent.queryCascadeIndex,
+            title: String(volumeInfo.title || "").trim(),
+            subtitle: String(volumeInfo.subtitle || "").trim(),
+            authorField: stringArray(volumeInfo.authors),
+            contributorFields: collectGoogleBooksContributorFields(volumeInfo),
+            categories: stringArray(volumeInfo.categories),
+            publisher: String(volumeInfo.publisher || "").trim(),
+            publishedDate: String(volumeInfo.publishedDate || "").trim(),
+            publicationYear: parsePublicationYear(volumeInfo.publishedDate),
+            isbnPresent: Array.isArray(volumeInfo.industryIdentifiers) && volumeInfo.industryIdentifiers.length > 0,
+            description: descriptionFromVolume(row, volumeInfo),
+            rejectionReason: "duplicate_volume_id",
+            thresholdFailed: "duplicate_source_id",
+          });
           dropReasons.duplicate_volume_id = Number(dropReasons.duplicate_volume_id || 0) + 1;
           incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "duplicate_volume_id");
           perQueryQuality[originalQuery].rejectedCandidateCount += 1;
@@ -1783,6 +2054,24 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
 
         const title = String(volumeInfo.title || "").trim();
         if (!title) {
+          recordPreNormalizationReject({
+            sourceId: volumeId,
+            query: originalQuery,
+            queryFamily: plannedIntent.queryFamily,
+            queryCascadeIndex: plannedIntent.queryCascadeIndex,
+            title: "",
+            subtitle: String(volumeInfo.subtitle || "").trim(),
+            authorField: stringArray(volumeInfo.authors),
+            contributorFields: collectGoogleBooksContributorFields(volumeInfo),
+            categories: stringArray(volumeInfo.categories),
+            publisher: String(volumeInfo.publisher || "").trim(),
+            publishedDate: String(volumeInfo.publishedDate || "").trim(),
+            publicationYear: parsePublicationYear(volumeInfo.publishedDate),
+            isbnPresent: Array.isArray(volumeInfo.industryIdentifiers) && volumeInfo.industryIdentifiers.length > 0,
+            description: descriptionFromVolume(row, volumeInfo),
+            rejectionReason: "missing_title",
+            thresholdFailed: "missing_title",
+          });
           dropReasons.missing_title = Number(dropReasons.missing_title || 0) + 1;
           incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "missing_title");
           perQueryQuality[originalQuery].rejectedCandidateCount += 1;
@@ -1791,6 +2080,24 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         }
         const authors = stringArray(volumeInfo.authors);
         if (!authors.length) {
+          recordPreNormalizationReject({
+            sourceId: volumeId,
+            query: originalQuery,
+            queryFamily: plannedIntent.queryFamily,
+            queryCascadeIndex: plannedIntent.queryCascadeIndex,
+            title,
+            subtitle: String(volumeInfo.subtitle || "").trim(),
+            authorField: [],
+            contributorFields: collectGoogleBooksContributorFields(volumeInfo),
+            categories: stringArray(volumeInfo.categories),
+            publisher: String(volumeInfo.publisher || "").trim(),
+            publishedDate: String(volumeInfo.publishedDate || "").trim(),
+            publicationYear: parsePublicationYear(volumeInfo.publishedDate),
+            isbnPresent: Array.isArray(volumeInfo.industryIdentifiers) && volumeInfo.industryIdentifiers.length > 0,
+            description: descriptionFromVolume(row, volumeInfo),
+            rejectionReason: "missing_author",
+            thresholdFailed: "missing_author_primary_field",
+          });
           dropReasons.missing_author = Number(dropReasons.missing_author || 0) + 1;
           incrementCounter(perQueryQuality[originalQuery].rejectionReasons, "missing_author");
           perQueryQuality[originalQuery].rejectedCandidateCount += 1;
@@ -1958,6 +2265,34 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
           : originalPublicationShapeDropReason;
         const dropReason = publicationShapeDropReason || artifactDropReason;
         if (dropReason) {
+          recordPreNormalizationReject({
+            sourceId: volumeId,
+            query: originalQuery,
+            queryFamily: plannedIntent.queryFamily,
+            queryCascadeIndex: plannedIntent.queryCascadeIndex,
+            title,
+            subtitle: String(volumeInfo.subtitle || "").trim(),
+            authorField: authors,
+            contributorFields: collectGoogleBooksContributorFields(volumeInfo),
+            categories,
+            publisher,
+            publishedDate: String(volumeInfo.publishedDate || "").trim(),
+            publicationYear,
+            isbnPresent: hasIsbn,
+            description,
+            rejectionReason: dropReason,
+            publicationShapeClassification: shapeAnalysis.shape,
+            thresholdFailed: publicationShapeDropReason
+              ? (shapeAnalysis.unknownEligibilityThresholdDecision || publicationShapeDropReason)
+              : dropReason,
+            narrativeCues: shapeAnalysis.storyLevelNarrativeEvidence,
+            corroboratingCues: shapeAnalysis.unknownNarrativeCorroboration,
+            narrativeEvidencePresentButNotDetected: [],
+            unknownNarrativeCorroboration: shapeAnalysis.unknownNarrativeCorroboration,
+            smallestAdditionalEvidenceForAdmission: publicationShapeDropReason
+              ? smallestAdditionalEvidenceForAdmission(publicationShapeDropReason, shapeAnalysis.unknownEligibilityThresholdDecision || "")
+              : "",
+          });
           dropReasons[dropReason] = Number(dropReasons[dropReason] || 0) + 1;
           incrementCounter(perQueryQuality[originalQuery].rejectionReasons, dropReason);
           incrementCounter(perQueryQuality[originalQuery].rejectedShapeHistogram, shapeAnalysis.shape);
@@ -2054,6 +2389,8 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
         if (rawTitles.length < 40) rawTitles.push(title);
         queryByTitle[title] = originalQuery;
         if (Number.isFinite(Number(publicationYear))) publicationYearByTitle[title] = Number(publicationYear);
+        creatorsByTitle[title] = [...authors];
+        categoriesByTitle[title] = [...categories];
         descriptionPresentByTitle[title] = hasDescription;
         isbnPresentByTitle[title] = hasIsbn;
         ratingsCountByTitle[title] = ratingsCount;
@@ -2187,6 +2524,8 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       googleBooksSourceAbortedQueries: abortedQueryCount || undefined,
       googleBooksSourceAdapterVersion: GOOGLE_BOOKS_ADAPTER_VERSION,
       googleBooksPublicationYearByTitle: publicationYearByTitle,
+      googleBooksCreatorsByTitle: creatorsByTitle,
+      googleBooksCategoriesByTitle: categoriesByTitle,
       googleBooksDescriptionPresentByTitle: descriptionPresentByTitle,
       googleBooksIsbnPresentByTitle: isbnPresentByTitle,
       googleBooksRatingsCountByTitle: ratingsCountByTitle,
@@ -2226,6 +2565,9 @@ export const googleBooksSourceAdapter: SourceAdapterV2 = {
       googleBooksCuratedBookGuideEvidenceByTitle: curatedBookGuideEvidenceByTitle,
       googleBooksPeriodicalIdentityEvidenceByTitle: periodicalIdentityEvidenceByTitle,
       googleBooksPeriodicalIdentityDecisionByTitle: periodicalIdentityDecisionByTitle,
+      googleBooksPreNormalizationRejectAuditRows: preNormalizationRejectAuditRows,
+      googleBooksPreNormalizationRejectAuditBySourceId: preNormalizationRejectAuditBySourceId,
+      googleBooksPreNormalizationRejectAuditByTitle: preNormalizationRejectAuditByTitle,
       preteenGoogleBooksPublicationShapeAuditByTitle: preteenPublicationShapeAuditByTitle,
       preteenGoogleBooksPublicationShapeRejectedTitles: preteenPublicationShapeRejectedTitles,
       preteenGoogleBooksPublicationShapeRejectedReasonByTitle: preteenPublicationShapeRejectedReasonByTitle,
