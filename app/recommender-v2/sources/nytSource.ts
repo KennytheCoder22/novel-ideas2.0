@@ -307,8 +307,14 @@ async function fetchAndPopulateFromOverview(
   }
 
   if (!result.ok || !result.json) {
-    // Non-quota failure: return null so the caller falls back to per-list fetches.
-    return null;
+    // Non-quota failure: record the diagnostic so the caller can observe the
+    // failed attempt, then fall back to per-list fetches (listsPopulatedFromOverview
+    // is empty → usedOverview stays false, per-list loop runs as normal).
+    if (!fetchDiag.status) {
+      fetchDiag.status = "failed";
+      fetchDiag.failedReason = result.status ? `http_${result.status}` : "nyt_overview_empty_response";
+    }
+    return { fetch: fetchDiag, listsPopulatedFromOverview: [] };
   }
 
   // Extract requested lists from the overview and populate the per-slug cache.
