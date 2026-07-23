@@ -141,6 +141,9 @@ export interface SourceFetchDiagnosticV2 {
   retryAttempted?: boolean;
   retrySucceeded?: boolean;
   proxyColdStartSuspected?: boolean;
+  cacheHit?: boolean;
+  quotaBlocked?: boolean;
+  retryAfterMs?: number;
 }
 
 export interface SourceDiagnosticV2 {
@@ -297,6 +300,23 @@ export interface SourceDiagnosticV2 {
   googleBooksSourceTimedOutQueries?: number;
   googleBooksSourceAbortedQueries?: number;
   googleBooksSourceAdapterVersion?: string;
+  nytAdapterVersion?: string;
+  nytRequestedLists?: string[];
+  nytReturnedLists?: string[];
+  nytBooksPerList?: Record<string, number>;
+  nytEndpointCalledByList?: Record<string, string>;
+  nytHttpStatusByList?: Record<string, number>;
+  nytRawBookCount?: number;
+  nytConvertedCount?: number;
+  nytDroppedCount?: number;
+  nytDropReasons?: Record<string, number>;
+  nytTitlePresentCount?: number;
+  nytAuthorPresentCount?: number;
+  nytIsbnPresentCount?: number;
+  nytNormalizedTitles?: string[];
+  nytQuotaBlocked?: boolean;
+  nytRetryAfterMs?: number;
+  nytCacheHitByList?: Record<string, boolean>;
   googleBooksPlannedQueries?: string[];
   googleBooksQueriesAttempted?: string[];
   googleBooksRawCountByQuery?: Record<string, number>;
