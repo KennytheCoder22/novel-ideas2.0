@@ -16,7 +16,8 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
 
-process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL = "https://proxy.localhost/api/comicvine";
+process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL = "undefined";
+process.env.COMICVINE_PROXY_URL = "https://proxy.localhost/api/comicvine";
 process.env.EXPO_PUBLIC_KITSU_API_BASE_URL = "https://kitsu.app/api/edge";
 process.env.NYT_BOOKS_API_KEY = process.env.NYT_BOOKS_API_KEY || "test-key";
 
@@ -43,6 +44,12 @@ function assertEqual(actual, expected, message) {
 
 function assertGte(actual, expected, message) {
   if (Number(actual) < Number(expected)) throw new Error(`${message}: expected >= ${expected}, got ${actual}`);
+}
+
+function assertIncludes(actual, expectedSubstring, message) {
+  if (!String(actual || "").includes(expectedSubstring)) {
+    throw new Error(`${message}: expected ${JSON.stringify(actual)} to include ${JSON.stringify(expectedSubstring)}`);
+  }
 }
 
 function asObject(value) {
@@ -267,6 +274,14 @@ try {
   const comicDiag = sourceDiag(comicVineOnly, "comicVine");
   assertEqual(String(comicDiag.status || ""), "succeeded", "T4 comicvine-only source status");
   assertGte(Number(comicDiag.rawCount || 0), 1, "T4 comicvine-only rawCount");
+  assertEqual(Array.isArray(comicDiag.fetches) ? comicDiag.fetches.length : 0, 2, "T4 comicvine-only should keep per-intent isolation with one diagnostic per intent");
+  const firstComicFetch = asObject((comicDiag.fetches || [])[0]);
+  assertEqual(String(firstComicFetch.configuredProxyUrl || ""), "undefined", "T4 configured proxy should capture raw misconfigured public env");
+  assertEqual(String(firstComicFetch.normalizedProxyUrl || ""), "https://proxy.localhost/api/comicvine", "T4 normalized proxy should fall back to server proxy URL");
+  assertIncludes(String(firstComicFetch.finalRequestUrl || ""), "q=", "T4 final request must include q param");
+  assertIncludes(String(firstComicFetch.finalRequestUrl || ""), "limit=20", "T4 final request must include limit param");
+  assertTruthy(["results_array", "data_array", "nested_data_results_array", "issues_array", "resources_array", "unknown"].includes(String(firstComicFetch.proxyResponseShape || "unknown")), "T4 response shape should be recorded");
+  assertTruthy(String(firstComicFetch.responseContentType || "").length > 0, "T4 response content-type should be recorded");
   assertGte(stageCount(comicVineOnly.diagnostics, "normalized", "normalized"), 1, "T4 comicvine-only normalized count");
   assertGte(stageCount(comicVineOnly.diagnostics, "scored", "scored"), 1, "T4 comicvine-only scored count");
   assertGte(comicVineOnly.items.length, 1, "T4 comicvine-only selected items");

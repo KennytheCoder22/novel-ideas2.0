@@ -84,6 +84,9 @@ export interface SourceFetchDiagnosticV2 {
   aborted?: boolean;
   rawApiCount?: number;
   requestUrl?: string;
+  configuredProxyUrl?: string;
+  normalizedProxyUrl?: string;
+  finalRequestUrl?: string;
   fetchStartedAt?: string;
   fetchFinishedAt?: string;
   requestStart?: string;
@@ -118,7 +121,11 @@ export interface SourceFetchDiagnosticV2 {
   fetchPath?: "direct" | "proxy";
   proxyAttempts?: number;
   responseBodyPrefix?: string;
+  responseContentType?: string;
+  proxyResponseShape?: "results_array" | "data_array" | "nested_data_results_array" | "issues_array" | "resources_array" | "unknown";
   failedReason?: string;
+  thrownErrorName?: string;
+  thrownErrorMessage?: string;
   docsReturned?: number;
   rawRetrieved?: number;
   returnedWorkIds?: string[];

@@ -1,10 +1,9 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult } from "../types";
 
-const COMICVINE_PROXY_URL = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL || process.env.COMICVINE_PROXY_URL || "").trim();
-const COMICVINE_API_KEY = String(process.env.COMICVINE_API_KEY || process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
 const COMICVINE_DIRECT_API = "https://comicvine.gamespot.com/api/search/";
-const COMICVINE_ADAPTER_VERSION = "v1";
+const COMICVINE_ADAPTER_VERSION = "v2";
 const COMICVINE_LIMIT = 20;
+const COMICVINE_DEFAULT_PROXY_PATH = "/api/comicvine";
 
 type ComicVineResultItem = {
   id?: number | string;
@@ -16,6 +15,14 @@ type ComicVineResultItem = {
   cover_date?: string;
   site_detail_url?: string;
   person_credits?: Array<{ name?: string }>;
+};
+
+type ComicVineRequestPlan = {
+  path: "proxy" | "direct";
+  configuredProxyUrl: string;
+  normalizedProxyUrl: string;
+  finalRequestUrl: string;
+  unavailableReason?: string;
 };
 
 function nowIso(): string {
@@ -110,25 +117,78 @@ function toRawRow(item: ComicVineResultItem, query: string, queryFamily: string,
   };
 }
 
-function proxyOrDirectRequestUrl(query: string): { url: string; path: "proxy" | "direct"; unavailableReason?: string } {
-  if (COMICVINE_PROXY_URL) {
-    const separator = COMICVINE_PROXY_URL.includes("?") ? "&" : "?";
+function normalizedProxyUrl(value: string): string {
+  const trimmed = String(value || "").trim();
+  if (!trimmed || trimmed === "undefined" || trimmed === "null") return "";
+  return trimmed;
+}
+
+function absoluteUrlForProxy(baseProxyUrl: string): string {
+  if (/^https?:\/\//i.test(baseProxyUrl)) return baseProxyUrl;
+  if (baseProxyUrl.startsWith("/")) {
+    if (typeof window !== "undefined" && String(window.location?.origin || "").trim()) {
+      return new URL(baseProxyUrl, window.location.origin).toString();
+    }
+    const fallbackOrigin = String(process.env.EXPO_PUBLIC_SITE_ORIGIN || process.env.SITE_ORIGIN || process.env.VERCEL_URL || "").trim();
+    if (fallbackOrigin) {
+      const normalizedOrigin = /^https?:\/\//i.test(fallbackOrigin) ? fallbackOrigin : `https://${fallbackOrigin}`;
+      return new URL(baseProxyUrl, normalizedOrigin).toString();
+    }
+    return `http://localhost${baseProxyUrl}`;
+  }
+  if (/^[a-z0-9.-]+\.[a-z]{2,}/i.test(baseProxyUrl)) return `https://${baseProxyUrl}`;
+  return baseProxyUrl;
+}
+
+function buildProxyRequestUrl(baseProxyUrl: string, query: string, limit: number): string {
+  const asUrl = new URL(absoluteUrlForProxy(baseProxyUrl));
+  asUrl.searchParams.set("q", query);
+  asUrl.searchParams.set("limit", String(limit));
+  return asUrl.toString();
+}
+
+function responseRows(payload: any): { rows: ComicVineResultItem[]; shape: SourceFetchDiagnosticV2["proxyResponseShape"] } {
+  if (Array.isArray(payload?.results)) return { rows: payload.results as ComicVineResultItem[], shape: "results_array" };
+  if (Array.isArray(payload?.data)) return { rows: payload.data as ComicVineResultItem[], shape: "data_array" };
+  if (Array.isArray(payload?.data?.results)) return { rows: payload.data.results as ComicVineResultItem[], shape: "nested_data_results_array" };
+  if (Array.isArray(payload?.issues)) return { rows: payload.issues as ComicVineResultItem[], shape: "issues_array" };
+  if (Array.isArray(payload?.resources)) return { rows: payload.resources as ComicVineResultItem[], shape: "resources_array" };
+  return { rows: [], shape: "unknown" };
+}
+
+function buildRequestPlan(query: string): ComicVineRequestPlan {
+  const configuredPublicProxyUrl = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL || "").trim();
+  const configuredServerProxyUrl = String(process.env.COMICVINE_PROXY_URL || "").trim();
+  const apiKey = String(process.env.COMICVINE_API_KEY || process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
+
+  const normalizedPublicProxyUrl = normalizedProxyUrl(configuredPublicProxyUrl);
+  const normalizedServerProxyUrl = normalizedProxyUrl(configuredServerProxyUrl);
+  const normalizedProxy = normalizedPublicProxyUrl || normalizedServerProxyUrl || COMICVINE_DEFAULT_PROXY_PATH;
+  const configuredProxyUrl = configuredPublicProxyUrl || configuredServerProxyUrl;
+
+  if (normalizedProxy) {
     return {
-      url: `${COMICVINE_PROXY_URL}${separator}q=${encodeURIComponent(query)}&limit=${COMICVINE_LIMIT}`,
       path: "proxy",
+      configuredProxyUrl,
+      normalizedProxyUrl: normalizedProxy,
+      finalRequestUrl: buildProxyRequestUrl(normalizedProxy, query, COMICVINE_LIMIT),
     };
   }
 
-  if (COMICVINE_API_KEY) {
+  if (apiKey) {
     return {
-      url: `${COMICVINE_DIRECT_API}?api_key=${encodeURIComponent(COMICVINE_API_KEY)}&format=json&resources=issue&query=${encodeURIComponent(query)}&limit=${COMICVINE_LIMIT}`,
       path: "direct",
+      configuredProxyUrl,
+      normalizedProxyUrl: "",
+      finalRequestUrl: `${COMICVINE_DIRECT_API}?api_key=${encodeURIComponent(apiKey)}&format=json&resources=issue&query=${encodeURIComponent(query)}&limit=${COMICVINE_LIMIT}`,
     };
   }
 
   return {
-    url: "",
     path: "proxy",
+    configuredProxyUrl,
+    normalizedProxyUrl: "",
+    finalRequestUrl: "",
     unavailableReason: "comicvine_proxy_or_api_key_missing",
   };
 }
@@ -159,6 +219,7 @@ export const comicVineSourceAdapter: SourceAdapterV2 = {
     let timedOut = false;
     let failedReason = "";
     let requestPath: "proxy" | "direct" | undefined;
+    const usedProxyUrls = new Set<string>();
 
     for (let index = 0; index < plan.intents.length; index += 1) {
       const intent = plan.intents[index];
@@ -166,55 +227,53 @@ export const comicVineSourceAdapter: SourceAdapterV2 = {
       const query = String(intent.query || "").trim();
       if (!query) continue;
 
-      const req = proxyOrDirectRequestUrl(query);
-      requestPath = requestPath || req.path;
-      const queryStartedAt = nowIso();
+      const requestPlan = buildRequestPlan(query);
+      requestPath = requestPath || requestPlan.path;
+      if (requestPlan.normalizedProxyUrl) usedProxyUrls.add(requestPlan.normalizedProxyUrl);
       const fetchDiag: SourceFetchDiagnosticV2 = {
         query,
         queryFamily: String(intent.id || "").trim() || "generic",
         queryCascadeIndex: index,
         facets: intent.facets || [],
         timedOut: false,
-        fetchStartedAt: queryStartedAt,
-        requestUrl: req.path === "direct" ? COMICVINE_DIRECT_API : req.url,
-        fetchPath: req.path,
+        fetchStartedAt: nowIso(),
+        fetchPath: requestPlan.path,
+        requestUrl: requestPlan.path === "direct" ? COMICVINE_DIRECT_API : requestPlan.finalRequestUrl,
+        configuredProxyUrl: requestPlan.configuredProxyUrl,
+        normalizedProxyUrl: requestPlan.normalizedProxyUrl,
+        finalRequestUrl: requestPlan.finalRequestUrl,
       };
 
-      if (!req.url) {
+      if (!requestPlan.finalRequestUrl) {
         fetchDiag.status = "failed";
-        fetchDiag.failedReason = req.unavailableReason || "comicvine_unavailable";
+        fetchDiag.failedReason = requestPlan.unavailableReason || "comicvine_unavailable";
+        failedReason = failedReason || fetchDiag.failedReason || "comicvine_unavailable";
         fetchDiag.fetchFinishedAt = nowIso();
         fetches.push(fetchDiag);
-        failedReason = failedReason || fetchDiag.failedReason || "comicvine_unavailable";
         continue;
       }
 
       try {
-        const response = await fetch(req.url, {
+        const response = await fetch(requestPlan.finalRequestUrl, {
           method: "GET",
           signal: context.signal,
-          headers: {
-            Accept: "application/json",
-          },
+          headers: { Accept: "application/json" },
         });
         fetchDiag.httpStatus = response.status;
+        fetchDiag.responseContentType = String(response.headers.get("content-type") || "").trim();
         const body = await response.text();
-        fetchDiag.responseBodyPrefix = body.slice(0, 240);
+        fetchDiag.responseBodyPrefix = body.slice(0, 360);
         if (!response.ok) {
           fetchDiag.status = "failed";
           fetchDiag.failedReason = `http_${response.status}`;
           failedReason = failedReason || fetchDiag.failedReason;
-          fetchDiag.fetchFinishedAt = nowIso();
-          fetches.push(fetchDiag);
           continue;
         }
 
         const payload = body ? JSON.parse(body) : {};
-        const rows = Array.isArray(payload?.results)
-          ? payload.results as ComicVineResultItem[]
-          : Array.isArray(payload?.data)
-            ? payload.data as ComicVineResultItem[]
-            : [];
+        const parsed = responseRows(payload);
+        const rows = parsed.rows;
+        fetchDiag.proxyResponseShape = parsed.shape;
         fetchDiag.rawApiCount = rows.length;
         fetchDiag.docsReturned = rows.length;
         fetchDiag.rawRetrieved = rows.length;
@@ -236,7 +295,10 @@ export const comicVineSourceAdapter: SourceAdapterV2 = {
           rawItems.push(normalized);
         }
       } catch (error) {
-        const message = String((error as { message?: string })?.message || error || "");
+        const errorObj = error as { name?: string; message?: string };
+        const message = String(errorObj?.message || error || "");
+        fetchDiag.thrownErrorName = String(errorObj?.name || "");
+        fetchDiag.thrownErrorMessage = message;
         fetchDiag.failedReason = message.includes("aborted") ? "aborted" : "fetch_error";
         fetchDiag.status = message.includes("aborted") ? "aborted" : "failed";
         fetchDiag.aborted = message.includes("aborted");
@@ -275,7 +337,10 @@ export const comicVineSourceAdapter: SourceAdapterV2 = {
       fetches,
       droppedBeforeDocCount: 0,
       dropReasons: {},
-      rawItemPreview: requestPath ? [{ comicVineFetchPath: requestPath }] : undefined,
+      rawItemPreview: [
+        { comicVineFetchPath: requestPath || "unknown" },
+        ...Array.from(usedProxyUrls).map((url) => ({ comicVineNormalizedProxyUrl: url })),
+      ],
     };
 
     return {

@@ -2638,7 +2638,51 @@ function handleLeft() {
         setLastRouterResultTracePresent(true);
         setLastRouterResultKeys(Object.keys(diagnosticResult));
         setLastDeploymentRuntimeMarker("recommender-v2");
-        setLastDebugGcdDispatchTrace({ traceSource: "v2", sourceDiagnostics: result.diagnostics.sources });
+        const v2ComicVineSourceDiagnostics = result.diagnostics.sources.find((source) => source.source === "comicVine") as any;
+        const v2ComicVineFetchDiagnostics = Array.isArray(v2ComicVineSourceDiagnostics?.fetches) ? v2ComicVineSourceDiagnostics.fetches : [];
+        const v2ComicVineQueriesAttempted = v2ComicVineFetchDiagnostics.map((fetch: any) => String(fetch?.query || "")).filter(Boolean);
+        setLastDebugGcdDispatchTrace({
+          traceSource: "v2_source_diagnostics_authoritative",
+          sourceEnabledComicVine: Boolean(sourceEnabled?.comicVine),
+          comicVineEnabledAtRequestStart: Boolean(sourceEnabled?.comicVine),
+          comicVineShouldUseResult: Boolean(sourceEnabled?.comicVine),
+          comicVineDispatchPlanned: Boolean(v2ComicVineSourceDiagnostics?.planned),
+          comicVineDispatchAttempted: Boolean(v2ComicVineSourceDiagnostics?.attempted),
+          comicVineDispatchSkippedReason: String(v2ComicVineSourceDiagnostics?.skippedReason || ""),
+          comicVineQueriesPlanned: Array.isArray(result?.diagnostics?.searchPlan?.sourcePlans)
+            ? (result.diagnostics.searchPlan.sourcePlans.find((sourcePlan: any) => sourcePlan?.source === "comicVine")?.intents || []).map((intent: any) => String(intent?.query || "")).filter(Boolean)
+            : [],
+          comicVineQueriesAttempted: v2ComicVineQueriesAttempted,
+          comicVineFetchStartedAt: String(v2ComicVineSourceDiagnostics?.startedAt || "") || null,
+          comicVineFetchFinishedAt: String(v2ComicVineSourceDiagnostics?.finishedAt || "") || null,
+          comicVineFetchTimedOut: Boolean(v2ComicVineSourceDiagnostics?.timedOut),
+          comicVineRawCountByQuery: Object.fromEntries(v2ComicVineFetchDiagnostics.map((fetch: any) => [String(fetch?.query || ""), Number(fetch?.rawRetrieved || fetch?.docsReturned || 0)])),
+          comicVineDocCountByQuery: Object.fromEntries(v2ComicVineFetchDiagnostics.map((fetch: any) => [String(fetch?.query || ""), Number(fetch?.docsReturned || 0)])),
+          comicVineCandidateCountByQuery: Object.fromEntries(v2ComicVineFetchDiagnostics.map((fetch: any) => [String(fetch?.query || ""), Number(fetch?.rawRetrieved || 0)])),
+          comicVineDispatchStageDiagnostics: v2ComicVineFetchDiagnostics.map((fetch: any, laneIndex: number) => ({
+            laneIndex,
+            query: String(fetch?.query || ""),
+            stage: "v2_source_fetch",
+            planned: true,
+            attempted: true,
+            startedAt: String(fetch?.fetchStartedAt || "") || null,
+            finishedAt: String(fetch?.fetchFinishedAt || "") || null,
+            timedOut: Boolean(fetch?.timedOut),
+            status: String(fetch?.status || "unknown"),
+            rawCount: Number(fetch?.rawRetrieved || 0),
+            docCount: Number(fetch?.docsReturned || 0),
+            candidateCount: Number(fetch?.rawRetrieved || 0),
+            error: String(fetch?.failedReason || "") || null,
+            skippedReason: "",
+          })),
+          comicVineProxyUrl: String(v2ComicVineFetchDiagnostics[0]?.configuredProxyUrl || ""),
+          normalizedComicVineProxyUrl: String(v2ComicVineFetchDiagnostics[0]?.normalizedProxyUrl || ""),
+          comicVineProxyConfigured: Boolean(v2ComicVineFetchDiagnostics[0]?.normalizedProxyUrl),
+          comicVineProxyHealthStatus: v2ComicVineSourceDiagnostics?.status === "succeeded" ? "ok" : v2ComicVineSourceDiagnostics?.status === "failed" ? "failed" : "unknown",
+          comicVineProxyErrorBody: String(v2ComicVineFetchDiagnostics.find((fetch: any) => String(fetch?.failedReason || "").length > 0)?.responseBodyPrefix || ""),
+          v1ComicVineDispatchTraceDeprecatedInV2: true,
+          sourceDiagnostics: result.diagnostics.sources,
+        } as any);
         setLastRecommendationInput(inputWithHistory);
         setLastRecommendationResult(diagnosticResult as any);
         setLastRecommendationTimestamp(new Date().toISOString());
@@ -4936,6 +4980,7 @@ function handleLeft() {
       `finalRecommenderInputCount:${Number((lastRecommendationResult as any)?.finalRecommenderInputCount || 0)}`,
       `stageDropReasons:${JSON.stringify((lastRecommendationResult as any)?.stageDropReasons || {})}`,
       `droppedBeforeRenderReason:${String((lastRecommendationResult as any)?.droppedBeforeRenderReason || "none")}`,
+      `debugComicVineDispatchTrace.note:${String(lastDebugGcdDispatchTrace?.traceSource || "").startsWith("v2_") ? "v2_source_diagnostics_authoritative__legacy_v1_dispatch_fields_deprecated" : "legacy_or_router_trace"}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
       `debugComicVineDispatchTrace.comicVineEnabledAtRequestStart:${Boolean((lastDebugGcdDispatchTrace as any)?.comicVineEnabledAtRequestStart)}`,
       `debugComicVineDispatchTrace.comicVineShouldUseResult:${Boolean((lastDebugGcdDispatchTrace as any)?.comicVineShouldUseResult)}`,
