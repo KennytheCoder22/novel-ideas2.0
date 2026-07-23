@@ -1,0 +1,21 @@
+═══════════════════════════════════════════════════════════════════
+ OL-F2 Phase 2 — Teen Open Library timeout budget matrix
+═══════════════════════════════════════════════════════════════════
+
+Rounds run ........................ 12
+Family cases ...................... 7
+Budget scenarios .................. 4
+Runs completed .................... 336
+Errors ............................ 0
+
+── Budget matrix ─────────────────────────────────────────────────
+  production   Δ=   0ms  timeouts=  2 (0.83%)  med=244ms  p95=902ms  accepted=648  final=212  runtime=85813ms  +wall=0ms  rec/s=not_applicable
+  plus_250ms   Δ= 250ms  timeouts=  2 (0.84%)  med=228ms  p95=747ms  accepted=646  final=216  runtime=81399ms  +wall=-4414ms  rec/s=non_positive_additional_cost
+  plus_500ms   Δ= 500ms  timeouts=  2 (0.83%)  med=222ms  p95=836ms  accepted=645  final=216  runtime=85200ms  +wall=-613ms  rec/s=non_positive_additional_cost
+  plus_750ms   Δ= 750ms  timeouts=  2 (0.84%)  med=220ms  p95=899ms  accepted=644  final=216  runtime=84873ms  +wall=-940ms  rec/s=non_positive_additional_cost
+
+── Suggested smallest intervention ──────────────────────────────
+  Timeout-budget increases did not show a clear low-cost improvement envelope; keep production budget and investigate narrow targeted recovery only if later data worsens.
+
+JSON:    C:\Users\KenBR\.copilot\repos\copilot-worktrees\novel-ideas2.0\kennythecoder22-super-waddle\scripts\output\teen-openlibrary-timeout-budget-matrix.json
+CSV:     C:\Users\KenBR\.copilot\repos\copilot-worktrees\novel-ideas2.0\kennythecoder22-super-waddle\scripts\output\teen-openlibrary-timeout-budget-matrix.csv

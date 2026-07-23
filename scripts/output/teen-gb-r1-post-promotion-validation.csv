@@ -1,0 +1,13 @@
+round,profileId,plannedQueries,plannedQueriesMatchExpected,productionCompositeApplied,legacyPrimaryExecuted,selectedCount,acceptedUniqueCount,latencyMs,requestCount,timeoutRatePct
+1,scifi-space-opera,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,0,0,391,3,0
+1,scifi-dystopian,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,0,0,198,3,0
+1,scifi-speculative-mixed,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,0,0,201,3,0
+2,scifi-space-opera,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,0,0,191,3,0
+2,scifi-dystopian,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,4,6,955,3,0
+2,scifi-speculative-mixed,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,0,0,182,3,0
+3,scifi-space-opera,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,5,5,747,3,0
+3,scifi-dystopian,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,0,0,196,3,0
+3,scifi-speculative-mixed,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,4,4,699,3,0
+4,scifi-space-opera,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,4,6,634,3,0
+4,scifi-dystopian,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,0,0,218,3,0
+4,scifi-speculative-mixed,"young adult sci fi | YA dystopian | YA speculative fiction",true,true,false,0,0,186,3,0

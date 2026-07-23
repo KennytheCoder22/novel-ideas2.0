@@ -1,0 +1,366 @@
+{
+  "generatedAt": "2026-07-23T00:22:20.115Z",
+  "expectedDefaultQueries": [
+    "young adult sci fi",
+    "YA dystopian",
+    "YA speculative fiction"
+  ],
+  "legacyPrimaryQuery": "young adult science fiction novel",
+  "defaultRows": [
+    {
+      "round": 1,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 0,
+      "acceptedUniqueCount": 0,
+      "latencyMs": 391,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 0,
+      "acceptedUniqueCount": 0,
+      "latencyMs": 198,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 0,
+      "acceptedUniqueCount": 0,
+      "latencyMs": 201,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 0,
+      "acceptedUniqueCount": 0,
+      "latencyMs": 191,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 4,
+      "acceptedUniqueCount": 6,
+      "latencyMs": 955,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 0,
+      "acceptedUniqueCount": 0,
+      "latencyMs": 182,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 5,
+      "acceptedUniqueCount": 5,
+      "latencyMs": 747,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 0,
+      "acceptedUniqueCount": 0,
+      "latencyMs": 196,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 4,
+      "acceptedUniqueCount": 4,
+      "latencyMs": 699,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 4,
+      "acceptedUniqueCount": 6,
+      "latencyMs": 634,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 0,
+      "acceptedUniqueCount": 0,
+      "latencyMs": 218,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "plannedQueriesMatchExpected": true,
+      "productionCompositeApplied": true,
+      "compositeOverrideApplied": false,
+      "primaryOverrideApplied": false,
+      "legacyPrimaryPresentInPlan": false,
+      "legacyPrimaryExecuted": false,
+      "selectedCount": 0,
+      "acceptedUniqueCount": 0,
+      "latencyMs": 186,
+      "requestCount": 3,
+      "timeoutCount": 0,
+      "timeoutRate": 0
+    }
+  ],
+  "defaultSummary": {
+    "selectedCount": {
+      "mean": 1.42,
+      "min": 0,
+      "max": 5,
+      "stddev": 2.02
+    },
+    "acceptedUniqueCount": {
+      "mean": 1.75,
+      "min": 0,
+      "max": 6,
+      "stddev": 2.52
+    },
+    "latencyMs": {
+      "mean": 399.83,
+      "min": 182,
+      "max": 955,
+      "stddev": 268.46
+    },
+    "requestCount": {
+      "mean": 3,
+      "min": 3,
+      "max": 3,
+      "stddev": 0
+    },
+    "timeoutRatePct": {
+      "mean": 0,
+      "min": 0,
+      "max": 0,
+      "stddev": 0
+    },
+    "plannedQueryMatchRatePct": 100,
+    "productionCompositeAppliedRatePct": 100,
+    "legacyPrimaryPlanPresenceCount": 0,
+    "legacyPrimaryExecutionCount": 0,
+    "primaryOverrideAppliedCount": 0,
+    "compositeOverrideAppliedCount": 0
+  },
+  "nonScifi": {
+    "romanceQueries": [
+      "young adult romance fiction novel",
+      "young adult contemporary fiction novel"
+    ],
+    "historicalMysteryQueries": [
+      "young adult historical fiction novel",
+      "teen mystery thriller novel",
+      "young adult historical mystery novel"
+    ],
+    "romanceUnchanged": true,
+    "historicalMysteryUnchanged": true
+  },
+  "rollback": {
+    "primaryOverride": {
+      "plannedQueries": [
+        "\"young adult\" dystopian novel",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "appliedPrimaryOverride": true,
+      "appliedCompositeOverride": false,
+      "matchesExpected": true
+    },
+    "compositeOverride": {
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA space opera",
+        "YA dystopian"
+      ],
+      "appliedPrimaryOverride": false,
+      "appliedCompositeOverride": true,
+      "matchesExpected": true
+    },
+    "restoredDefault": {
+      "plannedQueries": [
+        "young adult sci fi",
+        "YA dystopian",
+        "YA speculative fiction"
+      ],
+      "matchesExpected": true
+    }
+  },
+  "comparableToPhase4": {
+    "available": true,
+    "selectedCountComparable": true,
+    "acceptedUniqueComparable": true,
+    "currentSelectedMean": 1.42,
+    "referenceSelectedMean": 0.75,
+    "currentAcceptedUniqueMean": 1.75,
+    "referenceAcceptedUniqueMean": 1.08
+  },
+  "allChecksPass": true
+}

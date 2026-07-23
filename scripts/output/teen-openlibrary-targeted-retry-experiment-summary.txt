@@ -1,0 +1,36 @@
+═══════════════════════════════════════════════════════════════════
+ OL-F2 Phase 3 — Teen targeted retry experiment
+═══════════════════════════════════════════════════════════════════
+
+Rounds run ........................ 24
+Family cases ...................... 7
+Runs completed .................... 168
+Errors ............................ 0
+
+── Control vs experimental totals ───────────────────────────────
+First-attempt timeout count ....... 3
+Retry-attempt count ............... 2
+Retry-success count ............... 2
+Retry-success rate ................ 100.0%
+Recovered raw docs ................ 16
+Recovered accepted candidates ..... 3
+Recovered final contributions ..... 0
+Added wall-clock ms ............... -16220
+Recovered accepted / addl second .. non_positive_additional_cost
+
+── Retry success by family ──────────────────────────────────────
+  fantasy                  attempts=  2 successes=  2 rate=100.0%
+
+── Retry success by cascade index ───────────────────────────────
+  cascadeIndex= 2 attempts=  1 successes=  1 rate=100.0%
+  cascadeIndex= 4 attempts=  1 successes=  1 rate=100.0%
+
+── Slowdown window check ────────────────────────────────────────
+Runs with multi-timeout window ..... 0
+Retry attempts in slowdown window .. 0
+Retry successes in slowdown window . 0
+Retry attempts outside window ...... 2
+Retry successes outside window ..... 2
+
+JSON:    C:\Users\KenBR\.copilot\repos\copilot-worktrees\novel-ideas2.0\kennythecoder22-super-waddle\scripts\output\teen-openlibrary-targeted-retry-experiment.json
+CSV:     C:\Users\KenBR\.copilot\repos\copilot-worktrees\novel-ideas2.0\kennythecoder22-super-waddle\scripts\output\teen-openlibrary-targeted-retry-experiment.csv

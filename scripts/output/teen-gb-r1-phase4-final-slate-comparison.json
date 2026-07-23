@@ -1,0 +1,1079 @@
+{
+  "generatedAt": "2026-07-23T00:21:41.027Z",
+  "rounds": 4,
+  "profiles": [
+    {
+      "id": "scifi-space-opera",
+      "label": "Space opera science fiction"
+    },
+    {
+      "id": "scifi-dystopian",
+      "label": "Dystopian science fiction"
+    },
+    {
+      "id": "scifi-speculative-mixed",
+      "label": "Speculative and tech science fiction"
+    }
+  ],
+  "configs": [
+    {
+      "id": "A_production",
+      "label": "Configuration A (current production retrieval)"
+    },
+    {
+      "id": "B_composite",
+      "label": "Configuration B (best composite family)"
+    }
+  ],
+  "compositeQueries": [
+    "young adult sci fi",
+    "YA dystopian",
+    "YA speculative fiction"
+  ],
+  "allRows": [
+    {
+      "round": 1,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 3,
+      "selectedTitles": [
+        "The Girl with the Mermaid Hair",
+        "Metrophage",
+        "Barren Grounds"
+      ],
+      "selectedTitleSet": {},
+      "averageScore": 14.9433,
+      "sourceBalance": {
+        "googleBooks": 3
+      },
+      "uniqueAuthorCount": 3,
+      "uniqueSeriesCount": 3,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {
+        "Other": 3
+      },
+      "ageAppropriateSelectedCount": 3,
+      "ageAppropriateSelectedRate": 1,
+      "acceptedAfterSourcePolicyTotal": 3,
+      "acceptedAfterSourcePolicyUnique": 3,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 20
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 3,
+      "selectedTitles": [
+        "Metrophage",
+        "The Girl with the Mermaid Hair",
+        "Barren Grounds"
+      ],
+      "selectedTitleSet": {},
+      "averageScore": 11.36,
+      "sourceBalance": {
+        "googleBooks": 3
+      },
+      "uniqueAuthorCount": 3,
+      "uniqueSeriesCount": 3,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {
+        "Other": 3
+      },
+      "ageAppropriateSelectedCount": 3,
+      "ageAppropriateSelectedRate": 1,
+      "acceptedAfterSourcePolicyTotal": 3,
+      "acceptedAfterSourcePolicyUnique": 3,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 20
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 3,
+      "selectedTitles": [
+        "The Girl with the Mermaid Hair",
+        "Metrophage",
+        "Barren Grounds"
+      ],
+      "selectedTitleSet": {},
+      "averageScore": 14.9433,
+      "sourceBalance": {
+        "googleBooks": 3
+      },
+      "uniqueAuthorCount": 3,
+      "uniqueSeriesCount": 3,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {
+        "Other": 3
+      },
+      "ageAppropriateSelectedCount": 3,
+      "ageAppropriateSelectedRate": 1,
+      "acceptedAfterSourcePolicyTotal": 3,
+      "acceptedAfterSourcePolicyUnique": 3,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 20
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 5,
+      "selectedTitles": [
+        "Pretties with Ugly Thoughts",
+        "From a Farouche Adolescent to an Important Part of Society. The Psychosocial Development of Katniss Everdeen In \"The Hunger Games\" Trilogy",
+        "Last Chance Books",
+        "The Fame Game",
+        "The Unexpected Mess of It All"
+      ],
+      "selectedTitleSet": {},
+      "averageScore": 14.282,
+      "sourceBalance": {
+        "googleBooks": 5
+      },
+      "uniqueAuthorCount": 5,
+      "uniqueSeriesCount": 5,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {
+        "Other": 5
+      },
+      "ageAppropriateSelectedCount": 5,
+      "ageAppropriateSelectedRate": 1,
+      "acceptedAfterSourcePolicyTotal": 7,
+      "acceptedAfterSourcePolicyUnique": 7,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 20
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 4,
+      "selectedTitles": [
+        "Pretties with Ugly Thoughts",
+        "Last Chance Books",
+        "The Fame Game",
+        "The Unexpected Mess of It All"
+      ],
+      "selectedTitleSet": {},
+      "averageScore": 17.06,
+      "sourceBalance": {
+        "googleBooks": 4
+      },
+      "uniqueAuthorCount": 4,
+      "uniqueSeriesCount": 4,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {
+        "Other": 4
+      },
+      "ageAppropriateSelectedCount": 4,
+      "ageAppropriateSelectedRate": 1,
+      "acceptedAfterSourcePolicyTotal": 6,
+      "acceptedAfterSourcePolicyUnique": 6,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 20
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 5,
+      "selectedTitles": [
+        "ONE IF: A Thrilling Young Adult Sci-Fi Fantasy Adventure",
+        "The Ending Writes Itself",
+        "Reign of Mist",
+        "The Speed of Souls: A Novel",
+        "In His Keeping"
+      ],
+      "selectedTitleSet": {},
+      "averageScore": 11.53,
+      "sourceBalance": {
+        "googleBooks": 5
+      },
+      "uniqueAuthorCount": 7,
+      "uniqueSeriesCount": 5,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {
+        "Other": 5
+      },
+      "ageAppropriateSelectedCount": 5,
+      "ageAppropriateSelectedRate": 1,
+      "acceptedAfterSourcePolicyTotal": 5,
+      "acceptedAfterSourcePolicyUnique": 5,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 20
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": 0,
+      "selectedTitles": [],
+      "selectedTitleSet": {},
+      "averageScore": 0,
+      "sourceBalance": {},
+      "uniqueAuthorCount": 0,
+      "uniqueSeriesCount": 0,
+      "recommendationEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "selectedSubgenreHistogram": {},
+      "ageAppropriateSelectedCount": 0,
+      "ageAppropriateSelectedRate": 0,
+      "acceptedAfterSourcePolicyTotal": 0,
+      "acceptedAfterSourcePolicyUnique": 0,
+      "acceptedDuplicateRate": 0,
+      "rawApiCountTotal": 0
+    }
+  ],
+  "compareRows": [
+    {
+      "round": 1,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 0,
+      "removedByBCount": 3,
+      "addedByBTitles": [],
+      "removedByBTitles": [
+        "the girl with the mermaid hair",
+        "metrophage",
+        "barren grounds"
+      ],
+      "avgScoreDeltaBMinusA": -14.9433,
+      "acceptedDeltaBMinusA": -3,
+      "contributionDeltaBMinusA": -3,
+      "uniqueAuthorDeltaBMinusA": -3,
+      "uniqueSeriesDeltaBMinusA": -3,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": -1
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 0,
+      "removedByBCount": 3,
+      "addedByBTitles": [],
+      "removedByBTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "avgScoreDeltaBMinusA": -11.36,
+      "acceptedDeltaBMinusA": -3,
+      "contributionDeltaBMinusA": -3,
+      "uniqueAuthorDeltaBMinusA": -3,
+      "uniqueSeriesDeltaBMinusA": -3,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": -1
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 0,
+      "removedByBCount": 0,
+      "addedByBTitles": [],
+      "removedByBTitles": [],
+      "avgScoreDeltaBMinusA": 0,
+      "acceptedDeltaBMinusA": 0,
+      "contributionDeltaBMinusA": 0,
+      "uniqueAuthorDeltaBMinusA": 0,
+      "uniqueSeriesDeltaBMinusA": 0,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": 0
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 0,
+      "removedByBCount": 3,
+      "addedByBTitles": [],
+      "removedByBTitles": [
+        "the girl with the mermaid hair",
+        "metrophage",
+        "barren grounds"
+      ],
+      "avgScoreDeltaBMinusA": -14.9433,
+      "acceptedDeltaBMinusA": -3,
+      "contributionDeltaBMinusA": -3,
+      "uniqueAuthorDeltaBMinusA": -3,
+      "uniqueSeriesDeltaBMinusA": -3,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": -1
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 5,
+      "removedByBCount": 0,
+      "addedByBTitles": [
+        "pretties with ugly thoughts",
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "removedByBTitles": [],
+      "avgScoreDeltaBMinusA": 14.282,
+      "acceptedDeltaBMinusA": 7,
+      "contributionDeltaBMinusA": 5,
+      "uniqueAuthorDeltaBMinusA": 5,
+      "uniqueSeriesDeltaBMinusA": 5,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": 1
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 0,
+      "removedByBCount": 0,
+      "addedByBTitles": [],
+      "removedByBTitles": [],
+      "avgScoreDeltaBMinusA": 0,
+      "acceptedDeltaBMinusA": 0,
+      "contributionDeltaBMinusA": 0,
+      "uniqueAuthorDeltaBMinusA": 0,
+      "uniqueSeriesDeltaBMinusA": 0,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": 0
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 4,
+      "removedByBCount": 0,
+      "addedByBTitles": [
+        "pretties with ugly thoughts",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "removedByBTitles": [],
+      "avgScoreDeltaBMinusA": 17.06,
+      "acceptedDeltaBMinusA": 6,
+      "contributionDeltaBMinusA": 4,
+      "uniqueAuthorDeltaBMinusA": 4,
+      "uniqueSeriesDeltaBMinusA": 4,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": 1
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 0,
+      "removedByBCount": 5,
+      "addedByBTitles": [],
+      "removedByBTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "reign of mist",
+        "the speed of souls: a novel",
+        "in his keeping"
+      ],
+      "avgScoreDeltaBMinusA": -11.53,
+      "acceptedDeltaBMinusA": -5,
+      "contributionDeltaBMinusA": -5,
+      "uniqueAuthorDeltaBMinusA": -7,
+      "uniqueSeriesDeltaBMinusA": -5,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": -1
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 0,
+      "removedByBCount": 0,
+      "addedByBTitles": [],
+      "removedByBTitles": [],
+      "avgScoreDeltaBMinusA": 0,
+      "acceptedDeltaBMinusA": 0,
+      "contributionDeltaBMinusA": 0,
+      "uniqueAuthorDeltaBMinusA": 0,
+      "uniqueSeriesDeltaBMinusA": 0,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 0,
+      "removedByBCount": 0,
+      "addedByBTitles": [],
+      "removedByBTitles": [],
+      "avgScoreDeltaBMinusA": 0,
+      "acceptedDeltaBMinusA": 0,
+      "contributionDeltaBMinusA": 0,
+      "uniqueAuthorDeltaBMinusA": 0,
+      "uniqueSeriesDeltaBMinusA": 0,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 0,
+      "removedByBCount": 0,
+      "addedByBTitles": [],
+      "removedByBTitles": [],
+      "avgScoreDeltaBMinusA": 0,
+      "acceptedDeltaBMinusA": 0,
+      "contributionDeltaBMinusA": 0,
+      "uniqueAuthorDeltaBMinusA": 0,
+      "uniqueSeriesDeltaBMinusA": 0,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": 0
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "overlapCount": 0,
+      "addedByBCount": 0,
+      "removedByBCount": 0,
+      "addedByBTitles": [],
+      "removedByBTitles": [],
+      "avgScoreDeltaBMinusA": 0,
+      "acceptedDeltaBMinusA": 0,
+      "contributionDeltaBMinusA": 0,
+      "uniqueAuthorDeltaBMinusA": 0,
+      "uniqueSeriesDeltaBMinusA": 0,
+      "entropyDeltaBMinusA": 0,
+      "ageAppropriateRateDeltaBMinusA": 0
+    }
+  ],
+  "summaryByConfig": [
+    {
+      "configId": "A_production",
+      "configLabel": "Configuration A (current production retrieval)",
+      "selectedCount": {
+        "mean": 1.17,
+        "min": 0,
+        "max": 5,
+        "stddev": 1.72
+      },
+      "acceptedAfterSourcePolicyUnique": {
+        "mean": 1.17,
+        "min": 0,
+        "max": 5,
+        "stddev": 1.72
+      },
+      "averageScore": {
+        "mean": 4.4,
+        "min": 0,
+        "max": 14.94,
+        "stddev": 6.3
+      },
+      "uniqueAuthorCount": {
+        "mean": 1.33,
+        "min": 0,
+        "max": 7,
+        "stddev": 2.13
+      },
+      "uniqueSeriesCount": {
+        "mean": 1.17,
+        "min": 0,
+        "max": 5,
+        "stddev": 1.72
+      },
+      "recommendationEntropy": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "ageAppropriateSelectedRate": {
+        "mean": 0.33,
+        "min": 0,
+        "max": 1,
+        "stddev": 0.47
+      }
+    },
+    {
+      "configId": "B_composite",
+      "configLabel": "Configuration B (best composite family)",
+      "selectedCount": {
+        "mean": 0.75,
+        "min": 0,
+        "max": 5,
+        "stddev": 1.69
+      },
+      "acceptedAfterSourcePolicyUnique": {
+        "mean": 1.08,
+        "min": 0,
+        "max": 7,
+        "stddev": 2.43
+      },
+      "averageScore": {
+        "mean": 2.61,
+        "min": 0,
+        "max": 17.06,
+        "stddev": 5.87
+      },
+      "uniqueAuthorCount": {
+        "mean": 0.75,
+        "min": 0,
+        "max": 5,
+        "stddev": 1.69
+      },
+      "uniqueSeriesCount": {
+        "mean": 0.75,
+        "min": 0,
+        "max": 5,
+        "stddev": 1.69
+      },
+      "recommendationEntropy": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "ageAppropriateSelectedRate": {
+        "mean": 0.17,
+        "min": 0,
+        "max": 1,
+        "stddev": 0.37
+      }
+    }
+  ],
+  "deltaSummary": {
+    "overlapCount": {
+      "mean": 0,
+      "min": 0,
+      "max": 0,
+      "stddev": 0
+    },
+    "addedByBCount": {
+      "mean": 0.75,
+      "min": 0,
+      "max": 5,
+      "stddev": 1.69
+    },
+    "removedByBCount": {
+      "mean": 1.17,
+      "min": 0,
+      "max": 5,
+      "stddev": 1.72
+    },
+    "avgScoreDeltaBMinusA": {
+      "mean": -1.79,
+      "min": -14.94,
+      "max": 17.06,
+      "stddev": 9.85
+    },
+    "acceptedDeltaBMinusA": {
+      "mean": -0.08,
+      "min": -5,
+      "max": 7,
+      "stddev": 3.38
+    },
+    "contributionDeltaBMinusA": {
+      "mean": -0.42,
+      "min": -5,
+      "max": 5,
+      "stddev": 2.75
+    },
+    "uniqueAuthorDeltaBMinusA": {
+      "mean": -0.58,
+      "min": -7,
+      "max": 5,
+      "stddev": 3.07
+    },
+    "uniqueSeriesDeltaBMinusA": {
+      "mean": -0.42,
+      "min": -5,
+      "max": 5,
+      "stddev": 2.75
+    },
+    "entropyDeltaBMinusA": {
+      "mean": 0,
+      "min": 0,
+      "max": 0,
+      "stddev": 0
+    },
+    "ageAppropriateRateDeltaBMinusA": {
+      "mean": -0.17,
+      "min": -1,
+      "max": 1,
+      "stddev": 0.69
+    }
+  }
+}

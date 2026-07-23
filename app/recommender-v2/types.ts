@@ -304,6 +304,8 @@ export interface SourceDiagnosticV2 {
   googleBooksRejectedCountByQueryAndReason?: Record<string, Record<string, number>>;
   googleBooksRetrievalUnderfillReason?: string;
   googleBooksPublicationYearByTitle?: Record<string, number>;
+  googleBooksCreatorsByTitle?: Record<string, string[]>;
+  googleBooksCategoriesByTitle?: Record<string, string[]>;
   googleBooksDescriptionPresentByTitle?: Record<string, boolean>;
   googleBooksIsbnPresentByTitle?: Record<string, boolean>;
   googleBooksRatingsCountByTitle?: Record<string, number>;
@@ -348,6 +350,9 @@ export interface SourceDiagnosticV2 {
   googleBooksCuratedBookGuideEvidenceByTitle?: Record<string, string[]>;
   googleBooksPeriodicalIdentityEvidenceByTitle?: Record<string, string[]>;
   googleBooksPeriodicalIdentityDecisionByTitle?: Record<string, string>;
+  googleBooksPreNormalizationRejectAuditRows?: Array<Record<string, unknown>>;
+  googleBooksPreNormalizationRejectAuditBySourceId?: Record<string, Record<string, unknown>>;
+  googleBooksPreNormalizationRejectAuditByTitle?: Record<string, Record<string, unknown>>;
   preteenGoogleBooksPublicationShapeAuditByTitle?: Record<string, unknown>;
   preteenGoogleBooksPublicationShapeRejectedTitles?: string[];
   preteenGoogleBooksPublicationShapeRejectedReasonByTitle?: Record<string, string>;

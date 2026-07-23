@@ -266,6 +266,65 @@ async function main() {
   } finally {
     globalThis.fetch = originalLineageFetch;
   }
+  const originalTimeoutScopeFetch = globalThis.fetch;
+  const makeTimeoutScopeResponse = (query) => new Response(JSON.stringify({
+    docs: Array.from({ length: 8 }, (_unused, offset) => fakeDoc(query, offset + 1)),
+  }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+  const runTimeoutScopeScenario = async (ageBand, signals) => {
+    let callCount = 0;
+    globalThis.fetch = async (url) => {
+      callCount += 1;
+      const query = new URL(String(url)).searchParams.get("q") || "";
+      if (callCount === 1) throw new Error("per_query_timeout");
+      return makeTimeoutScopeResponse(query);
+    };
+    const profile = buildTasteProfile({ ageBand, signals });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    const fetches = (result.diagnostics?.fetches || []).filter((fetch) => !fetch.diagnosticOnly);
+    const firstQuery = String(fetches[0]?.query || "");
+    const firstQueryFetches = fetches.filter((fetch) => String(fetch.query || "").toLowerCase() === firstQuery.toLowerCase());
+    return { result, fetches, firstQuery, firstQueryFetches };
+  };
+  try {
+    const adultScope = await runTimeoutScopeScenario("adult", [
+      { action: "like", title: "Adult Timeout Scope", genres: ["Mystery"], themes: ["crime"], format: "book" },
+    ]);
+    assertEqual(adultScope.firstQueryFetches.some((fetch) => Number(fetch.attemptNumber) === 2), true, "adult first timed-out main fetch should retry once on the same query");
+    assertEqual(Boolean(adultScope.firstQueryFetches[0]?.timedOut), true, "adult first attempt should time out in the timeout-scope fixture");
+    assertEqual(Boolean(adultScope.firstQueryFetches[adultScope.firstQueryFetches.length - 1]?.retryAttempted), true, "adult timeout recovery should set retryAttempted");
+
+    const teenScope = await runTimeoutScopeScenario("teens", [
+      { action: "like", title: "Teen Timeout Scope", genres: ["Fantasy"], themes: ["adventure"], format: "book" },
+    ]);
+    assertEqual(teenScope.firstQueryFetches.some((fetch) => Number(fetch.attemptNumber) === 2), false, "teen first timed-out main fetch should not take the adult first-run retry path");
+    assertEqual(Boolean(teenScope.firstQueryFetches[0]?.timedOut), true, "teen first attempt should time out in the timeout-scope fixture");
+    assertEqual(Boolean(teenScope.firstQueryFetches[0]?.retryAttempted), false, "teen timed-out first attempt should remain outside adult-only retry gate");
+    assertEqual(Boolean(teenScope.firstQueryFetches[0]?.responseHeadersReceived), false, "teen timeout fixture should not report response headers before abort");
+    assertEqual(Boolean(teenScope.firstQueryFetches[0]?.bodyCompleted), false, "teen timeout fixture should not report body completion before abort");
+
+    console.log(JSON.stringify({
+      name: "open library first-timeout bounded retry is adult-only",
+      pass: true,
+      adult: {
+        firstQuery: adultScope.firstQuery,
+        attemptsForFirstQuery: adultScope.firstQueryFetches.length,
+        retryAttempted: Boolean(adultScope.firstQueryFetches[adultScope.firstQueryFetches.length - 1]?.retryAttempted),
+      },
+      teen: {
+        firstQuery: teenScope.firstQuery,
+        attemptsForFirstQuery: teenScope.firstQueryFetches.length,
+        retryAttempted: Boolean(teenScope.firstQueryFetches[0]?.retryAttempted),
+        headersReceivedBeforeTimeout: Boolean(teenScope.firstQueryFetches[0]?.responseHeadersReceived),
+        bodyCompletedBeforeTimeout: Boolean(teenScope.firstQueryFetches[0]?.bodyCompleted),
+        rawItemsAfterRun: teenScope.result.rawItems.length,
+      },
+    }));
+  } finally {
+    globalThis.fetch = originalTimeoutScopeFetch;
+  }
   if (process.argv.includes("--query-lineage-only")) return;
   const queryOnlyTasteProfile = buildTasteProfile({
     ageBand: "preteens",

@@ -79,16 +79,16 @@ function googleBooksPlan(ageBand, genreFamilyValues) {
   const result = googleBooksPlan("teens", ["science fiction", "contemporary"]);
   assertDeepEqual(
     result.queries,
-    ["young adult science fiction novel", "young adult contemporary fiction novel"],
+    ["young adult sci fi", "YA dystopian", "YA speculative fiction"],
     "teens science fiction + contemporary final query list",
   );
-  assertNotIncludes(result.queries, "young adult science fiction fiction novel", "teens science fiction query must not repeat fiction");
-  assertNotIncludes(result.queries, "young adult science fiction contemporary fiction", "teens science fiction third query must be omitted when no safe alternative exists");
-  assertEqual(result.diagnostics.teenGoogleBooksQueryFamilyByQuery["young adult science fiction novel"], "science fiction", "science fiction query family should be recorded");
-  assertEqual(result.diagnostics.teenGoogleBooksQueryRungByQuery["young adult science fiction novel"], "primary", "science fiction query rung should be recorded");
-  assertEqual(result.diagnostics.teenGoogleBooksQueryFamilyByQuery["young adult contemporary fiction novel"], "contemporary", "contemporary adjacency family should be recorded");
-  assertEqual(result.diagnostics.teenGoogleBooksQueryRungByQuery["young adult contemporary fiction novel"], "adjacent", "contemporary adjacency rung should be recorded");
-  assertEqual(result.diagnostics.teenGoogleBooksOmittedThirdQueryReason, "omitted_third_query:no_safe_distinct_template:science fiction+contemporary", "science fiction + contemporary should record omitted-third-query reason");
+  assertEqual(result.diagnostics.teenGoogleBooksQueryFamilyByQuery["young adult sci fi"], "science_fiction", "science fiction primary family should be recorded");
+  assertEqual(result.diagnostics.teenGoogleBooksQueryRungByQuery["young adult sci fi"], "primary", "science fiction primary rung should be recorded");
+  assertEqual(result.diagnostics.teenGoogleBooksQueryFamilyByQuery["YA dystopian"], "dystopian", "dystopian family should be recorded");
+  assertEqual(result.diagnostics.teenGoogleBooksQueryRungByQuery["YA dystopian"], "adjacent", "dystopian rung should be recorded");
+  assertEqual(result.diagnostics.teenGoogleBooksQueryFamilyByQuery["YA speculative fiction"], "speculative", "speculative family should be recorded");
+  assertEqual(result.diagnostics.teenGoogleBooksQueryRungByQuery["YA speculative fiction"], "third", "speculative rung should be recorded");
+  assertEqual(result.diagnostics.teenGoogleBooksOmittedThirdQueryReason, "replaced_with_scifi_production_composite_family", "science fiction route should record composite-family replacement reason");
 }
 
 // Teen: romance + contemporary
@@ -169,8 +169,8 @@ function googleBooksPlan(ageBand, genreFamilyValues) {
   const result = googleBooksPlan("teens", ["science fiction", "contemporary"]);
   assertDeepEqual(
     result.queries,
-    ["\"young adult\" dystopian novel", "young adult contemporary fiction novel"],
-    "teens science fiction override should affect only the primary query",
+    ["\"young adult\" dystopian novel", "YA dystopian", "YA speculative fiction"],
+    "teens science fiction override should replace the primary query within the composite family",
   );
   assertEqual(
     result.diagnostics.teenGoogleBooksScienceFictionPrimaryQueryOverrideApplied,
@@ -178,6 +178,23 @@ function googleBooksPlan(ageBand, genreFamilyValues) {
     "override diagnostics flag should be true",
   );
   delete process.env.V2_TEEN_GB_SCIFI_PRIMARY_QUERY_OVERRIDE;
+}
+
+// Teen science-fiction composite override hook: replacing the full query family should be supported for safe rollback/experiments.
+{
+  process.env.V2_TEEN_GB_SCIFI_COMPOSITE_QUERIES_OVERRIDE = "young adult sci fi|YA space opera|YA dystopian";
+  const result = googleBooksPlan("teens", ["science fiction", "contemporary"]);
+  assertDeepEqual(
+    result.queries,
+    ["young adult sci fi", "YA space opera", "YA dystopian"],
+    "teens science fiction composite override should replace the entire route-defined query family",
+  );
+  assertEqual(
+    result.diagnostics.teenGoogleBooksScienceFictionCompositeOverrideApplied,
+    true,
+    "composite override diagnostics flag should be true",
+  );
+  delete process.env.V2_TEEN_GB_SCIFI_COMPOSITE_QUERIES_OVERRIDE;
 }
 
 console.log(JSON.stringify({
