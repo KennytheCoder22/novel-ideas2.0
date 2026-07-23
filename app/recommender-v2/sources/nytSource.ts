@@ -150,6 +150,14 @@ function setCachedList(listSlug: string, result: NytListFetch): void {
   }
 }
 
+function inflightKey(listSlug: string): string {
+  return `${listSlug}:${todayUtcDate()}`;
+}
+
+// In-flight promise map: coalesces concurrent requests for the same list/date
+// so two simultaneous cold instances never duplicate a live fetch.
+const nytInflight = new Map<string, Promise<NytListFetch>>();
+
 function inferFamilyFromQuery(query: string): string {
   const q = normalizeText(query);
   if (!q) return "general";
@@ -365,29 +373,48 @@ export const nytSourceAdapter: SourceAdapterV2 = {
         continue;
       }
 
-      // Gate on rate limiter before every live request.
-      await nytRateLimiter.waitTurn();
-      let result = await fetchNytList(list, apiKey, context.signal);
-
-      // On 429: wait 15 s, consume one more rate-limiter slot, retry once.
-      if (result.quotaBlocked) {
-        const waitMs = result.retryAfterMs ?? 15_000;
-        await sleep(waitMs);
-        await nytRateLimiter.waitTurn();
-        const retry = await fetchNytList(list, apiKey, context.signal);
-        if (retry.quotaBlocked) {
-          // Still throttled — stop live fetches for this run.
-          runQuotaBlocked = true;
-          runRetryAfterMs = retry.retryAfterMs ?? result.retryAfterMs;
-          result = { ...retry, fetch: { ...retry.fetch, retryAttempted: true, retrySucceeded: false } };
-        } else {
-          result = { ...retry, fetch: { ...retry.fetch, retryAttempted: true, retrySucceeded: true } };
-        }
+      // Coalesce concurrent in-flight requests for the same list/date so two
+      // simultaneous cold callers never duplicate the same live fetch.
+      const ifKey = inflightKey(list);
+      const existingInflight = nytInflight.get(ifKey);
+      if (existingInflight) {
+        const r = await existingInflight;
+        if (r.quotaBlocked && !runQuotaBlocked) { runQuotaBlocked = true; runRetryAfterMs = r.retryAfterMs; }
+        settled.push(r);
+        continue;
       }
 
-      // Populate cache on successful live fetches.
-      setCachedList(list, result);
-      settled.push(result);
+      // Wrap rate-limit + fetch + backoff + cache into a single shared promise.
+      const liveFetch = (async (): Promise<NytListFetch> => {
+        // Gate on rate limiter before every live request.
+        await nytRateLimiter.waitTurn();
+        let r = await fetchNytList(list, apiKey, context.signal);
+        // On 429: wait (up to) 15 s, consume one more rate-limiter slot, retry once.
+        if (r.quotaBlocked) {
+          const waitMs = r.retryAfterMs ?? 15_000;
+          await sleep(waitMs);
+          await nytRateLimiter.waitTurn();
+          const retry = await fetchNytList(list, apiKey, context.signal);
+          r = retry.quotaBlocked
+            ? { ...retry, fetch: { ...retry.fetch, retryAttempted: true, retrySucceeded: false } }
+            : { ...retry, fetch: { ...retry.fetch, retryAttempted: true, retrySucceeded: true } };
+        }
+        setCachedList(list, r);
+        return r;
+      })();
+
+      nytInflight.set(ifKey, liveFetch);
+      try {
+        const result = await liveFetch;
+        if (result.quotaBlocked && !runQuotaBlocked) {
+          // Still throttled after retry — stop live fetches for this run.
+          runQuotaBlocked = true;
+          runRetryAfterMs = result.retryAfterMs;
+        }
+        settled.push(result);
+      } finally {
+        if (nytInflight.get(ifKey) === liveFetch) nytInflight.delete(ifKey);
+      }
     }
 
     const endpointCalledByList: Record<string, string> = {};
