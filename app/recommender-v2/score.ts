@@ -563,7 +563,8 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const teenOpenLibrary = profile.ageBand === "teens" && candidate.source === "openLibrary";
     const adultOpenLibrary = profile.ageBand === "adult" && candidate.source === "openLibrary";
     const adultGoogleBooks = profile.ageBand === "adult" && candidate.source === "googleBooks";
-    const metadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary || adultOpenLibrary || adultGoogleBooks;
+    const adultNyt = profile.ageBand === "adult" && candidate.source === "nyt";
+    const metadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary || adultOpenLibrary || adultGoogleBooks || adultNyt;
     const text = metadataOnlyEvidence ? metadataText : fullText;
     const adultGoogleBooksFields = adultGoogleBooks ? candidateMetadataFields(candidate) : [];
     const adultGoogleBooksSignalTrace: AdultGoogleBooksSignalMatchTrace[] = [];
