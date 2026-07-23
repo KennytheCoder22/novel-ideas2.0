@@ -317,6 +317,7 @@ export interface SourceDiagnosticV2 {
   nytQuotaBlocked?: boolean;
   nytRetryAfterMs?: number;
   nytCacheHitByList?: Record<string, boolean>;
+  nytUsedOverview?: boolean;
   googleBooksPlannedQueries?: string[];
   googleBooksQueriesAttempted?: string[];
   googleBooksRawCountByQuery?: Record<string, number>;

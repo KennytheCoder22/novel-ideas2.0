@@ -521,8 +521,10 @@ async function run429TwiceRegression() {
   };
   globalThis.fetch = async (url) => { fetchCount++; return makeMockFetch(responses)(url); };
   try {
-    // Use mystery/thriller family to get combined + hardcover + trade-fiction-paperback
-    const result = await adapter.search(adultPlan("mystery thriller adult"), adultContext());
+    // Use general family (2 lists: combined + hardcover) so uncachedLists.length < 3
+    // and the overview fast-path is not triggered; this keeps retry attribution on the
+    // per-list fetch diags where the assertions expect to find them.
+    const result = await adapter.search(adultPlan("adult book"), adultContext());
     const diag = asObject(result.diagnostics);
     const fetchDiags = asArray(diag.fetches);
     const cfFetch = asObject(fetchDiags.find((f) => text(asObject(f).query) === "combined-print-and-e-book-fiction"));
@@ -613,7 +615,11 @@ async function runConcurrentDeduplicationRegression() {
   } finally {
     globalThis.fetch = savedFetch;
     process.env.NYT_BOOKS_API_KEY = savedKey;
-    process.env.V2_NYT_LISTS_OVERRIDE = savedOverride;
+    if (savedOverride === undefined) {
+      delete process.env.V2_NYT_LISTS_OVERRIDE;
+    } else {
+      process.env.V2_NYT_LISTS_OVERRIDE = savedOverride;
+    }
   }
 }
 
@@ -633,6 +639,100 @@ function runDiagnosticSecrecyRegression() {
     pass: rawUrl.includes(fakeKey) && !redacted.includes(fakeKey) && redacted.includes("[redacted]"),
   };
 }
+
+// ---------------------------------------------------------------------------
+// R7: Overview path — 3-list plan fetches overview once; second call fully cached
+// ---------------------------------------------------------------------------
+async function runOverviewPathRegression() {
+  const adapter = freshNytAdapter();
+  const savedFetch = globalThis.fetch;
+  const savedKey = process.env.NYT_BOOKS_API_KEY;
+  process.env.NYT_BOOKS_API_KEY = "test-key";
+  let fetchCount = 0;
+
+  // Build an overview response containing all three adult lists.
+  const overviewBody = {
+    status: "OK",
+    results: {
+      bestsellers_date: "2026-07-18",
+      lists: [
+        {
+          list_name: "Combined Print & E-Book Fiction",
+          list_name_encoded: "combined-print-and-e-book-fiction",
+          display_name: "Combined Print & E-Book Fiction",
+          list_id: 704,
+          updated: "WEEKLY",
+          books: [
+            nytBook("Overview Combined A", "9780000000701"),
+            nytBook("Overview Combined B", "9780000000702", 2),
+          ],
+          corrections: [],
+        },
+        {
+          list_name: "Hardcover Fiction",
+          list_name_encoded: "hardcover-fiction",
+          display_name: "Hardcover Fiction",
+          list_id: 1,
+          updated: "WEEKLY",
+          books: [nytBook("Overview Hardcover A", "9780000000703")],
+          corrections: [],
+        },
+        {
+          list_name: "Trade Fiction Paperback",
+          list_name_encoded: "trade-fiction-paperback",
+          display_name: "Trade Fiction Paperback",
+          list_id: 17,
+          updated: "WEEKLY",
+          books: [nytBook("Overview Trade A", "9780000000704")],
+          corrections: [],
+        },
+      ],
+    },
+  };
+
+  globalThis.fetch = async (url) => {
+    fetchCount++;
+    // Route the overview request; per-list requests would be fallbacks (should not occur).
+    return makeMockFetch({ overview: { status: 200, body: overviewBody } })(url);
+  };
+
+  try {
+    // science fiction → 3 lists (combined + hardcover + trade) → triggers overview path
+    const plan = adultPlan("science fiction adventure");
+    const ctx = adultContext();
+
+    const r1 = await adapter.search(plan, ctx);
+    const fetchesAfterFirst = fetchCount;
+
+    // Second call — all three lists should now be in the daily cache.
+    const r2 = await adapter.search(plan, ctx);
+    const fetchesAfterSecond = fetchCount - fetchesAfterFirst;
+
+    const d1 = asObject(r1.diagnostics);
+    const d2 = asObject(r2.diagnostics);
+    const cacheHitsR2 = asObject(d2.nytCacheHitByList);
+
+    return {
+      firstStatus: text(r1.status),
+      firstRawCount: Number(d1.nytRawBookCount || 0),
+      firstNytUsedOverview: Boolean(d1.nytUsedOverview),
+      fetchesAfterFirst,
+      secondStatus: text(r2.status),
+      secondRawCount: Number(d2.nytRawBookCount || 0),
+      fetchesAfterSecond,
+      cacheHitsR2,
+      allCachedOnSecondCall: Object.values(cacheHitsR2).every(Boolean),
+      pass: fetchesAfterFirst === 1 && fetchesAfterSecond === 0
+        && Boolean(d1.nytUsedOverview)
+        && Number(d1.nytRawBookCount || 0) >= 3
+        && Object.values(cacheHitsR2).every(Boolean),
+    };
+  } finally {
+    globalThis.fetch = savedFetch;
+    process.env.NYT_BOOKS_API_KEY = savedKey;
+  }
+}
+
 
 function summarize(result) {
   const lines = [];
@@ -665,6 +765,7 @@ function summarize(result) {
   lines.push(`  R4 mixedCacheLive=${String(Boolean((r2.mixedCacheLive || {}).pass))}`);
   lines.push(`  R5 concurrentDedup=${String(Boolean((r2.concurrentDedup || {}).pass))}`);
   lines.push(`  R6 diagnosticSecrecy=${String(Boolean((r2.diagnosticSecrecy || {}).pass))}`);
+  lines.push(`  R7 overviewPath=${String(Boolean((r2.overviewPath || {}).pass))}`);
   lines.push("");
   const allLivePass = result.liveRuns.every((run) => run.adapterLayer.pass);
   const allRegressionsPass = Object.values(result.regressions).every((row) => Boolean(row.pass));
@@ -697,6 +798,7 @@ async function main() {
     mixedCacheLive: await runMixedCacheLiveRegression(),
     concurrentDedup: await runConcurrentDeduplicationRegression(),
     diagnosticSecrecy: runDiagnosticSecrecyRegression(),
+    overviewPath: await runOverviewPathRegression(),
   };
 
   const payload = {

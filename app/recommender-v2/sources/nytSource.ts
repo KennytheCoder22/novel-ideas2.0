@@ -208,8 +208,9 @@ function selectRequestedLists(plan: SourcePlan, _profile: TasteProfile): string[
   return selected.length ? selected : nytListsForFamily("general");
 }
 
-function parseNytBooks(payload: any, fallbackList: string): NytBook[] {
-  const root = payload?.results || {};
+// Shared book-parsing core used by both the per-list path and the overview path.
+// `root` is either `payload.results` (per-list) or an overview list-entry object.
+function parseNytBooksFromRoot(root: any, fallbackList: string): NytBook[] {
   const books = Array.isArray(root?.books) ? root.books : [];
   return books
     .filter((book: any) => book && (book.title || book.book_title))
@@ -231,6 +232,115 @@ function parseNytBooks(payload: any, fallbackList: string): NytBook[] {
       bestsellers_date: typeof root?.bestsellers_date === "string" ? root.bestsellers_date.trim() : undefined,
       published_date: typeof root?.published_date === "string" ? root.published_date.trim() : undefined,
     }));
+}
+
+// Thin wrapper for the per-list endpoint response shape (`payload.results` as root).
+function parseNytBooks(payload: any, fallbackList: string): NytBook[] {
+  return parseNytBooksFromRoot(payload?.results ?? {}, fallbackList);
+}
+
+// Fetch the overview endpoint once and populate the per-slug daily cache for all
+// `requestedLists` found in the response.  Returns the fetch diagnostic so the
+// caller can record it; returns null only on a non-quota network failure so the
+// caller can fall back to per-list fetches.
+type NytOverviewPopulateResult = {
+  fetch: SourceFetchDiagnosticV2;
+  quotaBlocked?: boolean;
+  retryAfterMs?: number;
+  listsPopulatedFromOverview: string[];
+};
+
+async function fetchAndPopulateFromOverview(
+  requestedLists: string[],
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<NytOverviewPopulateResult | null> {
+  const fullEndpoint = `${NYT_API_BASE}/overview.json?api-key=${encodeURIComponent(apiKey)}`;
+  const endpoint = redactApiKeyFromUrl(fullEndpoint);
+  const fetchStartedAt = nowIso();
+  const fetchDiag: SourceFetchDiagnosticV2 = { query: "__overview__", fetchStartedAt, timedOut: false };
+
+  const doFetch = async (): Promise<{ ok: boolean; status: number; json: any; quotaBlocked?: boolean; retryAfterMs?: number }> => {
+    try {
+      const res = await fetch(fullEndpoint, { method: "GET", headers: { Accept: "application/json" }, signal });
+      const fetchFinishedAt = nowIso();
+      fetchDiag.fetchFinishedAt = fetchFinishedAt;
+      fetchDiag.elapsedMs = Date.parse(fetchFinishedAt) - Date.parse(fetchStartedAt);
+      fetchDiag.httpStatus = res.status;
+      const text = await res.text();
+      let json: any = null;
+      try { json = text ? JSON.parse(text) : null; } catch { /* ignore */ }
+      if (res.status === 429) {
+        const retryAfterHeader = res.headers.get("Retry-After");
+        const retryAfterMs = retryAfterHeader ? (Number(retryAfterHeader) || 0) * 1000 : undefined;
+        return { ok: false, status: 429, json, quotaBlocked: true, retryAfterMs };
+      }
+      return { ok: res.ok, status: res.status, json };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const timedOut = Boolean(signal?.aborted) || /aborted|abort|timeout/i.test(msg);
+      const finAt = nowIso();
+      fetchDiag.fetchFinishedAt = finAt;
+      fetchDiag.elapsedMs = Date.parse(finAt) - Date.parse(fetchStartedAt);
+      fetchDiag.timedOut = timedOut;
+      fetchDiag.status = timedOut ? "timed_out" : "failed";
+      fetchDiag.failedReason = msg || "nyt_overview_fetch_failed";
+      return { ok: false, status: 0, json: null };
+    }
+  };
+
+  await nytRateLimiter.waitTurn();
+  let result = await doFetch();
+
+  if (result.quotaBlocked) {
+    // One bounded retry after 429, same as per-list path.
+    const waitMs = result.retryAfterMs ?? 15_000;
+    await sleep(waitMs);
+    await nytRateLimiter.waitTurn();
+    result = await doFetch();
+    if (result.quotaBlocked) {
+      fetchDiag.status = "failed";
+      fetchDiag.failedReason = "quota_blocked";
+      fetchDiag.quotaBlocked = true;
+      return { fetch: fetchDiag, quotaBlocked: true, retryAfterMs: result.retryAfterMs, listsPopulatedFromOverview: [] };
+    }
+  }
+
+  if (!result.ok || !result.json) {
+    // Non-quota failure: return null so the caller falls back to per-list fetches.
+    return null;
+  }
+
+  // Extract requested lists from the overview and populate the per-slug cache.
+  const overviewLists: any[] = Array.isArray(result.json?.results?.lists) ? result.json.results.lists : [];
+  const bySlug = new Map<string, any>();
+  for (const lst of overviewLists) {
+    const slug = String(lst?.list_name_encoded || "").toLowerCase().trim();
+    if (slug) bySlug.set(slug, lst);
+  }
+
+  const populated: string[] = [];
+  for (const requestedSlug of requestedLists) {
+    const listEntry = bySlug.get(requestedSlug);
+    if (!listEntry) continue;
+    const books = parseNytBooksFromRoot(listEntry, requestedSlug);
+    const mockFetch: NytListFetch = {
+      requestedList: requestedSlug,
+      endpoint,
+      httpStatus: result.status,
+      timedOut: false,
+      returnedListName: String(listEntry.list_name || "").trim() || undefined,
+      returnedListEncoded: String(listEntry.list_name_encoded || "").trim() || undefined,
+      books,
+      fetch: { query: requestedSlug, timedOut: false, status: books.length > 0 ? "succeeded" : "empty", rawApiCount: books.length, docsReturned: books.length, rawRetrieved: books.length, firstReturnedTitles: uniqueStrings(books.map((b) => b.title), 10) },
+    };
+    setCachedList(requestedSlug, mockFetch);
+    populated.push(requestedSlug);
+  }
+
+  fetchDiag.status = populated.length > 0 ? "succeeded" : "empty";
+  fetchDiag.rawApiCount = overviewLists.length;
+  return { fetch: fetchDiag, listsPopulatedFromOverview: populated };
 }
 
 async function fetchNytList(requestedList: string, apiKey: string, signal?: AbortSignal): Promise<NytListFetch> {
@@ -357,6 +467,41 @@ export const nytSourceAdapter: SourceAdapterV2 = {
     const settled: NytListFetch[] = [];
     let runQuotaBlocked = false;
     let runRetryAfterMs: number | undefined;
+    let usedOverview = false;
+    const overviewFetchDiags: SourceFetchDiagnosticV2[] = [];
+
+    // Overview fast-path: if 3 or more requested lists are not yet cached, fetch
+    // the overview endpoint once (1 API call) to populate the per-slug cache for
+    // all of them.  The existing per-list loop then serves everything from cache.
+    // Threshold is 3 so 2-list plans (general/romance/historical families) always
+    // use the per-list path, preserving retry attribution in their fetch diags.
+    const uncachedLists = requestedLists.filter((l) => !getCachedList(l));
+    if (uncachedLists.length >= 3) {
+      const ifKey = inflightKey("__overview__");
+      const existingOverviewInflight = nytInflight.get(ifKey);
+      const overviewPromise = existingOverviewInflight
+        ? existingOverviewInflight.then(() => null) // wait then fall through; cache now populated
+        : (async (): Promise<null> => {
+            const ovRes = await fetchAndPopulateFromOverview(uncachedLists, apiKey, context.signal);
+            if (ovRes) {
+              overviewFetchDiags.push(ovRes.fetch);
+              usedOverview = usedOverview || ovRes.listsPopulatedFromOverview.length > 0;
+              if (ovRes.quotaBlocked && !runQuotaBlocked) {
+                runQuotaBlocked = true;
+                runRetryAfterMs = ovRes.retryAfterMs;
+              }
+            }
+            return null;
+          })();
+      if (!existingOverviewInflight) {
+        nytInflight.set(ifKey, overviewPromise as any);
+      }
+      try {
+        await overviewPromise;
+      } finally {
+        if (!existingOverviewInflight && nytInflight.get(ifKey) === overviewPromise) nytInflight.delete(ifKey);
+      }
+    }
 
     for (const list of requestedLists) {
       // Serve from daily cache when available — no API call needed.
@@ -422,7 +567,7 @@ export const nytSourceAdapter: SourceAdapterV2 = {
     const booksPerList: Record<string, number> = {};
     const cacheHitByList: Record<string, boolean> = {};
     const returnedLists: string[] = [];
-    const fetches: SourceFetchDiagnosticV2[] = [];
+    const fetches: SourceFetchDiagnosticV2[] = [...overviewFetchDiags];
     let firstFailure = "";
 
     for (const row of settled) {
@@ -553,6 +698,7 @@ export const nytSourceAdapter: SourceAdapterV2 = {
       nytQuotaBlocked: runQuotaBlocked || undefined,
       nytRetryAfterMs: runRetryAfterMs,
       nytCacheHitByList: cacheHitByList,
+      nytUsedOverview: usedOverview || undefined,
     };
 
     return {
