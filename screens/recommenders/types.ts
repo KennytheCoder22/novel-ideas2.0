@@ -234,6 +234,11 @@ export type RecommendationResult = {
   expansionCandidatesSurvivedFiltersCount?: number;
   expansionCandidatesRejectedByReason?: Record<string, number>;
   expansionCandidatesAcceptedFinal?: string[];
+  expansionScoredScoreByTitle?: Record<string, number>;
+  expansionFinalEligibilityRejectionStageByTitle?: Record<string, string>;
+  expansionFinalEligibilityRejectionReasonByTitle?: Record<string, string>;
+  expansionWouldPassIfQueryOnlyCapIgnored?: string[];
+  expansionRouteFictionSupportedButRejectedTitles?: string[];
   expansionQueryRootMismatchRejectedTitles?: string[];
   expansionFalsePositiveRejectedTitles?: string[];
   expansionLocaleRejectedTitles?: string[];
