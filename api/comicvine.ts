@@ -1,8 +1,22 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const COMIC_VINE_BASE = "https://comicvine.gamespot.com/api";
+const CORS_ALLOW_ORIGIN = "*";
+const CORS_ALLOW_METHODS = "GET, OPTIONS";
+const CORS_ALLOW_HEADERS = "Content-Type";
+
+function applyCors(res: VercelResponse): void {
+  res.setHeader("Access-Control-Allow-Origin", CORS_ALLOW_ORIGIN);
+  res.setHeader("Access-Control-Allow-Methods", CORS_ALLOW_METHODS);
+  res.setHeader("Access-Control-Allow-Headers", CORS_ALLOW_HEADERS);
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  applyCors(res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   const apiKey = String(process.env.COMICVINE_API_KEY || "").trim();
   const hasServerComicVineKey = Boolean(apiKey);
   const keyLength = apiKey.length;
