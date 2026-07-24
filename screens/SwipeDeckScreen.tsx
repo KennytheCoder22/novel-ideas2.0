@@ -683,10 +683,19 @@ const REC_SOURCE_LABELS: Record<string, string> = {
   googleBooks: "Google Books",
   kitsu: "Kitsu",
   comicVine: "ComicVine",
+  nyt: "NYT",
 };
 
+// True in Expo dev builds (native __DEV__) and in any non-production bundler env (web).
+const SHOW_REC_SOURCE: boolean =
+  (typeof __DEV__ !== "undefined" && Boolean(__DEV__)) ||
+  process.env.NODE_ENV !== "production";
+
 function recSourceLabel(item: RecItem): string {
-  const raw = item.kind === "open_library" ? String((item.doc as any).source || "") : "";
+  const raw =
+    item.kind === "open_library"
+      ? String((item.doc as any).diagnostics?.source || (item.doc as any).source || "")
+      : "";
   return `Source: ${REC_SOURCE_LABELS[raw] ?? (raw || "Unknown")}`;
 }
 
@@ -4721,7 +4730,7 @@ function handleLeft() {
                         {currentRec.kind === "open_library" ? currentRec.doc.title ?? "Untitled" : currentRec.book.title ?? "Untitled"}
                       </Text>
                       <Text style={styles.recBookAuthor} numberOfLines={1}>
-                        {__DEV__
+                        {SHOW_REC_SOURCE
                           ? recSourceLabel(currentRec)
                           : currentRec.kind === "open_library"
                             ? recommendationAuthor(currentRec.doc)
@@ -4943,18 +4952,6 @@ function handleLeft() {
               <Text style={styles.debugToggleText}>Fresh User</Text>
             </TouchableOpacity>
           </View>
-
-          {(v2DebugResult || v2DebugError) ? (
-            <View style={styles.v2DebugPanel}>
-              <Text style={styles.v2DebugTitle}>Recommender V2 Debug</Text>
-              <Text style={styles.v2DebugText}>status:{v2DebugError ? "error" : "ok"}</Text>
-              {v2DebugResult?.diagnostics.sessionReportHeader ? <Text style={styles.v2DebugText}>{v2DebugResult.diagnostics.sessionReportHeader}</Text> : null}
-              <Text style={styles.v2DebugText}>items:{v2DebugResult?.items.map((item) => item.title).join(" | ") || "(none)"}</Text>
-              <Text style={styles.v2DebugText}>stages:{v2DebugResult?.diagnostics.stages.map((stage) => stage.stage).join(" â†’ ") || "(none)"}</Text>
-              <Text style={styles.v2DebugText}>sources:{v2DebugResult?.diagnostics.sources.map((source) => `${source.source}:${source.status}:${source.rawCount}`).join(" | ") || "(none)"}</Text>
-              {v2DebugError ? <Text style={styles.v2DebugText}>error:{v2DebugError}</Text> : null}
-            </View>
-          ) : null}
         </View>
       </View>
 
