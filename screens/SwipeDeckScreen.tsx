@@ -678,6 +678,18 @@ function recommendationAuthor(doc: any): string {
   return "Unknown author";
 }
 
+const REC_SOURCE_LABELS: Record<string, string> = {
+  openLibrary: "Open Library",
+  googleBooks: "Google Books",
+  kitsu: "Kitsu",
+  comicVine: "ComicVine",
+};
+
+function recSourceLabel(item: RecItem): string {
+  const raw = item.kind === "open_library" ? String((item.doc as any).source || "") : "";
+  return `Source: ${REC_SOURCE_LABELS[raw] ?? (raw || "Unknown")}`;
+}
+
 function recommendationCoverUrl(doc: any): string | null {
   if (!doc) return null;
   const directImage =
@@ -4709,9 +4721,11 @@ function handleLeft() {
                         {currentRec.kind === "open_library" ? currentRec.doc.title ?? "Untitled" : currentRec.book.title ?? "Untitled"}
                       </Text>
                       <Text style={styles.recBookAuthor} numberOfLines={1}>
-                        {currentRec.kind === "open_library"
-                          ? recommendationAuthor(currentRec.doc)
-                          : currentRec.book.author ?? "Unknown author"}
+                        {__DEV__
+                          ? recSourceLabel(currentRec)
+                          : currentRec.kind === "open_library"
+                            ? recommendationAuthor(currentRec.doc)
+                            : currentRec.book.author ?? "Unknown author"}
                       </Text>
                       <Text style={styles.recCounter}>
                         {recItems.length > 0 ? `${recIndex + 1} of ${recItems.length}` : "0 of 0"}
