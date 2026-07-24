@@ -11,7 +11,6 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "populate:swipe-images": "node scripts/populateSwipeCardFallbackImages.mjs",
-    "trace:comicvine:contract": "npx tsx scripts/run-comicvine-contract-traces.ts",
     "test:v2:googlebooks-query-quality": "node scripts/run-v2-googlebooks-query-quality-regressions.mjs",
     "test:v2:googlebooks-query-refinement-root-cause": "node scripts/run-v2-googlebooks-query-refinement-root-cause-regressions.mjs",
     "test:v2:googlebooks-general-publication-identity": "node scripts/run-v2-googlebooks-general-publication-identity-regressions.mjs",

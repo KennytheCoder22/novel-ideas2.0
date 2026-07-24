@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.semanticSignalMatchedFieldsByField = semanticSignalMatchedFieldsByField;
 exports.signalPresentInText = signalPresentInText;
+exports.ageSuitabilityScore = ageSuitabilityScore;
 exports.scoreCandidates = scoreCandidates;
 function candidateText(candidate) {
     return [
@@ -78,11 +80,225 @@ function candidateMetadataText(candidate) {
         ...candidate.formats,
     ].join(" ").toLowerCase();
 }
+function uniqueStrings(values) {
+    return Array.from(new Set(values.filter(Boolean)));
+}
+function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function semanticSignalMatchedFieldsByField(fields, signal, options) {
+    const normalizeSignal = options?.normalizeSignal !== false;
+    const normalizeFieldText = options?.normalizeFieldText !== false;
+    const value = normalizeSignal ? normalized(signal) : String(signal || "");
+    if (!value)
+        return [];
+    const matched = [];
+    for (const field of fields) {
+        const values = Array.isArray(field.values) ? field.values : [];
+        if (values.some((entry) => {
+            const text = normalizeFieldText ? String(entry || "").toLowerCase() : String(entry || "");
+            return signalPresentInText(text, value);
+        }))
+            matched.push(field.field);
+    }
+    return matched;
+}
+function candidateMetadataFields(candidate) {
+    const { description: rawDescription, firstSentence, subjects } = rawTextParts(candidate);
+    const fields = [
+        { field: "title", text: candidate.title },
+        { field: "subtitle", text: candidate.subtitle || "" },
+        { field: "description", text: candidate.description || "" },
+        { field: "rawDescription", text: rawDescription },
+        { field: "firstSentence", text: firstSentence },
+        { field: "subjects", text: subjects },
+        { field: "creators", text: candidate.creators.join(" ") },
+        { field: "genres", text: candidate.genres.join(" ") },
+        { field: "themes", text: candidate.themes.join(" ") },
+        { field: "tones", text: candidate.tones.join(" ") },
+        { field: "characterDynamics", text: candidate.characterDynamics.join(" ") },
+        { field: "formats", text: candidate.formats.join(" ") },
+    ];
+    return fields
+        .map((entry) => ({ field: entry.field, text: String(entry.text || "") }))
+        .filter((entry) => entry.text.trim().length > 0);
+}
+function shortSignalAliasMatches(signal, text) {
+    const patterns = {
+        ai: [
+            { pattern: /(^|[^\p{L}\p{N}])(artificial\s+intelligence)(?=$|[^\p{L}\p{N}])/iu, method: "approved_alias_phrase" },
+            { pattern: /(^|[^\p{L}\p{N}])(a\s*\.?\s*i\.?)(?=$|[^\p{L}\p{N}])/iu, method: "punctuated_acronym_token" },
+        ],
+        rpg: [
+            { pattern: /(^|[^\p{L}\p{N}])(role[-\s]?playing\s+game)(?=$|[^\p{L}\p{N}])/iu, method: "approved_alias_phrase" },
+        ],
+        tv: [
+            { pattern: /(^|[^\p{L}\p{N}])(television)(?=$|[^\p{L}\p{N}])/iu, method: "approved_alias_phrase" },
+        ],
+    };
+    for (const { pattern, method } of patterns[signal] || []) {
+        const match = pattern.exec(text);
+        if (match?.[2])
+            return { matchedText: match[2], method };
+    }
+    return undefined;
+}
+function shortSignalTokenMatch(signal, text) {
+    const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])(${escapeRegExp(signal)})(?=$|[^\\p{L}\\p{N}])`, "iu");
+    const match = pattern.exec(text);
+    return match?.[2];
+}
+function shortSignalEmbeddedMatches(signal, text) {
+    const pattern = new RegExp(`[\\p{L}\\p{N}]*${escapeRegExp(signal)}[\\p{L}\\p{N}]*`, "giu");
+    const matches = [];
+    for (const match of text.matchAll(pattern)) {
+        const token = String(match[0] || "");
+        if (!token)
+            continue;
+        const acceptedToken = shortSignalTokenMatch(signal, token);
+        if (normalized(token) === signal || normalized(acceptedToken) === signal)
+            continue;
+        matches.push(token);
+    }
+    return uniqueStrings(matches).slice(0, 5);
+}
+function adultGoogleBooksSignalMatch(combinedText, fields, signal, signalBucket, trace) {
+    const value = normalized(signal.value);
+    if (!value)
+        return false;
+    const isShortSignal = value.length <= 3;
+    if (!isShortSignal) {
+        if (!signalPresentInText(combinedText, value))
+            return false;
+        const matchedFields = semanticSignalMatchedFieldsByField(fields.map((field) => ({ field: field.field, values: [field.text] })), value, { normalizeSignal: false, normalizeFieldText: true });
+        const matchedField = matchedFields[0];
+        trace.push({
+            signal: signal.value,
+            normalizedSignal: value,
+            field: matchedField || "combinedMetadata",
+            matchedText: value,
+            method: "existing_semantic_match",
+            signalBucket,
+            accepted: true,
+        });
+        return true;
+    }
+    for (const field of fields) {
+        const fieldText = field.text;
+        const tokenMatch = shortSignalTokenMatch(value, fieldText);
+        if (tokenMatch) {
+            trace.push({
+                signal: signal.value,
+                normalizedSignal: value,
+                field: field.field,
+                matchedText: tokenMatch,
+                method: "unicode_token_boundary",
+                signalBucket,
+                accepted: true,
+            });
+            return true;
+        }
+        const aliasMatch = shortSignalAliasMatches(value, fieldText);
+        if (aliasMatch) {
+            trace.push({
+                signal: signal.value,
+                normalizedSignal: value,
+                field: field.field,
+                matchedText: aliasMatch.matchedText,
+                method: aliasMatch.method,
+                signalBucket,
+                accepted: true,
+            });
+            return true;
+        }
+    }
+    for (const field of fields) {
+        for (const embedded of shortSignalEmbeddedMatches(value, field.text)) {
+            trace.push({
+                signal: signal.value,
+                normalizedSignal: value,
+                field: field.field,
+                matchedText: embedded,
+                method: "rejected_embedded_substring",
+                signalBucket,
+                accepted: false,
+                reason: "short_signal_requires_token_boundary_or_approved_alias",
+            });
+        }
+    }
+    return false;
+}
+function adultGoogleBooksSignalMatches(combinedText, fields, signals, signalBucket, trace) {
+    return signals.filter((signal) => adultGoogleBooksSignalMatch(combinedText, fields, signal, signalBucket, trace));
+}
+function adultGoogleBooksTraceBySignal(trace, key) {
+    return trace
+        .filter((entry) => entry.accepted)
+        .reduce((acc, entry) => {
+        const signal = entry.normalizedSignal || normalized(entry.signal);
+        const value = String(entry[key] || "");
+        if (!signal || !value)
+            return acc;
+        acc[signal] = uniqueStrings([...(acc[signal] || []), value]);
+        return acc;
+    }, {});
+}
 function hasStrongTeenMetadata(text) {
     return /\b(young adult|juvenile fiction|teen|adolescent|high school|coming of age)\b/.test(text);
 }
 function hasStrongGenreMetadata(text) {
     return /\b(dystopian|dystopia|science fiction|horror|thriller|mystery|historical fiction|fantasy|paranormal|survival|adventure)\b/.test(text);
+}
+function hasMainstreamFictionPublisher(text) {
+    return /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/.test(text);
+}
+function adultGoogleBooksNarrativeEvidence(candidate) {
+    if (candidate.source !== "googleBooks")
+        return { score: 0, signals: [] };
+    const raw = (candidate.raw || {});
+    const publisherText = normalized(String(raw.publisher || ""));
+    const categoryText = normalized(candidate.genres.join(" "));
+    const descriptionText = normalized(candidate.description || "");
+    const titleText = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+    const signals = [];
+    let score = 0;
+    const fictionCategory = /\b(fiction|novel|stories|detective and mystery|mystery|thriller|fantasy|science fiction|historical fiction|romance fiction|horror tales|adventure stories|speculative)\b/.test(categoryText);
+    const novelDescriptor = /\b(novel|fiction|thriller|mystery|fantasy|romance|science fiction|historical fiction|horror|saga)\b/.test(`${titleText} ${descriptionText}`);
+    const narrativeSummary = descriptionText.length >= 80
+        && /\b(follows|story of|tells the story|centers on|must survive|must uncover|must confront|must choose|must save|when\b|after\b|before\b|protagonist|heroine|hero|detective|character|characters|sisters?|brothers?|family saga)\b/.test(descriptionText);
+    const fictionPublisher = hasMainstreamFictionPublisher(publisherText);
+    const artifactShape = /\b(writer'?s market|writers'? handbook|guide to literary agents|catalog(?:ue)?|bibliograph(?:y|ies)|literary criticism|study guide|teacher'?s guide|conference proceedings?|government reports?|directory|textbook|reference|handbook|manual)\b/.test(`${titleText} ${categoryText} ${descriptionText}`);
+    const nonNarrativeCategory = /\b(nonfiction|non-fiction|biography|autobiography|memoir|essays?|history|philosophy|reference|business|language arts|education|study aids?|travel|self-help|psychology|political science|social science|science|medical|technology|computers?)\b/.test(categoryText)
+        && !/\b(true crime|narrative nonfiction)\b/.test(categoryText);
+    if (fictionCategory) {
+        score += 1.2;
+        signals.push("fictionCategory");
+    }
+    if (novelDescriptor) {
+        score += 0.65;
+        signals.push("novelDescriptor");
+    }
+    if (narrativeSummary) {
+        score += 0.9;
+        signals.push("narrativeSummary");
+    }
+    if (fictionPublisher) {
+        score += 0.35;
+        signals.push("fictionPublisher");
+    }
+    if (candidate.publicationYear && candidate.publicationYear >= 1980) {
+        score += 0.15;
+        signals.push("modernPublication");
+    }
+    if (artifactShape && !(fictionCategory || narrativeSummary)) {
+        score -= 5;
+        signals.push("artifactShape");
+    }
+    if (nonNarrativeCategory && !(fictionCategory || narrativeSummary)) {
+        score -= 3.5;
+        signals.push("nonNarrativeCategory");
+    }
+    return { score, signals };
 }
 function signalPresentInText(text, value) {
     if (!value)
@@ -237,9 +453,15 @@ function querySpecificityScore(candidate) {
 }
 function sourceQualityRelevanceScore(candidate, profile, genreMatches, positiveMatches) {
     const metadataText = candidateMetadataText(candidate);
+    const adultOpenLibrary = candidate.source === "openLibrary" && profile.ageBand === "adult";
     const openLibraryMetadataOnlyEvidence = candidate.source === "openLibrary"
-        && (profile.ageBand === "preteens" || profile.ageBand === "teens");
-    const text = openLibraryMetadataOnlyEvidence ? metadataText : candidateText(candidate);
+        && (profile.ageBand === "preteens" || profile.ageBand === "teens" || profile.ageBand === "adult");
+    const adultGoogleBooksMetadataOnlyEvidence = candidate.source === "googleBooks" && profile.ageBand === "adult";
+    const adultKitsuMetadataOnlyEvidence = candidate.source === "kitsu" && profile.ageBand === "adult";
+    const adultComicVineMetadataOnlyEvidence = candidate.source === "comicVine" && profile.ageBand === "adult";
+    const text = openLibraryMetadataOnlyEvidence || adultGoogleBooksMetadataOnlyEvidence || adultKitsuMetadataOnlyEvidence || adultComicVineMetadataOnlyEvidence
+        ? metadataText
+        : candidateText(candidate);
     const normalizedTitle = normalized(candidate.title);
     const raw = (candidate.raw || {});
     const metadataCount = candidate.genres.length + candidate.themes.length;
@@ -248,7 +470,7 @@ function sourceQualityRelevanceScore(candidate, profile, genreMatches, positiveM
     const titleWordCount = normalizedTitle.split(" ").filter(Boolean).length;
     const strongTeenMetadata = hasStrongTeenMetadata(metadataText);
     const strongGenreMetadata = hasStrongGenreMetadata(metadataText);
-    let score = querySpecificityScore(candidate);
+    let score = adultOpenLibrary ? 0 : querySpecificityScore(candidate);
     if (candidate.creators.length > 0)
         score += 0.4;
     else
@@ -342,13 +564,30 @@ function scoreCandidates(candidates, profile) {
         const middleGradesOpenLibrary = profile.ageBand === "preteens" && candidate.source === "openLibrary";
         const kidsOpenLibrary = profile.ageBand === "kids" && candidate.source === "openLibrary";
         const teenOpenLibrary = profile.ageBand === "teens" && candidate.source === "openLibrary";
-        const openLibraryMetadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary;
-        const text = openLibraryMetadataOnlyEvidence ? metadataText : fullText;
-        const rawGenreMatches = signalMatches(text, profile.genreFamily);
-        const rawThemeMatches = signalMatches(text, profile.themes);
-        const rawToneMatches = signalMatches(text, profile.tone);
-        const rawCharacterMatches = signalMatches(text, profile.characterDynamics);
-        const rawFormatMatches = signalMatches(text, profile.formatPreference);
+        const adultOpenLibrary = profile.ageBand === "adult" && candidate.source === "openLibrary";
+        const adultGoogleBooks = profile.ageBand === "adult" && candidate.source === "googleBooks";
+        const adultKitsu = profile.ageBand === "adult" && candidate.source === "kitsu";
+        const adultComicVine = profile.ageBand === "adult" && candidate.source === "comicVine";
+        const adultNyt = profile.ageBand === "adult" && candidate.source === "nyt";
+        const metadataOnlyEvidence = middleGradesOpenLibrary
+            || kidsOpenLibrary
+            || teenOpenLibrary
+            || adultOpenLibrary
+            || adultGoogleBooks
+            || adultKitsu
+            || adultComicVine
+            || adultNyt;
+        const text = metadataOnlyEvidence ? metadataText : fullText;
+        const adultGoogleBooksFields = adultGoogleBooks ? candidateMetadataFields(candidate) : [];
+        const adultGoogleBooksSignalTrace = [];
+        const matchSignals = (signals, signalBucket) => adultGoogleBooks
+            ? adultGoogleBooksSignalMatches(text, adultGoogleBooksFields, signals, signalBucket, adultGoogleBooksSignalTrace)
+            : signalMatches(text, signals);
+        const rawGenreMatches = matchSignals(profile.genreFamily, "genreFamily");
+        const rawThemeMatches = matchSignals(profile.themes, "themes");
+        const rawToneMatches = matchSignals(profile.tone, "tone");
+        const rawCharacterMatches = matchSignals(profile.characterDynamics, "characterDynamics");
+        const rawFormatMatches = matchSignals(profile.formatPreference, "formatPreference");
         const filterGenericMatches = (matches) => middleGradesOpenLibrary
             ? matches.filter((signal) => !isMiddleGradesGenericTasteSignal(signal))
             : kidsOpenLibrary
@@ -364,12 +603,12 @@ function scoreCandidates(candidates, profile) {
         const toneMatches = filterGenericMatches(rawToneMatches);
         const characterMatches = filterGenericMatches(rawCharacterMatches);
         const formatMatches = filterGenericMatches(rawFormatMatches);
-        const avoidMatches = signalMatches(text, profile.avoidSignals);
+        const avoidMatches = matchSignals(profile.avoidSignals, "avoidSignals");
         const positiveMatches = [...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
         const fullPositiveMatches = [...signalMatches(fullText, profile.themes), ...signalMatches(fullText, profile.tone), ...signalMatches(fullText, profile.characterDynamics), ...signalMatches(fullText, profile.formatPreference)];
         const rawTasteMatchCount = rawGenreMatches.length + rawThemeMatches.length + rawToneMatches.length + rawCharacterMatches.length + rawFormatMatches.length;
         const genericOnlyTasteMatch = (middleGradesOpenLibrary || kidsOpenLibrary) && rawTasteMatchCount > 0 && genreMatches.length + positiveMatches.length === 0;
-        const removedQueryTextSignals = openLibraryMetadataOnlyEvidence
+        const removedQueryTextSignals = metadataOnlyEvidence
             ? [...signalMatches(fullText, profile.genreFamily), ...fullPositiveMatches]
                 .filter((signal) => ![...genreMatches, ...positiveMatches].some((kept) => normalized(kept.value) === normalized(signal.value)))
                 .filter((signal) => middleGradesOpenLibrary
@@ -379,6 +618,9 @@ function scoreCandidates(candidates, profile) {
                     : true)
                 .map((signal) => signal.value)
             : [];
+        const googleBooksNarrativeEvidence = adultGoogleBooks ? adultGoogleBooksNarrativeEvidence(candidate) : { score: 0, signals: [] };
+        const adultGoogleBooksShortSubstringMatches = adultGoogleBooksSignalTrace
+            .filter((entry) => entry.method === "rejected_embedded_substring");
         const allPositiveMatches = [...genreMatches, ...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
         const kidsNarrativeEvidence = kidsOpenLibrary ? kidsNarrativeSemanticEvidence(candidate, allPositiveMatches) : { score: 0, signals: [] };
         addSignalBucket(genreMatches, kidsOpenLibrary ? 0.7 : 3, matchedSignals, scoreBreakdown, "genreFacetMatch");
@@ -394,6 +636,8 @@ function scoreCandidates(candidates, profile) {
         scoreBreakdown.ageBandSuitability = suitabilityScore;
         scoreBreakdown.sourceQualityRelevance = sourceQualityRelevanceScore(candidate, profile, genreMatches, positiveMatches);
         scoreBreakdown.queryRungBonus = queryRungBonus(candidate);
+        if (googleBooksNarrativeEvidence.score)
+            scoreBreakdown.googleBooksNarrativePreference = googleBooksNarrativeEvidence.score;
         if (genericOnlyTasteMatch)
             scoreBreakdown.genericOnlyTasteMatchPenalty = kidsOpenLibrary ? -1.25 : -0.9;
         const score = Object.entries(scoreBreakdown).reduce((sum, [key, value]) => sum + (key === "ageBandSuitability" ? 0 : Number(value || 0)), 0);
@@ -414,15 +658,40 @@ function scoreCandidates(candidates, profile) {
                 genericOnlyTasteMatch,
                 documentBackedTasteSignals: metadataBackedMatchedLikedSignals,
                 narrativeSemanticSignals: kidsNarrativeEvidence.signals,
+                googleBooksNarrativeSignals: googleBooksNarrativeEvidence.signals,
                 metadataBackedMatchedLikedSignals,
                 metadataBackedMatchedDislikedSignals,
                 positiveTasteScore,
                 sourceQualityScore: Number(scoreBreakdown.sourceQualityRelevance || 0),
                 queryRungBonus: Number(scoreBreakdown.queryRungBonus || 0),
                 totalScore: score,
-                finalRankingReason: teenOpenLibrary ? "teen_openlibrary_ranked_by_metadata_only_document_evidence" : undefined,
+                finalRankingReason: teenOpenLibrary
+                    ? "teen_openlibrary_ranked_by_metadata_only_document_evidence"
+                    : adultOpenLibrary
+                        ? "adult_openlibrary_ranked_by_metadata_only_document_evidence"
+                        : adultGoogleBooks
+                            ? "adult_googlebooks_ranked_by_document_metadata"
+                            : adultKitsu
+                                ? "adult_kitsu_ranked_by_document_metadata"
+                                : adultComicVine
+                                    ? "adult_comicvine_ranked_by_document_metadata"
+                                    : undefined,
                 teenOpenLibraryMetadataOnlyEvidence: teenOpenLibrary || undefined,
                 teenOpenLibraryExcludedRetrievalEvidence: teenOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+                adultOpenLibraryMetadataOnlyEvidence: adultOpenLibrary || undefined,
+                adultOpenLibraryExcludedRetrievalEvidence: adultOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+                adultGoogleBooksMetadataOnlyEvidence: adultGoogleBooks || undefined,
+                adultGoogleBooksExcludedRetrievalEvidence: adultGoogleBooks ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+                adultKitsuMetadataOnlyEvidence: adultKitsu || undefined,
+                adultKitsuExcludedRetrievalEvidence: adultKitsu ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+                adultComicVineMetadataOnlyEvidence: adultComicVine || undefined,
+                adultComicVineExcludedRetrievalEvidence: adultComicVine ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+                adultGoogleBooksSignalMatchTrace: adultGoogleBooks ? adultGoogleBooksSignalTrace : undefined,
+                adultGoogleBooksSignalMatchedField: adultGoogleBooks ? adultGoogleBooksTraceBySignal(adultGoogleBooksSignalTrace, "field") : undefined,
+                adultGoogleBooksSignalMatchedText: adultGoogleBooks ? adultGoogleBooksTraceBySignal(adultGoogleBooksSignalTrace, "matchedText") : undefined,
+                adultGoogleBooksSignalMatchMethod: adultGoogleBooks ? adultGoogleBooksTraceBySignal(adultGoogleBooksSignalTrace, "method") : undefined,
+                adultGoogleBooksShortSignalSubstringMatches: adultGoogleBooks ? adultGoogleBooksShortSubstringMatches : undefined,
+                adultGoogleBooksRejectedShortSignalMatches: adultGoogleBooks ? adultGoogleBooksShortSubstringMatches : undefined,
             },
         };
     }).sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));

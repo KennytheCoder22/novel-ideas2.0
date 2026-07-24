@@ -1,4 +1,4 @@
-// screens/SwipeDeckScreen.tsx
+﻿// screens/SwipeDeckScreen.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -26,11 +26,9 @@ import msHsDeck from "../data/swipeDecks/ms_hs";
 import adultDeck from "../data/swipeDecks/adult";
 import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
-import { getRecommendations } from "./recommenders/recommenderRouter";
 import { runRecommenderV2 } from "../app/recommender-v2";
 import { applyGoogleBooksRenderingStageLineage, computeGoogleBooksDropDiagnostics, computeGoogleBooksDropDiagnosticsByTitle, harmonizeGoogleBooksStageLineage } from "../app/recommender-v2/googleBooksLineageDiagnostics";
 import type { AgeBandV2, RecommendationResultV2, SwipeSignalV2 } from "../app/recommender-v2";
-import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
 const DEPLOYED_COMMIT_MARKER = "17c4615";
 const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-17c4615";
 const KITSU_API_BASE = String(
@@ -86,8 +84,6 @@ type FallbackBook = {
 type RecItem =
   | { kind: "open_library"; doc: OLDoc }
   | { kind: "fallback"; book: FallbackBook };
-
-type RecommendationEngineSelection = "v1" | "v2";
 
 type FeedbackKind = "already_read" | "not_interested" | "next";
 type RecFeedback = { itemId: string; kind: FeedbackKind; rating?: 1 | 2 | 3 | 4 | 5 };
@@ -211,12 +207,6 @@ function swipeHistoryToV2Signals(entries: SwipeHistoryEntry[]): SwipeSignalV2[] 
       weight: entry.direction === "skip" ? 0.25 : 1,
     };
   });
-}
-
-function initialRecommendationEngineSelection(): RecommendationEngineSelection {
-  if (typeof window === "undefined") return "v1";
-  const engineParam = new URLSearchParams(window.location.search || "").get("engine");
-  return String(engineParam || "").toLowerCase() === "v2" ? "v2" : "v1";
 }
 
 type TwentyQAxis = keyof TasteVector;
@@ -402,13 +392,13 @@ async function lookupWikipediaThumbnail(wikiTitle: string): Promise<{ imageUrl?:
 
 const DEFAULT_K2_CARDS: any[] = [];
 
-const k2DeckResolved: SwipeDeck = resolveDeckFromModule(k2DeckMod as any, "k2", "K–2");
+const k2DeckResolved: SwipeDeck = resolveDeckFromModule(k2DeckMod as any, "k2", "Kâ€“2");
 const k2Deck: SwipeDeck =
   k2DeckResolved && Array.isArray((k2DeckResolved as any).cards) && (k2DeckResolved as any).cards.length > 0
     ? k2DeckResolved
     : ({
         deckKey: "k2",
-        deckLabel: "K–2",
+        deckLabel: "Kâ€“2",
         rules: { targetSwipesBeforeRecommend: 6, allowUpToSwipesBeforeRecommend: 10 },
         cards: DEFAULT_K2_CARDS as any,
       } as SwipeDeck);
@@ -430,7 +420,7 @@ const deck36: SwipeDeck = (() => {
 
   const cards: any[] = looksLikeBookCards ? cardsFromCandidate : DEFAULT_36_CARDS;
   const deckKey = candidate?.deckKey ?? "36";
-  const deckLabel = candidate?.deckLabel ?? "Grades 3–6";
+  const deckLabel = candidate?.deckLabel ?? "Grades 3â€“6";
   const rules = candidate?.rules ?? { targetSwipesBeforeRecommend: 8, allowUpToSwipesBeforeRecommend: 12 };
   return { deckKey, deckLabel, rules, cards: attachGraphicNovelKeywords(cards) } as SwipeDeck;
 })();
@@ -1078,8 +1068,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [swipeHistory, setSwipeHistory] = useState<SwipeHistoryEntry[]>([]);
 
   const [recQuery, setRecQuery] = useState<string>("");
-  const [selectedRecommendationEngine, setSelectedRecommendationEngine] = useState<RecommendationEngineSelection>(initialRecommendationEngineSelection);
-  const [lastEngineActuallyUsed, setLastEngineActuallyUsed] = useState<RecommendationEngineSelection | "">("");
+  const [lastEngineActuallyUsed, setLastEngineActuallyUsed] = useState<"v2" | "">("");
   const [recEngineLabel, setRecEngineLabel] = useState<string>("");
   const [recLoading, setRecLoading] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
@@ -1136,13 +1125,11 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastKnownFetchPhase, setLastKnownFetchPhase] = useState<string>("");
   const [queryBuildStatus, setQueryBuildStatus] = useState<string>("not_started");
   const [phaseHistory, setPhaseHistory] = useState<Array<{ phase: string; timestamp: string }>>([]);
-  const [recommenderCallReferenceType, setRecommenderCallReferenceType] = useState<string>("");
   const [activeRecommendationRunId, setActiveRecommendationRunId] = useState<string>("");
   const [currentRecommendationRunId, setCurrentRecommendationRunId] = useState<string>("");
   const [pendingRecommendationPromisePresent, setPendingRecommendationPromisePresent] = useState<boolean>(false);
   const [recommendationLockState, setRecommendationLockState] = useState<string>("idle");
   const pendingRecommendationPromiseRef = useRef<Promise<any> | null>(null);
-  const [sourceHealthPreflightEnabled, setSourceHealthPreflightEnabled] = useState<boolean>(true);
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
 
@@ -1173,15 +1160,6 @@ export default function SwipeDeckScreen(props: Props) {
     ms_hs: createRecommendationHistoryBucket(),
     adult: createRecommendationHistoryBucket(),
   });
-
-  useEffect(() => {
-    try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem("novelideas_disable_source_health_preflight") : null;
-      setSourceHealthPreflightEnabled(!(raw === "1" || String(raw).toLowerCase() === "true"));
-    } catch {
-      setSourceHealthPreflightEnabled(true);
-    }
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1697,26 +1675,6 @@ function handleLeft() {
     setSessionNonce((n) => n + 1);
   }
 
-  function normalizeRecommendationItems(rawItems: any[]): RecItem[] {
-    const docsInOrder: OLDoc[] = Array.isArray(rawItems)
-      ? rawItems
-          .map((it: any) => it?.doc)
-          .filter((doc: any) => doc && typeof doc === "object" && doc?.title)
-      : [];
-
-    return docsInOrder.map((doc: any) => ({
-      kind: "open_library",
-      doc: {
-        ...doc,
-        diagnostics: doc?.diagnostics || {
-          source: doc?.source,
-          queryText: doc?.queryText,
-          queryRung: doc?.queryRung,
-        },
-      },
-    }));
-  }
-
   function normalizeRecommenderV2Items(rawItems: RecommendationResultV2["items"]): RecItem[] {
     return rawItems.map((candidate) => ({
       kind: "open_library",
@@ -2176,7 +2134,7 @@ function handleLeft() {
       openLibraryRecentHistoryRootCount: history.titleRoots.size,
       sourceSkippedReason: diagnostics.sources.map((source) => source.skippedReason || source.failedReason || "").filter(Boolean),
       routerResultTracePresent: true,
-      debugRouterVersion: EXPECTED_ROUTER_FINGERPRINT,
+      debugRouterVersion: "recommender-v2",
       engineVersion: v2Result.engineVersion,
       v2Diagnostics: diagnostics,
       v2TasteProfile: diagnostics.tasteProfile,
@@ -2528,18 +2486,6 @@ function handleLeft() {
     };
   }
 
-  function selectRecommendationEngine(nextEngine: RecommendationEngineSelection) {
-    setSelectedRecommendationEngine(nextEngine);
-    setLastEngineActuallyUsed("");
-    setRecEngineLabel("");
-    setRecItems([]);
-    setRecIndex(0);
-    setRecError(null);
-    setAutoSearched(false);
-    setLastRecommendationResult(null);
-    setLastRecommendationTimestamp("");
-  }
-
   async function performRecommendationRun(input: RecommenderInput) {
     const markPhase = (phase: string, extra?: Record<string, any>) => {
       const timestamp = new Date().toISOString();
@@ -2564,7 +2510,6 @@ function handleLeft() {
     setShowRating(false);
 
     const inputWithHistory = buildRecommendationInputWithHistory(input);
-    const engineSelectedForRun = selectedRecommendationEngine;
     setRecommendFunctionCalled(true);
     setRecommendFunctionError("");
     setRecommendFunctionErrorStack("");
@@ -2577,20 +2522,18 @@ function handleLeft() {
     setLastKnownFetchPhase("starting");
     setQueryBuildStatus("not_started");
     setPhaseHistory([]);
-    setRecommenderCallReferenceType("");
     const runId = `rec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setCurrentRecommendationRunId(runId);
     setActiveRecommendationRunId(runId);
     setRecommendationLockState(recLoading ? "already_loading" : "acquired");
 
-    if (engineSelectedForRun === "v2") {
-      try {
+    try {
         (globalThis as any).__novelIdeasRouterPhaseHistory = [];
       } catch {
         // diagnostics only
       }
       try {
-        markPhase("v2_before_engine_call", { engineSelected: engineSelectedForRun });
+        markPhase("v2_before_engine_call");
         const v2Signals = swipeHistoryToV2Signals(Array.isArray((inputWithHistory as any)?.swipeHistory) ? ((inputWithHistory as any).swipeHistory as SwipeHistoryEntry[]) : swipeHistory);
         const ageBand = deckKeyToAgeBandV2(deckKey);
         const middleGradesDeepDebugDiagnostics = middleGradesDeepDebugDiagnosticsForSession(ageBand, middleGradesDeepDebugUiEnabled);
@@ -2634,7 +2577,7 @@ function handleLeft() {
         setLastFinalRecommenderDebug({ engine: "v2", rejectedReasons: result.diagnostics.rejectedReasons, finalSelectionTitles: result.diagnostics.finalSelectionTitles });
         setLastSourceEnabled(sourceEnabled);
         setLastSourceSkippedReason(Array.isArray((diagnosticResult as any).sourceSkippedReason) ? (diagnosticResult as any).sourceSkippedReason : []);
-        setLastDebugRouterVersion(EXPECTED_ROUTER_FINGERPRINT);
+        setLastDebugRouterVersion("recommender-v2");
         setLastRouterResultTracePresent(true);
         setLastRouterResultKeys(Object.keys(diagnosticResult));
         setLastDeploymentRuntimeMarker("recommender-v2");
@@ -2696,7 +2639,7 @@ function handleLeft() {
         setLastRecommendationInput(inputWithHistory);
         setLastRecommendationResult(diagnosticResult as any);
         setLastRecommendationTimestamp(new Date().toISOString());
-        setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
+        setLastRecommendationSwipeSummary(`Right:${rightSwipes} â€¢ Left:${leftSwipes} â€¢ Skip:${downSwipes} â€¢ Decisions:${decisionSwipes} â€¢ 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
         setRecommendFunctionReturned(true);
         const guardedNormalizedItems = Array.isArray((diagnosticResult as any).items) && (diagnosticResult as any).items.length === 0
           ? []
@@ -2753,339 +2696,8 @@ function handleLeft() {
         setRecommendationLockState("released");
         setRecLoading(false);
       }
-      return;
-    }
-
-    const allDisabled =
-      !sourceEnabled.googleBooks &&
-      !sourceEnabled.openLibrary &&
-      !sourceEnabled.localLibrary &&
-      !sourceEnabled.kitsu &&
-      !sourceEnabled.comicVine &&
-      !sourceEnabled.nyt;
-    if (allDisabled) {
-      setRecLoading(false);
-      setRecError("No enabled recommendation sources");
-      setRecItems([]);
-      setLastSourceEnabled(sourceEnabled);
-      setLastSourceSkippedReason(["all_sources_disabled"]);
-      setRecommendationLockState("released");
-      return;
-    }
-
-    try {
-      markPhase("before_query_build");
-      const estimatedBuiltQuery = String((inputWithHistory as any)?.bucketPlan?.preview || (inputWithHistory as any)?.bucketPlan?.queries?.[0] || "");
-      setLastKnownBuiltQuery(estimatedBuiltQuery);
-      setQueryBuildStatus(estimatedBuiltQuery ? "query_available" : "query_unavailable");
-      markPhase("after_query_build");
-      if (sourceHealthPreflightEnabled) {
-        markPhase("before_source_health_preflight");
-        const sourceHealthPreflightTimeoutMs = 10_000;
-        await Promise.race([
-          (async () => {
-            await fetch("/api/openlibrary?health=1", { method: "GET" }).catch(() => null);
-          })(),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error(`source_health_preflight_timeout:${sourceHealthPreflightTimeoutMs}`)), sourceHealthPreflightTimeoutMs)
-          ),
-        ]);
-        markPhase("after_source_health_preflight");
-      } else {
-        setLastKnownFetchPhase("source_health_preflight_disabled");
-      }
-      const sourceProbeTimeoutMs = 10_000;
-      const sourceProbeStatus: Record<string, string> = {};
-      const googleBooksHealthProbeUrl = (() => {
-        const params = new URLSearchParams({ q: "novel", maxResults: "1" });
-        const apiKey = (process as any)?.env?.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
-        if (typeof apiKey === "string" && apiKey.trim()) params.set("key", apiKey.trim());
-        return `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
-      })();
-      const probe = async (phaseBefore: string, phaseAfter: string, label: string, url: string) => {
-        markPhase(phaseBefore);
-        try {
-          await Promise.race([
-            fetch(url, { method: "GET" }).catch(() => null),
-            new Promise((_, reject) => setTimeout(() => reject(new Error(`${label}_timeout:${sourceProbeTimeoutMs}`)), sourceProbeTimeoutMs)),
-          ]);
-          sourceProbeStatus[label] = "reachable_unproven";
-        } catch (e: any) {
-          sourceProbeStatus[label] = String(e?.message || "failed");
-        }
-        markPhase(phaseAfter);
-      };
-      if (sourceEnabled.googleBooks) await probe("before_google_books_fetch", "after_google_books_fetch", "google_books", googleBooksHealthProbeUrl);
-      if (sourceEnabled.openLibrary) await probe("before_open_library_fetch", "after_open_library_fetch", "open_library", "/api/openlibrary?health=1");
-      if (sourceEnabled.kitsu) await probe("before_kitsu_fetch", "after_kitsu_fetch", "kitsu", `${KITSU_API_BASE}/manga?page[limit]=1`);
-      if (sourceEnabled.nyt) await probe("before_nyt_fetch", "after_nyt_fetch", "nyt", "/api/nyt-books?health=1");
-      const enabledReal = ["google_books", "open_library", "kitsu"].filter((k) => (k === "google_books" ? sourceEnabled.googleBooks : k === "open_library" ? sourceEnabled.openLibrary : sourceEnabled.kitsu));
-      const allRealFailed = enabledReal.length > 0 && enabledReal.every((k) => k !== "google_books" ? String(sourceProbeStatus[k] || "").includes("timeout") || String(sourceProbeStatus[k] || "").includes("failed") : String(sourceProbeStatus[k] || "").includes("timeout"));
-      if (allRealFailed) throw new Error(`source_health_failed_pre_source_fetch:${JSON.stringify(sourceProbeStatus)}`);
-      const googleBooksProbeStatus = String(sourceProbeStatus.google_books || "");
-      const googleBooksProbeDegraded = googleBooksProbeStatus.includes("timeout") || googleBooksProbeStatus.includes("failed");
-      markPhase("before_source_fetch");
-      const recommendationTimeoutMs = 90_000;
-      markPhase("before_getRecommendations_call");
-      setRecommenderCallReferenceType(typeof getRecommendations);
-      const debugUrlAdultKitsuForceQuery = typeof window !== "undefined"
-        ? String(new URLSearchParams(window.location.search || "").get("adultKitsuOnlyForceQueryForValidation") || new URLSearchParams(window.location.search || "").get("debugForceAdultKitsuQuery") || "").trim().toLowerCase()
-        : "";
-      const debugLocalStorageAdultKitsuForceQuery = typeof window !== "undefined"
-        ? String(window.localStorage?.getItem("adultKitsuOnlyForceQueryForValidation") || window.localStorage?.getItem("debugForceAdultKitsuQuery") || "").trim().toLowerCase()
-        : "";
-      const debugAdminConfigAdultKitsuForceQuery = String(props.adultKitsuOnlyForceQueryForValidation || "").trim().toLowerCase();
-      const adultKitsuOnlyForceQueryForValidation = debugUrlAdultKitsuForceQuery || debugLocalStorageAdultKitsuForceQuery || debugAdminConfigAdultKitsuForceQuery;
-      const routerPromise = getRecommendations(
-        {
-          ...inputWithHistory,
-          profileOverride: currentLaneOverride,
-          sourceEnabled,
-          sourceHealthProbeStatus: sourceProbeStatus,
-          googleBooksProbeDegraded,
-          localLibrarySupported: Boolean(props.localLibrarySupported),
-          debugUrlAdultKitsuForceQuery,
-          debugLocalStorageAdultKitsuForceQuery,
-          debugAdminConfigAdultKitsuForceQuery,
-          ...(adultKitsuOnlyForceQueryForValidation ? { adultKitsuOnlyForceQueryForValidation } : {}),
-        },
-        "auto"
-      );
-      pendingRecommendationPromiseRef.current = routerPromise;
-      setPendingRecommendationPromisePresent(true);
-      markPhase("actual_router_invocation_about_to_await");
-      const resolvedRecommendationResult: any = await Promise.race([
-        Promise.race([
-          routerPromise,
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("router_run_timeout:30000")), 30_000)
-          ),
-        ]),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`recommendation_timeout:${recommendationTimeoutMs}`)), recommendationTimeoutMs)
-        ),
-      ]);
-      const recommendationResult: any = applyMiddleGradesFinalPayloadGuard(resolvedRecommendationResult, input);
-      markPhase("actual_router_invocation_resolved");
-      const result: any = recommendationResult;
-      markPhase("after_getRecommendations_call");
-      try {
-        const resultShape = {
-          returnType: typeof recommendationResult,
-          returnKeys: recommendationResult && typeof recommendationResult === "object" ? Object.keys(recommendationResult).slice(0, 40) : [],
-          itemsLength: Array.isArray(recommendationResult?.items) ? recommendationResult.items.length : null,
-          debugRouterVersion: recommendationResult?.debugRouterVersion ?? null,
-          builtFromQuery: recommendationResult?.builtFromQuery ?? null,
-          error: recommendationResult?.error ?? null,
-          isUndefined: typeof recommendationResult === "undefined",
-          isEmptyObject:
-            recommendationResult &&
-            typeof recommendationResult === "object" &&
-            !Array.isArray(recommendationResult) &&
-            Object.keys(recommendationResult).length === 0,
-        };
-        (globalThis as any).__novelIdeasAfterRouterCallEventPayload = {
-          phase: "getRecommendations_after_router_call_with_shape_v2",
-          timestamp: new Date().toISOString(),
-          ...resultShape,
-        };
-        markPhase("getRecommendations_after_router_call_with_shape_v2", resultShape);
-        (globalThis as any).__novelIdeasLastGetRecommendationsResultShape = resultShape;
-      } catch {
-        // diagnostics only
-      }
-      setPendingRecommendationPromisePresent(false);
-      pendingRecommendationPromiseRef.current = null;
-      if (typeof result === "undefined") {
-        throw new Error("getRecommendations_returned_undefined:result_missing");
-      }
-      if (result && typeof result === "object" && !Array.isArray(result) && Object.keys(result).length === 0) {
-        throw new Error("getRecommendations_returned_empty_object:result_has_no_keys");
-      }
-      const globalRouterPhasesForResultCheck = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
-        ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
-        : [];
-      const routerHistory = Array.isArray((result as any)?.routerPhaseHistory) ? (result as any).routerPhaseHistory : globalRouterPhasesForResultCheck;
-      if (!routerHistory.some((row: any) => String(row?.phase || "") === "router_entered")) {
-        const globalRouterPhases = globalRouterPhasesForResultCheck;
-        const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
-        const hasAfterRouterCallWithShapeV2 = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2");
-        const afterRouterCallEvent = [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2");
-        const hasResultShape = Boolean((globalThis as any).__novelIdeasLastGetRecommendationsResultShape) || Boolean(afterRouterCallEvent);
-        throw new Error(
-          hasAfterRouterCallWithShapeV2
-            ? ((afterRouterCallEvent as any)?.isUndefined
-              ? "getRecommendations_returned_undefined:router_entered_missing"
-              : (afterRouterCallEvent as any)?.isEmptyObject
-              ? "getRecommendations_returned_empty_object:router_entered_missing"
-              : "router_not_invoked_empty_result:router_entered_missing")
-            : (hasBeforeRouterCall && !hasAfterRouterCall && !hasResultShape)
-            ? "router_entry_timeout:router_entered_missing"
-            : "router_not_invoked_empty_result:router_entered_missing"
-        );
-      }
-      markPhase("after_source_fetch");
-      const runtimeFingerprint = typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "";
-      const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
-      if (runtimeFingerprint !== expectedFingerprint) {
-        setRecommendFunctionErrorPhase("dispatch ComicVine");
-        throw new Error(`STALE_ROUTER_ARTIFACT:${runtimeFingerprint || "(missing)"} expected:${expectedFingerprint}`);
-      }
-      setRecommendFunctionReturned(true);
-      markPhase("before_ranking");
-      markPhase("before_final_return_assembly");
-
-      console.log("[NovelIdeas] Recommendation source", {
-        engineId: (result as any)?.engineId,
-        engineLabel: (result as any)?.engineLabel,
-        domainMode: (result as any)?.domainMode,
-        query: (result as any)?.builtFromQuery,
-        itemCount: Array.isArray((result as any)?.items) ? (result as any).items.length : 0,
-        priorRecommendedIds: inputWithHistory.priorRecommendedIds?.length || 0,
-        priorRecommendedKeys: inputWithHistory.priorRecommendedKeys?.length || 0,
-        priorAuthors: inputWithHistory.priorAuthors?.length || 0,
-        priorSeriesKeys: inputWithHistory.priorSeriesKeys?.length || 0,
-        priorRejectedIds: inputWithHistory.priorRejectedIds?.length || 0,
-        priorRejectedKeys: inputWithHistory.priorRejectedKeys?.length || 0,
-        tasteProfile: input.tasteProfile,
-        sessionMood: sessionMoodProfile,
-        activeTasteVector,
-        activeTasteWeights,
-        profileOverride: currentLaneOverride,
-      });
-
-      setRecQuery(result.builtFromQuery || "");
-      setLastKnownBuiltQuery(String(result.builtFromQuery || ""));
-      setRecEngineLabel(result.engineLabel || "");
-      setLastEngineActuallyUsed("v1");
-      setLastSourceCounts(((result as any)?.debugSourceStats as Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }>) || null);
-      setLastCandidatePool(Array.isArray((result as any)?.debugCandidatePool) ? (result as any).debugCandidatePool : []);
-      setLastRawPool(Array.isArray((result as any)?.debugRawPool) ? (result as any).debugRawPool : []);
-      setLastRungStats((result as any)?.debugRungStats || null);
-      setLastFilterAudit(Array.isArray((result as any)?.debugFilterAudit) ? (result as any).debugFilterAudit : []);
-      setLastFilterAuditSummary((result as any)?.debugFilterAuditSummary || null);
-      setLastFinalRecommenderDebug((result as any)?.debugFinalRecommender || null);
-      setLastSourceEnabled((result as any)?.sourceEnabled || sourceEnabled);
-      setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
-      setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comicvine-proxy-default-v1");
-      setLastRouterResultTracePresent(Boolean((result as any)?.routerResultTracePresent));
-      setLastRouterResultKeys(Array.isArray((result as any)?.routerResultKeys) ? (result as any).routerResultKeys : Object.keys((result as any) || {}));
-      setLastDeploymentRuntimeMarker(typeof (result as any)?.deploymentRuntimeMarker === "string" ? (result as any).deploymentRuntimeMarker : "comicvine-proxy-phase");
-      const incomingTrace = (result as any)?.debugComicVineDispatchTrace || (result as any)?.debugGcdDispatchTrace;
-      const fallbackTrace = {
-        traceSource: "fallback" as const,
-        sourceEnabledComicVine: Boolean(sourceEnabled?.comicVine),
-        comicVineEnabledAtRequestStart: Boolean(sourceEnabled?.comicVine),
-        comicVineShouldUseResult: Boolean(sourceEnabled?.comicVine),
-        comicVineDispatchPlanned: false,
-        comicVineDispatchAttempted: false,
-        comicVineDispatchSkippedReason: Boolean(sourceEnabled?.comicVine) ? "router_result_missing_before_dispatch_trace" : "comicvine_disabled_in_source_settings",
-        comicVineQueriesPlanned: [],
-        comicVineQueriesAttempted: [],
-        comicVineFetchStartedAt: null,
-        comicVineFetchFinishedAt: null,
-        comicVineFetchTimedOut: false,
-        comicVineRawCountByQuery: {},
-        comicVineDocCountByQuery: {},
-        comicVineCandidateCountByQuery: {},
-        comicVineDispatchStageDiagnostics: [],
-        comicVineProxyUrl: "/api/comicvine",
-        normalizedComicVineProxyUrl: "/api/comicvine",
-        comicVineProxyConfigured: Boolean(sourceEnabled?.comicVine),
-      };
-      setLastDebugGcdDispatchTrace(incomingTrace ? { ...incomingTrace, traceSource: incomingTrace?.traceSource || "router" } : fallbackTrace);
-      setLastRecommendationInput(input);
-      setLastRecommendationResult(result as any);
-      setLastRecommendationTimestamp(new Date().toISOString());
-      setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
-
-      const normalizedItems = normalizeRecommendationItems(result.items);
-      if (normalizedItems.length > 0) {
-        rememberRecommendations(input.deckKey, normalizedItems);
-        setRecommendationResultWasPersisted(true);
-        setRecItems(normalizedItems);
-        setRecError(null);
-      } else {
-        setRecItems([]);
-        setRecError(
-          "No matches found for this swipe. Try swiping a few different cards, or tap Next to try again."
-        );
-      }
-    } catch (err: any) {
-      markPhase("actual_router_invocation_rejected", {
-        error: String(err?.message || err || "unknown"),
-      });
-      setPendingRecommendationPromisePresent(false);
-      pendingRecommendationPromiseRef.current = null;
-      setRecommendFunctionReturned(false);
-      setRecommendFunctionError(String(err?.message || err || "recommendation_call_failed"));
-      setRecommendFunctionErrorStack(String(err?.stack || ""));
-      setRecommendFunctionErrorPhase((prev) => prev || "unknown");
-      if (String(err?.message || "").startsWith("recommendation_timeout:")) {
-        setRecommendationTimedOutAt(new Date().toISOString());
-      }
-      const diag = (err as any)?.recommenderDiagnostics || null;
-      console.log("[NovelIdeas][REC] router_error", { message: err?.message, diagnostics: diag });
-      if (diag) {
-        if (typeof diag?.builtQuery === "string") setRecQuery(diag.builtQuery);
-        if (diag?.sourceEnabled) setLastSourceEnabled(diag.sourceEnabled);
-        if (Array.isArray(diag?.sourceSkippedReason)) setLastSourceSkippedReason(diag.sourceSkippedReason);
-        setLastDebugGcdDispatchTrace((prev: any) => ({ ...(prev || {}), preFatalDispatchState: diag }));
-      } else {
-        const durableComicVineState = (globalThis as any).__novelIdeasComicVineDispatchState || {};
-        const timeoutTrace = {
-          ...durableComicVineState,
-          traceSource: "fallback" as const,
-          sourceEnabledComicVine: Boolean(durableComicVineState?.sourceEnabledComicVine ?? sourceEnabled?.comicVine),
-          comicVineEnabledAtRequestStart: Boolean(durableComicVineState?.comicVineEnabledAtRequestStart ?? sourceEnabled?.comicVine),
-          comicVineShouldUseResult: Boolean(durableComicVineState?.comicVineShouldUseResult ?? sourceEnabled?.comicVine),
-          comicVineDispatchPlanned: Boolean(durableComicVineState?.comicVineDispatchPlanned),
-          comicVineDispatchAttempted: Boolean(durableComicVineState?.comicVineDispatchAttempted),
-          comicVineDispatchSkippedReason: String(durableComicVineState?.comicVineDispatchSkippedReason || "").trim() || (String(err?.message || "").startsWith("router_run_timeout:")
-            ? "router_timed_out_before_comicvine_dispatch_trace"
-            : "router_rejected_before_comicvine_dispatch_trace"),
-          comicVineQueriesPlanned: Array.isArray(durableComicVineState?.comicVineQueriesPlanned) ? durableComicVineState.comicVineQueriesPlanned : [],
-          comicVineQueriesAttempted: Array.isArray(durableComicVineState?.comicVineQueriesAttempted) ? durableComicVineState.comicVineQueriesAttempted : [],
-          comicVineFetchStartedAt: durableComicVineState?.comicVineFetchStartedAt || null,
-          comicVineFetchFinishedAt: durableComicVineState?.comicVineFetchFinishedAt || null,
-          comicVineFetchTimedOut: Boolean(durableComicVineState?.comicVineFetchTimedOut || String(err?.message || "").startsWith("router_run_timeout:")),
-          comicVineRawCountByQuery: durableComicVineState?.comicVineRawCountByQuery || {},
-          comicVineDocCountByQuery: durableComicVineState?.comicVineDocCountByQuery || {},
-          comicVineCandidateCountByQuery: durableComicVineState?.comicVineCandidateCountByQuery || {},
-          comicVineDispatchStageDiagnostics: Array.isArray(durableComicVineState?.comicVineDispatchStageDiagnostics) ? durableComicVineState.comicVineDispatchStageDiagnostics : [],
-        };
-        setLastDebugGcdDispatchTrace((prev: any) => ({ ...(prev || {}), ...timeoutTrace }));
-        const fallbackDebugRawPoolLengthRaw = Number(
-          durableComicVineState?.debugRawPoolLength ??
-          durableComicVineState?.mergedPoolLength ??
-          Object.values(durableComicVineState?.comicVineRawCountByQuery || {}).reduce((acc: number, value: any) => acc + Number(value || 0), 0)
-        );
-        const fallbackDebugCandidatePoolLengthRaw = Number(
-          durableComicVineState?.mergedPoolLength ??
-          Object.values(durableComicVineState?.comicVineCandidateCountByQuery || {}).reduce((acc: number, value: any) => acc + Number(value || 0), 0)
-        );
-        const fallbackDebugRawPoolLength = Number.isFinite(fallbackDebugRawPoolLengthRaw) ? fallbackDebugRawPoolLengthRaw : 0;
-        const fallbackDebugCandidatePoolLength = Number.isFinite(fallbackDebugCandidatePoolLengthRaw) ? fallbackDebugCandidatePoolLengthRaw : 0;
-        if (fallbackDebugRawPoolLength > 0 || fallbackDebugCandidatePoolLength > 0) {
-          setLastRecommendationResult({
-            items: [],
-            debugRawPool: Array.from({ length: Math.max(0, fallbackDebugRawPoolLength) }, (_unused, index) => ({ title: `(comicvine raw placeholder ${index + 1})`, source: "comicVine", diagnostics: { timeoutFallbackPlaceholder: true } })),
-            debugCandidatePool: Array.from({ length: Math.max(0, fallbackDebugCandidatePoolLength) }, (_unused, index) => ({ title: `(comicvine candidate placeholder ${index + 1})`, source: "comicVine", diagnostics: { timeoutFallbackPlaceholder: true } })),
-            sourceEnabled,
-            sourceSkippedReason: [],
-            routerResultTracePresent: true,
-            debugComicVineDispatchTrace: timeoutTrace,
-            debugGcdDispatchTrace: timeoutTrace,
-          } as any);
-        }
-      }
-      setRecItems([]);
-      setRecError(err?.message || "Recommendation engine could not be reached (network blocked).");
-    } finally {
-      setRecommendationLockState("released");
-      setRecLoading(false);
-    }
   }
+
 
   async function runRecommenderV2DebugFromCurrentSession(trigger: "button" | "url" = "button") {
     setV2DebugLoading(true);
@@ -3131,7 +2743,6 @@ function handleLeft() {
     if (typeof window === "undefined") return;
     const engineParam = new URLSearchParams(window.location.search || "").get("engine");
     if (String(engineParam || "").toLowerCase() !== "v2") return;
-    setSelectedRecommendationEngine("v2");
     v2UrlTriggeredRef.current = true;
     void runRecommenderV2DebugFromCurrentSession("url");
   }, [deckKey, swipeHistory, sourceEnabled.googleBooks, sourceEnabled.openLibrary, sourceEnabled.localLibrary, sourceEnabled.kitsu, sourceEnabled.comicVine, sourceEnabled.nyt]);
@@ -3249,7 +2860,7 @@ function handleLeft() {
     setAutoSearched(true);
     setPresetSwipesAppliedCount(entries.length);
     setPresetCardsMatchedCount(sampleCards.length);
-    setLastRecommendationSwipeSummary(`Right:${likeCount} • Left:${dislikeCount} • Skip:${skipCount} • Decisions:${decisions} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
+    setLastRecommendationSwipeSummary(`Right:${likeCount} â€¢ Left:${dislikeCount} â€¢ Skip:${skipCount} â€¢ Decisions:${decisions} â€¢ 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
 
     const tagCountsForQuery: any = { ...nextTagCounts };
     tagCountsForQuery["audience:kids"] = 0;
@@ -3467,7 +3078,7 @@ function handleLeft() {
         ...formatDiagnosticObject(candidate, ["queryText", "queryRung", "laneKind", "score", "genreFacetMatch", "positiveTasteMatch", "avoidSignalPenalty", "ageTeenSuitability", "ageBandSuitability", "sourceQualityRelevance", "queryRungBonus", "baseIntent", "queryFamily", "matchedQueryTokens", "filterTrace", "filterType", "rejectedBy"]),
       ].filter(Boolean);
 
-      return [`${index + 1}. ${title || "Untitled"} — ${author || "Unknown author"}`, ...traceBits.map((line) => `   ${line}`)].join("\n");
+      return [`${index + 1}. ${title || "Untitled"} â€” ${author || "Unknown author"}`, ...traceBits.map((line) => `   ${line}`)].join("\n");
     }).join("\n");
   }
 
@@ -3498,7 +3109,7 @@ function handleLeft() {
         compactFieldBlock("passedChecks", Array.isArray(row?.filterPassedChecks) && row.filterPassedChecks.length ? row.filterPassedChecks.join(", ") : (Array.isArray(row?.passedChecks) && row.passedChecks.length ? row.passedChecks.join(", ") : "")),
       ].filter(Boolean);
 
-      return [`${index + 1}. ${title} — ${author}`, ...bits.map((bit) => `   ${bit}`)].join("\n");
+      return [`${index + 1}. ${title} â€” ${author}`, ...bits.map((bit) => `   ${bit}`)].join("\n");
     }).join("\n");
   }
 
@@ -3537,7 +3148,7 @@ function handleLeft() {
         compactFieldBlock("flags", row?.flags ? JSON.stringify(row.flags) : ""),
       ].filter(Boolean);
 
-      return [`${index + 1}. ${row?.title || "Untitled"} — ${row?.author || "Unknown author"}`, ...bits.map((bit) => `   ${bit}`)].join("\n");
+      return [`${index + 1}. ${row?.title || "Untitled"} â€” ${row?.author || "Unknown author"}`, ...bits.map((bit) => `   ${bit}`)].join("\n");
     }).join("\n");
   }
 
@@ -3570,7 +3181,7 @@ function handleLeft() {
         compactFieldBlock("detail", row?.detail),
       ].filter(Boolean);
 
-      return [`${index + 1}. ${row?.title || "Untitled"} — ${row?.author || "Unknown author"}`, ...bits.map((bit) => `   ${bit}`)].join("\n");
+      return [`${index + 1}. ${row?.title || "Untitled"} â€” ${row?.author || "Unknown author"}`, ...bits.map((bit) => `   ${bit}`)].join("\n");
     }).join("\n");
   }
 
@@ -3581,7 +3192,7 @@ function handleLeft() {
   function compactCodexString(value: unknown, maxLength: number): string {
     if (value == null) return "";
     const text = Array.isArray(value) ? value.filter(Boolean).join(" | ") : String(value);
-    return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
+    return text.length > maxLength ? `${text.slice(0, maxLength)}â€¦` : text;
   }
 
   function buildCodexDiagnosticsUploadText(result: RecommendationResultV2 | null, errorMessage = "") {
@@ -3700,7 +3311,6 @@ function handleLeft() {
   }
 
   async function handleCopyDiagnostics() {
-    const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
     const runtimeFingerprint = lastDebugRouterVersion || "";
     const engineActuallyUsedForReport = String((lastRecommendationResult as any)?.engineActuallyUsed || lastEngineActuallyUsed || "");
     const lastRunWasV2 = engineActuallyUsedForReport === "v2";
@@ -3713,8 +3323,6 @@ function handleLeft() {
     const getRecommendationsReturnedUndefinedRun = String(recommendFunctionError || "").startsWith("getRecommendations_returned_undefined:");
     const getRecommendationsReturnedEmptyObjectRun = String(recommendFunctionError || "").startsWith("getRecommendations_returned_empty_object:");
     const preflightTimeoutRun = String(recommendFunctionError || "").startsWith("source_health_preflight_timeout:");
-    const staleRuntime = !lastRunWasV2 && runtimeFingerprint !== expectedFingerprint;
-    const missingRouterTrace = !lastRunWasV2 && !Boolean(lastRouterResultTracePresent);
     const globalRouterPhases = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
       ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
       : [];
@@ -3940,327 +3548,12 @@ function handleLeft() {
     const timeoutMsTs = parseTs((latestTimeoutPhase as any)?.timestamp);
     const earlyReturnCloseToTimeout = Number.isFinite(earlyReturnMs) && Number.isFinite(timeoutMsTs) && (earlyReturnMs - timeoutMsTs) >= 0 && (earlyReturnMs - timeoutMsTs) <= 1000;
     const earlyReturnReason = String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason || "");
-    if (!lastRunWasV2 && (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerRunTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent || zeroItemsReturnedRun)) {
-      const reason = hasValidReturnedItems
-        ? "valid_recommendation_returned"
-        : getRecommendationsReturnedUndefinedRun
-        ? "getRecommendations_returned_undefined"
-        : getRecommendationsReturnedEmptyObjectRun
-        ? "getRecommendations_returned_empty_object"
-        : String(recommendFunctionError || "").includes("kitsu_recovery_lost_at_return_assembly")
-        ? "kitsu_recovery_lost_at_return_assembly"
-        : zeroItemsReturnedRun
-        ? "zero_items_returned"
-        : ((routerRunTimeoutRun || routerEntryTimeoutRun || routerPostEntryTimeoutRun) &&
-            earlyReturnCloseToTimeout &&
-            earlyReturnReason === "source_health_failed")
-        ? "source_health_failed"
-        : routerRunTimeoutRun
-        ? "router_run_timeout"
-        : routerPostEntryTimeoutRun
-        ? "router_post_entry_timeout"
-        : (routerEntryTimeoutRun && hasRouterEntered)
-        ? "router_post_entry_timeout"
-        : (hasBeforeRouterCall && !hasInvocationAboutToAwait)
-        ? "router_invocation_skipped_before_await"
-        : (routerEntryTimeoutRun && hasAfterRouterCallEvent && effectiveIsUndefined)
-        ? "getRecommendations_returned_undefined"
-        : (routerEntryTimeoutRun && hasAfterRouterCallEvent && effectiveIsEmptyObject)
-        ? "getRecommendations_returned_empty_object"
-        : (routerEntryTimeoutRun && hasAfterRouterCallEvent)
-        ? "router_not_invoked_empty_result"
-        : routerNotInvokedEmptyResultRun
-        ? "router_not_invoked_empty_result"
-        : routerEntryTimeoutRun
-        ? "router_entry_timeout"
-        : timeoutRun
-        ? "recommendation_timeout"
-        : preflightTimeoutRun
-          ? "source_health_preflight_timeout"
-          : (earlyReturnReason === "source_health_failed")
-          ? "source_health_failed"
-          : [
-              staleRuntime ? `stale_runtime_fingerprint:${runtimeFingerprint || "(missing)"}` : "",
-              missingRouterTrace ? "router_result_trace_missing" : "",
-            ].filter(Boolean).join(", ");
-      setPresetExecutionError(`SESSION_REPORT_EXPORT_BLOCKED:${reason}`);
-      const blockedReport = [
-        "SESSION REPORT (BLOCKED)",
-        `Reason: ${reason || "(unknown)"}`,
-        `engineSelected: ${selectedRecommendationEngine}`,
-        `engineActuallyUsed: ${engineActuallyUsedForReport || "(none)"}`,
-        `debugRawPoolLength: ${String(debugRawPoolLengthTop)}`,
-        `debugCandidatePoolLength: ${String(debugCandidatePoolLengthTop)}`,
-        `candidatePoolLength: ${String(debugCandidatePoolLengthTop)}`,
-        `fetchedRawCount: ${String(fetchedRawCountTop)}`,
-        `normalizedCount: ${String((lastRecommendationResult as any)?.normalizedCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
-        `candidateCount: ${String((lastRecommendationResult as any)?.candidateCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
-        `filteredCount: ${String((lastRecommendationResult as any)?.filteredCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
-        `rankedCount: ${String((lastRecommendationResult as any)?.rankedCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
-        `finalItemsLength: ${String((lastRecommendationResult as any)?.finalItemsLength ?? (Array.isArray((lastRecommendationResult as any)?.items) ? (lastRecommendationResult as any).items.length : 0))}`,
-        `returnedItemsLength: ${String(returnedItemsLength)}`,
-        `returnedItemsTitles: ${JSON.stringify((lastRecommendationResult as any)?.returnedItemsTitles || (lastRecommendationResult as any)?.items?.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean) || [])}`,
-        `returnedItemsBuiltFrom: ${String((lastRecommendationResult as any)?.returnedItemsBuiltFrom || "(missing)")}`,
-        `adultKitsuOnlyCandidateFamilyQueries: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyCandidateFamilyQueries || [])}`,
-        `adultKitsuOnlySelectedQueryReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryReason || "(missing)")}`,
-        `adultKitsuOnlyReplacementReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlyReplacementReason || "(missing)")}`,
-        `adultKitsuOnlyComparisonAcceptedCountsByQuery: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyComparisonAcceptedCountsByQuery || {})}`,
-        `adultKitsuOnlyComparisonPromotedQuery: ${String((lastRecommendationResult as any)?.adultKitsuOnlyComparisonPromotedQuery || "(missing)")}`,
-        `adultKitsuOnlyComparisonPromotionReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlyComparisonPromotionReason || "(missing)")}`,
-        `adultKitsuOnlyComparisonPromotionAcceptedCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlyComparisonPromotionAcceptedCount ?? "(missing)")}`,
-        `adultKitsuOnlyComparisonPromotionReturnedTitles: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyComparisonPromotionReturnedTitles || [])}`,
-        `adultKitsuOnlyComparisonQueryTierByQuery: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyComparisonQueryTierByQuery || {})}`,
-        `adultKitsuOnlyPromotionTier: ${String((lastRecommendationResult as any)?.adultKitsuOnlyPromotionTier ?? "(missing)")}`,
-        `adultKitsuOnlyPromotionScope: ${String((lastRecommendationResult as any)?.adultKitsuOnlyPromotionScope || "(missing)")}`,
-        `adultKitsuOnlyPromotionRejectedReasonByQuery: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyPromotionRejectedReasonByQuery || {})}`,
-        `adultKitsuOnlyFamilyScopedBestQuery: ${String((lastRecommendationResult as any)?.adultKitsuOnlyFamilyScopedBestQuery || "(missing)")}`,
-        `adultKitsuOnlyBroadBestQuery: ${String((lastRecommendationResult as any)?.adultKitsuOnlyBroadBestQuery || "(missing)")}`,
-        `adultKitsuOnlySelectedFamilyAcceptedCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedFamilyAcceptedCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedFamilyReturnedCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedFamilyReturnedCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedFamilyReturnedFrom: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedFamilyReturnedFrom || "(missing)")}`,
-        `adultKitsuOnlySelectedFamilyWeakRescueOnly: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedFamilyWeakRescueOnly ?? "(missing)")}`,
-        `adultKitsuOnlySelectedFamilyStrongEnoughForFinal: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedFamilyStrongEnoughForFinal ?? "(missing)")}`,
-        `adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough: ${String((lastRecommendationResult as any)?.adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough ?? "(missing)")}`,
-        `adultKitsuOnlyPromotionBlockedBecauseThresholdOnly: ${String((lastRecommendationResult as any)?.adultKitsuOnlyPromotionBlockedBecauseThresholdOnly ?? "(missing)")}`,
-        `adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue: ${String((lastRecommendationResult as any)?.adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue ?? "(missing)")}`,
-        `adultKitsuOnlyFamilyComparisonExhausted: ${String((lastRecommendationResult as any)?.adultKitsuOnlyFamilyComparisonExhausted ?? "(missing)")}`,
-        `adultKitsuOnlyEmergencyFallbackQueriesTried: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyEmergencyFallbackQueriesTried || [])}`,
-        `adultKitsuOnlyEmergencyFallbackAcceptedCountsByQuery: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyEmergencyFallbackAcceptedCountsByQuery || {})}`,
-        `adultKitsuOnlyEmergencyFallbackSelectedQuery: ${String((lastRecommendationResult as any)?.adultKitsuOnlyEmergencyFallbackSelectedQuery || "(missing)")}`,
-        `adultKitsuOnlyEmergencyFallbackReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlyEmergencyFallbackReason || "(missing)")}`,
-        `adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery || {})}`,
-        `adultKitsuOnlyFormatOnlyLaneDetected: ${String((lastRecommendationResult as any)?.adultKitsuOnlyFormatOnlyLaneDetected ?? "(missing)")}`,
-        `adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily: ${String((lastRecommendationResult as any)?.adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily ?? "(missing)")}`,
-        `adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback: ${String((lastRecommendationResult as any)?.adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback ?? "(missing)")}`,
-        `adultKitsuOnlySelectedQueryWouldHaveBeenGeneric: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryWouldHaveBeenGeneric || "(missing)")}`,
-        `adultKitsuOnlySelectedQueryAfterRouterFamilyOverride: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryAfterRouterFamilyOverride || "(missing)")}`,
-        `adultKitsuOnlyFamilyPlanningBypassReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlyFamilyPlanningBypassReason || "(missing)")}`,
-        `adultKitsuOnlyFamilyPropagationTrace: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyFamilyPropagationTrace || [])}`,
-        `adultKitsuOnlyComparisonFamilyAnchor: ${String((lastRecommendationResult as any)?.adultKitsuOnlyComparisonFamilyAnchor || "(missing)")}`,
-        `adultKitsuOnlyFinalKitsuFetchQuery: ${String((lastRecommendationResult as any)?.adultKitsuOnlyFinalKitsuFetchQuery || "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueApplied: ${String(Boolean((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueApplied))}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueBlockedReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueBlockedReason || "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueSelectedQueryKey: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueSelectedQueryKey || "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueAvailableQueries: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueAvailableQueries || [])}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueRowFound: ${String(Boolean((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRowFound))}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueRawCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRawCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueRankedCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRankedCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueCandidateCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueCandidateCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueAcceptedCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueAcceptedCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts || {})}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle || {})}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles || [])}`,
-        ...teenKitsuFinalGuardReportLines,
-        `kitsuRescueSlateQualityAudit: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRescueSlateQualityAudit || [])}`,
-        `activeLaneQueries: ${JSON.stringify((lastRecommendationResult as any)?.activeLaneQueries || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.activeLaneQueries || [])}`,
-        `routerFamily: ${String((lastRecommendationResult as any)?.routerFamily || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerFamily || "(missing)")}`,
-        `rungCount: ${String((lastRecommendationResult as any)?.rungCount ?? (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.rungCount ?? "(missing)")}`,
-        `sourceFetchAttemptedBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchAttemptedBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchAttemptedBySource || {})}`,
-        `sourceFetchTimeoutBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchTimeoutBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchTimeoutBySource || {})}`,
-        `sourceRawCountBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceRawCountBySource || preFatalDispatchState?.sourceRawCountBySource || {})}`,
-        `sourceStarvationAudit: ${JSON.stringify(sourceStarvationAuditForReport || null)}`,
-        `googleBooksSourceFetchDiagnostics: ${JSON.stringify(googleBooksSourceFetchDiagnosticsForReport)}`,
-        `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
-        `openLibraryProbeRan: ${String(openLibraryProbeRanForReport)}`,
-        `openLibraryEmptyReason: ${openLibraryEmptyReasonForReport || "(none)"}`,
-        `openLibraryTopUp: ${JSON.stringify({ ran: Boolean((lastRecommendationResult as any)?.openLibraryTopUpRan), target: (lastRecommendationResult as any)?.openLibraryTopUpTarget, exhausted: Boolean((lastRecommendationResult as any)?.openLibraryFallbackQueriesExhausted), usableRowsAfterFiltering: (lastRecommendationResult as any)?.openLibraryUsableRowsAfterFiltering })}`,
-        `openLibraryQueryRouting: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryQueryRouting || {})}`,
-        `openLibraryCrossSessionRepeatedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryCrossSessionRepeatedTitles || [])}`,
-        `openLibraryCrossSessionRepeatedRoots: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryCrossSessionRepeatedRoots || [])}`,
-        `openLibraryArtifactSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryArtifactSuppressedTitles || [])}`,
-        `openLibrarySeriesSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibrarySeriesSuppressedTitles || [])}`,
-        `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
-        "ADULT KITSU FALLBACK DIAGNOSTICS",
-        ...adultKitsuOnlyFallbackReportLines,
-        `fetchDiagnosticsSummary: ${JSON.stringify((lastRecommendationResult as any)?.fetchDiagnosticsSummary || preFatalDispatchState?.fetchDiagnosticsSummary || null)}`,
-        `sourceSkippedReason: ${JSON.stringify(skippedReasons)}`,
-        `Deployed commit marker (client): ${DEPLOYED_COMMIT_MARKER}`,
-        `Router instrumentation marker (client): ${ROUTER_INSTRUMENTATION_MARKER}`,
-        `Deployed commit marker: ${(lastRecommendationResult as any)?.deployedCommitHash || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.deployedCommitHash || "(missing)"}`,
-        `Router build timestamp: ${(lastRecommendationResult as any)?.routerBuildTimestamp || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerBuildTimestamp || "(missing)"}`,
-        `Router instrumentation version: ${(lastRecommendationResult as any)?.routerInstrumentationVersion || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerInstrumentationVersion || "(missing)"}`,
-        `getRecommendations reference type: ${recommenderCallReferenceType || "(unknown)"}`,
-        `getRecommendationsFunctionName: ${typeof getRecommendations === "function" ? (getRecommendations as any).name || "(anonymous)" : "(not_function)"}`,
-        `getRecommendationsFunctionSourcePrefix: ${typeof getRecommendations === "function" ? String(getRecommendations).slice(0, 120) : "(not_function)"}`,
-        `routerFunctionName: ${typeof getRecommendations === "function" ? (getRecommendations as any).name || "(anonymous)" : "(not_function)"}`,
-        `routerFunctionSourcePrefix: ${typeof getRecommendations === "function" ? String(getRecommendations).slice(0, 220) : "(not_function)"}`,
-        `recommendationLockState: ${recommendationLockState}`,
-        `pendingRecommendationPromisePresent: ${String(Boolean(pendingRecommendationPromisePresent || pendingRecommendationPromiseRef.current))}`,
-        `activeRecommendationRunId: ${activeRecommendationRunId || "(none)"}`,
-        `currentRecommendationRunId: ${currentRecommendationRunId || "(none)"}`,
-        `globalRouterEntryHeartbeat: ${JSON.stringify((globalThis as any).__novelIdeasRouterEntryHeartbeat || null)}`,
-        `globalRouterPhaseHistory: ${JSON.stringify((globalThis as any).__novelIdeasRouterPhaseHistory || [])}`,
-        `hasBeforeRouterCall: ${String(hasBeforeRouterCall)}`,
-        `hasActualRouterInvocationAboutToAwait: ${String(hasInvocationAboutToAwait)}`,
-        `App URL: ${typeof window !== "undefined" ? window.location.href : "(unavailable)"}`,
-        `App Origin: ${typeof window !== "undefined" ? window.location.origin : "(unavailable)"}`,
-        `Build ID (best effort): ${typeof document !== "undefined" ? (document.querySelector('meta[name=\"vercel-deployment-url\"]') as HTMLMetaElement | null)?.content || "(none)" : "(unavailable)"}`,
-        `Bundle script sample: ${typeof document !== "undefined" ? Array.from(document.querySelectorAll('script[src]')).map((el) => (el as HTMLScriptElement).src).slice(-5).join(" | ") || "(none)" : "(unavailable)"}`,
-        `Captured at: ${new Date().toISOString()}`,
-        `timeoutMs: ${timeoutRun ? "90000" : preflightTimeoutRun ? "10000" : (routerRunTimeoutRun || routerEntryTimeoutRun || routerPostEntryTimeoutRun) ? "30000" : "(n/a)"}`,
-        `recommendationStartedAt: ${recommendationStartedAt || "(missing)"}`,
-        `recommendationTimedOutAt: ${recommendationTimedOutAt || "(not_timed_out)"}`,
-        `lastKnownPhase: ${recommendFunctionErrorPhase || "(none)"}`,
-        `lastKnownBuiltQuery: ${lastKnownBuiltQuery || "(none)"}`,
-        `queryBuildStatus: ${queryBuildStatus || "(unknown)"}`,
-        `lastKnownSourceHealthFetchPhase: ${lastKnownFetchPhase || "(none)"}`,
-        `phaseHistory: ${JSON.stringify(phaseHistory || [])}`,
-        `routerPhaseHistory: ${JSON.stringify((lastRecommendationResult as any)?.routerPhaseHistory || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerPhaseHistory || globalRouterPhases || [])}`,
-        `lastRouterPhase: ${JSON.stringify(((((lastRecommendationResult as any)?.routerPhaseHistory || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerPhaseHistory || globalRouterPhases || []))[((lastRecommendationResult as any)?.routerPhaseHistory || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerPhaseHistory || globalRouterPhases || []).length - 1] || null))}`,
-        `Expected fingerprint: ${expectedFingerprint}`,
-        `Actual fingerprint: ${runtimeFingerprint || "(missing)"}`,
-        `routerResultType: ${typeof (lastRecommendationResult as any)}`,
-        `routerResult.debugRouterVersion: ${(lastRecommendationResult as any)?.debugRouterVersion || "(missing)"}`,
-        `routerResult.trace.debugRouterVersion: ${((lastRecommendationResult as any)?.debugComicVineDispatchTrace || (lastRecommendationResult as any)?.debugGcdDispatchTrace || {})?.debugRouterVersion || "(missing)"}`,
-        `routerResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}`,
-        `recommendFunctionCalled: ${String(Boolean(recommendFunctionCalled))}`,
-        `recommendFunctionReturned: ${String(Boolean(recommendFunctionReturned))}`,
-        `recommendFunctionErrorPhase: ${recommendFunctionErrorPhase || "(none)"}`,
-        `recommendFunctionError: ${recommendFunctionError || "(none)"}`,
-        `getRecommendationsReturnType: ${String((resultShape as any)?.returnType ?? (afterRouterCallWithShapeV2Payload as any)?.returnType ?? (latestLegacyAfterRouterCallPhase as any)?.returnType ?? "(missing)")}`,
-        `getRecommendationsReturnKeys: ${JSON.stringify((resultShape as any)?.returnKeys ?? (afterRouterCallWithShapeV2Payload as any)?.returnKeys ?? (latestLegacyAfterRouterCallPhase as any)?.returnKeys ?? "(missing)")}`,
-        `getRecommendationsReturnItemsLength: ${String((resultShape as any)?.itemsLength ?? (afterRouterCallWithShapeV2Payload as any)?.itemsLength ?? (latestLegacyAfterRouterCallPhase as any)?.itemsLength ?? "(missing)")}`,
-        `getRecommendationsReturnDebugRouterVersion: ${String((resultShape as any)?.debugRouterVersion ?? (afterRouterCallWithShapeV2Payload as any)?.debugRouterVersion ?? (latestLegacyAfterRouterCallPhase as any)?.debugRouterVersion ?? "(missing)")}`,
-        `getRecommendationsReturnBuiltFromQuery: ${String((resultShape as any)?.builtFromQuery ?? (afterRouterCallWithShapeV2Payload as any)?.builtFromQuery ?? (latestLegacyAfterRouterCallPhase as any)?.builtFromQuery ?? "(missing)")}`,
-        `getRecommendationsReturnError: ${String((resultShape as any)?.error ?? (afterRouterCallWithShapeV2Payload as any)?.error ?? (latestLegacyAfterRouterCallPhase as any)?.error ?? "(missing)")}`,
-        `directAfterRouterCallPayload:${JSON.stringify(directAfterRouterCallPayload || null)}`,
-        `markPhaseAfterRouterCallPayload:${JSON.stringify(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase || null)}`,
-        `legacyAfterRouterCallEvents:${JSON.stringify(legacyAfterRouterCallEvents || [])}`,
-        `afterRouterCallWithShapeV2Payload:${JSON.stringify(afterRouterCallWithShapeV2Payload || null)}`,
-        `lastGetRecommendationsResultShape:${JSON.stringify(resultShape || null)}`,
-        `afterRouterCallEventPayload:${JSON.stringify(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase || null)}`,
-        `getRecommendationsEarlyReturnReason: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason ?? "(missing)")}`,
-        `getRecommendationsEarlyReturnPhase: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnPhase ?? "(missing)")}`,
-        `earlyReturnCloseToTimeout: ${String(Boolean(earlyReturnCloseToTimeout))}`,
-        `googleBooksRouterFetchCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.fetchLoopCounters?.googleBooksRouterFetchCount ?? "(missing)")}`,
-        `openLibraryRouterFetchCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.fetchLoopCounters?.openLibraryRouterFetchCount ?? "(missing)")}`,
-        `kitsuRouterFetchCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.fetchLoopCounters?.kitsuRouterFetchCount ?? "(missing)")}`,
-        `perSourceStatus: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus || {})}`,
-        `sourceHealthProbeStatus: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceHealthProbeStatus || {})}`,
-        `kitsuRawCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuRawCount ?? "(missing)")}`,
-        `kitsuPostFilterCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuPostFilterCount ?? "(missing)")}`,
-        `kitsuUsableCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuUsableCount ?? "(missing)")}`,
-        `kitsuSourceHealthRejectedReason: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuSourceHealthRejectedReason ?? "(missing)")}`,
-        `googleBooksQueriesActuallyFetched: ${JSON.stringify((lastRecommendationResult as any)?.googleBooksQueriesActuallyFetched || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksQueriesActuallyFetched || [])}`,
-        `openLibraryQueriesActuallyFetched: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryQueriesActuallyFetched || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryQueriesActuallyFetched || [])}`,
-        `kitsuQueriesActuallyFetched: ${JSON.stringify((lastRecommendationResult as any)?.kitsuQueriesActuallyFetched || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQueriesActuallyFetched || [])}`,
-        `googleBooksFetchResultsByQuery: ${JSON.stringify((lastRecommendationResult as any)?.googleBooksFetchResultsByQuery || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksFetchResultsByQuery || [])}`,
-        `openLibraryFetchResultsByQuery: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryFetchResultsByQuery || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryFetchResultsByQuery || [])}`,
-        `kitsuFetchResultsByQuery: ${JSON.stringify((lastRecommendationResult as any)?.kitsuFetchResultsByQuery || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuFetchResultsByQuery || [])}`,
-        `googleBooksQueryUsedByLane: ${JSON.stringify((lastRecommendationResult as any)?.googleBooksQueryUsedByLane || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksQueryUsedByLane || [])}`,
-        `openLibraryQueryUsedByLane: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryQueryUsedByLane || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryQueryUsedByLane || [])}`,
-        `kitsuQueryUsedByLane: ${JSON.stringify((lastRecommendationResult as any)?.kitsuQueryUsedByLane || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQueryUsedByLane || [])}`,
-        `sourceSpecificQueryModeBySource: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceSpecificQueryModeBySource || {})}`,
-        `sourceSpecificQueryRejectedReasonBySource: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceSpecificQueryRejectedReasonBySource || {})}`,
-        `kitsuQuerySanitizedFrom: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedFrom || [])}`,
-        `kitsuQuerySanitizedTo: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedTo || [])}`,
-        `kitsuPreSanitizedQuery: ${String((lastRecommendationResult as any)?.kitsuPreSanitizedQuery || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuPreSanitizedQuery || "(missing)")}`,
-        `kitsuSanitizedQuerySelected: ${String((lastRecommendationResult as any)?.kitsuSanitizedQuerySelected || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuSanitizedQuerySelected || "(missing)")}`,
-        `kitsuFinalQueryUsedForFetch: ${JSON.stringify((lastRecommendationResult as any)?.kitsuFinalQueryUsedForFetch || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuFinalQueryUsedForFetch || [])}`,
-        `kitsuFetchQueryMatchesSanitizedSelection: ${String(Boolean((lastRecommendationResult as any)?.kitsuFetchQueryMatchesSanitizedSelection))}`,
-        `returnedItemsLength: ${String(returnedItemsLength)}`,
-        `returnedItemsTitles: ${JSON.stringify((lastRecommendationResult as any)?.returnedItemsTitles || (lastRecommendationResult as any)?.items?.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean) || [])}`,
-        `returnedItemsBuiltFrom: ${String((lastRecommendationResult as any)?.returnedItemsBuiltFrom || "(missing)")}`,
-        `adultKitsuOnlyCandidateFamilyQueries: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyCandidateFamilyQueries || [])}`,
-        `adultKitsuOnlySelectedQueryReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryReason || "(missing)")}`,
-        `adultKitsuOnlyReplacementReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlyReplacementReason || "(missing)")}`,
-        `adultKitsuOnlyComparisonAcceptedCountsByQuery: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyComparisonAcceptedCountsByQuery || {})}`,
-        `adultKitsuOnlyComparisonPromotedQuery: ${String((lastRecommendationResult as any)?.adultKitsuOnlyComparisonPromotedQuery || "(missing)")}`,
-        `adultKitsuOnlyComparisonPromotionReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlyComparisonPromotionReason || "(missing)")}`,
-        `adultKitsuOnlyComparisonPromotionAcceptedCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlyComparisonPromotionAcceptedCount ?? "(missing)")}`,
-        `adultKitsuOnlyComparisonPromotionReturnedTitles: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyComparisonPromotionReturnedTitles || [])}`,
-        `adultKitsuOnlyComparisonQueryTierByQuery: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyComparisonQueryTierByQuery || {})}`,
-        `adultKitsuOnlyPromotionTier: ${String((lastRecommendationResult as any)?.adultKitsuOnlyPromotionTier ?? "(missing)")}`,
-        `adultKitsuOnlyPromotionScope: ${String((lastRecommendationResult as any)?.adultKitsuOnlyPromotionScope || "(missing)")}`,
-        `adultKitsuOnlyPromotionRejectedReasonByQuery: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyPromotionRejectedReasonByQuery || {})}`,
-        `adultKitsuOnlyFamilyScopedBestQuery: ${String((lastRecommendationResult as any)?.adultKitsuOnlyFamilyScopedBestQuery || "(missing)")}`,
-        `adultKitsuOnlyBroadBestQuery: ${String((lastRecommendationResult as any)?.adultKitsuOnlyBroadBestQuery || "(missing)")}`,
-        `adultKitsuOnlySelectedFamilyAcceptedCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedFamilyAcceptedCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedFamilyReturnedCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedFamilyReturnedCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedFamilyReturnedFrom: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedFamilyReturnedFrom || "(missing)")}`,
-        `adultKitsuOnlySelectedFamilyWeakRescueOnly: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedFamilyWeakRescueOnly ?? "(missing)")}`,
-        `adultKitsuOnlySelectedFamilyStrongEnoughForFinal: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedFamilyStrongEnoughForFinal ?? "(missing)")}`,
-        `adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough: ${String((lastRecommendationResult as any)?.adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough ?? "(missing)")}`,
-        `adultKitsuOnlyPromotionBlockedBecauseThresholdOnly: ${String((lastRecommendationResult as any)?.adultKitsuOnlyPromotionBlockedBecauseThresholdOnly ?? "(missing)")}`,
-        `adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue: ${String((lastRecommendationResult as any)?.adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue ?? "(missing)")}`,
-        `adultKitsuOnlyFamilyComparisonExhausted: ${String((lastRecommendationResult as any)?.adultKitsuOnlyFamilyComparisonExhausted ?? "(missing)")}`,
-        `adultKitsuOnlyEmergencyFallbackQueriesTried: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyEmergencyFallbackQueriesTried || [])}`,
-        `adultKitsuOnlyEmergencyFallbackAcceptedCountsByQuery: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyEmergencyFallbackAcceptedCountsByQuery || {})}`,
-        `adultKitsuOnlyEmergencyFallbackSelectedQuery: ${String((lastRecommendationResult as any)?.adultKitsuOnlyEmergencyFallbackSelectedQuery || "(missing)")}`,
-        `adultKitsuOnlyEmergencyFallbackReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlyEmergencyFallbackReason || "(missing)")}`,
-        `adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery || {})}`,
-        `adultKitsuOnlyFormatOnlyLaneDetected: ${String((lastRecommendationResult as any)?.adultKitsuOnlyFormatOnlyLaneDetected ?? "(missing)")}`,
-        `adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily: ${String((lastRecommendationResult as any)?.adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily ?? "(missing)")}`,
-        `adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback: ${String((lastRecommendationResult as any)?.adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback ?? "(missing)")}`,
-        `adultKitsuOnlySelectedQueryWouldHaveBeenGeneric: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryWouldHaveBeenGeneric || "(missing)")}`,
-        `adultKitsuOnlySelectedQueryAfterRouterFamilyOverride: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryAfterRouterFamilyOverride || "(missing)")}`,
-        `adultKitsuOnlyFamilyPlanningBypassReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlyFamilyPlanningBypassReason || "(missing)")}`,
-        `adultKitsuOnlyFamilyPropagationTrace: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlyFamilyPropagationTrace || [])}`,
-        `adultKitsuOnlyComparisonFamilyAnchor: ${String((lastRecommendationResult as any)?.adultKitsuOnlyComparisonFamilyAnchor || "(missing)")}`,
-        `adultKitsuOnlyFinalKitsuFetchQuery: ${String((lastRecommendationResult as any)?.adultKitsuOnlyFinalKitsuFetchQuery || "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueApplied: ${String(Boolean((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueApplied))}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueBlockedReason: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueBlockedReason || "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueSelectedQueryKey: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueSelectedQueryKey || "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueAvailableQueries: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueAvailableQueries || [])}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueRowFound: ${String(Boolean((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRowFound))}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueRawCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRawCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueRankedCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRankedCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueCandidateCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueCandidateCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueAcceptedCount: ${String((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueAcceptedCount ?? "(missing)")}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts || {})}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle || {})}`,
-        `adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles || [])}`,
-        ...teenKitsuFinalGuardReportLines,
-        `kitsuRescueSlateQualityAudit: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRescueSlateQualityAudit || [])}`,
-        `zeroItemsCompactSummary: ${JSON.stringify({
-          debugRawPoolLength: Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0,
-          debugCandidatePoolLength: Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0,
-          candidatePoolLength: Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0,
-          returnedItemsLength,
-          finalEligibilityRejectedTitlesByReason: (lastRecommendationResult as any)?.finalEligibilityRejectedTitlesByReason || {},
-          normalFinalGateRecoveryConsidered: Boolean((lastRecommendationResult as any)?.normalFinalGateRecoveryConsidered),
-          kitsuNormalRecoveryConsidered: Boolean((lastRecommendationResult as any)?.kitsuNormalRecoveryConsidered),
-          kitsuRecoveryPoolTitles: (lastRecommendationResult as any)?.kitsuRecoveryPoolTitles || [],
-          kitsuRecoveryBestRejectedReasons: (lastRecommendationResult as any)?.kitsuRecoveryBestRejectedReasons || {},
-        })}`,
-        `zeroItemsCause_sourceStarvation: ${String(sourceStarvationByZeroPools || Boolean((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceHealthFailed || earlyReturnReason === "source_health_failed"))}`,
-        `zeroItemsCause_finalGateRejection: ${String(sourceStarvationByZeroPools ? false : Boolean((lastRecommendationResult as any)?.terminalRejectReasonByTitle || (lastRecommendationResult as any)?.finalEligibilityHardNeverReturnTitles))}`,
-        `zeroItemsCause_postTerminalDrop: ${String(sourceStarvationByZeroPools ? false : Boolean((lastRecommendationResult as any)?.finalRenderDocsDroppedByReason || (lastRecommendationResult as any)?.droppedBeforeRenderReason))}`,
-        `zeroItemsCause_emergencyHandoffBlocked: ${String(sourceStarvationByZeroPools ? false : Boolean((lastRecommendationResult as any)?.finalHandoffEmptyReason))}`,
-        `rawSourceCounts: ${JSON.stringify((lastRecommendationResult as any)?.debugSourceStats || {})}`,
-        `candidatePoolLength: ${String(Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0)}`,
-        `debugRawPool.length: ${String(Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0)}`,
-        `debugCandidatePool.length: ${String(Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0)}`,
-        `finalEligibilityRejectedTitlesByReason: ${JSON.stringify((lastRecommendationResult as any)?.finalEligibilityRejectedTitlesByReason || {})}`,
-        `teenPostPassOutputLength: ${String((lastRecommendationResult as any)?.teenPostPassOutputLength ?? "(missing)")}`,
-        `normalFinalGateRecoveryConsidered: ${String(Boolean((lastRecommendationResult as any)?.normalFinalGateRecoveryConsidered))}`,
-        `kitsuNormalRecoveryConsidered: ${String(Boolean((lastRecommendationResult as any)?.kitsuNormalRecoveryConsidered))}`,
-        `kitsuRecoveryAcceptedTitles: ${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryAcceptedTitles || [])}`,
-        `kitsuRecoveryRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryRejectedByTitle || {})}`,
-        `kitsuRecoveryPoolTitles: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRecoveryPoolTitles || [])}`,
-        `kitsuRecoveryBestRejectedReasons: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRecoveryBestRejectedReasons || {})}`,
-        `kitsuInsufficientPositiveFitRejectedDiagnostics: ${JSON.stringify((lastRecommendationResult as any)?.kitsuInsufficientPositiveFitRejectedDiagnostics || [])}`,
-        `teenPostPassOutputTitles: ${JSON.stringify((lastRecommendationResult as any)?.teenPostPassOutputTitles || [])}`,
-        `teenPostPassRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.teenPostPassRejectedByTitle || {})}`,
-        `teenPostPassNoSafeCandidateReason: ${String((lastRecommendationResult as any)?.teenPostPassNoSafeCandidateReason || "(none)")}`,
-        `terminalAssemblyInputTitles: ${JSON.stringify((lastRecommendationResult as any)?.terminalAssemblyInputTitles || [])}`,
-        `terminalAssemblyOutputTitles: ${JSON.stringify((lastRecommendationResult as any)?.terminalAssemblyOutputTitles || [])}`,
-      ].join("\n");
-      await Clipboard.setStringAsync(blockedReport);
-      Alert.alert(
-        "Export blocked",
-        (timeoutRun || preflightTimeoutRun)
-          ? `Session report export blocked due to recommendation timeout.\n\nTimeout: ${preflightTimeoutRun ? "10000" : "90000"}ms\nLast phase: ${recommendFunctionErrorPhase || "(none)"}\n\nA blocked diagnostics report has been copied to clipboard.`
-          : `Session report export blocked due to invalid runtime trace.\n\nExpected fingerprint: ${expectedFingerprint}\nActual fingerprint: ${runtimeFingerprint || "(missing)"}\nrouterResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}\n\nA blocked diagnostics report has been copied to clipboard.`
-      );
-      return;
-    }
     if (presetRecommendationCompleted) setPresetExportedAfterRecommendation(true);
     const recomputedRight = swipeHistory.filter((entry) => entry.direction === "like").length;
     const recomputedLeft = swipeHistory.filter((entry) => entry.direction === "dislike").length;
     const recomputedSkip = swipeHistory.filter((entry) => entry.direction === "skip").length;
     const recomputedDecisions = recomputedRight + recomputedLeft;
-    const recomputedSummary = `Right:${recomputedRight} • Left:${recomputedLeft} • Skip:${recomputedSkip} • Decisions:${recomputedDecisions} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`;
+    const recomputedSummary = `Right:${recomputedRight} â€¢ Left:${recomputedLeft} â€¢ Skip:${recomputedSkip} â€¢ Decisions:${recomputedDecisions} â€¢ 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`;
     const recommendationLines = recItems.length
       ? recItems.map((item, i) => {
           if (item.kind === "open_library") {
@@ -4275,7 +3568,7 @@ function handleLeft() {
             const queryText = diagnostics.queryText ?? doc?.queryText ?? "(missing)";
 
             return [
-              `${i + 1}. ${title} — ${author}${year}`,
+              `${i + 1}. ${title} â€” ${author}${year}`,
               `   source: ${diagnostics.source ?? doc?.source ?? "(unknown)"}`,
               `   queryFamily: ${diagnostics.queryFamily ?? doc?.queryFamily ?? inferQueryFamily(queryText)}`,
               `   preFilterScore: ${diagnostics.preFilterScore ?? "(missing)"}`,
@@ -4297,7 +3590,7 @@ function handleLeft() {
           const title = item.book?.title ?? "Untitled";
           const author = item.book?.author ?? "Unknown author";
           const year = item.book?.year ? ` (${item.book.year})` : "";
-          return `${i + 1}. ${title} — ${author}${year}`;
+          return `${i + 1}. ${title} â€” ${author}${year}`;
         }).join("\n")
       : "(none)";
 
@@ -4317,8 +3610,8 @@ function handleLeft() {
           const tags = Array.isArray(anyCard?.tags)
             ? anyCard.tags.filter((tag: any) => typeof tag === "string" && tag.trim()).join(", ")
             : "";
-          const details = [author, genre, tags].filter(Boolean).join(" — ");
-          return `${index + 1}. ${entry.direction.toUpperCase()} — ${title}${details ? ` — ${details}` : ""}`;
+          const details = [author, genre, tags].filter(Boolean).join(" â€” ");
+          return `${index + 1}. ${entry.direction.toUpperCase()} â€” ${title}${details ? ` â€” ${details}` : ""}`;
         }).join("\n")
       : "(none)";
 
@@ -5073,14 +4366,14 @@ function handleLeft() {
       "SESSION REPORT",
       `Deck: ${deck.deckLabel}`,
       `Deck Key: ${deckKey}`,
-      `engineSelected: ${selectedRecommendationEngine}`,
+      `engineSelected: v2`,
       `engineActuallyUsed: ${engineActuallyUsedForReport || "(none)"}`,
-      `Engine: ${recEngineLabel || "—"}`,
-      `Saved Query Time: ${lastRecommendationTimestamp || "—"}`,
+      `Engine: ${recEngineLabel || "â€”"}`,
+      `Saved Query Time: ${lastRecommendationTimestamp || "â€”"}`,
       `Swipe Summary: ${recomputedSummary}`,
-      `Swipe Summary (state): ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
+      `Swipe Summary (state): ${lastRecommendationSwipeSummary || `Right:${rightSwipes} â€¢ Left:${leftSwipes} â€¢ Skip:${downSwipes}`}`,
       `20Q Progress: ${resolvedTwentyQCount}/${twentyQObjectives.length}`,
-      `Current 20Q Objective: ${activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung} • ${activeTwentyQObjective.label}` : "complete"}`,
+      `Current 20Q Objective: ${activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung} â€¢ ${activeTwentyQObjective.label}` : "complete"}`,
       `Active query family: ${reportQueryFamily}`,
       "",
       "SWIPE HISTORY",
@@ -5170,19 +4463,19 @@ function handleLeft() {
       "",
       "TASTE PROFILE",
       tasteProfilePreview || "(flat)",
-      `confidence:${tasteProfileWithMood.confidence.toFixed(2)} • swipes:${tasteProfileWithMood.evidence.swipes} • feedback:${tasteProfileWithMood.evidence.feedbackEvents}`,
+      `confidence:${tasteProfileWithMood.confidence.toFixed(2)} â€¢ swipes:${tasteProfileWithMood.evidence.swipes} â€¢ feedback:${tasteProfileWithMood.evidence.feedbackEvents}`,
       "",
       "SESSION MOOD",
       formatTasteVectorPreview(sessionMoodProfile?.vector),
-      `confidence:${sessionMoodProfile?.confidence?.toFixed(2) ?? "0.00"} • swipes:${sessionMoodProfile?.swipeCount ?? 0}`,
+      `confidence:${sessionMoodProfile?.confidence?.toFixed(2) ?? "0.00"} â€¢ swipes:${sessionMoodProfile?.swipeCount ?? 0}`,
       "",
       "PERSONALITY PROFILE",
       formatTasteVectorPreview(personalityProfileState?.vector),
-      `confidence:${personalityProfileState?.confidence?.toFixed(2) ?? "0.00"} • sessions:${personalityProfileState?.sessionCount ?? 0}`,
+      `confidence:${personalityProfileState?.confidence?.toFixed(2) ?? "0.00"} â€¢ sessions:${personalityProfileState?.sessionCount ?? 0}`,
       "",
       "ACTIVE TASTE",
       formatTasteVectorPreview(activeTasteVector),
-      `personality:${activeTasteWeights?.personalityWeight?.toFixed(2) ?? "0.00"} • mood:${activeTasteWeights?.moodWeight?.toFixed(2) ?? "0.00"}`,
+      `personality:${activeTasteWeights?.personalityWeight?.toFixed(2) ?? "0.00"} â€¢ mood:${activeTasteWeights?.moodWeight?.toFixed(2) ?? "0.00"}`,
       "",
       "RUNG STATS",
       lastRungStats ? JSON.stringify(lastRungStats, null, 2) : "(none)",
@@ -5190,7 +4483,7 @@ function handleLeft() {
       "RECOMMENDATION MEMORY",
       (() => {
         const history = getRecommendationHistoryBucket(deckKey);
-        return `shownIds:${history.recommendedIds.size} • shownKeys:${history.recommendedKeys.size} • titles:${history.titles.size} • roots:${history.titleRoots.size} • authors:${history.authors.size} • series:${history.seriesKeys.size} • rejected:${history.rejectedIds.size}`;
+        return `shownIds:${history.recommendedIds.size} â€¢ shownKeys:${history.recommendedKeys.size} â€¢ titles:${history.titles.size} â€¢ roots:${history.titleRoots.size} â€¢ authors:${history.authors.size} â€¢ series:${history.seriesKeys.size} â€¢ rejected:${history.rejectedIds.size}`;
       })(),
     ].join("\n");
 
@@ -5205,7 +4498,7 @@ function handleLeft() {
     if (autoSearched) return;
     setAutoSearched(true);
     runAutoRecommendations();
-  }, [isDone, autoSearched, tasteProfileWithMood, currentLaneOverride, selectedRecommendationEngine]);
+  }, [isDone, autoSearched, tasteProfileWithMood, currentLaneOverride]);
 
   const recDone = recItems.length > 0 && recIndex === recItems.length;
 
@@ -5344,7 +4637,7 @@ function handleLeft() {
             20Q: {resolvedTwentyQCount}/{twentyQObjectives.length} resolved
           </Text>
           <Text style={styles.statusText}>
-            Engine selected: {selectedRecommendationEngine.toUpperCase()} • Last used: {(lastEngineActuallyUsed || "—").toUpperCase()}
+            Engine: V2 • Last used: {(lastEngineActuallyUsed || "—").toUpperCase()}
           </Text>
           <Text style={styles.statusText}>
             {activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung}: ${activeTwentyQObjective.label}` : "20Q complete"}
@@ -5359,7 +4652,7 @@ function handleLeft() {
               <View style={[styles.doneCard, { borderColor: highlightColor }]}>
                 <Text style={styles.doneTitle}>Recommendations</Text>
                 <Text style={styles.doneSub}>
-                  Deck: {deck.deckLabel} • Selected: {selectedRecommendationEngine.toUpperCase()} • Used: {(lastEngineActuallyUsed || "—").toUpperCase()} • Engine: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
+                  Deck: {deck.deckLabel} • Engine: V2 • Used: {(lastEngineActuallyUsed || "—").toUpperCase()} • Engine label: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
                 </Text>
 
                 {recQuery ? (
@@ -5367,7 +4660,7 @@ function handleLeft() {
                     Search query: <Text style={{ fontWeight: "900" }}>{recQuery}</Text>
                   </Text>
                 ) : (
-                  <Text style={styles.smallNote}>Building your recommendations…</Text>
+                  <Text style={styles.smallNote}>Building your recommendationsâ€¦</Text>
                 )}
 
                 {lastRecommendationTimestamp ? (
@@ -5377,7 +4670,7 @@ function handleLeft() {
                 {recLoading ? (
                   <View style={{ marginTop: 14, alignItems: "center" }}>
                     <ActivityIndicator />
-                    <Text style={styles.smallNote}>Finding a good match…</Text>
+                    <Text style={styles.smallNote}>Finding a good matchâ€¦</Text>
                   </View>
                 ) : null}
 
@@ -5460,7 +4753,7 @@ function handleLeft() {
                                   setTimeout(() => handleRate(r), 80);
                                 }}
                               >
-                                <Text style={styles.ratingStar}>{filled ? "★" : "☆"}</Text>
+                                <Text style={styles.ratingStar}>{filled ? "â˜…" : "â˜†"}</Text>
                                 <Text style={styles.ratingLabel} numberOfLines={1}>
                                   {ratingLabel(r)}
                                 </Text>
@@ -5476,7 +4769,7 @@ function handleLeft() {
                 {recItems.length > 0 && !recLoading && recDone ? (
                   <View style={styles.recCard}>
                     <View style={styles.recMeta}>
-                      <Text style={styles.recBookTitle}>You’ve reached the end of your recommendations.</Text>
+                      <Text style={styles.recBookTitle}>Youâ€™ve reached the end of your recommendations.</Text>
                       <Text style={styles.recCounter}>{recItems.length} of {recItems.length}</Text>
                     </View>
 
@@ -5548,9 +4841,9 @@ function handleLeft() {
                   <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
                     <View style={[styles.divider, isSmallScreen && styles.dividerTight]} />
                     <View style={styles.clueRow}>
-                      <Text style={styles.clueText}>← Dislike</Text>
-                      <Text style={styles.clueText}>↓ Skip</Text>
-                      <Text style={styles.clueText}>Like →</Text>
+                      <Text style={styles.clueText}>â† Dislike</Text>
+                      <Text style={styles.clueText}>â†“ Skip</Text>
+                      <Text style={styles.clueText}>Like â†’</Text>
                     </View>
                     <Pressable
                       style={({ pressed }) => [
@@ -5622,22 +4915,6 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
-          <View style={styles.engineSelectorPanel}>
-            <Text style={styles.v2DebugTitle}>Engine</Text>
-            <View style={styles.engineSelectorRow}>
-              {(["v1", "v2"] as RecommendationEngineSelection[]).map((engine) => (
-                <TouchableOpacity
-                  key={engine}
-                  style={[styles.engineToggleButton, selectedRecommendationEngine === engine && styles.engineToggleButtonActive]}
-                  onPress={() => selectRecommendationEngine(engine)}
-                >
-                  <Text style={styles.debugToggleText}>Engine: {engine.toUpperCase()}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.v2DebugText}>Selected:{selectedRecommendationEngine} • Last used:{lastEngineActuallyUsed || "none"}</Text>
-          </View>
-
           <View style={styles.testPillRow}>
             {testSessionPresets.map((preset) => (
               <TouchableOpacity key={preset.id} style={styles.testPillButton} onPress={() => runTestSessionPreset(preset)}>
@@ -5650,11 +4927,11 @@ function handleLeft() {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.codexDiagnosticsToggle} onPress={() => void handleCopyCodexDiagnostics()}>
-            <Text style={styles.debugToggleText}>{v2DebugLoading ? "Codex Running…" : "Codex Diagnostics"}</Text>
+            <Text style={styles.debugToggleText}>{v2DebugLoading ? "Codex Runningâ€¦" : "Codex Diagnostics"}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.v2DebugToggle} onPress={() => void runRecommenderV2DebugFromCurrentSession("button")}>
-            <Text style={styles.debugToggleText}>{v2DebugLoading ? "V2 Running…" : "Run V2"}</Text>
+            <Text style={styles.debugToggleText}>{v2DebugLoading ? "V2 Runningâ€¦" : "Run V2"}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -5673,7 +4950,7 @@ function handleLeft() {
               <Text style={styles.v2DebugText}>status:{v2DebugError ? "error" : "ok"}</Text>
               {v2DebugResult?.diagnostics.sessionReportHeader ? <Text style={styles.v2DebugText}>{v2DebugResult.diagnostics.sessionReportHeader}</Text> : null}
               <Text style={styles.v2DebugText}>items:{v2DebugResult?.items.map((item) => item.title).join(" | ") || "(none)"}</Text>
-              <Text style={styles.v2DebugText}>stages:{v2DebugResult?.diagnostics.stages.map((stage) => stage.stage).join(" → ") || "(none)"}</Text>
+              <Text style={styles.v2DebugText}>stages:{v2DebugResult?.diagnostics.stages.map((stage) => stage.stage).join(" â†’ ") || "(none)"}</Text>
               <Text style={styles.v2DebugText}>sources:{v2DebugResult?.diagnostics.sources.map((source) => `${source.source}:${source.status}:${source.rawCount}`).join(" | ") || "(none)"}</Text>
               {v2DebugError ? <Text style={styles.v2DebugText}>error:{v2DebugError}</Text> : null}
             </View>
@@ -5921,37 +5198,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-  },
-  engineSelectorPanel: {
-    width: 320,
-    maxWidth: "90%",
-    alignSelf: "flex-end",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-    backgroundColor: "rgba(15, 23, 42, 0.9)",
-    padding: 10,
-    gap: 8,
-  },
-  engineSelectorRow: {
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "flex-end",
-    flexWrap: "wrap",
-  },
-  engineToggleButton: {
-    minWidth: 104,
-    alignItems: "center",
-    backgroundColor: "#334155",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
-  engineToggleButtonActive: {
-    backgroundColor: "#2563eb",
-    borderColor: "#bfdbfe",
   },
   v2DebugToggle: {
     minWidth: 112,
