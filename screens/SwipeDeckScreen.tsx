@@ -4659,9 +4659,7 @@ function handleLeft() {
                   <Text style={styles.smallNote}>
                     Search query: <Text style={{ fontWeight: "900" }}>{recQuery}</Text>
                   </Text>
-                ) : (
-                  <Text style={styles.smallNote}>Building your recommendationsâ€¦</Text>
-                )}
+                ) : null}
 
                 {lastRecommendationTimestamp ? (
                   <Text style={styles.smallNote}>Saved query time: {lastRecommendationTimestamp}</Text>
@@ -4670,7 +4668,7 @@ function handleLeft() {
                 {recLoading ? (
                   <View style={{ marginTop: 14, alignItems: "center" }}>
                     <ActivityIndicator />
-                    <Text style={styles.smallNote}>Finding a good matchâ€¦</Text>
+                    <Text style={styles.smallNote}>Finding books you'll love</Text>
                   </View>
                 ) : null}
 
@@ -4921,28 +4919,16 @@ function handleLeft() {
                 <Text style={styles.debugToggleText}>{preset.label}</Text>
               </TouchableOpacity>
             ))}
+            <TouchableOpacity style={styles.testPillButton} onPress={handleCopyDiagnostics}>
+              <Text style={styles.debugToggleText}>Diagnostics</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.testPillButton} onPress={() => void handleCopyCodexDiagnostics()}>
+              <Text style={styles.debugToggleText}>{v2DebugLoading ? "Codex Running..." : "Codex Diagnostics"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.testPillButton} onPress={handleFreshUserReset}>
+              <Text style={styles.debugToggleText}>Fresh User</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
-            <Text style={styles.debugToggleText}>Diagnostics</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.codexDiagnosticsToggle} onPress={() => void handleCopyCodexDiagnostics()}>
-            <Text style={styles.debugToggleText}>{v2DebugLoading ? "Codex Runningâ€¦" : "Codex Diagnostics"}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.v2DebugToggle} onPress={() => void runRecommenderV2DebugFromCurrentSession("button")}>
-            <Text style={styles.debugToggleText}>{v2DebugLoading ? "V2 Runningâ€¦" : "Run V2"}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.v2DebugToggle, middleGradesDeepDebugUiEnabled && styles.middleGradesDeepDebugToggleActive]}
-            onPress={toggleMiddleGradesDeepDebug}
-          >
-            <Text style={styles.debugToggleText}>
-              {middleGradesDeepDebugUiEnabled ? "MG Deep Debug: ON" : "MG Deep Debug: OFF"}
-            </Text>
-          </TouchableOpacity>
-          <Text style={styles.v2DebugText}>MG deep debug can also be enabled with ?middleGradesDeepDebug=true or localStorage middleGradesDeepDebug=true.</Text>
 
           {(v2DebugResult || v2DebugError) ? (
             <View style={styles.v2DebugPanel}>
@@ -4955,10 +4941,6 @@ function handleLeft() {
               {v2DebugError ? <Text style={styles.v2DebugText}>error:{v2DebugError}</Text> : null}
             </View>
           ) : null}
-
-          <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
-            <Text style={styles.debugToggleText}>Fresh User</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
