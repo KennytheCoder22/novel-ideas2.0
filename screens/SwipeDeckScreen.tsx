@@ -5099,9 +5099,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   testPillRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
+    flexDirection: "column",
+    alignItems: "flex-end",
     gap: 8,
   },
   testPillButton: {
