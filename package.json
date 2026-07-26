@@ -37,6 +37,7 @@
     "test:v2:openlibrary-query-lineage": "node scripts/run-v2-openlibrary-routing-regressions.mjs --query-lineage-only",
     "test:v2:kitsu-comicvine-contract": "node scripts/run-v2-kitsu-comicvine-contract-regressions.mjs",
     "test:v2:comicvine-source-certification": "node scripts/run-v2-comicvine-source-certification-regressions.mjs",
+    "test:v2:comicvine-cert-gap-closure": "node scripts/run-v2-comicvine-cert-gap-closure-regressions.mjs",
     "audit:v2:googlebooks-kids-query-comparison": "node scripts/run-v2-googlebooks-kids-query-comparison.mjs",
     "audit:v2:googlebooks-query-refinement-root-cause": "node scripts/run-v2-googlebooks-query-refinement-root-cause.mjs",
     "audit:v2:googlebooks-general-publication-identity": "node scripts/run-v2-googlebooks-general-publication-identity-diagnostic.mjs",
