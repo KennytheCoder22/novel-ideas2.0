@@ -1,4 +1,5 @@
 import type { AgeBandV2, CandidateFormatV2, NormalizedCandidate, SourceIdV2, SourceResult } from "./types";
+import { classifyComicVineIdentity } from "./comicVineIdentity";
 import { preteenGoogleBooksPublicationIdentityAudit } from "./preteenGoogleBooksPublicationIdentity";
 
 const AGE_BAND_VALUES = new Set<AgeBandV2>(["kids", "preteens", "teens", "adult"]);
@@ -153,6 +154,19 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
       const source = result.source as SourceIdV2;
       const id = String(row.id || row.sourceId || `${source}:${title}`).trim();
       const sourceMaturityRating = source === "googleBooks" ? googleBooksSourceMaturityRating(row) : "";
+      const comicVineIdentity = source === "comicVine"
+        ? classifyComicVineIdentity({
+            title: row.title,
+            subtitle: row.subtitle,
+            issueNumber: (row.raw as Record<string, unknown> | undefined)?.issue_number || row.issue_number,
+            deck: (row.raw as Record<string, unknown> | undefined)?.deck || row.deck,
+            description: (row.raw as Record<string, unknown> | undefined)?.description || row.description,
+            aliases: (row.raw as Record<string, unknown> | undefined)?.aliases || row.aliases,
+            resourceType: (row.raw as Record<string, unknown> | undefined)?.resource_type || row.resource_type,
+            publisher: ((row.raw as Record<string, unknown> | undefined)?.publisher as Record<string, unknown> | undefined)?.name || row.publisher,
+            volumeName: ((row.raw as Record<string, unknown> | undefined)?.volume as Record<string, unknown> | undefined)?.name || row.volume,
+          })
+        : null;
       candidates.push({
         id,
         source,
@@ -218,6 +232,22 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           googleBooksContentMaturity: source === "googleBooks" ? String(row.contentMaturity || googleBooksContentMaturityFromRating(sourceMaturityRating)) : undefined,
           googleBooksSourceMaturityRating: source === "googleBooks" ? (sourceMaturityRating || undefined) : undefined,
           authors: row.authors || row.author_name || row.creators,
+          publicationIdentity: source === "comicVine" ? comicVineIdentity?.identity : undefined,
+          publicationIdentityConfidence: source === "comicVine" ? comicVineIdentity?.confidence : undefined,
+          publicationIdentityEvidence: source === "comicVine" ? comicVineIdentity?.evidence : undefined,
+          sourceProvenance: source === "comicVine"
+            ? {
+                source: "comicVine",
+                sourceId: String(row.sourceId || row.id || "").trim() || undefined,
+                sourceQuery: String(row.queryText || "").trim() || undefined,
+                publicationIdentity: comicVineIdentity?.identity || "unknown",
+                publicationIdentityConfidence: comicVineIdentity?.confidence || "low",
+                publicationIdentityEvidence: comicVineIdentity?.evidence || [],
+                sourceAdmissionDecision: "accepted",
+                sourceAdmissionReasons: [],
+                survivalReasons: ["comicvine_row_converted", "normalized_successfully"],
+              }
+            : undefined,
         },
       });
     }
