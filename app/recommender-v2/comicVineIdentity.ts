@@ -55,14 +55,17 @@ const IDENTITY_RULES: IdentityRule[] = [
   { identity: "magazine", confidence: "high", patterns: [/\bmagazine\b/i], evidenceLabel: "title/metadata contains magazine marker" },
   { identity: "art_book", confidence: "high", patterns: [/\bart of\b/i, /\bart book\b/i, /\bsketchbook\b/i], evidenceLabel: "title/metadata contains art-book marker" },
   { identity: "encyclopedia", confidence: "high", patterns: [/\bencyclopedia\b/i], evidenceLabel: "title/metadata contains encyclopedia marker" },
+  { identity: "movie_or_tv_tie_in", confidence: "medium", patterns: [/\btie[-\s]?in\b/i, /\bmovie\b/i, /\btv\b/i, /\btelevision\b/i], evidenceLabel: "title/metadata contains movie/TV tie-in marker" },
+  { identity: "prose_novel", confidence: "medium", patterns: [/\bnovelization\b/i, /\bprose novel\b/i], evidenceLabel: "title/metadata contains prose marker" },
+  { identity: "reference_book", confidence: "medium", patterns: [/\bguide\b/i, /\bhandbook\b/i, /\bcompanion\b/i, /\breference\b/i], evidenceLabel: "title/metadata contains reference marker" },
+];
+
+const HARD_REJECT_RULES: IdentityRule[] = [
   { identity: "coloring_book", confidence: "high", patterns: [/\bcolou?ring\b/i], evidenceLabel: "title/metadata contains coloring marker" },
   { identity: "activity_book", confidence: "high", patterns: [/\bactivity book\b/i, /\bactivities\b/i], evidenceLabel: "title/metadata contains activity marker" },
   { identity: "rpg_supplement", confidence: "high", patterns: [/\brpg\b/i, /\brole[-\s]?playing\b/i, /\bsourcebook\b/i], evidenceLabel: "title/metadata contains RPG marker" },
   { identity: "trading_card_guide", confidence: "high", patterns: [/\btrading card\b/i, /\bcard guide\b/i, /\bprice guide\b/i], evidenceLabel: "title/metadata contains trading-card marker" },
   { identity: "toy_guide", confidence: "high", patterns: [/\btoy guide\b/i, /\baction figure guide\b/i], evidenceLabel: "title/metadata contains toy-guide marker" },
-  { identity: "movie_or_tv_tie_in", confidence: "medium", patterns: [/\btie[-\s]?in\b/i, /\bmovie\b/i, /\btv\b/i, /\btelevision\b/i], evidenceLabel: "title/metadata contains movie/TV tie-in marker" },
-  { identity: "prose_novel", confidence: "medium", patterns: [/\bnovelization\b/i, /\bprose novel\b/i], evidenceLabel: "title/metadata contains prose marker" },
-  { identity: "reference_book", confidence: "medium", patterns: [/\bguide\b/i, /\bhandbook\b/i, /\bcompanion\b/i, /\breference\b/i], evidenceLabel: "title/metadata contains reference marker" },
 ];
 
 function safeString(value: unknown): string {
@@ -108,6 +111,14 @@ export function classifyComicVineIdentity(input: {
   const issueNumber = safeString(input.issueNumber);
   const resourceType = safeString(input.resourceType).toLowerCase();
   const text = textCorpusForClassification(input);
+
+  for (const rule of HARD_REJECT_RULES) {
+    if (rule.patterns.some((pattern) => pattern.test(text))) {
+      const evidence = [rule.evidenceLabel];
+      if (resourceType) evidence.push(`ComicVine resource type is ${resourceType}`);
+      return { identity: rule.identity, confidence: rule.confidence, evidence };
+    }
+  }
 
   if (issueNumber) {
     const evidence = [

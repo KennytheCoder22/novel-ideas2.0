@@ -1,5 +1,5 @@
 /**
- * ComicVine source certification regressions (phase 1 + phase 2).
+ * ComicVine source certification regressions (phase 1 + phase 2 admission policy).
  *
  * Coverage:
  * 1) Retrieval lineage diagnostics for successful ComicVine-only runs
@@ -9,6 +9,8 @@
  * 5) Diagnostic-only publication identity classification coverage
  * 6) Test A zero-result reproducibility with explicit stage reasoning
  * 7) Test B/Test C behavior guard (40 raw / 25 raw, 5 returned)
+ * 8) Source admission policy: hard rejects, preferred admits, conditional admits, deterministic suppression
+ * 9) Slice 2 guardrails: deferred policy observability, scorer invariance, non-ComicVine invariance
  */
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
@@ -46,6 +48,18 @@ function assertGte(actual, expected, message) {
   if (Number(actual) < Number(expected)) throw new Error(`${message}: expected >= ${expected}, got ${actual}`);
 }
 
+function assertNotIncludes(haystack, needle, message) {
+  if (Array.isArray(haystack) && haystack.includes(needle)) {
+    throw new Error(`${message}: expected ${JSON.stringify(haystack)} to exclude ${JSON.stringify(needle)}`);
+  }
+}
+
+function assertDeepEqual(actual, expected, message) {
+  const a = JSON.stringify(actual);
+  const b = JSON.stringify(expected);
+  if (a !== b) throw new Error(`${message}: expected ${b}, got ${a}`);
+}
+
 function asObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
@@ -53,6 +67,10 @@ function asObject(value) {
 const dir = resolve(dirname(fileURLToPath(import.meta.url)), "../app/recommender-v2");
 const { runRecommenderV2 } = require(resolve(dir, "engine.ts"));
 const { classifyComicVineIdentity } = require(resolve(dir, "comicVineIdentity.ts"));
+const { normalizeSourceResults } = require(resolve(dir, "normalize.ts"));
+const { buildTasteProfile } = require(resolve(dir, "tasteProfile.ts"));
+const { scoreCandidates } = require(resolve(dir, "score.ts"));
+const { applyComicVineSourceAdmissionPolicy } = require(resolve(dir, "comicVineAdmission.ts"));
 const adultDeck = require(resolve(dirname(fileURLToPath(import.meta.url)), "../data/swipeDecks/adult.ts")).default;
 
 function formatFromTagsForV2(tags) {
@@ -108,6 +126,22 @@ function makeComicRows(query, count, startId = 1, options = {}) {
   }));
 }
 
+function makeComicRow(overrides = {}) {
+  return {
+    id: 9999,
+    resource_type: "issue",
+    name: "Default Comic Row",
+    deck: "Default deck",
+    description: "Default description",
+    issue_number: "1",
+    cover_date: "2019-01-01",
+    site_detail_url: "https://comicvine.gamespot.com/default/4000-9999/",
+    volume: { id: 999, name: "Default Volume" },
+    person_credits: [{ name: "Writer A" }],
+    ...overrides,
+  };
+}
+
 async function runComicVineOnly(requestId, sequence, fetchImpl) {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = fetchImpl;
@@ -131,6 +165,25 @@ async function runComicVineOnly(requestId, sequence, fetchImpl) {
   } finally {
     globalThis.fetch = originalFetch;
   }
+}
+
+async function runMockOnly(requestId, sequence) {
+  return runRecommenderV2({
+    requestId,
+    ageBand: "adult",
+    limit: 5,
+    enabledSources: {
+      mock: true,
+      googleBooks: false,
+      openLibrary: false,
+      kitsu: false,
+      comicVine: false,
+      localLibrary: false,
+      nyt: false,
+    },
+    signals: buildSignalsFromPreset(sequence),
+    deckKey: "adult",
+  });
 }
 
 function comicDiag(result) {
@@ -270,6 +323,261 @@ async function main() {
   }
   assertTruthy(asObject(successBDiag.comicVineSourceIdentityReport).histogram != null, "T7 identity report present");
   console.log("PASS T7: identity classification/report coverage");
+
+  const hardRejectAndSuppressionRun = await runComicVineOnly("comicvine-admission-hard-reject-and-suppression", testBSequence, async (input) => {
+    const url = String(input || "");
+    if (!url.includes("proxy.localhost/api/comicvine")) {
+      return new Response(JSON.stringify({ results: [] }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    const rows = [
+      makeComicRow({
+        id: 7101,
+        resource_type: "issue",
+        name: "Saga #1",
+        issue_number: "1",
+        deck: "Opening issue for Saga.",
+        description: "Saga issue one.",
+        volume: { id: 701, name: "Saga" },
+      }),
+      makeComicRow({
+        id: 7102,
+        resource_type: "volume",
+        name: "Saga Vol. 1",
+        issue_number: "",
+        deck: "Collects issues #1-6.",
+        description: "Collected edition of Saga.",
+        volume: { id: 701, name: "Saga" },
+      }),
+      makeComicRow({
+        id: 7103,
+        resource_type: "volume",
+        name: "Marvel Coloring Book",
+        issue_number: "",
+        deck: "Coloring activity collection.",
+        description: "Coloring pages.",
+        volume: { id: 702, name: "Marvel Coloring Book" },
+      }),
+      makeComicRow({
+        id: 7104,
+        resource_type: "volume",
+        name: "Compendium of Saga",
+        issue_number: "",
+        deck: "Compendium release.",
+        description: "Compendium edition.",
+        volume: { id: 703, name: "Saga Compendium" },
+      }),
+    ];
+    return new Response(JSON.stringify({ results: rows }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  const hardRejectSuppressionDiag = comicDiag(hardRejectAndSuppressionRun);
+  const hardRejected = hardRejectSuppressionDiag.comicVineHardRejectedCandidates || [];
+  const suppressedIssues = hardRejectSuppressionDiag.comicVineSuppressedIssues || [];
+  const reachingScorer = hardRejectSuppressionDiag.comicVineCandidatesReachingScorerAfterAdmission || [];
+  assertTruthy(hardRejected.length >= 1, "T8 hard-reject candidates captured");
+  assertTruthy(hardRejected.every((row) => row.decision === "hard_reject"), "T8 hard-reject decision state");
+  assertTruthy(hardRejected.every((row) => row.identity && row.sourceId && row.sourceQuery !== undefined && Array.isArray(row.reasonCodes) && Array.isArray(row.evidence)), "T8 hard-reject provenance complete");
+  assertTruthy(Array.isArray(suppressedIssues) && suppressedIssues.some((row) => row.reasonCodes.includes("component_issue_suppressed_by_collection")), "T8 component issue suppression captured");
+  assertTruthy(reachingScorer.every((row) => row.identity !== "coloring_book"), "T8 hard-reject identity blocked before scorer");
+  assertTruthy(reachingScorer.some((row) => row.identity === "trade_paperback" || row.identity === "collected_edition" || row.identity === "compendium"), "T8 preferred identities remain scorer-eligible");
+  const sagaIssueSuppressed = suppressedIssues.find((row) => String(row.title || "").toLowerCase().includes("saga #1"));
+  assertTruthy(Boolean(sagaIssueSuppressed), "T8 Saga issue suppressed by collection representative");
+  assertTruthy(String(sagaIssueSuppressed.representativeId || "").length > 0, "T8 suppressed issue representedBy populated");
+  assertNotIncludes(hardRejectAndSuppressionRun.items.map((item) => item.title), "Saga #1", "T8 suppressed issue excluded from final recommendations");
+  console.log("PASS T8: hard rejects + complete provenance + high-confidence suppression");
+
+  const ambiguousClusterRun = await runComicVineOnly("comicvine-admission-ambiguous-cluster", testASequence, async (input) => {
+    const url = String(input || "");
+    if (!url.includes("proxy.localhost/api/comicvine")) {
+      return new Response(JSON.stringify({ results: [] }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    const rows = [
+      makeComicRow({
+        id: 8101,
+        resource_type: "issue",
+        name: "Batman #1",
+        issue_number: "1",
+        deck: "Issue one",
+        description: "Issue one",
+        volume: { id: 801, name: "Batman" },
+      }),
+      makeComicRow({
+        id: 8102,
+        resource_type: "volume",
+        name: "Batman Omnibus",
+        issue_number: "",
+        deck: "Collects issues #1-12.",
+        description: "Omnibus collection",
+        volume: { id: 801, name: "Batman" },
+      }),
+      makeComicRow({
+        id: 8103,
+        resource_type: "volume",
+        name: "Batman Deluxe Edition",
+        issue_number: "",
+        deck: "Collects issues #1-12.",
+        description: "Deluxe collection",
+        volume: { id: 801, name: "Batman" },
+      }),
+    ];
+    return new Response(JSON.stringify({ results: rows }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  const ambiguousDiag = comicDiag(ambiguousClusterRun);
+  const ambiguousClusters = ambiguousDiag.comicVineAmbiguousClusters || [];
+  const ambiguousSuppressed = ambiguousDiag.comicVineSuppressedIssues || [];
+  assertTruthy(ambiguousClusters.some((cluster) => cluster.reason === "multiple_preferred_collection_candidates"), "T9 ambiguous clusters remain unenforced");
+  assertEqual(ambiguousSuppressed.length, 0, "T9 no suppression under ambiguous representative choice");
+  assertTruthy((ambiguousDiag.comicVineCandidatesReachingScorerAfterAdmission || []).some((row) => row.identity === "single_issue"), "T9 single issue preserved when cluster is ambiguous");
+  console.log("PASS T9: weak/ambiguous clusters not collapsed");
+
+  const loneSingleIssueRun = await runComicVineOnly("comicvine-admission-lone-single-issue", testCSequence, async (input) => {
+    const url = String(input || "");
+    if (!url.includes("proxy.localhost/api/comicvine")) {
+      return new Response(JSON.stringify({ results: [] }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    const rows = [
+      makeComicRow({
+        id: 9101,
+        resource_type: "issue",
+        name: "Lone Detective #7",
+        issue_number: "7",
+        deck: "No collection available.",
+        description: "Standalone issue.",
+        volume: { id: 901, name: "Lone Detective" },
+      }),
+    ];
+    return new Response(JSON.stringify({ results: rows }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  const loneCandidate = loneSingleIssueRun.items.find((item) => item.title === "Lone Detective #7");
+  const loneProvenance = asObject(loneCandidate?.diagnostics?.sourceProvenance);
+  assertTruthy(Boolean(loneCandidate), "T10 lone single issue survives admission");
+  assertEqual(String(loneProvenance.admissionDecision || ""), "conditional_admit", "T10 lone issue remains conditionally admitted");
+  assertEqual(String(loneProvenance.representedBy || ""), "", "T10 lone issue not represented by collection");
+  console.log("PASS T10: lone single issue remains admitted without collection fallback suppression");
+
+  const deferredRun = await runComicVineOnly("comicvine-admission-deferred-observability", testASequence, async (input) => {
+    const url = String(input || "");
+    if (!url.includes("proxy.localhost/api/comicvine")) {
+      return new Response(JSON.stringify({ results: [] }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    const rows = [
+      makeComicRow({ id: 10101, resource_type: "volume", name: "The Art of Gotham", issue_number: "", deck: "Art book", description: "Art of series", volume: { id: 1001, name: "Gotham Art" } }),
+      makeComicRow({ id: 10102, resource_type: "volume", name: "Character Handbook", issue_number: "", deck: "Reference guide", description: "Companion handbook", volume: { id: 1002, name: "Character Handbook" } }),
+      makeComicRow({ id: 10103, resource_type: "volume", name: "Movie Tie-In Novel", issue_number: "", deck: "Movie tie in", description: "Tie-in release", volume: { id: 1003, name: "Movie Tie-In Novel" } }),
+      makeComicRow({ id: 10104, resource_type: "thing", name: "Primary Listing Artifact", issue_number: "", deck: "Unclear identity", description: "Unknown object", volume: { id: 1004, name: "Primary Listing Artifact" } }),
+    ];
+    return new Response(JSON.stringify({ results: rows }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  const deferredDiag = comicDiag(deferredRun);
+  const deferredObs = asObject(deferredDiag.comicVineAdmissionDeferredObservability);
+  assertEqual(Boolean(asObject(deferredObs.art_book_suitability).enforced), false, "T11 art-book suitability explicitly deferred");
+  assertEqual(Boolean(asObject(deferredObs.reference_book_suitability).enforced), false, "T11 reference-book suitability explicitly deferred");
+  assertEqual(Boolean(asObject(deferredObs.tie_in_vs_guide_separation).enforced), false, "T11 tie-in vs guide separation explicitly deferred");
+  assertEqual(Boolean(asObject(deferredObs.unknown_identity_behavior).enforced), false, "T11 unknown identity behavior explicitly deferred");
+  assertTruthy((deferredDiag.comicVineCandidatesReachingScorerAfterAdmission || []).length >= 4, "T11 deferred categories remain admitted and observable");
+  console.log("PASS T11: deferred policy categories remain admitted + observable + unenforced");
+
+  const sourceForScoreParity = {
+    source: "comicVine",
+    status: "succeeded",
+    rawItems: [
+      {
+        id: "comicVine:score-parity-1",
+        sourceId: "comicVine:score-parity-1",
+        title: "Score Parity Vol. 1",
+        subtitle: "Score Parity",
+        creators: ["Writer A"],
+        description: "Collects issues #1-4",
+        formats: ["comic"],
+        genres: ["comics", "graphic novels"],
+        themes: ["adventure"],
+        tones: ["dramatic"],
+        characterDynamics: ["team"],
+        publicationYear: 2018,
+        sourceUrl: "https://comicvine.gamespot.com/score-parity-1/",
+        queryText: "score parity",
+        queryFamily: "core",
+        queryCascadeIndex: 0,
+        facets: [],
+        routingReason: "comicvine_v2_intent_adapter",
+        raw: makeComicRow({
+          id: 11101,
+          resource_type: "volume",
+          name: "Score Parity Vol. 1",
+          issue_number: "",
+          deck: "Collects issues #1-4",
+          description: "Collected edition",
+          volume: { id: 1101, name: "Score Parity" },
+        }),
+      },
+      {
+        id: "comicVine:score-parity-2",
+        sourceId: "comicVine:score-parity-2",
+        title: "Score Parity Companion",
+        subtitle: "Score Parity",
+        creators: ["Writer B"],
+        description: "Companion reference",
+        formats: ["comic"],
+        genres: ["comics"],
+        themes: ["reference"],
+        tones: ["informative"],
+        characterDynamics: [],
+        publicationYear: 2019,
+        sourceUrl: "https://comicvine.gamespot.com/score-parity-2/",
+        queryText: "score parity",
+        queryFamily: "core",
+        queryCascadeIndex: 0,
+        facets: [],
+        routingReason: "comicvine_v2_intent_adapter",
+        raw: makeComicRow({
+          id: 11102,
+          resource_type: "volume",
+          name: "Score Parity Companion",
+          issue_number: "",
+          deck: "Companion reference",
+          description: "Reference companion",
+          volume: { id: 1102, name: "Score Parity Companion" },
+        }),
+      },
+    ],
+    diagnostics: {
+      source: "comicVine",
+      status: "succeeded",
+      planned: true,
+      attempted: true,
+      timedOut: false,
+      rawCount: 2,
+      queries: ["score parity"],
+    },
+  };
+  const sourceResultsForScoreParity = [sourceForScoreParity];
+  const normalizedScoreParity = normalizeSourceResults(sourceResultsForScoreParity);
+  const profileForScoreParity = buildTasteProfile({
+    requestId: "score-parity-profile",
+    ageBand: "adult",
+    limit: 5,
+    signals: buildSignalsFromPreset(testASequence),
+    enabledSources: { comicVine: true },
+    deckKey: "adult",
+  });
+  const baselineScores = scoreCandidates(normalizedScoreParity, profileForScoreParity);
+  const gatedScoreParity = applyComicVineSourceAdmissionPolicy(normalizedScoreParity, sourceResultsForScoreParity);
+  const gatedScores = scoreCandidates(gatedScoreParity.candidates, profileForScoreParity);
+  const baselineById = Object.fromEntries(baselineScores.map((candidate) => [candidate.sourceId || candidate.id, candidate.score]));
+  const gatedById = Object.fromEntries(gatedScores.map((candidate) => [candidate.sourceId || candidate.id, candidate.score]));
+  assertDeepEqual(gatedById, baselineById, "T12 admission policy does not alter shared score values");
+  console.log("PASS T12: admission policy leaves shared scores unchanged");
+
+  const mockOnlyA = await runMockOnly("non-comicvine-source-control-a", testASequence);
+  const mockOnlyB = await runMockOnly("non-comicvine-source-control-b", testASequence);
+  assertDeepEqual(
+    mockOnlyA.items.map((item) => ({ title: item.title, source: item.source, score: item.score })),
+    mockOnlyB.items.map((item) => ({ title: item.title, source: item.source, score: item.score })),
+    "T13 policy does not change non-ComicVine source behavior",
+  );
+  const mockOnlyComicDiag = asObject((mockOnlyA.diagnostics.sources || []).find((diag) => diag.source === "comicVine"));
+  assertEqual(String(mockOnlyComicDiag.status || ""), "skipped", "T13 comicvine remains skipped when disabled");
+  assertEqual(Number(asObject(mockOnlyComicDiag.comicVineAdmissionStateCounts).hard_reject || 0), 0, "T13 no comicvine admission mutations when disabled");
+  console.log("PASS T13: non-ComicVine behavior unchanged");
 
   console.log("\nAll ComicVine source certification regressions passed.");
 }

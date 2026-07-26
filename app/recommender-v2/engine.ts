@@ -1,4 +1,5 @@
 import { buildDiagnosticReport, buildRecommendationResultV2, stageDiagnostic } from "./diagnostics";
+import { applyComicVineSourceAdmissionPolicy } from "./comicVineAdmission";
 import { buildComicVineIdentityReport } from "./comicVineIdentity";
 import { normalizeSourceResults } from "./normalize";
 import { buildSearchPlan } from "./searchPlan";
@@ -147,7 +148,9 @@ function addComicVineSurvivalReason(candidates: Array<NormalizedCandidate | Scor
       ...diagnostics,
       sourceProvenance: {
         ...sourceProvenance,
-        sourceAdmissionDecision: String(sourceProvenance.sourceAdmissionDecision || "accepted"),
+        admissionDecision: String(sourceProvenance.admissionDecision || sourceProvenance.sourceAdmissionDecision || "conditional_admit"),
+        admissionReasons: Array.isArray(sourceProvenance.admissionReasons) ? sourceProvenance.admissionReasons : [],
+        sourceAdmissionDecision: String(sourceProvenance.sourceAdmissionDecision || sourceProvenance.admissionDecision || "conditional_admit"),
         sourceAdmissionReasons: Array.isArray(sourceProvenance.sourceAdmissionReasons) ? sourceProvenance.sourceAdmissionReasons : [],
         survivalReasons: existingReasons,
       },
@@ -2432,6 +2435,15 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   normalized = kidsGoogleBooksPreScoringGate.candidates;
   teensGoogleBooksPreScoringGate = applyTeensGoogleBooksPreScoringGate(normalized, tasteProfile);
   normalized = teensGoogleBooksPreScoringGate.candidates;
+  let comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
+  normalized = comicVineAdmissionGate.candidates;
+  stages.push(stageDiagnostic("comicvine_source_admission_policy", {
+    comicVineEvaluated: comicVineAdmissionGate.diagnostics.evaluatedCount,
+    comicVineAdmittedToScorer: comicVineAdmissionGate.diagnostics.admittedToScorerCount,
+    comicVineHardRejected: Number(comicVineAdmissionGate.diagnostics.admissionStateCounts.hard_reject || 0),
+    comicVineSuppressedIssues: comicVineAdmissionGate.diagnostics.suppressedIssues.length,
+    comicVineClusters: comicVineAdmissionGate.diagnostics.clusters.length,
+  }));
   let scored = scoreCandidates(normalized, tasteProfile);
   let selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
   let selected = selection.selected;
@@ -2606,6 +2618,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = kidsGoogleBooksPreScoringGate.candidates;
         teensGoogleBooksPreScoringGate = applyTeensGoogleBooksPreScoringGate(normalized, tasteProfile);
         normalized = teensGoogleBooksPreScoringGate.candidates;
+        comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -2884,6 +2898,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = kidsGoogleBooksPreScoringGate.candidates;
         teensGoogleBooksPreScoringGate = applyTeensGoogleBooksPreScoringGate(normalized, tasteProfile);
         normalized = teensGoogleBooksPreScoringGate.candidates;
+        comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -3071,6 +3087,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = kidsGoogleBooksPreScoringGate.candidates;
         teensGoogleBooksPreScoringGate = applyTeensGoogleBooksPreScoringGate(normalized, tasteProfile);
         normalized = teensGoogleBooksPreScoringGate.candidates;
+        comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -3269,6 +3287,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = kidsGoogleBooksPreScoringGate.candidates;
         teensGoogleBooksPreScoringGate = applyTeensGoogleBooksPreScoringGate(normalized, tasteProfile);
         normalized = teensGoogleBooksPreScoringGate.candidates;
+        comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;

@@ -204,6 +204,18 @@ export interface SourceDiagnosticV2 {
   comicVineIdentityNonReadingArtifactPercentage?: number;
   comicVineIdentityLowConfidencePercentage?: number;
   comicVineSourceIdentityReport?: Record<string, unknown>;
+  comicVineAdmissionPolicyVersion?: string;
+  comicVineAdmissionStateCounts?: Record<string, number>;
+  comicVineHardRejectionReasonHistogram?: Record<string, number>;
+  comicVinePreferredIdentityHistogram?: Record<string, number>;
+  comicVineConditionalIdentityHistogram?: Record<string, number>;
+  comicVineHardRejectedCandidates?: Array<Record<string, unknown>>;
+  comicVineAdmissionClusterCount?: number;
+  comicVineAdmissionClusters?: Array<Record<string, unknown>>;
+  comicVineSuppressedIssues?: Array<Record<string, unknown>>;
+  comicVineAmbiguousClusters?: Array<Record<string, unknown>>;
+  comicVineAdmissionDeferredObservability?: Record<string, unknown>;
+  comicVineCandidatesReachingScorerAfterAdmission?: Array<Record<string, unknown>>;
   normalizedCount?: number;
   queries: string[];
   rawTitles?: string[];
