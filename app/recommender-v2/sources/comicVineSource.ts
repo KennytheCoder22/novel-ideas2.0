@@ -7,6 +7,9 @@ const COMICVINE_DEFAULT_PROXY_PATH = "/api/comicvine";
 
 type ComicVineResultItem = {
   id?: number | string;
+  resource_type?: string;
+  aliases?: string;
+  publisher?: { name?: string };
   name?: string;
   volume?: { name?: string; id?: number | string };
   issue_number?: string;
@@ -156,6 +159,41 @@ function responseRows(payload: any): { rows: ComicVineResultItem[]; shape: Sourc
   return { rows: [], shape: "unknown" };
 }
 
+function normalizedErrorMessage(error: unknown): string {
+  const errorObj = error as { message?: string };
+  return String(errorObj?.message || error || "");
+}
+
+function abortReasonFromSignal(signal?: AbortSignal): string {
+  const reason = String((signal as any)?.reason || "").trim();
+  return reason || "abort_without_reason";
+}
+
+function sourceEmptyReason(input: {
+  planEnabled: boolean;
+  queryAttemptCount: number;
+  requestDispatchedCount: number;
+  requestAbortedCount: number;
+  requestTimedOutCount: number;
+  upstreamErrorCount: number;
+  rawApiResultCount: number;
+  convertedCount: number;
+  normalizedCount: number;
+  duplicateCount: number;
+}): string | undefined {
+  if (!input.planEnabled) return "source_disabled";
+  if (input.queryAttemptCount <= 0) return "no_comicvine_query_planned";
+  if (input.requestDispatchedCount <= 0) return "request_never_dispatched";
+  if (input.requestTimedOutCount > 0) return "request_timed_out";
+  if (input.requestAbortedCount > 0) return "request_aborted";
+  if (input.upstreamErrorCount > 0) return "upstream_error";
+  if (input.rawApiResultCount <= 0) return "valid_empty_response";
+  if (input.convertedCount <= 0) return "conversion_removed_all_rows";
+  if (input.normalizedCount <= 0) return "normalization_removed_all_rows";
+  if (input.duplicateCount > 0 && input.normalizedCount <= 0) return "duplicate_rows_removed_all";
+  return "later_pipeline_stage_removed_all_candidates";
+}
+
 function buildRequestPlan(query: string): ComicVineRequestPlan {
   const configuredPublicProxyUrl = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL || "").trim();
   const configuredServerProxyUrl = String(process.env.COMICVINE_PROXY_URL || "").trim();
@@ -220,23 +258,42 @@ export const comicVineSourceAdapter: SourceAdapterV2 = {
     let failedReason = "";
     let requestPath: "proxy" | "direct" | undefined;
     const usedProxyUrls = new Set<string>();
+    let queryAttemptCount = 0;
+    let requestDispatchedCount = 0;
+    let requestCompletedCount = 0;
+    let requestAbortedCount = 0;
+    let requestTimedOutCount = 0;
+    let requestNeverDispatchedCount = 0;
+    let upstreamErrorCount = 0;
+    let validEmptyResponseCount = 0;
+    let conversionRemovedAllRowsCount = 0;
+    let convertedCount = 0;
+    let duplicateCount = 0;
+    const normalizedCandidateCount = 0;
 
     for (let index = 0; index < plan.intents.length; index += 1) {
       const intent = plan.intents[index];
       if (!intent) continue;
       const query = String(intent.query || "").trim();
       if (!query) continue;
+      queryAttemptCount += 1;
 
       const requestPlan = buildRequestPlan(query);
       requestPath = requestPath || requestPlan.path;
       if (requestPlan.normalizedProxyUrl) usedProxyUrls.add(requestPlan.normalizedProxyUrl);
       const fetchDiag: SourceFetchDiagnosticV2 = {
         query,
+        attemptNumber: index + 1,
         queryFamily: String(intent.id || "").trim() || "generic",
         queryCascadeIndex: index,
         facets: intent.facets || [],
         timedOut: false,
         fetchStartedAt: nowIso(),
+        requestStart: nowIso(),
+        requestDispatched: false,
+        requestCompleted: false,
+        convertedCount: 0,
+        duplicateCount: 0,
         fetchPath: requestPlan.path,
         requestUrl: requestPlan.path === "direct" ? COMICVINE_DIRECT_API : requestPlan.finalRequestUrl,
         configuredProxyUrl: requestPlan.configuredProxyUrl,
@@ -247,18 +304,27 @@ export const comicVineSourceAdapter: SourceAdapterV2 = {
       if (!requestPlan.finalRequestUrl) {
         fetchDiag.status = "failed";
         fetchDiag.failedReason = requestPlan.unavailableReason || "comicvine_unavailable";
+        fetchDiag.requestNotDispatchedReason = fetchDiag.failedReason;
+        fetchDiag.emptyResultReason = "request_never_dispatched";
+        requestNeverDispatchedCount += 1;
         failedReason = failedReason || fetchDiag.failedReason || "comicvine_unavailable";
         fetchDiag.fetchFinishedAt = nowIso();
+        fetchDiag.requestEnd = fetchDiag.fetchFinishedAt;
+        fetchDiag.elapsedMs = Date.parse(fetchDiag.fetchFinishedAt) - Date.parse(fetchDiag.fetchStartedAt || fetchDiag.fetchFinishedAt);
         fetches.push(fetchDiag);
         continue;
       }
 
       try {
+        fetchDiag.requestDispatched = true;
+        requestDispatchedCount += 1;
         const response = await fetch(requestPlan.finalRequestUrl, {
           method: "GET",
           signal: context.signal,
           headers: { Accept: "application/json" },
         });
+        requestCompletedCount += 1;
+        fetchDiag.requestCompleted = true;
         fetchDiag.httpStatus = response.status;
         fetchDiag.responseContentType = String(response.headers.get("content-type") || "").trim();
         const body = await response.text();
@@ -266,6 +332,7 @@ export const comicVineSourceAdapter: SourceAdapterV2 = {
         if (!response.ok) {
           fetchDiag.status = "failed";
           fetchDiag.failedReason = `http_${response.status}`;
+          upstreamErrorCount += 1;
           failedReason = failedReason || fetchDiag.failedReason;
           continue;
         }
@@ -278,8 +345,14 @@ export const comicVineSourceAdapter: SourceAdapterV2 = {
         fetchDiag.docsReturned = rows.length;
         fetchDiag.rawRetrieved = rows.length;
         fetchDiag.firstReturnedTitles = uniqueStrings(rows.map((row) => rowTitle(row)).filter(Boolean), 8);
+        if (rows.length === 0) {
+          fetchDiag.emptyResultReason = "valid_empty_response";
+          validEmptyResponseCount += 1;
+        }
         fetchDiag.status = rows.length > 0 ? "succeeded" : "empty";
 
+        let fetchConvertedCount = 0;
+        let fetchDuplicateCount = 0;
         for (const row of rows) {
           const normalized = toRawRow(
             row,
@@ -289,23 +362,57 @@ export const comicVineSourceAdapter: SourceAdapterV2 = {
             intent.facets || [],
           );
           if (!normalized) continue;
+          fetchConvertedCount += 1;
           const key = `${normalized.sourceId || normalized.id || normalized.title}`;
-          if (dedupe.has(String(key).toLowerCase())) continue;
+          if (dedupe.has(String(key).toLowerCase())) {
+            fetchDuplicateCount += 1;
+            continue;
+          }
           dedupe.add(String(key).toLowerCase());
           rawItems.push(normalized);
         }
+        fetchDiag.convertedCount = fetchConvertedCount;
+        fetchDiag.duplicateCount = fetchDuplicateCount;
+        convertedCount += fetchConvertedCount;
+        duplicateCount += fetchDuplicateCount;
+        if (rows.length > 0 && fetchConvertedCount === 0) {
+          fetchDiag.emptyResultReason = "conversion_removed_all_rows";
+          conversionRemovedAllRowsCount += 1;
+        }
       } catch (error) {
         const errorObj = error as { name?: string; message?: string };
-        const message = String(errorObj?.message || error || "");
+        const message = normalizedErrorMessage(error);
+        const parentAborted = Boolean(context.signal?.aborted);
+        const signalReason = abortReasonFromSignal(context.signal);
+        const aborted = errorObj?.name === "AbortError" || /\babort(ed)?\b/i.test(message);
+        const timeoutAbort = aborted && /timeout|source_timeout/i.test(`${signalReason} ${message}`);
         fetchDiag.thrownErrorName = String(errorObj?.name || "");
         fetchDiag.thrownErrorMessage = message;
-        fetchDiag.failedReason = message.includes("aborted") ? "aborted" : "fetch_error";
-        fetchDiag.status = message.includes("aborted") ? "aborted" : "failed";
-        fetchDiag.aborted = message.includes("aborted");
-        if (message.includes("aborted")) timedOut = true;
+        fetchDiag.aborted = aborted;
+        fetchDiag.abortReason = aborted ? (parentAborted ? signalReason : (message || "request_aborted")) : undefined;
+        fetchDiag.abortOrigin = aborted
+          ? parentAborted
+            ? (timeoutAbort ? "local_timeout" : "router_or_parent")
+            : "fetch_abort_without_local_signal"
+          : undefined;
+        fetchDiag.timedOut = timeoutAbort;
+        fetchDiag.failedReason = aborted ? (timeoutAbort ? "request_timed_out" : "request_aborted") : "upstream_error";
+        fetchDiag.status = aborted ? (timeoutAbort ? "timed_out" : "aborted") : "failed";
+        fetchDiag.emptyResultReason = aborted
+          ? (timeoutAbort ? "request_timed_out" : "request_aborted")
+          : "upstream_error";
+        if (aborted) {
+          requestAbortedCount += 1;
+          if (timeoutAbort) requestTimedOutCount += 1;
+        } else {
+          upstreamErrorCount += 1;
+        }
+        if (timeoutAbort) timedOut = true;
         failedReason = failedReason || fetchDiag.failedReason || "fetch_error";
       } finally {
         fetchDiag.fetchFinishedAt = nowIso();
+        fetchDiag.requestEnd = fetchDiag.fetchFinishedAt;
+        fetchDiag.elapsedMs = Date.parse(fetchDiag.fetchFinishedAt) - Date.parse(fetchDiag.fetchStartedAt || fetchDiag.fetchFinishedAt);
         fetches.push(fetchDiag);
       }
     }
@@ -328,12 +435,57 @@ export const comicVineSourceAdapter: SourceAdapterV2 = {
       finishedAt,
       elapsedMs: Date.parse(finishedAt) - Date.parse(startedAt),
       rawCount: rawItems.length,
+      convertedCount,
+      duplicateCount,
+      scoringHandoffCount: 0,
+      finalEligibleCount: 0,
+      selectedCount: 0,
+      renderedCount: 0,
+      queryAttemptCount,
+      queryAttemptedCount: fetches.length,
+      requestDispatchedCount,
+      requestCompletedCount,
+      requestAbortedCount,
+      requestTimedOutCount,
+      requestNeverDispatchedCount,
+      upstreamErrorCount,
+      validEmptyResponseCount,
+      conversionRemovedAllRowsCount,
+      normalizationRemovedAllRowsCount: 0,
+      laterStageRemovedAllCandidatesCount: 0,
       rawApiResultCount: fetches.reduce((sum, fetchDiag) => sum + Number(fetchDiag.rawApiCount || 0), 0),
       queries: fetches.map((fetchDiag) => fetchDiag.query),
       rawTitles: uniqueStrings(rawItems.map((row) => row.title), 30),
       firstReturnedTitles: uniqueStrings(fetches.flatMap((fetchDiag) => fetchDiag.firstReturnedTitles || []), 20),
       failedReason: status === "failed" || status === "timed_out" ? failedReason || undefined : undefined,
-      emptyReason: status === "empty" ? "comicvine_returned_no_rows" : undefined,
+      emptyReason: status === "empty"
+        ? sourceEmptyReason({
+            planEnabled: plan.enabled,
+            queryAttemptCount,
+            requestDispatchedCount,
+            requestAbortedCount,
+            requestTimedOutCount,
+            upstreamErrorCount,
+            rawApiResultCount: fetches.reduce((sum, fetchDiag) => sum + Number(fetchDiag.rawApiCount || 0), 0),
+            convertedCount,
+            normalizedCount: normalizedCandidateCount,
+            duplicateCount,
+          })
+        : undefined,
+      sourceStageEmptyReason: status === "empty"
+        ? sourceEmptyReason({
+            planEnabled: plan.enabled,
+            queryAttemptCount,
+            requestDispatchedCount,
+            requestAbortedCount,
+            requestTimedOutCount,
+            upstreamErrorCount,
+            rawApiResultCount: fetches.reduce((sum, fetchDiag) => sum + Number(fetchDiag.rawApiCount || 0), 0),
+            convertedCount,
+            normalizedCount: normalizedCandidateCount,
+            duplicateCount,
+          })
+        : undefined,
       fetches,
       droppedBeforeDocCount: 0,
       dropReasons: {},

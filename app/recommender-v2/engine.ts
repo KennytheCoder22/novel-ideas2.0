@@ -1,4 +1,6 @@
 import { buildDiagnosticReport, buildRecommendationResultV2, stageDiagnostic } from "./diagnostics";
+import { applyComicVineSourceAdmissionPolicy } from "./comicVineAdmission";
+import { buildComicVineIdentityReport } from "./comicVineIdentity";
 import { normalizeSourceResults } from "./normalize";
 import { buildSearchPlan } from "./searchPlan";
 import { ageSuitabilityScore, scoreCandidates } from "./score";
@@ -15,7 +17,7 @@ function nowIso(): string {
 
 async function runWithTimeout<T>(timeoutMs: number, task: (signal: AbortSignal) => Promise<T>): Promise<{ value?: T; timedOut: boolean; error?: string }> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => controller.abort("source_timeout"), timeoutMs);
   try {
     return { value: await task(controller.signal), timedOut: false };
   } catch (error: unknown) {
@@ -131,6 +133,113 @@ function uniqueStrings(values: unknown[], limit = 80): string[] {
     if (strings.length >= limit) break;
   }
   return strings;
+}
+
+function addComicVineSurvivalReason(candidates: Array<NormalizedCandidate | ScoredCandidate>, reason: string): void {
+  for (const candidate of candidates) {
+    if (candidate.source !== "comicVine") continue;
+    const diagnostics = (candidate.diagnostics || {}) as Record<string, unknown>;
+    const sourceProvenance = (diagnostics.sourceProvenance || {}) as Record<string, unknown>;
+    const existingReasons = Array.isArray(sourceProvenance.survivalReasons)
+      ? sourceProvenance.survivalReasons.map((entry) => String(entry || "")).filter(Boolean)
+      : [];
+    if (!existingReasons.includes(reason)) existingReasons.push(reason);
+    candidate.diagnostics = {
+      ...diagnostics,
+      sourceProvenance: {
+        ...sourceProvenance,
+        admissionDecision: String(sourceProvenance.admissionDecision || sourceProvenance.sourceAdmissionDecision || "conditional_admit"),
+        admissionReasons: Array.isArray(sourceProvenance.admissionReasons) ? sourceProvenance.admissionReasons : [],
+        sourceAdmissionDecision: String(sourceProvenance.sourceAdmissionDecision || sourceProvenance.admissionDecision || "conditional_admit"),
+        sourceAdmissionReasons: Array.isArray(sourceProvenance.sourceAdmissionReasons) ? sourceProvenance.sourceAdmissionReasons : [],
+        survivalReasons: existingReasons,
+      },
+    };
+  }
+}
+
+function countComicVineByQueryAndFamily(candidates: Array<NormalizedCandidate | ScoredCandidate>): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const candidate of candidates) {
+    if (candidate.source !== "comicVine") continue;
+    const query = String(candidate.diagnostics?.queryText || "").trim();
+    const family = String(candidate.diagnostics?.queryFamily || "").trim() || "generic";
+    const key = `${query}::${family}`;
+    counts[key] = Number(counts[key] || 0) + 1;
+  }
+  return counts;
+}
+
+function applyComicVinePipelineDiagnostics(
+  sourceResults: SourceResult[],
+  normalized: NormalizedCandidate[],
+  scored: ScoredCandidate[],
+  selected: ScoredCandidate[],
+): void {
+  const sourceResult = sourceResults.find((result) => result.source === "comicVine");
+  if (!sourceResult) return;
+  const diagnostics = sourceResult.diagnostics as SourceDiagnosticV2 & Record<string, unknown>;
+  const fetches = Array.isArray(diagnostics.fetches) ? diagnostics.fetches : [];
+  const normalizedComicVine = normalized.filter((candidate) => candidate.source === "comicVine");
+  const scoredComicVine = scored.filter((candidate) => candidate.source === "comicVine");
+  const selectedComicVine = selected.filter((candidate) => candidate.source === "comicVine");
+  const renderedComicVine = selectedComicVine;
+
+  const normalizedByQuery = countComicVineByQueryAndFamily(normalizedComicVine);
+  const scoredByQuery = countComicVineByQueryAndFamily(scoredComicVine);
+  const selectedByQuery = countComicVineByQueryAndFamily(selectedComicVine);
+  const renderedByQuery = countComicVineByQueryAndFamily(renderedComicVine);
+
+  diagnostics.normalizedCount = normalizedComicVine.length;
+  diagnostics.scoringHandoffCount = scoredComicVine.length;
+  diagnostics.finalEligibleCount = scoredComicVine.length;
+  diagnostics.selectedCount = selectedComicVine.length;
+  diagnostics.renderedCount = renderedComicVine.length;
+  diagnostics.normalizationRemovedAllRowsCount = diagnostics.rawCount > 0 && normalizedComicVine.length === 0 ? 1 : 0;
+  diagnostics.laterStageRemovedAllCandidatesCount = normalizedComicVine.length > 0 && selectedComicVine.length === 0 ? 1 : 0;
+
+  if (diagnostics.status === "skipped") {
+    diagnostics.emptyReason = diagnostics.emptyReason || diagnostics.skippedReason || "source_disabled";
+    diagnostics.sourceStageEmptyReason = diagnostics.sourceStageEmptyReason || diagnostics.skippedReason || "source_disabled";
+  } else if (diagnostics.rawCount <= 0 && !diagnostics.emptyReason) {
+    diagnostics.emptyReason = diagnostics.sourceStageEmptyReason || diagnostics.failedReason || "valid_empty_response";
+  } else if (diagnostics.rawCount > 0 && normalizedComicVine.length === 0) {
+    diagnostics.emptyReason = "normalization_removed_all_rows";
+  } else if (scoredComicVine.length > 0 && selectedComicVine.length === 0) {
+    diagnostics.emptyReason = "later_pipeline_stage_removed_all_candidates";
+  }
+
+  diagnostics.fetches = fetches.map((fetch) => {
+    const query = String(fetch.query || "").trim();
+    const family = String(fetch.queryFamily || "").trim() || "generic";
+    const key = `${query}::${family}`;
+    return {
+      ...fetch,
+      normalizedCandidateCount: Number(normalizedByQuery[key] || 0),
+      scoringHandoffCount: Number(scoredByQuery[key] || 0),
+      finalEligibleCount: Number(scoredByQuery[key] || 0),
+      selectedCount: Number(selectedByQuery[key] || 0),
+      renderedCount: Number(renderedByQuery[key] || 0),
+    };
+  });
+
+  const identityReport = buildComicVineIdentityReport(normalizedComicVine);
+  diagnostics.comicVineIdentityHistogram = identityReport.histogram;
+  diagnostics.comicVineIdentityTitlesByClass = identityReport.titlesByIdentity;
+  diagnostics.comicVineIdentityUnknownPercentage = identityReport.unknownPercentage;
+  diagnostics.comicVineIdentitySingleIssuePercentage = identityReport.singleIssuePercentage;
+  diagnostics.comicVineIdentityNonReadingArtifactPercentage = identityReport.nonReadingArtifactPercentage;
+  diagnostics.comicVineIdentityLowConfidencePercentage = identityReport.lowConfidencePercentage;
+  diagnostics.comicVineSourceIdentityReport = {
+    rawCandidates: Number(diagnostics.rawCount || 0),
+    normalizedCandidates: identityReport.normalizedCandidates,
+    histogram: identityReport.histogram,
+    titlesByIdentity: identityReport.titlesByIdentity,
+    unknownPercentage: identityReport.unknownPercentage,
+    singleIssuePercentage: identityReport.singleIssuePercentage,
+    nonReadingArtifactPercentage: identityReport.nonReadingArtifactPercentage,
+    lowConfidencePercentage: identityReport.lowConfidencePercentage,
+  };
 }
 
 type GoogleBooksInfrastructureStatus =
@@ -2326,6 +2435,15 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   normalized = kidsGoogleBooksPreScoringGate.candidates;
   teensGoogleBooksPreScoringGate = applyTeensGoogleBooksPreScoringGate(normalized, tasteProfile);
   normalized = teensGoogleBooksPreScoringGate.candidates;
+  let comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
+  normalized = comicVineAdmissionGate.candidates;
+  stages.push(stageDiagnostic("comicvine_source_admission_policy", {
+    comicVineEvaluated: comicVineAdmissionGate.diagnostics.evaluatedCount,
+    comicVineAdmittedToScorer: comicVineAdmissionGate.diagnostics.admittedToScorerCount,
+    comicVineHardRejected: Number(comicVineAdmissionGate.diagnostics.admissionStateCounts.hard_reject || 0),
+    comicVineSuppressedIssues: comicVineAdmissionGate.diagnostics.suppressedIssues.length,
+    comicVineClusters: comicVineAdmissionGate.diagnostics.clusters.length,
+  }));
   let scored = scoreCandidates(normalized, tasteProfile);
   let selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
   let selected = selection.selected;
@@ -2500,6 +2618,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = kidsGoogleBooksPreScoringGate.candidates;
         teensGoogleBooksPreScoringGate = applyTeensGoogleBooksPreScoringGate(normalized, tasteProfile);
         normalized = teensGoogleBooksPreScoringGate.candidates;
+        comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -2778,6 +2898,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = kidsGoogleBooksPreScoringGate.candidates;
         teensGoogleBooksPreScoringGate = applyTeensGoogleBooksPreScoringGate(normalized, tasteProfile);
         normalized = teensGoogleBooksPreScoringGate.candidates;
+        comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -2965,6 +3087,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = kidsGoogleBooksPreScoringGate.candidates;
         teensGoogleBooksPreScoringGate = applyTeensGoogleBooksPreScoringGate(normalized, tasteProfile);
         normalized = teensGoogleBooksPreScoringGate.candidates;
+        comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -3163,6 +3287,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = kidsGoogleBooksPreScoringGate.candidates;
         teensGoogleBooksPreScoringGate = applyTeensGoogleBooksPreScoringGate(normalized, tasteProfile);
         normalized = teensGoogleBooksPreScoringGate.candidates;
+        comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
@@ -3464,6 +3590,12 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   if (teensGoogleBooksSourceResult && tasteProfile.ageBand === "teens") {
     Object.assign(teensGoogleBooksSourceResult.diagnostics as unknown as Record<string, unknown>, teensGoogleBooksObservability);
   }
+
+  addComicVineSurvivalReason(normalized, "entered_scoring_handoff");
+  addComicVineSurvivalReason(scored, "scored_successfully");
+  addComicVineSurvivalReason(selected, "selected_for_recommendation");
+  addComicVineSurvivalReason(selected, "rendered_in_final_payload");
+  applyComicVinePipelineDiagnostics(sourceResults, normalized, scored, selected);
 
   markPipelineObjects(normalized, "normalized", requestId);
   stages.push(stageDiagnostic("normalized", { normalized: normalized.length }));
