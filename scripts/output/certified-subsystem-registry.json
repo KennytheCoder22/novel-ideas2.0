@@ -1,0 +1,59 @@
+{
+  "registry": "certified-subsystem-registry",
+  "version": "1.0",
+  "updatedAt": "2026-07-27T13:09:41.562-07:00",
+  "contracts": [
+    {
+      "contract": "google_books_admission",
+      "label": "Google Books Admission Contract (D+E)",
+      "status": "fully_certified",
+      "frozen": true,
+      "certifiedSlices": [
+        "D1",
+        "D2",
+        "E1"
+      ],
+      "certificationDecision": "accepted_and_certified"
+    }
+  ],
+  "subsystems": [
+    {
+      "contract": "google_books_admission",
+      "slice": "D1",
+      "label": "Kids Google Books admission contract",
+      "status": "certified",
+      "frozen": true,
+      "certificationDecision": "accepted_and_certified",
+      "baselineScripts": [
+        "scripts/run-v2-googlebooks-kids-architecture-regressions.mjs",
+        "scripts/run-v2-googlebooks-kids-d1-certification-regressions.mjs"
+      ]
+    },
+    {
+      "contract": "google_books_admission",
+      "slice": "D2",
+      "label": "Pre-Teen Google Books admission contract",
+      "status": "certified",
+      "frozen": true,
+      "certificationDecision": "accepted_and_certified",
+      "baselineScripts": [
+        "scripts/run-v2-googlebooks-preteen-publication-identity-regressions.mjs",
+        "scripts/run-v2-googlebooks-preteen-publication-shape-narrative-rescue-regressions.mjs",
+        "scripts/run-v2-googlebooks-preteen-d2-certification-regressions.mjs"
+      ]
+    },
+    {
+      "contract": "google_books_admission",
+      "slice": "E1",
+      "label": "Teen Google Books admission contract",
+      "status": "certified",
+      "frozen": true,
+      "certificationDecision": "accepted_and_certified",
+      "baselineScripts": [
+        "scripts/run-v2-googlebooks-teens-architecture-regressions.mjs",
+        "scripts/run-v2-googlebooks-audience-maturity-separation-regressions.mjs",
+        "scripts/run-v2-googlebooks-teen-e1-certification-regressions.mjs"
+      ]
+    }
+  ]
+}
