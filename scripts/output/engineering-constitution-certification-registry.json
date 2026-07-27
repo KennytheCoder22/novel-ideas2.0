@@ -1,0 +1,28 @@
+{
+  "registry": "engineering-constitution-certification-registry",
+  "version": "1.0",
+  "updatedAt": "2026-07-27T13:09:41.562-07:00",
+  "certifications": [
+    {
+      "contract": "comicvine_admission",
+      "status": "certified_baseline_preserved",
+      "scope": "Slice C",
+      "frozen": true
+    },
+    {
+      "contract": "google_books_admission",
+      "status": "fully_certified",
+      "scope": "Slices D1, D2, E1",
+      "frozen": true,
+      "certificationDecision": "accepted_and_certified",
+      "completionEvidence": {
+        "sliceRegistry": "scripts/output/certified-subsystem-registry.json",
+        "frozenBaselines": [
+          "scripts/run-v2-googlebooks-kids-d1-certification-regressions.mjs",
+          "scripts/run-v2-googlebooks-preteen-d2-certification-regressions.mjs",
+          "scripts/run-v2-googlebooks-teen-e1-certification-regressions.mjs"
+        ]
+      }
+    }
+  ]
+}
