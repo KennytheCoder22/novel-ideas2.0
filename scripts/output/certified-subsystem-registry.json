@@ -1,7 +1,7 @@
 {
   "registry": "certified-subsystem-registry",
   "version": "1.0",
-  "updatedAt": "2026-07-27T13:09:41.562-07:00",
+  "updatedAt": "2026-07-27T15:13:07.002-07:00",
   "contracts": [
     {
       "contract": "google_books_admission",
@@ -53,6 +53,84 @@
         "scripts/run-v2-googlebooks-teens-architecture-regressions.mjs",
         "scripts/run-v2-googlebooks-audience-maturity-separation-regressions.mjs",
         "scripts/run-v2-googlebooks-teen-e1-certification-regressions.mjs"
+      ]
+    },
+    {
+      "contract": "openlibrary_recommendation_certification",
+      "slice": "R1",
+      "label": "Adult Open Library recommendation certification suite",
+      "status": "certified_fixture_suite_registered",
+      "frozen": true,
+      "certificationDecision": "accepted_and_registered",
+      "baselineScripts": [
+        "scripts/run-v2-openlibrary-recommendation-certification-suite-v1.mjs"
+      ]
+    }
+  ],
+  "recommendationCertificationSuites": [
+    {
+      "suiteName": "Recommendation Certification Suite",
+      "version": "v1",
+      "source": "openLibrary",
+      "dateEstablished": "2026-07-27",
+      "artifact": "scripts/output/recommendation-certification-suite-v1.json",
+      "fixtureInventory": [
+        {
+          "fixtureId": "adult_a",
+          "profileName": "Adult A",
+          "tier": "stable",
+          "purpose": "Full-pass control",
+          "subsystemProtected": "End-to-end baseline control"
+        },
+        {
+          "fixtureId": "adult_b",
+          "profileName": "Adult B",
+          "tier": "stable",
+          "purpose": "Full-pass with recovery-assisted completion",
+          "subsystemProtected": "Recovery-assisted completion behavior"
+        },
+        {
+          "fixtureId": "adult_c",
+          "profileName": "Adult C",
+          "tier": "stable",
+          "purpose": "Underfill + rollback/no-worsening event",
+          "subsystemProtected": "Rollback/no-worsening safety behavior"
+        },
+        {
+          "fixtureId": "random_77209",
+          "profileName": "Random Seed 77209",
+          "tier": "random",
+          "purpose": "Metadata sparsity (high admission, zero final)",
+          "subsystemProtected": "Metadata-evidence final eligibility gate"
+        },
+        {
+          "fixtureId": "weird_fantasy_military_history",
+          "profileName": "Fantasy + Military History (corrected polarity)",
+          "tier": "weird",
+          "purpose": "Fixture polarity regression",
+          "subsystemProtected": "Profile signal polarity -> route-family mapping"
+        },
+        {
+          "fixtureId": "weird_highly_contradictory",
+          "profileName": "Highly Contradictory",
+          "tier": "weird",
+          "purpose": "Route balancing under contradictory signals",
+          "subsystemProtected": "Route planner conflict balancing"
+        },
+        {
+          "fixtureId": "weird_cozy_fantasy_true_crime",
+          "profileName": "Cozy Fantasy but also True Crime",
+          "tier": "weird",
+          "purpose": "High admission -> zero final, context-only collapse",
+          "subsystemProtected": "Final eligibility context sufficiency"
+        },
+        {
+          "fixtureId": "weird_manga_not_anime",
+          "profileName": "Manga but not anime",
+          "tier": "weird",
+          "purpose": "Stage-boundary metric visibility",
+          "subsystemProtected": "Stage boundary observability consistency"
+        }
       ]
     }
   ]
