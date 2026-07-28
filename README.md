@@ -31,6 +31,7 @@ You can start developing by editing the files inside the **app** directory. This
 - Swipe deck data is stored in `data/swipeDecks/` as both `.ts` and `.json` files.
 - Runtime and theme settings are centralized under `constants/`.
 - Future librarian-facing collection-gap analysis is specified in [`docs/COLLECTION_OPPORTUNITIES.md`](docs/COLLECTION_OPPORTUNITIES.md); patron-facing Library Mode remains local-collection-only.
+- Google Books deterministic source certification is documented in [`docs/GOOGLE_BOOKS_SOURCE_CERTIFICATION.md`](docs/GOOGLE_BOOKS_SOURCE_CERTIFICATION.md).
 - Offline source comparison architecture and workflow are documented in [`docs/SOURCE_COMPARISON_HARNESS.md`](docs/SOURCE_COMPARISON_HARNESS.md).
 
 ## Quick quality checks

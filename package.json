@@ -12,6 +12,8 @@
     "typecheck": "tsc --noEmit",
     "populate:swipe-images": "node scripts/populateSwipeCardFallbackImages.mjs",
     "trace:comicvine:contract": "npx tsx scripts/run-comicvine-contract-traces.ts",
+    "certify:googlebooks": "node scripts/source-competence/run-googlebooks-certification.mjs --mode replay --profile all --verify-no-network --verify-determinism",
+    "test:source-competence:googlebooks": "node scripts/source-competence/run-googlebooks-certification-regressions.mjs",
     "test:v2:googlebooks-query-quality": "node scripts/run-v2-googlebooks-query-quality-regressions.mjs",
     "test:v2:googlebooks-publication-shape": "node scripts/run-v2-googlebooks-publication-shape-regressions.mjs",
     "test:v2:googlebooks-kids-architecture": "node scripts/run-v2-googlebooks-kids-architecture-regressions.mjs",
