@@ -2,6 +2,8 @@
 
 ## Status
 
+**Baseline status:** Frozen v1. Changes require explicit product-owner approval and a new versioned commit and tag.
+
 Collection Opportunities is a planned, non-operational architectural capability. This document preserves the boundary between patron recommendations and future librarian-facing collection analysis. It does not define or implement an acquisition recommender, analytics pipeline, network integration, or production feature.
 
 ## Permanent design rules
