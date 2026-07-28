@@ -30,20 +30,20 @@ try {
   const globalDefault = describeDeploymentCapabilities("global", "disabled");
   const globalWithInvalidFutureRequest = describeDeploymentCapabilities("global", "enabled");
 
-  assertEqual(customizedDisabled.studentCandidateUniversePolicy, "local_collection_only", "customized Library Mode must be local-collection-only");
-  assertEqual(customizedEnabled.studentCandidateUniversePolicy, "local_collection_only", "Collection Opportunities configuration must not widen the student candidate universe");
-  assertEqual(customizedEnabled.collectionOpportunities.affectsStudentCandidateUniverse, false, "Collection Opportunities must be isolated from student candidates");
+  assertEqual(customizedDisabled.patronCandidateUniversePolicy, "local_collection_only", "customized Library Mode must be local-collection-only");
+  assertEqual(customizedEnabled.patronCandidateUniversePolicy, "local_collection_only", "Collection Opportunities configuration must not widen the patron candidate universe");
+  assertEqual(customizedEnabled.collectionOpportunities.affectsPatronCandidateUniverse, false, "Collection Opportunities must be isolated from patron candidates");
   assertEqual(customizedEnabled.collectionOpportunities.implementationStatus, "planned_not_implemented", "future capability must remain explicitly non-operational");
   assertEqual(customizedEnabled.collectionOpportunities.operational, false, "planned capability must not become operational");
-  assertEqual(globalDefault.studentCandidateUniversePolicy, "global_sources_allowed", "global deployment behavior must remain unchanged");
-  assertEqual(globalWithInvalidFutureRequest.studentCandidateUniversePolicy, "global_sources_allowed", "future configuration must not change global candidate policy");
+  assertEqual(globalDefault.patronCandidateUniversePolicy, "global_sources_allowed", "global deployment behavior must remain unchanged");
+  assertEqual(globalWithInvalidFutureRequest.patronCandidateUniversePolicy, "global_sources_allowed", "future configuration must not change global candidate policy");
   assertEqual(globalWithInvalidFutureRequest.collectionOpportunities.configuration, "disabled", "Collection Opportunities must remain disabled without a customized library deployment");
 
   console.log(JSON.stringify({
     pass: true,
     invariants: [
       "customized_library_is_local_collection_only",
-      "collection_opportunities_never_changes_student_candidate_universe",
+      "collection_opportunities_never_changes_patron_candidate_universe",
       "global_candidate_policy_unchanged",
       "collection_opportunities_planned_not_implemented",
     ],
