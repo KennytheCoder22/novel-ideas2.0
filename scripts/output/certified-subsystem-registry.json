@@ -1,7 +1,7 @@
 {
   "registry": "certified-subsystem-registry",
   "version": "1.0",
-  "updatedAt": "2026-07-27T15:13:07.002-07:00",
+  "updatedAt": "2026-07-27T18:08:24.857-07:00",
   "contracts": [
     {
       "contract": "google_books_admission",
@@ -12,6 +12,16 @@
         "D1",
         "D2",
         "E1"
+      ],
+      "certificationDecision": "accepted_and_certified"
+    },
+    {
+      "contract": "comicvine_entity_policy_certification",
+      "label": "ComicVine Entity Policy Certification",
+      "status": "fully_certified",
+      "frozen": true,
+      "certifiedSlices": [
+        "EP1"
       ],
       "certificationDecision": "accepted_and_certified"
     }
@@ -64,6 +74,26 @@
       "certificationDecision": "accepted_and_registered",
       "baselineScripts": [
         "scripts/run-v2-openlibrary-recommendation-certification-suite-v1.mjs"
+      ]
+    },
+    {
+      "contract": "comicvine_entity_policy_certification",
+      "slice": "EP1",
+      "label": "Adult ComicVine entity policy certification (v1)",
+      "status": "certified",
+      "frozen": true,
+      "certificationDecision": "accepted_and_certified",
+      "source": "comicVine",
+      "policy": "entity_policy_v1",
+      "fixtures": [
+        "T1-T13",
+        "G1-G12"
+      ],
+      "baseline": "entity-policy-v1",
+      "tag": "adult-comicvine-entity-policy-v1",
+      "baselineScripts": [
+        "scripts/run-v2-comicvine-source-certification-regressions.mjs",
+        "scripts/run-v2-comicvine-cert-gap-closure-regressions.mjs"
       ]
     }
   ],
