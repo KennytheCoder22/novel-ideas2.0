@@ -1,5 +1,5 @@
 import type { AgeBandV2, CandidateFormatV2, NormalizedCandidate, SourceIdV2, SourceResult } from "./types";
-import { classifyComicVineIdentity } from "./comicVineIdentity";
+import { buildComicVineEntityMetadata } from "./comicVineIdentity";
 import { preteenGoogleBooksPublicationIdentityAudit } from "./preteenGoogleBooksPublicationIdentity";
 
 const AGE_BAND_VALUES = new Set<AgeBandV2>(["kids", "preteens", "teens", "adult"]);
@@ -154,8 +154,9 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
       const source = result.source as SourceIdV2;
       const id = String(row.id || row.sourceId || `${source}:${title}`).trim();
       const sourceMaturityRating = source === "googleBooks" ? googleBooksSourceMaturityRating(row) : "";
-      const comicVineIdentity = source === "comicVine"
-        ? classifyComicVineIdentity({
+      const comicVineEntity = source === "comicVine"
+        ? buildComicVineEntityMetadata({
+            sourceId: row.sourceId || row.id,
             title: row.title,
             subtitle: row.subtitle,
             issueNumber: (row.raw as Record<string, unknown> | undefined)?.issue_number || row.issue_number,
@@ -164,6 +165,7 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
             aliases: (row.raw as Record<string, unknown> | undefined)?.aliases || row.aliases,
             resourceType: (row.raw as Record<string, unknown> | undefined)?.resource_type || row.resource_type,
             publisher: ((row.raw as Record<string, unknown> | undefined)?.publisher as Record<string, unknown> | undefined)?.name || row.publisher,
+            volumeId: ((row.raw as Record<string, unknown> | undefined)?.volume as Record<string, unknown> | undefined)?.id,
             volumeName: ((row.raw as Record<string, unknown> | undefined)?.volume as Record<string, unknown> | undefined)?.name || row.volume,
           })
         : null;
@@ -184,6 +186,7 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
         publicationYear: Number.isFinite(Number(row.publicationYear || row.first_publish_year)) ? Number(row.publicationYear || row.first_publish_year) : undefined,
         sourceUrl: String(row.sourceUrl || row.url || "").trim() || undefined,
         raw,
+        comicVine: comicVineEntity || undefined,
         diagnostics: {
           sourceStatus: result.status,
           queryText: row.queryText,
@@ -232,20 +235,28 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           googleBooksContentMaturity: source === "googleBooks" ? String(row.contentMaturity || googleBooksContentMaturityFromRating(sourceMaturityRating)) : undefined,
           googleBooksSourceMaturityRating: source === "googleBooks" ? (sourceMaturityRating || undefined) : undefined,
           authors: row.authors || row.author_name || row.creators,
-          publicationIdentity: source === "comicVine" ? comicVineIdentity?.identity : undefined,
-          publicationIdentityConfidence: source === "comicVine" ? comicVineIdentity?.confidence : undefined,
-          publicationIdentityEvidence: source === "comicVine" ? comicVineIdentity?.evidence : undefined,
+          publicationIdentity: source === "comicVine" ? comicVineEntity?.identity : undefined,
+          publicationIdentityConfidence: source === "comicVine" ? comicVineEntity?.confidence : undefined,
+          publicationIdentityEvidence: source === "comicVine" ? comicVineEntity?.classificationEvidence : undefined,
+          comicVineEntityType: source === "comicVine" ? comicVineEntity?.entityType : undefined,
+          comicVinePolicyBucket: source === "comicVine" ? comicVineEntity?.policyBucket : undefined,
+          comicVinePrecedenceRule: source === "comicVine" ? comicVineEntity?.precedenceRule : undefined,
+          comicVineFamilyKey: source === "comicVine" ? comicVineEntity?.familyKey : undefined,
           sourceProvenance: source === "comicVine"
             ? {
                 source: "comicVine",
                 sourceId: String(row.sourceId || row.id || "").trim() || undefined,
                 sourceQuery: String(row.queryText || "").trim() || undefined,
-                publicationIdentity: comicVineIdentity?.identity || "unknown",
-                publicationIdentityConfidence: comicVineIdentity?.confidence || "low",
-                publicationIdentityEvidence: comicVineIdentity?.evidence || [],
+                publicationIdentity: comicVineEntity?.identity || "unknown",
+                publicationIdentityConfidence: comicVineEntity?.confidence || "low",
+                publicationIdentityEvidence: comicVineEntity?.classificationEvidence || [],
+                comicVineEntityType: comicVineEntity?.entityType || "other_or_unknown",
+                comicVinePolicyBucket: comicVineEntity?.policyBucket || "restricted",
+                comicVinePrecedenceRule: comicVineEntity?.precedenceRule || "unknown_default",
+                comicVineFamilyKey: comicVineEntity?.familyKey,
                 admissionDecision: "conditional_admit",
                 admissionReasons: [],
-                admissionEvidence: comicVineIdentity?.evidence || [],
+                admissionEvidence: comicVineEntity?.classificationEvidence || [],
                 clusterKey: undefined,
                 representativeOf: [],
                 representedBy: undefined,

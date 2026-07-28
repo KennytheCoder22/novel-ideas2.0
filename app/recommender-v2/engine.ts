@@ -1,5 +1,5 @@
 import { buildDiagnosticReport, buildRecommendationResultV2, stageDiagnostic } from "./diagnostics";
-import { applyComicVineSourceAdmissionPolicy } from "./comicVineAdmission";
+import { applyAdultComicVinePostScorePolicy, applyComicVineSourceAdmissionPolicy } from "./comicVineAdmission";
 import { buildComicVineIdentityReport } from "./comicVineIdentity";
 import { normalizeSourceResults } from "./normalize";
 import { buildSearchPlan } from "./searchPlan";
@@ -225,6 +225,8 @@ function applyComicVinePipelineDiagnostics(
 
   const identityReport = buildComicVineIdentityReport(normalizedComicVine);
   diagnostics.comicVineIdentityHistogram = identityReport.histogram;
+  diagnostics.comicVineEntityTypeHistogram = identityReport.entityTypeHistogram;
+  diagnostics.comicVinePolicyBucketHistogram = identityReport.policyBucketHistogram;
   diagnostics.comicVineIdentityTitlesByClass = identityReport.titlesByIdentity;
   diagnostics.comicVineIdentityUnknownPercentage = identityReport.unknownPercentage;
   diagnostics.comicVineIdentitySingleIssuePercentage = identityReport.singleIssuePercentage;
@@ -234,12 +236,36 @@ function applyComicVinePipelineDiagnostics(
     rawCandidates: Number(diagnostics.rawCount || 0),
     normalizedCandidates: identityReport.normalizedCandidates,
     histogram: identityReport.histogram,
+    entityTypeHistogram: identityReport.entityTypeHistogram,
+    policyBucketHistogram: identityReport.policyBucketHistogram,
     titlesByIdentity: identityReport.titlesByIdentity,
     unknownPercentage: identityReport.unknownPercentage,
     singleIssuePercentage: identityReport.singleIssuePercentage,
     nonReadingArtifactPercentage: identityReport.nonReadingArtifactPercentage,
     lowConfidencePercentage: identityReport.lowConfidencePercentage,
   };
+}
+
+function applyAdultComicVinePostScoreGate(
+  scored: ScoredCandidate[],
+  tasteProfile: TasteProfile,
+  limit: number,
+  sourceResults: SourceResult[],
+): ScoredCandidate[] {
+  const postScoreGate = applyAdultComicVinePostScorePolicy(scored, tasteProfile, limit);
+  const comicVineSource = sourceResults.find((result) => result.source === "comicVine");
+  if (comicVineSource) {
+    const sourceDiagnostics = comicVineSource.diagnostics as SourceDiagnosticV2 & Record<string, unknown>;
+    sourceDiagnostics.comicVinePostScorePolicyVersion = "entity_policy_v1_source_local";
+    sourceDiagnostics.comicVinePostScorePolicyBucketHistogram = postScoreGate.diagnostics.policyBucketHistogram;
+    sourceDiagnostics.comicVinePostScoreFallbackStateHistogram = postScoreGate.diagnostics.fallbackStateHistogram;
+    sourceDiagnostics.comicVineRestrictedReleases = postScoreGate.diagnostics.restrictedReleases;
+    sourceDiagnostics.comicVineReleasedFallbackCandidates = postScoreGate.diagnostics.releasedFallbackCandidates;
+    sourceDiagnostics.comicVineWithheldPostScoreCandidates = postScoreGate.diagnostics.withheldCandidates;
+    sourceDiagnostics.comicVineFallbackSlotsRequested = postScoreGate.diagnostics.fallbackSlotsRequested;
+    sourceDiagnostics.comicVineFallbackSlotsReleased = postScoreGate.diagnostics.fallbackSlotsReleased;
+  }
+  return postScoreGate.candidates;
 }
 
 type GoogleBooksInfrastructureStatus =
@@ -2445,6 +2471,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     comicVineClusters: comicVineAdmissionGate.diagnostics.clusters.length,
   }));
   let scored = scoreCandidates(normalized, tasteProfile);
+  scored = applyAdultComicVinePostScoreGate(scored, tasteProfile, session.limit || 10, sourceResults);
   let selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
   let selected = selection.selected;
   let rejectedReasons = selection.rejectedReasons;
@@ -2621,6 +2648,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
         normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
+        scored = applyAdultComicVinePostScoreGate(scored, tasteProfile, session.limit || 10, sourceResults);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;
@@ -2901,6 +2929,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
         normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
+        scored = applyAdultComicVinePostScoreGate(scored, tasteProfile, session.limit || 10, sourceResults);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;
@@ -3090,6 +3119,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
         normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
+        scored = applyAdultComicVinePostScoreGate(scored, tasteProfile, session.limit || 10, sourceResults);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;
@@ -3290,6 +3320,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
         normalized = comicVineAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
+        scored = applyAdultComicVinePostScoreGate(scored, tasteProfile, session.limit || 10, sourceResults);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;

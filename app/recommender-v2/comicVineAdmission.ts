@@ -1,33 +1,49 @@
-import type { NormalizedCandidate, SourceDiagnosticV2, SourceResult } from "./types";
+import type {
+  NormalizedCandidate,
+  ScoredCandidate,
+  SourceDiagnosticV2,
+  SourceResult,
+  TasteProfile,
+} from "./types";
+import type {
+  ComicVineEntityMetadata,
+  ComicVineFallbackState,
+  ComicVinePolicyBucket,
+  ComicVinePublicationIdentity,
+  ComicVineRange,
+} from "./comicVineTypes";
+import { buildComicVineEntityMetadata, comicVinePolicyBucketForIdentity } from "./comicVineIdentity";
 
 export type ComicVineAdmissionDecision = "hard_reject" | "preferred_admit" | "conditional_admit";
-
-type IdentityGroup = "hard_reject" | "preferred" | "conditional";
 
 type EvaluatedComicVineCandidate = {
   candidate: NormalizedCandidate;
   sourceId: string;
   title: string;
-  identity: string;
-  group: IdentityGroup;
+  identity: ComicVinePublicationIdentity;
+  entityType: string;
+  policyBucket: ComicVinePolicyBucket;
   decision: ComicVineAdmissionDecision;
   admissionReasons: string[];
   admissionEvidence: string[];
   sourceQuery: string;
   queryFamily: string;
-  clusterBaseKey: string;
-  clusterConfidence: "high" | "low";
+  familyKey: string;
+  titleRoot: string;
   seriesRoot: string;
   volumeId?: string;
+  volumeNumber?: number;
   issueNumber?: number;
-  collectionIssueRange?: { start: number; end: number };
-  volumeMarker?: string;
+  collectionIssueRange?: ComicVineRange;
+  collectionVolumeRange?: ComicVineRange;
 };
 
 type SuppressionRecord = {
   sourceId: string;
   title: string;
   identity: string;
+  entityType: string;
+  policyBucket: ComicVinePolicyBucket;
   decision: ComicVineAdmissionDecision;
   reasonCodes: string[];
   evidence: string[];
@@ -41,6 +57,8 @@ type HardRejectRecord = {
   sourceId: string;
   title: string;
   identity: string;
+  entityType: string;
+  policyBucket: ComicVinePolicyBucket;
   decision: ComicVineAdmissionDecision;
   reasonCodes: string[];
   evidence: string[];
@@ -52,6 +70,7 @@ type ClusterRecord = {
   members: string[];
   chosenRepresentative: string;
   suppressedMembers: string[];
+  reason: string;
   evidence: string[];
 };
 
@@ -62,36 +81,63 @@ type AmbiguousClusterRecord = {
   evidence: string[];
 };
 
+type PostScoreRecord = {
+  sourceId: string;
+  title: string;
+  identity: string;
+  entityType: string;
+  policyBucket: ComicVinePolicyBucket;
+  score: number;
+  reason: string;
+  evidence: string[];
+};
+
 type ComicVineAdmissionDiagnostics = {
   evaluatedCount: number;
   admittedToScorerCount: number;
   admissionStateCounts: Record<ComicVineAdmissionDecision, number>;
+  policyBucketHistogram: Record<string, number>;
   hardRejectionReasonHistogram: Record<string, number>;
   preferredIdentityHistogram: Record<string, number>;
-  conditionalIdentityHistogram: Record<string, number>;
+  allowedIdentityHistogram: Record<string, number>;
+  fallbackIdentityHistogram: Record<string, number>;
+  restrictedIdentityHistogram: Record<string, number>;
   hardRejectedCandidates: HardRejectRecord[];
   clusters: ClusterRecord[];
   suppressedIssues: SuppressionRecord[];
   ambiguousClusters: AmbiguousClusterRecord[];
-  candidatesReachingScorer: Array<{ sourceId: string; title: string; decision: ComicVineAdmissionDecision; identity: string }>;
+  candidatesReachingScorer: Array<{
+    sourceId: string;
+    title: string;
+    decision: ComicVineAdmissionDecision;
+    identity: string;
+    entityType: string;
+    policyBucket: ComicVinePolicyBucket;
+  }>;
   deferredObservability: Record<string, unknown>;
 };
 
-const HARD_REJECT_IDENTITIES = new Set([
+export type ComicVinePostScoreDiagnostics = {
+  consideredCount: number;
+  releasableCount: number;
+  withheldCount: number;
+  fallbackSlotsRequested: number;
+  fallbackSlotsReleased: number;
+  policyBucketHistogram: Record<string, number>;
+  fallbackStateHistogram: Record<string, number>;
+  restrictedReleases: PostScoreRecord[];
+  releasedFallbackCandidates: PostScoreRecord[];
+  withheldCandidates: PostScoreRecord[];
+};
+
+const EXCLUDED_IDENTITIES = new Set<ComicVinePublicationIdentity>([
   "coloring_book",
   "activity_book",
   "rpg_supplement",
   "trading_card_guide",
   "toy_guide",
-]);
-
-const PREFERRED_IDENTITIES = new Set([
-  "omnibus",
-  "compendium",
-  "trade_paperback",
-  "collected_edition",
-  "deluxe_edition",
-  "graphic_novel",
+  "encyclopedia",
+  "companion_guide",
 ]);
 
 function safeString(value: unknown): string {
@@ -117,205 +163,323 @@ function uniqueStrings(values: unknown[], limit = 80): string[] {
   return out;
 }
 
-function parsePositiveInt(value: unknown): number | undefined {
-  const match = safeString(value).match(/\d+/);
-  if (!match) return undefined;
-  const parsed = Number(match[0]);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-}
-
-function normalizedSeriesRoot(value: string): string {
+function normalizedSignalText(value: unknown): string {
   return safeString(value)
     .toLowerCase()
-    .replace(/[\(\[\{].*?[\)\]\}]/g, " ")
-    .replace(/[:;].*$/, " ")
-    .replace(/\b(vol(?:ume)?|tpb|omnibus|compendium|deluxe|edition|collect(?:ed|s|ion)|graphic novel|hc|hardcover)\b/g, " ")
-    .replace(/#\s*\d+/g, " ")
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function extractCollectionIssueRange(text: string): { start: number; end: number } | undefined {
-  const normalized = safeString(text).toLowerCase();
-  if (!normalized) return undefined;
-  const matches = [
-    normalized.match(/\bcollect(?:s|ed|ing)?\s+(?:issues?\s*)?#?\s*(\d+)\s*[-–]\s*#?\s*(\d+)/i),
-    normalized.match(/\bcontains?\s+(?:issues?\s*)?#?\s*(\d+)\s*[-–]\s*#?\s*(\d+)/i),
-    normalized.match(/\bfrom\s+issues?\s+#?\s*(\d+)\s*[-–]\s*#?\s*(\d+)/i),
-  ];
-  for (const match of matches) {
-    if (!match) continue;
-    const start = Number(match[1]);
-    const end = Number(match[2]);
-    if (Number.isFinite(start) && Number.isFinite(end) && start > 0 && end >= start && end - start <= 200) {
-      return { start, end };
-    }
-  }
-  return undefined;
+function cloneComicVineMetadata(metadata: ComicVineEntityMetadata): ComicVineEntityMetadata {
+  return {
+    ...metadata,
+    aliases: Array.isArray(metadata.aliases) ? [...metadata.aliases] : [],
+    classificationEvidence: Array.isArray(metadata.classificationEvidence) ? [...metadata.classificationEvidence] : [],
+    collectionIssueRange: metadata.collectionIssueRange ? { ...metadata.collectionIssueRange } : undefined,
+    collectionVolumeRange: metadata.collectionVolumeRange ? { ...metadata.collectionVolumeRange } : undefined,
+    collapseLoserSourceIds: Array.isArray(metadata.collapseLoserSourceIds) ? [...metadata.collapseLoserSourceIds] : undefined,
+  };
 }
 
-function extractVolumeMarker(title: string): string {
-  const match = safeString(title).match(/\bvol(?:ume)?\.?\s*(\d+)\b/i);
-  return match ? `vol_${match[1]}` : "";
-}
-
-function clusterIdentityGroup(identity: string): IdentityGroup {
-  if (HARD_REJECT_IDENTITIES.has(identity)) return "hard_reject";
-  if (PREFERRED_IDENTITIES.has(identity)) return "preferred";
-  return "conditional";
-}
-
-function decisionFromGroup(group: IdentityGroup): ComicVineAdmissionDecision {
-  if (group === "hard_reject") return "hard_reject";
-  if (group === "preferred") return "preferred_admit";
-  return "conditional_admit";
-}
-
-function enrichComicVineProvenance(
-  candidate: NormalizedCandidate,
-  update: Partial<{
-    admissionDecision: ComicVineAdmissionDecision;
-    admissionReasons: string[];
-    admissionEvidence: string[];
-    clusterKey: string;
-    representedBy: string;
-    representativeOf: string[];
-  }>,
-): void {
+function ensureComicVineMetadata(candidate: NormalizedCandidate | ScoredCandidate): ComicVineEntityMetadata {
+  if (candidate.comicVine) return cloneComicVineMetadata(candidate.comicVine);
   const diagnostics = asRecord(candidate.diagnostics);
   const sourceProvenance = asRecord(diagnostics.sourceProvenance);
-  const nextReasons = update.admissionReasons || (Array.isArray(sourceProvenance.admissionReasons)
-    ? sourceProvenance.admissionReasons.map((entry) => String(entry || "")).filter(Boolean)
-    : []);
-  const nextEvidence = update.admissionEvidence || (Array.isArray(sourceProvenance.admissionEvidence)
-    ? sourceProvenance.admissionEvidence.map((entry) => String(entry || "")).filter(Boolean)
-    : []);
-  const nextRepresentativeOf = update.representativeOf || (Array.isArray(sourceProvenance.representativeOf)
-    ? sourceProvenance.representativeOf.map((entry) => String(entry || "")).filter(Boolean)
-    : []);
-  const admissionDecision = update.admissionDecision || (safeString(sourceProvenance.admissionDecision) as ComicVineAdmissionDecision) || "conditional_admit";
+  const raw = asRecord(candidate.raw);
+  const sourceRaw = asRecord(raw.raw);
+  const rawVolume = asRecord(sourceRaw.volume || raw.volume);
+  return buildComicVineEntityMetadata({
+    sourceId: candidate.sourceId || candidate.id,
+    title: candidate.title,
+    subtitle: candidate.subtitle,
+    issueNumber: sourceRaw.issue_number || raw.issue_number,
+    deck: sourceRaw.deck || raw.deck,
+    description: sourceRaw.description || candidate.description,
+    aliases: sourceRaw.aliases || raw.aliases,
+    resourceType: sourceRaw.resource_type || raw.resource_type || sourceProvenance.resourceType,
+    publisher: asRecord(sourceRaw.publisher).name || raw.publisher || sourceProvenance.publisher,
+    volumeId: rawVolume.id || sourceProvenance.volumeId,
+    volumeName: rawVolume.name || raw.volume || sourceProvenance.volumeName,
+  });
+}
 
+function decisionForBucket(policyBucket: ComicVinePolicyBucket): ComicVineAdmissionDecision {
+  return policyBucket === "preferred" ? "preferred_admit" : policyBucket === "excluded" ? "hard_reject" : "conditional_admit";
+}
+
+function pushHistogramCount(histogram: Record<string, number>, key: string): void {
+  histogram[key] = Number(histogram[key] || 0) + 1;
+}
+
+function setCandidateComicVine(
+  candidate: NormalizedCandidate | ScoredCandidate,
+  metadataUpdate: Partial<ComicVineEntityMetadata>,
+  provenanceUpdate?: Partial<Record<string, unknown>>,
+): void {
+  const existingMetadata = ensureComicVineMetadata(candidate);
+  const nextMetadata: ComicVineEntityMetadata = {
+    ...existingMetadata,
+    ...metadataUpdate,
+    aliases: Array.isArray(metadataUpdate.aliases) ? [...metadataUpdate.aliases] : existingMetadata.aliases,
+    classificationEvidence: Array.isArray(metadataUpdate.classificationEvidence)
+      ? uniqueStrings(metadataUpdate.classificationEvidence, 30)
+      : existingMetadata.classificationEvidence,
+    collapseLoserSourceIds: Array.isArray(metadataUpdate.collapseLoserSourceIds)
+      ? uniqueStrings(metadataUpdate.collapseLoserSourceIds, 60)
+      : existingMetadata.collapseLoserSourceIds,
+  };
+  candidate.comicVine = nextMetadata;
+
+  const diagnostics = asRecord(candidate.diagnostics);
+  const sourceProvenance = asRecord(diagnostics.sourceProvenance);
   candidate.diagnostics = {
     ...diagnostics,
+    publicationIdentity: nextMetadata.identity,
+    publicationIdentityConfidence: nextMetadata.confidence,
+    publicationIdentityEvidence: nextMetadata.classificationEvidence,
+    comicVineEntityType: nextMetadata.entityType,
+    comicVinePolicyBucket: nextMetadata.policyBucket,
+    comicVinePrecedenceRule: nextMetadata.precedenceRule,
+    comicVineFamilyKey: nextMetadata.familyKey,
     sourceProvenance: {
       ...sourceProvenance,
       source: "comicVine",
-      sourceId: safeString(sourceProvenance.sourceId || candidate.sourceId || candidate.id) || undefined,
-      sourceQuery: safeString(sourceProvenance.sourceQuery || diagnostics.queryText) || undefined,
-      admissionDecision,
-      admissionReasons: nextReasons,
-      admissionEvidence: nextEvidence,
-      clusterKey: update.clusterKey !== undefined ? update.clusterKey : sourceProvenance.clusterKey,
-      representativeOf: nextRepresentativeOf,
-      representedBy: update.representedBy !== undefined ? update.representedBy : sourceProvenance.representedBy,
-      sourceAdmissionDecision: admissionDecision,
-      sourceAdmissionReasons: nextReasons,
+      publicationIdentity: nextMetadata.identity,
+      publicationIdentityConfidence: nextMetadata.confidence,
+      publicationIdentityEvidence: nextMetadata.classificationEvidence,
+      comicVineEntityType: nextMetadata.entityType,
+      comicVinePolicyBucket: nextMetadata.policyBucket,
+      comicVinePrecedenceRule: nextMetadata.precedenceRule,
+      comicVineFamilyKey: nextMetadata.familyKey,
+      volumeId: nextMetadata.volumeId,
+      volumeName: nextMetadata.volumeName,
+      issueNumber: nextMetadata.issueNumber,
+      issueAccessibility: nextMetadata.issueAccessibility,
+      fallbackEligible: nextMetadata.fallbackEligible,
+      fallbackState: nextMetadata.fallbackState,
+      fallbackReason: nextMetadata.fallbackReason,
+      collapseReason: nextMetadata.collapseReason,
+      collapseWinnerSourceId: nextMetadata.collapseWinnerSourceId,
+      collapseLoserSourceIds: nextMetadata.collapseLoserSourceIds,
+      ...provenanceUpdate,
     },
   };
 }
 
-function admissionEvidenceFromCandidate(candidate: NormalizedCandidate): string[] {
+function admissionEvidenceFromCandidate(candidate: NormalizedCandidate | ScoredCandidate, metadata: ComicVineEntityMetadata): string[] {
   const diagnostics = asRecord(candidate.diagnostics);
   const sourceProvenance = asRecord(diagnostics.sourceProvenance);
-  const raw = asRecord(candidate.raw);
-  const sourceRaw = asRecord(raw.raw);
-  const rawVolume = asRecord(sourceRaw.volume || raw.volume);
   return uniqueStrings([
-    ...(Array.isArray(diagnostics.publicationIdentityEvidence) ? diagnostics.publicationIdentityEvidence : []),
+    ...metadata.classificationEvidence,
     ...(Array.isArray(sourceProvenance.publicationIdentityEvidence) ? sourceProvenance.publicationIdentityEvidence : []),
-    safeString(sourceRaw.resource_type || raw.resource_type) ? `resource_type:${safeString(sourceRaw.resource_type || raw.resource_type).toLowerCase()}` : "",
-    safeString(sourceRaw.issue_number || raw.issue_number) ? `issue_number:${safeString(sourceRaw.issue_number || raw.issue_number)}` : "",
-    safeString(rawVolume.id) ? `volume_id:${safeString(rawVolume.id)}` : "",
-    safeString(rawVolume.name) ? `volume_name:${safeString(rawVolume.name)}` : "",
-  ], 24);
+    metadata.precedenceRule ? `precedence:${metadata.precedenceRule}` : "",
+    metadata.familyKey ? `family_key:${metadata.familyKey}` : "",
+    metadata.volumeId ? `volume_id:${metadata.volumeId}` : "",
+    metadata.volumeName ? `volume_name:${metadata.volumeName}` : "",
+    metadata.issueNumber ? `issue_number:${metadata.issueNumber}` : "",
+    metadata.collectionIssueRange ? `issue_range:${metadata.collectionIssueRange.start}-${metadata.collectionIssueRange.end}` : "",
+    metadata.collectionVolumeRange ? `volume_range:${metadata.collectionVolumeRange.start}-${metadata.collectionVolumeRange.end}` : "",
+  ], 30);
 }
 
 function evaluateComicVineCandidate(candidate: NormalizedCandidate): EvaluatedComicVineCandidate {
+  const metadata = ensureComicVineMetadata(candidate);
   const diagnostics = asRecord(candidate.diagnostics);
   const sourceProvenance = asRecord(diagnostics.sourceProvenance);
-  const raw = asRecord(candidate.raw);
-  const sourceRaw = asRecord(raw.raw);
-  const rawVolume = asRecord(sourceRaw.volume || raw.volume);
-  const identity = safeString(diagnostics.publicationIdentity || sourceProvenance.publicationIdentity || "unknown") || "unknown";
-  const group = clusterIdentityGroup(identity);
-  const decision = decisionFromGroup(group);
+  const policyBucket = metadata.policyBucket || comicVinePolicyBucketForIdentity(metadata.identity);
+  const decision = decisionForBucket(policyBucket);
   const sourceId = safeString(candidate.sourceId || sourceProvenance.sourceId || candidate.id) || candidate.id;
   const sourceQuery = safeString(diagnostics.queryText || sourceProvenance.sourceQuery);
   const queryFamily = safeString(diagnostics.queryFamily);
   const title = safeString(candidate.title);
-  const subtitle = safeString(candidate.subtitle);
-  const volumeId = safeString(rawVolume.id);
-  const volumeName = safeString(rawVolume.name);
-  const seriesRoot = normalizedSeriesRoot(volumeName || subtitle || title);
-  const issueNumber = parsePositiveInt(sourceRaw.issue_number || raw.issue_number || diagnostics.issueNumber || title.match(/#\s*(\d+)/)?.[1]);
-  const volumeMarker = extractVolumeMarker(title);
-  const collectionEvidenceText = [
-    title,
-    subtitle,
-    safeString(sourceRaw.deck || raw.deck),
-    safeString(sourceRaw.description || raw.description),
-    safeString(diagnostics.publicationIdentityEvidence),
-  ].join(" ");
-  const collectionIssueRange = extractCollectionIssueRange(collectionEvidenceText);
-  const clusterBaseKey = volumeId
-    ? `volume_id:${volumeId}`
-    : seriesRoot
-      ? `series_root:${seriesRoot}${volumeMarker ? `:${volumeMarker}` : ""}`
-      : `source_id:${sourceId}`;
-  const clusterConfidence = volumeId || (seriesRoot && collectionIssueRange) ? "high" : "low";
-  const admissionReasons = group === "hard_reject"
-    ? [`hard_reject_identity_${identity}`, "hard_reject_identity"]
-    : group === "preferred"
-      ? [`preferred_identity_${identity}`, "preferred_identity_admit"]
-      : [`conditional_identity_${identity}`, "conditional_identity_admit"];
+  const admissionReasons = policyBucket === "excluded"
+    ? [`excluded_identity_${metadata.identity}`, `policy_bucket_${policyBucket}`]
+    : policyBucket === "preferred"
+      ? [`preferred_identity_${metadata.identity}`, `policy_bucket_${policyBucket}`]
+      : policyBucket === "allowed"
+        ? [`allowed_identity_${metadata.identity}`, `policy_bucket_${policyBucket}`]
+        : policyBucket === "fallback_only"
+          ? [`fallback_only_identity_${metadata.identity}`, `policy_bucket_${policyBucket}`]
+          : [`restricted_identity_${metadata.identity}`, `policy_bucket_${policyBucket}`];
+
+  setCandidateComicVine(candidate, { policyBucket }, {
+    admissionDecision: decision,
+    admissionReasons,
+    admissionEvidence: admissionEvidenceFromCandidate(candidate, metadata),
+  });
 
   return {
     candidate,
     sourceId,
     title,
-    identity,
-    group,
+    identity: metadata.identity,
+    entityType: metadata.entityType,
+    policyBucket,
     decision,
     admissionReasons,
-    admissionEvidence: admissionEvidenceFromCandidate(candidate),
+    admissionEvidence: admissionEvidenceFromCandidate(candidate, metadata),
     sourceQuery,
     queryFamily,
-    clusterBaseKey,
-    clusterConfidence,
-    seriesRoot,
-    volumeId: volumeId || undefined,
-    issueNumber,
-    collectionIssueRange,
-    volumeMarker: volumeMarker || undefined,
+    familyKey: metadata.familyKey || `source_id:${sourceId}`,
+    titleRoot: metadata.titleRoot || "",
+    seriesRoot: metadata.seriesRoot || "",
+    volumeId: metadata.volumeId,
+    volumeNumber: metadata.volumeNumber,
+    issueNumber: metadata.issueNumber,
+    collectionIssueRange: metadata.collectionIssueRange,
+    collectionVolumeRange: metadata.collectionVolumeRange,
   };
 }
 
-function matchesComponentIssueToCollection(
-  collection: EvaluatedComicVineCandidate,
-  issue: EvaluatedComicVineCandidate,
-): { matched: boolean; evidence: string[] } {
-  const evidence: string[] = [];
-  if (!issue.issueNumber) return { matched: false, evidence: [] };
+function rangesOverlap(a?: ComicVineRange, b?: ComicVineRange): boolean {
+  if (!a || !b) return false;
+  return a.start <= b.end && b.start <= a.end;
+}
 
-  if (collection.volumeId && issue.volumeId && collection.volumeId === issue.volumeId) {
-    evidence.push(`shared_volume_id:${collection.volumeId}`);
+function rangeContains(range: ComicVineRange | undefined, value: number | undefined): boolean {
+  return Boolean(range && value && value >= range.start && value <= range.end);
+}
+
+function entityPriority(row: EvaluatedComicVineCandidate): number {
+  switch (row.identity) {
+    case "omnibus":
+      return 100;
+    case "compendium":
+      return 95;
+    case "deluxe_edition":
+      return 92;
+    case "hardcover_collection":
+      return 90;
+    case "trade_paperback":
+      return 88;
+    case "collected_edition":
+      return 86;
+    case "graphic_novel":
+      return 84;
+    case "limited_series":
+      return 78;
+    case "ongoing_series":
+      return 74;
+    case "story_arc":
+      return 72;
+    case "one_shot":
+      return 50;
+    case "annual":
+      return 48;
+    case "single_issue":
+      return 46;
+    case "reference_book":
+      return 25;
+    case "art_book":
+      return 24;
+    case "movie_or_tv_tie_in":
+      return 22;
+    case "unknown":
+      return 20;
+    default:
+      return 10;
+  }
+}
+
+function policyRank(bucket: ComicVinePolicyBucket): number {
+  switch (bucket) {
+    case "preferred":
+      return 5;
+    case "allowed":
+      return 4;
+    case "restricted":
+      return 3;
+    case "fallback_only":
+      return 2;
+    default:
+      return 1;
+  }
+}
+
+function confidenceRank(confidence: string): number {
+  return confidence === "high" ? 3 : confidence === "medium" ? 2 : 1;
+}
+
+function compareClusterOrder(a: EvaluatedComicVineCandidate, b: EvaluatedComicVineCandidate): number {
+  const aMeta = ensureComicVineMetadata(a.candidate);
+  const bMeta = ensureComicVineMetadata(b.candidate);
+  return policyRank(b.policyBucket) - policyRank(a.policyBucket)
+    || entityPriority(b) - entityPriority(a)
+    || confidenceRank(bMeta.confidence) - confidenceRank(aMeta.confidence)
+    || (bMeta.classificationEvidence.length - aMeta.classificationEvidence.length)
+    || a.title.localeCompare(b.title);
+}
+
+function dominanceReason(
+  winner: EvaluatedComicVineCandidate,
+  loser: EvaluatedComicVineCandidate,
+): { matched: boolean; reason: string; evidence: string[] } {
+  if (winner.sourceId === loser.sourceId) return { matched: false, reason: "", evidence: [] };
+
+  const sharedEvidence = uniqueStrings([
+    winner.familyKey === loser.familyKey ? `shared_family_key:${winner.familyKey}` : "",
+    winner.volumeId && loser.volumeId && winner.volumeId === loser.volumeId ? `shared_volume_id:${winner.volumeId}` : "",
+    winner.seriesRoot && loser.seriesRoot && winner.seriesRoot === loser.seriesRoot ? `shared_series_root:${winner.seriesRoot}` : "",
+    winner.titleRoot && loser.titleRoot && winner.titleRoot === loser.titleRoot ? `shared_title_root:${winner.titleRoot}` : "",
+  ], 12);
+  const sameFamily = sharedEvidence.length > 0;
+  if (!sameFamily) return { matched: false, reason: "", evidence: [] };
+
+  const winnerMeta = ensureComicVineMetadata(winner.candidate);
+  const loserMeta = ensureComicVineMetadata(loser.candidate);
+
+  if (winner.policyBucket !== "fallback_only" && loser.policyBucket === "fallback_only") {
+    if (rangeContains(winner.collectionIssueRange, loser.issueNumber)) {
+      return {
+        matched: true,
+        reason: "collection_defeats_component_issue",
+        evidence: uniqueStrings([...sharedEvidence, `issue_in_collected_range:${winner.collectionIssueRange?.start}-${winner.collectionIssueRange?.end}`], 20),
+      };
+    }
+    if ((winner.identity === "limited_series" || winner.identity === "ongoing_series" || winner.identity === "story_arc")
+      && loser.issueNumber
+      && (winner.volumeId && winner.volumeId === loser.volumeId)) {
+      return {
+        matched: true,
+        reason: "series_container_defeats_component_issue",
+        evidence: uniqueStrings([...sharedEvidence, `issue_accessibility:${loserMeta.issueAccessibility}`], 20),
+      };
+    }
   }
 
-  if (collection.seriesRoot && issue.seriesRoot && collection.seriesRoot === issue.seriesRoot) {
-    evidence.push(`shared_series_root:${collection.seriesRoot}`);
+  if (winner.identity === "omnibus" && loser.volumeNumber && rangeContains(winner.collectionVolumeRange, loser.volumeNumber)) {
+    return {
+      matched: true,
+      reason: "omnibus_defeats_contained_volume",
+      evidence: uniqueStrings([...sharedEvidence, `volume_in_omnibus_range:${winner.collectionVolumeRange?.start}-${winner.collectionVolumeRange?.end}`], 20),
+    };
   }
 
-  const range = collection.collectionIssueRange;
-  if (range && issue.issueNumber >= range.start && issue.issueNumber <= range.end) {
-    evidence.push(`issue_in_collected_range:${range.start}-${range.end}`);
+  if (winner.policyBucket !== "fallback_only" && loser.policyBucket !== "fallback_only") {
+    const sameIssueRange = rangesOverlap(winner.collectionIssueRange, loser.collectionIssueRange)
+      && Boolean(winner.collectionIssueRange && loser.collectionIssueRange);
+    const sameVolumeNumber = Boolean(winner.volumeNumber && loser.volumeNumber && winner.volumeNumber === loser.volumeNumber);
+    if (sameIssueRange || sameVolumeNumber) {
+      const betterBucket = policyRank(winner.policyBucket) >= policyRank(loser.policyBucket);
+      const betterPriority = entityPriority(winner) >= entityPriority(loser);
+      if (betterBucket && betterPriority) {
+        return {
+          matched: true,
+          reason: sameIssueRange ? "duplicate_collection_family_collapsed_by_issue_range" : "duplicate_collection_family_collapsed_by_volume_marker",
+          evidence: uniqueStrings([
+            ...sharedEvidence,
+            sameIssueRange && winner.collectionIssueRange ? `shared_issue_range:${winner.collectionIssueRange.start}-${winner.collectionIssueRange.end}` : "",
+            sameVolumeNumber ? `shared_volume_number:${winner.volumeNumber}` : "",
+            `winner_identity:${winner.identity}`,
+            `loser_identity:${loser.identity}`,
+          ], 20),
+        };
+      }
+    }
   }
 
-  const highConfidence =
-    evidence.includes(`shared_volume_id:${collection.volumeId}`) && evidence.some((entry) => entry.startsWith("issue_in_collected_range:"))
-    || evidence.includes(`shared_series_root:${collection.seriesRoot}`) && evidence.some((entry) => entry.startsWith("issue_in_collected_range:")) && Boolean(collection.volumeMarker || collection.collectionIssueRange);
-
-  return { matched: Boolean(highConfidence), evidence: uniqueStrings(evidence, 10) };
+  return { matched: false, reason: "", evidence: [] };
 }
 
 function buildDeferredObservability(
@@ -327,28 +491,20 @@ function buildDeferredObservability(
     acc[row.identity] = Number(acc[row.identity] || 0) + 1;
     return acc;
   }, {});
-  const titleCorpus = evaluated.map((row) => row.title).join(" ").toLowerCase();
-  const previewSignalCount = (titleCorpus.match(/\bpreview\b/g) || []).length;
-  const variantSignalCount = (titleCorpus.match(/\bvariant\b/g) || []).length;
-  const unsuppressedSingleIssueCount = admittedToScorer.filter((row) => row.identity === "single_issue").length;
-
+  const policyBucketCounts = evaluated.reduce<Record<string, number>>((acc, row) => {
+    acc[row.policyBucket] = Number(acc[row.policyBucket] || 0) + 1;
+    return acc;
+  }, {});
   return {
-    previews: { enforced: false, observedSignalCount: previewSignalCount },
-    variant_covers: { enforced: false, observedSignalCount: variantSignalCount },
-    art_book_suitability: { enforced: false, admittedCount: Number(identityCounts.art_book || 0) },
-    reference_book_suitability: { enforced: false, admittedCount: Number(identityCounts.reference_book || 0) },
-    tie_in_vs_guide_separation: { enforced: false, admittedTieInCount: Number(identityCounts.movie_or_tv_tie_in || 0) },
-    unknown_identity_behavior: { enforced: false, admittedUnknownCount: Number(identityCounts.unknown || 0) },
-    single_issue_fallback_without_collection: { enforced: false, admittedUnsuppressedSingleIssueCount: unsuppressedSingleIssueCount },
-    collection_form_preference_between_collections: { enforced: false, ambiguousCollectionClusters: ambiguousClusters.length },
-    broad_franchise_diversity: { enforced: false },
-    final_selection_diversity: { enforced: false },
-    scorer_ranking_changes: { enforced: false },
+    policyBuckets: policyBucketCounts,
+    admittedRestrictedCount: Number(policyBucketCounts.restricted || 0),
+    admittedFallbackOnlyCount: Number(policyBucketCounts.fallback_only || 0),
+    admittedExcludedCount: Number(policyBucketCounts.excluded || 0),
+    identityCounts,
+    scorerHandoffFallbackOnlyCount: admittedToScorer.filter((row) => row.policyBucket === "fallback_only").length,
+    scorerHandoffRestrictedCount: admittedToScorer.filter((row) => row.policyBucket === "restricted").length,
+    ambiguousCollectionClusters: ambiguousClusters.length,
   };
-}
-
-function pushHistogramCount(histogram: Record<string, number>, key: string): void {
-  histogram[key] = Number(histogram[key] || 0) + 1;
 }
 
 export function applyComicVineSourceAdmissionPolicy(
@@ -366,18 +522,15 @@ export function applyComicVineSourceAdmissionPolicy(
       retainedNonComicVine.push(candidate);
       continue;
     }
-    const evaluatedCandidate = evaluateComicVineCandidate(candidate);
-    enrichComicVineProvenance(candidate, {
-      admissionDecision: evaluatedCandidate.decision,
-      admissionReasons: evaluatedCandidate.admissionReasons,
-      admissionEvidence: evaluatedCandidate.admissionEvidence,
-    });
-    evaluated.push(evaluatedCandidate);
+    evaluated.push(evaluateComicVineCandidate(candidate));
   }
 
   const hardRejected: HardRejectRecord[] = [];
   const preferredIdentityHistogram: Record<string, number> = {};
-  const conditionalIdentityHistogram: Record<string, number> = {};
+  const allowedIdentityHistogram: Record<string, number> = {};
+  const fallbackIdentityHistogram: Record<string, number> = {};
+  const restrictedIdentityHistogram: Record<string, number> = {};
+  const policyBucketHistogram: Record<string, number> = {};
   const hardRejectionReasonHistogram: Record<string, number> = {};
   const admittedBaseline = new Map<string, EvaluatedComicVineCandidate>();
   const admissionStateCounts: Record<ComicVineAdmissionDecision, number> = {
@@ -388,30 +541,44 @@ export function applyComicVineSourceAdmissionPolicy(
 
   for (const row of evaluated) {
     pushHistogramCount(admissionStateCounts, row.decision);
-    if (row.group === "hard_reject") {
+    pushHistogramCount(policyBucketHistogram, row.policyBucket);
+    if (row.policyBucket === "excluded" || EXCLUDED_IDENTITIES.has(row.identity)) {
       for (const reason of row.admissionReasons) pushHistogramCount(hardRejectionReasonHistogram, reason);
       hardRejected.push({
         sourceId: row.sourceId,
         title: row.title,
         identity: row.identity,
+        entityType: row.entityType,
+        policyBucket: row.policyBucket,
         decision: row.decision,
         reasonCodes: row.admissionReasons,
         evidence: row.admissionEvidence,
         sourceQuery: row.sourceQuery,
       });
+      setCandidateComicVine(row.candidate, {
+        policyBucket: "excluded",
+        fallbackState: "not_applicable",
+        fallbackReason: "excluded_by_policy_bucket",
+      }, {
+        admissionDecision: "hard_reject",
+        admissionReasons: row.admissionReasons,
+        admissionEvidence: row.admissionEvidence,
+      });
       continue;
     }
 
-    if (row.group === "preferred") pushHistogramCount(preferredIdentityHistogram, row.identity);
-    if (row.group === "conditional") pushHistogramCount(conditionalIdentityHistogram, row.identity);
+    if (row.policyBucket === "preferred") pushHistogramCount(preferredIdentityHistogram, row.identity);
+    else if (row.policyBucket === "allowed") pushHistogramCount(allowedIdentityHistogram, row.identity);
+    else if (row.policyBucket === "fallback_only") pushHistogramCount(fallbackIdentityHistogram, row.identity);
+    else pushHistogramCount(restrictedIdentityHistogram, row.identity);
     admittedBaseline.set(row.sourceId, row);
   }
 
-  const byClusterBase = new Map<string, EvaluatedComicVineCandidate[]>();
+  const byFamily = new Map<string, EvaluatedComicVineCandidate[]>();
   for (const row of admittedBaseline.values()) {
-    const existing = byClusterBase.get(row.clusterBaseKey) || [];
+    const existing = byFamily.get(row.familyKey) || [];
     existing.push(row);
-    byClusterBase.set(row.clusterBaseKey, existing);
+    byFamily.set(row.familyKey, existing);
   }
 
   const suppressedSourceIds = new Set<string>();
@@ -419,103 +586,104 @@ export function applyComicVineSourceAdmissionPolicy(
   const clusters: ClusterRecord[] = [];
   const ambiguousClusters: AmbiguousClusterRecord[] = [];
 
-  for (const [clusterBaseKey, members] of byClusterBase.entries()) {
-    const preferred = members.filter((row) => row.group === "preferred");
-    const issues = members.filter((row) => row.identity === "single_issue");
-    if (preferred.length === 0 || issues.length === 0) continue;
+  for (const [familyKey, members] of byFamily.entries()) {
+    if (members.length <= 1) continue;
+    const ordered = [...members].sort(compareClusterOrder);
+    const clusterKey = `comicvine_cluster:${familyKey}`;
+    const winners = new Set<string>();
+    let hadSuppression = false;
 
-    const clusterKey = `comicvine_cluster:${clusterBaseKey}`;
-    if (preferred.length !== 1) {
-      ambiguousClusters.push({
-        clusterKey,
-        members: members.map((entry) => entry.sourceId),
-        reason: "multiple_preferred_collection_candidates",
-        evidence: uniqueStrings(preferred.map((entry) => `${entry.title} (${entry.identity})`), 20),
-      });
-      continue;
-    }
+    for (let index = 0; index < ordered.length; index += 1) {
+      const loser = ordered[index];
+      if (suppressedSourceIds.has(loser.sourceId)) continue;
+      let suppressingWinner: EvaluatedComicVineCandidate | undefined;
+      let suppressingReason = "";
+      let suppressingEvidence: string[] = [];
+      for (let winnerIndex = 0; winnerIndex < index; winnerIndex += 1) {
+        const candidateWinner = ordered[winnerIndex];
+        if (suppressedSourceIds.has(candidateWinner.sourceId)) continue;
+        const dominance = dominanceReason(candidateWinner, loser);
+        if (!dominance.matched) continue;
+        suppressingWinner = candidateWinner;
+        suppressingReason = dominance.reason;
+        suppressingEvidence = dominance.evidence;
+        break;
+      }
+      if (!suppressingWinner) {
+        winners.add(loser.sourceId);
+        continue;
+      }
 
-    const representative = preferred[0];
-    const suppressedMembers: SuppressionRecord[] = [];
-    const clusterEvidence: string[] = [];
-
-    for (const issue of issues) {
-      const match = matchesComponentIssueToCollection(representative, issue);
-      if (!match.matched) continue;
-      suppressedSourceIds.add(issue.sourceId);
+      hadSuppression = true;
+      winners.add(suppressingWinner.sourceId);
+      suppressedSourceIds.add(loser.sourceId);
       const evidence = uniqueStrings([
-        ...issue.admissionEvidence,
-        ...representative.admissionEvidence,
-        ...match.evidence,
-        `representative:${representative.sourceId}`,
+        ...loser.admissionEvidence,
+        ...suppressingWinner.admissionEvidence,
+        ...suppressingEvidence,
+        `representative:${suppressingWinner.sourceId}`,
       ], 30);
-      const reasonCodes = ["component_issue_suppressed_by_collection", ...match.evidence];
-      suppressedMembers.push({
-        sourceId: issue.sourceId,
-        title: issue.title,
-        identity: issue.identity,
-        decision: issue.decision,
+      const reasonCodes = [suppressingReason, ...suppressingEvidence];
+      suppressedIssues.push({
+        sourceId: loser.sourceId,
+        title: loser.title,
+        identity: loser.identity,
+        entityType: loser.entityType,
+        policyBucket: loser.policyBucket,
+        decision: loser.decision,
         reasonCodes,
         evidence,
-        sourceQuery: issue.sourceQuery,
-        representativeId: representative.sourceId,
-        representativeTitle: representative.title,
+        sourceQuery: loser.sourceQuery,
+        representativeId: suppressingWinner.sourceId,
+        representativeTitle: suppressingWinner.title,
         clusterKey,
       });
-
-      const sourceProvenance = asRecord(asRecord(issue.candidate.diagnostics).sourceProvenance);
-      const existingReasons = Array.isArray(sourceProvenance.admissionReasons)
-        ? sourceProvenance.admissionReasons.map((entry) => String(entry || "")).filter(Boolean)
-        : issue.admissionReasons;
-      enrichComicVineProvenance(issue.candidate, {
-        admissionDecision: issue.decision,
-        admissionReasons: uniqueStrings([...existingReasons, "component_issue_suppressed_by_collection"], 12),
+      setCandidateComicVine(loser.candidate, {
+        collapseReason: suppressingReason,
+        collapseWinnerSourceId: suppressingWinner.sourceId,
+        fallbackState: loser.policyBucket === "fallback_only" ? "withheld" : loser.candidate.comicVine?.fallbackState || "not_applicable",
+        fallbackReason: loser.policyBucket === "fallback_only" ? "suppressed_by_stronger_family_member" : loser.candidate.comicVine?.fallbackReason,
+      }, {
+        admissionDecision: loser.decision,
+        admissionReasons: uniqueStrings([...loser.admissionReasons, suppressingReason], 20),
         admissionEvidence: evidence,
         clusterKey,
-        representedBy: representative.sourceId,
+        representedBy: suppressingWinner.sourceId,
+        collapseReason: suppressingReason,
       });
-      clusterEvidence.push(...match.evidence);
+      const winnerMeta = ensureComicVineMetadata(suppressingWinner.candidate);
+      const winnerSourceProvenance = asRecord(asRecord(suppressingWinner.candidate.diagnostics).sourceProvenance);
+      setCandidateComicVine(suppressingWinner.candidate, {
+        collapseLoserSourceIds: uniqueStrings([...(winnerMeta.collapseLoserSourceIds || []), loser.sourceId], 80),
+      }, {
+        clusterKey,
+        representativeOf: uniqueStrings([...(Array.isArray(winnerSourceProvenance.representativeOf)
+          ? (winnerSourceProvenance.representativeOf as string[])
+          : []), loser.sourceId], 80),
+      });
+      clusters.push({
+        clusterKey,
+        members: members.map((entry) => entry.sourceId),
+        chosenRepresentative: suppressingWinner.sourceId,
+        suppressedMembers: [loser.sourceId],
+        reason: suppressingReason,
+        evidence,
+      });
     }
 
-    if (suppressedMembers.length === 0) {
+    if (!hadSuppression && winners.size > 1) {
       ambiguousClusters.push({
         clusterKey,
         members: members.map((entry) => entry.sourceId),
-        reason: "insufficient_deterministic_component_evidence",
-        evidence: uniqueStrings([
-          representative.collectionIssueRange ? `representative_collection_range:${representative.collectionIssueRange.start}-${representative.collectionIssueRange.end}` : "",
-          representative.volumeId ? `representative_volume_id:${representative.volumeId}` : "",
-          representative.seriesRoot ? `representative_series_root:${representative.seriesRoot}` : "",
-        ], 20),
+        reason: "multiple_family_members_retained_without_deterministic_dominance",
+        evidence: uniqueStrings(members.flatMap((entry) => [
+          entry.identity,
+          entry.collectionIssueRange ? `issue_range:${entry.collectionIssueRange.start}-${entry.collectionIssueRange.end}` : "",
+          entry.collectionVolumeRange ? `volume_range:${entry.collectionVolumeRange.start}-${entry.collectionVolumeRange.end}` : "",
+          entry.volumeNumber ? `volume_number:${entry.volumeNumber}` : "",
+        ]), 20),
       });
-      continue;
     }
-
-    const representativeProvenance = asRecord(asRecord(representative.candidate.diagnostics).sourceProvenance);
-    const representativeOf = uniqueStrings([
-      ...(Array.isArray(representativeProvenance.representativeOf) ? representativeProvenance.representativeOf : []),
-      ...suppressedMembers.map((entry) => entry.sourceId),
-    ], 100);
-    enrichComicVineProvenance(representative.candidate, {
-      admissionDecision: representative.decision,
-      admissionReasons: representative.admissionReasons,
-      admissionEvidence: representative.admissionEvidence,
-      clusterKey,
-      representativeOf,
-    });
-    clusters.push({
-      clusterKey,
-      members: members.map((entry) => entry.sourceId),
-      chosenRepresentative: representative.sourceId,
-      suppressedMembers: suppressedMembers.map((entry) => entry.sourceId),
-      evidence: uniqueStrings([
-        ...clusterEvidence,
-        representative.collectionIssueRange ? `collection_issue_range:${representative.collectionIssueRange.start}-${representative.collectionIssueRange.end}` : "",
-        representative.volumeId ? `representative_volume_id:${representative.volumeId}` : "",
-        representative.seriesRoot ? `representative_series_root:${representative.seriesRoot}` : "",
-      ], 40),
-    });
-    suppressedIssues.push(...suppressedMembers);
   }
 
   const comicVineAdmittedForScorer = Array.from(admittedBaseline.values())
@@ -527,9 +695,12 @@ export function applyComicVineSourceAdmissionPolicy(
     evaluatedCount: evaluated.length,
     admittedToScorerCount: admittedToScorerRows.length,
     admissionStateCounts,
+    policyBucketHistogram,
     hardRejectionReasonHistogram,
     preferredIdentityHistogram,
-    conditionalIdentityHistogram,
+    allowedIdentityHistogram,
+    fallbackIdentityHistogram,
+    restrictedIdentityHistogram,
     hardRejectedCandidates: hardRejected,
     clusters,
     suppressedIssues,
@@ -539,6 +710,8 @@ export function applyComicVineSourceAdmissionPolicy(
       title: row.title,
       decision: row.decision,
       identity: row.identity,
+      entityType: row.entityType,
+      policyBucket: row.policyBucket,
     })),
     deferredObservability: buildDeferredObservability(evaluated, admittedToScorerRows, ambiguousClusters),
   };
@@ -546,11 +719,14 @@ export function applyComicVineSourceAdmissionPolicy(
   const comicVineSource = sourceResults.find((result) => result.source === "comicVine");
   if (comicVineSource) {
     const sourceDiagnostics = comicVineSource.diagnostics as SourceDiagnosticV2 & Record<string, unknown>;
-    sourceDiagnostics.comicVineAdmissionPolicyVersion = "slice2_source_admission_evidence_only";
+    sourceDiagnostics.comicVineAdmissionPolicyVersion = "entity_policy_v1_source_local";
     sourceDiagnostics.comicVineAdmissionStateCounts = diagnostics.admissionStateCounts;
+    sourceDiagnostics.comicVinePolicyBucketHistogram = diagnostics.policyBucketHistogram;
     sourceDiagnostics.comicVineHardRejectionReasonHistogram = diagnostics.hardRejectionReasonHistogram;
     sourceDiagnostics.comicVinePreferredIdentityHistogram = diagnostics.preferredIdentityHistogram;
-    sourceDiagnostics.comicVineConditionalIdentityHistogram = diagnostics.conditionalIdentityHistogram;
+    sourceDiagnostics.comicVineAllowedIdentityHistogram = diagnostics.allowedIdentityHistogram;
+    sourceDiagnostics.comicVineFallbackIdentityHistogram = diagnostics.fallbackIdentityHistogram;
+    sourceDiagnostics.comicVineRestrictedIdentityHistogram = diagnostics.restrictedIdentityHistogram;
     sourceDiagnostics.comicVineHardRejectedCandidates = diagnostics.hardRejectedCandidates;
     sourceDiagnostics.comicVineAdmissionClusterCount = diagnostics.clusters.length;
     sourceDiagnostics.comicVineAdmissionClusters = diagnostics.clusters;
@@ -563,5 +739,325 @@ export function applyComicVineSourceAdmissionPolicy(
   return {
     candidates: finalCandidates,
     diagnostics,
+  };
+}
+
+function directTasteEvidence(candidate: ScoredCandidate): { signals: string[]; liked: string[]; disliked: string[]; positiveScore: number } {
+  const diagnostics = asRecord(candidate.diagnostics);
+  const contentText = normalizedSignalText([candidate.title, candidate.subtitle, candidate.description].filter(Boolean).join(" "));
+  const rawLikedSignals = uniqueStrings([
+    ...(Array.isArray(diagnostics.documentBackedTasteSignals) ? diagnostics.documentBackedTasteSignals : []),
+    ...(Array.isArray(diagnostics.metadataBackedMatchedLikedSignals) ? diagnostics.metadataBackedMatchedLikedSignals : []),
+  ], 20);
+  const documentSignals = rawLikedSignals.filter((signal) => {
+    const normalizedSignal = normalizedSignalText(signal);
+    return normalizedSignal && contentText.includes(normalizedSignal);
+  });
+  const likedSet = new Set(documentSignals.map((signal) => normalizedSignalText(signal)));
+  const dislikedSignals = uniqueStrings(Array.isArray(diagnostics.metadataBackedMatchedDislikedSignals) ? diagnostics.metadataBackedMatchedDislikedSignals : [], 20)
+    .filter((signal) => {
+      const normalizedSignal = normalizedSignalText(signal);
+      return normalizedSignal && contentText.includes(normalizedSignal) && !likedSet.has(normalizedSignal);
+    });
+  return {
+    signals: documentSignals,
+    liked: documentSignals,
+    disliked: dislikedSignals,
+    positiveScore: Number(diagnostics.positiveTasteScore || 0),
+  };
+}
+
+function restrictedCategoryAllowed(candidate: ScoredCandidate, metadata: ComicVineEntityMetadata): { allowed: boolean; reason: string; evidence: string[] } {
+  const taste = directTasteEvidence(candidate);
+  const evidence = uniqueStrings([
+    ...metadata.classificationEvidence,
+    ...taste.liked.map((signal) => `taste_signal:${signal}`),
+    metadata.precedenceRule ? `precedence:${metadata.precedenceRule}` : "",
+  ], 20);
+
+  if (metadata.identity === "encyclopedia" || metadata.identity === "companion_guide") {
+    return { allowed: false, reason: "restricted_category_excluded_by_policy", evidence };
+  }
+  if (taste.disliked.length > 0) {
+    return { allowed: false, reason: "restricted_category_has_negative_overlap", evidence: uniqueStrings([...evidence, ...taste.disliked.map((signal) => `avoid_signal:${signal}`)], 24) };
+  }
+  if (taste.liked.length < 2 || taste.positiveScore < 3.5) {
+    return { allowed: false, reason: "restricted_category_lacks_direct_taste_evidence", evidence };
+  }
+  return { allowed: true, reason: "restricted_category_supported_by_direct_taste_evidence", evidence };
+}
+
+function fallbackCandidateEligibility(
+  candidate: ScoredCandidate,
+  metadata: ComicVineEntityMetadata,
+  nonFallbackCandidates: ScoredCandidate[],
+): { eligible: boolean; reason: string; evidence: string[] } {
+  const taste = directTasteEvidence(candidate);
+  const equivalentStronger = nonFallbackCandidates.find((other) => {
+    if (other.source !== "comicVine") return false;
+    const otherMeta = ensureComicVineMetadata(other);
+    if (!otherMeta.familyKey || otherMeta.familyKey !== metadata.familyKey) return false;
+    const winnerRow = {
+      candidate: other as unknown as NormalizedCandidate,
+      sourceId: String(other.sourceId || other.id),
+      title: other.title,
+      identity: otherMeta.identity,
+      entityType: otherMeta.entityType,
+      policyBucket: otherMeta.policyBucket,
+      decision: decisionForBucket(otherMeta.policyBucket),
+      admissionReasons: [],
+      admissionEvidence: otherMeta.classificationEvidence,
+      sourceQuery: String(other.diagnostics?.queryText || ""),
+      queryFamily: String(other.diagnostics?.queryFamily || ""),
+      familyKey: otherMeta.familyKey || "",
+      titleRoot: otherMeta.titleRoot || "",
+      seriesRoot: otherMeta.seriesRoot || "",
+      volumeId: otherMeta.volumeId,
+      volumeNumber: otherMeta.volumeNumber,
+      issueNumber: otherMeta.issueNumber,
+      collectionIssueRange: otherMeta.collectionIssueRange,
+      collectionVolumeRange: otherMeta.collectionVolumeRange,
+    } satisfies EvaluatedComicVineCandidate;
+    const loserRow = {
+      candidate: candidate as unknown as NormalizedCandidate,
+      sourceId: String(candidate.sourceId || candidate.id),
+      title: candidate.title,
+      identity: metadata.identity,
+      entityType: metadata.entityType,
+      policyBucket: metadata.policyBucket,
+      decision: decisionForBucket(metadata.policyBucket),
+      admissionReasons: [],
+      admissionEvidence: metadata.classificationEvidence,
+      sourceQuery: String(candidate.diagnostics?.queryText || ""),
+      queryFamily: String(candidate.diagnostics?.queryFamily || ""),
+      familyKey: metadata.familyKey || "",
+      titleRoot: metadata.titleRoot || "",
+      seriesRoot: metadata.seriesRoot || "",
+      volumeId: metadata.volumeId,
+      volumeNumber: metadata.volumeNumber,
+      issueNumber: metadata.issueNumber,
+      collectionIssueRange: metadata.collectionIssueRange,
+      collectionVolumeRange: metadata.collectionVolumeRange,
+    } satisfies EvaluatedComicVineCandidate;
+    return dominanceReason(winnerRow, loserRow).matched;
+  });
+
+  const evidence = uniqueStrings([
+    ...metadata.classificationEvidence,
+    `issue_accessibility:${metadata.issueAccessibility}`,
+    ...taste.liked.map((signal) => `taste_signal:${signal}`),
+  ], 20);
+
+  if (equivalentStronger) {
+    return { eligible: false, reason: "fallback_blocked_by_stronger_equivalent_reading_unit", evidence: uniqueStrings([...evidence, `stronger_equivalent:${equivalentStronger.title}`], 24) };
+  }
+  if (taste.disliked.length > 0) {
+    return { eligible: false, reason: "fallback_has_negative_overlap", evidence: uniqueStrings([...evidence, ...taste.disliked.map((signal) => `avoid_signal:${signal}`)], 24) };
+  }
+  if (metadata.issueAccessibility === "middle_issue") {
+    return { eligible: false, reason: "fallback_middle_issue_withheld", evidence };
+  }
+  if (metadata.issueAccessibility !== "issue_one" && metadata.issueAccessibility !== "one_shot" && metadata.issueAccessibility !== "annual") {
+    return { eligible: false, reason: "fallback_issue_not_accessible", evidence };
+  }
+  if (taste.positiveScore < 2.5) {
+    return { eligible: false, reason: "fallback_lacks_adequate_taste_relevance", evidence };
+  }
+  return { eligible: true, reason: "fallback_accessible_issue_allowed_under_underfill", evidence };
+}
+
+export function applyAdultComicVinePostScorePolicy(
+  scored: ScoredCandidate[],
+  profile: TasteProfile,
+  limit: number,
+): {
+  candidates: ScoredCandidate[];
+  diagnostics: ComicVinePostScoreDiagnostics;
+} {
+  if (profile.ageBand !== "adult" || !scored.some((candidate) => candidate.source === "comicVine")) {
+    return {
+      candidates: scored,
+      diagnostics: {
+        consideredCount: 0,
+        releasableCount: scored.length,
+        withheldCount: 0,
+        fallbackSlotsRequested: 0,
+        fallbackSlotsReleased: 0,
+        policyBucketHistogram: {},
+        fallbackStateHistogram: {},
+        restrictedReleases: [],
+        releasedFallbackCandidates: [],
+        withheldCandidates: [],
+      },
+    };
+  }
+
+  const kept: ScoredCandidate[] = [];
+  const comicVineCandidates: ScoredCandidate[] = [];
+  const nonComicVineCandidates: ScoredCandidate[] = [];
+  const restrictedApproved: ScoredCandidate[] = [];
+  const fallbackEligible: Array<{ candidate: ScoredCandidate; evidence: string[]; reason: string }> = [];
+  const withheldCandidates: PostScoreRecord[] = [];
+  const restrictedReleases: PostScoreRecord[] = [];
+  const policyBucketHistogram: Record<string, number> = {};
+  const fallbackStateHistogram: Record<string, number> = {};
+
+  for (const candidate of scored) {
+    if (candidate.source !== "comicVine") {
+      nonComicVineCandidates.push(candidate);
+      kept.push(candidate);
+      continue;
+    }
+    comicVineCandidates.push(candidate);
+    const metadata = ensureComicVineMetadata(candidate);
+    pushHistogramCount(policyBucketHistogram, metadata.policyBucket);
+
+    if (metadata.policyBucket === "preferred" || metadata.policyBucket === "allowed") {
+      setCandidateComicVine(candidate, {
+        fallbackState: "not_applicable",
+        fallbackReason: undefined,
+      });
+      pushHistogramCount(fallbackStateHistogram, "not_applicable");
+      kept.push(candidate);
+      continue;
+    }
+
+    if (metadata.policyBucket === "restricted") {
+      const restrictedDecision = restrictedCategoryAllowed(candidate, metadata);
+      if (restrictedDecision.allowed) {
+        setCandidateComicVine(candidate, {
+          fallbackState: "not_applicable",
+          fallbackReason: restrictedDecision.reason,
+        }, {
+          fallbackState: "not_applicable",
+          fallbackReason: restrictedDecision.reason,
+        });
+        pushHistogramCount(fallbackStateHistogram, "not_applicable");
+        kept.push(candidate);
+        restrictedApproved.push(candidate);
+        restrictedReleases.push({
+          sourceId: String(candidate.sourceId || candidate.id),
+          title: candidate.title,
+          identity: metadata.identity,
+          entityType: metadata.entityType,
+          policyBucket: metadata.policyBucket,
+          score: candidate.score,
+          reason: restrictedDecision.reason,
+          evidence: restrictedDecision.evidence,
+        });
+      } else {
+        setCandidateComicVine(candidate, {
+          fallbackState: "withheld",
+          fallbackReason: restrictedDecision.reason,
+        }, {
+          fallbackState: "withheld",
+          fallbackReason: restrictedDecision.reason,
+        });
+        pushHistogramCount(fallbackStateHistogram, "withheld");
+        withheldCandidates.push({
+          sourceId: String(candidate.sourceId || candidate.id),
+          title: candidate.title,
+          identity: metadata.identity,
+          entityType: metadata.entityType,
+          policyBucket: metadata.policyBucket,
+          score: candidate.score,
+          reason: restrictedDecision.reason,
+          evidence: restrictedDecision.evidence,
+        });
+      }
+      continue;
+    }
+
+    const nonFallbackCandidates = [...nonComicVineCandidates, ...comicVineCandidates.filter((other) => {
+      if (other === candidate) return false;
+      const otherMeta = ensureComicVineMetadata(other);
+      return otherMeta.policyBucket === "preferred" || otherMeta.policyBucket === "allowed" || otherMeta.policyBucket === "restricted";
+    }), ...restrictedApproved];
+    const eligibility = fallbackCandidateEligibility(candidate, metadata, nonFallbackCandidates);
+    if (eligibility.eligible) {
+      setCandidateComicVine(candidate, {
+        fallbackEligible: true,
+        fallbackState: "eligible",
+        fallbackReason: eligibility.reason,
+      }, {
+        fallbackEligible: true,
+        fallbackState: "eligible",
+        fallbackReason: eligibility.reason,
+      });
+      pushHistogramCount(fallbackStateHistogram, "eligible");
+      fallbackEligible.push({ candidate, evidence: eligibility.evidence, reason: eligibility.reason });
+    } else {
+      setCandidateComicVine(candidate, {
+        fallbackEligible: false,
+        fallbackState: "withheld",
+        fallbackReason: eligibility.reason,
+      }, {
+        fallbackEligible: false,
+        fallbackState: "withheld",
+        fallbackReason: eligibility.reason,
+      });
+      pushHistogramCount(fallbackStateHistogram, "withheld");
+      withheldCandidates.push({
+        sourceId: String(candidate.sourceId || candidate.id),
+        title: candidate.title,
+        identity: metadata.identity,
+        entityType: metadata.entityType,
+        policyBucket: metadata.policyBucket,
+        score: candidate.score,
+        reason: eligibility.reason,
+        evidence: eligibility.evidence,
+      });
+    }
+  }
+
+  const nonFallbackCount = kept.length;
+  const fallbackSlotsRequested = Math.max(0, limit - nonFallbackCount);
+  const releasedFallbackCandidates: PostScoreRecord[] = [];
+  const eligibleFallbackSorted = [...fallbackEligible].sort((a, b) => b.candidate.score - a.candidate.score || a.candidate.title.localeCompare(b.candidate.title));
+
+  for (let index = 0; index < eligibleFallbackSorted.length; index += 1) {
+    const entry = eligibleFallbackSorted[index];
+    const metadata = ensureComicVineMetadata(entry.candidate);
+    const released = index < fallbackSlotsRequested;
+    setCandidateComicVine(entry.candidate, {
+      fallbackState: released ? "released" : "withheld",
+      fallbackReason: released ? entry.reason : "fallback_not_needed_after_non_fallback_candidates",
+    }, {
+      fallbackState: released ? "released" : "withheld",
+      fallbackReason: released ? entry.reason : "fallback_not_needed_after_non_fallback_candidates",
+    });
+    pushHistogramCount(fallbackStateHistogram, released ? "released" : "withheld");
+    const record: PostScoreRecord = {
+      sourceId: String(entry.candidate.sourceId || entry.candidate.id),
+      title: entry.candidate.title,
+      identity: metadata.identity,
+      entityType: metadata.entityType,
+      policyBucket: metadata.policyBucket,
+      score: entry.candidate.score,
+      reason: released ? entry.reason : "fallback_not_needed_after_non_fallback_candidates",
+      evidence: entry.evidence,
+    };
+    if (released) {
+      kept.push(entry.candidate);
+      releasedFallbackCandidates.push(record);
+    } else {
+      withheldCandidates.push(record);
+    }
+  }
+
+  return {
+    candidates: kept.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title)),
+    diagnostics: {
+      consideredCount: comicVineCandidates.length,
+      releasableCount: kept.filter((candidate) => candidate.source === "comicVine").length,
+      withheldCount: withheldCandidates.length,
+      fallbackSlotsRequested,
+      fallbackSlotsReleased: releasedFallbackCandidates.length,
+      policyBucketHistogram,
+      fallbackStateHistogram,
+      restrictedReleases,
+      releasedFallbackCandidates,
+      withheldCandidates,
+    },
   };
 }
