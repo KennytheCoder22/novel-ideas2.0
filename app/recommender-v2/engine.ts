@@ -1,5 +1,6 @@
 import { buildDiagnosticReport, buildRecommendationResultV2, stageDiagnostic } from "./diagnostics";
 import { applyAdultComicVinePostScorePolicy, applyComicVineSourceAdmissionPolicy } from "./comicVineAdmission";
+import { applyAdultKitsuPostScorePolicy, applyKitsuSourceAdmissionPolicy } from "./kitsuAdmission";
 import { buildComicVineIdentityReport } from "./comicVineIdentity";
 import { normalizeSourceResults } from "./normalize";
 import { buildSearchPlan } from "./searchPlan";
@@ -266,6 +267,22 @@ function applyAdultComicVinePostScoreGate(
     sourceDiagnostics.comicVineFallbackSlotsReleased = postScoreGate.diagnostics.fallbackSlotsReleased;
   }
   return postScoreGate.candidates;
+}
+
+function applyAdultKitsuPostScoreGate(
+  scored: ScoredCandidate[],
+  tasteProfile: TasteProfile,
+  sourceResults: SourceResult[],
+): ScoredCandidate[] {
+  const gate = applyAdultKitsuPostScorePolicy(scored, tasteProfile);
+  const kitsuSource = sourceResults.find((result) => result.source === "kitsu");
+  if (kitsuSource) {
+    const d = kitsuSource.diagnostics as SourceDiagnosticV2 & Record<string, unknown>;
+    d.kitsuPostScorePolicyVersion = "admission_policy_v1";
+    d.kitsuPostScoreWithheldOneShotCount = gate.withheldCount;
+    d.kitsuPostScoreWithheldCandidates = gate.withheldCandidates;
+  }
+  return gate.candidates;
 }
 
 type GoogleBooksInfrastructureStatus =
@@ -2470,8 +2487,11 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     comicVineSuppressedIssues: comicVineAdmissionGate.diagnostics.suppressedIssues.length,
     comicVineClusters: comicVineAdmissionGate.diagnostics.clusters.length,
   }));
+  let kitsuAdmissionGate = applyKitsuSourceAdmissionPolicy(normalized, sourceResults);
+  normalized = kitsuAdmissionGate.candidates;
   let scored = scoreCandidates(normalized, tasteProfile);
   scored = applyAdultComicVinePostScoreGate(scored, tasteProfile, session.limit || 10, sourceResults);
+  scored = applyAdultKitsuPostScoreGate(scored, tasteProfile, sourceResults);
   let selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
   let selected = selection.selected;
   let rejectedReasons = selection.rejectedReasons;
@@ -2647,8 +2667,11 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = teensGoogleBooksPreScoringGate.candidates;
         comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
         normalized = comicVineAdmissionGate.candidates;
+        kitsuAdmissionGate = applyKitsuSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = kitsuAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         scored = applyAdultComicVinePostScoreGate(scored, tasteProfile, session.limit || 10, sourceResults);
+        scored = applyAdultKitsuPostScoreGate(scored, tasteProfile, sourceResults);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;
@@ -2928,8 +2951,11 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = teensGoogleBooksPreScoringGate.candidates;
         comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
         normalized = comicVineAdmissionGate.candidates;
+        kitsuAdmissionGate = applyKitsuSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = kitsuAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         scored = applyAdultComicVinePostScoreGate(scored, tasteProfile, session.limit || 10, sourceResults);
+        scored = applyAdultKitsuPostScoreGate(scored, tasteProfile, sourceResults);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;
@@ -3118,8 +3144,11 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = teensGoogleBooksPreScoringGate.candidates;
         comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
         normalized = comicVineAdmissionGate.candidates;
+        kitsuAdmissionGate = applyKitsuSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = kitsuAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         scored = applyAdultComicVinePostScoreGate(scored, tasteProfile, session.limit || 10, sourceResults);
+        scored = applyAdultKitsuPostScoreGate(scored, tasteProfile, sourceResults);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;
@@ -3319,8 +3348,11 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         normalized = teensGoogleBooksPreScoringGate.candidates;
         comicVineAdmissionGate = applyComicVineSourceAdmissionPolicy(normalized, sourceResults);
         normalized = comicVineAdmissionGate.candidates;
+        kitsuAdmissionGate = applyKitsuSourceAdmissionPolicy(normalized, sourceResults);
+        normalized = kitsuAdmissionGate.candidates;
         scored = scoreCandidates(normalized, tasteProfile);
         scored = applyAdultComicVinePostScoreGate(scored, tasteProfile, session.limit || 10, sourceResults);
+        scored = applyAdultKitsuPostScoreGate(scored, tasteProfile, sourceResults);
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;

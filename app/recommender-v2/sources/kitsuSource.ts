@@ -1,12 +1,21 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult } from "../types";
 
 const KITSU_API_BASE = String(process.env.EXPO_PUBLIC_KITSU_API_BASE_URL || process.env.KITSU_API_BASE_URL || "https://kitsu.app/api/edge").replace(/\/+$/, "");
-const KITSU_ADAPTER_VERSION = "v1";
+const KITSU_ADAPTER_VERSION = "v2";
 const KITSU_PAGE_LIMIT = 20;
+const KITSU_CATEGORIES_LIMIT = 10;
 
 type KitsuItem = {
   id?: string;
   attributes?: Record<string, unknown>;
+};
+
+type PendingKitsuItem = {
+  item: KitsuItem;
+  query: string;
+  queryFamily: string;
+  queryCascadeIndex: number;
+  facets: string[];
 };
 
 function nowIso(): string {
@@ -51,7 +60,36 @@ function sourceUrlForItem(slug: string, id: string): string | undefined {
   return resolved ? `https://kitsu.app/manga/${encodeURIComponent(resolved)}` : undefined;
 }
 
-function toRawRow(item: KitsuItem, query: string, queryFamily: string, queryCascadeIndex: number, facets: string[]): Record<string, unknown> | null {
+async function fetchKitsuCategories(id: string, signal?: AbortSignal): Promise<string[]> {
+  if (!id) return [];
+  const url = `${KITSU_API_BASE}/manga/${encodeURIComponent(id)}/categories?page[limit]=${KITSU_CATEGORIES_LIMIT}`;
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      signal,
+      headers: { Accept: "application/vnd.api+json, application/json" },
+    });
+    if (!res.ok) return [];
+    const body = await res.text();
+    const payload = body ? JSON.parse(body) : {};
+    const items = Array.isArray(payload?.data) ? payload.data as Array<{ attributes?: Record<string, unknown> }> : [];
+    return uniqueStrings(
+      items.map((item) => String(item?.attributes?.title || "").trim().toLowerCase()),
+      KITSU_CATEGORIES_LIMIT,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function toRawRow(
+  item: KitsuItem,
+  query: string,
+  queryFamily: string,
+  queryCascadeIndex: number,
+  facets: string[],
+  categoryNames: string[] | null,
+): Record<string, unknown> | null {
   const attrs = (item.attributes || {}) as Record<string, unknown>;
   const canonicalTitle = String(attrs.canonicalTitle || "").trim();
   const title = canonicalTitle || String(attrs.titles && typeof attrs.titles === "object" ? (attrs.titles as Record<string, unknown>).en || (attrs.titles as Record<string, unknown>).en_jp || (attrs.titles as Record<string, unknown>).ja_jp || "" : "").trim();
@@ -67,11 +105,13 @@ function toRawRow(item: KitsuItem, query: string, queryFamily: string, queryCasc
   const itemId = String(item.id || "").trim() || title;
   const queryTokens = uniqueStrings(normalizeText(query).split(" ").filter(Boolean), 8);
 
-  const genres = uniqueStrings([
-    ...facets,
-    ...queryTokens,
-    mangaSubtype,
-  ], 12);
+  // Use real category tags from the Kitsu categories API when available;
+  // fall back to deduplicated query tokens only when the categories fetch failed or returned nothing.
+  const hasApiCategories = Array.isArray(categoryNames) && categoryNames.length > 0;
+  const genres = hasApiCategories
+    ? uniqueStrings([...facets, ...categoryNames], 12)
+    : uniqueStrings([...facets, ...queryTokens, mangaSubtype], 12);
+  const genreSource: "categories_api" | "query_fallback" = hasApiCategories ? "categories_api" : "query_fallback";
   const tones = uniqueStrings([String(attrs.serialization || "").trim()], 4);
   const themes = uniqueStrings([ageRatingGuide, ageRating, mangaSubtype], 6);
 
@@ -96,6 +136,11 @@ function toRawRow(item: KitsuItem, query: string, queryFamily: string, queryCasc
     facets,
     routingReason: "kitsu_v2_intent_adapter",
     adapterVersion: KITSU_ADAPTER_VERSION,
+    // Kitsu-specific diagnostic fields (GAP-K2, GAP-K6)
+    kitsuSubtype: mangaSubtype || subtype,
+    kitsuAgeRating: ageRating || null,
+    kitsuMaturityFlagged: !ageRating || ageRating.toUpperCase() === "G",
+    genreSource,
     raw: item,
   };
 }
@@ -123,9 +168,11 @@ export const kitsuSourceAdapter: SourceAdapterV2 = {
     const fetches: SourceFetchDiagnosticV2[] = [];
     const rawItems: Record<string, unknown>[] = [];
     const dedupe = new Set<string>();
+    const pendingItems: PendingKitsuItem[] = [];
     let timedOut = false;
     let failedReason = "";
 
+    // Phase 1: fetch primary search results for each intent
     for (let index = 0; index < plan.intents.length; index += 1) {
       const intent = plan.intents[index];
       if (!intent) continue;
@@ -173,19 +220,19 @@ export const kitsuSourceAdapter: SourceAdapterV2 = {
         );
         fetchDiag.status = rows.length > 0 ? "succeeded" : "empty";
 
+        // Collect deduped pending items; categories will be fetched concurrently below
         for (const row of rows) {
-          const normalized = toRawRow(
-            row,
+          const itemId = String(row.id || "").trim() || String(((row.attributes || {}) as Record<string, unknown>).canonicalTitle || "").trim();
+          const key = `kitsu:${itemId}`.toLowerCase();
+          if (!itemId || dedupe.has(key)) continue;
+          dedupe.add(key);
+          pendingItems.push({
+            item: row,
             query,
-            String(intent.id || "").trim() || "generic",
-            index,
-            intent.facets || [],
-          );
-          if (!normalized) continue;
-          const key = `${normalized.sourceId || normalized.id || normalized.title}`;
-          if (dedupe.has(String(key).toLowerCase())) continue;
-          dedupe.add(String(key).toLowerCase());
-          rawItems.push(normalized);
+            queryFamily: String(intent.id || "").trim() || "generic",
+            queryCascadeIndex: index,
+            facets: intent.facets || [],
+          });
         }
       } catch (error) {
         const message = String((error as { message?: string })?.message || error || "");
@@ -199,6 +246,32 @@ export const kitsuSourceAdapter: SourceAdapterV2 = {
         fetches.push(fetchDiag);
       }
     }
+
+    // Phase 2: concurrently fetch categories for all collected items (GAP-K2)
+    const categoryResults = pendingItems.length > 0
+      ? await Promise.allSettled(
+          pendingItems.map((pending) => fetchKitsuCategories(String(pending.item.id || ""), context.signal)),
+        )
+      : [];
+
+    // Phase 3: build raw rows with category data (or fall back per-item)
+    for (let i = 0; i < pendingItems.length; i++) {
+      const pending = pendingItems[i];
+      const catResult = categoryResults[i];
+      const categoryNames = catResult?.status === "fulfilled" ? catResult.value : null;
+      const normalized = toRawRow(
+        pending.item,
+        pending.query,
+        pending.queryFamily,
+        pending.queryCascadeIndex,
+        pending.facets,
+        categoryNames,
+      );
+      if (normalized) rawItems.push(normalized);
+    }
+
+    const categoriesApiSuccessCount = categoryResults.filter((r) => r.status === "fulfilled" && r.value.length > 0).length;
+    const categoriesApiFallbackCount = pendingItems.length - categoriesApiSuccessCount;
 
     const finishedAt = nowIso();
     const status = rawItems.length > 0
@@ -230,11 +303,16 @@ export const kitsuSourceAdapter: SourceAdapterV2 = {
       dropReasons: {},
     };
 
+    // Add Kitsu-specific observability fields that extend the base diagnostic type
+    const extendedDiagnostics = diagnostics as SourceDiagnosticV2 & Record<string, unknown>;
+    extendedDiagnostics.kitsuCategoriesApiSuccessCount = categoriesApiSuccessCount;
+    extendedDiagnostics.kitsuCategoriesApiFallbackCount = categoriesApiFallbackCount;
+
     return {
       source: "kitsu",
       status,
       rawItems,
-      diagnostics,
+      diagnostics: extendedDiagnostics,
     };
   },
 };
