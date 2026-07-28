@@ -1,3 +1,5 @@
+import type { ComicVineEntityMetadata } from "./comicVineTypes";
+
 export type AgeBandV2 = "kids" | "preteens" | "teens" | "adult";
 
 export type SourceIdV2 = "mock" | "googleBooks" | "openLibrary" | "kitsu" | "comicVine" | "localLibrary" | "nyt";
@@ -198,6 +200,8 @@ export interface SourceDiagnosticV2 {
   laterStageRemovedAllCandidatesCount?: number;
   sourceStageEmptyReason?: string;
   comicVineIdentityHistogram?: Record<string, number>;
+  comicVineEntityTypeHistogram?: Record<string, number>;
+  comicVinePolicyBucketHistogram?: Record<string, number>;
   comicVineIdentityTitlesByClass?: Record<string, string[]>;
   comicVineIdentityUnknownPercentage?: number;
   comicVineIdentitySingleIssuePercentage?: number;
@@ -208,6 +212,9 @@ export interface SourceDiagnosticV2 {
   comicVineAdmissionStateCounts?: Record<string, number>;
   comicVineHardRejectionReasonHistogram?: Record<string, number>;
   comicVinePreferredIdentityHistogram?: Record<string, number>;
+  comicVineAllowedIdentityHistogram?: Record<string, number>;
+  comicVineFallbackIdentityHistogram?: Record<string, number>;
+  comicVineRestrictedIdentityHistogram?: Record<string, number>;
   comicVineConditionalIdentityHistogram?: Record<string, number>;
   comicVineHardRejectedCandidates?: Array<Record<string, unknown>>;
   comicVineAdmissionClusterCount?: number;
@@ -216,6 +223,14 @@ export interface SourceDiagnosticV2 {
   comicVineAmbiguousClusters?: Array<Record<string, unknown>>;
   comicVineAdmissionDeferredObservability?: Record<string, unknown>;
   comicVineCandidatesReachingScorerAfterAdmission?: Array<Record<string, unknown>>;
+  comicVinePostScorePolicyVersion?: string;
+  comicVinePostScorePolicyBucketHistogram?: Record<string, number>;
+  comicVinePostScoreFallbackStateHistogram?: Record<string, number>;
+  comicVineRestrictedReleases?: Array<Record<string, unknown>>;
+  comicVineReleasedFallbackCandidates?: Array<Record<string, unknown>>;
+  comicVineWithheldPostScoreCandidates?: Array<Record<string, unknown>>;
+  comicVineFallbackSlotsRequested?: number;
+  comicVineFallbackSlotsReleased?: number;
   normalizedCount?: number;
   queries: string[];
   rawTitles?: string[];
@@ -753,6 +768,7 @@ export interface NormalizedCandidate {
   publicationYear?: number;
   sourceUrl?: string;
   raw: unknown;
+  comicVine?: ComicVineEntityMetadata;
   diagnostics: Record<string, unknown>;
 }
 
