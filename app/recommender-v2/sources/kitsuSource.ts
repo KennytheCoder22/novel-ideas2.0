@@ -1,4 +1,4 @@
-import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult } from "../types";
+import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
 
 const KITSU_API_BASE = String(process.env.EXPO_PUBLIC_KITSU_API_BASE_URL || process.env.KITSU_API_BASE_URL || "https://kitsu.app/api/edge").replace(/\/+$/, "");
 const KITSU_ADAPTER_VERSION = "v2";
@@ -145,7 +145,15 @@ function toRawRow(
   };
 }
 
-function skippedResult(plan: SourcePlan): SourceResult {
+const KITSU_MANGA_FORMAT_VALUES = new Set(["manga", "anime"]);
+
+function hasMangaFormatPreference(profile: TasteProfile): boolean {
+  return profile.formatPreference.some(
+    (fp) => KITSU_MANGA_FORMAT_VALUES.has(String(fp.value || "").toLowerCase()) && fp.weight > 0,
+  );
+}
+
+function skippedResult(plan: SourcePlan, reason: string = "source_disabled"): SourceResult {
   const diagnostics: SourceDiagnosticV2 = {
     source: "kitsu",
     status: "skipped",
@@ -154,7 +162,7 @@ function skippedResult(plan: SourcePlan): SourceResult {
     timedOut: false,
     rawCount: 0,
     queries: [],
-    skippedReason: "source_disabled",
+    skippedReason: reason,
   };
   return { source: "kitsu", status: "skipped", rawItems: [], diagnostics };
 }
@@ -162,7 +170,10 @@ function skippedResult(plan: SourcePlan): SourceResult {
 export const kitsuSourceAdapter: SourceAdapterV2 = {
   source: "kitsu",
   async search(plan, context) {
-    if (!plan.enabled) return skippedResult(plan);
+    if (!plan.enabled) return skippedResult(plan, "source_disabled");
+    if (!hasMangaFormatPreference(context.profile)) {
+      return skippedResult(plan, "kitsu_no_manga_format_preference");
+    }
 
     const startedAt = nowIso();
     const fetches: SourceFetchDiagnosticV2[] = [];
