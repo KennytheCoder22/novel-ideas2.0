@@ -1,7 +1,7 @@
 {
   "registry": "certified-subsystem-registry",
   "version": "1.0",
-  "updatedAt": "2026-07-27T18:08:24.857-07:00",
+  "updatedAt": "2026-07-27T18:58:43.087-07:00",
   "contracts": [
     {
       "contract": "google_books_admission",
@@ -22,6 +22,16 @@
       "frozen": true,
       "certifiedSlices": [
         "EP1"
+      ],
+      "certificationDecision": "accepted_and_certified"
+    },
+    {
+      "contract": "kitsu_source_certification",
+      "label": "Adult Kitsu Source Certification",
+      "status": "fully_certified",
+      "frozen": true,
+      "certifiedSlices": [
+        "K1"
       ],
       "certificationDecision": "accepted_and_certified"
     }
@@ -95,6 +105,35 @@
         "scripts/run-v2-comicvine-source-certification-regressions.mjs",
         "scripts/run-v2-comicvine-cert-gap-closure-regressions.mjs"
       ]
+    },
+    {
+      "contract": "kitsu_source_certification",
+      "slice": "K1",
+      "label": "Adult Kitsu source certification (v1)",
+      "status": "certified",
+      "frozen": true,
+      "certificationDecision": "accepted_and_certified",
+      "source": "kitsu",
+      "role": "manga/anime specialist",
+      "policy": "scope_gate_v1 + admission_policy_v1 + category_enrichment_v1",
+      "fixtures": [
+        "K1-K9",
+        "14-profile-mocked-baseline"
+      ],
+      "tag": "adult-kitsu-certified",
+      "certificationSuiteRef": "scripts/run-v2-kitsu-source-certification-regressions.mjs",
+      "baselineArtifact": "scripts/output/adult-kitsu-baseline-phase3.json",
+      "baselineScripts": [
+        "scripts/run-v2-kitsu-source-certification-regressions.mjs",
+        "scripts/run-v2-adult-kitsu-cert-fixtures.mjs"
+      ],
+      "policyFiles": [
+        "app/recommender-v2/kitsuAdmission.ts",
+        "app/recommender-v2/sources/kitsuSource.ts"
+      ],
+      "certificationGate": "mocked",
+      "liveProbe": "scripts/run-v2-kitsu-api-reliability-probe.mjs",
+      "liveProbeResult": "20/20 success at 250ms delay"
     }
   ],
   "recommendationCertificationSuites": [
