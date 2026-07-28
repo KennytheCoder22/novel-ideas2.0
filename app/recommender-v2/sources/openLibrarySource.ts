@@ -9,6 +9,7 @@ const TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 4_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_CAP_MS = 1_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_FLOOR_MS = 500;
 const TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
+const TEEN_OPEN_LIBRARY_POST_HEADER_RETRY_MIN_BUDGET_MS = 500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CIRCUIT_BREAKER_LIMIT = 3;
 const TEEN_OPEN_LIBRARY_SOURCE_CANDIDATE_POOL_LIMIT = 10;
 const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 1_500;
@@ -1335,13 +1336,13 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   try {
     const response = await fetch(url, { signal: queryController.signal });
     diagnostic.httpStatus = response.status;
-    diagnostic.responseDate = response.headers.get("date") || undefined;
-    diagnostic.responseCacheControl = response.headers.get("cache-control") || undefined;
-    diagnostic.responseCacheAge = response.headers.get("age") || undefined;
-    diagnostic.responseVia = response.headers.get("via") || undefined;
-    diagnostic.responseEtag = response.headers.get("etag") || undefined;
-    diagnostic.responseLastModified = response.headers.get("last-modified") || undefined;
-    diagnostic.responseXCache = response.headers.get("x-cache") || undefined;
+    diagnostic.responseDate = response.headers?.get?.("date") || undefined;
+    diagnostic.responseCacheControl = response.headers?.get?.("cache-control") || undefined;
+    diagnostic.responseCacheAge = response.headers?.get?.("age") || undefined;
+    diagnostic.responseVia = response.headers?.get?.("via") || undefined;
+    diagnostic.responseEtag = response.headers?.get?.("etag") || undefined;
+    diagnostic.responseLastModified = response.headers?.get?.("last-modified") || undefined;
+    diagnostic.responseXCache = response.headers?.get?.("x-cache") || undefined;
     diagnostic.responseHeadersReceived = nowIso();
     diagnostic.bodyStarted = nowIso();
     const text = await response.text();
@@ -3532,6 +3533,38 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         };
         retrySucceeded = Boolean(diagnostic.retrySucceeded);
         adultPrimaryQueryTimedOutTwice = Boolean(retryResult.diagnostic.timedOut);
+      }
+      const teenPostHeaderBodyTimeout = ageProfile.key === "teen"
+        && diagnostic.timedOut
+        && Boolean(diagnostic.responseHeadersReceived)
+        && !diagnostic.bodyCompleted
+        && !context.signal?.aborted;
+      if (teenPostHeaderBodyTimeout && !retryAttempted) {
+        diagnostic.postHeaderBodyTimeout = true;
+        const retryBudgetMs = Math.max(0, sourceBudgetMs - (Date.now() - Date.parse(startedAt)));
+        diagnostic.postHeaderBodyTimeoutRetryBudgetMs = retryBudgetMs;
+        if (retryBudgetMs >= TEEN_OPEN_LIBRARY_POST_HEADER_RETRY_MIN_BUDGET_MS) {
+          retryAttempted = true;
+          diagnostic.retryAttempted = true;
+          diagnostic.postHeaderBodyTimeoutRetry = true;
+          fetches.push(diagnostic);
+
+          const retryTimeoutMs = Math.min(ageProfile.perQueryTimeoutMs, retryBudgetMs);
+          const retryResult = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, retryTimeoutMs, 2, openLibraryProxyClientTimeoutMs(ageProfile), false, retryBudgetMs);
+          const recoverySucceeded = retryResult.docs.length > 0 && !retryResult.diagnostic.timedOut && !retryResult.diagnostic.failedReason;
+          docs = retryResult.docs;
+          diagnostic = {
+            ...retryResult.diagnostic,
+            retryAttempted: true,
+            retrySucceeded: recoverySucceeded,
+            postHeaderBodyTimeoutRetry: true,
+            postHeaderBodyTimeoutRetrySucceeded: recoverySucceeded,
+            postHeaderBodyTimeoutRetryBudgetMs: retryBudgetMs,
+          };
+          retrySucceeded = recoverySucceeded;
+        } else {
+          diagnostic.postHeaderBodyTimeoutRetrySkippedReason = "insufficient_source_budget";
+        }
       }
       fetches.push(diagnostic);
       traceMiddleGradesFetch(diagnostic);

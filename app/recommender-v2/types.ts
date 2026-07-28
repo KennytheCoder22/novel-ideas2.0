@@ -137,6 +137,11 @@ export interface SourceFetchDiagnosticV2 {
   firstRunFetchTimeout?: boolean;
   retryAttempted?: boolean;
   retrySucceeded?: boolean;
+  postHeaderBodyTimeout?: boolean;
+  postHeaderBodyTimeoutRetry?: boolean;
+  postHeaderBodyTimeoutRetrySucceeded?: boolean;
+  postHeaderBodyTimeoutRetryBudgetMs?: number;
+  postHeaderBodyTimeoutRetrySkippedReason?: "insufficient_source_budget";
   proxyColdStartSuspected?: boolean;
 }
 
