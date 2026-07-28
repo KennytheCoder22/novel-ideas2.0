@@ -1,5 +1,7 @@
 # NovelIdeas Recommendation Philosophy
 
+Recommendation systems accumulate thousands of implementation decisions over time. Without a durable philosophy, local optimizations such as returned count, code simplicity, passing tests, or endpoint success can collectively reduce recommendation quality even when each change appears reasonable in isolation. This document exists to preserve the product's intent across changing implementations and contributors.
+
 ## Purpose
 
 This document is the constitution for recommendation work in NovelIdeas.
@@ -534,3 +536,7 @@ NovelIdeas is succeeding when it can:
 Implementations will change. Sources will change. Models and APIs will change.
 
 These standards should not.
+
+**NovelIdeas optimizes for reader trust, not algorithmic confidence.**
+
+The system should be willing to express honest uncertainty and return a smaller relevant slate rather than confidently present weak recommendations. Saying "I don't know enough yet" protects reader trust better than filling every slot with unsupported certainty.
