@@ -514,9 +514,9 @@ async function main() {
     ],
   });
   const teenBroadFallbackSummary = summarizePlans(buildOpenLibraryQueryPlansForRegression(sourcePlan, teenBroadFallbackProfile, teenProfile));
-  assertDeepEqual(teenBroadFallbackSummary.queries, ["fantasy school", "action adventure", "young adult fantasy"], "teen locked lane should attempt specific queries before broad fallback");
+  assertDeepEqual(teenBroadFallbackSummary.queries, ["young adult fantasy", "fantasy"], "teen locked lane should preserve the frozen general Fantasy query order");
   assertEqual(teenBroadFallbackSummary.dominance.openLibraryPlanner, "teen_locked_baseline", "teen broad fallback ordering should preserve locked planner");
-  console.log(JSON.stringify({ name: "teen locked lane tries specific queries before broad fallback", pass: true, queries: teenBroadFallbackSummary.queries }));
+  console.log(JSON.stringify({ name: "teen locked lane preserves frozen general Fantasy query order", pass: true, queries: teenBroadFallbackSummary.queries }));
 
   const originalFetch = globalThis.fetch;
 
