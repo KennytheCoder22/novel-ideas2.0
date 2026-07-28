@@ -1,0 +1,118 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixtureId": "openlibrary-vs-googlebooks-representative-v1",
+  "captureKind": "deterministic_comparison_fixture",
+  "cases": [
+    {
+      "caseId": "teen-fantasy",
+      "profile": {
+        "profileId": "comparison-teen-fantasy-v1",
+        "ageBand": "teens",
+        "readerIntentSummary": "Teen reader seeking document-backed fantasy, magic, friendship, school, and adventure.",
+        "positiveSignals": ["fantasy", "magic", "friendship", "adventure"],
+        "negativeSignals": [],
+        "formatIntent": ["book"]
+      },
+      "sources": [
+        {
+          "source": "openLibrary",
+          "artifactId": "fixture:openLibrary:teen-fantasy:v1",
+          "profileId": "comparison-teen-fantasy-v1",
+          "mode": "fixture",
+          "actualActivation": "attempted",
+          "terminalState": "eligible_useful",
+          "targetSlateSize": 5,
+          "failureReason": null,
+          "diagnostics": { "dropCounts": { "duplicate_doc": 2 }, "rejectionCounts": {} },
+          "selected": [
+            { "stableId": "ol:ember-academy", "workKey": "work:ember-academy", "title": "Ember Academy", "creators": ["Mira Vale"], "description": "A teen discovers dangerous magic at an academy and relies on friends.", "genres": ["Fantasy"], "themes": ["Magic", "Friendship", "School"], "formats": ["book"], "publicationYear": 2018, "seriesKey": "ember-academy", "selectedRank": 1, "queryProvenance": { "query": "young adult magical adventure", "queryFamily": "fantasy_adventure", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "magic", "friendship"], "negative": [] } },
+            { "stableId": "ol:moonlit-map", "workKey": "work:moonlit-map", "title": "The Moonlit Map", "creators": ["Jon Bell"], "description": "Teen friends follow a magical map through a hidden kingdom.", "genres": ["Fantasy", "Adventure"], "themes": ["Friendship", "Courage"], "formats": ["book"], "publicationYear": 2020, "seriesKey": null, "selectedRank": 2, "queryProvenance": { "query": "young adult magical adventure", "queryFamily": "fantasy_adventure", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "adventure", "friendship"], "negative": [] } },
+            { "stableId": "ol:stormbound-heirs", "workKey": "work:stormbound-heirs", "title": "Stormbound Heirs", "creators": ["Nia Hart"], "description": "Young heroes master storm magic and protect their found family.", "genres": ["Fantasy"], "themes": ["Magic", "Found family"], "formats": ["book"], "publicationYear": 2021, "seriesKey": "stormbound", "selectedRank": 3, "queryProvenance": { "query": "young adult fantasy series", "queryFamily": "fantasy_series", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "magic"], "negative": [] } },
+            { "stableId": "ol:glass-familiar", "workKey": "work:glass-familiar", "title": "The Glass Familiar", "creators": ["Ari North"], "description": "A teen apprentice solves a magical school mystery with friends.", "genres": ["Fantasy", "Mystery"], "themes": ["Magic", "School", "Friendship"], "formats": ["book"], "publicationYear": 2019, "seriesKey": null, "selectedRank": 4, "queryProvenance": { "query": "young adult fantasy series", "queryFamily": "fantasy_series", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "school", "friendship"], "negative": [] } },
+            { "stableId": "ol:crown-lanterns", "workKey": "work:crown-lanterns", "title": "Crown of Lanterns", "creators": ["Leah Stone"], "description": "A young rebel undertakes a magical adventure to save her city.", "genres": ["Fantasy", "Adventure"], "themes": ["Magic", "Courage"], "formats": ["book"], "publicationYear": 2022, "seriesKey": null, "selectedRank": 5, "queryProvenance": { "query": "teen fantasy adventure", "queryFamily": "fantasy_adventure", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "adventure", "magic"], "negative": [] } }
+          ]
+        },
+        {
+          "source": "googleBooks",
+          "artifactId": "fixture:googleBooks:teen-fantasy:v1",
+          "profileId": "comparison-teen-fantasy-v1",
+          "mode": "fixture",
+          "actualActivation": "attempted",
+          "terminalState": "eligible_useful",
+          "targetSlateSize": 5,
+          "failureReason": null,
+          "diagnostics": { "dropCounts": { "publication_shape_rejected": 1 }, "rejectionCounts": {} },
+          "selected": [
+            { "stableId": "gb:ember-academy", "workKey": "work:ember-academy", "title": "Ember Academy", "creators": ["Mira Vale"], "description": "A student at a magical academy must rely on friendship and courage.", "genres": ["Young Adult Fiction", "Fantasy"], "themes": ["Magic", "Friendship"], "formats": ["book"], "publicationYear": 2018, "seriesKey": "ember-academy", "selectedRank": 1, "queryProvenance": { "query": "young adult fantasy magic novel", "queryFamily": "fantasy", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "magic", "friendship"], "negative": [] } },
+            { "stableId": "gb:moonlit-map", "workKey": "work:moonlit-map", "title": "The Moonlit Map", "creators": ["Jon Bell"], "description": "Friends follow an enchanted map into a dangerous fantasy kingdom.", "genres": ["Young Adult Fiction", "Fantasy", "Adventure"], "themes": ["Friendship"], "formats": ["book"], "publicationYear": 2020, "seriesKey": null, "selectedRank": 2, "queryProvenance": { "query": "young adult fantasy adventure novel", "queryFamily": "fantasy_adventure", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "adventure", "friendship"], "negative": [] } },
+            { "stableId": "gb:warden-stars", "workKey": "work:warden-stars", "title": "Warden of Stars", "creators": ["Eva Sol"], "description": "A teen guardian learns celestial magic while protecting her friends.", "genres": ["Young Adult Fiction", "Fantasy"], "themes": ["Magic", "Friendship"], "formats": ["book"], "publicationYear": 2021, "seriesKey": "star-wardens", "selectedRank": 3, "queryProvenance": { "query": "young adult fantasy magic novel", "queryFamily": "fantasy", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "magic"], "negative": [] } },
+            { "stableId": "gb:school-cinders", "workKey": "work:school-cinders", "title": "School of Cinders", "creators": ["Ren Park"], "description": "Rivals at a magical school become allies during a dangerous trial.", "genres": ["Young Adult Fiction", "Fantasy"], "themes": ["School", "Magic", "Friendship"], "formats": ["book"], "publicationYear": 2022, "seriesKey": "cinder-school", "selectedRank": 4, "queryProvenance": { "query": "teen fantasy school novel", "queryFamily": "fantasy_school", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "school", "friendship"], "negative": [] } },
+            { "stableId": "gb:lantern-thief", "workKey": "work:lantern-thief", "title": "The Lantern Thief", "creators": ["Owen Reed"], "description": null, "genres": ["Young Adult Fiction", "Fantasy", "Adventure"], "themes": ["Magic"], "formats": ["book"], "publicationYear": null, "seriesKey": null, "selectedRank": 5, "queryProvenance": { "query": "young adult fantasy adventure novel", "queryFamily": "fantasy_adventure", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "adventure"], "negative": [] } }
+          ]
+        }
+      ],
+      "humanReviewArtifacts": []
+    },
+    {
+      "caseId": "adult-mystery",
+      "profile": {
+        "profileId": "comparison-adult-mystery-v1",
+        "ageBand": "adult",
+        "readerIntentSummary": "Adult reader seeking narrative mystery, investigation, crime, suspense, and secrets.",
+        "positiveSignals": ["mystery", "thriller", "investigation", "secrets"],
+        "negativeSignals": [],
+        "formatIntent": ["book"]
+      },
+      "sources": [
+        {
+          "source": "openLibrary", "artifactId": "fixture:openLibrary:adult-mystery:v1", "profileId": "comparison-adult-mystery-v1", "mode": "fixture", "actualActivation": "attempted", "terminalState": "eligible_underfilled", "targetSlateSize": 5, "failureReason": null,
+          "diagnostics": { "dropCounts": { "adult_openlibrary_non_narrative_shape": 2 }, "rejectionCounts": { "adult_openlibrary_no_positive_metadata_taste": 1 } },
+          "selected": [
+            { "stableId": "ol:locked-observatory", "workKey": "work:locked-observatory", "title": "The Locked Observatory", "creators": ["Rhea Moss"], "description": "A detective investigates a murder inside a sealed observatory.", "genres": ["Mystery", "Thriller"], "themes": ["Investigation"], "formats": ["book"], "publicationYear": 2016, "seriesKey": null, "selectedRank": 1, "queryProvenance": { "query": "mystery thriller", "queryFamily": "mystery_thriller", "fallback": false }, "documentEvidence": { "positive": ["mystery", "investigation"], "negative": [] } },
+            { "stableId": "ol:ashes-archive", "workKey": "work:ashes-archive", "title": "Ashes in the Archive", "creators": ["D. Cole"], "description": "An archivist uncovers a crime hidden in family letters.", "genres": ["Mystery", "Crime"], "themes": ["Secrets"], "formats": ["book"], "publicationYear": 2019, "seriesKey": null, "selectedRank": 2, "queryProvenance": { "query": "crime mystery fiction", "queryFamily": "crime_mystery", "fallback": false }, "documentEvidence": { "positive": ["mystery", "crime", "secrets"], "negative": [] } },
+            { "stableId": "ol:last-alibi", "workKey": "work:last-alibi", "title": "The Last Alibi", "creators": ["S. Wynn"], "description": "A lawyer and detective pursue the only witness to an old crime.", "genres": ["Mystery", "Crime", "Suspense"], "themes": ["Investigation"], "formats": ["book"], "publicationYear": 2020, "seriesKey": "last-alibi", "selectedRank": 3, "queryProvenance": { "query": "mystery thriller", "queryFamily": "mystery_thriller", "fallback": false }, "documentEvidence": { "positive": ["mystery", "crime", "suspense"], "negative": [] } }
+          ]
+        },
+        {
+          "source": "googleBooks", "artifactId": "fixture:googleBooks:adult-mystery:v1", "profileId": "comparison-adult-mystery-v1", "mode": "fixture", "actualActivation": "attempted", "terminalState": "eligible_useful", "targetSlateSize": 5, "failureReason": null,
+          "diagnostics": { "dropCounts": { "publication_shape_rejected": 1 }, "rejectionCounts": {} },
+          "selected": [
+            { "stableId": "gb:locked-observatory", "workKey": "work:locked-observatory", "title": "The Locked Observatory", "creators": ["Rhea Moss"], "description": "A detective investigates a murder inside a sealed observatory.", "genres": ["Fiction", "Mystery", "Thriller"], "themes": ["Investigation"], "formats": ["book"], "publicationYear": 2016, "seriesKey": null, "selectedRank": 1, "queryProvenance": { "query": "adult mystery thriller novel", "queryFamily": "mystery_thriller", "fallback": false }, "documentEvidence": { "positive": ["mystery", "thriller"], "negative": [] } },
+            { "stableId": "gb:ashes-archive", "workKey": "work:ashes-archive", "title": "Ashes in the Archive", "creators": ["D. Cole"], "description": "An archivist uncovers a crime hidden in a family's letters.", "genres": ["Fiction", "Mystery", "Crime"], "themes": ["Secrets"], "formats": ["book"], "publicationYear": 2019, "seriesKey": null, "selectedRank": 2, "queryProvenance": { "query": "adult crime mystery novel", "queryFamily": "crime_mystery", "fallback": false }, "documentEvidence": { "positive": ["mystery", "crime", "secrets"], "negative": [] } },
+            { "stableId": "gb:quiet-verdict", "workKey": "work:quiet-verdict", "title": "A Quiet Verdict", "creators": ["Mara King"], "description": "A jury consultant investigates evidence that vanished during a murder trial.", "genres": ["Fiction", "Mystery", "Legal thriller"], "themes": ["Investigation", "Secrets"], "formats": ["book"], "publicationYear": 2021, "seriesKey": null, "selectedRank": 3, "queryProvenance": { "query": "adult mystery thriller novel", "queryFamily": "mystery_thriller", "fallback": false }, "documentEvidence": { "positive": ["mystery", "investigation"], "negative": [] } },
+            { "stableId": "gb:blackwater-witness", "workKey": "work:blackwater-witness", "title": "Blackwater Witness", "creators": ["Iris Lane"], "description": "A witness returns home and becomes part of a dangerous investigation.", "genres": ["Fiction", "Mystery", "Thriller"], "themes": ["Investigation"], "formats": ["book"], "publicationYear": 2018, "seriesKey": null, "selectedRank": 4, "queryProvenance": { "query": "adult mystery thriller novel", "queryFamily": "mystery_thriller", "fallback": false }, "documentEvidence": { "positive": ["mystery", "thriller"], "negative": [] } },
+            { "stableId": "gb:measure-doubt", "workKey": "work:measure-doubt", "title": "A Measure of Doubt", "creators": ["P. Grant"], "description": "A detective questions every clue in a tightly plotted murder mystery.", "genres": ["Fiction", "Mystery"], "themes": ["Investigation"], "formats": ["book"], "publicationYear": 2021, "seriesKey": null, "selectedRank": 5, "queryProvenance": { "query": "adult crime mystery novel", "queryFamily": "crime_mystery", "fallback": false }, "documentEvidence": { "positive": ["mystery", "investigation"], "negative": [] } }
+          ]
+        }
+      ],
+      "humanReviewArtifacts": []
+    },
+    {
+      "caseId": "preteen-adventure-source-failure",
+      "profile": {
+        "profileId": "comparison-preteen-adventure-v1",
+        "ageBand": "preteens",
+        "readerIntentSummary": "Preteen reader seeking age-appropriate fantasy adventure, friendship, school, and mystery.",
+        "positiveSignals": ["fantasy", "adventure", "friendship", "school", "mystery"],
+        "negativeSignals": ["adult horror"],
+        "formatIntent": ["book"]
+      },
+      "sources": [
+        {
+          "source": "openLibrary", "artifactId": "fixture:openLibrary:preteen-adventure:v1", "profileId": "comparison-preteen-adventure-v1", "mode": "fixture", "actualActivation": "attempted", "terminalState": "eligible_underfilled", "targetSlateSize": 5, "failureReason": null,
+          "diagnostics": { "dropCounts": { "middle_grades_age_shape_mismatch": 2 }, "rejectionCounts": {} },
+          "selected": [
+            { "stableId": "ol:dragon-club", "workKey": "work:dragon-club-detectives", "title": "Dragon Club Detectives", "creators": ["Pia Woods"], "description": "Middle school friends and a dragon solve a magical school mystery.", "genres": ["Juvenile Fiction", "Fantasy", "Mystery"], "themes": ["Friendship", "School"], "formats": ["book"], "publicationYear": 2019, "seriesKey": "dragon-club", "selectedRank": 1, "queryProvenance": { "query": "middle grade fantasy mystery", "queryFamily": "fantasy_mystery", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "friendship", "school", "mystery"], "negative": [] } },
+            { "stableId": "ol:library-door", "workKey": "work:library-door", "title": "The Library Door", "creators": ["Kit Snow"], "description": "Children enter a fantasy world and work together to return home.", "genres": ["Juvenile Fiction", "Fantasy", "Adventure"], "themes": ["Family", "Friendship"], "formats": ["book"], "publicationYear": 2020, "seriesKey": null, "selectedRank": 2, "queryProvenance": { "query": "children fantasy adventure", "queryFamily": "fantasy_adventure", "fallback": false }, "documentEvidence": { "positive": ["fantasy", "adventure", "friendship"], "negative": [] } }
+          ]
+        },
+        {
+          "source": "googleBooks", "artifactId": "fixture:googleBooks:preteen-adventure:v1", "profileId": "comparison-preteen-adventure-v1", "mode": "fixture", "actualActivation": "attempted", "terminalState": "response_invalid", "targetSlateSize": 5, "failureReason": "fixture_invalid_response_shape",
+          "diagnostics": { "dropCounts": {}, "rejectionCounts": {} },
+          "selected": []
+        }
+      ],
+      "humanReviewArtifacts": []
+    }
+  ]
+}
