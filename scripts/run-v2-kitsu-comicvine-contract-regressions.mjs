@@ -73,6 +73,8 @@ const sessionSignals = [
   { action: "like", title: "Gone Girl", genres: ["psychological thriller", "mystery"], themes: ["crime", "suspense"], format: "book" },
   { action: "like", title: "The Girl with the Dragon Tattoo", genres: ["crime", "thriller"], themes: ["investigation"], format: "book" },
   { action: "like", title: "The Silent Patient", genres: ["mystery", "thriller"], themes: ["psychological"], format: "book" },
+  // manga format signal required for scope gate — Kitsu only activates for manga/anime preference profiles
+  { action: "like", title: "Monster", genres: ["psychological thriller"], themes: ["investigation"], format: "manga" },
 ];
 
 const originalFetch = globalThis.fetch;

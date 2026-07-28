@@ -1,0 +1,216 @@
+{
+  "probeAt": "2026-07-28T01:36:41.533Z",
+  "delayMs": 250,
+  "totalCalls": 20,
+  "successCount": 20,
+  "failCount": 0,
+  "successRate": "100%",
+  "avgElapsedMs": 543,
+  "outcomeCounts": {
+    "success": 20
+  },
+  "rootCause": "environment_flake_acceptable",
+  "recommendation": "Delay sufficient. Baseline failures were environment flake. No retry needed.",
+  "results": [
+    {
+      "index": 1,
+      "query": "fantasy manga",
+      "url": "[kitsu]/manga?filter[text]=fantasy%20manga&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 806
+    },
+    {
+      "index": 2,
+      "query": "thriller mystery",
+      "url": "[kitsu]/manga?filter[text]=thriller%20mystery&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 1,
+      "elapsedMs": 2091
+    },
+    {
+      "index": 3,
+      "query": "drama historical",
+      "url": "[kitsu]/manga?filter[text]=drama%20historical&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 284
+    },
+    {
+      "index": 4,
+      "query": "science fiction",
+      "url": "[kitsu]/manga?filter[text]=science%20fiction&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 330
+    },
+    {
+      "index": 5,
+      "query": "horror paranormal",
+      "url": "[kitsu]/manga?filter[text]=horror%20paranormal&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 1,
+      "elapsedMs": 1067
+    },
+    {
+      "index": 6,
+      "query": "romance manhwa",
+      "url": "[kitsu]/manga?filter[text]=romance%20manhwa&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 189
+    },
+    {
+      "index": 7,
+      "query": "adventure action",
+      "url": "[kitsu]/manga?filter[text]=adventure%20action&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 270
+    },
+    {
+      "index": 8,
+      "query": "fantasy dystopian",
+      "url": "[kitsu]/manga?filter[text]=fantasy%20dystopian&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 1,
+      "elapsedMs": 246
+    },
+    {
+      "index": 9,
+      "query": "psychological thriller",
+      "url": "[kitsu]/manga?filter[text]=psychological%20thriller&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 4,
+      "elapsedMs": 576
+    },
+    {
+      "index": 10,
+      "query": "slice of life",
+      "url": "[kitsu]/manga?filter[text]=slice%20of%20life&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 139
+    },
+    {
+      "index": 11,
+      "query": "fantasy mythology",
+      "url": "[kitsu]/manga?filter[text]=fantasy%20mythology&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 3,
+      "elapsedMs": 214
+    },
+    {
+      "index": 12,
+      "query": "dark fantasy",
+      "url": "[kitsu]/manga?filter[text]=dark%20fantasy&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 923
+    },
+    {
+      "index": 13,
+      "query": "comedy romance",
+      "url": "[kitsu]/manga?filter[text]=comedy%20romance&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 658
+    },
+    {
+      "index": 14,
+      "query": "military history",
+      "url": "[kitsu]/manga?filter[text]=military%20history&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 203
+    },
+    {
+      "index": 15,
+      "query": "cozy fantasy",
+      "url": "[kitsu]/manga?filter[text]=cozy%20fantasy&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 2,
+      "elapsedMs": 173
+    },
+    {
+      "index": 16,
+      "query": "crime mystery",
+      "url": "[kitsu]/manga?filter[text]=crime%20mystery&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 381
+    },
+    {
+      "index": 17,
+      "query": "adult manga",
+      "url": "[kitsu]/manga?filter[text]=adult%20manga&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 1039
+    },
+    {
+      "index": 18,
+      "query": "literary drama",
+      "url": "[kitsu]/manga?filter[text]=literary%20drama&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 2,
+      "elapsedMs": 248
+    },
+    {
+      "index": 19,
+      "query": "supernatural horror",
+      "url": "[kitsu]/manga?filter[text]=supernatural%20horror&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 821
+    },
+    {
+      "index": 20,
+      "query": "epic adventure",
+      "url": "[kitsu]/manga?filter[text]=epic%20adventure&page[limit]=5",
+      "status": 200,
+      "outcome": "success",
+      "error": null,
+      "resultCount": 5,
+      "elapsedMs": 206
+    }
+  ]
+}

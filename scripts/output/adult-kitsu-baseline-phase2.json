@@ -1,0 +1,1369 @@
+{
+  "phase": "phase2-baseline",
+  "source": "kitsu",
+  "generatedAt": "2026-07-28T01:46:38.608Z",
+  "runCount": 14,
+  "countContractPasses": 5,
+  "countContractFails": 9,
+  "infrastructureAssertionPasses": 56,
+  "infrastructureAssertionFails": 0,
+  "liveApiFailures": 8,
+  "formatDistribution": {
+    "manga": 23,
+    "book": 2
+  },
+  "entitySubtypeDistribution": {
+    "manhua": 6,
+    "manhwa": 9,
+    "manga": 8,
+    "novel": 2
+  },
+  "countContractFailureReasons": {
+    "api_failed": 8,
+    "underfill_0": 1
+  },
+  "runs": [
+    {
+      "profileId": "adult_a",
+      "profileLabel": "Adult A — control",
+      "sequence": [
+        "like",
+        "like",
+        "dislike",
+        "skip",
+        "like",
+        "dislike",
+        "like",
+        "skip"
+      ],
+      "kitsuStatus": "succeeded",
+      "rawCount": 20,
+      "rawApiCount": 20,
+      "normalizedCount": 20,
+      "finalItemCount": 5,
+      "countContractPass": true,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [
+        {
+          "title": "Surviving the Cataclysm",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "27.94",
+          "subtype": "manhua",
+          "ageRating": null,
+          "maturityBand": null,
+          "genres": [
+            "dystopian literary",
+            "fantasy",
+            "adult",
+            "atmospheric",
+            "dystopian",
+            "literary"
+          ],
+          "themes": [
+            "manhua"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/surviving-the-cataclysm"
+        },
+        {
+          "title": "3 Level Combination",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "26.24",
+          "subtype": "manhwa",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "dystopian literary",
+            "fantasy",
+            "adult",
+            "atmospheric",
+            "dystopian",
+            "literary"
+          ],
+          "themes": [
+            "PG",
+            "manhwa"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/3-level-combination"
+        },
+        {
+          "title": "Ginkaku Hakase to Marmot",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "26.24",
+          "subtype": "manga",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "dystopian literary",
+            "fantasy",
+            "adult",
+            "atmospheric",
+            "dystopian",
+            "literary"
+          ],
+          "themes": [
+            "PG",
+            "manga"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/ginkaku-hakase-to-marmot"
+        },
+        {
+          "title": "Aegis",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "26.06",
+          "subtype": "manhua",
+          "ageRating": null,
+          "maturityBand": null,
+          "genres": [
+            "dystopian literary",
+            "fantasy",
+            "adult",
+            "atmospheric",
+            "dystopian",
+            "literary"
+          ],
+          "themes": [
+            "manhua"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/aegis"
+        },
+        {
+          "title": "Steins;Gate: Boukan no Rebellion",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "24.86",
+          "subtype": "manga",
+          "ageRating": null,
+          "maturityBand": null,
+          "genres": [
+            "dystopian literary",
+            "fantasy",
+            "adult",
+            "atmospheric",
+            "dystopian",
+            "literary"
+          ],
+          "themes": [
+            "manga"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/steins-gate-boukan-no-rebellion"
+        }
+      ],
+      "rawTitles": [
+        "Abara",
+        "3 Level Combination",
+        "The Fairy Captivity",
+        "Kowloon Generic Romance",
+        "Tonggang Seoljeong Kkeonwatdanikkayo?",
+        "Surviving the Cataclysm",
+        "Dokuro",
+        "Pursuit",
+        "Kowareta Sekai no Mukouga wa: Shoujotachi no Dystopian Seizon Jutsu",
+        "Aegis"
+      ],
+      "dominantQuery": "dystopian literary fantasy adult atmospheric book",
+      "queries": [
+        "dystopian literary fantasy adult atmospheric book",
+        "adult book"
+      ],
+      "failedReason": null,
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "adult_b",
+      "profileLabel": "Adult B — recovery-assisted",
+      "sequence": [
+        "dislike",
+        "dislike",
+        "like",
+        "skip",
+        "dislike",
+        "like",
+        "skip",
+        "like"
+      ],
+      "kitsuStatus": "failed",
+      "rawCount": 0,
+      "rawApiCount": 0,
+      "normalizedCount": 0,
+      "finalItemCount": 0,
+      "countContractPass": false,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [],
+      "rawTitles": [],
+      "dominantQuery": "drama historical psychological thriller adult dark book",
+      "queries": [
+        "drama historical psychological thriller adult dark book",
+        "adult book"
+      ],
+      "failedReason": "fetch_error",
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "adult_c",
+      "profileLabel": "Adult C — underfill/rollback",
+      "sequence": [
+        "like",
+        "skip",
+        "like",
+        "skip",
+        "dislike",
+        "like",
+        "dislike",
+        "like"
+      ],
+      "kitsuStatus": "failed",
+      "rawCount": 0,
+      "rawApiCount": 0,
+      "normalizedCount": 0,
+      "finalItemCount": 0,
+      "countContractPass": false,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [],
+      "rawTitles": [],
+      "dominantQuery": "drama historical fantasy adult dark book",
+      "queries": [
+        "drama historical fantasy adult dark book",
+        "adult book"
+      ],
+      "failedReason": "fetch_error",
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "random_41827",
+      "profileLabel": "Random Seed 41827",
+      "sequence": [
+        "like",
+        "like",
+        "like",
+        "skip",
+        "skip",
+        "skip",
+        "dislike",
+        "like"
+      ],
+      "kitsuStatus": "failed",
+      "rawCount": 0,
+      "rawApiCount": 0,
+      "normalizedCount": 0,
+      "finalItemCount": 0,
+      "countContractPass": false,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [],
+      "rawTitles": [],
+      "dominantQuery": "drama historical dystopian literary adult dark book",
+      "queries": [
+        "drama historical dystopian literary adult dark book",
+        "adult book"
+      ],
+      "failedReason": "fetch_error",
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "random_59314",
+      "profileLabel": "Random Seed 59314",
+      "sequence": [
+        "like",
+        "dislike",
+        "skip",
+        "skip",
+        "skip",
+        "skip",
+        "skip",
+        "like"
+      ],
+      "kitsuStatus": "failed",
+      "rawCount": 0,
+      "rawApiCount": 0,
+      "normalizedCount": 0,
+      "finalItemCount": 0,
+      "countContractPass": false,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [],
+      "rawTitles": [],
+      "dominantQuery": "drama historical fantasy adult atmospheric book",
+      "queries": [
+        "drama historical fantasy adult atmospheric book",
+        "adult book"
+      ],
+      "failedReason": "fetch_error",
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "random_77209",
+      "profileLabel": "Random Seed 77209",
+      "sequence": [
+        "skip",
+        "like",
+        "like",
+        "dislike",
+        "skip",
+        "skip",
+        "skip",
+        "skip"
+      ],
+      "kitsuStatus": "failed",
+      "rawCount": 0,
+      "rawApiCount": 0,
+      "normalizedCount": 0,
+      "finalItemCount": 0,
+      "countContractPass": false,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [],
+      "rawTitles": [],
+      "dominantQuery": "dystopian literary thriller mystery adult dark book",
+      "queries": [
+        "dystopian literary thriller mystery adult dark book",
+        "adult book"
+      ],
+      "failedReason": "fetch_error",
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "weird_horror_yes_violence_no",
+      "profileLabel": "Horror yes, graphic violence no",
+      "sequence": [
+        "skip",
+        "dislike",
+        "like",
+        "skip",
+        "skip",
+        "like",
+        "skip",
+        "skip"
+      ],
+      "kitsuStatus": "failed",
+      "rawCount": 0,
+      "rawApiCount": 0,
+      "normalizedCount": 0,
+      "finalItemCount": 0,
+      "countContractPass": false,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [],
+      "rawTitles": [],
+      "dominantQuery": "psychological thriller thriller mystery adult dark book",
+      "queries": [
+        "psychological thriller thriller mystery adult dark book",
+        "adult book"
+      ],
+      "failedReason": "fetch_error",
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "weird_fantasy_military_history",
+      "profileLabel": "Fantasy + Military History (corrected polarity)",
+      "sequence": [
+        "like",
+        "like",
+        "dislike",
+        "like",
+        "skip",
+        "dislike",
+        "like",
+        "skip"
+      ],
+      "kitsuStatus": "succeeded",
+      "rawCount": 7,
+      "rawApiCount": 7,
+      "normalizedCount": 7,
+      "finalItemCount": 5,
+      "countContractPass": true,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [
+        {
+          "title": "The Fairy Captivity",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "21.91",
+          "subtype": "manhua",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "dystopian literary",
+            "adult",
+            "science fiction",
+            "comedy",
+            "drama"
+          ],
+          "themes": [
+            "Teens 13 or older",
+            "PG",
+            "manhua"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/the-fairy-captivity"
+        },
+        {
+          "title": "Zelda no Densetsu: Toki no Ocarina",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "18.71",
+          "subtype": "manga",
+          "ageRating": null,
+          "maturityBand": null,
+          "genres": [
+            "adult",
+            "book",
+            "magic",
+            "action",
+            "fantasy",
+            "adventure"
+          ],
+          "themes": [
+            "manga"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/the-legend-of-zelda-ocarina-of-time"
+        },
+        {
+          "title": "My Sister Picked Up the Male Lead",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "18.46",
+          "subtype": "manhwa",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "adult",
+            "book",
+            "fantasy",
+            "romance",
+            "isekai"
+          ],
+          "themes": [
+            "PG",
+            "manhwa"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/my-sister-picked-up-the-male-lead"
+        },
+        {
+          "title": "Ningen Shikkaku",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "11.24",
+          "subtype": "manga",
+          "ageRating": "G",
+          "maturityBand": null,
+          "genres": [
+            "adult",
+            "book",
+            "drama",
+            "psychological",
+            "seinen"
+          ],
+          "themes": [
+            "G",
+            "manga"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/ningen-shikkaku-2017"
+        },
+        {
+          "title": "Kanojo de Ippai",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "9.92",
+          "subtype": "manga",
+          "ageRating": "R",
+          "maturityBand": "adult",
+          "genres": [
+            "adult",
+            "book",
+            "comedy",
+            "ecchi",
+            "harem",
+            "slice of life"
+          ],
+          "themes": [
+            "Smut",
+            "R",
+            "manga"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/kanojo-de-ippai"
+        }
+      ],
+      "rawTitles": [
+        "The Fairy Captivity",
+        "Zelda no Densetsu: Toki no Ocarina",
+        "The Color of Earth",
+        "My Sister Picked Up the Male Lead",
+        "The Times of Botchan",
+        "Ningen Shikkaku",
+        "Kanojo de Ippai"
+      ],
+      "dominantQuery": "fantasy dystopian literary adult fantasy book",
+      "queries": [
+        "fantasy dystopian literary adult fantasy book",
+        "adult book"
+      ],
+      "failedReason": null,
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "weird_cozy_fantasy_true_crime",
+      "profileLabel": "Cozy Fantasy but also True Crime",
+      "sequence": [
+        "like",
+        "dislike",
+        "like",
+        "skip",
+        "skip",
+        "like",
+        "like",
+        "skip"
+      ],
+      "kitsuStatus": "failed",
+      "rawCount": 0,
+      "rawApiCount": 0,
+      "normalizedCount": 0,
+      "finalItemCount": 0,
+      "countContractPass": false,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [],
+      "rawTitles": [],
+      "dominantQuery": "fantasy fantasy mythology adult atmospheric book",
+      "queries": [
+        "fantasy fantasy mythology adult atmospheric book",
+        "adult book"
+      ],
+      "failedReason": "fetch_error",
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "weird_manga_not_anime",
+      "profileLabel": "Manga but not anime",
+      "sequence": [
+        "like",
+        "dislike",
+        "skip",
+        "like",
+        "skip",
+        "skip",
+        "like",
+        "skip"
+      ],
+      "kitsuStatus": "failed",
+      "rawCount": 0,
+      "rawApiCount": 0,
+      "normalizedCount": 0,
+      "finalItemCount": 0,
+      "countContractPass": false,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [],
+      "rawTitles": [],
+      "dominantQuery": "fantasy fantasy mythology adult fantasy book",
+      "queries": [
+        "fantasy fantasy mythology adult fantasy book",
+        "adult book"
+      ],
+      "failedReason": "fetch_error",
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "weird_likes_almost_everything",
+      "profileLabel": "Likes almost everything",
+      "sequence": [
+        "like",
+        "like",
+        "like",
+        "like",
+        "like",
+        "like",
+        "like",
+        "like"
+      ],
+      "kitsuStatus": "succeeded",
+      "rawCount": 17,
+      "rawApiCount": 17,
+      "normalizedCount": 17,
+      "finalItemCount": 5,
+      "countContractPass": true,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [
+        {
+          "title": "Gendai Dungeon Life no Tsuzuki wa Isekai Open World de!",
+          "format": "book",
+          "source": "kitsu",
+          "score": "44.21",
+          "subtype": "novel",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "drama historical",
+            "adult",
+            "dark",
+            "dragon",
+            "adventure"
+          ],
+          "themes": [
+            "Teens 13 or older",
+            "PG",
+            "novel"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/gendai-dungeon-life-no-tsuzuki-wa-isekai-open-world-de"
+        },
+        {
+          "title": "Exchanged Heart",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "39.91",
+          "subtype": "manhwa",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "drama historical",
+            "adult",
+            "dark",
+            "historical",
+            "action"
+          ],
+          "themes": [
+            "PG",
+            "manhwa"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/exchanged-heart"
+        },
+        {
+          "title": "If You Touch My Little Brother, You’re All Dead",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "39.81",
+          "subtype": "manhwa",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "drama historical",
+            "adult",
+            "dark",
+            "magic",
+            "fantasy world"
+          ],
+          "themes": [
+            "Teens 13 or older",
+            "PG",
+            "manhwa"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/if-you-touch-my-little-brother-you-re-all-dead"
+        },
+        {
+          "title": "Isekai Papa Katsu Oji-san",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "38.91",
+          "subtype": "manga",
+          "ageRating": "R",
+          "maturityBand": "adult",
+          "genres": [
+            "fantasy",
+            "drama historical",
+            "adult",
+            "dark",
+            "ecchi",
+            "romance"
+          ],
+          "themes": [
+            "Ecchi",
+            "R",
+            "manga"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/isekai-papa-katsu-oji-san"
+        },
+        {
+          "title": "Can Xiang Qu",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "38.71",
+          "subtype": "manhua",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "drama historical",
+            "adult",
+            "dark",
+            "shounen ai",
+            "romance"
+          ],
+          "themes": [
+            "Teens 13 or older",
+            "PG",
+            "manhua"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/can-xiang-qu"
+        }
+      ],
+      "rawTitles": [
+        "Neverlan Chronicle",
+        "If You Touch My Little Brother, You’re All Dead",
+        "Cheonjae Uisa Lee Mu-Jin",
+        "Gendai Dungeon Life no Tsuzuki wa Isekai Open World de!",
+        "Exchanged Heart",
+        "Sekai kara Neko ga Kieta nara",
+        "Meiten Restaurant",
+        "Can Xiang Qu",
+        "Isekai Papa Katsu Oji-san",
+        "Yugamul Ekseuteuraro Binguihaetda"
+      ],
+      "dominantQuery": "fantasy drama historical adult dark book",
+      "queries": [
+        "fantasy drama historical adult dark book",
+        "adult book"
+      ],
+      "failedReason": null,
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "weird_dislikes_almost_everything",
+      "profileLabel": "Dislikes almost everything",
+      "sequence": [
+        "dislike",
+        "dislike",
+        "dislike",
+        "dislike",
+        "dislike",
+        "dislike",
+        "dislike",
+        "dislike"
+      ],
+      "kitsuStatus": "succeeded",
+      "rawCount": 21,
+      "rawApiCount": 21,
+      "normalizedCount": 21,
+      "finalItemCount": 0,
+      "countContractPass": false,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [],
+      "rawTitles": [
+        "Hoshikuzu Nina",
+        "Henjo: Hen na Joshikousei Amaguri Senko",
+        "Hanjuku Joshi",
+        "Sweet II - Embrace Me Until I Break",
+        "Tsumasaki ni Kiss",
+        "The Times of Botchan",
+        "Ao no Sekai",
+        "Makoto no Momoka",
+        "Kuyashii Kedo Kimi ga Suki",
+        "Wizard"
+      ],
+      "dominantQuery": "adult reader discovery",
+      "queries": [
+        "adult reader discovery",
+        "adult story"
+      ],
+      "failedReason": null,
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "weird_alternating_pattern",
+      "profileLabel": "Alternating like/dislike",
+      "sequence": [
+        "like",
+        "dislike",
+        "like",
+        "dislike",
+        "like",
+        "dislike",
+        "like",
+        "dislike"
+      ],
+      "kitsuStatus": "succeeded",
+      "rawCount": 9,
+      "rawApiCount": 9,
+      "normalizedCount": 9,
+      "finalItemCount": 5,
+      "countContractPass": true,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [
+        {
+          "title": "ENNEAD",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "22.14",
+          "subtype": "manhwa",
+          "ageRating": "R",
+          "maturityBand": "adult",
+          "genres": [
+            "fantasy",
+            "fantasy mythology",
+            "adult",
+            "atmospheric",
+            "mythology",
+            "book"
+          ],
+          "themes": [
+            "R",
+            "manhwa"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/ennead"
+        },
+        {
+          "title": "Thousand Years Romance",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "20.98",
+          "subtype": "manhua",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "fantasy mythology",
+            "adult",
+            "atmospheric",
+            "comedy",
+            "romance"
+          ],
+          "themes": [
+            "PG",
+            "manhua"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/thousand-years-romance"
+        },
+        {
+          "title": "Tensui",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "18.13",
+          "subtype": "manga",
+          "ageRating": null,
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "fantasy mythology",
+            "adult",
+            "atmospheric",
+            "historical"
+          ],
+          "themes": [
+            "manga"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/tensui"
+        },
+        {
+          "title": "My Sister Picked Up the Male Lead",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "14.90",
+          "subtype": "manhwa",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "adult",
+            "book",
+            "fantasy",
+            "romance",
+            "isekai"
+          ],
+          "themes": [
+            "PG",
+            "manhwa"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/my-sister-picked-up-the-male-lead"
+        },
+        {
+          "title": "Zelda no Densetsu: Toki no Ocarina",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "14.24",
+          "subtype": "manga",
+          "ageRating": null,
+          "maturityBand": null,
+          "genres": [
+            "adult",
+            "book",
+            "magic",
+            "action",
+            "fantasy",
+            "adventure"
+          ],
+          "themes": [
+            "manga"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/the-legend-of-zelda-ocarina-of-time"
+        }
+      ],
+      "rawTitles": [
+        "Tensui",
+        "Thousand Years Romance",
+        "ENNEAD",
+        "Zelda no Densetsu: Toki no Ocarina",
+        "The Color of Earth",
+        "My Sister Picked Up the Male Lead",
+        "The Times of Botchan",
+        "Ningen Shikkaku",
+        "Kanojo de Ippai"
+      ],
+      "dominantQuery": "fantasy fantasy mythology adult atmospheric book",
+      "queries": [
+        "fantasy fantasy mythology adult atmospheric book",
+        "adult book"
+      ],
+      "failedReason": null,
+      "emptyReason": null,
+      "runError": null
+    },
+    {
+      "profileId": "weird_highly_contradictory",
+      "profileLabel": "Highly contradictory signals",
+      "sequence": [
+        "like",
+        "like",
+        "dislike",
+        "like",
+        "dislike",
+        "like",
+        "dislike",
+        "like"
+      ],
+      "kitsuStatus": "succeeded",
+      "rawCount": 17,
+      "rawApiCount": 17,
+      "normalizedCount": 17,
+      "finalItemCount": 5,
+      "countContractPass": true,
+      "assertionPass": 4,
+      "assertionFail": 0,
+      "assertionResults": [
+        {
+          "name": "K-I1: kitsu diagnostic present",
+          "pass": true
+        },
+        {
+          "name": "K-I2: items have source=kitsu",
+          "pass": true
+        },
+        {
+          "name": "K-I3: items carry routingReason provenance",
+          "pass": true
+        },
+        {
+          "name": "K-I4: kitsu status is known",
+          "pass": true
+        }
+      ],
+      "items": [
+        {
+          "title": "Gendai Dungeon Life no Tsuzuki wa Isekai Open World de!",
+          "format": "book",
+          "source": "kitsu",
+          "score": "28.68",
+          "subtype": "novel",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "drama historical",
+            "adult",
+            "dark",
+            "dragon",
+            "adventure"
+          ],
+          "themes": [
+            "Teens 13 or older",
+            "PG",
+            "novel"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/gendai-dungeon-life-no-tsuzuki-wa-isekai-open-world-de"
+        },
+        {
+          "title": "Exchanged Heart",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "26.73",
+          "subtype": "manhwa",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "drama historical",
+            "adult",
+            "dark",
+            "historical",
+            "action"
+          ],
+          "themes": [
+            "PG",
+            "manhwa"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/exchanged-heart"
+        },
+        {
+          "title": "If You Touch My Little Brother, You’re All Dead",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "26.63",
+          "subtype": "manhwa",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "drama historical",
+            "adult",
+            "dark",
+            "magic",
+            "fantasy world"
+          ],
+          "themes": [
+            "Teens 13 or older",
+            "PG",
+            "manhwa"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/if-you-touch-my-little-brother-you-re-all-dead"
+        },
+        {
+          "title": "Can Xiang Qu",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "26.31",
+          "subtype": "manhua",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "drama historical",
+            "adult",
+            "dark",
+            "shounen ai",
+            "romance"
+          ],
+          "themes": [
+            "Teens 13 or older",
+            "PG",
+            "manhua"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/can-xiang-qu"
+        },
+        {
+          "title": "Cheonjae Uisa Lee Mu-Jin",
+          "format": "manga",
+          "source": "kitsu",
+          "score": "25.73",
+          "subtype": "manhwa",
+          "ageRating": "PG",
+          "maturityBand": null,
+          "genres": [
+            "fantasy",
+            "drama historical",
+            "adult",
+            "dark",
+            "ghost",
+            "action"
+          ],
+          "themes": [
+            "Teens 13 or older",
+            "PG",
+            "manhwa"
+          ],
+          "routingReason": "kitsu_v2_intent_adapter",
+          "sourceUrl": "https://kitsu.app/manga/genius-doctor-lee-moo-jin"
+        }
+      ],
+      "rawTitles": [
+        "Neverlan Chronicle",
+        "If You Touch My Little Brother, You’re All Dead",
+        "Cheonjae Uisa Lee Mu-Jin",
+        "Gendai Dungeon Life no Tsuzuki wa Isekai Open World de!",
+        "Exchanged Heart",
+        "Sekai kara Neko ga Kieta nara",
+        "Meiten Restaurant",
+        "Can Xiang Qu",
+        "Isekai Papa Katsu Oji-san",
+        "Yugamul Ekseuteuraro Binguihaetda"
+      ],
+      "dominantQuery": "fantasy drama historical adult dark book",
+      "queries": [
+        "fantasy drama historical adult dark book",
+        "adult book"
+      ],
+      "failedReason": null,
+      "emptyReason": null,
+      "runError": null
+    }
+  ]
+}
