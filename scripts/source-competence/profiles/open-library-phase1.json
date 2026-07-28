@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "1.0.0",
+  "profiles": [
+    {
+      "profileId": "ol-teen-useful",
+      "ageBand": "teens",
+      "positiveSignals": [
+        { "title": "A Wizard's Education", "genres": ["fantasy"], "themes": ["magic", "friendship"], "format": "book" },
+        { "title": "The Hidden Quest", "genres": ["fantasy", "adventure"], "themes": ["courage"], "format": "book" }
+      ],
+      "negativeSignals": [], "skipSignals": [], "formatIntent": ["book"],
+      "expectedActivation": "attempted", "expectedTerminalStateFamily": "eligible_useful",
+      "humanReview": { "status": "not_reviewed", "precisionLabel": null, "notes": null },
+      "notes": "Teen Fantasy fixture with several document-backed YA novels."
+    },
+    {
+      "profileId": "ol-adult-useful", "ageBand": "adult",
+      "positiveSignals": [
+        { "title": "A Locked Room", "genres": ["mystery", "thriller"], "themes": ["investigation"], "format": "book" },
+        { "title": "The Long Shadow", "genres": ["crime", "mystery"], "themes": ["secrets"], "format": "book" }
+      ],
+      "negativeSignals": [], "skipSignals": [], "formatIntent": ["book"],
+      "expectedActivation": "attempted", "expectedTerminalStateFamily": "eligible_useful",
+      "humanReview": { "status": "not_reviewed", "precisionLabel": null, "notes": null },
+      "notes": "Adult mystery fixture with narrative publication shapes."
+    },
+    {
+      "profileId": "ol-preteen-filtering", "ageBand": "preteens",
+      "positiveSignals": [
+        { "title": "Dragon Club", "genres": ["fantasy", "adventure"], "themes": ["friendship", "family"], "format": "book" },
+        { "title": "School Detectives", "genres": ["mystery"], "themes": ["school", "friendship"], "format": "book" }
+      ],
+      "negativeSignals": [{ "title": "Night Terror", "genres": ["horror"], "themes": ["gore"], "format": "book" }],
+      "skipSignals": [], "formatIntent": ["book"],
+      "expectedActivation": "attempted", "expectedTerminalStateFamily": "eligible_underfilled",
+      "humanReview": { "status": "not_reviewed", "precisionLabel": null, "notes": null },
+      "notes": "Middle-grades fixture mixes appropriate fiction with adult and publication-shape rejects."
+    },
+    {
+      "profileId": "ol-honest-underfill", "ageBand": "teens",
+      "positiveSignals": [{ "title": "Orbit Academy", "genres": ["science fiction"], "themes": ["friendship", "survival"], "format": "book" }],
+      "negativeSignals": [], "skipSignals": [], "formatIntent": ["book"],
+      "expectedActivation": "attempted", "expectedTerminalStateFamily": "eligible_underfilled",
+      "humanReview": { "status": "not_reviewed", "precisionLabel": null, "notes": null },
+      "notes": "One strong record is preferable to fixture filler."
+    },
+    {
+      "profileId": "ol-artifact-heavy", "ageBand": "teens",
+      "positiveSignals": [{ "title": "Ember School", "genres": ["fantasy"], "themes": ["magic", "school"], "format": "book" }],
+      "negativeSignals": [], "skipSignals": [], "formatIntent": ["book"],
+      "expectedActivation": "attempted", "expectedTerminalStateFamily": "normalized_but_final_ineligible",
+      "humanReview": { "status": "not_reviewed", "precisionLabel": null, "notes": null },
+      "notes": "Academic criticism, study guides, and catalog-like records should not become recommendations."
+    },
+    {
+      "profileId": "ol-valid-empty", "ageBand": "adult",
+      "positiveSignals": [{ "title": "Quiet Clues", "genres": ["mystery"], "themes": ["investigation"], "format": "book" }],
+      "negativeSignals": [], "skipSignals": [], "formatIntent": ["book"],
+      "expectedActivation": "attempted", "expectedTerminalStateFamily": "valid_empty_response",
+      "humanReview": { "status": "not_reviewed", "precisionLabel": null, "notes": null },
+      "notes": "A syntactically valid empty source response is not a dispatch failure."
+    }
+  ]
+}

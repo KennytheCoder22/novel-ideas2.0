@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0.0",
+  "source": "openLibrary",
+  "captureKind": "deterministic_offline_fixture",
+  "cases": {
+    "ol-teen-useful": { "fixtureId": "ol-teen-useful-v1", "payload": { "docs": [
+      { "key": "/works/OLSC1001W", "title": "Ember Academy", "author_name": ["Mira Vale"], "language": ["eng"], "first_publish_year": 2018, "subject": ["Young adult fiction", "Fantasy", "Magic", "Schools", "Friendship", "Adventure"], "description": "A teenage student discovers dangerous magic at an academy and relies on friends during a fantasy quest." },
+      { "key": "/works/OLSC1002W", "title": "The Moonlit Map", "author_name": ["Jon Bell"], "language": ["eng"], "first_publish_year": 2020, "subject": ["Young adult fiction", "Fantasy", "Adventure", "Friendship", "Courage"], "description": "Teen friends follow a magical map through a hidden kingdom." },
+      { "key": "/works/OLSC1003W", "title": "Stormbound Heirs", "author_name": ["Nia Hart"], "language": ["eng"], "first_publish_year": 2021, "subject": ["Young adult fiction", "Fantasy", "Magic", "Adventure", "Friendship"], "description": "Young heroes must master storm magic and protect their found family." },
+      { "key": "/works/OLSC1004W", "title": "The Glass Familiar", "author_name": ["Ari North"], "language": ["eng"], "first_publish_year": 2019, "subject": ["Young adult fiction", "Fantasy", "Magic", "Friendship", "School stories"], "description": "A teen apprentice and her friends solve a magical school mystery." },
+      { "key": "/works/OLSC1005W", "title": "Crown of Lanterns", "author_name": ["Leah Stone"], "language": ["eng"], "first_publish_year": 2022, "subject": ["Young adult fiction", "Fantasy", "Adventure", "Courage", "Magic"], "description": "A young rebel undertakes a magical adventure to save her city." },
+      { "key": "/works/OLSC1006W", "title": "River of Runes", "author_name": ["T. Rowan"], "language": ["eng"], "first_publish_year": 2017, "subject": ["Young adult fiction", "Fantasy", "Magic", "Friendship", "Adventure"], "description": "Teen travelers decode ancient runes while learning to trust one another." }
+    ] } },
+    "ol-adult-useful": { "fixtureId": "ol-adult-useful-v1", "payload": { "docs": [
+      { "key": "/works/OLSC2001W", "title": "The Locked Observatory", "author_name": ["Rhea Moss"], "language": ["eng"], "first_publish_year": 2016, "subject": ["Fiction", "Mystery", "Detective fiction", "Thrillers", "Investigation"], "description": "A detective investigates a murder inside a sealed observatory." },
+      { "key": "/works/OLSC2002W", "title": "Ashes in the Archive", "author_name": ["D. Cole"], "language": ["eng"], "first_publish_year": 2019, "subject": ["Fiction", "Mystery", "Crime", "Thrillers", "Secrets"], "description": "An archivist uncovers a crime hidden in a family's letters." },
+      { "key": "/works/OLSC2003W", "title": "The Last Alibi", "author_name": ["S. Wynn"], "language": ["eng"], "first_publish_year": 2020, "subject": ["Fiction", "Mystery", "Crime fiction", "Suspense", "Investigation"], "description": "A lawyer and detective pursue the only witness to an old crime." },
+      { "key": "/works/OLSC2004W", "title": "Blackwater Witness", "author_name": ["Iris Lane"], "language": ["eng"], "first_publish_year": 2018, "subject": ["Fiction", "Mystery", "Thriller", "Crime", "Secrets"], "description": "A witness returns home and becomes part of a dangerous investigation." },
+      { "key": "/works/OLSC2005W", "title": "A Measure of Doubt", "author_name": ["P. Grant"], "language": ["eng"], "first_publish_year": 2021, "subject": ["Fiction", "Mystery", "Detective fiction", "Psychological thriller"], "description": "A detective questions every clue in a tightly plotted murder mystery." }
+    ] } },
+    "ol-preteen-filtering": { "fixtureId": "ol-preteen-filtering-v1", "payload": { "docs": [
+      { "key": "/works/OLSC3001W", "title": "Dragon Club Detectives", "author_name": ["Pia Woods"], "language": ["eng"], "first_publish_year": 2019, "subject": ["Juvenile fiction", "Children's fiction", "Fantasy", "Dragons", "Friendship", "School stories", "Mystery", "Adventure"], "description": "Middle school friends and a dragon solve a magical school mystery." },
+      { "key": "/works/OLSC3002W", "title": "The Library Door", "author_name": ["Kit Snow"], "language": ["eng"], "first_publish_year": 2020, "subject": ["Juvenile fiction", "Children's fiction", "Fantasy", "Family", "Friendship", "Adventure"], "description": "Children enter a fantasy world and work together to return home." },
+      { "key": "/works/OLSC3901W", "title": "The Adult Dragon Codex", "author_name": ["X. Scholar"], "language": ["eng"], "first_publish_year": 2004, "subject": ["Literary criticism", "Fantasy literature", "Reference", "Bibliography"], "description": "An academic reference guide to dragon symbolism in literature." },
+      { "key": "/works/OLSC3902W", "title": "Nightmare Anatomy", "author_name": ["V. Graves"], "language": ["eng"], "first_publish_year": 2015, "subject": ["Adult fiction", "Horror", "Gore", "Serial murder"], "description": "An explicit adult horror novel." }
+    ] } },
+    "ol-honest-underfill": { "fixtureId": "ol-honest-underfill-v1", "payload": { "docs": [
+      { "key": "/works/OLSC4001W", "title": "Orbit Academy", "author_name": ["C. Vega"], "language": ["eng"], "first_publish_year": 2023, "subject": ["Young adult fiction", "Science fiction", "Space", "Survival", "Friendship", "Schools"], "description": "Teen cadets survive an accident in space by trusting science and one another." }
+    ] } },
+    "ol-artifact-heavy": { "fixtureId": "ol-artifact-heavy-v1", "payload": { "docs": [
+      { "key": "/works/OLSC5001W", "title": "The Cambridge Companion to Young Adult Fantasy", "author_name": ["A. Critic"], "language": ["eng"], "first_publish_year": 2011, "subject": ["Literary criticism", "Young adult literature", "Fantasy literature", "Study and teaching", "Bibliography"], "description": "Critical essays and scholarly analysis of fantasy literature." },
+      { "key": "/works/OLSC5002W", "title": "Writing the Teen Fantasy Novel", "author_name": ["B. Guide"], "language": ["eng"], "first_publish_year": 2014, "subject": ["Authorship", "Creative writing", "Handbooks and manuals", "Fantasy fiction"], "description": "A writing guide with exercises for aspiring authors." },
+      { "key": "/works/OLSC5003W", "title": "Young Adult Fantasy Reading List", "author_name": ["C. Catalog"], "language": ["eng"], "first_publish_year": 2017, "subject": ["Bibliography", "Catalogs", "Book lists", "Fantasy literature"], "description": "A bibliography and catalog of recommended titles." }
+    ] } },
+    "ol-valid-empty": { "fixtureId": "ol-valid-empty-v1", "payload": { "docs": [] } }
+  }
+}
