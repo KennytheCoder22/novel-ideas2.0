@@ -41,3 +41,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+# generated source-competence harness output
+/artifacts/source-competence/
+/artifacts/comparison-harness/
