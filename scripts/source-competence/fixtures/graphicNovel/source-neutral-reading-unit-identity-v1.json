@@ -1,0 +1,353 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixtureSetId": "graphic-novel-source-neutral-reading-unit-identity-v1",
+  "contractVersion": "graphic-reading-unit-identity/1.0.0",
+  "captureKind": "synthetic_source_neutral_contract_fixture",
+  "provenance": {
+    "containsLiveSourceData": false,
+    "containsCoverImages": false,
+    "description": "Wholly synthetic records created for NovelIdeas identity-contract design. No external source payloads or source-specific field names are present."
+  },
+  "decisionVocabulary": {
+    "equivalence": ["same", "related", "distinct", "unresolved"],
+    "levels": [
+      "source_record",
+      "publication",
+      "readable_work",
+      "series",
+      "recommendation"
+    ]
+  },
+  "cases": [
+    {
+      "caseId": "single-issue",
+      "description": "A numbered issue is a potentially patron-facing readable unit, while recommendation eligibility remains downstream.",
+      "records": [
+        {
+          "recordId": "fixture-a:issue:101",
+          "sourceRecordType": "issue",
+          "title": "Beacon Patrol",
+          "series": {"title": "Beacon Patrol", "startYear": 2024},
+          "numbering": {"raw": "1", "ordinal": 1},
+          "creators": [{"name": "Avery North", "roles": ["writer"], "complete": true}],
+          "publication": {"format": "single_issue", "date": {"type": "publication", "value": "2024-03-01"}}
+        }
+      ],
+      "expected": {
+        "readableWorkKind": "single_issue",
+        "patronFacingCapability": "potentially_eligible",
+        "seriesOrder": 1,
+        "eligibilityDecision": "not_part_of_identity_contract"
+      }
+    },
+    {
+      "caseId": "same-issue-variant-cover",
+      "description": "A cover variant is a separate publication manifestation of the same issue content.",
+      "records": [
+        {
+          "recordId": "fixture-a:issue:102-cover-a",
+          "sourceRecordType": "issue",
+          "title": "Beacon Patrol",
+          "series": {"title": "Beacon Patrol", "startYear": 2024},
+          "numbering": {"raw": "2", "ordinal": 2},
+          "publication": {"format": "single_issue", "variant": "Cover A", "contentKey": "beacon-patrol-2"}
+        },
+        {
+          "recordId": "fixture-b:issue:beacon-2-variant",
+          "sourceRecordType": "issue",
+          "title": "Beacon Patrol",
+          "series": {"title": "Beacon Patrol", "startYear": 2024},
+          "numbering": {"raw": "#2", "ordinal": 2},
+          "publication": {"format": "single_issue", "variant": "Night Sky Variant", "contentKey": "beacon-patrol-2"}
+        }
+      ],
+      "expected": {
+        "sourceRecordEquivalence": "distinct",
+        "publicationEquivalence": "distinct",
+        "readableWorkEquivalence": "same",
+        "recommendationEquivalence": "same",
+        "relationship": "variant_of"
+      }
+    },
+    {
+      "caseId": "trade-collecting-issues",
+      "description": "A trade is a readable work distinct from the issues it contains.",
+      "records": [
+        {
+          "recordId": "fixture-a:collection:201",
+          "sourceRecordType": "collection",
+          "title": "Beacon Patrol: First Light",
+          "publication": {"format": "trade_paperback", "identifier": "SYNTH-TRADE-201"},
+          "contains": [
+            "readable:beacon-patrol-1",
+            "readable:beacon-patrol-2",
+            "readable:beacon-patrol-3",
+            "readable:beacon-patrol-4"
+          ]
+        }
+      ],
+      "expected": {
+        "readableWorkKind": "collected_volume",
+        "recommendationIdentity": "recommendation:beacon-patrol-first-light",
+        "constituentRelationship": "contains",
+        "sameReadableWorkAsConstituent": false
+      }
+    },
+    {
+      "caseId": "hardcover-paperback-same-collection",
+      "description": "Hardcover and paperback manifestations have the same collected content.",
+      "records": [
+        {
+          "recordId": "fixture-a:publication:301",
+          "sourceRecordType": "collection",
+          "title": "Harbor Witches: Tides",
+          "publication": {
+            "format": "hardcover_collection",
+            "identifier": "SYNTH-HC-301",
+            "publisher": "Lantern House",
+            "date": {"type": "publication", "value": "2023-10-10"}
+          },
+          "contains": ["readable:harbor-witches-1", "readable:harbor-witches-2", "readable:harbor-witches-3"]
+        },
+        {
+          "recordId": "fixture-b:publication:302",
+          "sourceRecordType": "collection",
+          "title": "Harbor Witches: Tides",
+          "publication": {
+            "format": "trade_paperback",
+            "identifier": "SYNTH-PB-302",
+            "publisher": "Lantern House",
+            "date": {"type": "publication", "value": "2024-05-14"}
+          },
+          "contains": ["readable:harbor-witches-1", "readable:harbor-witches-2", "readable:harbor-witches-3"]
+        }
+      ],
+      "expected": {
+        "publicationEquivalence": "distinct",
+        "readableWorkEquivalence": "same",
+        "recommendationEquivalence": "same",
+        "collapseRepresentativeAtSelection": true
+      }
+    },
+    {
+      "caseId": "manga-volume",
+      "description": "A manga volume preserves series-volume identity and is not classified as an issue.",
+      "records": [
+        {
+          "recordId": "fixture-a:manga:401",
+          "sourceRecordType": "book_volume",
+          "title": "Clockwork Orchard, Volume 3",
+          "series": {"title": "Clockwork Orchard", "startYear": 2021},
+          "numbering": {"raw": "Volume 3", "ordinal": 3},
+          "creators": [{"name": "Mika Sora", "roles": ["story", "art"], "complete": true}],
+          "publication": {"format": "manga_volume", "language": "en"}
+        }
+      ],
+      "expected": {
+        "readableWorkKind": "manga_volume",
+        "seriesOrder": 3,
+        "issueClassification": false
+      }
+    },
+    {
+      "caseId": "omnibus-multiple-volumes",
+      "description": "An omnibus contains several volume works but remains its own readable and recommendation identity.",
+      "records": [
+        {
+          "recordId": "fixture-a:omnibus:501",
+          "sourceRecordType": "collection",
+          "title": "Clockwork Orchard Omnibus 1",
+          "numbering": {"raw": "Omnibus 1", "ordinal": 1},
+          "publication": {"format": "omnibus", "identifier": "SYNTH-OMNI-501"},
+          "contains": [
+            "readable:clockwork-orchard-volume-1",
+            "readable:clockwork-orchard-volume-2",
+            "readable:clockwork-orchard-volume-3"
+          ]
+        }
+      ],
+      "expected": {
+        "readableWorkKind": "omnibus",
+        "sameReadableWorkAsConstituent": false,
+        "sameRecommendationAsConstituent": false,
+        "constituentRelationship": "contains"
+      }
+    },
+    {
+      "caseId": "creator-owned-standalone",
+      "description": "A self-contained creator-owned graphic novel does not require a series container.",
+      "records": [
+        {
+          "recordId": "fixture-a:standalone:601",
+          "sourceRecordType": "graphic_book",
+          "title": "The Cartographer's Lantern",
+          "series": null,
+          "creators": [
+            {"name": "Rowan Ellis", "roles": ["writer", "artist"], "complete": true}
+          ],
+          "publication": {
+            "format": "graphic_novel",
+            "publisher": "North Window Press",
+            "identifier": "SYNTH-GN-601"
+          }
+        }
+      ],
+      "expected": {
+        "readableWorkKind": "standalone_graphic_work",
+        "seriesIdentityRequired": false,
+        "patronFacingCapability": "potentially_eligible"
+      }
+    },
+    {
+      "caseId": "graphic-memoir",
+      "description": "Memoir subject/genre is evidence for recommendation policy, not a different identity layer.",
+      "records": [
+        {
+          "recordId": "fixture-a:memoir:701",
+          "sourceRecordType": "graphic_book",
+          "title": "Winter Bus",
+          "creators": [{"name": "Sam Rivera", "roles": ["author", "artist"], "complete": true}],
+          "subjects": ["memoir", "family", "migration"],
+          "publication": {"format": "graphic_novel", "identifier": "SYNTH-MEM-701"}
+        }
+      ],
+      "expected": {
+        "readableWorkKind": "standalone_graphic_work",
+        "recommendationGenreSignal": "graphic_memoir",
+        "genreChangesIdentity": false
+      }
+    },
+    {
+      "caseId": "similar-title-unrelated-series",
+      "description": "A shared title does not merge series from different creators and eras.",
+      "records": [
+        {
+          "recordId": "fixture-a:series:801",
+          "sourceRecordType": "series",
+          "title": "Night Garden",
+          "series": {"title": "Night Garden", "startYear": 1988, "publisher": "Old Quill"},
+          "creators": [{"name": "Dana West", "roles": ["writer"], "complete": true}]
+        },
+        {
+          "recordId": "fixture-b:series:802",
+          "sourceRecordType": "series",
+          "title": "Night Garden",
+          "series": {"title": "Night Garden", "startYear": 2022, "publisher": "Paper Harbor"},
+          "creators": [{"name": "Lee Nwosu", "roles": ["writer"], "complete": true}]
+        }
+      ],
+      "expected": {
+        "titleEquivalence": "same",
+        "seriesEquivalence": "distinct",
+        "readableWorkEquivalence": "distinct",
+        "automaticMerge": false
+      }
+    },
+    {
+      "caseId": "missing-volume-numbering",
+      "description": "Returned order and title similarity cannot manufacture a series ordinal.",
+      "records": [
+        {
+          "recordId": "fixture-a:volume:901",
+          "sourceRecordType": "book_volume",
+          "title": "River Knights: The Glass Ford",
+          "series": {"title": "River Knights", "startYear": 2020},
+          "numbering": {"raw": null, "ordinal": null},
+          "publication": {"format": "graphic_novel"}
+        }
+      ],
+      "expected": {
+        "readableWorkKind": "collected_volume",
+        "seriesOrder": null,
+        "orderConfidence": "unknown",
+        "inferFromReturnedOrder": false
+      }
+    },
+    {
+      "caseId": "conflicting-publication-dates",
+      "description": "Different date types and source disagreements remain explicit.",
+      "records": [
+        {
+          "recordId": "fixture-a:publication:1001",
+          "sourceRecordType": "collection",
+          "title": "Red Valley",
+          "publication": {
+            "format": "hardcover_collection",
+            "dates": [
+              {"type": "cover", "value": "2020-12-01"},
+              {"type": "on_sale", "value": "2021-01-12"}
+            ]
+          }
+        },
+        {
+          "recordId": "fixture-b:publication:1002",
+          "sourceRecordType": "collection",
+          "title": "Red Valley",
+          "publication": {
+            "format": "hardcover_collection",
+            "dates": [{"type": "publication", "value": "2021-01-05"}]
+          }
+        }
+      ],
+      "expected": {
+        "dateConflict": true,
+        "preserveAllTypedDates": true,
+        "overwriteWithSingleDate": false,
+        "identityOutcome": "unresolved_until_content_evidence"
+      }
+    },
+    {
+      "caseId": "incomplete-creator-credits",
+      "description": "A partial credit list cannot establish complete creator equivalence.",
+      "records": [
+        {
+          "recordId": "fixture-a:work:1101",
+          "sourceRecordType": "graphic_book",
+          "title": "Salt City Signals",
+          "creators": [
+            {"name": "Nora Bell", "roles": ["writer"], "complete": false}
+          ],
+          "publication": {"format": "graphic_novel"}
+        },
+        {
+          "recordId": "fixture-b:work:1102",
+          "sourceRecordType": "graphic_book",
+          "title": "Salt City Signals",
+          "creators": [
+            {"name": "Nora Bell", "roles": ["writer"], "complete": true},
+            {"name": "Ivo Chen", "roles": ["artist"], "complete": true}
+          ],
+          "publication": {"format": "graphic_novel"}
+        }
+      ],
+      "expected": {
+        "creatorEvidence": "compatible_but_incomplete",
+        "creatorEqualityEstablished": false,
+        "titleAndPartialCreatorSufficientForMerge": false,
+        "identityOutcome": "unresolved_without_additional_evidence"
+      }
+    },
+    {
+      "caseId": "ambiguous-issue-versus-collection",
+      "description": "Issue numbering and collection language conflict without explicit constituents.",
+      "records": [
+        {
+          "recordId": "fixture-a:ambiguous:1201",
+          "sourceRecordType": "unknown_publication",
+          "title": "Sky Engine #1: Collected Stories",
+          "numbering": {"raw": "#1", "ordinal": 1},
+          "description": "A special publication featuring stories from the Sky Engine world.",
+          "publication": {"format": "unknown", "binding": null},
+          "contains": []
+        }
+      ],
+      "expected": {
+        "readableWorkKind": "ambiguous_reading_unit",
+        "identityConfidence": "low",
+        "automaticIssueClassification": false,
+        "automaticCollectionClassification": false,
+        "identityOutcome": "unresolved"
+      }
+    }
+  ]
+}
