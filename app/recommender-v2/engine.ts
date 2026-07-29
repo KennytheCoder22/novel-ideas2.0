@@ -2383,6 +2383,61 @@ export function applyOpenLibraryPerQueryFinalLineage(sourceResults: SourceResult
   }
 }
 
+export function applyOpenLibraryPostFinalRecoveryDiagnostics(
+  sourceResults: SourceResult[],
+  selected: ScoredCandidate[],
+  rejectedReasons: Record<string, unknown>,
+): void {
+  const openLibrary = sourceResults.find((result) => result.source === "openLibrary");
+  const diagnostics = openLibrary?.diagnostics;
+  if (!diagnostics || diagnostics.meaningfulTasteRecoveryTriggerStage !== "post_final_eligibility") return;
+
+  const finalRecoveryCandidates = selected.filter((candidate) =>
+    candidate.source === "openLibrary"
+    && (candidate.diagnostics?.meaningfulTasteRecovery
+      || candidate.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery"));
+  const acceptedTitles = Array.from(new Set(finalRecoveryCandidates.map((candidate) => String(candidate.title || "")).filter(Boolean)));
+  const acceptedTitleKeys = new Set(acceptedTitles.map((title) => title.toLowerCase()));
+  const withoutAcceptedTitles = (value: unknown): Record<string, string[]> => Object.fromEntries(
+    Object.entries((value || {}) as Record<string, unknown>)
+      .map(([reason, titles]) => [
+        reason,
+        Array.from(new Set((Array.isArray(titles) ? titles : [])
+          .map((title) => String(title || ""))
+          .filter((title) => title && !acceptedTitleKeys.has(title.toLowerCase())))),
+      ])
+      .filter(([, titles]) => (titles as string[]).length > 0),
+  );
+
+  const predictedTitles = ((diagnostics.recoveryAcceptedLikelyFinalSurvivorTitles || []) as string[])
+    .map((title) => String(title || ""))
+    .filter(Boolean);
+  const finalDroppedByReason = withoutAcceptedTitles(rejectedReasons.meaningfulTasteRecoveryDroppedAfterMergeByReason);
+  rejectedReasons.meaningfulTasteRecoveryDroppedAfterMergeByReason = finalDroppedByReason;
+
+  diagnostics.postFinalEligibilityRecoveryAcceptedTitles = acceptedTitles;
+  diagnostics.meaningfulTasteRecoveryAcceptedTitles = acceptedTitles;
+  diagnostics.postFinalEligibilityRecoveryFinalCount = acceptedTitles.length;
+  diagnostics.meaningfulTasteRecoveryFinalCount = acceptedTitles.length;
+  diagnostics.recoveryAcceptedLikelyFinalSurvivorTitles = acceptedTitles;
+  diagnostics.recoveryFinalSurvivorPredictionMismatch = predictedTitles.some((title) => !acceptedTitleKeys.has(title.toLowerCase()));
+  diagnostics.recoveryAcceptedButPredictedDropTitles = Array.from(new Set([
+    ...((diagnostics.recoveryAcceptedButPredictedDropTitles || []) as string[]).map((title) => String(title || "")).filter(Boolean),
+    ...Object.values(finalDroppedByReason).flat(),
+  ])).filter((title) => !acceptedTitleKeys.has(title.toLowerCase()));
+  diagnostics.recoveryEarlyFinalGateRejectedByReason = withoutAcceptedTitles(diagnostics.recoveryEarlyFinalGateRejectedByReason);
+  diagnostics.postFinalEligibilityRecoveryRejectedByReason = withoutAcceptedTitles(diagnostics.postFinalEligibilityRecoveryRejectedByReason);
+  diagnostics.meaningfulTasteRecoverySurvivingFinalCount = selected.length;
+  diagnostics.underfilledAfterMeaningfulTasteRecovery = selected.length < 5;
+
+  const recoveryAnchorByQuery = (diagnostics.recoveryQueryAnchorByQuery || {}) as Record<string, string>;
+  diagnostics.recoveryQueryFamilyAcceptedFinalCount = finalRecoveryCandidates.reduce<Record<string, number>>((counts, candidate) => {
+    const query = String(candidate.diagnostics?.queryText || "");
+    const anchor = recoveryAnchorByQuery[query] || String(candidate.diagnostics?.queryFamily || "unknown");
+    counts[anchor] = Number(counts[anchor] || 0) + 1;
+    return counts;
+  }, {});
+}
 export async function runRecommenderV2(session: SwipeSessionV2): Promise<RecommendationResultV2> {
   const startedAt = nowIso();
   const requestId = session.requestId || `v2-${Date.now()}`;
@@ -3818,6 +3873,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueNotSelectedReasonByTitle = notSelectedReasonByTitle;
     rejectedReasonsWithGoogleBooksNormalization.preteenGoogleBooksPublicationShapeRescueSummary = rescueSummary;
   }
+  applyOpenLibraryPostFinalRecoveryDiagnostics(sourceResults, selected, rejectedReasons as Record<string, unknown>);
   if (tasteProfile.ageBand === "teens") {
     applyOpenLibraryPerQueryFinalLineage(sourceResults, selected);
   }

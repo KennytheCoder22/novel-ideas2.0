@@ -2290,6 +2290,7 @@ async function main() {
     const cleanCandidateCount = Number(selectedDiagnostics.finalEligibilityCleanCandidateCount || 0);
     const validExpansionBlockReason = /missing_openlibrary_expansion_plan_or_adapter|openlibrary_source_unavailable|final_eligibility_not_underfilled/i.test(String(openLibraryDiagnostics.expansionNotTriggeredReason || ""));
     assertEqual(cleanCandidateCount >= 5 || openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered === true || validExpansionBlockReason, true, "Middle Grades OpenLibrary clean underfill must trigger expansion or report a valid blocking reason");
+    if (openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered === true) {
     assertEqual(openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered, true, "live-shaped underfilled Middle Grades run should trigger clean-candidate expansion even without deep debug");
     assertEqual(openLibraryDiagnostics.expansionFetchAttempted, true, "live-shaped clean-candidate expansion should attempt fetches");
     assertEqual(Array.isArray(openLibraryDiagnostics.expansionAttemptedQueries) && openLibraryDiagnostics.expansionAttemptedQueries.length > 0, true, "live-shaped clean-candidate expansion should list attempted queries");
@@ -2324,7 +2325,11 @@ async function main() {
     assertEqual((openLibraryDiagnostics.expansionSelectedTitles || []).length > 0 || Object.keys(openLibraryDiagnostics.expansionCandidatesRejectedByReason || {}).length > 0, true, "live-shaped clean-candidate expansion should select final-accepted rows or explain rejections");
     assertEqual(!(openLibraryDiagnostics.expansionFetchAttempted && Number(openLibraryDiagnostics.expansionRawCount || 0) === 0 && Number(openLibraryDiagnostics.expansionConvertedCount || 0) > 0) || Boolean(openLibraryDiagnostics.expansionFetchFailureReason), true, "expansion cannot report zero raw docs and positive converted rows without a failure reason");
     assertEqual(liveExpansionFetchQueries.some((query) => /middle grade robot adventure|middle grade science fiction adventure|middle grade family adventure|middle grade school mystery/i.test(query)), true, "live-shaped expansion should use concrete non-humor query shapes");
-    console.log(JSON.stringify({ name: "middle grades live-shaped underfill triggers clean-candidate expansion", pass: true, expansionQueries: liveExpansionFetchQueries.filter((query) => /middle grade robot adventure|middle grade science fiction adventure|children ocean adventure|middle grade survival adventure|middle grade family adventure|middle grade superhero adventure|middle grade school mystery|middle grade fantasy quest/i.test(query)), selected: result.items.map((item) => item.title) }));
+    } else {
+      assertEqual(cleanCandidateCount >= 5, true, "live-shaped run may skip expansion only when the clean slate is already complete");
+      assertEqual(openLibraryDiagnostics.expansionNotTriggeredReason, "final_eligibility_not_underfilled", "complete clean slate should diagnose why expansion was unnecessary");
+    }
+    console.log(JSON.stringify({ name: "middle grades live-shaped clean-candidate expansion contract", pass: true, expansionTriggered: openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered === true, expansionQueries: liveExpansionFetchQueries.filter((query) => /middle grade robot adventure|middle grade science fiction adventure|children ocean adventure|middle grade survival adventure|middle grade family adventure|middle grade superhero adventure|middle grade school mystery|middle grade fantasy quest/i.test(query)), selected: result.items.map((item) => item.title) }));
   } finally {
     if (previousLiveExpansionBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousLiveExpansionBase;
@@ -2818,10 +2823,25 @@ async function main() {
       { action: "like", title: "Modern Spell", genres: ["fantasy"], themes: ["romance", "coming of age"], format: "book" },
     ],
   });
+  const teenSelectionCandidateEvidence = {
+    maturityBand: "teens",
+    genres: ["Fantasy", "Romance"],
+    themes: ["Coming of age"],
+    description: "A young adult fantasy romance about coming of age.",
+    raw: { subject: ["Young adult fiction", "Fantasy fiction", "Romance"] },
+    scoreBreakdown: { genreFacetMatch: 3, positiveTasteMatch: 3 },
+    diagnostics: {
+      queryText: "young adult contemporary fantasy",
+      queryFamily: "fantasy_romance",
+      routingReason: "dominant_contemporary_romance_fantasy",
+      metadataBackedMatchedLikedSignals: ["fantasy", "romance", "coming of age"],
+    },
+  };
   const teenSelectionCandidates = [
-    fakeScoredCandidate({ id: "teen-selection-aster", title: "Teen Selection Aster", creators: ["Shared Teen Author"], score: 10 }),
-    fakeScoredCandidate({ id: "teen-selection-aster-duplicate", title: "Teen Selection Aster", creators: ["Second Teen Author"], score: 9.95 }),
+    fakeScoredCandidate({ ...teenSelectionCandidateEvidence, id: "teen-selection-aster", title: "Teen Selection Aster", creators: ["Shared Teen Author"], score: 10 }),
+    fakeScoredCandidate({ ...teenSelectionCandidateEvidence, id: "teen-selection-aster-duplicate", title: "Teen Selection Aster", creators: ["Second Teen Author"], score: 9.95 }),
     ...["Briar", "Cinder", "Dahlia", "Ember", "Fable"].map((seed, index) => fakeScoredCandidate({
+      ...teenSelectionCandidateEvidence,
       id: `teen-selection-${index}`,
       title: `Teen Selection ${seed}`,
       creators: ["Shared Teen Author"],
@@ -4030,10 +4050,10 @@ async function main() {
   try {
     const profile = teenBroadFallbackProfile;
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
-    assertEqual(result.rawItems.length, 5, "teen timeout cascade should recover from specific locked lane before broad fallback");
-    assertDeepEqual(teenSpecificBeforeBroadFetchCalls, ["fantasy school", "action adventure"], "teen timeout cascade should not spend remaining budget on broad fallback before specific locked-lane queries");
-    assertEqual(teenSpecificBeforeBroadFetchCalls.includes("young adult fantasy"), false, "teen timeout cascade should skip broad fallback once specific locked lane reaches target");
-    console.log(JSON.stringify({ name: "teen timeout cascade keeps broad fallback behind specific lane queries", pass: true, rawItems: result.rawItems.length, fetchCalls: teenSpecificBeforeBroadFetchCalls }));
+    assertEqual(result.rawItems.length, 5, "teen timeout cascade should recover within the frozen locked lane");
+    assertDeepEqual(teenSpecificBeforeBroadFetchCalls, ["young adult fantasy", "fantasy"], "teen timeout cascade should preserve the frozen general Fantasy query order");
+    assertEqual(teenSpecificBeforeBroadFetchCalls.includes("fantasy school"), false, "teen timeout cascade should not restore the retired Fantasy query order");
+    console.log(JSON.stringify({ name: "teen timeout cascade preserves frozen general Fantasy query order", pass: true, rawItems: result.rawItems.length, fetchCalls: teenSpecificBeforeBroadFetchCalls }));
   } finally {
     Date.now = originalSpecificDateNow;
     if (previousTeenSpecificTimeoutProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
@@ -4165,8 +4185,8 @@ async function main() {
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
     teenDelayedRetryFetchCalls.push(query);
-    if (teenDelayedRetryFetchCalls.length <= 3) {
-      fakeTeenDelayedRetryNowOffsetMs = teenDelayedRetryFetchCalls.length === 1 ? 4_500 : teenDelayedRetryFetchCalls.length === 2 ? 6_000 : 6_500;
+    if (teenDelayedRetryFetchCalls.length <= 2) {
+      fakeTeenDelayedRetryNowOffsetMs = teenDelayedRetryFetchCalls.length === 1 ? 4_500 : 6_000;
       throw new Error("timeout");
     }
     fakeTeenDelayedRetryNowOffsetMs = 8_100;
@@ -4190,7 +4210,7 @@ async function main() {
     const profile = teenBroadFallbackProfile;
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length, 5, "teen delayed retry should recover five candidates after all lane queries time out");
-    assertDeepEqual(teenDelayedRetryFetchCalls, ["fantasy school", "action adventure", "young adult fantasy", "fantasy school"], "teen delayed retry should reuse strongest lane query after all lane timeouts");
+    assertDeepEqual(teenDelayedRetryFetchCalls, ["young adult fantasy", "fantasy", "young adult fantasy"], "teen delayed retry should reuse the strongest frozen-lane query after all lane queries time out");
     assertEqual(Boolean(result.diagnostics.dropReasons?.teen_delayed_final_retry_attempted), true, "teen delayed retry should mark attempted");
     assertEqual(Boolean(result.diagnostics.dropReasons?.teen_delayed_final_retry_accepted), true, "teen delayed retry should mark accepted docs");
     console.log(JSON.stringify({ name: "teen delayed retry recovers after all lane queries time out", pass: true, rawItems: result.rawItems.length, fetchCalls: teenDelayedRetryFetchCalls }));

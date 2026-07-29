@@ -1335,13 +1335,13 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   try {
     const response = await fetch(url, { signal: queryController.signal });
     diagnostic.httpStatus = response.status;
-    diagnostic.responseDate = response.headers.get("date") || undefined;
-    diagnostic.responseCacheControl = response.headers.get("cache-control") || undefined;
-    diagnostic.responseCacheAge = response.headers.get("age") || undefined;
-    diagnostic.responseVia = response.headers.get("via") || undefined;
-    diagnostic.responseEtag = response.headers.get("etag") || undefined;
-    diagnostic.responseLastModified = response.headers.get("last-modified") || undefined;
-    diagnostic.responseXCache = response.headers.get("x-cache") || undefined;
+    diagnostic.responseDate = response.headers?.get?.("date") || undefined;
+    diagnostic.responseCacheControl = response.headers?.get?.("cache-control") || undefined;
+    diagnostic.responseCacheAge = response.headers?.get?.("age") || undefined;
+    diagnostic.responseVia = response.headers?.get?.("via") || undefined;
+    diagnostic.responseEtag = response.headers?.get?.("etag") || undefined;
+    diagnostic.responseLastModified = response.headers?.get?.("last-modified") || undefined;
+    diagnostic.responseXCache = response.headers?.get?.("x-cache") || undefined;
     diagnostic.responseHeadersReceived = nowIso();
     diagnostic.bodyStarted = nowIso();
     const text = await response.text();
@@ -1958,6 +1958,7 @@ type MiddleGradesTargetedQueryPlan = {
   skipOnlyFamilyPromotedToFirstBatch: boolean;
   likedEvidenceQueryFamilies: string[];
   familyByQuery: Record<string, string>;
+  familiesByQuery: Record<string, string[]>;
   reliableVariantQueries: string[];
 };
 
@@ -2099,7 +2100,13 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
   const skipOnlyFamilyPromotedToFirstBatch = chosen.length > 0 && chosen[0].likedEvidenceCount === 0 && chosen[0].skipEvidenceCount > 0;
   const queries = uniqueStrings(chosen.flatMap((def) => def.queries), 14);
   const familyByQuery: Record<string, string> = {};
-  for (const def of chosen) for (const query of def.queries) familyByQuery[query] = def.family;
+  const familiesByQuery: Record<string, string[]> = {};
+  for (const def of chosen) {
+    for (const query of def.queries) {
+      familyByQuery[query] = def.family;
+      familiesByQuery[query] = uniqueStrings([...(familiesByQuery[query] || []), def.family], 12);
+    }
+  }
   const reliableVariantQueries = uniqueStrings(queries.filter((query) => /\b(funny children books|humorous fiction children|children adventure fiction|children fantasy adventure|dinosaur fiction children|dinosaur adventure children|mythology children fiction|graphic novel children|funny graphic novel children|funny adventure chapter book|children friendship adventure|middle grade music friendship|middle grade friendship adventure fiction|middle grade friendship school novel|middle grade adventure chapter book|middle grade music friendship fiction|children music friendship story|performing arts children fiction|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure|middle grade school friendship fiction|children school friendship fiction|funny school story children|children mystery adventure|middle grade mystery adventure|school mystery children|fantasy mystery children|children magical mystery|middle grade superhero adventure|children superhero adventure|children fantasy family adventure|magical family adventure children|funny fantasy family children|animal fantasy children|fantasy animals children)\b/i.test(query)), 20);
   return {
     queries,
@@ -2111,6 +2118,7 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
     skipOnlyFamilyPromotedToFirstBatch,
     likedEvidenceQueryFamilies: likedRanked.map((def) => def.family),
     familyByQuery,
+    familiesByQuery,
     reliableVariantQueries,
   };
 }
@@ -5393,7 +5401,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         firstBatchSkipOnlyFamilyBlocked: middleGradesFirstBatchSkipOnlyFamilyBlocked,
         skippedFantasyPromotedToFirstBatch: middleGradesSkippedFantasyPromotedToFirstBatch,
         likedEvidenceFirstBatchFamilies: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesLikedEvidenceFirstBatchFamilies, 12) : undefined,
-        likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesTargetedQueriesAttempted.map((query) => middleGradesTargetedPlanForRun?.familyByQuery?.[query]).filter((family) => family && middleGradesTargetedPlanForRun?.likedEvidenceQueryFamilies.includes(family)), 12) : undefined,
+        likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesTargetedQueriesAttempted.flatMap((query) => middleGradesTargetedPlanForRun?.familiesByQuery?.[query] || []).filter((family) => middleGradesTargetedPlanForRun?.likedEvidenceQueryFamilies.includes(family)), 12) : undefined,
         docsReturnedButAllDropped: ageProfile.key === "middleGrades" ? middleGradesDocsReturnedButAllDropped : undefined,
         allDroppedContinuationQuery: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesAllDroppedContinuationQuery, 12) : undefined,
         reliableVariantAttempted: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesReliableVariantAttempted, 20) : undefined,

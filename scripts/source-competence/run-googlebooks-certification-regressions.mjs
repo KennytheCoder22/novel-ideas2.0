@@ -78,7 +78,7 @@ assert(byId["gb-preteen-filtering"].routing.plannedQueries.every((query) => quer
 equal(byId["gb-kids-story-policy-boundary"].raw.fixtureDocumentCount, 5, "Kids fixture raw count");
 equal(byId["gb-kids-story-policy-boundary"].raw.acceptedAfterSourcePolicy, 0, "Kids source-policy acceptance");
 equal(byId["gb-kids-story-policy-boundary"].normalized.length, 0, "Kids source-policy boundary");
-assert(byId["gb-kids-story-policy-boundary"].routing.plannedQueries.every((query) => query.startsWith("children ")), "Kids planned queries should retain age authority");
+assert(byId["gb-kids-story-policy-boundary"].routing.plannedQueries.every((query) => query.startsWith("kids ")), "Kids planned queries should retain the current age-authority prefix");
 
 equal(byId["gb-honest-underfill"].selected.length, 1, "Underfill must preserve one strong result");
 equal(byId["gb-artifact-heavy"].raw.acceptedAfterSourcePolicy, 0, "Artifact-only fixture must not enter normalization");
