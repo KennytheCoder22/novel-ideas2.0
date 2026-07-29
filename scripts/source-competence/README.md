@@ -29,6 +29,17 @@ node scripts/source-competence/run-googlebooks-certification-regressions.mjs
 
 Generated JSON and Markdown are written beneath `artifacts/source-competence/`, which is intentionally ignored. Human Review fields remain `not_reviewed`; machine terminal states must not be interpreted as human usefulness certification.
 
+## Graphic Novel Source Competence Phase I
+
+The GCD characterization is fixture-only because no production GCD adapter exists and live access is not authorized. It maps wholly synthetic GCD-shaped records into the approved source-neutral reading-unit contract, freezes the structured result, and explicitly reports the production lifecycle as `adapter_not_implemented`.
+
+```powershell
+node scripts/source-competence/run-gcd-characterization.mjs --mode replay --profile all --verify-no-network --verify-determinism --verify-frozen
+node scripts/source-competence/run-gcd-characterization-regressions.mjs
+```
+
+This characterizes source-record, publication, readable-work, reading-unit, and recommendation identity evidence. It does not exercise production routing, scoring, eligibility, selection, live transport, source comparison, or human usefulness.
+
 ## Scope boundary
 
 The harness supports fixture and replay modes. It contains no live mode, production routing decision, cross-source comparison, production behavior change, or human quality score.

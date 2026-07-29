@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "1.0.0",
+  "source": "gcd",
+  "certification": "Graphic Novel Source Competence Phase I",
+  "productionAdapterExpected": false,
+  "profiles": [
+    {
+      "profileId": "gcd-adult-speculative-ensemble",
+      "matrixProfileId": "gn-adult-speculative-ensemble",
+      "ageBand": "adult",
+      "intent": "Speculative graphic novels with ensemble or found-family adventure; avoid reference and art books.",
+      "characterizationPurpose": "Broad narrative discovery, reading-unit identity, edition collapse, and creator/publisher metadata.",
+      "expectedOutcome": "classified_complete",
+      "expectedRecommendationCapableCount": 6,
+      "humanReview": {"status": "not_reviewed"}
+    },
+    {
+      "profileId": "gcd-adult-horror-mystery",
+      "matrixProfileId": "gn-adult-horror-mystery",
+      "ageBand": "adult",
+      "intent": "Atmospheric horror and mystery graphic works; avoid non-narrative guides.",
+      "characterizationPurpose": "Story/creator evidence, standalone and memoir identity, and similarly titled series separation.",
+      "expectedOutcome": "classified_complete_with_metadata_limits",
+      "expectedRecommendationCapableCount": 3,
+      "humanReview": {"status": "not_reviewed"}
+    },
+    {
+      "profileId": "gcd-teen-fantasy-adventure",
+      "matrixProfileId": "gn-teen-fantasy-adventure",
+      "ageBand": "teens",
+      "intent": "Teen fantasy/adventure graphic novels with friendship and identity themes.",
+      "characterizationPurpose": "Audience authority, missing order, conflicting dates, and incomplete credit preservation.",
+      "expectedOutcome": "identity_preserved_audience_unsupported",
+      "expectedRecommendationCapableCount": 3,
+      "humanReview": {"status": "not_reviewed"}
+    },
+    {
+      "profileId": "gcd-teen-superhero-identity",
+      "matrixProfileId": "gn-teen-superhero-identity",
+      "ageBand": "teens",
+      "intent": "Accessible teen superhero identity stories; avoid inaccessible middle issues.",
+      "characterizationPurpose": "Issue entry points, variants, and ambiguous issue-versus-collection shape.",
+      "expectedOutcome": "classified_with_ambiguity_and_audience_limit",
+      "expectedRecommendationCapableCount": 2,
+      "humanReview": {"status": "not_reviewed"}
+    },
+    {
+      "profileId": "gcd-preteen-humor-adventure",
+      "matrixProfileId": "gn-preteen-humor-adventure",
+      "ageBand": "preteens",
+      "intent": "Preteen humorous adventure graphic novels with age-appropriate stakes.",
+      "characterizationPurpose": "Younger-reader authority and maturity evidence boundaries.",
+      "expectedOutcome": "identity_preserved_audience_and_maturity_unsupported",
+      "expectedRecommendationCapableCount": 2,
+      "humanReview": {"status": "not_reviewed"}
+    },
+    {
+      "profileId": "gcd-teen-manga-volume",
+      "matrixProfileId": "gn-teen-manga-volume",
+      "ageBand": "teens",
+      "intent": "Teen manga volume with fantasy/adventure and a viable series entry.",
+      "characterizationPurpose": "Manga-volume identity, series order, and omnibus containment.",
+      "expectedOutcome": "classified_complete_audience_unsupported",
+      "expectedRecommendationCapableCount": 2,
+      "humanReview": {"status": "not_reviewed"}
+    },
+    {
+      "profileId": "gcd-valid-empty",
+      "matrixProfileId": null,
+      "ageBand": "adult",
+      "intent": "Operational empty-response control.",
+      "characterizationPurpose": "Distinguish a valid empty result set from invalid response structure.",
+      "expectedOutcome": "valid_empty_response",
+      "expectedRecommendationCapableCount": 0,
+      "humanReview": {"status": "not_applicable"}
+    },
+    {
+      "profileId": "gcd-invalid-response",
+      "matrixProfileId": null,
+      "ageBand": "adult",
+      "intent": "Operational invalid-response control.",
+      "characterizationPurpose": "Preserve schema failure rather than treating it as an empty source result.",
+      "expectedOutcome": "response_invalid",
+      "expectedRecommendationCapableCount": 0,
+      "humanReview": {"status": "not_applicable"}
+    }
+  ]
+}
