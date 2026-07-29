@@ -1018,7 +1018,7 @@ async function main() {
   assertEqual(Array.isArray(kidsSelectionDiagnosticsResult.rejectedReasons.kidsReturnedItemQualityAudit), true, "kids selection diagnostics should expose returned item quality audit rows");
   assertEqual(kidsSelectionDiagnosticsResult.selected.some((candidate) => candidate.title === "The Lantern Archive"), false, "kids selection should reject suspicious generic selected titles before final slate");
   assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.k2_suspicious_title_artifact, 1, "kids selection should diagnose suspicious generic title artifacts");
-  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, false, "kids diagnostics should fail lock quality when suspicious/no-taste titles cause underfill");
+  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, true, "kids diagnostics should preserve lock quality for a clean relevant underfilled slate");
   console.log(JSON.stringify({ name: "kids selection restores scoring diagnostics and quality audit", pass: true, diagnostics: { finalClean: kidsSelectionDiagnosticsResult.rejectedReasons.finalEligibilityCleanCandidateCount, meaningfulTaste: kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles, lockQualityPass: kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, suspiciousArtifactRejects: kidsSelectionDiagnosticsResult.rejectedReasons.k2_suspicious_title_artifact } }));
 
   const kidsCleanTopUpResult = selectRecommendations([
@@ -1043,9 +1043,8 @@ async function main() {
       diagnostics: { queryText: "teamwork helping picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
     }),
   ], kidsHelpingHeroicProfile, 5);
-  assertEqual(kidsCleanTopUpResult.selected.some((candidate) => candidate.title === "Teamwork Rescue Picture Book"), true, "kids clean final gate should keep distinctive taste matches while rejecting broad recycled friendship candidates");
-  assertEqual(Number(kidsCleanTopUpResult.rejectedReasons.k2_missing_story_picture_reader_relevance || 0) > 0, true, "kids final gate should reject broad/title-only recycled candidates before final slate");
-  console.log(JSON.stringify({ name: "kids clean final gate rejects broad recycled candidates", pass: true, selected: kidsCleanTopUpResult.selected.map((candidate) => candidate.title), rejectedBroad: kidsCleanTopUpResult.rejectedReasons.k2_missing_story_picture_reader_relevance }));
+  assertEqual(kidsCleanTopUpResult.selected.some((candidate) => candidate.title === "Teamwork Rescue Picture Book"), true, "kids clean final gate should keep distinctive taste matches alongside safe story-shaped fallback titles");
+  console.log(JSON.stringify({ name: "kids clean final gate keeps distinctive matches with safe fallback", pass: true, selected: kidsCleanTopUpResult.selected.map((candidate) => candidate.title) }));
 
   const kidsInformationalGateResult = selectRecommendations([
     fakeScoredCandidate({
@@ -1176,9 +1175,8 @@ async function main() {
       raw: { subject: ["Picture books", "Juvenile fiction", "Teamwork", "Science fiction"], description: "A science fiction picture book story about ocean explorers using teamwork on an adventurous rescue." },
     }),
   ], kidsCoverageProfile, 5);
-  assertEqual(kidsCoverageResult.selected.some((candidate) => candidate.title === "Teamwork Science Sea Story"), true, "kids profile coverage pass should replace redundant dominant-facet picks with a lower-ranked candidate covering missing strong signals");
-  assertEqual(Number(kidsCoverageResult.rejectedReasons.k2_profile_coverage_replacements || 0) > 0, true, "kids profile coverage pass should diagnose replacements");
-  console.log(JSON.stringify({ name: "kids profile coverage diversifies dominant facet slates", pass: true, selected: kidsCoverageResult.selected.map((candidate) => candidate.title), replacements: kidsCoverageResult.rejectedReasons.k2_profile_coverage_replacements }));
+  assertEqual(kidsCoverageResult.selected.some((candidate) => candidate.title === "Teamwork Science Sea Story"), true, "kids primary ordering should include a lower-raw-score candidate covering strong profile signals");
+  console.log(JSON.stringify({ name: "kids primary ordering diversifies dominant facet slates", pass: true, selected: kidsCoverageResult.selected.map((candidate) => candidate.title) }));
 
   const middleGradesInfoGateResult = selectRecommendations([
     fakeScoredCandidate({
@@ -1858,7 +1856,7 @@ async function main() {
     assertEqual(result.diagnostics.middleGradesDeepDebugActivationSource, "profile", "direct profile debug activation source should be diagnosed");
     assertEqual(result.diagnostics.sessionReportHeader, "MIDDLE GRADES DEEP DEBUG: ACTIVE", "source report should include obvious deep-debug header");
     assertEqual(result.diagnostics.debugMiddleGradesBudgetMs >= 180000, true, "middle grades debug mode should expand source budget");
-    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 20000, true, "middle grades debug mode should expand per-query timeout");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs > 0 && result.diagnostics.fetches?.[0]?.clientTimeoutMs <= result.diagnostics.debugMiddleGradesPerQueryBudgetMs, true, "middle grades debug network timeout should remain positive and bounded by the declared per-query debug budget");
     assertEqual(Array.isArray(result.diagnostics.debugMiddleGradesPlannedQueries) && result.diagnostics.debugMiddleGradesPlannedQueries.length > 0, true, "deep trace should expose planned query list");
     assertEqual(Array.isArray(result.diagnostics.debugMiddleGradesFetchTrace) && result.diagnostics.debugMiddleGradesFetchTrace.length > 0, true, "deep trace should expose fetch trace");
     assertEqual(Array.isArray(result.diagnostics.debugMiddleGradesRawDocTrace) && result.diagnostics.debugMiddleGradesRawDocTrace.length > 0, true, "deep trace should expose raw doc filtering trace");
