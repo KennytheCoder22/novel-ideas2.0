@@ -12,6 +12,36 @@ This document defines the values that should survive those changes. It describes
 
 The companion architecture audit records what exists at a particular point in time. This document governs how future work should be judged.
 
+## NovelIdeas Engineering Constitution
+
+These principles govern recommendation investigations, source integrations, and the promotion of new architectural concepts:
+
+1. **NovelIdeas owns the conceptual model.**
+
+   Sources do not define what NovelIdeas can understand. The platform defines its concepts and evaluates how faithfully each source can express them.
+
+2. **Sources expose evidence, not behavior.**
+
+   Source adapters retrieve, preserve, and normalize source evidence. Routing, eligibility, ranking, diversity, and final selection remain responsibilities of the shared recommendation architecture.
+
+3. **Characterize before optimizing.**
+
+   Determine what a source or subsystem actually contributes, where attrition occurs, and which contract boundary is responsible before attempting to improve its results.
+
+4. **Characterization is itself a deliverable.**
+
+   A reproducible account of capabilities, limitations, uncertainty, and failure modes is valuable even when an investigated source or strategy is never adopted.
+
+5. **Architectural abstractions become shared only after repeated empirical validation.**
+
+   A domain-specific model may be formally source-neutral without immediately becoming platform-wide architecture. Generalization must be earned by solving the same demonstrated problem across more than one domain.
+
+6. **Every investigation should leave the architecture stronger, regardless of its implementation outcome.**
+
+   Investigations should produce reusable evidence, contracts, fixtures, diagnostics, or clarified boundaries. A well-supported no-go decision can strengthen NovelIdeas as much as a production implementation.
+
+Together, these principles define ownership, methodology, architectural promotion, and success. They apply independently of any particular source, media type, provider, or current implementation.
+
 ## The problem NovelIdeas is solving
 
 NovelIdeas is not trying to identify books that share labels with things a reader has liked.
