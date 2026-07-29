@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-07-21T07:27:47.750Z",
+  "capability": "#307 Family-scoped query competition",
+  "evidence": {
+    "upstreamGate": "googlebooks-306-query-quality-role-gate.json",
+    "upstreamDecision": "shared_mechanism_age_policy_outputs",
+    "queryQualityEquivalent": false,
+    "narrativeYieldEquivalent": false,
+    "narrativeEfficiencyEquivalent": false
+  },
+  "decision": {
+    "decision": "shared_mechanism_age_policy_outputs",
+    "rationale": "Family competition depends on shared per-query telemetry, while age-band policy changes comparative family outcomes.",
+    "outcomes": {
+      "equivalent_duplication": "Treat as parity-capable duplication candidate.",
+      "shared_mechanism_age_policy_outputs": "Treat as shared mechanism with age-specific policy interpretation.",
+      "different_pipeline_layer": "Treat as different query-competition responsibility by layer/policy."
+    }
+  }
+}

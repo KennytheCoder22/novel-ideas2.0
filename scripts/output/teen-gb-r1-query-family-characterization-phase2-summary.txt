@@ -1,0 +1,15 @@
+Teen GB-R1 Query Family Characterization (Phase 2)
+Rounds: 4
+Profiles per query per round: 3
+Queries: 9
+
+Baseline -> accepted=0, contribution=0, entropy=0, uniqueTitles=0
+
+Top candidates:
+1. YA dystopian | accepted=5.33 (std 3.54) | contribution=3.67 | uniqueYield=5.33 | authorYield=5.33 | entropy=0
+2. young adult sci fi | accepted=5 (std 0) | contribution=4.33 | uniqueYield=5 | authorYield=7 | entropy=0
+3. teen science fiction | accepted=3.67 (std 1.73) | contribution=3.17 | uniqueYield=3.67 | authorYield=5.5 | entropy=0
+4. YA space opera | accepted=3 (std 3) | contribution=0.5 | uniqueYield=3 | authorYield=0.5 | entropy=0
+5. YA science fiction | accepted=2.75 (std 1.3) | contribution=2.75 | uniqueYield=2.75 | authorYield=2.75 | entropy=0
+
+Current top candidate: YA dystopian

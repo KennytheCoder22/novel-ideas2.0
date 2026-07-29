@@ -1,0 +1,923 @@
+{
+  "generatedAt": "2026-07-21T06:26:29.476Z",
+  "capability": "#205 Counterfactual final slate",
+  "inventory": {
+    "sourcePath": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\app\\recommender-v2\\select.ts",
+    "hasAdultWeightedCounterfactualDiagnostics": true,
+    "hasTeenCounterfactualFinalSlateDiagnostics": true,
+    "hasAdultCounterfactualFinalTitlesDiagnostic": false,
+    "hasTeenCounterfactualUsesTiering": true,
+    "hasAdultCounterfactualUsesWeightedPolarity": true,
+    "teenCounterfactualDiagnosticOnlyExport": true,
+    "adultWeightedCounterfactualDiagnosticOnlyExport": true
+  },
+  "aggregate": {
+    "fixtureCount": 10,
+    "adultCasesWithCounterfactualSlateDelta": 1,
+    "teenCasesWithCounterfactualSlateDelta": 8,
+    "adultCasesWithPolarityPolicyEffect": 10,
+    "teenCasesWithWeakUnderfillEffect": 7,
+    "teenCasesWithQueryDerivedEvidenceEffect": 8,
+    "adultCasesWithQueryDerivedEvidenceEffect": 0,
+    "teenCasesWithIdentityEligibilityExclusion": 2,
+    "adultCasesWithIdentityEligibilityExclusion": 0
+  },
+  "rows": [
+    {
+      "caseId": "no-counterfactual-difference",
+      "label": "no counterfactual difference",
+      "adult": {
+        "actualFinalTitles": [
+          "Steel Harbor"
+        ],
+        "counterfactualFinalTitles": [
+          "Steel Harbor"
+        ],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Steel Harbor": "weighted_model_matches_current_binary_result",
+          "Ashline Files": "weighted_model_matches_current_binary_result",
+          "Bright Avenue": "weighted_model_matches_current_binary_result"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": false,
+          "altersPolarityHandling": true,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "adultTasteWeightedCounterfactualNewPassTitles": [],
+          "adultTasteWeightedCounterfactualNewFailTitles": [],
+          "adultTasteWeightedProductionNewPassTitles": [],
+          "adultTasteWeightedProductionNewFailTitles": []
+        }
+      },
+      "teen": {
+        "actualFinalTitles": [
+          "Steel Harbor",
+          "Ashline Files",
+          "Bright Avenue"
+        ],
+        "counterfactualFinalTitles": [
+          "Steel Harbor",
+          "Ashline Files",
+          "Bright Avenue"
+        ],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Steel Harbor": "selected_strong_match_priority",
+          "Ashline Files": "selected_strong_match_priority",
+          "Bright Avenue": "selected_strong_match_priority"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": true,
+          "altersPolarityHandling": false,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "teenGoogleBooksCounterfactualFinalCount": 3,
+          "teenGoogleBooksStrongOrSecondaryAvailableCount": 3
+        }
+      }
+    },
+    {
+      "caseId": "one-newly-admitted-title",
+      "label": "one newly admitted title",
+      "adult": {
+        "actualFinalTitles": [
+          "Strong Mystery Alpha"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Mystery Alpha"
+        ],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Top Ranked Unrelated": "weighted_model_matches_current_binary_result",
+          "Strong Mystery Alpha": "weighted_model_matches_current_binary_result",
+          "Strong Mystery Beta": "weighted_model_matches_current_binary_result",
+          "Strong Mystery Epsilon": "weighted_model_matches_current_binary_result",
+          "Strong Mystery Gamma": "weighted_model_matches_current_binary_result",
+          "Strong Mystery Delta": "weighted_model_matches_current_binary_result"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": false,
+          "altersPolarityHandling": true,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "adultTasteWeightedCounterfactualNewPassTitles": [],
+          "adultTasteWeightedCounterfactualNewFailTitles": [],
+          "adultTasteWeightedProductionNewPassTitles": [],
+          "adultTasteWeightedProductionNewFailTitles": []
+        }
+      },
+      "teen": {
+        "actualFinalTitles": [
+          "Top Ranked Unrelated",
+          "Strong Mystery Alpha",
+          "Strong Mystery Beta"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Mystery Alpha",
+          "Strong Mystery Beta",
+          "Strong Mystery Epsilon",
+          "Strong Mystery Gamma",
+          "Strong Mystery Delta"
+        ],
+        "newlyAdmittedTitles": [
+          "Strong Mystery Epsilon",
+          "Strong Mystery Gamma",
+          "Strong Mystery Delta"
+        ],
+        "newlyRemovedTitles": [
+          "Top Ranked Unrelated"
+        ],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 2,
+        "underfillActual": true,
+        "underfillCounterfactual": false,
+        "underfillDelta": -1,
+        "eligibilityChangeReasonsByTitle": {
+          "Top Ranked Unrelated": "excluded_not_meaningfully_aligned",
+          "Strong Mystery Alpha": "selected_strong_match_priority",
+          "Strong Mystery Beta": "selected_strong_match_priority",
+          "Strong Mystery Gamma": "selected_defensible_secondary_after_strong",
+          "Strong Mystery Delta": "selected_weak_underfill_fallback",
+          "Strong Mystery Epsilon": "selected_strong_match_priority"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": true,
+          "altersPolarityHandling": false,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": true,
+          "altersQueryDerivedEvidenceTreatment": true
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "teenGoogleBooksCounterfactualFinalCount": 5,
+          "teenGoogleBooksStrongOrSecondaryAvailableCount": 4
+        }
+      }
+    },
+    {
+      "caseId": "one-newly-removed-title",
+      "label": "one newly removed title",
+      "adult": {
+        "actualFinalTitles": [
+          "Strong Match Five"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Match Five"
+        ],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Strong Match Five": "weighted_model_matches_current_binary_result",
+          "Weak Query Match Prime": "weighted_model_matches_current_binary_result",
+          "Strong Match One": "weighted_model_matches_current_binary_result",
+          "Strong Match Two": "weighted_model_matches_current_binary_result",
+          "Strong Match Four": "weighted_model_matches_current_binary_result",
+          "Strong Match Three": "weighted_model_matches_current_binary_result"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": false,
+          "altersPolarityHandling": true,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "adultTasteWeightedCounterfactualNewPassTitles": [],
+          "adultTasteWeightedCounterfactualNewFailTitles": [],
+          "adultTasteWeightedProductionNewPassTitles": [],
+          "adultTasteWeightedProductionNewFailTitles": []
+        }
+      },
+      "teen": {
+        "actualFinalTitles": [
+          "Weak Query Match Prime",
+          "Strong Match One",
+          "Strong Match Two"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Match One",
+          "Strong Match Two",
+          "Strong Match Three",
+          "Strong Match Five",
+          "Weak Query Match Prime"
+        ],
+        "newlyAdmittedTitles": [
+          "Strong Match Three",
+          "Strong Match Five"
+        ],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 2,
+        "underfillActual": true,
+        "underfillCounterfactual": false,
+        "underfillDelta": -1,
+        "eligibilityChangeReasonsByTitle": {
+          "Weak Query Match Prime": "selected_weak_underfill_fallback",
+          "Strong Match One": "selected_strong_match_priority",
+          "Strong Match Two": "selected_strong_match_priority",
+          "Strong Match Three": "selected_strong_match_priority",
+          "Strong Match Four": "weak_not_needed_after_higher_ranked_weak_underfill",
+          "Strong Match Five": "selected_defensible_secondary_after_strong"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": true,
+          "altersPolarityHandling": false,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": true,
+          "altersQueryDerivedEvidenceTreatment": true
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "teenGoogleBooksCounterfactualFinalCount": 5,
+          "teenGoogleBooksStrongOrSecondaryAvailableCount": 4
+        }
+      }
+    },
+    {
+      "caseId": "ranking-only-change",
+      "label": "ranking-only change",
+      "adult": {
+        "actualFinalTitles": [
+          "Strong Ranked Third"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Ranked Third"
+        ],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Strong Ranked Third": "weighted_model_matches_current_binary_result",
+          "Secondary Ranked First": "weighted_model_matches_current_binary_result",
+          "Strong Ranked Second": "weighted_model_matches_current_binary_result",
+          "Secondary Ranked Fourth": "weighted_model_matches_current_binary_result",
+          "Strong Ranked Fifth": "weighted_model_matches_current_binary_result"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": false,
+          "altersPolarityHandling": true,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "adultTasteWeightedCounterfactualNewPassTitles": [],
+          "adultTasteWeightedCounterfactualNewFailTitles": [],
+          "adultTasteWeightedProductionNewPassTitles": [
+            "Secondary Ranked First",
+            "Secondary Ranked Fourth"
+          ],
+          "adultTasteWeightedProductionNewFailTitles": []
+        }
+      },
+      "teen": {
+        "actualFinalTitles": [
+          "Secondary Ranked First",
+          "Strong Ranked Second",
+          "Strong Ranked Third"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Ranked Second",
+          "Strong Ranked Third",
+          "Strong Ranked Fifth",
+          "Secondary Ranked First",
+          "Secondary Ranked Fourth"
+        ],
+        "newlyAdmittedTitles": [
+          "Strong Ranked Fifth",
+          "Secondary Ranked Fourth"
+        ],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 2,
+        "underfillActual": true,
+        "underfillCounterfactual": false,
+        "underfillDelta": -1,
+        "eligibilityChangeReasonsByTitle": {
+          "Secondary Ranked First": "selected_defensible_secondary_after_strong",
+          "Strong Ranked Second": "selected_strong_match_priority",
+          "Strong Ranked Third": "selected_strong_match_priority",
+          "Secondary Ranked Fourth": "selected_defensible_secondary_after_strong",
+          "Strong Ranked Fifth": "selected_strong_match_priority"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": true,
+          "altersPolarityHandling": false,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "teenGoogleBooksCounterfactualFinalCount": 5,
+          "teenGoogleBooksStrongOrSecondaryAvailableCount": 5
+        }
+      }
+    },
+    {
+      "caseId": "underfill-to-full",
+      "label": "underfilled slate becoming full",
+      "adult": {
+        "actualFinalTitles": [
+          "Strong Core One"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Core One"
+        ],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Strong Core One": "weighted_model_matches_current_binary_result",
+          "Strong Core Two": "weighted_model_matches_current_binary_result",
+          "Weak Fill One": "weighted_model_matches_current_binary_result",
+          "Weak Fill Two": "weighted_model_matches_current_binary_result",
+          "Weak Fill Three": "weighted_model_matches_current_binary_result"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": false,
+          "altersPolarityHandling": true,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "adultTasteWeightedCounterfactualNewPassTitles": [],
+          "adultTasteWeightedCounterfactualNewFailTitles": [],
+          "adultTasteWeightedProductionNewPassTitles": [],
+          "adultTasteWeightedProductionNewFailTitles": []
+        }
+      },
+      "teen": {
+        "actualFinalTitles": [
+          "Strong Core One",
+          "Strong Core Two",
+          "Weak Fill One"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Core One",
+          "Strong Core Two",
+          "Weak Fill One",
+          "Weak Fill Two",
+          "Weak Fill Three"
+        ],
+        "newlyAdmittedTitles": [
+          "Weak Fill Two",
+          "Weak Fill Three"
+        ],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 2,
+        "underfillActual": true,
+        "underfillCounterfactual": false,
+        "underfillDelta": -1,
+        "eligibilityChangeReasonsByTitle": {
+          "Strong Core One": "selected_strong_match_priority",
+          "Strong Core Two": "selected_strong_match_priority",
+          "Weak Fill One": "selected_weak_underfill_fallback",
+          "Weak Fill Two": "selected_weak_underfill_fallback",
+          "Weak Fill Three": "selected_weak_underfill_fallback"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": true,
+          "altersPolarityHandling": false,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": true,
+          "altersQueryDerivedEvidenceTreatment": true
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "teenGoogleBooksCounterfactualFinalCount": 5,
+          "teenGoogleBooksStrongOrSecondaryAvailableCount": 2
+        }
+      }
+    },
+    {
+      "caseId": "full-to-underfill",
+      "label": "full slate becoming underfilled",
+      "adult": {
+        "actualFinalTitles": [],
+        "counterfactualFinalTitles": [],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Conflicting One": "weighted_model_matches_current_binary_result",
+          "Conflicting Two": "weighted_model_matches_current_binary_result",
+          "Conflicting Three": "weighted_model_matches_current_binary_result",
+          "Conflicting Four": "weighted_model_matches_current_binary_result",
+          "Conflicting Five": "weighted_model_matches_current_binary_result"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": false,
+          "altersPolarityHandling": true,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "adultTasteWeightedCounterfactualNewPassTitles": [],
+          "adultTasteWeightedCounterfactualNewFailTitles": [],
+          "adultTasteWeightedProductionNewPassTitles": [],
+          "adultTasteWeightedProductionNewFailTitles": []
+        }
+      },
+      "teen": {
+        "actualFinalTitles": [
+          "Conflicting One",
+          "Conflicting Two",
+          "Conflicting Three"
+        ],
+        "counterfactualFinalTitles": [
+          "Conflicting Five",
+          "Conflicting One",
+          "Conflicting Two",
+          "Conflicting Three",
+          "Conflicting Four"
+        ],
+        "newlyAdmittedTitles": [
+          "Conflicting Five",
+          "Conflicting Four"
+        ],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 2,
+        "underfillActual": true,
+        "underfillCounterfactual": false,
+        "underfillDelta": -1,
+        "eligibilityChangeReasonsByTitle": {
+          "Conflicting One": "selected_defensible_secondary_after_strong",
+          "Conflicting Two": "selected_defensible_secondary_after_strong",
+          "Conflicting Three": "selected_defensible_secondary_after_strong",
+          "Conflicting Four": "selected_weak_underfill_fallback",
+          "Conflicting Five": "selected_strong_match_priority"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": true,
+          "altersPolarityHandling": false,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": true,
+          "altersQueryDerivedEvidenceTreatment": true
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "teenGoogleBooksCounterfactualFinalCount": 5,
+          "teenGoogleBooksStrongOrSecondaryAvailableCount": 4
+        }
+      }
+    },
+    {
+      "caseId": "identity-policy-counterfactual",
+      "label": "identity-policy counterfactual",
+      "adult": {
+        "actualFinalTitles": [
+          "Accepted Novel"
+        ],
+        "counterfactualFinalTitles": [
+          "Accepted Novel"
+        ],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Accepted Novel": "weighted_model_matches_current_binary_result",
+          "Rejected Literary Study": "weighted_model_matches_current_binary_result",
+          "Rejected Companion Guide": "weighted_model_matches_current_binary_result"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": false,
+          "altersPolarityHandling": true,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "adultTasteWeightedCounterfactualNewPassTitles": [],
+          "adultTasteWeightedCounterfactualNewFailTitles": [],
+          "adultTasteWeightedProductionNewPassTitles": [],
+          "adultTasteWeightedProductionNewFailTitles": []
+        }
+      },
+      "teen": {
+        "actualFinalTitles": [
+          "Accepted Novel"
+        ],
+        "counterfactualFinalTitles": [
+          "Accepted Novel"
+        ],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Rejected Literary Study": "teen_googlebooks_publication_identity_literary_study",
+          "Rejected Companion Guide": "teen_googlebooks_publication_identity_supplemental_companion",
+          "Accepted Novel": "selected_strong_match_priority"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": true,
+          "altersPolarityHandling": false,
+          "altersIdentityEnforcement": true,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": true
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "teenGoogleBooksCounterfactualFinalCount": 1,
+          "teenGoogleBooksStrongOrSecondaryAvailableCount": 1
+        }
+      }
+    },
+    {
+      "caseId": "taste-threshold-counterfactual",
+      "label": "taste-threshold counterfactual",
+      "adult": {
+        "actualFinalTitles": [
+          "Strong Threshold One"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Threshold One"
+        ],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Strong Threshold One": "weighted_model_matches_current_binary_result",
+          "Secondary Threshold Two": "weighted_model_matches_current_binary_result",
+          "Weak Threshold Four": "weighted_model_matches_current_binary_result",
+          "Weak Threshold Three": "weighted_model_matches_current_binary_result",
+          "Weak Threshold Five": "weighted_model_matches_current_binary_result"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": false,
+          "altersPolarityHandling": true,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "adultTasteWeightedCounterfactualNewPassTitles": [],
+          "adultTasteWeightedCounterfactualNewFailTitles": [],
+          "adultTasteWeightedProductionNewPassTitles": [
+            "Secondary Threshold Two"
+          ],
+          "adultTasteWeightedProductionNewFailTitles": []
+        }
+      },
+      "teen": {
+        "actualFinalTitles": [
+          "Strong Threshold One",
+          "Secondary Threshold Two",
+          "Weak Threshold Three"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Threshold One",
+          "Weak Threshold Four",
+          "Secondary Threshold Two",
+          "Weak Threshold Three",
+          "Weak Threshold Five"
+        ],
+        "newlyAdmittedTitles": [
+          "Weak Threshold Four",
+          "Weak Threshold Five"
+        ],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 2,
+        "underfillActual": true,
+        "underfillCounterfactual": false,
+        "underfillDelta": -1,
+        "eligibilityChangeReasonsByTitle": {
+          "Strong Threshold One": "selected_strong_match_priority",
+          "Secondary Threshold Two": "selected_defensible_secondary_after_strong",
+          "Weak Threshold Three": "selected_weak_underfill_fallback",
+          "Weak Threshold Four": "selected_strong_match_priority",
+          "Weak Threshold Five": "selected_weak_underfill_fallback"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": true,
+          "altersPolarityHandling": false,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": true,
+          "altersQueryDerivedEvidenceTreatment": true
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "teenGoogleBooksCounterfactualFinalCount": 5,
+          "teenGoogleBooksStrongOrSecondaryAvailableCount": 3
+        }
+      }
+    },
+    {
+      "caseId": "weak-evidence-rescue-counterfactual",
+      "label": "weak-evidence rescue counterfactual",
+      "adult": {
+        "actualFinalTitles": [
+          "Strong Rescue One"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Rescue One"
+        ],
+        "newlyAdmittedTitles": [],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 0,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Strong Rescue One": "weighted_model_matches_current_binary_result",
+          "Strong Rescue Two": "weighted_model_matches_current_binary_result",
+          "Weak Rescue Three": "weighted_model_matches_current_binary_result",
+          "Weak Rescue Four": "weighted_model_matches_current_binary_result",
+          "Weak Rescue Five": "weighted_model_matches_current_binary_result",
+          "Unrelated Tail": "weighted_model_matches_current_binary_result"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": false,
+          "altersPolarityHandling": true,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "adultTasteWeightedCounterfactualNewPassTitles": [],
+          "adultTasteWeightedCounterfactualNewFailTitles": [],
+          "adultTasteWeightedProductionNewPassTitles": [],
+          "adultTasteWeightedProductionNewFailTitles": []
+        }
+      },
+      "teen": {
+        "actualFinalTitles": [
+          "Strong Rescue One",
+          "Strong Rescue Two",
+          "Weak Rescue Three"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Rescue One",
+          "Strong Rescue Two",
+          "Weak Rescue Three",
+          "Weak Rescue Four",
+          "Weak Rescue Five"
+        ],
+        "newlyAdmittedTitles": [
+          "Weak Rescue Four",
+          "Weak Rescue Five"
+        ],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 2,
+        "underfillActual": true,
+        "underfillCounterfactual": false,
+        "underfillDelta": -1,
+        "eligibilityChangeReasonsByTitle": {
+          "Strong Rescue One": "selected_strong_match_priority",
+          "Strong Rescue Two": "selected_strong_match_priority",
+          "Weak Rescue Three": "selected_weak_underfill_fallback",
+          "Weak Rescue Four": "selected_weak_underfill_fallback",
+          "Weak Rescue Five": "selected_weak_underfill_fallback",
+          "Unrelated Tail": "excluded_not_meaningfully_aligned"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": true,
+          "altersPolarityHandling": false,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": true,
+          "altersQueryDerivedEvidenceTreatment": true
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "teenGoogleBooksCounterfactualFinalCount": 5,
+          "teenGoogleBooksStrongOrSecondaryAvailableCount": 2
+        }
+      }
+    },
+    {
+      "caseId": "multiple-simultaneous-changes",
+      "label": "multiple simultaneous changes",
+      "adult": {
+        "actualFinalTitles": [
+          "Strong Winner"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Winner",
+          "Conflicting Candidate"
+        ],
+        "newlyAdmittedTitles": [
+          "Conflicting Candidate"
+        ],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 1,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Strong Winner": "weighted_model_resolves_binary_overlap_as_net_positive",
+          "Secondary Winner": "weighted_model_matches_current_binary_result",
+          "Conflicting Candidate": "would_pass_weighted_positive_profile_family",
+          "Identity Rejected Candidate": "weighted_model_resolves_binary_overlap_as_net_positive",
+          "Weak Underfill Candidate": "weighted_model_resolves_binary_overlap_as_net_positive",
+          "Unrelated Candidate": "weighted_model_matches_current_binary_result"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": false,
+          "altersPolarityHandling": true,
+          "altersIdentityEnforcement": false,
+          "altersWeakCandidateRescue": false,
+          "altersQueryDerivedEvidenceTreatment": false
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "adultTasteWeightedCounterfactualNewPassTitles": [
+            "Conflicting Candidate"
+          ],
+          "adultTasteWeightedCounterfactualNewFailTitles": [],
+          "adultTasteWeightedProductionNewPassTitles": [
+            "Secondary Winner",
+            "Conflicting Candidate"
+          ],
+          "adultTasteWeightedProductionNewFailTitles": []
+        }
+      },
+      "teen": {
+        "actualFinalTitles": [
+          "Strong Winner",
+          "Secondary Winner",
+          "Weak Underfill Candidate"
+        ],
+        "counterfactualFinalTitles": [
+          "Strong Winner",
+          "Conflicting Candidate",
+          "Secondary Winner",
+          "Weak Underfill Candidate"
+        ],
+        "newlyAdmittedTitles": [
+          "Conflicting Candidate"
+        ],
+        "newlyRemovedTitles": [],
+        "rankingOrderChangedSameMembers": false,
+        "finalCountDelta": 1,
+        "underfillActual": true,
+        "underfillCounterfactual": true,
+        "underfillDelta": 0,
+        "eligibilityChangeReasonsByTitle": {
+          "Identity Rejected Candidate": "teen_googlebooks_publication_identity_non_narrative_shape",
+          "Strong Winner": "selected_strong_match_priority",
+          "Secondary Winner": "selected_defensible_secondary_after_strong",
+          "Weak Underfill Candidate": "selected_weak_underfill_fallback",
+          "Conflicting Candidate": "selected_strong_match_priority",
+          "Unrelated Candidate": "excluded_not_meaningfully_aligned"
+        },
+        "policyEffects": {
+          "altersEvidenceThresholds": true,
+          "altersPolarityHandling": false,
+          "altersIdentityEnforcement": true,
+          "altersWeakCandidateRescue": true,
+          "altersQueryDerivedEvidenceTreatment": true
+        },
+        "role": {
+          "diagnosticOnlyCounterfactual": true,
+          "productionSelectionDrivenByCounterfactual": false
+        },
+        "diagnosticsSubset": {
+          "teenGoogleBooksCounterfactualFinalCount": 4,
+          "teenGoogleBooksStrongOrSecondaryAvailableCount": 3
+        }
+      }
+    }
+  ],
+  "decision": {
+    "decision": "different_hypothetical_questions",
+    "rationale": "Teen counterfactual models tiered final-slate composition (strong/secondary/weak-underfill and query-derived evidence treatment), while Adult counterfactual models weighted-polarity family decisions per candidate. They answer different hypothetical questions despite similar naming.",
+    "outcomes": {
+      "same_counterfactual_engine_different_policy_parameters": "Extract simulation framework only and keep separate policy parameters.",
+      "equivalent_duplication": "Freeze parity and consolidate.",
+      "different_hypothetical_questions": "Reclassify as same-name/different-semantics; do not force parity-preserving consolidation.",
+      "adult_production_teen_diagnostic_only": "Reclassify as adult-production/teen-diagnostic asymmetry."
+    }
+  }
+}

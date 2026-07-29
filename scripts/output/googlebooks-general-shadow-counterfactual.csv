@@ -1,0 +1,4 @@
+profileId,profileLabel,generalPrimaryQuery,admittedCount,likelyTrueNarratives,likelyFalseAccepts,scoredAdditions,selectedAdditions,selectedReplacements,averageScoreDelta,diversityDeltaAuthors,diversityDeltaTitleRoots
+general-contemporary-core,"General contemporary core","young adult fiction novel",0,0,0,0,0,0,0,0,0
+general-coming-of-age,"General coming-of-age","young adult fiction novel",0,0,0,0,0,0,0,0,0
+general-realistic-fiction,"General realistic fiction","young adult fiction novel",0,0,0,0,0,0,0,0,0

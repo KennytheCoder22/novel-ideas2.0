@@ -1,0 +1,10 @@
+GOOGLE BOOKS RECALL EFFICIENCY SUMMARY
+Reports analyzed: 3
+Families analyzed: 5
+
+Ranked by recall loss (raw - selected):
+1. mystery | loss=35 | lossRate=87.5% | stage=pre_publication | action=No action
+2. general | loss=20 | lossRate=100% | stage=pre_publication | action=Query refinement
+3. science_fiction | loss=20 | lossRate=100% | stage=pre_publication | action=Query refinement
+4. horror | loss=17 | lossRate=85% | stage=pre_publication | action=No action
+5. thriller | loss=16 | lossRate=80% | stage=pre_publication | action=No action

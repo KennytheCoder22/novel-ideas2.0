@@ -1288,6 +1288,7 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   const abortControllerId = `openlibrary-fetch-${++openLibraryAbortControllerSequence}`;
   const diagnostic: SourceFetchDiagnosticV2 = {
     query,
+    requestUrl: url,
     fetchStartedAt,
     requestStart: fetchStartedAt,
     attemptNumber,
@@ -1334,6 +1335,13 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   try {
     const response = await fetch(url, { signal: queryController.signal });
     diagnostic.httpStatus = response.status;
+    diagnostic.responseDate = response.headers.get("date") || undefined;
+    diagnostic.responseCacheControl = response.headers.get("cache-control") || undefined;
+    diagnostic.responseCacheAge = response.headers.get("age") || undefined;
+    diagnostic.responseVia = response.headers.get("via") || undefined;
+    diagnostic.responseEtag = response.headers.get("etag") || undefined;
+    diagnostic.responseLastModified = response.headers.get("last-modified") || undefined;
+    diagnostic.responseXCache = response.headers.get("x-cache") || undefined;
     diagnostic.responseHeadersReceived = nowIso();
     diagnostic.bodyStarted = nowIso();
     const text = await response.text();
@@ -1364,6 +1372,8 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
       diagnostic.responseShape = "docs_array";
       diagnostic.docsReturned = docs.length;
       diagnostic.firstReturnedTitles = uniqueStrings(docs.map((doc: any) => doc?.title), 5);
+      diagnostic.returnedWorkIds = docs.map((doc: any) => String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || "").trim());
+      diagnostic.returnedWorkTitles = docs.map((doc: any) => String(doc?.title || "").trim());
       return { docs, diagnostic };
     } catch (error: any) {
       diagnostic.responseBodyPrefix = bodyPrefix(text);
@@ -1387,6 +1397,72 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   } finally {
     clearTimeout(timeout);
     signal?.removeEventListener("abort", abortFromParent);
+  }
+}
+
+function openLibraryLineageQueryKey(query: unknown, queryCascadeIndex: unknown): string {
+  const normalizedQuery = String(query || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const normalizedIndex = Number.isFinite(Number(queryCascadeIndex)) ? String(Number(queryCascadeIndex)) : "";
+  return `${normalizedIndex}:${normalizedQuery}`;
+}
+
+function openLibraryLineageItemKey(item: unknown): string {
+  const row = (item || {}) as Record<string, unknown>;
+  return openLibraryLineageQueryKey(row.queryText, row.queryCascadeIndex);
+}
+
+function incrementOpenLibraryLineageGroup(
+  groups: Map<string, { count: number; titles: string[] }>,
+  item: unknown,
+): void {
+  const row = (item || {}) as Record<string, unknown>;
+  const key = openLibraryLineageItemKey(row);
+  if (!key || key === ":") return;
+  const group = groups.get(key) || { count: 0, titles: [] };
+  group.count += 1;
+  const title = String(row.title || "").trim();
+  if (title && !group.titles.includes(title)) group.titles.push(title);
+  groups.set(key, group);
+}
+
+function lineageFetchForQuery(fetches: SourceFetchDiagnosticV2[], key: string): SourceFetchDiagnosticV2 | undefined {
+  const matching = fetches.filter((fetch) => !fetch.diagnosticOnly && openLibraryLineageQueryKey(fetch.query, fetch.queryCascadeIndex) === key);
+  return [...matching].reverse().find((fetch) => !fetch.timedOut && !fetch.failedReason && Number(fetch.docsReturned || 0) > 0)
+    || matching[matching.length - 1];
+}
+
+export function applyOpenLibraryPerQuerySourceLineage(
+  fetches: SourceFetchDiagnosticV2[],
+  acceptedAfterSourcePolicyItems: unknown[],
+  mergedCandidateItems: unknown[],
+): void {
+  const acceptedByQuery = new Map<string, { count: number; titles: string[] }>();
+  const mergedByQuery = new Map<string, { count: number; titles: string[] }>();
+  for (const item of acceptedAfterSourcePolicyItems) incrementOpenLibraryLineageGroup(acceptedByQuery, item);
+  for (const item of mergedCandidateItems) incrementOpenLibraryLineageGroup(mergedByQuery, item);
+
+  for (const fetch of fetches) {
+    fetch.rawRetrieved = Number(fetch.docsReturned || 0);
+    fetch.structuralRejects = Number(fetch.docsReturned || 0);
+    fetch.acceptedAfterSourcePolicy = 0;
+    fetch.mergedCandidates = 0;
+    fetch.finalContribution = 0;
+    fetch.acceptedAfterSourcePolicyTitles = [];
+    fetch.mergedCandidateTitles = [];
+    fetch.finalContributionTitles = [];
+  }
+
+  const keys = new Set([...acceptedByQuery.keys(), ...mergedByQuery.keys()]);
+  for (const key of keys) {
+    const target = lineageFetchForQuery(fetches, key);
+    if (!target) continue;
+    const accepted = acceptedByQuery.get(key) || { count: 0, titles: [] };
+    const merged = mergedByQuery.get(key) || { count: 0, titles: [] };
+    target.acceptedAfterSourcePolicy = accepted.count;
+    target.acceptedAfterSourcePolicyTitles = accepted.titles;
+    target.mergedCandidates = merged.count;
+    target.mergedCandidateTitles = merged.titles;
+    target.structuralRejects = Math.max(0, Number(target.rawRetrieved || 0) - accepted.count);
   }
 }
 
@@ -5218,6 +5294,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       ? uniqueStrings(queries, 20)
       : uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20);
     const statusForHandoff: SourceResult["status"] = openLibraryScoringHandoffItems.length ? "succeeded" : status;
+    if (ageProfile.key === "teen") {
+      applyOpenLibraryPerQuerySourceLineage(fetches, rawItems, openLibraryScoringHandoffItems);
+    }
     return {
       source: "openLibrary",
       status: statusForHandoff,

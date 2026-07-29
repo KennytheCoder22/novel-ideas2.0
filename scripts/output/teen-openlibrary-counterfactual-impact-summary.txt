@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════════════════════
+ OL-F2 Phase 4 — Teen counterfactual recommendation impact
+═══════════════════════════════════════════════════════════════════
+
+Rounds run ........................ 24
+Family cases ...................... 7
+Runs completed .................... 168
+Errors ............................ 0
+
+── Transport layer ──────────────────────────────────────────────
+First-attempt timeout count ....... 6
+Retry-attempt count ............... 1
+Retry-success count ............... 1
+Retry-success rate ................ 100.0%
+Recovered raw docs ................ 8
+Recovered accepted candidates ..... 0
+Recovered final contributions ..... 0
+
+── Counterfactual recommendation impact ─────────────────────────
+Paired runs total ................. 168
+Runs with retry success ........... 1
+Runs where slate changed .......... 0
+Runs: retry success, no change .... 1
+Titles added (all runs) ........... 0
+Titles dropped (all runs) ......... 0
+Titles reordered (all runs) ....... 0
+
+── Verdict ──────────────────────────────────────────────────────
+NO_RECOMMENDATION_IMPACT: recovered pools did not change the final slate in any paired run. Teen OL transient timeout recovery is not product-significant under current routing, scoring, and selection.
+
+Added wall-clock ms ............... -13004
+Recovered accepted / addl second .. not_applicable
+
+JSON:    C:\Users\KenBR\.copilot\repos\copilot-worktrees\novel-ideas2.0\kennythecoder22-super-waddle\scripts\output\teen-openlibrary-counterfactual-impact.json
+CSV:     C:\Users\KenBR\.copilot\repos\copilot-worktrees\novel-ideas2.0\kennythecoder22-super-waddle\scripts\output\teen-openlibrary-counterfactual-impact.csv

@@ -1,0 +1,23 @@
+Teen GB-R1 Post-promotion Validation
+All checks pass: true
+
+Default planned queries match rate: 100%
+Production composite applied rate: 100%
+Legacy primary present in plan count: 0
+Legacy primary executed count: 0
+
+Selected count mean: 1.42
+Accepted unique mean: 1.75
+Latency mean ms: 399.83
+Request count mean: 3
+Timeout rate mean %: 0
+
+Non-sci-fi unchanged (romance): true
+Non-sci-fi unchanged (historical+mystery): true
+Rollback primary override ok: true
+Rollback composite override ok: true
+Override removal restores default: true
+
+Comparable to Phase 4 (selected/accepted): true/true
+
+Teen GB-R1: CLOSED — PRODUCTION PROMOTION VERIFIED

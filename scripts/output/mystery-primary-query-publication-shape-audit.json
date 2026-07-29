@@ -1,0 +1,453 @@
+{
+  "generatedAt": "2026-07-21T23:08:41.672Z",
+  "primaryQuery": "young adult mystery fiction novel",
+  "profilesRun": 3,
+  "averageWaterfall": {
+    "rawApiCount": 20,
+    "structural": 6,
+    "publication": 11,
+    "artifact": 0,
+    "other": 0,
+    "accepted": 3,
+    "biggestDropGate": "publication_identity",
+    "biggestDropCount": 11
+  },
+  "mergedRejectionReasons": {
+    "publication_shape_writing_guide": 3,
+    "publication_shape_critical_study": 1,
+    "publication_shape_nonfiction": 1,
+    "publication_shape_reference": 2,
+    "missing_author": 6,
+    "publication_shape_genre_survey": 1,
+    "publication_shape_unknown_insufficient_narrative_identity": 3
+  },
+  "g1Count": 22,
+  "g2Count": 0,
+  "ambiguousCount": 6,
+  "namedRejectedTitles": 28,
+  "uniqueTitlesObserved": 31,
+  "acceptedTitlesCount": 3,
+  "titleRows": [
+    {
+      "title": "You",
+      "shape": "novel",
+      "narrativeConfidence": 6.5,
+      "rejectionReason": null,
+      "gate": null,
+      "g1g2": null,
+      "accepted": true,
+      "queryAttribution": "primary_confirmed",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Someone Like Summer",
+      "shape": "novel",
+      "narrativeConfidence": 5.5,
+      "rejectionReason": null,
+      "gate": null,
+      "g1g2": null,
+      "accepted": true,
+      "queryAttribution": "primary_confirmed",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Your Eyes in Stars",
+      "shape": "unknown",
+      "narrativeConfidence": 2.5,
+      "rejectionReason": null,
+      "gate": null,
+      "g1g2": null,
+      "accepted": true,
+      "queryAttribution": "primary_confirmed",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Snakes Don't Miss Their Mothers",
+      "shape": "unknown",
+      "narrativeConfidence": 1.5,
+      "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+      "gate": "publication_identity",
+      "g1g2": "ambiguous",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Dinky Hocker Shoots Smack!",
+      "shape": "unknown",
+      "narrativeConfidence": 1.5,
+      "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+      "gate": "publication_identity",
+      "g1g2": "ambiguous",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Teeth",
+      "shape": "unknown",
+      "narrativeConfidence": 1.5,
+      "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+      "gate": "publication_identity",
+      "g1g2": "ambiguous",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Dreaming Again",
+      "shape": "unknown",
+      "narrativeConfidence": 1.5,
+      "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+      "gate": "publication_identity",
+      "g1g2": "ambiguous",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "Death Comes to St Ives (The Edge of the World Detective Agency, Book 3)",
+      "shape": "unknown",
+      "narrativeConfidence": 1,
+      "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+      "gate": "publication_identity",
+      "g1g2": "ambiguous",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "Perfect Silence (A DI Callanach Thriller, Book 4)",
+      "shape": "unknown",
+      "narrativeConfidence": 1,
+      "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+      "gate": "publication_identity",
+      "g1g2": "ambiguous",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 1
+    },
+    {
+      "title": "Novel & Short Story Writer's Market 40th Edition",
+      "shape": "writing_guide",
+      "narrativeConfidence": 5.5,
+      "rejectionReason": "publication_shape_writing_guide",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Guide to Literary Agents 30th Edition",
+      "shape": "writing_guide",
+      "narrativeConfidence": 0,
+      "rejectionReason": "publication_shape_writing_guide",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Detective Fiction for Young Readers",
+      "shape": "critical_study",
+      "narrativeConfidence": 5,
+      "rejectionReason": "publication_shape_critical_study",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Writer's Market 100th Edition",
+      "shape": "writing_guide",
+      "narrativeConfidence": 2,
+      "rejectionReason": "publication_shape_writing_guide",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Developing Library Collections for Today's Young Adults",
+      "shape": "nonfiction",
+      "narrativeConfidence": 2,
+      "rejectionReason": "publication_shape_nonfiction",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "DC Graphic Novels for Young Adults Sneak Previews: The Oracle Code (2020-) #1",
+      "shape": "reference",
+      "narrativeConfidence": 7,
+      "rejectionReason": "publication_shape_reference",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "No Place Like Rome",
+      "shape": "genre_survey",
+      "narrativeConfidence": 6,
+      "rejectionReason": "publication_shape_genre_survey",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Among Our Books",
+      "shape": "reference",
+      "narrativeConfidence": 0,
+      "rejectionReason": "publication_shape_reference",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 3
+    },
+    {
+      "title": "Female Heroes in Young Adult Fantasy Fiction",
+      "shape": "critical_study",
+      "narrativeConfidence": 3,
+      "rejectionReason": "publication_shape_critical_study",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "Understanding (Post)feminist Girlhood Through Young Adult Fantasy Literature",
+      "shape": "critical_study",
+      "narrativeConfidence": 2,
+      "rejectionReason": "publication_shape_critical_study",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "The Best American Science Fiction and Fantasy 2024",
+      "shape": "anthology",
+      "narrativeConfidence": 5,
+      "rejectionReason": "publication_shape_anthology",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "Fantasy Literature for Children and Young Adults",
+      "shape": "critical_study",
+      "narrativeConfidence": 4,
+      "rejectionReason": "publication_shape_critical_study",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "500 Great Books For Teens",
+      "shape": "critical_study",
+      "narrativeConfidence": 2,
+      "rejectionReason": "publication_shape_critical_study",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "Internet Kids & Family Yellow Pages, 2001 Edition",
+      "shape": "reference",
+      "narrativeConfidence": 0,
+      "rejectionReason": "publication_shape_reference",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "Nebula Awards Showcase 2014",
+      "shape": "anthology",
+      "narrativeConfidence": 1,
+      "rejectionReason": "publication_shape_anthology",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "\"Blade Runner\" and the Cyberpunk Narrative. Is Cyberpunk a Dystopian Narrative or a Genre of its own?",
+      "shape": "critical_study",
+      "narrativeConfidence": 5,
+      "rejectionReason": "publication_shape_critical_study",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "Shock and Awe",
+      "shape": "unknown",
+      "narrativeConfidence": 1,
+      "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "The role of fantasy literature in the juvenile reading habit",
+      "shape": "literary_history",
+      "narrativeConfidence": 1,
+      "rejectionReason": "publication_shape_literary_history",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 2
+    },
+    {
+      "title": "Guide to Literary Agents 2018",
+      "shape": "writing_guide",
+      "narrativeConfidence": 1,
+      "rejectionReason": "publication_shape_writing_guide",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 1
+    },
+    {
+      "title": "Novel & Short Story Writer's Market 2019",
+      "shape": "writing_guide",
+      "narrativeConfidence": 2.5,
+      "rejectionReason": "publication_shape_writing_guide",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 1
+    },
+    {
+      "title": "Careers in Publishing",
+      "shape": "nonfiction",
+      "narrativeConfidence": 0,
+      "rejectionReason": "publication_shape_nonfiction",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 1
+    },
+    {
+      "title": "Michigan Library Bulletin",
+      "shape": "public_domain_compilation",
+      "narrativeConfidence": 0,
+      "rejectionReason": "publication_shape_public_domain_compilation",
+      "gate": "publication_identity",
+      "g1g2": "G1_retrieval_failure",
+      "accepted": false,
+      "queryAttribution": "mixed_all_queries",
+      "observedInRuns": 1
+    }
+  ],
+  "runs": [
+    {
+      "profileId": "mystery-classic-whodunit",
+      "waterfall": {
+        "rawApiCount": 20,
+        "structural": 6,
+        "afterStructural": 14,
+        "publication": 11,
+        "afterPublication": 3,
+        "artifact": 0,
+        "afterArtifact": 3,
+        "other": 0,
+        "afterOther": 3,
+        "accepted": 3,
+        "biggestDropGate": "publication_identity",
+        "biggestDropCount": 11
+      },
+      "rejectionReasons": {
+        "publication_shape_writing_guide": 3,
+        "publication_shape_critical_study": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_reference": 2,
+        "missing_author": 6,
+        "publication_shape_genre_survey": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 3
+      }
+    },
+    {
+      "profileId": "mystery-psychological-thriller",
+      "waterfall": {
+        "rawApiCount": 20,
+        "structural": 6,
+        "afterStructural": 14,
+        "publication": 11,
+        "afterPublication": 3,
+        "artifact": 0,
+        "afterArtifact": 3,
+        "other": 0,
+        "afterOther": 3,
+        "accepted": 3,
+        "biggestDropGate": "publication_identity",
+        "biggestDropCount": 11
+      },
+      "rejectionReasons": {
+        "publication_shape_writing_guide": 3,
+        "publication_shape_critical_study": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_reference": 2,
+        "missing_author": 6,
+        "publication_shape_genre_survey": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 3
+      }
+    },
+    {
+      "profileId": "mystery-cozy-amateur",
+      "waterfall": {
+        "rawApiCount": 20,
+        "structural": 6,
+        "afterStructural": 14,
+        "publication": 11,
+        "afterPublication": 3,
+        "artifact": 0,
+        "afterArtifact": 3,
+        "other": 0,
+        "afterOther": 3,
+        "accepted": 3,
+        "biggestDropGate": "publication_identity",
+        "biggestDropCount": 11
+      },
+      "rejectionReasons": {
+        "publication_shape_writing_guide": 3,
+        "publication_shape_critical_study": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_reference": 2,
+        "missing_author": 6,
+        "publication_shape_genre_survey": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 3
+      }
+    }
+  ]
+}

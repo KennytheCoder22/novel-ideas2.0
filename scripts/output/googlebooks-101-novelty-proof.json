@@ -1,0 +1,165 @@
+{
+  "generatedAt": "2026-07-21T03:10:53.625Z",
+  "inputs": {
+    "trustedCounterfactual": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\teen-trusted-reconciliation-counterfactual.json",
+    "evidenceOriginAudit": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\teen-evidence-origin-reconciliation-audit.json"
+  },
+  "noveltyOutcome": "already_falsified_by_prior_counterfactual",
+  "decisionRuleResolution": "noSubstantiveDifference",
+  "summary": {
+    "weakPromotionsBefore": 0,
+    "weakPromotionsAfterTrustedReconciliation": 0,
+    "remainingWeak": 32,
+    "weakUnderfillBefore": 19,
+    "weakUnderfillAfter": 19,
+    "newlyFullWithoutWeakFallbackReports": 0,
+    "totalWeakCandidatesAudited": 32,
+    "queryOnlyUnresolvedCount": 32,
+    "uniqueWeakCandidateTitles": 16
+  },
+  "noveltyDelta": {
+    "adultProductionInputsAndTransformations": [
+      "adultGoogleBooksSignalMatchTrace / adultGoogleBooksSignalMatchedField / adultGoogleBooksSignalMatchedText / adultGoogleBooksSignalMatchMethod (score.ts)",
+      "adultGoogleBooksCanonicalNarrativeFamilyPromotions (select.ts, adult-only guard)"
+    ],
+    "previouslyTestedByTeenTrustedCounterfactual": [
+      "teenGoogleBooksSignalFieldsByTitle trusted field mapping (title/subtitle/description/categories)",
+      "teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle",
+      "googleBooksFinalEligibilityEvidenceByTitle verified_same_work_metadata / verified_same_isbn_metadata tokens",
+      "trusted-only weak->secondary promotion simulation and underfill/slate counters"
+    ],
+    "netNewBehaviorActuallyTestedBy101": [],
+    "notes": "No candidate-level corpus evidence shows new trusted evidence fields, new accepted provenance types, or stage-shifted decision paths unique to #101."
+  },
+  "recommendation": "Skip #101 production integration and proceed to first behaviorally equivalent consolidation.",
+  "candidateLevelTable": [
+    {
+      "candidate": "Crowned (A Conyza Bennett story, Book 3)",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=2; underfillOccurrences=2; maxNativeSpecific=0; maxQueryOnly=7; maxCategoryOnly=0; queryOnlyUnresolved=2/2; wouldPassWithoutQueryEvidence=0/2; presetTests=Test C",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Divergent Official Illustrated Movie Companion",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=2; underfillOccurrences=0; maxNativeSpecific=0; maxQueryOnly=6; maxCategoryOnly=0; queryOnlyUnresolved=2/2; wouldPassWithoutQueryEvidence=0/2; presetTests=Test A",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Last Chance Books",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=2; underfillOccurrences=2; maxNativeSpecific=0; maxQueryOnly=5; maxCategoryOnly=0; queryOnlyUnresolved=2/2; wouldPassWithoutQueryEvidence=0/2; presetTests=Test A",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Love Is Hell",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=1; underfillOccurrences=1; maxNativeSpecific=0; maxQueryOnly=7; maxCategoryOnly=0; queryOnlyUnresolved=1/1; wouldPassWithoutQueryEvidence=0/1; presetTests=Test C",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Malcolm and Juliet",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=1; underfillOccurrences=1; maxNativeSpecific=0; maxQueryOnly=5; maxCategoryOnly=0; queryOnlyUnresolved=1/1; wouldPassWithoutQueryEvidence=0/1; presetTests=Test C",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Pretties with Ugly Thoughts",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=2; underfillOccurrences=2; maxNativeSpecific=0; maxQueryOnly=5; maxCategoryOnly=0; queryOnlyUnresolved=2/2; wouldPassWithoutQueryEvidence=0/2; presetTests=Test A",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Someone Like Summer",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=3; underfillOccurrences=2; maxNativeSpecific=0; maxQueryOnly=6; maxCategoryOnly=0; queryOnlyUnresolved=3/3; wouldPassWithoutQueryEvidence=0/3; presetTests=Test A|Test B",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Starclimber",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=2; underfillOccurrences=1; maxNativeSpecific=0; maxQueryOnly=5; maxCategoryOnly=0; queryOnlyUnresolved=2/2; wouldPassWithoutQueryEvidence=0/2; presetTests=Test C",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Sydney Bridge Upside Down: Text Classics",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=1; underfillOccurrences=1; maxNativeSpecific=0; maxQueryOnly=6; maxCategoryOnly=0; queryOnlyUnresolved=1/1; wouldPassWithoutQueryEvidence=0/1; presetTests=Test C",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "The Giver Illustrated Gift Edition",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=1; underfillOccurrences=1; maxNativeSpecific=0; maxQueryOnly=5; maxCategoryOnly=0; queryOnlyUnresolved=1/1; wouldPassWithoutQueryEvidence=0/1; presetTests=Test A",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=3; underfillOccurrences=1; maxNativeSpecific=0; maxQueryOnly=5; maxCategoryOnly=0; queryOnlyUnresolved=3/3; wouldPassWithoutQueryEvidence=0/3; presetTests=Test A|Test C",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "The Role of Nature in the Works of Octavia Butler",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=2; underfillOccurrences=0; maxNativeSpecific=0; maxQueryOnly=6; maxCategoryOnly=0; queryOnlyUnresolved=2/2; wouldPassWithoutQueryEvidence=0/2; presetTests=Test A",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Waer",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=3; underfillOccurrences=0; maxNativeSpecific=0; maxQueryOnly=6; maxCategoryOnly=0; queryOnlyUnresolved=3/3; wouldPassWithoutQueryEvidence=0/3; presetTests=Test A|Test C",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Wolfborn",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=2; underfillOccurrences=1; maxNativeSpecific=0; maxQueryOnly=6; maxCategoryOnly=0; queryOnlyUnresolved=2/2; wouldPassWithoutQueryEvidence=0/2; presetTests=Test A|Test C",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "You",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=1; underfillOccurrences=1; maxNativeSpecific=0; maxQueryOnly=3; maxCategoryOnly=0; queryOnlyUnresolved=1/1; wouldPassWithoutQueryEvidence=0/1; presetTests=Test A",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    },
+    {
+      "candidate": "Your Eyes in Stars",
+      "priorTeenEvidence": "trust=untrusted_context_only; occurrences=4; underfillOccurrences=3; maxNativeSpecific=0; maxQueryOnly=7; maxCategoryOnly=0; queryOnlyUnresolved=4/4; wouldPassWithoutQueryEvidence=0/4; presetTests=Test A|Test B",
+      "adultOnlyAddedEvidence": "none observed in Teen corpus artifacts (Adult-only signal-trace/canonical-promotion channels are age-band gated and not present in Teen diagnostics)",
+      "stageChanged": "no",
+      "decisionCouldChange": "no",
+      "why": "all observations are query-only unresolved with no trusted native support; prior trusted counterfactual already produced zero promotions"
+    }
+  ]
+}

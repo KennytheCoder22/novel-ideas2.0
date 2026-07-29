@@ -1,0 +1,163 @@
+{
+  "generatedAt": "2026-07-21T08:20:19.874Z",
+  "productionPrimaryGeneralQuery": "young adult fiction novel",
+  "productionProfiles": [
+    {
+      "profileId": "general-contemporary-core",
+      "profileLabel": "General contemporary core",
+      "primaryGeneralQuery": "young adult fiction novel",
+      "selectedCount": 3,
+      "totalScored": 5
+    },
+    {
+      "profileId": "general-coming-of-age",
+      "profileLabel": "General coming-of-age",
+      "primaryGeneralQuery": "",
+      "selectedCount": 0,
+      "totalScored": 0
+    },
+    {
+      "profileId": "general-realistic-fiction",
+      "profileLabel": "General realistic fiction",
+      "primaryGeneralQuery": "",
+      "selectedCount": 0,
+      "totalScored": 0
+    }
+  ],
+  "productionBaseline": {
+    "rawApiResults": 20,
+    "narrativeCandidates": 4,
+    "publicationPasses": 5,
+    "publicationRuleHistogram": {
+      "publication_shape_nonfiction": 6,
+      "publication_shape_writing_guide": 2,
+      "publication_shape_critical_study": 1,
+      "publication_shape_anthology": 1,
+      "publication_shape_unknown_insufficient_narrative_identity": 1
+    },
+    "publicationLossSummary": {
+      "totalRejectedByPublicationIdentity": 11,
+      "rows": [
+        {
+          "rule": "publication_shape_nonfiction",
+          "rejectedCount": 6,
+          "rejectedPct": 54.5
+        },
+        {
+          "rule": "publication_shape_writing_guide",
+          "rejectedCount": 2,
+          "rejectedPct": 18.2
+        },
+        {
+          "rule": "publication_shape_anthology",
+          "rejectedCount": 1,
+          "rejectedPct": 9.1
+        },
+        {
+          "rule": "publication_shape_critical_study",
+          "rejectedCount": 1,
+          "rejectedPct": 9.1
+        },
+        {
+          "rule": "publication_shape_unknown_insufficient_narrative_identity",
+          "rejectedCount": 1,
+          "rejectedPct": 9.1
+        }
+      ]
+    }
+  },
+  "top100Replay": {
+    "query": "young adult fiction novel",
+    "rawCount": 100,
+    "shapeDistribution": {
+      "count": {
+        "nonfiction": 18,
+        "critical_study": 6,
+        "writing_guide": 7,
+        "novel": 8,
+        "readers_advisory": 2,
+        "generic_category_catalog": 1,
+        "unknown": 23,
+        "reference": 17,
+        "periodical": 3,
+        "public_domain_compilation": 9,
+        "essay_collection": 1,
+        "author_commentary": 2,
+        "anthology": 3
+      },
+      "percent": {
+        "nonfiction": 18,
+        "critical_study": 6,
+        "writing_guide": 7,
+        "novel": 8,
+        "readers_advisory": 2,
+        "generic_category_catalog": 1,
+        "unknown": 23,
+        "reference": 17,
+        "periodical": 3,
+        "public_domain_compilation": 9,
+        "essay_collection": 1,
+        "author_commentary": 2,
+        "anthology": 3
+      }
+    },
+    "publicationIdentityRejectedCount": 90,
+    "likelyFalseRejectCount": 1,
+    "likelyFalseRejectTitles": [
+      "Guy in Real Life"
+    ]
+  },
+  "singleRuleRelaxationSimulations": [
+    {
+      "relaxedRule": "publication_shape_unknown_insufficient_narrative_identity",
+      "baselinePublicationPasses": 5,
+      "simulatedPublicationPasses": 25,
+      "additionalCandidates": 20,
+      "likelyNarrativeAdds": 0,
+      "likelyFalseAcceptAdds": 20,
+      "falseAcceptRatePct": 100,
+      "publicationPassLiftPct": 400
+    },
+    {
+      "relaxedRule": "publication_shape_anthology",
+      "baselinePublicationPasses": 5,
+      "simulatedPublicationPasses": 7,
+      "additionalCandidates": 2,
+      "likelyNarrativeAdds": 0,
+      "likelyFalseAcceptAdds": 2,
+      "falseAcceptRatePct": 100,
+      "publicationPassLiftPct": 40
+    },
+    {
+      "relaxedRule": "publication_shape_nonfiction",
+      "baselinePublicationPasses": 5,
+      "simulatedPublicationPasses": 7,
+      "additionalCandidates": 2,
+      "likelyNarrativeAdds": 0,
+      "likelyFalseAcceptAdds": 2,
+      "falseAcceptRatePct": 100,
+      "publicationPassLiftPct": 40
+    },
+    {
+      "relaxedRule": "publication_shape_writing_guide",
+      "baselinePublicationPasses": 5,
+      "simulatedPublicationPasses": 7,
+      "additionalCandidates": 2,
+      "likelyNarrativeAdds": 0,
+      "likelyFalseAcceptAdds": 2,
+      "falseAcceptRatePct": 100,
+      "publicationPassLiftPct": 40
+    },
+    {
+      "relaxedRule": "publication_shape_critical_study",
+      "baselinePublicationPasses": 5,
+      "simulatedPublicationPasses": 6,
+      "additionalCandidates": 1,
+      "likelyNarrativeAdds": 0,
+      "likelyFalseAcceptAdds": 1,
+      "falseAcceptRatePct": 100,
+      "publicationPassLiftPct": 20
+    }
+  ],
+  "recommendedSingleRuleExperiment": null
+}

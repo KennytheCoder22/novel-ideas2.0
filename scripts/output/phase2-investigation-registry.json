@@ -1,0 +1,61 @@
+{
+  "generatedAt": "2026-07-21T01:31:33.886-07:00",
+  "confidenceScale": [
+    "Verified",
+    "Strong",
+    "Moderate",
+    "Weak"
+  ],
+  "impactScale": [
+    "High",
+    "Medium",
+    "Low"
+  ],
+  "investigations": [
+    {
+      "investigation": "Google Books General publication identity",
+      "status": "Resolved",
+      "confidence": "Verified",
+      "impact": "Low",
+      "evidenceStrength": "High",
+      "decision": "Working as Intended",
+      "reopenCriteria": "Reopen only if production diagnostics show materially increased false-reject signals or measurable recommendation underfill attributable to publication identity."
+    },
+    {
+      "investigation": "Teen Google Books science-fiction primary-query variant",
+      "status": "Closed",
+      "confidence": "Verified",
+      "impact": "Medium",
+      "evidenceStrength": "High",
+      "decision": "Do not promote current candidate query",
+      "reopenCriteria": "Reopen when a new variant demonstrates lower fallback dependence plus consistent selected-slate improvement in production A/B."
+    },
+    {
+      "investigation": "Teen Open Library freeze/starvation",
+      "status": "Open",
+      "confidence": "Moderate",
+      "impact": "High",
+      "evidenceStrength": "Medium",
+      "decision": "Classify dominant starvation mechanism before fixes",
+      "reopenCriteria": "N/A (active P1-B lane)."
+    },
+    {
+      "investigation": "Google Books family-specific recall optimization",
+      "status": "Open",
+      "confidence": "Strong",
+      "impact": "High",
+      "evidenceStrength": "Medium-High",
+      "decision": "Build generalized family-level production A/B framework",
+      "reopenCriteria": "N/A (active P2 framework lane)."
+    },
+    {
+      "investigation": "Teen Google Books fallback dependence",
+      "status": "Open",
+      "confidence": "Strong",
+      "impact": "High",
+      "evidenceStrength": "High",
+      "decision": "Prioritize fallback activation reduction in production",
+      "reopenCriteria": "N/A (active P1-A lane)."
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "generatedAt": "2026-07-21T02:17:00.399Z",
+  "summary": {
+    "both": 12,
+    "adultOnly": 0,
+    "teenOnly": 3,
+    "missing": 0
+  },
+  "rows": [
+    {
+      "capability": "Query quality comparison",
+      "bucket": "A",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Query promotion / replacement",
+      "bucket": "A",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Family-scoped query competition",
+      "bucket": "A",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Narrative-strength scoring",
+      "bucket": "A",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Semantic phrase extraction",
+      "bucket": "A",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Canonical cue promotion",
+      "bucket": "A",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Parser confidence diagnostics",
+      "bucket": "A",
+      "adultCapabilityPresent": false,
+      "teenEquivalentPresent": true,
+      "status": "Teen only",
+      "recommendation": "Back-port"
+    },
+    {
+      "capability": "Final slate identity auditing",
+      "bucket": "A",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Meaningful taste tiers",
+      "bucket": "D",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Counterfactual final slate",
+      "bucket": "D",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Weak-underfill dependency audit",
+      "bucket": "D",
+      "adultCapabilityPresent": false,
+      "teenEquivalentPresent": true,
+      "status": "Teen only",
+      "recommendation": "Consider back-port"
+    },
+    {
+      "capability": "Evidence-origin reconciliation audit",
+      "bucket": "D",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Query-family overlap matrix",
+      "bucket": "D",
+      "adultCapabilityPresent": false,
+      "teenEquivalentPresent": true,
+      "status": "Teen only",
+      "recommendation": "Consider back-port"
+    },
+    {
+      "capability": "Marginal decision-worthy yield",
+      "bucket": "D",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Unify"
+    },
+    {
+      "capability": "Adult content weighting",
+      "bucket": "C",
+      "adultCapabilityPresent": true,
+      "teenEquivalentPresent": true,
+      "status": "Both",
+      "recommendation": "Keep adult-only policy branch"
+    }
+  ]
+}

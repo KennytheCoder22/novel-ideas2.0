@@ -1,0 +1,14 @@
+Google Books General shadow-mode counterfactual
+Profiles evaluated: 3
+Blocked profiles: 0
+Shadow admissions: 0
+Likely true narratives: 0
+Likely false accepts: 0
+False-accept rate: 0%
+Scored additions: 0
+Selected additions: 0
+Selected replacements: 0
+Average score delta (sum across profiles): 0
+Diversity delta authors (sum): 0
+Diversity delta title roots (sum): 0
+Decision: no_action

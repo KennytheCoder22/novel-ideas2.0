@@ -1,0 +1,367 @@
+{
+  "generatedAt": "2026-07-23T01:09:23.399Z",
+  "status": {
+    "nytF0": "CLOSED — INFRASTRUCTURE AUDIT COMPLETE",
+    "nytV2Adapter": "IMPLEMENTED",
+    "nytF1": "LIVE_VALIDATION_ADULT_C_RERUN"
+  },
+  "liveRuns": [
+    {
+      "presetId": "adult-c",
+      "presetLabel": "Adult C",
+      "archetype": "historical/crime/drama",
+      "nyt": {
+        "status": "succeeded",
+        "attempted": true,
+        "skippedReason": "",
+        "failedReason": "",
+        "emptyReason": "",
+        "timedOut": false,
+        "queries": [
+          "historical fiction science fiction drama alternate history book",
+          "adult book"
+        ],
+        "nytRequestedLists": [
+          "combined-print-and-e-book-fiction",
+          "hardcover-fiction",
+          "trade-fiction-paperback"
+        ],
+        "nytReturnedLists": [
+          "combined-print-and-e-book-fiction",
+          "hardcover-fiction",
+          "trade-fiction-paperback"
+        ],
+        "nytBooksPerList": {
+          "combined-print-and-e-book-fiction": 15,
+          "hardcover-fiction": 15,
+          "trade-fiction-paperback": 15
+        },
+        "nytEndpointCalledByList": {
+          "combined-print-and-e-book-fiction": "https://api.nytimes.com/svc/books/v3/lists/current/combined-print-and-e-book-fiction.json?api-key=%5Bredacted%5D",
+          "hardcover-fiction": "https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=%5Bredacted%5D",
+          "trade-fiction-paperback": "https://api.nytimes.com/svc/books/v3/lists/current/trade-fiction-paperback.json?api-key=%5Bredacted%5D"
+        },
+        "nytHttpStatusByList": {
+          "combined-print-and-e-book-fiction": 200,
+          "hardcover-fiction": 200,
+          "trade-fiction-paperback": 200
+        },
+        "rawApiResultCount": 45,
+        "rawCount": 32,
+        "nytRawBookCount": 45,
+        "nytConvertedCount": 32,
+        "nytDroppedCount": 13,
+        "nytDropReasons": {
+          "duplicate_book": 13
+        },
+        "nytNormalizedTitles": [
+          "RANSOM",
+          "THEO OF GOLDEN",
+          "YESTERYEAR",
+          "THE CALAMITY CLUB",
+          "PROJECT HAIL MARY",
+          "WHISTLER",
+          "THE COUNTRY ROAD MURDERS",
+          "DUNGEON CRAWLER CARL",
+          "THE LEGACY",
+          "THE ROMANCE REVIVAL",
+          "THE CORRESPONDENT",
+          "THE GOAL",
+          "THE FIVE-STAR WEEKEND",
+          "THE DEAL",
+          "THE DIVORCE",
+          "CARL'S DOOMSDAY SCENARIO",
+          "THE DUNGEON ANARCHIST'S COOKBOOK",
+          "THE SHAMPOO EFFECT",
+          "LOVE YOU MORE",
+          "THE GATE OF THE FERAL GODS",
+          "FORSAKING MIDNIGHT",
+          "THE MISTAKE",
+          "REMARKABLY BRIGHT CREATURES",
+          "THE SCORE",
+          "IN STORMY WEATHER",
+          "RED RISING",
+          "DOLLY ALL THE TIME",
+          "THE HOUSEMAID'S WEDDING"
+        ],
+        "fetches": [
+          {
+            "query": "combined-print-and-e-book-fiction",
+            "status": "succeeded",
+            "httpStatus": 200,
+            "timedOut": false,
+            "failedReason": ""
+          },
+          {
+            "query": "hardcover-fiction",
+            "status": "succeeded",
+            "httpStatus": 200,
+            "timedOut": false,
+            "failedReason": ""
+          },
+          {
+            "query": "trade-fiction-paperback",
+            "status": "succeeded",
+            "httpStatus": 200,
+            "timedOut": false,
+            "failedReason": ""
+          }
+        ]
+      },
+      "normalizedCount": 32,
+      "scoredCount": 32,
+      "finalAcceptedTitles": [
+        "DUNGEON CRAWLER CARL",
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE DEAL",
+        "THE DIVORCE"
+      ],
+      "renderedTitles": [
+        "DUNGEON CRAWLER CARL",
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE DEAL",
+        "THE DIVORCE"
+      ],
+      "lineage": [
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "sourceId": "nyt:9780593820254",
+          "rawSource": "nyt",
+          "hasNytMetadata": true
+        },
+        {
+          "title": "REMARKABLY BRIGHT CREATURES",
+          "source": "nyt",
+          "sourceId": "nyt:9780063204164",
+          "rawSource": "nyt",
+          "hasNytMetadata": true
+        },
+        {
+          "title": "RANSOM",
+          "source": "nyt",
+          "sourceId": "nyt:9780063384262",
+          "rawSource": "nyt",
+          "hasNytMetadata": true
+        },
+        {
+          "title": "THE DEAL",
+          "source": "nyt",
+          "sourceId": "nyt:9781775293934",
+          "rawSource": "nyt",
+          "hasNytMetadata": true
+        },
+        {
+          "title": "THE DIVORCE",
+          "source": "nyt",
+          "sourceId": "nyt:9781464249631",
+          "rawSource": "nyt",
+          "hasNytMetadata": true
+        }
+      ],
+      "adapterLayer": {
+        "pass": true,
+        "checks": [
+          {
+            "id": "fetch_attempted",
+            "pass": true
+          },
+          {
+            "id": "list_success",
+            "pass": true
+          },
+          {
+            "id": "rows_converted",
+            "pass": true
+          },
+          {
+            "id": "truthful_lineage",
+            "pass": true
+          },
+          {
+            "id": "entered_normalization_scoring",
+            "pass": true
+          },
+          {
+            "id": "not_reported_as_openlibrary",
+            "pass": true
+          },
+          {
+            "id": "count_reconciliation",
+            "pass": true
+          }
+        ]
+      }
+    }
+  ],
+  "regressions": {
+    "nytDisabled": {
+      "nytStatus": "skipped",
+      "nytAttempted": false,
+      "nytSkippedReason": "source_disabled",
+      "pass": true
+    },
+    "otherSourceUnchanged": {
+      "sources": [
+        {
+          "source": "mock",
+          "status": "skipped",
+          "attempted": false,
+          "skippedReason": "source_disabled"
+        },
+        {
+          "source": "googleBooks",
+          "status": "failed",
+          "attempted": true,
+          "skippedReason": ""
+        },
+        {
+          "source": "openLibrary",
+          "status": "skipped",
+          "attempted": false,
+          "skippedReason": "source_disabled"
+        },
+        {
+          "source": "kitsu",
+          "status": "skipped",
+          "attempted": false,
+          "skippedReason": "source_disabled"
+        },
+        {
+          "source": "comicVine",
+          "status": "skipped",
+          "attempted": false,
+          "skippedReason": "source_disabled"
+        },
+        {
+          "source": "localLibrary",
+          "status": "skipped",
+          "attempted": false,
+          "skippedReason": "source_disabled"
+        },
+        {
+          "source": "nyt",
+          "status": "skipped",
+          "attempted": false,
+          "skippedReason": "source_disabled"
+        }
+      ],
+      "pass": true
+    },
+    "mockedAdapter": {
+      "status": "succeeded",
+      "rawCount": 3,
+      "requestedLists": [
+        "combined-print-and-e-book-fiction",
+        "hardcover-fiction",
+        "trade-fiction-paperback"
+      ],
+      "returnedLists": [
+        "combined-print-and-e-book-fiction",
+        "trade-fiction-paperback"
+      ],
+      "booksPerList": {
+        "combined-print-and-e-book-fiction": 2,
+        "hardcover-fiction": 0,
+        "trade-fiction-paperback": 2
+      },
+      "httpStatusByList": {
+        "combined-print-and-e-book-fiction": 200,
+        "hardcover-fiction": 500,
+        "trade-fiction-paperback": 200
+      },
+      "failedReason": "",
+      "listMetaPresent": true,
+      "duplicateCollapsed": true,
+      "partialFailurePreserved": true,
+      "pass": true,
+      "lineageRows": [
+        {
+          "title": "Shared Bestseller",
+          "source": "nyt",
+          "list": "combined-print-and-e-book-fiction"
+        },
+        {
+          "title": "Unique Combined",
+          "source": "nyt",
+          "list": "combined-print-and-e-book-fiction"
+        },
+        {
+          "title": "Unique Trade",
+          "source": "nyt",
+          "list": "trade-fiction-paperback"
+        }
+      ]
+    },
+    "legacyLineage": {
+      "sourceValues": [
+        "nyt"
+      ],
+      "pass": true
+    }
+  },
+  "regressions2": {
+    "cacheHit": {
+      "firstStatus": "succeeded",
+      "firstRawCount": 3,
+      "fetchesAfterFirst": 2,
+      "secondStatus": "succeeded",
+      "secondRawCount": 3,
+      "fetchesAfterSecond": 0,
+      "cacheHitsInSecond": {
+        "combined-print-and-e-book-fiction": true,
+        "hardcover-fiction": true
+      },
+      "pass": true
+    },
+    "r429ThenSuccess": {
+      "status": "succeeded",
+      "rawCount": 1,
+      "nytQuotaBlocked": false,
+      "retryAttempted": true,
+      "retrySucceeded": true,
+      "totalAttempts": 3,
+      "pass": true
+    },
+    "r429Twice": {
+      "status": "failed",
+      "nytQuotaBlocked": true,
+      "totalFetchAttempts": 2,
+      "cfRetryAttempted": true,
+      "cfRetrySucceeded": false,
+      "hcSkippedReason": "quota_blocked_skipped",
+      "hcQuotaBlocked": true,
+      "rawCount": 0,
+      "pass": true
+    },
+    "mixedCacheLive": {
+      "fetchesAfterWarm": 2,
+      "liveFetchesForMixedRun": 1,
+      "cacheHitByList": {
+        "combined-print-and-e-book-fiction": true,
+        "hardcover-fiction": true,
+        "trade-fiction-paperback": false
+      },
+      "rawCount": 2,
+      "pass": true
+    },
+    "concurrentDedup": {
+      "totalFetchAttempts": 1,
+      "r1RawCount": 1,
+      "r2RawCount": 1,
+      "r1Status": "succeeded",
+      "r2Status": "succeeded",
+      "pass": true
+    },
+    "diagnosticSecrecy": {
+      "rawUrl": "https://api.nytimes.com/svc/books/v3/lists/current/combined-print-and-e-book-fiction.json?api-key=super-secret-api-key-12345&other=ok",
+      "redacted": "https://api.nytimes.com/svc/books/v3/lists/current/combined-print-and-e-book-fiction.json?api-key=[redacted]&other=ok",
+      "keyPresentInRaw": true,
+      "keyPresentInRedacted": false,
+      "redactedMarkerPresent": true,
+      "pass": true
+    }
+  }
+}

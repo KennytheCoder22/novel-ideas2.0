@@ -1,0 +1,29 @@
+Phase 2 Opportunity Ranking (Leverage-First)
+
+Milestone tag:
+- Phase 2 Baseline -- Quality Governance Established
+
+Investigation closure:
+- General -> Publication Identity: Resolved -- Working as Intended
+  - publication_shape_nonfiction dominates loss and is appropriate
+  - false-reject signal is minimal
+  - rule-relaxation simulations showed unacceptable false-accept risk
+  - strict shadow counterfactual admitted 0 candidates
+  - downstream deltas remained 0 (selection, score, diversity)
+
+Roadmap:
+1) Teen Google Books fallback dependence reduction | Impact: High | Effort: Medium | Evidence: High | Priority: P1 (P1-A)
+2) Teen Open Library recall freeze/starvation boundary (mechanism-classified) | Impact: High | Effort: Medium | Evidence: Medium | Priority: P1 (P1-B)
+3) Google Books family-specific query refinement framework (generalized production A/B harness) | Impact: Medium-High | Effort: Medium | Evidence: Medium-High | Priority: P2
+4) Open Library recall yield analysis by route + age band | Impact: Medium-High | Effort: Medium | Evidence: Medium | Priority: P2
+5) Kids Google Books pre-scoring rejection boundary | Impact: Medium | Effort: Medium | Evidence: Medium | Priority: P2
+6) Open Library normalization loss audit | Impact: Medium | Effort: Medium | Evidence: Low-Medium | Priority: Monitor
+7) Adult Open Library sparse-exception behavior | Impact: Medium | Effort: Medium | Evidence: Medium | Priority: Monitor
+8) Pre-Teen Google Books publication-shape rescue effectiveness monitoring | Impact: Medium | Effort: Low | Evidence: Medium | Priority: Monitor
+9) Open Library ranking/selection tuning | Impact: Medium | Effort: High | Evidence: Low | Priority: P3
+10) Google Books General publication identity | Impact: Low | Effort: N/A | Evidence: High | Priority: Closed (Resolved -- Working as Intended)
+
+Recommended immediate sequence:
+- P1-A first: Teen Google Books fallback dependence reduction
+- P1-B next: Teen Open Library starvation mechanism classification and dominant-cause isolation
+- Then P2: generalized Google Books family A/B framework + route-normalized Open Library recall + Kids pre-scoring boundary

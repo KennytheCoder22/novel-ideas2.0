@@ -1,0 +1,16 @@
+Teen GB-R1 Query Quality Audit (Phase 1)
+Rounds: 4
+Profiles per query per round: 3
+Query candidates: 9
+
+Baseline query: young adult science fiction novel
+Baseline means -> accepted=0, acceptanceRate=0%, narrativeYield=0, decisionWorthyYield=0, contribution=0
+
+Top candidates by decision-worthy narrative yield:
+1. YA dystopian | decisionWorthy=0, accepted=2.67, contribution=1.83, acceptanceRate=13.33%
+2. teen science fiction | decisionWorthy=0, accepted=1, contribution=0.92, acceptanceRate=5%
+3. YA space opera | decisionWorthy=0, accepted=1, contribution=0.33, acceptanceRate=5%
+4. young adult sci fi | decisionWorthy=0, accepted=0.83, contribution=0.83, acceptanceRate=4.17%
+5. YA speculative fiction | decisionWorthy=0, accepted=0.75, contribution=0.75, acceptanceRate=3.75%
+
+Current top candidate: YA dystopian

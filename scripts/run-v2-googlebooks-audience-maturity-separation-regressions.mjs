@@ -166,6 +166,7 @@ function runFlow(ageBand, rawRows, limit = 5) {
     normalizedCandidates: normalized,
     scoredCandidates: scored,
     selectedCandidates: selection.selected,
+    selectionDiagnostics: selection.rejectedReasons,
     returnedTitles: selection.selected.filter((candidate) => candidate.source === "googleBooks").map((candidate) => candidate.title),
   });
   return { profile, normalized, scored, selection, diagnostics };
@@ -213,6 +214,118 @@ for (const ageBand of ["kids", "preteens"]) {
 }
 
 {
+  const title = "Teen Kids-Labeled YA Novel Candidate";
+  const run = runFlow("teens", [rawGoogleBook("teens", title, {
+    audienceBand: "kids",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    queryText: "young adult fantasy fiction novel",
+    originalPlannedQuery: "young adult fantasy fiction novel",
+    googleBooksPublicationShape: "novel",
+    googleBooksNarrativeConfidence: 7,
+    googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
+    genres: ["Young Adult Fiction / Mystery & Suspense", "Young Adult Fiction / Thrillers & Suspense"],
+    description: "A young adult mystery and thriller follows a teen detective uncovering a dangerous conspiracy through investigation.",
+  })]);
+  assertEqual(run.normalized[0].maturityBand, "kids", "Teen rescue should not mutate source audience normalization");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Teen reconciliation should rescue YA narrative books mislabeled as kids");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationDecisionByTitle[title], "rescued", "Teen reconciliation decision should be explicitly diagnosed as rescued");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationReasonByTitle[title], "teen_googlebooks_audience_reconciliation_rescue", "Teen reconciliation reason should record the rescue path");
+  assertIncludes(run.selection.rejectedReasons.googleBooksFinalEligibilityEvidenceByTitle[title], "teen_audience_reconciliation:rescued", "Final eligibility evidence should include teen reconciliation status");
+  assertNotEqual(run.selection.rejectedReasons.teenGoogleBooksMeaningfulTasteClassificationByTitle[title], undefined, "Teen meaningful taste classification should be emitted for Google Books");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksWouldPassWithoutQueryDerivedEvidenceByTitle[title], true, "Teen YA rescue candidate should be document-backed, not query-only");
+  console.log("PASS teens: kids-labeled YA narratives can be rescued via audience reconciliation");
+}
+
+{
+  const title = "Teen Kids-Labeled Early Reader Candidate";
+  const run = runFlow("teens", [rawGoogleBook("teens", title, {
+    audienceBand: "kids",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    queryText: "young adult fantasy fiction novel",
+    originalPlannedQuery: "young adult fantasy fiction novel",
+    googleBooksPublicationShape: "novel",
+    googleBooksNarrativeConfidence: 7,
+    googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
+    genres: ["Juvenile Fiction / Readers / Beginner", "Picture books"],
+    description: "A picture book for beginning readers in grade 2 follows a class through an early reader adventure.",
+  })]);
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "maturity_band_mismatch", "Teen reconciliation must not rescue explicit early-reader books");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationDecisionByTitle[title], "rejected", "Teen reconciliation should record a blocked rescue decision");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksAudienceReconciliationReasonByTitle[title], "teen_audience_reconciliation_explicit_early_reader_markers", "Teen reconciliation should explain the block reason");
+  assertIncludes(run.selection.rejectedReasons.googleBooksFinalEligibilityEvidenceByTitle[title], "teen_audience_reconciliation:rejected", "Final eligibility evidence should record rejected teen reconciliation");
+  console.log("PASS teens: explicit early-reader evidence remains an enforced reject");
+}
+
+{
+  const title = "Teen Companion Candidate";
+  const run = runFlow("teens", [rawGoogleBook("teens", title, {
+    title: "Divergent Official Illustrated Movie Companion",
+    audienceBand: "teens",
+    maturityBand: "teens",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    queryText: "young adult dystopian fiction novel",
+    originalPlannedQuery: "young adult dystopian fiction novel",
+    googleBooksPublicationShape: "novel",
+    googleBooksNarrativeConfidence: 7,
+    googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
+    genres: ["Young Adult Fiction / Dystopian", "Young Adult Fiction / Science Fiction"],
+    description: "Official illustrated movie companion to the blockbuster adaptation.",
+  })]);
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle["Divergent Official Illustrated Movie Companion"], "teen_googlebooks_publication_identity_supplemental_companion", "Teen publication identity should reject companion materials");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksPublicationIdentityDecisionByTitle["Divergent Official Illustrated Movie Companion"], "rejected", "Teen publication identity should record companion rejection");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksPublicationIdentityClassificationByTitle["Divergent Official Illustrated Movie Companion"], "supplemental_companion_edition", "Teen publication identity should classify companion materials");
+  console.log("PASS teens: supplemental companion materials are blocked");
+}
+
+{
+  const title = "Teen Literary Study Candidate";
+  const run = runFlow("teens", [rawGoogleBook("teens", title, {
+    title: "The Role of Nature in the Works of Octavia Butler",
+    audienceBand: "teens",
+    maturityBand: "teens",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    queryText: "young adult dystopian fiction novel",
+    originalPlannedQuery: "young adult dystopian fiction novel",
+    googleBooksPublicationShape: "novel",
+    googleBooksNarrativeConfidence: 7,
+    googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
+    genres: ["Young Adult Fiction / Dystopian"],
+    description: "A study of ecological themes in Butler novels with special reference to narrative method.",
+  })]);
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle["The Role of Nature in the Works of Octavia Butler"], "teen_googlebooks_publication_identity_literary_study", "Teen publication identity should reject literary-study artifacts");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksPublicationIdentityDecisionByTitle["The Role of Nature in the Works of Octavia Butler"], "rejected", "Teen publication identity should record literary-study rejection");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksPublicationIdentityClassificationByTitle["The Role of Nature in the Works of Octavia Butler"], "literary_criticism_or_study", "Teen publication identity should classify literary-study artifacts");
+  console.log("PASS teens: literary study artifacts are blocked");
+}
+
+{
+  const title = "Teen Illustrated Narrative Edition Candidate";
+  const run = runFlow("teens", [rawGoogleBook("teens", title, {
+    title: "The Giver Illustrated Gift Edition",
+    audienceBand: "teens",
+    maturityBand: "teens",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    queryText: "young adult dystopian fiction novel",
+    originalPlannedQuery: "young adult dystopian fiction novel",
+    googleBooksPublicationShape: "novel",
+    googleBooksNarrativeConfidence: 7,
+    googleBooksStoryLevelNarrativeEvidence: ["explicit_novel_identity", "plot_level_conflict_and_stakes"],
+    genres: ["Young Adult Fiction / Dystopian"],
+    description: "An illustrated gift edition of the classic dystopian young adult novel.",
+  })]);
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle["The Giver Illustrated Gift Edition"], "selected_googlebooks_candidate", "Illustrated narrative editions should remain eligible when not companion/study artifacts");
+  assertEqual(run.selection.rejectedReasons.teenGoogleBooksPublicationIdentityDecisionByTitle["The Giver Illustrated Gift Edition"], "passed", "Teen publication identity should preserve narrative illustrated editions");
+  console.log("PASS teens: illustrated narrative editions remain eligible");
+}
+
+{
   const title = "Unknown Maturity Candidate";
   const run = runFlow("kids", [rawGoogleBook("kids", title, { maturityBand: undefined, maturityRating: undefined, sourceMaturityRating: undefined })]);
   assertEqual(run.normalized[0].maturityBand, "kids", "Unknown maturity must not become a maturity deck label");
@@ -231,6 +344,80 @@ for (const ageBand of ["kids", "preteens"]) {
   assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "The Band of Bigs must not be rejected solely for NOT_MATURE");
   assertIncludes(run.diagnostics.googleBooksAgeBandRenderedTitlesByDeck.kids, title, "The Band of Bigs should survive the live failure shape");
   console.log("PASS live-shape: The Band of Bigs no longer fails maturity_band_mismatch");
+}
+
+{
+  const title = "Pre-Teen Juvenile Fiction Reclassified Candidate";
+  const run = runFlow("preteens", [rawGoogleBook("preteens", title, {
+    audienceBand: "kids",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    description: "A middle grade adventure novel follows two friends who solve a dangerous mystery in their town library.",
+    genres: ["Juvenile Fiction / Action & Adventure"],
+  })]);
+  assertEqual(run.normalized[0].maturityBand, undefined, "Pre-Teen NOT_MATURE juvenile-fiction labels should be reclassified to unknown maturity band");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Pre-Teen reclassified juvenile-fiction title should no longer fail maturity mismatch");
+  console.log("PASS preteens: broad juvenile-fiction kids labels can be evaluated");
+}
+
+{
+  const title = "Pre-Teen Explicit Early Reader Candidate";
+  const run = runFlow("preteens", [rawGoogleBook("preteens", title, {
+    audienceBand: "kids",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    description: "A picture book for beginning readers in grade 1 follows a preschool class through alphabet fun.",
+    genres: ["Juvenile Fiction / Readers / Beginner", "Picture books"],
+  })]);
+  assertEqual(run.normalized[0].maturityBand, "kids", "Explicit early-reader markers must remain kids for Pre-Teens");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "maturity_band_mismatch", "Explicit early-reader books should still fail the Pre-Teen maturity gate");
+  console.log("PASS preteens: explicit early-reader markers remain protected");
+}
+
+{
+  const title = "Pre-Teen Teen-Labeled Middle Grade Candidate";
+  const run = runFlow("preteens", [rawGoogleBook("preteens", title, {
+    audienceBand: "teens",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    description: "A middle grade fantasy novel follows Lina as she solves a hidden-school mystery and protects her friends.",
+    genres: ["Juvenile Fiction / Fantasy & Magic", "Middle grade fiction"],
+  })]);
+  assertEqual(run.normalized[0].maturityBand, undefined, "High-confidence middle-grade novels should bypass teen source labels for Pre-Teens");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Teen-labeled middle-grade novel should remain eligible for Pre-Teens");
+  console.log("PASS preteens: high-confidence middle-grade novels bypass teen source labels");
+}
+
+{
+  const title = "Pre-Teen Adult-Labeled Middle Grade Candidate";
+  const run = runFlow("preteens", [rawGoogleBook("preteens", title, {
+    audienceBand: "adult",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    description: "A middle grade fantasy novel follows Lina as she solves a hidden-school mystery and protects her friends.",
+    genres: ["Juvenile Fiction / Fantasy & Magic", "Middle grade fiction"],
+  })]);
+  assertEqual(run.normalized[0].maturityBand, undefined, "High-confidence middle-grade novels should bypass adult source labels for Pre-Teens");
+  assertEqual(run.diagnostics.googleBooksAgeBandDropReasonByTitle[title], "selected_googlebooks_candidate", "Adult-labeled middle-grade novel should remain eligible for Pre-Teens");
+  console.log("PASS preteens: high-confidence middle-grade novels bypass adult source labels");
+}
+
+{
+  const title = "Pre-Teen Teen-Labeled Nonfiction Guide Candidate";
+  const run = runFlow("preteens", [rawGoogleBook("preteens", title, {
+    audienceBand: "teens",
+    maturityBand: "NOT_MATURE",
+    maturityRating: "NOT_MATURE",
+    sourceMaturityRating: "NOT_MATURE",
+    description: "A classroom study guide with chapter summaries and teacher prompts for literature instruction.",
+    genres: ["Education", "Juvenile Nonfiction"],
+  })]);
+  assertEqual(run.normalized[0].maturityBand, "teens", "Non-middle-grade artifacts must not bypass teen source labels");
+  console.log("PASS preteens: non-middle-grade teen labels remain unchanged");
 }
 
 console.log("PASS googlebooks audience/maturity separation regressions");

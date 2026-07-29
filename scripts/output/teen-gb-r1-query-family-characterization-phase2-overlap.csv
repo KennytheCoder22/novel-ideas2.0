@@ -1,0 +1,37 @@
+queryA,queryB,acceptedJaccard,contributionJaccard,acceptedIntersection,contributionIntersection,uniqueAcceptedAdditionsAOverB,uniqueAcceptedAdditionsBOverA,uniqueContributionAdditionsAOverB,uniqueContributionAdditionsBOverA
+"young adult dystopian fiction","YA dystopian",0.2857,0.2,2,1,0,5,0,4
+"YA science fiction","YA speculative fiction",0.2,0.2,1,1,2,2,2,2
+"teen science fiction","science fiction for teens",0.2,0.2,1,1,4,0,4,0
+"young adult science fiction novel","YA science fiction",0,0,0,0,0,3,0,3
+"young adult science fiction novel","young adult sci fi",0,0,0,0,0,5,0,5
+"young adult science fiction novel","teen science fiction",0,0,0,0,0,5,0,5
+"young adult science fiction novel","young adult dystopian fiction",0,0,0,0,0,2,0,1
+"young adult science fiction novel","YA dystopian",0,0,0,0,0,7,0,5
+"young adult science fiction novel","YA speculative fiction",0,0,0,0,0,3,0,3
+"young adult science fiction novel","YA space opera",0,0,0,0,0,6,0,3
+"young adult science fiction novel","science fiction for teens",0,0,0,0,0,1,0,1
+"YA science fiction","young adult sci fi",0,0,0,0,3,5,3,5
+"YA science fiction","teen science fiction",0,0,0,0,3,5,3,5
+"YA science fiction","young adult dystopian fiction",0,0,0,0,3,2,3,1
+"YA science fiction","YA dystopian",0,0,0,0,3,7,3,5
+"YA science fiction","YA space opera",0,0,0,0,3,6,3,3
+"YA science fiction","science fiction for teens",0,0,0,0,3,1,3,1
+"young adult sci fi","teen science fiction",0,0,0,0,5,5,5,5
+"young adult sci fi","young adult dystopian fiction",0,0,0,0,5,2,5,1
+"young adult sci fi","YA dystopian",0,0,0,0,5,7,5,5
+"young adult sci fi","YA speculative fiction",0,0,0,0,5,3,5,3
+"young adult sci fi","YA space opera",0,0,0,0,5,6,5,3
+"young adult sci fi","science fiction for teens",0,0,0,0,5,1,5,1
+"teen science fiction","young adult dystopian fiction",0,0,0,0,5,2,5,1
+"teen science fiction","YA dystopian",0,0,0,0,5,7,5,5
+"teen science fiction","YA speculative fiction",0,0,0,0,5,3,5,3
+"teen science fiction","YA space opera",0,0,0,0,5,6,5,3
+"young adult dystopian fiction","YA speculative fiction",0,0,0,0,2,3,1,3
+"young adult dystopian fiction","YA space opera",0,0,0,0,2,6,1,3
+"young adult dystopian fiction","science fiction for teens",0,0,0,0,2,1,1,1
+"YA dystopian","YA speculative fiction",0,0,0,0,7,3,5,3
+"YA dystopian","YA space opera",0,0,0,0,7,6,5,3
+"YA dystopian","science fiction for teens",0,0,0,0,7,1,5,1
+"YA speculative fiction","YA space opera",0,0,0,0,3,6,3,3
+"YA speculative fiction","science fiction for teens",0,0,0,0,3,1,3,1
+"YA space opera","science fiction for teens",0,0,0,0,6,1,3,1

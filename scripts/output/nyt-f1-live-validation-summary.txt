@@ -1,0 +1,28 @@
+NYT-F1 — Adapter validation (Adult C rerun + resilience regressions)
+
+Adult C (historical/crime/drama)
+  nyt.status=succeeded attempted=true raw=32 converted=32 dropped=13
+  requestedLists=["combined-print-and-e-book-fiction","hardcover-fiction","trade-fiction-paperback"]
+  returnedLists=["combined-print-and-e-book-fiction","hardcover-fiction","trade-fiction-paperback"]
+  booksPerList={"combined-print-and-e-book-fiction":15,"hardcover-fiction":15,"trade-fiction-paperback":15}
+  httpStatusByList={"combined-print-and-e-book-fiction":200,"hardcover-fiction":200,"trade-fiction-paperback":200}
+  nytQuotaBlocked=false
+  normalized=32 scored=32 finalAccepted=5 rendered=5
+  adapterLayerPass=true
+  adapterChecks=fetch_attempted:PASS, list_success:PASS, rows_converted:PASS, truthful_lineage:PASS, entered_normalization_scoring:PASS, not_reported_as_openlibrary:PASS, count_reconciliation:PASS
+
+Original regressions
+  nytDisabledSkipPass=true
+  otherSourceUnchangedPass=true
+  mockedAdapterPass=true
+  legacyLineagePass=true
+
+Resilience regressions
+  R1 cacheHit=true
+  R2 429ThenSuccess=true
+  R3 429Twice=true
+  R4 mixedCacheLive=true
+  R5 concurrentDedup=true
+  R6 diagnosticSecrecy=true
+
+Overall: PASS

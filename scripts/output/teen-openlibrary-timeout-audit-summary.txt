@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════════════════════
+ OL-F2 Phase 1 — Teen Open Library timeout audit
+═══════════════════════════════════════════════════════════════════
+
+Rounds run ........................ 12
+Family cases ...................... 7
+Runs completed .................... 84
+Query attempts recorded ........... 243
+Timeout attempts .................. 5 (2.1%)
+Estimated accepted candidates lost  14.00
+Estimated raw docs lost ........... 32.00
+
+── Timeout frequency by family ───────────────────────────────────
+  mystery_thriller         attempts= 15  timeouts=  2  rate=13.3%
+  contemporary             attempts= 24  timeouts=  1  rate=4.2%
+  horror_paranormal        attempts= 25  timeouts=  1  rate=4.0%
+  speculative_scifi        attempts= 35  timeouts=  1  rate=2.9%
+  fantasy                  attempts= 72  timeouts=  0  rate=0.0%
+  romance                  attempts= 24  timeouts=  0  rate=0.0%
+  adventure_historical     attempts= 48  timeouts=  0  rate=0.0%
+
+── Highest-timeout query wordings ───────────────────────────────
+  mystery_thriller         young adult mystery thriller | timeouts=1/1 (100.0%)
+  mystery_thriller         teen mystery thriller | timeouts=1/12 (8.3%)
+  horror_paranormal        young adult horror | timeouts=1/12 (8.3%)
+  speculative_scifi        science fiction adventure | timeouts=1/12 (8.3%)
+  contemporary             young adult contemporary romance | timeouts=1/12 (8.3%)
+
+── Timeout lifecycle stage ───────────────────────────────────────
+  pre_headers                      5 (100.0%)
+
+── Timeout clustering by query position ─────────────────────────
+  cascadeIndex= 0  timeouts=3/84 (3.6%)
+  cascadeIndex= 1  timeouts=1/85 (1.2%)
+  cascadeIndex= 2  timeouts=0/37 (0.0%)
+  cascadeIndex= 3  timeouts=1/13 (7.7%)
+  cascadeIndex= 4  timeouts=0/12 (0.0%)
+  cascadeIndex= 6  timeouts=0/12 (0.0%)
+
+── Suggested smallest intervention ──────────────────────────────
+  Smallest justified intervention: preserve current behavior and run a narrow timeout-budget sensitivity experiment before adding retry logic.
+
+JSON:    C:\Users\KenBR\.copilot\repos\copilot-worktrees\novel-ideas2.0\kennythecoder22-super-waddle\scripts\output\teen-openlibrary-timeout-audit.json
+CSV:     C:\Users\KenBR\.copilot\repos\copilot-worktrees\novel-ideas2.0\kennythecoder22-super-waddle\scripts\output\teen-openlibrary-timeout-audit.csv

@@ -1,0 +1,17 @@
+Teen GB-R1 Composite Query Experiment (Phase 3)
+Rounds: 4
+Profiles per round: 3
+
+Baseline young adult science fiction novel -> accepted=0, contribution=0, entropy=0
+Broad young adult sci fi -> accepted=4.17, contribution=3.5, entropy=0
+Dystopian YA dystopian -> accepted=6.08, contribution=4.25, entropy=0
+
+Composite ranking:
+1. Composite broad+dystopian+speculative | accepted=12.5 contribution=10 entropy=0.4276 dup=0
+2. Composite broad+dystopian+space-opera | accepted=15.75 contribution=8.83 entropy=0.4531 dup=0
+3. Composite broad+dystopian | accepted=10.25 contribution=7.75 entropy=0.2817 dup=0
+4. Single dystopian | accepted=6.08 contribution=4.25 entropy=0 dup=0
+5. Single broad | accepted=4.17 contribution=3.5 entropy=0 dup=0
+6. Single baseline | accepted=0 contribution=0 entropy=0 dup=0
+
+Top phase-3 configuration: Composite broad+dystopian+speculative

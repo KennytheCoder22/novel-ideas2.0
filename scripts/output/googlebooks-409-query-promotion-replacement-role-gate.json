@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-07-21T07:27:48.670Z",
+  "capability": "#409 Query promotion / replacement",
+  "evidence": {
+    "adultStatus": "empty",
+    "teenStatus": "empty",
+    "sameAttemptedQueries": true,
+    "samePlannedOrder": true,
+    "adultAttempted": [
+      "science fiction thriller novel",
+      "mystery thriller novel"
+    ],
+    "teenAttempted": [
+      "science fiction thriller novel",
+      "mystery thriller novel"
+    ],
+    "adultPlanned": [
+      "science fiction thriller novel",
+      "mystery thriller novel"
+    ],
+    "teenPlanned": [
+      "science fiction thriller novel",
+      "mystery thriller novel"
+    ]
+  },
+  "decision": {
+    "decision": "shared_mechanism_age_policy_outputs",
+    "rationale": "Adult and Teen share the same query promotion/replacement execution order and attempted-query mechanism.",
+    "outcomes": {
+      "equivalent_duplication": "Treat as parity-capable duplication.",
+      "shared_mechanism_age_policy_outputs": "Treat as shared mechanism with age-specific policy interpretation.",
+      "different_pipeline_layer": "Treat as different stage responsibilities."
+    }
+  }
+}

@@ -1,0 +1,443 @@
+{
+  "generatedAt": "2026-07-21T01:44:43.066Z",
+  "inputs": [
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt"
+  ],
+  "aggregate": {
+    "before": {
+      "strong": 6,
+      "secondary": 19,
+      "weak": 32,
+      "strongPlusSecondary": 25,
+      "weakUnderfill": 19
+    },
+    "after": {
+      "strong": 6,
+      "secondary": 19,
+      "weak": 32,
+      "strongPlusSecondary": 25,
+      "weakUnderfill": 19
+    },
+    "weakPromotions": 0,
+    "remainingWeak": 32,
+    "newlyFullWithoutWeakFallbackReports": [],
+    "trustedPromotionOriginHistogram": {}
+  },
+  "perReport": [
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "countsBefore": {
+        "strong": 1,
+        "secondary": 2,
+        "weak": 5,
+        "strongPlusSecondary": 3,
+        "weakUnderfill": 2
+      },
+      "countsAfter": {
+        "strong": 1,
+        "secondary": 2,
+        "weak": 5,
+        "strongPlusSecondary": 3,
+        "weakUnderfill": 2
+      },
+      "promotedFromWeakToSecondaryTitles": [],
+      "promotions": []
+    },
+    {
+      "report": "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+      "presetTestName": "Test B",
+      "countsBefore": {
+        "strong": 0,
+        "secondary": 2,
+        "weak": 2,
+        "strongPlusSecondary": 2,
+        "weakUnderfill": 2
+      },
+      "countsAfter": {
+        "strong": 0,
+        "secondary": 2,
+        "weak": 2,
+        "strongPlusSecondary": 2,
+        "weakUnderfill": 2
+      },
+      "promotedFromWeakToSecondaryTitles": [],
+      "promotions": []
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "countsBefore": {
+        "strong": 0,
+        "secondary": 3,
+        "weak": 6,
+        "strongPlusSecondary": 3,
+        "weakUnderfill": 2
+      },
+      "countsAfter": {
+        "strong": 0,
+        "secondary": 3,
+        "weak": 6,
+        "strongPlusSecondary": 3,
+        "weakUnderfill": 2
+      },
+      "promotedFromWeakToSecondaryTitles": [],
+      "promotions": []
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "countsBefore": {
+        "strong": 0,
+        "secondary": 4,
+        "weak": 3,
+        "strongPlusSecondary": 4,
+        "weakUnderfill": 1
+      },
+      "countsAfter": {
+        "strong": 0,
+        "secondary": 4,
+        "weak": 3,
+        "strongPlusSecondary": 4,
+        "weakUnderfill": 1
+      },
+      "promotedFromWeakToSecondaryTitles": [],
+      "promotions": []
+    },
+    {
+      "report": "pasted-text-ccffa6f6-bbcc-4e8d-9721-faaf9ac9db73.txt",
+      "presetTestName": "Test B",
+      "countsBefore": {
+        "strong": 5,
+        "secondary": 2,
+        "weak": 0,
+        "strongPlusSecondary": 7,
+        "weakUnderfill": 0
+      },
+      "countsAfter": {
+        "strong": 5,
+        "secondary": 2,
+        "weak": 0,
+        "strongPlusSecondary": 7,
+        "weakUnderfill": 0
+      },
+      "promotedFromWeakToSecondaryTitles": [],
+      "promotions": []
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "countsBefore": {
+        "strong": 0,
+        "secondary": 3,
+        "weak": 3,
+        "strongPlusSecondary": 3,
+        "weakUnderfill": 2
+      },
+      "countsAfter": {
+        "strong": 0,
+        "secondary": 3,
+        "weak": 3,
+        "strongPlusSecondary": 3,
+        "weakUnderfill": 2
+      },
+      "promotedFromWeakToSecondaryTitles": [],
+      "promotions": []
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "countsBefore": {
+        "strong": 0,
+        "secondary": 0,
+        "weak": 8,
+        "strongPlusSecondary": 0,
+        "weakUnderfill": 5
+      },
+      "countsAfter": {
+        "strong": 0,
+        "secondary": 0,
+        "weak": 8,
+        "strongPlusSecondary": 0,
+        "weakUnderfill": 5
+      },
+      "promotedFromWeakToSecondaryTitles": [],
+      "promotions": []
+    },
+    {
+      "report": "pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+      "presetTestName": "Test B",
+      "countsBefore": {
+        "strong": 0,
+        "secondary": 1,
+        "weak": 2,
+        "strongPlusSecondary": 1,
+        "weakUnderfill": 2
+      },
+      "countsAfter": {
+        "strong": 0,
+        "secondary": 1,
+        "weak": 2,
+        "strongPlusSecondary": 1,
+        "weakUnderfill": 2
+      },
+      "promotedFromWeakToSecondaryTitles": [],
+      "promotions": []
+    },
+    {
+      "report": "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt",
+      "presetTestName": "Test C",
+      "countsBefore": {
+        "strong": 0,
+        "secondary": 2,
+        "weak": 3,
+        "strongPlusSecondary": 2,
+        "weakUnderfill": 3
+      },
+      "countsAfter": {
+        "strong": 0,
+        "secondary": 2,
+        "weak": 3,
+        "strongPlusSecondary": 2,
+        "weakUnderfill": 3
+      },
+      "promotedFromWeakToSecondaryTitles": [],
+      "promotions": []
+    }
+  ],
+  "promotedRows": [],
+  "remainingWeakRows": [
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "The Role of Nature in the Works of Octavia Butler",
+      "weakUsedForUnderfill": false,
+      "netScore": 17.675
+    },
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "Pretties with Ugly Thoughts",
+      "weakUsedForUnderfill": true,
+      "netScore": 15.869
+    },
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "Divergent Official Illustrated Movie Companion",
+      "weakUsedForUnderfill": false,
+      "netScore": 15.869
+    },
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "Last Chance Books",
+      "weakUsedForUnderfill": true,
+      "netScore": 15.869
+    },
+    {
+      "report": "pasted-text-5607a7f4-f4ee-41ce-9bcb-fc5474b8128c.txt",
+      "presetTestName": "Test A",
+      "title": "Your Eyes in Stars",
+      "weakUsedForUnderfill": false,
+      "netScore": 18.119
+    },
+    {
+      "report": "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+      "presetTestName": "Test B",
+      "title": "Your Eyes in Stars",
+      "weakUsedForUnderfill": true,
+      "netScore": 13.941
+    },
+    {
+      "report": "pasted-text-7a44d26a-1b4e-4000-b759-0878cf780afd.txt",
+      "presetTestName": "Test B",
+      "title": "Someone Like Summer",
+      "weakUsedForUnderfill": true,
+      "netScore": 11.284
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Malcolm and Juliet",
+      "weakUsedForUnderfill": true,
+      "netScore": 14.469
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Crowned (A Conyza Bennett story, Book 3)",
+      "weakUsedForUnderfill": true,
+      "netScore": 14.469
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "weakUsedForUnderfill": false,
+      "netScore": 9.209
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Starclimber",
+      "weakUsedForUnderfill": false,
+      "netScore": 7.456
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Wolfborn",
+      "weakUsedForUnderfill": false,
+      "netScore": 7.456
+    },
+    {
+      "report": "pasted-text-4b014e5b-a987-4171-a860-54fad9d6c00f.txt",
+      "presetTestName": "Test C",
+      "title": "Waer",
+      "weakUsedForUnderfill": false,
+      "netScore": 5.206
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "title": "Wolfborn",
+      "weakUsedForUnderfill": true,
+      "netScore": 13.669
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "title": "Waer",
+      "weakUsedForUnderfill": false,
+      "netScore": 12.544
+    },
+    {
+      "report": "pasted-text-1dc55a0d-e9a0-4803-b866-944aac5d3040.txt",
+      "presetTestName": "Test A",
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "weakUsedForUnderfill": false,
+      "netScore": 11.916
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "title": "The Red Queen: The Obernewtyn Chronicles Volume 7",
+      "weakUsedForUnderfill": true,
+      "netScore": 11.559
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "title": "Starclimber",
+      "weakUsedForUnderfill": true,
+      "netScore": 9.309
+    },
+    {
+      "report": "pasted-text-6993560d-b54d-4496-82f5-934e2799b12b.txt",
+      "presetTestName": "Test C",
+      "title": "Waer",
+      "weakUsedForUnderfill": false,
+      "netScore": 8.184
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Divergent Official Illustrated Movie Companion",
+      "weakUsedForUnderfill": false,
+      "netScore": 13.288
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "You",
+      "weakUsedForUnderfill": true,
+      "netScore": 13.263
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Pretties with Ugly Thoughts",
+      "weakUsedForUnderfill": true,
+      "netScore": 11.013
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Last Chance Books",
+      "weakUsedForUnderfill": true,
+      "netScore": 11.916
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Your Eyes in Stars",
+      "weakUsedForUnderfill": true,
+      "netScore": 14.166
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "The Giver Illustrated Gift Edition",
+      "weakUsedForUnderfill": true,
+      "netScore": 10.791
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "The Role of Nature in the Works of Octavia Butler",
+      "weakUsedForUnderfill": false,
+      "netScore": 11.013
+    },
+    {
+      "report": "pasted-text-c20b8e6b-d378-4e10-bf54-c2870d18a8b4.txt",
+      "presetTestName": "Test A",
+      "title": "Someone Like Summer",
+      "weakUsedForUnderfill": false,
+      "netScore": 9.534
+    },
+    {
+      "report": "pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+      "presetTestName": "Test B",
+      "title": "Your Eyes in Stars",
+      "weakUsedForUnderfill": true,
+      "netScore": 13.144
+    },
+    {
+      "report": "pasted-text-0cf2032e-283d-4ecc-8a82-ee32fe02458d.txt",
+      "presetTestName": "Test B",
+      "title": "Someone Like Summer",
+      "weakUsedForUnderfill": true,
+      "netScore": 10.488
+    },
+    {
+      "report": "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt",
+      "presetTestName": "Test C",
+      "title": "Crowned (A Conyza Bennett story, Book 3)",
+      "weakUsedForUnderfill": true,
+      "netScore": 20.509
+    },
+    {
+      "report": "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt",
+      "presetTestName": "Test C",
+      "title": "Love Is Hell",
+      "weakUsedForUnderfill": true,
+      "netScore": 17.003
+    },
+    {
+      "report": "pasted-text-1d3a8998-9adc-4ace-8b91-03f55dad4d7d.txt",
+      "presetTestName": "Test C",
+      "title": "Sydney Bridge Upside Down: Text Classics",
+      "weakUsedForUnderfill": true,
+      "netScore": 17.003
+    }
+  ]
+}

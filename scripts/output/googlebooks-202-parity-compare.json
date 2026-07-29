@@ -1,0 +1,1400 @@
+{
+  "generatedAt": "2026-07-21T05:37:43.615Z",
+  "baselinePath": "C:\\Users\\KenBR\\.copilot\\session-state\\f8eb5984-9ce3-4369-baef-08fbc9a6b97a\\files\\googlebooks-202-parity-baseline-fedec68.json",
+  "candidatePath": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\googlebooks-202-parity-baseline.json",
+  "baselineCommit": "fedec68ac6b11017852006e3813b725c9dd7bb4e",
+  "candidateCommit": "8a9f6f03cfdf20ee0653681864b6f0c9f6927520",
+  "verdict": "PARITY_PASSED",
+  "totalChecks": 260,
+  "passedChecks": 260,
+  "failedChecks": 0,
+  "warnings": [
+    {
+      "label": "baselineCommit_mismatch",
+      "detail": "baseline=fedec68ac6b11017852006e3813b725c9dd7bb4e candidate=8a9f6f03cfdf20ee0653681864b6f0c9f6927520"
+    }
+  ],
+  "failures": [],
+  "adultPairs": [
+    {
+      "fixtureName": "adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "adult_rpg_alias",
+      "result": "pass"
+    }
+  ],
+  "teenPairs": [
+    {
+      "fixtureName": "teen_signal_description_only",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "teen_signal_category_only",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "teen_signal_title",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "teen_signal_multi_field",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "teen_signal_subtitle_only",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "teen_signal_no_match",
+      "result": "pass"
+    },
+    {
+      "fixtureName": "teen_signal_multiword",
+      "result": "pass"
+    }
+  ],
+  "checks": [
+    {
+      "label": "signature_overall",
+      "context": "overall content signature",
+      "result": "pass"
+    },
+    {
+      "label": "signature_adult_fixture_set",
+      "context": "adult fixture set signature",
+      "result": "pass"
+    },
+    {
+      "label": "signature_teen_fixture_set",
+      "context": "teen fixture set signature",
+      "result": "pass"
+    },
+    {
+      "label": "prereq_status_run-v2-googlebooks-short-signal-boundary-regressions.mjs",
+      "context": "run-v2-googlebooks-short-signal-boundary-regressions.mjs",
+      "result": "pass"
+    },
+    {
+      "label": "prereq_status_run-v2-googlebooks-query-quality-regressions.mjs",
+      "context": "run-v2-googlebooks-query-quality-regressions.mjs",
+      "result": "pass"
+    },
+    {
+      "label": "adult_fixture_count",
+      "context": "adult fixture set length",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_name",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_candidateTitle",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_likedSignals",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_dislikedSignals",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_score",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_matchedLikedSignals",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_matchedDislikedSignals",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_signalMatchTrace",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_matchedField",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_matchedText",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_matchMethod",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_rejectedShortMatches",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_perTitle_trace",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_perTitle_fields",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_perTitle_texts",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_perTitle_methods",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[0]:adult_ai_token_boundary_contentSignature",
+      "context": "adult[0]:adult_ai_token_boundary",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_name",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_candidateTitle",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_likedSignals",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_dislikedSignals",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_score",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_matchedLikedSignals",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_matchedDislikedSignals",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_signalMatchTrace",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_matchedField",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_matchedText",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_matchMethod",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_rejectedShortMatches",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_perTitle_trace",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_perTitle_fields",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_perTitle_texts",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_perTitle_methods",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[1]:adult_ai_punctuated_acronym_contentSignature",
+      "context": "adult[1]:adult_ai_punctuated_acronym",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_name",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_candidateTitle",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_likedSignals",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_dislikedSignals",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_score",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_matchedLikedSignals",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_matchedDislikedSignals",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_signalMatchTrace",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_matchedField",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_matchedText",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_matchMethod",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_rejectedShortMatches",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_perTitle_trace",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_perTitle_fields",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_perTitle_texts",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_perTitle_methods",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[2]:adult_ai_alias_phrase_contentSignature",
+      "context": "adult[2]:adult_ai_alias_phrase",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_name",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_candidateTitle",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_likedSignals",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_dislikedSignals",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_score",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_matchedLikedSignals",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_matchedDislikedSignals",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_signalMatchTrace",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_matchedField",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_matchedText",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_matchMethod",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_rejectedShortMatches",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_perTitle_trace",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_perTitle_fields",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_perTitle_texts",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_perTitle_methods",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[3]:adult_ai_substring_reject_contentSignature",
+      "context": "adult[3]:adult_ai_substring_reject",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_name",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_candidateTitle",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_likedSignals",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_dislikedSignals",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_score",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_matchedLikedSignals",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_matchedDislikedSignals",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_signalMatchTrace",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_matchedField",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_matchedText",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_matchMethod",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_rejectedShortMatches",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_perTitle_trace",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_perTitle_fields",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_perTitle_texts",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_perTitle_methods",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[4]:adult_war_valid_standalone_contentSignature",
+      "context": "adult[4]:adult_war_valid_standalone",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_name",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_candidateTitle",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_likedSignals",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_dislikedSignals",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_score",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_matchedLikedSignals",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_matchedDislikedSignals",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_signalMatchTrace",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_matchedField",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_matchedText",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_matchMethod",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_rejectedShortMatches",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_perTitle_trace",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_perTitle_fields",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_perTitle_texts",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_perTitle_methods",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[5]:adult_war_invalid_embedded_contentSignature",
+      "context": "adult[5]:adult_war_invalid_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_name",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_candidateTitle",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_likedSignals",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_dislikedSignals",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_score",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_matchedLikedSignals",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_matchedDislikedSignals",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_signalMatchTrace",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_matchedField",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_matchedText",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_matchMethod",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_rejectedShortMatches",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_perTitle_trace",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_perTitle_fields",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_perTitle_texts",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_perTitle_methods",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[6]:adult_science_fiction_multiword_contentSignature",
+      "context": "adult[6]:adult_science_fiction_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_name",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_candidateTitle",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_likedSignals",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_dislikedSignals",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_score",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_matchedLikedSignals",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_matchedDislikedSignals",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_signalMatchTrace",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_matchedField",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_matchedText",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_matchMethod",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_rejectedShortMatches",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_perTitle_trace",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_perTitle_fields",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_perTitle_texts",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_perTitle_methods",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[7]:adult_psychological_thriller_multiword_contentSignature",
+      "context": "adult[7]:adult_psychological_thriller_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_name",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_candidateTitle",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_likedSignals",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_dislikedSignals",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_score",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_matchedLikedSignals",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_matchedDislikedSignals",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_signalMatchTrace",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_matchedField",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_matchedText",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_matchMethod",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_rejectedShortMatches",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_perTitle_trace",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_perTitle_fields",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_perTitle_texts",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_perTitle_methods",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[8]:adult_disliked_art_embedded_contentSignature",
+      "context": "adult[8]:adult_disliked_art_embedded",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_name",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_candidateTitle",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_likedSignals",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_dislikedSignals",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_score",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_matchedLikedSignals",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_matchedDislikedSignals",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_signalMatchTrace",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_matchedField",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_matchedText",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_matchMethod",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_rejectedShortMatches",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_perTitle_trace",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_perTitle_fields",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_perTitle_texts",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_perTitle_methods",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[9]:adult_multi_signal_trace_contentSignature",
+      "context": "adult[9]:adult_multi_signal_trace",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_name",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_candidateTitle",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_likedSignals",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_dislikedSignals",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_score",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_matchedLikedSignals",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_matchedDislikedSignals",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_signalMatchTrace",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_matchedField",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_matchedText",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_matchMethod",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_rejectedShortMatches",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_perTitle_trace",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_perTitle_fields",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_perTitle_texts",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_perTitle_methods",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[10]:adult_signal_in_category_contentSignature",
+      "context": "adult[10]:adult_signal_in_category",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_name",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_candidateTitle",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_likedSignals",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_dislikedSignals",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_score",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_matchedLikedSignals",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_matchedDislikedSignals",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_signalMatchTrace",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_matchedField",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_matchedText",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_matchMethod",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_rejectedShortMatches",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_perTitle_trace",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_perTitle_fields",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_perTitle_texts",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_perTitle_methods",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "adult[11]:adult_rpg_alias_contentSignature",
+      "context": "adult[11]:adult_rpg_alias",
+      "result": "pass"
+    },
+    {
+      "label": "teen_fixture_count",
+      "context": "teen fixture set length",
+      "result": "pass"
+    },
+    {
+      "label": "teen[0]:teen_signal_description_only_name",
+      "context": "teen[0]:teen_signal_description_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[0]:teen_signal_description_only_candidateTitle",
+      "context": "teen[0]:teen_signal_description_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[0]:teen_signal_description_only_likedSignals",
+      "context": "teen[0]:teen_signal_description_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[0]:teen_signal_description_only_score",
+      "context": "teen[0]:teen_signal_description_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[0]:teen_signal_description_only_perTitleSignalFields",
+      "context": "teen[0]:teen_signal_description_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[0]:teen_signal_description_only_signalFieldsByTitle",
+      "context": "teen[0]:teen_signal_description_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[0]:teen_signal_description_only_contentSignature",
+      "context": "teen[0]:teen_signal_description_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[1]:teen_signal_category_only_name",
+      "context": "teen[1]:teen_signal_category_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[1]:teen_signal_category_only_candidateTitle",
+      "context": "teen[1]:teen_signal_category_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[1]:teen_signal_category_only_likedSignals",
+      "context": "teen[1]:teen_signal_category_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[1]:teen_signal_category_only_score",
+      "context": "teen[1]:teen_signal_category_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[1]:teen_signal_category_only_perTitleSignalFields",
+      "context": "teen[1]:teen_signal_category_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[1]:teen_signal_category_only_signalFieldsByTitle",
+      "context": "teen[1]:teen_signal_category_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[1]:teen_signal_category_only_contentSignature",
+      "context": "teen[1]:teen_signal_category_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[2]:teen_signal_title_name",
+      "context": "teen[2]:teen_signal_title",
+      "result": "pass"
+    },
+    {
+      "label": "teen[2]:teen_signal_title_candidateTitle",
+      "context": "teen[2]:teen_signal_title",
+      "result": "pass"
+    },
+    {
+      "label": "teen[2]:teen_signal_title_likedSignals",
+      "context": "teen[2]:teen_signal_title",
+      "result": "pass"
+    },
+    {
+      "label": "teen[2]:teen_signal_title_score",
+      "context": "teen[2]:teen_signal_title",
+      "result": "pass"
+    },
+    {
+      "label": "teen[2]:teen_signal_title_perTitleSignalFields",
+      "context": "teen[2]:teen_signal_title",
+      "result": "pass"
+    },
+    {
+      "label": "teen[2]:teen_signal_title_signalFieldsByTitle",
+      "context": "teen[2]:teen_signal_title",
+      "result": "pass"
+    },
+    {
+      "label": "teen[2]:teen_signal_title_contentSignature",
+      "context": "teen[2]:teen_signal_title",
+      "result": "pass"
+    },
+    {
+      "label": "teen[3]:teen_signal_multi_field_name",
+      "context": "teen[3]:teen_signal_multi_field",
+      "result": "pass"
+    },
+    {
+      "label": "teen[3]:teen_signal_multi_field_candidateTitle",
+      "context": "teen[3]:teen_signal_multi_field",
+      "result": "pass"
+    },
+    {
+      "label": "teen[3]:teen_signal_multi_field_likedSignals",
+      "context": "teen[3]:teen_signal_multi_field",
+      "result": "pass"
+    },
+    {
+      "label": "teen[3]:teen_signal_multi_field_score",
+      "context": "teen[3]:teen_signal_multi_field",
+      "result": "pass"
+    },
+    {
+      "label": "teen[3]:teen_signal_multi_field_perTitleSignalFields",
+      "context": "teen[3]:teen_signal_multi_field",
+      "result": "pass"
+    },
+    {
+      "label": "teen[3]:teen_signal_multi_field_signalFieldsByTitle",
+      "context": "teen[3]:teen_signal_multi_field",
+      "result": "pass"
+    },
+    {
+      "label": "teen[3]:teen_signal_multi_field_contentSignature",
+      "context": "teen[3]:teen_signal_multi_field",
+      "result": "pass"
+    },
+    {
+      "label": "teen[4]:teen_signal_subtitle_only_name",
+      "context": "teen[4]:teen_signal_subtitle_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[4]:teen_signal_subtitle_only_candidateTitle",
+      "context": "teen[4]:teen_signal_subtitle_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[4]:teen_signal_subtitle_only_likedSignals",
+      "context": "teen[4]:teen_signal_subtitle_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[4]:teen_signal_subtitle_only_score",
+      "context": "teen[4]:teen_signal_subtitle_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[4]:teen_signal_subtitle_only_perTitleSignalFields",
+      "context": "teen[4]:teen_signal_subtitle_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[4]:teen_signal_subtitle_only_signalFieldsByTitle",
+      "context": "teen[4]:teen_signal_subtitle_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[4]:teen_signal_subtitle_only_contentSignature",
+      "context": "teen[4]:teen_signal_subtitle_only",
+      "result": "pass"
+    },
+    {
+      "label": "teen[5]:teen_signal_no_match_name",
+      "context": "teen[5]:teen_signal_no_match",
+      "result": "pass"
+    },
+    {
+      "label": "teen[5]:teen_signal_no_match_candidateTitle",
+      "context": "teen[5]:teen_signal_no_match",
+      "result": "pass"
+    },
+    {
+      "label": "teen[5]:teen_signal_no_match_likedSignals",
+      "context": "teen[5]:teen_signal_no_match",
+      "result": "pass"
+    },
+    {
+      "label": "teen[5]:teen_signal_no_match_score",
+      "context": "teen[5]:teen_signal_no_match",
+      "result": "pass"
+    },
+    {
+      "label": "teen[5]:teen_signal_no_match_perTitleSignalFields",
+      "context": "teen[5]:teen_signal_no_match",
+      "result": "pass"
+    },
+    {
+      "label": "teen[5]:teen_signal_no_match_signalFieldsByTitle",
+      "context": "teen[5]:teen_signal_no_match",
+      "result": "pass"
+    },
+    {
+      "label": "teen[5]:teen_signal_no_match_contentSignature",
+      "context": "teen[5]:teen_signal_no_match",
+      "result": "pass"
+    },
+    {
+      "label": "teen[6]:teen_signal_multiword_name",
+      "context": "teen[6]:teen_signal_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "teen[6]:teen_signal_multiword_candidateTitle",
+      "context": "teen[6]:teen_signal_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "teen[6]:teen_signal_multiword_likedSignals",
+      "context": "teen[6]:teen_signal_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "teen[6]:teen_signal_multiword_score",
+      "context": "teen[6]:teen_signal_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "teen[6]:teen_signal_multiword_perTitleSignalFields",
+      "context": "teen[6]:teen_signal_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "teen[6]:teen_signal_multiword_signalFieldsByTitle",
+      "context": "teen[6]:teen_signal_multiword",
+      "result": "pass"
+    },
+    {
+      "label": "teen[6]:teen_signal_multiword_contentSignature",
+      "context": "teen[6]:teen_signal_multiword",
+      "result": "pass"
+    }
+  ]
+}

@@ -1,0 +1,350 @@
+{
+  "generatedAt": "2026-07-21T02:07:03.653Z",
+  "inputs": [
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-82d04e4f-5d42-4077-8615-65b6990418c9.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-d5ec45da-824b-4aa5-8936-5ddbeb025d4b.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-57255e32-0334-4547-ad86-0b9254c2030d.txt"
+  ],
+  "recurringHeadThresholdReportsSeen": 2,
+  "recurringHeadTitleCount": 6,
+  "familyAggregates": [
+    {
+      "family": "fantasy",
+      "queryRuns": 4,
+      "accepted": 15,
+      "strong": 0,
+      "secondary": 5,
+      "weak": 10,
+      "newToSession": 15,
+      "marginalStrongSecondary": 5,
+      "seenEarlierCorpus": 7,
+      "recurringHeadSharePctAvg": 58.33,
+      "marginalDecisionWorthyYieldPctAvg": 24.97
+    },
+    {
+      "family": "romance",
+      "queryRuns": 1,
+      "accepted": 6,
+      "strong": 0,
+      "secondary": 1,
+      "weak": 4,
+      "newToSession": 6,
+      "marginalStrongSecondary": 1,
+      "seenEarlierCorpus": 0,
+      "recurringHeadSharePctAvg": 0,
+      "marginalDecisionWorthyYieldPctAvg": 16.7
+    },
+    {
+      "family": "general",
+      "queryRuns": 2,
+      "accepted": 1,
+      "strong": 0,
+      "secondary": 1,
+      "weak": 0,
+      "newToSession": 1,
+      "marginalStrongSecondary": 1,
+      "seenEarlierCorpus": 0,
+      "recurringHeadSharePctAvg": 0,
+      "marginalDecisionWorthyYieldPctAvg": 50
+    }
+  ],
+  "queryAggregates": [
+    {
+      "family": "fantasy",
+      "query": "young adult fantasy fiction novel",
+      "runs": 3,
+      "accepted": 12,
+      "strong": 0,
+      "secondary": 4,
+      "weak": 8,
+      "newToSession": 12,
+      "marginalStrongSecondary": 4,
+      "seenEarlierCorpus": 6,
+      "recurringHeadSharePctAvg": 66.67,
+      "marginalDecisionWorthyYieldPctAvg": 22.2,
+      "valueScore": -2
+    },
+    {
+      "family": "romance",
+      "query": "young adult romance fiction novel",
+      "runs": 1,
+      "accepted": 6,
+      "strong": 0,
+      "secondary": 1,
+      "weak": 4,
+      "newToSession": 6,
+      "marginalStrongSecondary": 1,
+      "seenEarlierCorpus": 0,
+      "recurringHeadSharePctAvg": 0,
+      "marginalDecisionWorthyYieldPctAvg": 16.7,
+      "valueScore": 1
+    },
+    {
+      "family": "fantasy",
+      "query": "young adult fantasy adventure novel",
+      "runs": 1,
+      "accepted": 3,
+      "strong": 0,
+      "secondary": 1,
+      "weak": 2,
+      "newToSession": 3,
+      "marginalStrongSecondary": 1,
+      "seenEarlierCorpus": 1,
+      "recurringHeadSharePctAvg": 33.3,
+      "marginalDecisionWorthyYieldPctAvg": 33.3,
+      "valueScore": 0
+    },
+    {
+      "family": "general",
+      "query": "young adult adventure fiction novel",
+      "runs": 1,
+      "accepted": 1,
+      "strong": 0,
+      "secondary": 1,
+      "weak": 0,
+      "newToSession": 1,
+      "marginalStrongSecondary": 1,
+      "seenEarlierCorpus": 0,
+      "recurringHeadSharePctAvg": 0,
+      "marginalDecisionWorthyYieldPctAvg": 100,
+      "valueScore": 1
+    },
+    {
+      "family": "general",
+      "query": "young adult contemporary fiction novel",
+      "runs": 1,
+      "accepted": 0,
+      "strong": 0,
+      "secondary": 0,
+      "weak": 0,
+      "newToSession": 0,
+      "marginalStrongSecondary": 0,
+      "seenEarlierCorpus": 0,
+      "recurringHeadSharePctAvg": 0,
+      "marginalDecisionWorthyYieldPctAvg": 0,
+      "valueScore": 0
+    }
+  ],
+  "repeatedTitlesAcrossReports": [
+    {
+      "titleKey": "chain of thorns",
+      "reportsSeen": 3
+    },
+    {
+      "titleKey": "the red queen: the obernewtyn chronicles volume 7",
+      "reportsSeen": 2
+    },
+    {
+      "titleKey": "waer",
+      "reportsSeen": 2
+    },
+    {
+      "titleKey": "the unbeatable lily hong",
+      "reportsSeen": 2
+    },
+    {
+      "titleKey": "wolfborn",
+      "reportsSeen": 2
+    },
+    {
+      "titleKey": "starclimber",
+      "reportsSeen": 2
+    }
+  ],
+  "sessionRows": [
+    {
+      "report": "pasted-text-82d04e4f-5d42-4077-8615-65b6990418c9.txt",
+      "presetTestName": "Test A",
+      "queryCount": 2,
+      "uniqueCandidatesAcrossQueries": 12
+    },
+    {
+      "report": "pasted-text-d5ec45da-824b-4aa5-8936-5ddbeb025d4b.txt",
+      "presetTestName": "Test B",
+      "queryCount": 3,
+      "uniqueCandidatesAcrossQueries": 4
+    },
+    {
+      "report": "pasted-text-57255e32-0334-4547-ad86-0b9254c2030d.txt",
+      "presetTestName": "Test C",
+      "queryCount": 2,
+      "uniqueCandidatesAcrossQueries": 6
+    }
+  ],
+  "queryRows": [
+    {
+      "report": "pasted-text-82d04e4f-5d42-4077-8615-65b6990418c9.txt",
+      "presetTestName": "Test A",
+      "family": "romance",
+      "query": "young adult romance fiction novel",
+      "accepted": 6,
+      "strong": 0,
+      "secondary": 1,
+      "weak": 4,
+      "unknown": 1,
+      "newToSession": 6,
+      "marginalStrongSecondary": 1,
+      "seenEarlierCorpus": 0,
+      "seenEarlierCorpusPct": 0,
+      "marginalUniqueYieldPct": 100,
+      "marginalDecisionWorthyYieldPct": 16.7,
+      "titleKeys": [
+        "spring 2016 young adult debut novels",
+        "the mafia and his maiden: beautiful love",
+        "crowned (a conyza bennett story, book 3)",
+        "love is hell",
+        "sydney bridge upside down: text classics",
+        "beastly: lindy's diary"
+      ],
+      "recurringHeadCount": 0,
+      "recurringHeadSharePct": 0,
+      "topTitleRecurrenceRatePct": 33.3
+    },
+    {
+      "report": "pasted-text-82d04e4f-5d42-4077-8615-65b6990418c9.txt",
+      "presetTestName": "Test A",
+      "family": "fantasy",
+      "query": "young adult fantasy fiction novel",
+      "accepted": 6,
+      "strong": 0,
+      "secondary": 2,
+      "weak": 4,
+      "unknown": 0,
+      "newToSession": 6,
+      "marginalStrongSecondary": 2,
+      "seenEarlierCorpus": 0,
+      "seenEarlierCorpusPct": 0,
+      "marginalUniqueYieldPct": 100,
+      "marginalDecisionWorthyYieldPct": 33.3,
+      "titleKeys": [
+        "chain of thorns",
+        "the red queen: the obernewtyn chronicles volume 7",
+        "waer",
+        "the unbeatable lily hong",
+        "wolfborn",
+        "starclimber"
+      ],
+      "recurringHeadCount": 6,
+      "recurringHeadSharePct": 100,
+      "topTitleRecurrenceRatePct": 100
+    },
+    {
+      "report": "pasted-text-d5ec45da-824b-4aa5-8936-5ddbeb025d4b.txt",
+      "presetTestName": "Test B",
+      "family": "fantasy",
+      "query": "young adult fantasy fiction novel",
+      "accepted": 0,
+      "strong": 0,
+      "secondary": 0,
+      "weak": 0,
+      "unknown": 0,
+      "newToSession": 0,
+      "marginalStrongSecondary": 0,
+      "seenEarlierCorpus": 0,
+      "seenEarlierCorpusPct": 0,
+      "marginalUniqueYieldPct": 0,
+      "marginalDecisionWorthyYieldPct": 0,
+      "titleKeys": [],
+      "recurringHeadCount": 0,
+      "recurringHeadSharePct": 0,
+      "topTitleRecurrenceRatePct": 0
+    },
+    {
+      "report": "pasted-text-d5ec45da-824b-4aa5-8936-5ddbeb025d4b.txt",
+      "presetTestName": "Test B",
+      "family": "general",
+      "query": "young adult adventure fiction novel",
+      "accepted": 1,
+      "strong": 0,
+      "secondary": 1,
+      "weak": 0,
+      "unknown": 0,
+      "newToSession": 1,
+      "marginalStrongSecondary": 1,
+      "seenEarlierCorpus": 0,
+      "seenEarlierCorpusPct": 0,
+      "marginalUniqueYieldPct": 100,
+      "marginalDecisionWorthyYieldPct": 100,
+      "titleKeys": [
+        "to the wild sky: text classics"
+      ],
+      "recurringHeadCount": 0,
+      "recurringHeadSharePct": 0,
+      "topTitleRecurrenceRatePct": 33.3
+    },
+    {
+      "report": "pasted-text-d5ec45da-824b-4aa5-8936-5ddbeb025d4b.txt",
+      "presetTestName": "Test B",
+      "family": "fantasy",
+      "query": "young adult fantasy adventure novel",
+      "accepted": 3,
+      "strong": 0,
+      "secondary": 1,
+      "weak": 2,
+      "unknown": 0,
+      "newToSession": 3,
+      "marginalStrongSecondary": 1,
+      "seenEarlierCorpus": 1,
+      "seenEarlierCorpusPct": 33.3,
+      "marginalUniqueYieldPct": 100,
+      "marginalDecisionWorthyYieldPct": 33.3,
+      "titleKeys": [
+        "chain of thorns",
+        "book bulletin of the chicago public library",
+        "the whisky widow"
+      ],
+      "recurringHeadCount": 1,
+      "recurringHeadSharePct": 33.3,
+      "topTitleRecurrenceRatePct": 100
+    },
+    {
+      "report": "pasted-text-57255e32-0334-4547-ad86-0b9254c2030d.txt",
+      "presetTestName": "Test C",
+      "family": "general",
+      "query": "young adult contemporary fiction novel",
+      "accepted": 0,
+      "strong": 0,
+      "secondary": 0,
+      "weak": 0,
+      "unknown": 0,
+      "newToSession": 0,
+      "marginalStrongSecondary": 0,
+      "seenEarlierCorpus": 0,
+      "seenEarlierCorpusPct": 0,
+      "marginalUniqueYieldPct": 0,
+      "marginalDecisionWorthyYieldPct": 0,
+      "titleKeys": [],
+      "recurringHeadCount": 0,
+      "recurringHeadSharePct": 0,
+      "topTitleRecurrenceRatePct": 0
+    },
+    {
+      "report": "pasted-text-57255e32-0334-4547-ad86-0b9254c2030d.txt",
+      "presetTestName": "Test C",
+      "family": "fantasy",
+      "query": "young adult fantasy fiction novel",
+      "accepted": 6,
+      "strong": 0,
+      "secondary": 2,
+      "weak": 4,
+      "unknown": 0,
+      "newToSession": 6,
+      "marginalStrongSecondary": 2,
+      "seenEarlierCorpus": 6,
+      "seenEarlierCorpusPct": 100,
+      "marginalUniqueYieldPct": 100,
+      "marginalDecisionWorthyYieldPct": 33.3,
+      "titleKeys": [
+        "chain of thorns",
+        "the red queen: the obernewtyn chronicles volume 7",
+        "waer",
+        "the unbeatable lily hong",
+        "wolfborn",
+        "starclimber"
+      ],
+      "recurringHeadCount": 6,
+      "recurringHeadSharePct": 100,
+      "topTitleRecurrenceRatePct": 100
+    }
+  ]
+}

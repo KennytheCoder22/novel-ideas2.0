@@ -1,0 +1,292 @@
+{
+  "generatedAt": "2026-07-21T07:13:10.931Z",
+  "capability": "#306 Query quality comparison",
+  "inventory": {
+    "sourcePath": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\app\\recommender-v2\\sources\\googleBooksSource.ts",
+    "enginePath": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\app\\recommender-v2\\engine.ts",
+    "sharedCoreMapKey": "googleBooksQueryResultQualityByQuery",
+    "adultAliasMapKey": "adultGoogleBooksQueryQualityByQuery",
+    "sharedYieldMapKey": "adultGoogleBooksNarrativeYieldByQuery",
+    "sharedEfficiencyMapKey": "adultGoogleBooksNarrativeEfficiencyByQuery",
+    "teenOfflineAuditScripts": [
+      "run-v2-googlebooks-teen-query-family-overlap-audit.mjs",
+      "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs"
+    ]
+  },
+  "aggregate": {
+    "requestedQueryCount": 4,
+    "adultStatus": "succeeded",
+    "teenStatus": "succeeded",
+    "queryQualityEquivalent": false,
+    "adultAliasEquivalent": false,
+    "narrativeYieldEquivalent": false,
+    "narrativeEfficiencyEquivalent": false,
+    "queryQualityDiffByQuery": {
+      "mystery thriller novel": {
+        "adult": {
+          "totalResults": 6,
+          "narrativeCandidateCount": 0,
+          "acceptedCandidateCount": 0,
+          "narrativeEfficiency": 0,
+          "publicationShapeHistogram": {},
+          "rejectedShapeHistogram": {},
+          "rejectionReasons": {
+            "duplicate_volume_id": 6
+          }
+        },
+        "teen": {
+          "totalResults": 6,
+          "narrativeCandidateCount": 3,
+          "acceptedCandidateCount": 3,
+          "narrativeEfficiency": 0.5,
+          "publicationShapeHistogram": {
+            "novel": 3,
+            "generic_category_catalog": 1,
+            "critical_study": 1,
+            "readers_advisory": 1
+          },
+          "rejectedShapeHistogram": {
+            "generic_category_catalog": 1,
+            "critical_study": 1,
+            "readers_advisory": 1
+          },
+          "rejectionReasons": {
+            "publication_shape_generic_category_catalog": 1,
+            "publication_shape_critical_study": 1,
+            "publication_shape_readers_advisory": 1
+          }
+        }
+      }
+    },
+    "adultAliasDiffByQuery": {
+      "mystery thriller novel": {
+        "adult": {
+          "totalResults": 6,
+          "narrativeCandidateCount": 0,
+          "acceptedCandidateCount": 0,
+          "narrativeEfficiency": 0,
+          "publicationShapeHistogram": {},
+          "rejectedShapeHistogram": {},
+          "rejectionReasons": {
+            "duplicate_volume_id": 6
+          }
+        },
+        "teen": {
+          "totalResults": 6,
+          "narrativeCandidateCount": 3,
+          "acceptedCandidateCount": 3,
+          "narrativeEfficiency": 0.5,
+          "publicationShapeHistogram": {
+            "novel": 3,
+            "generic_category_catalog": 1,
+            "critical_study": 1,
+            "readers_advisory": 1
+          },
+          "rejectedShapeHistogram": {
+            "generic_category_catalog": 1,
+            "critical_study": 1,
+            "readers_advisory": 1
+          },
+          "rejectionReasons": {
+            "publication_shape_generic_category_catalog": 1,
+            "publication_shape_critical_study": 1,
+            "publication_shape_readers_advisory": 1
+          }
+        }
+      }
+    }
+  },
+  "adult": {
+    "status": "succeeded",
+    "queryQuality": {
+      "science fiction thriller novel": {
+        "totalResults": 6,
+        "narrativeCandidateCount": 3,
+        "acceptedCandidateCount": 3,
+        "narrativeEfficiency": 0.5,
+        "publicationShapeHistogram": {
+          "novel": 3,
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectedShapeHistogram": {
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectionReasons": {
+          "publication_shape_generic_category_catalog": 1,
+          "publication_shape_critical_study": 1,
+          "publication_shape_readers_advisory": 1
+        }
+      },
+      "mystery thriller novel": {
+        "totalResults": 6,
+        "narrativeCandidateCount": 0,
+        "acceptedCandidateCount": 0,
+        "narrativeEfficiency": 0,
+        "publicationShapeHistogram": {},
+        "rejectedShapeHistogram": {},
+        "rejectionReasons": {
+          "duplicate_volume_id": 6
+        }
+      }
+    },
+    "adultAliasQuality": {
+      "science fiction thriller novel": {
+        "totalResults": 6,
+        "narrativeCandidateCount": 3,
+        "acceptedCandidateCount": 3,
+        "narrativeEfficiency": 0.5,
+        "publicationShapeHistogram": {
+          "novel": 3,
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectedShapeHistogram": {
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectionReasons": {
+          "publication_shape_generic_category_catalog": 1,
+          "publication_shape_critical_study": 1,
+          "publication_shape_readers_advisory": 1
+        }
+      },
+      "mystery thriller novel": {
+        "totalResults": 6,
+        "narrativeCandidateCount": 0,
+        "acceptedCandidateCount": 0,
+        "narrativeEfficiency": 0,
+        "publicationShapeHistogram": {},
+        "rejectedShapeHistogram": {},
+        "rejectionReasons": {
+          "duplicate_volume_id": 6
+        }
+      }
+    },
+    "narrativeYieldByQuery": {
+      "science fiction thriller novel": 3,
+      "mystery thriller novel": 0
+    },
+    "narrativeEfficiencyByQuery": {
+      "science fiction thriller novel": 0.5,
+      "mystery thriller novel": 0
+    }
+  },
+  "teen": {
+    "status": "succeeded",
+    "queryQuality": {
+      "science fiction thriller novel": {
+        "totalResults": 6,
+        "narrativeCandidateCount": 3,
+        "acceptedCandidateCount": 3,
+        "narrativeEfficiency": 0.5,
+        "publicationShapeHistogram": {
+          "novel": 3,
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectedShapeHistogram": {
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectionReasons": {
+          "publication_shape_generic_category_catalog": 1,
+          "publication_shape_critical_study": 1,
+          "publication_shape_readers_advisory": 1
+        }
+      },
+      "mystery thriller novel": {
+        "totalResults": 6,
+        "narrativeCandidateCount": 3,
+        "acceptedCandidateCount": 3,
+        "narrativeEfficiency": 0.5,
+        "publicationShapeHistogram": {
+          "novel": 3,
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectedShapeHistogram": {
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectionReasons": {
+          "publication_shape_generic_category_catalog": 1,
+          "publication_shape_critical_study": 1,
+          "publication_shape_readers_advisory": 1
+        }
+      }
+    },
+    "adultAliasQuality": {
+      "science fiction thriller novel": {
+        "totalResults": 6,
+        "narrativeCandidateCount": 3,
+        "acceptedCandidateCount": 3,
+        "narrativeEfficiency": 0.5,
+        "publicationShapeHistogram": {
+          "novel": 3,
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectedShapeHistogram": {
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectionReasons": {
+          "publication_shape_generic_category_catalog": 1,
+          "publication_shape_critical_study": 1,
+          "publication_shape_readers_advisory": 1
+        }
+      },
+      "mystery thriller novel": {
+        "totalResults": 6,
+        "narrativeCandidateCount": 3,
+        "acceptedCandidateCount": 3,
+        "narrativeEfficiency": 0.5,
+        "publicationShapeHistogram": {
+          "novel": 3,
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectedShapeHistogram": {
+          "generic_category_catalog": 1,
+          "critical_study": 1,
+          "readers_advisory": 1
+        },
+        "rejectionReasons": {
+          "publication_shape_generic_category_catalog": 1,
+          "publication_shape_critical_study": 1,
+          "publication_shape_readers_advisory": 1
+        }
+      }
+    },
+    "narrativeYieldByQuery": {
+      "science fiction thriller novel": 3,
+      "mystery thriller novel": 3
+    },
+    "narrativeEfficiencyByQuery": {
+      "science fiction thriller novel": 0.5,
+      "mystery thriller novel": 0.5
+    }
+  },
+  "decision": {
+    "decision": "shared_mechanism_age_policy_outputs",
+    "rationale": "Query-quality core appears shared, but age-band policy changes resulting per-query quality outputs.",
+    "outcomes": {
+      "equivalent_duplication": "Keep as equivalent duplication / shared primitive candidate.",
+      "shared_mechanism_age_policy_outputs": "Treat as shared mechanism with age-specific policy wrappers.",
+      "different_pipeline_layer": "Reclassify as different pipeline layer or diagnostic-only asymmetry."
+    }
+  }
+}

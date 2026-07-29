@@ -84,6 +84,11 @@ type MetadataSignalField = {
   text: string;
 };
 
+type SemanticSignalFieldInput = {
+  field: string;
+  values: string[];
+};
+
 type AdultGoogleBooksSignalMatchTrace = {
   signal: string;
   normalizedSignal: string;
@@ -101,6 +106,26 @@ function uniqueStrings(values: string[]): string[] {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function semanticSignalMatchedFieldsByField(
+  fields: SemanticSignalFieldInput[],
+  signal: string,
+  options?: { normalizeSignal?: boolean; normalizeFieldText?: boolean },
+): string[] {
+  const normalizeSignal = options?.normalizeSignal !== false;
+  const normalizeFieldText = options?.normalizeFieldText !== false;
+  const value = normalizeSignal ? normalized(signal) : String(signal || "");
+  if (!value) return [];
+  const matched: string[] = [];
+  for (const field of fields) {
+    const values = Array.isArray(field.values) ? field.values : [];
+    if (values.some((entry) => {
+      const text = normalizeFieldText ? String(entry || "").toLowerCase() : String(entry || "");
+      return signalPresentInText(text, value);
+    })) matched.push(field.field);
+  }
+  return matched;
 }
 
 function candidateMetadataFields(candidate: NormalizedCandidate): MetadataSignalField[] {
@@ -176,11 +201,16 @@ function adultGoogleBooksSignalMatch(
 
   if (!isShortSignal) {
     if (!signalPresentInText(combinedText, value)) return false;
-    const matchedField = fields.find((field) => signalPresentInText(field.text.toLowerCase(), value));
+    const matchedFields = semanticSignalMatchedFieldsByField(
+      fields.map((field) => ({ field: field.field, values: [field.text] })),
+      value,
+      { normalizeSignal: false, normalizeFieldText: true },
+    );
+    const matchedField = matchedFields[0];
     trace.push({
       signal: signal.value,
       normalizedSignal: value,
-      field: matchedField?.field || "combinedMetadata",
+      field: matchedField || "combinedMetadata",
       matchedText: value,
       method: "existing_semantic_match",
       signalBucket,
@@ -467,7 +497,11 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   const openLibraryMetadataOnlyEvidence = candidate.source === "openLibrary"
     && (profile.ageBand === "preteens" || profile.ageBand === "teens" || profile.ageBand === "adult");
   const adultGoogleBooksMetadataOnlyEvidence = candidate.source === "googleBooks" && profile.ageBand === "adult";
-  const text = openLibraryMetadataOnlyEvidence || adultGoogleBooksMetadataOnlyEvidence ? metadataText : candidateText(candidate);
+  const adultKitsuMetadataOnlyEvidence = candidate.source === "kitsu" && profile.ageBand === "adult";
+  const adultComicVineMetadataOnlyEvidence = candidate.source === "comicVine" && profile.ageBand === "adult";
+  const text = openLibraryMetadataOnlyEvidence || adultGoogleBooksMetadataOnlyEvidence || adultKitsuMetadataOnlyEvidence || adultComicVineMetadataOnlyEvidence
+    ? metadataText
+    : candidateText(candidate);
   const normalizedTitle = normalized(candidate.title);
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const metadataCount = candidate.genres.length + candidate.themes.length;
@@ -533,7 +567,17 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const teenOpenLibrary = profile.ageBand === "teens" && candidate.source === "openLibrary";
     const adultOpenLibrary = profile.ageBand === "adult" && candidate.source === "openLibrary";
     const adultGoogleBooks = profile.ageBand === "adult" && candidate.source === "googleBooks";
-    const metadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary || adultOpenLibrary || adultGoogleBooks;
+    const adultKitsu = profile.ageBand === "adult" && candidate.source === "kitsu";
+    const adultComicVine = profile.ageBand === "adult" && candidate.source === "comicVine";
+    const adultNyt = profile.ageBand === "adult" && candidate.source === "nyt";
+    const metadataOnlyEvidence = middleGradesOpenLibrary
+      || kidsOpenLibrary
+      || teenOpenLibrary
+      || adultOpenLibrary
+      || adultGoogleBooks
+      || adultKitsu
+      || adultComicVine
+      || adultNyt;
     const text = metadataOnlyEvidence ? metadataText : fullText;
     const adultGoogleBooksFields = adultGoogleBooks ? candidateMetadataFields(candidate) : [];
     const adultGoogleBooksSignalTrace: AdultGoogleBooksSignalMatchTrace[] = [];
@@ -628,6 +672,10 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
             ? "adult_openlibrary_ranked_by_metadata_only_document_evidence"
             : adultGoogleBooks
              ? "adult_googlebooks_ranked_by_document_metadata"
+             : adultKitsu
+               ? "adult_kitsu_ranked_by_document_metadata"
+               : adultComicVine
+                 ? "adult_comicvine_ranked_by_document_metadata"
             : undefined,
         teenOpenLibraryMetadataOnlyEvidence: teenOpenLibrary || undefined,
         teenOpenLibraryExcludedRetrievalEvidence: teenOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
@@ -635,6 +683,10 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
         adultOpenLibraryExcludedRetrievalEvidence: adultOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
         adultGoogleBooksMetadataOnlyEvidence: adultGoogleBooks || undefined,
         adultGoogleBooksExcludedRetrievalEvidence: adultGoogleBooks ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+        adultKitsuMetadataOnlyEvidence: adultKitsu || undefined,
+        adultKitsuExcludedRetrievalEvidence: adultKitsu ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
+        adultComicVineMetadataOnlyEvidence: adultComicVine || undefined,
+        adultComicVineExcludedRetrievalEvidence: adultComicVine ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
         adultGoogleBooksSignalMatchTrace: adultGoogleBooks ? adultGoogleBooksSignalTrace : undefined,
         adultGoogleBooksSignalMatchedField: adultGoogleBooks ? adultGoogleBooksTraceBySignal(adultGoogleBooksSignalTrace, "field") : undefined,
         adultGoogleBooksSignalMatchedText: adultGoogleBooks ? adultGoogleBooksTraceBySignal(adultGoogleBooksSignalTrace, "matchedText") : undefined,

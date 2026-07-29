@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-07-21T07:27:48.869Z",
+  "capability": "#411 Meaningful taste tiers",
+  "evidence": {
+    "adultBinaryMeaningfulTaste": true,
+    "teenTierClassifier": true,
+    "teenTierOutputs": true,
+    "adultWeightedCounterfactualTaste": true
+  },
+  "decision": {
+    "decision": "different_hypothetical_questions",
+    "rationale": "Adult and Teen meaningful-taste models answer different selection questions despite overlapping terminology.",
+    "outcomes": {
+      "equivalent_duplication": "Treat as parity-capable duplication candidate.",
+      "shared_mechanism_age_policy_outputs": "Shared scoring substrate with age-policy tiering wrappers.",
+      "different_hypothetical_questions": "Reclassify as semantics divergence."
+    }
+  }
+}

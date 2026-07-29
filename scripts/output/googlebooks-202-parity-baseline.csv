@@ -1,0 +1,20 @@
+fixtureName,ageBand,candidateTitle,likedSignals,dislikedSignals,score,matchedLikedSignals,rejectedShortMatchCount,signalMatchMethodCount,perTitleFieldsOrSignals,contentSignature
+"adult_ai_token_boundary",adult,"AI Token Boundary","ai","",6.33,"ai",0,"ai","ai:title",00b33d6082c05067
+"adult_ai_punctuated_acronym",adult,"AI Punctuated Acronym","ai","",6.33,"ai",0,"ai","ai:title",00b33d6082c05067
+"adult_ai_alias_phrase",adult,"AI Alias Phrase","ai","",6.33,"ai",0,"ai","ai:title",00b33d6082c05067
+"adult_ai_substring_reject",adult,"AI Substring Reject","ai","",3.58,"ai",0,"ai","ai:title",00b33d6082c05067
+"adult_war_valid_standalone",adult,"War Valid Standalone","war","",6.33,"war",0,"war","war:title",b0f265e2db34f1dd
+"adult_war_invalid_embedded",adult,"War Invalid Embedded","war","",3.58,"war",0,"war","war:title",b0f265e2db34f1dd
+"adult_science_fiction_multiword",adult,"Science Fiction Multiword","science fiction","",7.23,"science fiction",0,"science fiction","science fiction:title",d60e5e2fd79a8015
+"adult_psychological_thriller_multiword",adult,"Psychological Thriller Multiword","psychological thriller","",7.23,"psychological thriller",0,"psychological thriller","psychological thriller:title",fb34cfb22e46e474
+"adult_disliked_art_embedded",adult,"Disliked Art Embedded","thriller","art",4.98,"thriller",0,"thriller;art","thriller:description;art:title",18290e932864259e
+"adult_multi_signal_trace",adult,"Multi Signal Trace","ai;thriller","",11.209999999999999,"ai;thriller",0,"ai;thriller","ai:description;thriller:description",a8c804d0638ad163
+"adult_signal_in_category",adult,"Signal In Category","dark fantasy","",7.23,"dark fantasy",0,"dark fantasy","dark fantasy:genres",2c2b4555a262d0d2
+"adult_rpg_alias",adult,"RPG Alias","rpg","",6.18,"rpg",0,"rpg","rpg:title",28024a17b8be8e20
+"teen_signal_description_only",teen,"Teen Dystopian Description","dystopian","",6.180000000000001,"1 matched signals",0,"","dystopian:description",5d3a178ef4381b2e
+"teen_signal_category_only",teen,"Teen Mystery Category","mystery","",6.180000000000001,"1 matched signals",0,"","mystery:description",8c88745ea7219a2d
+"teen_signal_title",teen,"Fantasy Quest Teen","fantasy","",6.180000000000001,"1 matched signals",0,"","fantasy:",589e07c088ce3ce3
+"teen_signal_multi_field",teen,"Teen Romance Multi Field","romance","",5.23,"1 matched signals",0,"","romance:description",3debc92e91aa884e
+"teen_signal_subtitle_only",teen,"Teen Subtitle Fixture","thriller","",6.180000000000001,"1 matched signals",0,"","thriller:",ddf148ee32ee71be
+"teen_signal_no_match",teen,"Teen No Match","science fiction","",-0.04999999999999999,"0 matched signals",0,"","",1b69d784c8703c60
+"teen_signal_multiword",teen,"Teen Multiword YA","young adult","",5.23,"1 matched signals",0,"","young adult:description",f3e991dfd97427b6

@@ -1,0 +1,6021 @@
+{
+  "generatedAt": "2026-07-23T00:02:27.761Z",
+  "rounds": 4,
+  "profiles": [
+    {
+      "id": "scifi-space-opera",
+      "label": "Space opera science fiction"
+    },
+    {
+      "id": "scifi-dystopian",
+      "label": "Dystopian science fiction"
+    },
+    {
+      "id": "scifi-speculative-mixed",
+      "label": "Speculative and tech science fiction"
+    }
+  ],
+  "queryCandidates": [
+    "young adult science fiction novel",
+    "YA science fiction",
+    "young adult sci fi",
+    "teen science fiction",
+    "young adult dystopian fiction",
+    "YA dystopian",
+    "YA speculative fiction",
+    "YA space opera",
+    "science fiction for teens"
+  ],
+  "baselineQuery": "young adult science fiction novel",
+  "runRows": [
+    {
+      "round": 1,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 8
+    },
+    {
+      "round": 1,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 6
+    },
+    {
+      "round": 1,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 7
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 1,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 8,
+        "missing_author": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 1,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 8,
+        "missing_author": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 9
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 1,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 8,
+        "missing_author": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 1,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "in his keeping",
+        "reign of mist"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 10
+    },
+    {
+      "round": 1,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "reign of mist",
+        "the speed of souls: a novel"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 10
+    },
+    {
+      "round": 1,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 5,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "in his keeping",
+        "reign of mist",
+        "the speed of souls: a novel"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 7,
+      "selectedCount": 10
+    },
+    {
+      "round": 1,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 7,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "martian manhunter (2018-2020) #12",
+        "mangaka america"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8",
+        "mangaka america"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 4
+    },
+    {
+      "round": 1,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 5,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "non_narrative_description_shape": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "annual report",
+        "martian manhunter (2018-2020) #12"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "annual report",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 10
+    },
+    {
+      "round": 1,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 7,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "martian manhunter (2018-2020) #12",
+        "mangaka america"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 5,
+      "selectedCount": 10
+    },
+    {
+      "round": 1,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 12,
+      "acceptedAfterSourcePolicy": 2,
+      "acceptanceRatePct": 16.67,
+      "rejectedBeforeNormalization": 10,
+      "rejectionHistogram": {
+        "missing_author": 1,
+        "publication_shape_literary_history": 1,
+        "publication_shape_academic_text": 2,
+        "publication_shape_critical_study": 5,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 2,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 2,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "pretties with ugly thoughts",
+        "divergent official illustrated movie companion"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 2
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 9
+    },
+    {
+      "round": 1,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 9,
+      "acceptedAfterSourcePolicy": 2,
+      "acceptanceRatePct": 22.22,
+      "rejectedBeforeNormalization": 7,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 2,
+        "publication_shape_critical_study": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 2,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 2,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "pretties with ugly thoughts",
+        "divergent official illustrated movie companion"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 2
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 7
+    },
+    {
+      "round": 1,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 8,
+      "acceptedAfterSourcePolicy": 2,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 6,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 1,
+        "publication_shape_critical_study": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 2,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 2,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "pretties with ugly thoughts",
+        "divergent official illustrated movie companion"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 2
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 8
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 7,
+      "acceptanceRatePct": 35,
+      "rejectedBeforeNormalization": 13,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 9,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 7,
+      "recommendationContributionCount": 5,
+      "uniqueNarrativeFictionYield": 7,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "divergent official illustrated movie companion",
+        "last chance books",
+        "the fame game",
+        "pretties with ugly thoughts",
+        "the role of nature in the works of octavia butler",
+        "the unexpected mess of it all",
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy"
+      ],
+      "contributingTitles": [
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy",
+        "pretties with ugly thoughts",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 7
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 5
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 5,
+      "selectedCount": 10
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 9,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 6,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "divergent official illustrated movie companion",
+        "last chance books",
+        "the fame game",
+        "pretties with ugly thoughts",
+        "the role of nature in the works of octavia butler",
+        "the unexpected mess of it all"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 4,
+      "selectedCount": 8
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 9,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 6,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "divergent official illustrated movie companion",
+        "last chance books",
+        "the fame game",
+        "pretties with ugly thoughts",
+        "the role of nature in the works of octavia butler",
+        "the unexpected mess of it all"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 4,
+      "selectedCount": 10
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 18,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 18,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 5,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "missing_author": 5,
+        "publication_shape_anthology": 2,
+        "publication_shape_essay_collection": 1,
+        "publication_shape_public_domain_compilation": 2,
+        "publication_shape_periodical": 1
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 8
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 1,
+        "publication_shape_critical_study": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_generic_category_catalog": 1,
+        "missing_author": 5,
+        "publication_shape_anthology": 3,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "contributingTitles": [
+        "the girl with the mermaid hair",
+        "metrophage",
+        "barren grounds"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "contributionSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 9
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 7
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_anthology": 1,
+        "publication_shape_author_commentary": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 2,
+        "missing_author": 4,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "junior jinx",
+        "a curse of thorns and slumber",
+        "a summer of discovery",
+        "utopia",
+        "freshman frost",
+        "senior spark"
+      ],
+      "contributingTitles": [
+        "a curse of thorns and slumber"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Space Opera": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Space Opera": 1
+      },
+      "uniqueAuthorYield": 1,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 8
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 4
+    },
+    {
+      "round": 1,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_anthology": 1,
+        "publication_shape_author_commentary": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 2,
+        "missing_author": 4,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "junior jinx",
+        "a curse of thorns and slumber",
+        "a summer of discovery",
+        "utopia",
+        "freshman frost",
+        "senior spark"
+      ],
+      "contributingTitles": [
+        "utopia"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Space Opera": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Space Opera": 1
+      },
+      "uniqueAuthorYield": 1,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 9
+    },
+    {
+      "round": 1,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 1,
+      "acceptanceRatePct": 5,
+      "rejectedBeforeNormalization": 19,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_readers_advisory": 2,
+        "publication_shape_nonfiction": 3,
+        "missing_author": 8,
+        "publication_shape_production_history": 1,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 1,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 1,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 2,
+      "selectedCount": 1
+    },
+    {
+      "round": 1,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 1,
+      "acceptanceRatePct": 5,
+      "rejectedBeforeNormalization": 19,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_readers_advisory": 2,
+        "publication_shape_nonfiction": 3,
+        "missing_author": 8,
+        "publication_shape_production_history": 1,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 1,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 1,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 2,
+      "selectedCount": 7
+    },
+    {
+      "round": 1,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 0
+    },
+    {
+      "round": 2,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 8
+    },
+    {
+      "round": 2,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 4
+    },
+    {
+      "round": 2,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 8
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 1,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 8,
+        "missing_author": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 1,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 8,
+        "missing_author": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 9
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 1,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 8,
+        "missing_author": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 2,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "in his keeping"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 2,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 5,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "reign of mist",
+        "the speed of souls: a novel",
+        "in his keeping"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 7,
+      "selectedCount": 5
+    },
+    {
+      "round": 2,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 5,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "in his keeping",
+        "reign of mist",
+        "the speed of souls: a novel"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 7,
+      "selectedCount": 5
+    },
+    {
+      "round": 2,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 7,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "martian manhunter (2018-2020) #12",
+        "mangaka america"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 5,
+      "selectedCount": 10
+    },
+    {
+      "round": 2,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 7,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "martian manhunter (2018-2020) #12",
+        "mangaka america"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8",
+        "mangaka america"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 8
+    },
+    {
+      "round": 2,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 7,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "martian manhunter (2018-2020) #12",
+        "mangaka america"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 5,
+      "selectedCount": 10
+    },
+    {
+      "round": 2,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 12,
+      "acceptedAfterSourcePolicy": 2,
+      "acceptanceRatePct": 16.67,
+      "rejectedBeforeNormalization": 10,
+      "rejectionHistogram": {
+        "missing_author": 1,
+        "publication_shape_literary_history": 1,
+        "publication_shape_academic_text": 2,
+        "publication_shape_critical_study": 5,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 2,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 2,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "pretties with ugly thoughts",
+        "divergent official illustrated movie companion"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 2
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 8
+    },
+    {
+      "round": 2,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 12,
+      "acceptedAfterSourcePolicy": 2,
+      "acceptanceRatePct": 16.67,
+      "rejectedBeforeNormalization": 10,
+      "rejectionHistogram": {
+        "missing_author": 1,
+        "publication_shape_literary_history": 1,
+        "publication_shape_academic_text": 2,
+        "publication_shape_critical_study": 5,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 2,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 2,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "pretties with ugly thoughts",
+        "divergent official illustrated movie companion"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 2
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 5
+    },
+    {
+      "round": 2,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 12,
+      "acceptedAfterSourcePolicy": 2,
+      "acceptanceRatePct": 16.67,
+      "rejectedBeforeNormalization": 10,
+      "rejectionHistogram": {
+        "missing_author": 1,
+        "publication_shape_literary_history": 1,
+        "publication_shape_academic_text": 2,
+        "publication_shape_critical_study": 5,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 2,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 2,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "pretties with ugly thoughts",
+        "divergent official illustrated movie companion"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 2
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 1
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 2,
+        "missing_author": 1,
+        "publication_shape_critical_study": 7,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_nonfiction": 1
+      },
+      "normalizedCandidates": 6,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "divergent official illustrated movie companion",
+        "last chance books",
+        "the fame game",
+        "pretties with ugly thoughts",
+        "the unexpected mess of it all",
+        "the role of nature in the works of octavia butler"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 4,
+      "selectedCount": 10
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 7,
+      "acceptanceRatePct": 35,
+      "rejectedBeforeNormalization": 13,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 9,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 7,
+      "recommendationContributionCount": 5,
+      "uniqueNarrativeFictionYield": 7,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "divergent official illustrated movie companion",
+        "last chance books",
+        "the fame game",
+        "pretties with ugly thoughts",
+        "the role of nature in the works of octavia butler",
+        "the unexpected mess of it all",
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts",
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 7
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 5
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 5,
+      "selectedCount": 9
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 7
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 18,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 18,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 5,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "missing_author": 5,
+        "publication_shape_anthology": 2,
+        "publication_shape_essay_collection": 1,
+        "publication_shape_public_domain_compilation": 2,
+        "publication_shape_periodical": 1
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 0
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 1,
+        "publication_shape_critical_study": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_generic_category_catalog": 1,
+        "missing_author": 5,
+        "publication_shape_anthology": 3,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "contributingTitles": [
+        "the girl with the mermaid hair",
+        "metrophage",
+        "barren grounds"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "contributionSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 9
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 1,
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 4,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_generic_category_catalog": 1,
+        "publication_shape_nonfiction": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_public_domain_compilation": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "contributingTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "contributionSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 8
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_anthology": 1,
+        "publication_shape_author_commentary": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 2,
+        "missing_author": 4,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "junior jinx",
+        "a curse of thorns and slumber",
+        "a summer of discovery",
+        "utopia",
+        "freshman frost",
+        "senior spark"
+      ],
+      "contributingTitles": [
+        "a summer of discovery"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Space Opera": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Space Opera": 1
+      },
+      "uniqueAuthorYield": 1,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 5
+    },
+    {
+      "round": 2,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 8
+    },
+    {
+      "round": 2,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 7
+    },
+    {
+      "round": 2,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 6
+    },
+    {
+      "round": 2,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 1,
+      "acceptanceRatePct": 5,
+      "rejectedBeforeNormalization": 19,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_readers_advisory": 2,
+        "publication_shape_nonfiction": 3,
+        "missing_author": 8,
+        "publication_shape_production_history": 1,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 1,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 1,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 2,
+      "selectedCount": 8
+    },
+    {
+      "round": 3,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 7
+    },
+    {
+      "round": 3,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 4
+    },
+    {
+      "round": 3,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 7
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 1,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 8,
+        "missing_author": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "missing_author": 2,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 7
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 9
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 1,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 8,
+        "missing_author": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 3,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "in his keeping",
+        "reign of mist"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 10
+    },
+    {
+      "round": 3,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "reign of mist",
+        "the speed of souls: a novel"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 10
+    },
+    {
+      "round": 3,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 5,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "in his keeping",
+        "reign of mist",
+        "the speed of souls: a novel"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 7,
+      "selectedCount": 10
+    },
+    {
+      "round": 3,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 7,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "martian manhunter (2018-2020) #12",
+        "mangaka america"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8",
+        "mangaka america"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 4
+    },
+    {
+      "round": 3,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 4
+    },
+    {
+      "round": 3,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 7,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "martian manhunter (2018-2020) #12",
+        "mangaka america"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 5,
+      "selectedCount": 10
+    },
+    {
+      "round": 3,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 12,
+      "acceptedAfterSourcePolicy": 2,
+      "acceptanceRatePct": 16.67,
+      "rejectedBeforeNormalization": 10,
+      "rejectionHistogram": {
+        "missing_author": 1,
+        "publication_shape_literary_history": 1,
+        "publication_shape_academic_text": 2,
+        "publication_shape_critical_study": 5,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 2,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 2,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "pretties with ugly thoughts",
+        "divergent official illustrated movie companion"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 2
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 9
+    },
+    {
+      "round": 3,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 6
+    },
+    {
+      "round": 3,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 8
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 9,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 6,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "divergent official illustrated movie companion",
+        "last chance books",
+        "the fame game",
+        "pretties with ugly thoughts",
+        "the role of nature in the works of octavia butler",
+        "the unexpected mess of it all"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 4,
+      "selectedCount": 4
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 9,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 6,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "divergent official illustrated movie companion",
+        "last chance books",
+        "the fame game",
+        "pretties with ugly thoughts",
+        "the role of nature in the works of octavia butler",
+        "the unexpected mess of it all"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 4,
+      "selectedCount": 8
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 7
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 1,
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 4,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_generic_category_catalog": 1,
+        "publication_shape_nonfiction": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_public_domain_compilation": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "contributingTitles": [
+        "the girl with the mermaid hair",
+        "metrophage",
+        "barren grounds"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "contributionSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 1,
+        "publication_shape_critical_study": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_generic_category_catalog": 1,
+        "missing_author": 5,
+        "publication_shape_anthology": 3,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "contributingTitles": [
+        "the girl with the mermaid hair",
+        "metrophage",
+        "barren grounds"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "contributionSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 7
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 1,
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 4,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_generic_category_catalog": 1,
+        "publication_shape_nonfiction": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_public_domain_compilation": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "contributingTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "contributionSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_anthology": 1,
+        "publication_shape_author_commentary": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 2,
+        "missing_author": 4,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "junior jinx",
+        "a curse of thorns and slumber",
+        "a summer of discovery",
+        "utopia",
+        "freshman frost",
+        "senior spark"
+      ],
+      "contributingTitles": [
+        "a curse of thorns and slumber"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Space Opera": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Space Opera": 1
+      },
+      "uniqueAuthorYield": 1,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 9
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 6
+    },
+    {
+      "round": 3,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 8
+    },
+    {
+      "round": 3,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 1,
+      "acceptanceRatePct": 5,
+      "rejectedBeforeNormalization": 19,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_readers_advisory": 2,
+        "publication_shape_nonfiction": 3,
+        "missing_author": 8,
+        "publication_shape_production_history": 1,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 1,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 1,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 2,
+      "selectedCount": 9
+    },
+    {
+      "round": 3,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 1,
+      "acceptanceRatePct": 5,
+      "rejectedBeforeNormalization": 19,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_readers_advisory": 2,
+        "publication_shape_nonfiction": 3,
+        "missing_author": 8,
+        "publication_shape_production_history": 1,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 1,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 1,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 2,
+      "selectedCount": 7
+    },
+    {
+      "round": 3,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 1,
+      "acceptanceRatePct": 5,
+      "rejectedBeforeNormalization": 19,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_readers_advisory": 2,
+        "publication_shape_nonfiction": 3,
+        "missing_author": 8,
+        "publication_shape_production_history": 1,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 1,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 1,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 2,
+      "selectedCount": 8
+    },
+    {
+      "round": 4,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 7
+    },
+    {
+      "round": 4,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 4
+    },
+    {
+      "round": 4,
+      "queryCandidate": "young adult science fiction novel",
+      "primaryQuery": "young adult science fiction novel",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 7
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 1,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 8,
+        "missing_author": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 6
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA science fiction",
+      "primaryQuery": "YA science fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 1,
+        "publication_shape_writing_guide": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_public_domain_compilation": 8,
+        "missing_author": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "albert dürer"
+      ],
+      "contributingTitles": [
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)",
+        "metrophage",
+        "albert dürer"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 10
+    },
+    {
+      "round": 4,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "in his keeping",
+        "reign of mist"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 10
+    },
+    {
+      "round": 4,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 5,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "reign of mist",
+        "the speed of souls: a novel",
+        "in his keeping"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 7,
+      "selectedCount": 9
+    },
+    {
+      "round": 4,
+      "queryCandidate": "young adult sci fi",
+      "primaryQuery": "young adult sci fi",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 5,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 15,
+      "rejectionHistogram": {
+        "missing_author": 5,
+        "publication_shape_reference": 1,
+        "publication_shape_critical_study": 1,
+        "publication_shape_writing_guide": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 3,
+        "publication_shape_essay_collection": 1
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 5,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the speed of souls: a novel",
+        "the ending writes itself",
+        "reign of mist",
+        "in his keeping"
+      ],
+      "contributingTitles": [
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "the ending writes itself",
+        "in his keeping",
+        "reign of mist"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 5
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 10
+    },
+    {
+      "round": 4,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 7,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "martian manhunter (2018-2020) #12",
+        "mangaka america"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 5,
+      "selectedCount": 10
+    },
+    {
+      "round": 4,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 7,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "martian manhunter (2018-2020) #12",
+        "mangaka america"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8",
+        "mangaka america"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 6,
+      "selectedCount": 10
+    },
+    {
+      "round": 4,
+      "queryCandidate": "teen science fiction",
+      "primaryQuery": "teen science fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 4,
+      "acceptanceRatePct": 20,
+      "rejectedBeforeNormalization": 16,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 1,
+        "publication_shape_readers_advisory": 1,
+        "missing_author": 7,
+        "publication_shape_nonfiction": 3,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 2,
+        "publication_shape_reference": 1
+      },
+      "normalizedCandidates": 4,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 4,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4",
+        "radiant black, vol. 8",
+        "martian manhunter (2018-2020) #12",
+        "mangaka america"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4",
+        "martian manhunter (2018-2020) #12",
+        "radiant black, vol. 8"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 4
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 3
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 5,
+      "selectedCount": 10
+    },
+    {
+      "round": 4,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 12,
+      "acceptedAfterSourcePolicy": 2,
+      "acceptanceRatePct": 16.67,
+      "rejectedBeforeNormalization": 10,
+      "rejectionHistogram": {
+        "missing_author": 1,
+        "publication_shape_literary_history": 1,
+        "publication_shape_academic_text": 2,
+        "publication_shape_critical_study": 5,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 2,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 2,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "pretties with ugly thoughts",
+        "divergent official illustrated movie companion"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 2
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 1
+    },
+    {
+      "round": 4,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 8,
+      "acceptedAfterSourcePolicy": 2,
+      "acceptanceRatePct": 25,
+      "rejectedBeforeNormalization": 6,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 1,
+        "publication_shape_critical_study": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 2,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 2,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "pretties with ugly thoughts",
+        "divergent official illustrated movie companion"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 2
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 1
+    },
+    {
+      "round": 4,
+      "queryCandidate": "young adult dystopian fiction",
+      "primaryQuery": "young adult dystopian fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 12,
+      "acceptedAfterSourcePolicy": 2,
+      "acceptanceRatePct": 16.67,
+      "rejectedBeforeNormalization": 10,
+      "rejectionHistogram": {
+        "missing_author": 1,
+        "publication_shape_literary_history": 1,
+        "publication_shape_academic_text": 2,
+        "publication_shape_critical_study": 5,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 2,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 2,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "pretties with ugly thoughts",
+        "divergent official illustrated movie companion"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 2
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 8
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 2,
+        "missing_author": 1,
+        "publication_shape_critical_study": 7,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_nonfiction": 1
+      },
+      "normalizedCandidates": 6,
+      "recommendationContributionCount": 4,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "divergent official illustrated movie companion",
+        "last chance books",
+        "the fame game",
+        "pretties with ugly thoughts",
+        "the unexpected mess of it all",
+        "the role of nature in the works of octavia butler"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 4
+      },
+      "uniqueAuthorYield": 6,
+      "contributingUniqueAuthorYield": 4,
+      "selectedCount": 10
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 7,
+      "acceptanceRatePct": 35,
+      "rejectedBeforeNormalization": 13,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 9,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 7,
+      "recommendationContributionCount": 5,
+      "uniqueNarrativeFictionYield": 7,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "divergent official illustrated movie companion",
+        "last chance books",
+        "the fame game",
+        "pretties with ugly thoughts",
+        "the role of nature in the works of octavia butler",
+        "the unexpected mess of it all",
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts",
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 7
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 5
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 5,
+      "selectedCount": 10
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA dystopian",
+      "primaryQuery": "YA dystopian",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 7,
+      "acceptanceRatePct": 35,
+      "rejectedBeforeNormalization": 13,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 9,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_unknown_insufficient_story_evidence": 1
+      },
+      "normalizedCandidates": 7,
+      "recommendationContributionCount": 5,
+      "uniqueNarrativeFictionYield": 7,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "divergent official illustrated movie companion",
+        "last chance books",
+        "the fame game",
+        "pretties with ugly thoughts",
+        "the role of nature in the works of octavia butler",
+        "the unexpected mess of it all",
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy"
+      ],
+      "contributingTitles": [
+        "pretties with ugly thoughts",
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy",
+        "last chance books",
+        "the fame game",
+        "the unexpected mess of it all"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Dystopian": 7
+      },
+      "contributionSubgenreHistogram": {
+        "Dystopian": 5
+      },
+      "uniqueAuthorYield": 7,
+      "contributingUniqueAuthorYield": 5,
+      "selectedCount": 10
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 1,
+        "publication_shape_critical_study": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_generic_category_catalog": 1,
+        "missing_author": 5,
+        "publication_shape_anthology": 3,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "contributingTitles": [
+        "the girl with the mermaid hair",
+        "metrophage",
+        "barren grounds"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "contributionSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 3
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 3,
+      "acceptanceRatePct": 15,
+      "rejectedBeforeNormalization": 17,
+      "rejectionHistogram": {
+        "publication_shape_academic_text": 1,
+        "publication_shape_critical_study": 2,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_generic_category_catalog": 1,
+        "missing_author": 5,
+        "publication_shape_anthology": 3,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_nonfiction": 1,
+        "publication_shape_public_domain_compilation": 1
+      },
+      "normalizedCandidates": 3,
+      "recommendationContributionCount": 3,
+      "uniqueNarrativeFictionYield": 3,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "metrophage",
+        "the girl with the mermaid hair",
+        "barren grounds"
+      ],
+      "contributingTitles": [
+        "the girl with the mermaid hair",
+        "metrophage",
+        "barren grounds"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "contributionSubgenreHistogram": {
+        "Near Future": 3
+      },
+      "uniqueAuthorYield": 3,
+      "contributingUniqueAuthorYield": 3,
+      "selectedCount": 9
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA speculative fiction",
+      "primaryQuery": "YA speculative fiction",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 7
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_author_commentary": 1,
+        "publication_shape_anthology": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 2,
+        "missing_author": 4,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "junior jinx",
+        "a curse of thorns and slumber",
+        "a summer of discovery",
+        "utopia",
+        "freshman frost",
+        "senior spark"
+      ],
+      "contributingTitles": [
+        "a curse of thorns and slumber"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Space Opera": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Space Opera": 1
+      },
+      "uniqueAuthorYield": 1,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 9
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 0,
+      "acceptedAfterSourcePolicy": 0,
+      "acceptanceRatePct": 0,
+      "rejectedBeforeNormalization": 0,
+      "rejectionHistogram": {},
+      "normalizedCandidates": 0,
+      "recommendationContributionCount": 0,
+      "uniqueNarrativeFictionYield": 0,
+      "duplicateRate": 0,
+      "acceptedTitles": [],
+      "contributingTitles": [],
+      "acceptedSubgenreHistogram": {},
+      "contributionSubgenreHistogram": {},
+      "uniqueAuthorYield": 0,
+      "contributingUniqueAuthorYield": 0,
+      "selectedCount": 0
+    },
+    {
+      "round": 4,
+      "queryCandidate": "YA space opera",
+      "primaryQuery": "YA space opera",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 6,
+      "acceptanceRatePct": 30,
+      "rejectedBeforeNormalization": 14,
+      "rejectionHistogram": {
+        "publication_shape_anthology": 1,
+        "publication_shape_author_commentary": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 2,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_periodical": 2,
+        "missing_author": 4,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 5,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 6,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "junior jinx",
+        "a curse of thorns and slumber",
+        "a summer of discovery",
+        "utopia",
+        "freshman frost",
+        "senior spark"
+      ],
+      "contributingTitles": [
+        "utopia"
+      ],
+      "acceptedSubgenreHistogram": {
+        "Space Opera": 6
+      },
+      "contributionSubgenreHistogram": {
+        "Space Opera": 1
+      },
+      "uniqueAuthorYield": 1,
+      "contributingUniqueAuthorYield": 1,
+      "selectedCount": 9
+    },
+    {
+      "round": 4,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 1,
+      "acceptanceRatePct": 5,
+      "rejectedBeforeNormalization": 19,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_readers_advisory": 2,
+        "publication_shape_nonfiction": 3,
+        "missing_author": 8,
+        "publication_shape_production_history": 1,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 1,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 1,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 2,
+      "selectedCount": 9
+    },
+    {
+      "round": 4,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 1,
+      "acceptanceRatePct": 5,
+      "rejectedBeforeNormalization": 19,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_readers_advisory": 2,
+        "publication_shape_nonfiction": 3,
+        "missing_author": 8,
+        "publication_shape_production_history": 1,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 1,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 1,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 2,
+      "selectedCount": 5
+    },
+    {
+      "round": 4,
+      "queryCandidate": "science fiction for teens",
+      "primaryQuery": "science fiction for teens",
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "rawApiCount": 20,
+      "acceptedAfterSourcePolicy": 1,
+      "acceptanceRatePct": 5,
+      "rejectedBeforeNormalization": 19,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_readers_advisory": 2,
+        "publication_shape_nonfiction": 3,
+        "missing_author": 8,
+        "publication_shape_production_history": 1,
+        "publication_shape_public_domain_compilation": 3
+      },
+      "normalizedCandidates": 1,
+      "recommendationContributionCount": 1,
+      "uniqueNarrativeFictionYield": 1,
+      "duplicateRate": 0,
+      "acceptedTitles": [
+        "new teen titans vol. 4"
+      ],
+      "contributingTitles": [
+        "new teen titans vol. 4"
+      ],
+      "acceptedSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "contributionSubgenreHistogram": {
+        "General speculative": 1
+      },
+      "uniqueAuthorYield": 2,
+      "contributingUniqueAuthorYield": 2,
+      "selectedCount": 8
+    }
+  ],
+  "querySummaries": [
+    {
+      "queryCandidate": "young adult science fiction novel",
+      "runs": 12,
+      "rawRetrieval": {
+        "mean": 20,
+        "min": 20,
+        "max": 20,
+        "stddev": 0
+      },
+      "publicationIdentityAccepted": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "acceptanceRatePct": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "normalizedCandidates": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "recommendationContributionCount": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "uniqueNarrativeFictionYield": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "uniqueAuthorYield": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "duplicateRate": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 24,
+        "publication_shape_reference": 12,
+        "publication_shape_writing_guide": 48,
+        "publication_shape_nonfiction": 24,
+        "publication_shape_anthology": 24,
+        "missing_author": 48,
+        "publication_shape_unknown_insufficient_story_evidence": 12,
+        "publication_shape_unknown_insufficient_narrative_identity": 48
+      },
+      "acceptedBySubgenre": {},
+      "contributionBySubgenre": {},
+      "acceptedCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "contributionCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "uniqueTitleYield": 0,
+      "uniqueContributingTitleYield": 0,
+      "acceptedDuplicateRate": 0,
+      "contributingDuplicateRate": 0,
+      "roundAggregates": [
+        {
+          "round": 1,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 0,
+          "recommendationContributionCount": 0,
+          "uniqueNarrativeFictionYield": 0,
+          "uniqueAuthorYield": 0
+        },
+        {
+          "round": 2,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 0,
+          "recommendationContributionCount": 0,
+          "uniqueNarrativeFictionYield": 0,
+          "uniqueAuthorYield": 0
+        },
+        {
+          "round": 3,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 0,
+          "recommendationContributionCount": 0,
+          "uniqueNarrativeFictionYield": 0,
+          "uniqueAuthorYield": 0
+        },
+        {
+          "round": 4,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 0,
+          "recommendationContributionCount": 0,
+          "uniqueNarrativeFictionYield": 0,
+          "uniqueAuthorYield": 0
+        }
+      ],
+      "stability": {
+        "accepted": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "stddev": 0
+        },
+        "contribution": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "stddev": 0
+        },
+        "uniqueTitles": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "stddev": 0
+        }
+      },
+      "acceptedTitleSet": [],
+      "contributingTitleSet": []
+    },
+    {
+      "queryCandidate": "YA science fiction",
+      "runs": 12,
+      "rawRetrieval": {
+        "mean": 18.33,
+        "min": 0,
+        "max": 20,
+        "stddev": 5.53
+      },
+      "publicationIdentityAccepted": {
+        "mean": 2.75,
+        "min": 0,
+        "max": 3,
+        "stddev": 0.83
+      },
+      "acceptanceRatePct": {
+        "mean": 13.75,
+        "min": 0,
+        "max": 15,
+        "stddev": 4.15
+      },
+      "normalizedCandidates": {
+        "mean": 2.75,
+        "min": 0,
+        "max": 3,
+        "stddev": 0.83
+      },
+      "recommendationContributionCount": {
+        "mean": 2.75,
+        "min": 0,
+        "max": 3,
+        "stddev": 0.83
+      },
+      "uniqueNarrativeFictionYield": {
+        "mean": 2.75,
+        "min": 0,
+        "max": 3,
+        "stddev": 0.83
+      },
+      "uniqueAuthorYield": {
+        "mean": 2.75,
+        "min": 0,
+        "max": 3,
+        "stddev": 0.83
+      },
+      "duplicateRate": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 22,
+        "publication_shape_anthology": 11,
+        "publication_shape_unknown_insufficient_story_evidence": 12,
+        "publication_shape_periodical": 10,
+        "publication_shape_writing_guide": 11,
+        "publication_shape_unknown_insufficient_narrative_identity": 22,
+        "publication_shape_public_domain_compilation": 87,
+        "missing_author": 12
+      },
+      "acceptedBySubgenre": {
+        "General speculative": 33
+      },
+      "contributionBySubgenre": {
+        "General speculative": 33
+      },
+      "acceptedCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "contributionCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "uniqueTitleYield": 3,
+      "uniqueContributingTitleYield": 3,
+      "acceptedDuplicateRate": 0.9091,
+      "contributingDuplicateRate": 0.9091,
+      "roundAggregates": [
+        {
+          "round": 1,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 9,
+          "recommendationContributionCount": 9,
+          "uniqueNarrativeFictionYield": 9,
+          "uniqueAuthorYield": 9
+        },
+        {
+          "round": 2,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 9,
+          "recommendationContributionCount": 9,
+          "uniqueNarrativeFictionYield": 9,
+          "uniqueAuthorYield": 9
+        },
+        {
+          "round": 3,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 9,
+          "recommendationContributionCount": 9,
+          "uniqueNarrativeFictionYield": 9,
+          "uniqueAuthorYield": 9
+        },
+        {
+          "round": 4,
+          "rawApiCount": 40,
+          "acceptedAfterSourcePolicy": 6,
+          "recommendationContributionCount": 6,
+          "uniqueNarrativeFictionYield": 6,
+          "uniqueAuthorYield": 6
+        }
+      ],
+      "stability": {
+        "accepted": {
+          "mean": 8.25,
+          "min": 6,
+          "max": 9,
+          "stddev": 1.3
+        },
+        "contribution": {
+          "mean": 8.25,
+          "min": 6,
+          "max": 9,
+          "stddev": 1.3
+        },
+        "uniqueTitles": {
+          "mean": 8.25,
+          "min": 6,
+          "max": 9,
+          "stddev": 1.3
+        }
+      },
+      "acceptedTitleSet": [
+        "albert dürer",
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)"
+      ],
+      "contributingTitleSet": [
+        "albert dürer",
+        "metrophage",
+        "the curse of the arcadian stone: nameless fay (vol. 2 broken fate)"
+      ]
+    },
+    {
+      "queryCandidate": "young adult sci fi",
+      "runs": 12,
+      "rawRetrieval": {
+        "mean": 20,
+        "min": 20,
+        "max": 20,
+        "stddev": 0
+      },
+      "publicationIdentityAccepted": {
+        "mean": 5,
+        "min": 5,
+        "max": 5,
+        "stddev": 0
+      },
+      "acceptanceRatePct": {
+        "mean": 25,
+        "min": 25,
+        "max": 25,
+        "stddev": 0
+      },
+      "normalizedCandidates": {
+        "mean": 5,
+        "min": 5,
+        "max": 5,
+        "stddev": 0
+      },
+      "recommendationContributionCount": {
+        "mean": 4.33,
+        "min": 3,
+        "max": 5,
+        "stddev": 0.62
+      },
+      "uniqueNarrativeFictionYield": {
+        "mean": 5,
+        "min": 5,
+        "max": 5,
+        "stddev": 0
+      },
+      "uniqueAuthorYield": {
+        "mean": 7,
+        "min": 7,
+        "max": 7,
+        "stddev": 0
+      },
+      "duplicateRate": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "rejectionHistogram": {
+        "missing_author": 60,
+        "publication_shape_reference": 12,
+        "publication_shape_critical_study": 12,
+        "publication_shape_writing_guide": 24,
+        "publication_shape_unknown_insufficient_narrative_identity": 12,
+        "publication_shape_nonfiction": 12,
+        "publication_shape_public_domain_compilation": 36,
+        "publication_shape_essay_collection": 12
+      },
+      "acceptedBySubgenre": {
+        "General speculative": 60
+      },
+      "contributionBySubgenre": {
+        "General speculative": 52
+      },
+      "acceptedCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "contributionCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "uniqueTitleYield": 5,
+      "uniqueContributingTitleYield": 5,
+      "acceptedDuplicateRate": 0.9167,
+      "contributingDuplicateRate": 0.9038,
+      "roundAggregates": [
+        {
+          "round": 1,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 15,
+          "recommendationContributionCount": 13,
+          "uniqueNarrativeFictionYield": 15,
+          "uniqueAuthorYield": 21
+        },
+        {
+          "round": 2,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 15,
+          "recommendationContributionCount": 13,
+          "uniqueNarrativeFictionYield": 15,
+          "uniqueAuthorYield": 21
+        },
+        {
+          "round": 3,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 15,
+          "recommendationContributionCount": 13,
+          "uniqueNarrativeFictionYield": 15,
+          "uniqueAuthorYield": 21
+        },
+        {
+          "round": 4,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 15,
+          "recommendationContributionCount": 13,
+          "uniqueNarrativeFictionYield": 15,
+          "uniqueAuthorYield": 21
+        }
+      ],
+      "stability": {
+        "accepted": {
+          "mean": 15,
+          "min": 15,
+          "max": 15,
+          "stddev": 0
+        },
+        "contribution": {
+          "mean": 13,
+          "min": 13,
+          "max": 13,
+          "stddev": 0
+        },
+        "uniqueTitles": {
+          "mean": 15,
+          "min": 15,
+          "max": 15,
+          "stddev": 0
+        }
+      },
+      "acceptedTitleSet": [
+        "in his keeping",
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "reign of mist",
+        "the ending writes itself",
+        "the speed of souls: a novel"
+      ],
+      "contributingTitleSet": [
+        "in his keeping",
+        "one if: a thrilling young adult sci-fi fantasy adventure",
+        "reign of mist",
+        "the ending writes itself",
+        "the speed of souls: a novel"
+      ]
+    },
+    {
+      "queryCandidate": "teen science fiction",
+      "runs": 12,
+      "rawRetrieval": {
+        "mean": 18.33,
+        "min": 0,
+        "max": 20,
+        "stddev": 5.53
+      },
+      "publicationIdentityAccepted": {
+        "mean": 3.67,
+        "min": 0,
+        "max": 4,
+        "stddev": 1.11
+      },
+      "acceptanceRatePct": {
+        "mean": 18.33,
+        "min": 0,
+        "max": 20,
+        "stddev": 5.53
+      },
+      "normalizedCandidates": {
+        "mean": 3.67,
+        "min": 0,
+        "max": 4,
+        "stddev": 1.11
+      },
+      "recommendationContributionCount": {
+        "mean": 3.17,
+        "min": 0,
+        "max": 4,
+        "stddev": 1.07
+      },
+      "uniqueNarrativeFictionYield": {
+        "mean": 3.67,
+        "min": 0,
+        "max": 4,
+        "stddev": 1.11
+      },
+      "uniqueAuthorYield": {
+        "mean": 5.5,
+        "min": 0,
+        "max": 6,
+        "stddev": 1.66
+      },
+      "duplicateRate": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 11,
+        "publication_shape_readers_advisory": 11,
+        "missing_author": 75,
+        "publication_shape_nonfiction": 33,
+        "publication_shape_anthology": 11,
+        "publication_shape_unknown_insufficient_story_evidence": 22,
+        "publication_shape_reference": 11,
+        "non_narrative_description_shape": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 1
+      },
+      "acceptedBySubgenre": {
+        "General speculative": 44
+      },
+      "contributionBySubgenre": {
+        "General speculative": 38
+      },
+      "acceptedCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "contributionCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "uniqueTitleYield": 5,
+      "uniqueContributingTitleYield": 5,
+      "acceptedDuplicateRate": 0.8864,
+      "contributingDuplicateRate": 0.8684,
+      "roundAggregates": [
+        {
+          "round": 1,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 12,
+          "recommendationContributionCount": 11,
+          "uniqueNarrativeFictionYield": 12,
+          "uniqueAuthorYield": 18
+        },
+        {
+          "round": 2,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 12,
+          "recommendationContributionCount": 10,
+          "uniqueNarrativeFictionYield": 12,
+          "uniqueAuthorYield": 18
+        },
+        {
+          "round": 3,
+          "rawApiCount": 40,
+          "acceptedAfterSourcePolicy": 8,
+          "recommendationContributionCount": 7,
+          "uniqueNarrativeFictionYield": 8,
+          "uniqueAuthorYield": 12
+        },
+        {
+          "round": 4,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 12,
+          "recommendationContributionCount": 10,
+          "uniqueNarrativeFictionYield": 12,
+          "uniqueAuthorYield": 18
+        }
+      ],
+      "stability": {
+        "accepted": {
+          "mean": 11,
+          "min": 8,
+          "max": 12,
+          "stddev": 1.73
+        },
+        "contribution": {
+          "mean": 9.5,
+          "min": 7,
+          "max": 11,
+          "stddev": 1.5
+        },
+        "uniqueTitles": {
+          "mean": 11,
+          "min": 8,
+          "max": 12,
+          "stddev": 1.73
+        }
+      },
+      "acceptedTitleSet": [
+        "annual report",
+        "mangaka america",
+        "martian manhunter (2018-2020) #12",
+        "new teen titans vol. 4",
+        "radiant black, vol. 8"
+      ],
+      "contributingTitleSet": [
+        "annual report",
+        "mangaka america",
+        "martian manhunter (2018-2020) #12",
+        "new teen titans vol. 4",
+        "radiant black, vol. 8"
+      ]
+    },
+    {
+      "queryCandidate": "young adult dystopian fiction",
+      "runs": 12,
+      "rawRetrieval": {
+        "mean": 9.08,
+        "min": 0,
+        "max": 12,
+        "stddev": 4.35
+      },
+      "publicationIdentityAccepted": {
+        "mean": 1.67,
+        "min": 0,
+        "max": 2,
+        "stddev": 0.75
+      },
+      "acceptanceRatePct": {
+        "mean": 15.74,
+        "min": 0,
+        "max": 25,
+        "stddev": 7.72
+      },
+      "normalizedCandidates": {
+        "mean": 1.67,
+        "min": 0,
+        "max": 2,
+        "stddev": 0.75
+      },
+      "recommendationContributionCount": {
+        "mean": 0.83,
+        "min": 0,
+        "max": 1,
+        "stddev": 0.37
+      },
+      "uniqueNarrativeFictionYield": {
+        "mean": 1.67,
+        "min": 0,
+        "max": 2,
+        "stddev": 0.75
+      },
+      "uniqueAuthorYield": {
+        "mean": 1.67,
+        "min": 0,
+        "max": 2,
+        "stddev": 0.75
+      },
+      "duplicateRate": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "rejectionHistogram": {
+        "missing_author": 7,
+        "publication_shape_literary_history": 7,
+        "publication_shape_academic_text": 18,
+        "publication_shape_critical_study": 47,
+        "publication_shape_unknown_insufficient_story_evidence": 10
+      },
+      "acceptedBySubgenre": {
+        "Dystopian": 20
+      },
+      "contributionBySubgenre": {
+        "Dystopian": 10
+      },
+      "acceptedCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "contributionCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "uniqueTitleYield": 2,
+      "uniqueContributingTitleYield": 1,
+      "acceptedDuplicateRate": 0.9,
+      "contributingDuplicateRate": 0.9,
+      "roundAggregates": [
+        {
+          "round": 1,
+          "rawApiCount": 29,
+          "acceptedAfterSourcePolicy": 6,
+          "recommendationContributionCount": 3,
+          "uniqueNarrativeFictionYield": 6,
+          "uniqueAuthorYield": 6
+        },
+        {
+          "round": 2,
+          "rawApiCount": 36,
+          "acceptedAfterSourcePolicy": 6,
+          "recommendationContributionCount": 3,
+          "uniqueNarrativeFictionYield": 6,
+          "uniqueAuthorYield": 6
+        },
+        {
+          "round": 3,
+          "rawApiCount": 12,
+          "acceptedAfterSourcePolicy": 2,
+          "recommendationContributionCount": 1,
+          "uniqueNarrativeFictionYield": 2,
+          "uniqueAuthorYield": 2
+        },
+        {
+          "round": 4,
+          "rawApiCount": 32,
+          "acceptedAfterSourcePolicy": 6,
+          "recommendationContributionCount": 3,
+          "uniqueNarrativeFictionYield": 6,
+          "uniqueAuthorYield": 6
+        }
+      ],
+      "stability": {
+        "accepted": {
+          "mean": 5,
+          "min": 2,
+          "max": 6,
+          "stddev": 1.73
+        },
+        "contribution": {
+          "mean": 2.5,
+          "min": 1,
+          "max": 3,
+          "stddev": 0.87
+        },
+        "uniqueTitles": {
+          "mean": 5,
+          "min": 2,
+          "max": 6,
+          "stddev": 1.73
+        }
+      },
+      "acceptedTitleSet": [
+        "divergent official illustrated movie companion",
+        "pretties with ugly thoughts"
+      ],
+      "contributingTitleSet": [
+        "pretties with ugly thoughts"
+      ]
+    },
+    {
+      "queryCandidate": "YA dystopian",
+      "runs": 12,
+      "rawRetrieval": {
+        "mean": 16.67,
+        "min": 0,
+        "max": 20,
+        "stddev": 7.45
+      },
+      "publicationIdentityAccepted": {
+        "mean": 5.33,
+        "min": 0,
+        "max": 7,
+        "stddev": 2.43
+      },
+      "acceptanceRatePct": {
+        "mean": 26.67,
+        "min": 0,
+        "max": 35,
+        "stddev": 12.13
+      },
+      "normalizedCandidates": {
+        "mean": 5.33,
+        "min": 0,
+        "max": 7,
+        "stddev": 2.43
+      },
+      "recommendationContributionCount": {
+        "mean": 3.67,
+        "min": 0,
+        "max": 5,
+        "stddev": 1.7
+      },
+      "uniqueNarrativeFictionYield": {
+        "mean": 5.33,
+        "min": 0,
+        "max": 7,
+        "stddev": 2.43
+      },
+      "uniqueAuthorYield": {
+        "mean": 5.33,
+        "min": 0,
+        "max": 7,
+        "stddev": 2.43
+      },
+      "duplicateRate": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 86,
+        "publication_shape_unknown_insufficient_narrative_identity": 20,
+        "publication_shape_nonfiction": 14,
+        "publication_shape_unknown_insufficient_story_evidence": 10,
+        "publication_shape_academic_text": 4,
+        "missing_author": 2
+      },
+      "acceptedBySubgenre": {
+        "Dystopian": 64
+      },
+      "contributionBySubgenre": {
+        "Dystopian": 44
+      },
+      "acceptedCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "contributionCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "uniqueTitleYield": 7,
+      "uniqueContributingTitleYield": 5,
+      "acceptedDuplicateRate": 0.8906,
+      "contributingDuplicateRate": 0.8864,
+      "roundAggregates": [
+        {
+          "round": 1,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 19,
+          "recommendationContributionCount": 13,
+          "uniqueNarrativeFictionYield": 19,
+          "uniqueAuthorYield": 19
+        },
+        {
+          "round": 2,
+          "rawApiCount": 40,
+          "acceptedAfterSourcePolicy": 13,
+          "recommendationContributionCount": 9,
+          "uniqueNarrativeFictionYield": 13,
+          "uniqueAuthorYield": 13
+        },
+        {
+          "round": 3,
+          "rawApiCount": 40,
+          "acceptedAfterSourcePolicy": 12,
+          "recommendationContributionCount": 8,
+          "uniqueNarrativeFictionYield": 12,
+          "uniqueAuthorYield": 12
+        },
+        {
+          "round": 4,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 20,
+          "recommendationContributionCount": 14,
+          "uniqueNarrativeFictionYield": 20,
+          "uniqueAuthorYield": 20
+        }
+      ],
+      "stability": {
+        "accepted": {
+          "mean": 16,
+          "min": 12,
+          "max": 20,
+          "stddev": 3.54
+        },
+        "contribution": {
+          "mean": 11,
+          "min": 8,
+          "max": 14,
+          "stddev": 2.55
+        },
+        "uniqueTitles": {
+          "mean": 16,
+          "min": 12,
+          "max": 20,
+          "stddev": 3.54
+        }
+      },
+      "acceptedTitleSet": [
+        "divergent official illustrated movie companion",
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy",
+        "last chance books",
+        "pretties with ugly thoughts",
+        "the fame game",
+        "the role of nature in the works of octavia butler",
+        "the unexpected mess of it all"
+      ],
+      "contributingTitleSet": [
+        "from a farouche adolescent to an important part of society. the psychosocial development of katniss everdeen in \"the hunger games\" trilogy",
+        "last chance books",
+        "pretties with ugly thoughts",
+        "the fame game",
+        "the unexpected mess of it all"
+      ]
+    },
+    {
+      "queryCandidate": "YA speculative fiction",
+      "runs": 12,
+      "rawRetrieval": {
+        "mean": 16.33,
+        "min": 0,
+        "max": 20,
+        "stddev": 7.34
+      },
+      "publicationIdentityAccepted": {
+        "mean": 2,
+        "min": 0,
+        "max": 3,
+        "stddev": 1.41
+      },
+      "acceptanceRatePct": {
+        "mean": 10,
+        "min": 0,
+        "max": 15,
+        "stddev": 7.07
+      },
+      "normalizedCandidates": {
+        "mean": 2,
+        "min": 0,
+        "max": 3,
+        "stddev": 1.41
+      },
+      "recommendationContributionCount": {
+        "mean": 2,
+        "min": 0,
+        "max": 3,
+        "stddev": 1.41
+      },
+      "uniqueNarrativeFictionYield": {
+        "mean": 2,
+        "min": 0,
+        "max": 3,
+        "stddev": 1.41
+      },
+      "uniqueAuthorYield": {
+        "mean": 2,
+        "min": 0,
+        "max": 3,
+        "stddev": 1.41
+      },
+      "duplicateRate": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 26,
+        "publication_shape_unknown_insufficient_story_evidence": 12,
+        "missing_author": 47,
+        "publication_shape_anthology": 31,
+        "publication_shape_essay_collection": 2,
+        "publication_shape_public_domain_compilation": 12,
+        "publication_shape_periodical": 2,
+        "publication_shape_academic_text": 8,
+        "publication_shape_unknown_insufficient_narrative_identity": 13,
+        "publication_shape_generic_category_catalog": 8,
+        "publication_shape_nonfiction": 11
+      },
+      "acceptedBySubgenre": {
+        "Near Future": 24
+      },
+      "contributionBySubgenre": {
+        "Near Future": 24
+      },
+      "acceptedCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "contributionCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "uniqueTitleYield": 3,
+      "uniqueContributingTitleYield": 3,
+      "acceptedDuplicateRate": 0.875,
+      "contributingDuplicateRate": 0.875,
+      "roundAggregates": [
+        {
+          "round": 1,
+          "rawApiCount": 38,
+          "acceptedAfterSourcePolicy": 3,
+          "recommendationContributionCount": 3,
+          "uniqueNarrativeFictionYield": 3,
+          "uniqueAuthorYield": 3
+        },
+        {
+          "round": 2,
+          "rawApiCount": 58,
+          "acceptedAfterSourcePolicy": 6,
+          "recommendationContributionCount": 6,
+          "uniqueNarrativeFictionYield": 6,
+          "uniqueAuthorYield": 6
+        },
+        {
+          "round": 3,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 9,
+          "recommendationContributionCount": 9,
+          "uniqueNarrativeFictionYield": 9,
+          "uniqueAuthorYield": 9
+        },
+        {
+          "round": 4,
+          "rawApiCount": 40,
+          "acceptedAfterSourcePolicy": 6,
+          "recommendationContributionCount": 6,
+          "uniqueNarrativeFictionYield": 6,
+          "uniqueAuthorYield": 6
+        }
+      ],
+      "stability": {
+        "accepted": {
+          "mean": 6,
+          "min": 3,
+          "max": 9,
+          "stddev": 2.12
+        },
+        "contribution": {
+          "mean": 6,
+          "min": 3,
+          "max": 9,
+          "stddev": 2.12
+        },
+        "uniqueTitles": {
+          "mean": 6,
+          "min": 3,
+          "max": 9,
+          "stddev": 2.12
+        }
+      },
+      "acceptedTitleSet": [
+        "barren grounds",
+        "metrophage",
+        "the girl with the mermaid hair"
+      ],
+      "contributingTitleSet": [
+        "barren grounds",
+        "metrophage",
+        "the girl with the mermaid hair"
+      ]
+    },
+    {
+      "queryCandidate": "YA space opera",
+      "runs": 12,
+      "rawRetrieval": {
+        "mean": 10,
+        "min": 0,
+        "max": 20,
+        "stddev": 10
+      },
+      "publicationIdentityAccepted": {
+        "mean": 3,
+        "min": 0,
+        "max": 6,
+        "stddev": 3
+      },
+      "acceptanceRatePct": {
+        "mean": 15,
+        "min": 0,
+        "max": 30,
+        "stddev": 15
+      },
+      "normalizedCandidates": {
+        "mean": 2.5,
+        "min": 0,
+        "max": 5,
+        "stddev": 2.5
+      },
+      "recommendationContributionCount": {
+        "mean": 0.5,
+        "min": 0,
+        "max": 1,
+        "stddev": 0.5
+      },
+      "uniqueNarrativeFictionYield": {
+        "mean": 3,
+        "min": 0,
+        "max": 6,
+        "stddev": 3
+      },
+      "uniqueAuthorYield": {
+        "mean": 0.5,
+        "min": 0,
+        "max": 1,
+        "stddev": 0.5
+      },
+      "duplicateRate": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "rejectionHistogram": {
+        "publication_shape_anthology": 6,
+        "publication_shape_author_commentary": 6,
+        "publication_shape_unknown_insufficient_narrative_identity": 12,
+        "publication_shape_unknown_insufficient_story_evidence": 6,
+        "publication_shape_periodical": 12,
+        "missing_author": 24,
+        "publication_shape_public_domain_compilation": 18
+      },
+      "acceptedBySubgenre": {
+        "Space Opera": 36
+      },
+      "contributionBySubgenre": {
+        "Space Opera": 6
+      },
+      "acceptedCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "contributionCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "uniqueTitleYield": 6,
+      "uniqueContributingTitleYield": 3,
+      "acceptedDuplicateRate": 0.8333,
+      "contributingDuplicateRate": 0.5,
+      "roundAggregates": [
+        {
+          "round": 1,
+          "rawApiCount": 40,
+          "acceptedAfterSourcePolicy": 12,
+          "recommendationContributionCount": 2,
+          "uniqueNarrativeFictionYield": 12,
+          "uniqueAuthorYield": 2
+        },
+        {
+          "round": 2,
+          "rawApiCount": 20,
+          "acceptedAfterSourcePolicy": 6,
+          "recommendationContributionCount": 1,
+          "uniqueNarrativeFictionYield": 6,
+          "uniqueAuthorYield": 1
+        },
+        {
+          "round": 3,
+          "rawApiCount": 20,
+          "acceptedAfterSourcePolicy": 6,
+          "recommendationContributionCount": 1,
+          "uniqueNarrativeFictionYield": 6,
+          "uniqueAuthorYield": 1
+        },
+        {
+          "round": 4,
+          "rawApiCount": 40,
+          "acceptedAfterSourcePolicy": 12,
+          "recommendationContributionCount": 2,
+          "uniqueNarrativeFictionYield": 12,
+          "uniqueAuthorYield": 2
+        }
+      ],
+      "stability": {
+        "accepted": {
+          "mean": 9,
+          "min": 6,
+          "max": 12,
+          "stddev": 3
+        },
+        "contribution": {
+          "mean": 1.5,
+          "min": 1,
+          "max": 2,
+          "stddev": 0.5
+        },
+        "uniqueTitles": {
+          "mean": 9,
+          "min": 6,
+          "max": 12,
+          "stddev": 3
+        }
+      },
+      "acceptedTitleSet": [
+        "a curse of thorns and slumber",
+        "a summer of discovery",
+        "freshman frost",
+        "junior jinx",
+        "senior spark",
+        "utopia"
+      ],
+      "contributingTitleSet": [
+        "a curse of thorns and slumber",
+        "a summer of discovery",
+        "utopia"
+      ]
+    },
+    {
+      "queryCandidate": "science fiction for teens",
+      "runs": 12,
+      "rawRetrieval": {
+        "mean": 15,
+        "min": 0,
+        "max": 20,
+        "stddev": 8.66
+      },
+      "publicationIdentityAccepted": {
+        "mean": 0.75,
+        "min": 0,
+        "max": 1,
+        "stddev": 0.43
+      },
+      "acceptanceRatePct": {
+        "mean": 3.75,
+        "min": 0,
+        "max": 5,
+        "stddev": 2.17
+      },
+      "normalizedCandidates": {
+        "mean": 0.75,
+        "min": 0,
+        "max": 1,
+        "stddev": 0.43
+      },
+      "recommendationContributionCount": {
+        "mean": 0.75,
+        "min": 0,
+        "max": 1,
+        "stddev": 0.43
+      },
+      "uniqueNarrativeFictionYield": {
+        "mean": 0.75,
+        "min": 0,
+        "max": 1,
+        "stddev": 0.43
+      },
+      "uniqueAuthorYield": {
+        "mean": 1.5,
+        "min": 0,
+        "max": 2,
+        "stddev": 0.87
+      },
+      "duplicateRate": {
+        "mean": 0,
+        "min": 0,
+        "max": 0,
+        "stddev": 0
+      },
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 18,
+        "publication_shape_readers_advisory": 18,
+        "publication_shape_nonfiction": 27,
+        "missing_author": 72,
+        "publication_shape_production_history": 9,
+        "publication_shape_public_domain_compilation": 27
+      },
+      "acceptedBySubgenre": {
+        "General speculative": 9
+      },
+      "contributionBySubgenre": {
+        "General speculative": 9
+      },
+      "acceptedCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "contributionCoverageEntropy": {
+        "entropy": 0,
+        "normalizedEntropy": 0
+      },
+      "uniqueTitleYield": 1,
+      "uniqueContributingTitleYield": 1,
+      "acceptedDuplicateRate": 0.8889,
+      "contributingDuplicateRate": 0.8889,
+      "roundAggregates": [
+        {
+          "round": 1,
+          "rawApiCount": 40,
+          "acceptedAfterSourcePolicy": 2,
+          "recommendationContributionCount": 2,
+          "uniqueNarrativeFictionYield": 2,
+          "uniqueAuthorYield": 4
+        },
+        {
+          "round": 2,
+          "rawApiCount": 20,
+          "acceptedAfterSourcePolicy": 1,
+          "recommendationContributionCount": 1,
+          "uniqueNarrativeFictionYield": 1,
+          "uniqueAuthorYield": 2
+        },
+        {
+          "round": 3,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 3,
+          "recommendationContributionCount": 3,
+          "uniqueNarrativeFictionYield": 3,
+          "uniqueAuthorYield": 6
+        },
+        {
+          "round": 4,
+          "rawApiCount": 60,
+          "acceptedAfterSourcePolicy": 3,
+          "recommendationContributionCount": 3,
+          "uniqueNarrativeFictionYield": 3,
+          "uniqueAuthorYield": 6
+        }
+      ],
+      "stability": {
+        "accepted": {
+          "mean": 2.25,
+          "min": 1,
+          "max": 3,
+          "stddev": 0.83
+        },
+        "contribution": {
+          "mean": 2.25,
+          "min": 1,
+          "max": 3,
+          "stddev": 0.83
+        },
+        "uniqueTitles": {
+          "mean": 2.25,
+          "min": 1,
+          "max": 3,
+          "stddev": 0.83
+        }
+      },
+      "acceptedTitleSet": [
+        "new teen titans vol. 4"
+      ],
+      "contributingTitleSet": [
+        "new teen titans vol. 4"
+      ]
+    }
+  ],
+  "overlap": [
+    {
+      "queryA": "young adult dystopian fiction",
+      "queryB": "YA dystopian",
+      "acceptedJaccard": 0.2857,
+      "contributionJaccard": 0.2,
+      "acceptedIntersection": 2,
+      "contributionIntersection": 1,
+      "uniqueAcceptedAdditionsAOverB": 0,
+      "uniqueAcceptedAdditionsBOverA": 5,
+      "uniqueContributionAdditionsAOverB": 0,
+      "uniqueContributionAdditionsBOverA": 4
+    },
+    {
+      "queryA": "YA science fiction",
+      "queryB": "YA speculative fiction",
+      "acceptedJaccard": 0.2,
+      "contributionJaccard": 0.2,
+      "acceptedIntersection": 1,
+      "contributionIntersection": 1,
+      "uniqueAcceptedAdditionsAOverB": 2,
+      "uniqueAcceptedAdditionsBOverA": 2,
+      "uniqueContributionAdditionsAOverB": 2,
+      "uniqueContributionAdditionsBOverA": 2
+    },
+    {
+      "queryA": "teen science fiction",
+      "queryB": "science fiction for teens",
+      "acceptedJaccard": 0.2,
+      "contributionJaccard": 0.2,
+      "acceptedIntersection": 1,
+      "contributionIntersection": 1,
+      "uniqueAcceptedAdditionsAOverB": 4,
+      "uniqueAcceptedAdditionsBOverA": 0,
+      "uniqueContributionAdditionsAOverB": 4,
+      "uniqueContributionAdditionsBOverA": 0
+    },
+    {
+      "queryA": "young adult science fiction novel",
+      "queryB": "YA science fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 0,
+      "uniqueAcceptedAdditionsBOverA": 3,
+      "uniqueContributionAdditionsAOverB": 0,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "young adult science fiction novel",
+      "queryB": "young adult sci fi",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 0,
+      "uniqueAcceptedAdditionsBOverA": 5,
+      "uniqueContributionAdditionsAOverB": 0,
+      "uniqueContributionAdditionsBOverA": 5
+    },
+    {
+      "queryA": "young adult science fiction novel",
+      "queryB": "teen science fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 0,
+      "uniqueAcceptedAdditionsBOverA": 5,
+      "uniqueContributionAdditionsAOverB": 0,
+      "uniqueContributionAdditionsBOverA": 5
+    },
+    {
+      "queryA": "young adult science fiction novel",
+      "queryB": "young adult dystopian fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 0,
+      "uniqueAcceptedAdditionsBOverA": 2,
+      "uniqueContributionAdditionsAOverB": 0,
+      "uniqueContributionAdditionsBOverA": 1
+    },
+    {
+      "queryA": "young adult science fiction novel",
+      "queryB": "YA dystopian",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 0,
+      "uniqueAcceptedAdditionsBOverA": 7,
+      "uniqueContributionAdditionsAOverB": 0,
+      "uniqueContributionAdditionsBOverA": 5
+    },
+    {
+      "queryA": "young adult science fiction novel",
+      "queryB": "YA speculative fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 0,
+      "uniqueAcceptedAdditionsBOverA": 3,
+      "uniqueContributionAdditionsAOverB": 0,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "young adult science fiction novel",
+      "queryB": "YA space opera",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 0,
+      "uniqueAcceptedAdditionsBOverA": 6,
+      "uniqueContributionAdditionsAOverB": 0,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "young adult science fiction novel",
+      "queryB": "science fiction for teens",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 0,
+      "uniqueAcceptedAdditionsBOverA": 1,
+      "uniqueContributionAdditionsAOverB": 0,
+      "uniqueContributionAdditionsBOverA": 1
+    },
+    {
+      "queryA": "YA science fiction",
+      "queryB": "young adult sci fi",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 3,
+      "uniqueAcceptedAdditionsBOverA": 5,
+      "uniqueContributionAdditionsAOverB": 3,
+      "uniqueContributionAdditionsBOverA": 5
+    },
+    {
+      "queryA": "YA science fiction",
+      "queryB": "teen science fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 3,
+      "uniqueAcceptedAdditionsBOverA": 5,
+      "uniqueContributionAdditionsAOverB": 3,
+      "uniqueContributionAdditionsBOverA": 5
+    },
+    {
+      "queryA": "YA science fiction",
+      "queryB": "young adult dystopian fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 3,
+      "uniqueAcceptedAdditionsBOverA": 2,
+      "uniqueContributionAdditionsAOverB": 3,
+      "uniqueContributionAdditionsBOverA": 1
+    },
+    {
+      "queryA": "YA science fiction",
+      "queryB": "YA dystopian",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 3,
+      "uniqueAcceptedAdditionsBOverA": 7,
+      "uniqueContributionAdditionsAOverB": 3,
+      "uniqueContributionAdditionsBOverA": 5
+    },
+    {
+      "queryA": "YA science fiction",
+      "queryB": "YA space opera",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 3,
+      "uniqueAcceptedAdditionsBOverA": 6,
+      "uniqueContributionAdditionsAOverB": 3,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "YA science fiction",
+      "queryB": "science fiction for teens",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 3,
+      "uniqueAcceptedAdditionsBOverA": 1,
+      "uniqueContributionAdditionsAOverB": 3,
+      "uniqueContributionAdditionsBOverA": 1
+    },
+    {
+      "queryA": "young adult sci fi",
+      "queryB": "teen science fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 5,
+      "uniqueAcceptedAdditionsBOverA": 5,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 5
+    },
+    {
+      "queryA": "young adult sci fi",
+      "queryB": "young adult dystopian fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 5,
+      "uniqueAcceptedAdditionsBOverA": 2,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 1
+    },
+    {
+      "queryA": "young adult sci fi",
+      "queryB": "YA dystopian",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 5,
+      "uniqueAcceptedAdditionsBOverA": 7,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 5
+    },
+    {
+      "queryA": "young adult sci fi",
+      "queryB": "YA speculative fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 5,
+      "uniqueAcceptedAdditionsBOverA": 3,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "young adult sci fi",
+      "queryB": "YA space opera",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 5,
+      "uniqueAcceptedAdditionsBOverA": 6,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "young adult sci fi",
+      "queryB": "science fiction for teens",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 5,
+      "uniqueAcceptedAdditionsBOverA": 1,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 1
+    },
+    {
+      "queryA": "teen science fiction",
+      "queryB": "young adult dystopian fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 5,
+      "uniqueAcceptedAdditionsBOverA": 2,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 1
+    },
+    {
+      "queryA": "teen science fiction",
+      "queryB": "YA dystopian",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 5,
+      "uniqueAcceptedAdditionsBOverA": 7,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 5
+    },
+    {
+      "queryA": "teen science fiction",
+      "queryB": "YA speculative fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 5,
+      "uniqueAcceptedAdditionsBOverA": 3,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "teen science fiction",
+      "queryB": "YA space opera",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 5,
+      "uniqueAcceptedAdditionsBOverA": 6,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "young adult dystopian fiction",
+      "queryB": "YA speculative fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 2,
+      "uniqueAcceptedAdditionsBOverA": 3,
+      "uniqueContributionAdditionsAOverB": 1,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "young adult dystopian fiction",
+      "queryB": "YA space opera",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 2,
+      "uniqueAcceptedAdditionsBOverA": 6,
+      "uniqueContributionAdditionsAOverB": 1,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "young adult dystopian fiction",
+      "queryB": "science fiction for teens",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 2,
+      "uniqueAcceptedAdditionsBOverA": 1,
+      "uniqueContributionAdditionsAOverB": 1,
+      "uniqueContributionAdditionsBOverA": 1
+    },
+    {
+      "queryA": "YA dystopian",
+      "queryB": "YA speculative fiction",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 7,
+      "uniqueAcceptedAdditionsBOverA": 3,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "YA dystopian",
+      "queryB": "YA space opera",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 7,
+      "uniqueAcceptedAdditionsBOverA": 6,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "YA dystopian",
+      "queryB": "science fiction for teens",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 7,
+      "uniqueAcceptedAdditionsBOverA": 1,
+      "uniqueContributionAdditionsAOverB": 5,
+      "uniqueContributionAdditionsBOverA": 1
+    },
+    {
+      "queryA": "YA speculative fiction",
+      "queryB": "YA space opera",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 3,
+      "uniqueAcceptedAdditionsBOverA": 6,
+      "uniqueContributionAdditionsAOverB": 3,
+      "uniqueContributionAdditionsBOverA": 3
+    },
+    {
+      "queryA": "YA speculative fiction",
+      "queryB": "science fiction for teens",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 3,
+      "uniqueAcceptedAdditionsBOverA": 1,
+      "uniqueContributionAdditionsAOverB": 3,
+      "uniqueContributionAdditionsBOverA": 1
+    },
+    {
+      "queryA": "YA space opera",
+      "queryB": "science fiction for teens",
+      "acceptedJaccard": 0,
+      "contributionJaccard": 0,
+      "acceptedIntersection": 0,
+      "contributionIntersection": 0,
+      "uniqueAcceptedAdditionsAOverB": 6,
+      "uniqueAcceptedAdditionsBOverA": 1,
+      "uniqueContributionAdditionsAOverB": 3,
+      "uniqueContributionAdditionsBOverA": 1
+    }
+  ],
+  "ranking": [
+    {
+      "rank": 1,
+      "queryCandidate": "YA dystopian",
+      "acceptedMean": 5.33,
+      "contributionMean": 3.67,
+      "uniqueNarrativeYieldMean": 5.33,
+      "uniqueAuthorYieldMean": 5.33,
+      "acceptedEntropy": 0,
+      "acceptedStdDev": 3.54
+    },
+    {
+      "rank": 2,
+      "queryCandidate": "young adult sci fi",
+      "acceptedMean": 5,
+      "contributionMean": 4.33,
+      "uniqueNarrativeYieldMean": 5,
+      "uniqueAuthorYieldMean": 7,
+      "acceptedEntropy": 0,
+      "acceptedStdDev": 0
+    },
+    {
+      "rank": 3,
+      "queryCandidate": "teen science fiction",
+      "acceptedMean": 3.67,
+      "contributionMean": 3.17,
+      "uniqueNarrativeYieldMean": 3.67,
+      "uniqueAuthorYieldMean": 5.5,
+      "acceptedEntropy": 0,
+      "acceptedStdDev": 1.73
+    },
+    {
+      "rank": 4,
+      "queryCandidate": "YA space opera",
+      "acceptedMean": 3,
+      "contributionMean": 0.5,
+      "uniqueNarrativeYieldMean": 3,
+      "uniqueAuthorYieldMean": 0.5,
+      "acceptedEntropy": 0,
+      "acceptedStdDev": 3
+    },
+    {
+      "rank": 5,
+      "queryCandidate": "YA science fiction",
+      "acceptedMean": 2.75,
+      "contributionMean": 2.75,
+      "uniqueNarrativeYieldMean": 2.75,
+      "uniqueAuthorYieldMean": 2.75,
+      "acceptedEntropy": 0,
+      "acceptedStdDev": 1.3
+    },
+    {
+      "rank": 6,
+      "queryCandidate": "YA speculative fiction",
+      "acceptedMean": 2,
+      "contributionMean": 2,
+      "uniqueNarrativeYieldMean": 2,
+      "uniqueAuthorYieldMean": 2,
+      "acceptedEntropy": 0,
+      "acceptedStdDev": 2.12
+    },
+    {
+      "rank": 7,
+      "queryCandidate": "young adult dystopian fiction",
+      "acceptedMean": 1.67,
+      "contributionMean": 0.83,
+      "uniqueNarrativeYieldMean": 1.67,
+      "uniqueAuthorYieldMean": 1.67,
+      "acceptedEntropy": 0,
+      "acceptedStdDev": 1.73
+    },
+    {
+      "rank": 8,
+      "queryCandidate": "science fiction for teens",
+      "acceptedMean": 0.75,
+      "contributionMean": 0.75,
+      "uniqueNarrativeYieldMean": 0.75,
+      "uniqueAuthorYieldMean": 1.5,
+      "acceptedEntropy": 0,
+      "acceptedStdDev": 0.83
+    },
+    {
+      "rank": 9,
+      "queryCandidate": "young adult science fiction novel",
+      "acceptedMean": 0,
+      "contributionMean": 0,
+      "uniqueNarrativeYieldMean": 0,
+      "uniqueAuthorYieldMean": 0,
+      "acceptedEntropy": 0,
+      "acceptedStdDev": 0
+    }
+  ]
+}

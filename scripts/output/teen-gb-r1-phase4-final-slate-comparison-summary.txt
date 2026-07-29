@@ -1,0 +1,17 @@
+Teen GB-R1 Phase 4 Final Slate Comparison
+Rounds: 4
+Profiles per round: 3
+Composite queries: young adult sci fi | YA dystopian | YA speculative fiction
+
+A production -> selected=1.17, acceptedUnique=1.17, score=4.4, entropy=0
+B composite -> selected=0.75, acceptedUnique=1.08, score=2.61, entropy=0
+
+Delta B-A overlap mean: 0
+Delta B-A added titles mean: 0.75
+Delta B-A removed titles mean: 1.17
+Delta B-A score mean: -1.79
+Delta B-A accepted unique mean: -0.08
+Delta B-A author diversity mean: -0.58
+Delta B-A series diversity mean: -0.42
+Delta B-A recommendation entropy mean: 0
+Delta B-A age-appropriate rate mean: -0.17

@@ -1,0 +1,169 @@
+round,scopeFamily,requiredFamily,profileId,profileLabel,controlRunId,experimentalRunId,controlElapsedMs,experimentalElapsedMs,addedWallClockMs,controlEligibleTimeoutCount,retryAttemptCount,retrySuccessCount,recoveredRawDocs,recoveredAcceptedAfterSourcePolicy,recoveredFinalContribution,slowdownWindowObserved
+1,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r1,experimental-fantasy-r1,2527,2923,396,0,0,0,0,0,0,false
+1,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r1,experimental-mystery_thriller-r1,660,245,-415,0,0,0,0,0,0,false
+1,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r1,experimental-horror_paranormal-r1,1717,1045,-672,0,0,0,0,0,0,false
+1,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r1,experimental-speculative_scifi-r1,2533,1693,-840,0,0,0,0,0,0,false
+1,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r1,experimental-contemporary-r1,698,592,-106,0,0,0,0,0,0,false
+1,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r1,experimental-romance-r1,487,317,-170,0,0,0,0,0,0,false
+1,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r1,experimental-adventure_historical-r1,1291,1254,-37,0,0,0,0,0,0,false
+2,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r2,experimental-mystery_thriller-r2,121,490,369,0,0,0,0,0,0,false
+2,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r2,experimental-horror_paranormal-r2,734,545,-189,0,0,0,0,0,0,false
+2,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r2,experimental-speculative_scifi-r2,1274,800,-474,0,0,0,0,0,0,false
+2,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r2,experimental-contemporary-r2,529,481,-48,0,0,0,0,0,0,false
+2,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r2,experimental-romance-r2,468,219,-249,0,0,0,0,0,0,false
+2,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r2,experimental-adventure_historical-r2,1253,1586,333,0,0,0,0,0,0,false
+2,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r2,experimental-fantasy-r2,2688,1324,-1364,0,0,0,0,0,0,false
+3,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r3,experimental-horror_paranormal-r3,280,492,212,0,0,0,0,0,0,false
+3,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r3,experimental-speculative_scifi-r3,609,931,322,0,0,0,0,0,0,false
+3,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r3,experimental-contemporary-r3,435,446,11,0,0,0,0,0,0,false
+3,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r3,experimental-romance-r3,566,1475,909,0,0,0,0,0,0,false
+3,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r3,experimental-adventure_historical-r3,1548,1213,-335,0,0,0,0,0,0,false
+3,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r3,experimental-fantasy-r3,3394,1595,-1799,0,0,0,0,0,0,false
+3,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r3,experimental-mystery_thriller-r3,93,112,19,0,0,0,0,0,0,false
+4,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r4,experimental-speculative_scifi-r4,595,826,231,0,0,0,0,0,0,false
+4,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r4,experimental-contemporary-r4,391,959,568,0,0,0,0,0,0,false
+4,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r4,experimental-romance-r4,519,429,-90,0,0,0,0,0,0,false
+4,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r4,experimental-adventure_historical-r4,1539,919,-620,0,0,0,0,0,0,false
+4,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r4,experimental-fantasy-r4,1519,1786,267,0,0,0,0,0,0,false
+4,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r4,experimental-mystery_thriller-r4,432,300,-132,0,0,0,0,0,0,false
+4,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r4,experimental-horror_paranormal-r4,703,647,-56,0,0,0,0,0,0,false
+5,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r5,experimental-contemporary-r5,1240,595,-645,0,0,0,0,0,0,false
+5,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r5,experimental-romance-r5,444,695,251,0,0,0,0,0,0,false
+5,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r5,experimental-adventure_historical-r5,1336,1066,-270,0,0,0,0,0,0,false
+5,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r5,experimental-fantasy-r5,3748,1221,-2527,0,0,0,0,0,0,false
+5,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r5,experimental-mystery_thriller-r5,224,138,-86,0,0,0,0,0,0,false
+5,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r5,experimental-horror_paranormal-r5,325,955,630,0,0,0,0,0,0,false
+5,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r5,experimental-speculative_scifi-r5,1180,979,-201,0,0,0,0,0,0,false
+6,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r6,experimental-romance-r6,328,211,-117,0,0,0,0,0,0,false
+6,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r6,experimental-adventure_historical-r6,1306,1342,36,0,0,0,0,0,0,false
+6,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r6,experimental-fantasy-r6,2073,4488,2415,0,1,1,8,3,0,false
+6,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r6,experimental-mystery_thriller-r6,186,104,-82,0,0,0,0,0,0,false
+6,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r6,experimental-horror_paranormal-r6,575,335,-240,0,0,0,0,0,0,false
+6,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r6,experimental-speculative_scifi-r6,735,896,161,0,0,0,0,0,0,false
+6,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r6,experimental-contemporary-r6,591,333,-258,0,0,0,0,0,0,false
+7,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r7,experimental-adventure_historical-r7,774,1289,515,0,0,0,0,0,0,false
+7,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r7,experimental-fantasy-r7,2211,2918,707,0,0,0,0,0,0,false
+7,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r7,experimental-mystery_thriller-r7,234,270,36,0,0,0,0,0,0,false
+7,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r7,experimental-horror_paranormal-r7,586,580,-6,0,0,0,0,0,0,false
+7,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r7,experimental-speculative_scifi-r7,1811,1107,-704,0,0,0,0,0,0,false
+7,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r7,experimental-contemporary-r7,939,958,19,0,0,0,0,0,0,false
+7,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r7,experimental-romance-r7,821,982,161,0,0,0,0,0,0,false
+8,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r8,experimental-fantasy-r8,2202,1499,-703,0,0,0,0,0,0,false
+8,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r8,experimental-mystery_thriller-r8,330,221,-109,0,0,0,0,0,0,false
+8,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r8,experimental-horror_paranormal-r8,333,1044,711,0,0,0,0,0,0,false
+8,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r8,experimental-speculative_scifi-r8,1403,796,-607,0,0,0,0,0,0,false
+8,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r8,experimental-contemporary-r8,834,975,141,0,0,0,0,0,0,false
+8,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r8,experimental-romance-r8,2758,521,-2237,1,0,0,0,0,0,false
+8,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r8,experimental-adventure_historical-r8,1265,1721,456,0,0,0,0,0,0,false
+9,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r9,experimental-mystery_thriller-r9,276,136,-140,0,0,0,0,0,0,false
+9,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r9,experimental-horror_paranormal-r9,1037,334,-703,0,0,0,0,0,0,false
+9,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r9,experimental-speculative_scifi-r9,613,1613,1000,0,0,0,0,0,0,false
+9,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r9,experimental-contemporary-r9,1574,775,-799,0,0,0,0,0,0,false
+9,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r9,experimental-romance-r9,2098,869,-1229,0,0,0,0,0,0,false
+9,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r9,experimental-adventure_historical-r9,1507,1567,60,0,0,0,0,0,0,false
+9,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r9,experimental-fantasy-r9,3133,3413,280,0,0,0,0,0,0,false
+10,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r10,experimental-horror_paranormal-r10,337,709,372,0,0,0,0,0,0,false
+10,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r10,experimental-speculative_scifi-r10,833,519,-314,0,0,0,0,0,0,false
+10,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r10,experimental-contemporary-r10,625,469,-156,0,0,0,0,0,0,false
+10,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r10,experimental-romance-r10,987,363,-624,0,0,0,0,0,0,false
+10,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r10,experimental-adventure_historical-r10,1345,918,-427,0,0,0,0,0,0,false
+10,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r10,experimental-fantasy-r10,1363,3685,2322,0,0,0,0,0,0,false
+10,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r10,experimental-mystery_thriller-r10,223,265,42,0,0,0,0,0,0,false
+11,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r11,experimental-speculative_scifi-r11,1133,493,-640,0,0,0,0,0,0,false
+11,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r11,experimental-contemporary-r11,641,562,-79,0,0,0,0,0,0,false
+11,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r11,experimental-romance-r11,267,329,62,0,0,0,0,0,0,false
+11,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r11,experimental-adventure_historical-r11,976,1426,450,0,0,0,0,0,0,false
+11,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r11,experimental-fantasy-r11,2860,1794,-1066,0,0,0,0,0,0,false
+11,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r11,experimental-mystery_thriller-r11,110,383,273,0,0,0,0,0,0,false
+11,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r11,experimental-horror_paranormal-r11,315,835,520,0,0,0,0,0,0,false
+12,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r12,experimental-contemporary-r12,352,511,159,0,0,0,0,0,0,false
+12,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r12,experimental-romance-r12,268,315,47,0,0,0,0,0,0,false
+12,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r12,experimental-adventure_historical-r12,1690,1441,-249,0,0,0,0,0,0,false
+12,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r12,experimental-fantasy-r12,2683,1398,-1285,0,0,0,0,0,0,false
+12,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r12,experimental-mystery_thriller-r12,97,224,127,0,0,0,0,0,0,false
+12,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r12,experimental-horror_paranormal-r12,1103,358,-745,0,0,0,0,0,0,false
+12,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r12,experimental-speculative_scifi-r12,1441,894,-547,0,0,0,0,0,0,false
+13,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r13,experimental-romance-r13,245,182,-63,0,0,0,0,0,0,false
+13,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r13,experimental-adventure_historical-r13,1355,1206,-149,0,0,0,0,0,0,false
+13,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r13,experimental-fantasy-r13,3921,2210,-1711,1,0,0,0,0,0,false
+13,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r13,experimental-mystery_thriller-r13,234,145,-89,0,0,0,0,0,0,false
+13,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r13,experimental-horror_paranormal-r13,350,337,-13,0,0,0,0,0,0,false
+13,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r13,experimental-speculative_scifi-r13,1064,558,-506,0,0,0,0,0,0,false
+13,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r13,experimental-contemporary-r13,515,307,-208,0,0,0,0,0,0,false
+14,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r14,experimental-adventure_historical-r14,643,1341,698,0,0,0,0,0,0,false
+14,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r14,experimental-fantasy-r14,2690,1588,-1102,0,0,0,0,0,0,false
+14,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r14,experimental-mystery_thriller-r14,181,215,34,0,0,0,0,0,0,false
+14,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r14,experimental-horror_paranormal-r14,812,587,-225,0,0,0,0,0,0,false
+14,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r14,experimental-speculative_scifi-r14,1031,1052,21,0,0,0,0,0,0,false
+14,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r14,experimental-contemporary-r14,948,434,-514,0,0,0,0,0,0,false
+14,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r14,experimental-romance-r14,823,560,-263,0,0,0,0,0,0,false
+15,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r15,experimental-fantasy-r15,2433,1368,-1065,0,0,0,0,0,0,false
+15,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r15,experimental-mystery_thriller-r15,438,383,-55,0,0,0,0,0,0,false
+15,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r15,experimental-horror_paranormal-r15,533,727,194,0,0,0,0,0,0,false
+15,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r15,experimental-speculative_scifi-r15,763,1001,238,0,0,0,0,0,0,false
+15,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r15,experimental-contemporary-r15,957,1068,111,0,0,0,0,0,0,false
+15,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r15,experimental-romance-r15,332,319,-13,0,0,0,0,0,0,false
+15,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r15,experimental-adventure_historical-r15,1460,1396,-64,0,0,0,0,0,0,false
+16,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r16,experimental-mystery_thriller-r16,237,281,44,0,0,0,0,0,0,false
+16,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r16,experimental-horror_paranormal-r16,1271,394,-877,0,0,0,0,0,0,false
+16,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r16,experimental-speculative_scifi-r16,629,1033,404,0,0,0,0,0,0,false
+16,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r16,experimental-contemporary-r16,1065,599,-466,0,0,0,0,0,0,false
+16,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r16,experimental-romance-r16,485,1094,609,0,0,0,0,0,0,false
+16,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r16,experimental-adventure_historical-r16,2213,992,-1221,0,0,0,0,0,0,false
+16,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r16,experimental-fantasy-r16,1569,2872,1303,0,0,0,0,0,0,false
+17,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r17,experimental-horror_paranormal-r17,675,711,36,0,0,0,0,0,0,false
+17,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r17,experimental-speculative_scifi-r17,996,807,-189,0,0,0,0,0,0,false
+17,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r17,experimental-contemporary-r17,682,616,-66,0,0,0,0,0,0,false
+17,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r17,experimental-romance-r17,1352,743,-609,0,0,0,0,0,0,false
+17,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r17,experimental-adventure_historical-r17,1237,1167,-70,0,0,0,0,0,0,false
+17,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r17,experimental-fantasy-r17,2671,2344,-327,0,0,0,0,0,0,false
+17,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r17,experimental-mystery_thriller-r17,248,264,16,0,0,0,0,0,0,false
+18,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r18,experimental-speculative_scifi-r18,458,708,250,0,0,0,0,0,0,false
+18,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r18,experimental-contemporary-r18,769,420,-349,0,0,0,0,0,0,false
+18,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r18,experimental-romance-r18,567,370,-197,0,0,0,0,0,0,false
+18,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r18,experimental-adventure_historical-r18,1031,1253,222,0,0,0,0,0,0,false
+18,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r18,experimental-fantasy-r18,1694,1595,-99,0,0,0,0,0,0,false
+18,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r18,experimental-mystery_thriller-r18,180,277,97,0,0,0,0,0,0,false
+18,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r18,experimental-horror_paranormal-r18,630,725,95,0,0,0,0,0,0,false
+19,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r19,experimental-contemporary-r19,673,640,-33,0,0,0,0,0,0,false
+19,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r19,experimental-romance-r19,600,745,145,0,0,0,0,0,0,false
+19,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r19,experimental-adventure_historical-r19,1346,1611,265,0,0,0,0,0,0,false
+19,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r19,experimental-fantasy-r19,2087,1745,-342,0,0,0,0,0,0,false
+19,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r19,experimental-mystery_thriller-r19,217,218,1,0,0,0,0,0,0,false
+19,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r19,experimental-horror_paranormal-r19,713,698,-15,0,0,0,0,0,0,false
+19,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r19,experimental-speculative_scifi-r19,937,993,56,0,0,0,0,0,0,false
+20,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r20,experimental-romance-r20,686,681,-5,0,0,0,0,0,0,false
+20,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r20,experimental-adventure_historical-r20,1428,2875,1447,0,0,0,0,0,0,false
+20,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r20,experimental-fantasy-r20,1851,1354,-497,0,0,0,0,0,0,false
+20,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r20,experimental-mystery_thriller-r20,200,99,-101,0,0,0,0,0,0,false
+20,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r20,experimental-horror_paranormal-r20,320,557,237,0,0,0,0,0,0,false
+20,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r20,experimental-speculative_scifi-r20,952,1004,52,0,0,0,0,0,0,false
+20,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r20,experimental-contemporary-r20,818,724,-94,0,0,0,0,0,0,false
+21,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r21,experimental-adventure_historical-r21,1172,1396,224,0,0,0,0,0,0,false
+21,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r21,experimental-fantasy-r21,2422,1844,-578,0,0,0,0,0,0,false
+21,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r21,experimental-mystery_thriller-r21,133,172,39,0,0,0,0,0,0,false
+21,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r21,experimental-horror_paranormal-r21,833,497,-336,0,0,0,0,0,0,false
+21,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r21,experimental-speculative_scifi-r21,1013,1070,57,0,0,0,0,0,0,false
+21,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r21,experimental-contemporary-r21,929,739,-190,0,0,0,0,0,0,false
+21,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r21,experimental-romance-r21,908,701,-207,0,0,0,0,0,0,false
+22,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r22,experimental-fantasy-r22,2524,2509,-15,0,0,0,0,0,0,false
+22,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r22,experimental-mystery_thriller-r22,436,234,-202,0,0,0,0,0,0,false
+22,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r22,experimental-horror_paranormal-r22,772,461,-311,0,0,0,0,0,0,false
+22,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r22,experimental-speculative_scifi-r22,2160,3290,1130,1,0,0,0,0,0,false
+22,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r22,experimental-contemporary-r22,812,340,-472,0,0,0,0,0,0,false
+22,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r22,experimental-romance-r22,343,533,190,0,0,0,0,0,0,false
+22,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r22,experimental-adventure_historical-r22,1174,1517,343,0,0,0,0,0,0,false
+23,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r23,experimental-mystery_thriller-r23,767,490,-277,0,0,0,0,0,0,false
+23,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r23,experimental-horror_paranormal-r23,1316,487,-829,0,0,0,0,0,0,false
+23,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r23,experimental-speculative_scifi-r23,1826,816,-1010,0,0,0,0,0,0,false
+23,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r23,experimental-contemporary-r23,1166,581,-585,0,0,0,0,0,0,false
+23,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r23,experimental-romance-r23,932,965,33,0,0,0,0,0,0,false
+23,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r23,experimental-adventure_historical-r23,2455,1849,-606,0,0,0,0,0,0,false
+23,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r23,experimental-fantasy-r23,3652,2547,-1105,0,0,0,0,0,0,false
+24,horror_paranormal,horror/paranormal,horror-supernatural-ghost,Supernatural and ghost horror,control-horror_paranormal-r24,experimental-horror_paranormal-r24,1420,1127,-293,0,0,0,0,0,0,false
+24,speculative_scifi,speculative/science fiction,scifi-space-opera,Space opera science fiction,control-speculative_scifi-r24,experimental-speculative_scifi-r24,329,804,475,0,0,0,0,0,0,false
+24,contemporary,contemporary/romance,contemporary-coming-of-age,Coming-of-age contemporary,control-contemporary-r24,experimental-contemporary-r24,602,1684,1082,0,0,0,0,0,0,false
+24,romance,contemporary/romance,romance-contemporary-sweet,Sweet contemporary romance,control-romance-r24,experimental-romance-r24,848,723,-125,0,0,0,0,0,0,false
+24,adventure_historical,adventure/historical,historical-adventure-exploration,Historical adventure and exploration,control-adventure_historical-r24,experimental-adventure_historical-r24,1480,2568,1088,0,0,0,0,0,0,false
+24,fantasy,fantasy,fantasy-high-epic,High epic fantasy,control-fantasy-r24,experimental-fantasy-r24,2941,5077,2136,0,1,1,8,0,0,false
+24,mystery_thriller,mystery/thriller,mystery-psychological-thriller,Psychological thriller mystery,control-mystery_thriller-r24,experimental-mystery_thriller-r24,1359,306,-1053,0,0,0,0,0,0,false

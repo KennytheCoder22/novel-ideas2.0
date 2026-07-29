@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openLibrarySourceAdapter = void 0;
 exports.buildOpenLibraryQueryPlansForRegression = buildOpenLibraryQueryPlansForRegression;
+exports.applyOpenLibraryPerQuerySourceLineage = applyOpenLibraryPerQuerySourceLineage;
 const openLibraryProfiles_1 = require("./openLibraryProfiles");
 const RESPONSE_BODY_PREFIX_LIMIT = 240;
 const ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS = 4500;
@@ -118,6 +119,13 @@ function finalOpenLibraryQueryDedupe(value) {
     return dedupeOpenLibraryTerms(cleanOpenLibraryQueryPart(value));
 }
 function teenPostFinalRecoveryQueryDedupe(value) {
+    return dedupeOpenLibraryTerms(String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim());
+}
+function adultPostFinalRecoveryQueryDedupe(value) {
     return dedupeOpenLibraryTerms(String(value || "")
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, " ")
@@ -680,6 +688,27 @@ function buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile) {
 }
 function buildAdultOpenLibraryQueryPlans(plan, profile, ageProfile) {
     const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: "adult-open-library-fallback", priority: 0, rationale: [] }];
+    const forcedPostFinalRecoveryQueries = Array.isArray(profile.diagnostics?.forceAdultPostFinalEligibilityRecoveryQueries)
+        ? profile.diagnostics.forceAdultPostFinalEligibilityRecoveryQueries
+            .map(adultPostFinalRecoveryQueryDedupe)
+            .filter(Boolean)
+        : [];
+    if (forcedPostFinalRecoveryQueries.length) {
+        const forcedPostFinalRecoveryQueryOffset = Number(profile.diagnostics?.forceAdultPostFinalEligibilityRecoveryQueryOffset || 0);
+        return uniqueStrings(forcedPostFinalRecoveryQueries, 3).map((query, index) => ({
+            query,
+            originalPlannedQuery: adultPostFinalRecoveryQueryDedupe(plannedIntents[index]?.query || plannedIntents[0]?.query || query),
+            queryCascadeIndex: forcedPostFinalRecoveryQueryOffset + index,
+            queryFamily: queryFamilyForOpenLibraryQuery(query),
+            facets: uniqueStrings((plannedIntents[index]?.facets || []).map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart), 6),
+            routingReason: "adult_post_final_eligibility_recovery",
+            routingDominance: {
+                openLibraryPlanner: "adult_post_final_eligibility_recovery",
+                postFinalEligibilityRecovery: true,
+            },
+            profileSpecific: true,
+        }));
+    }
     const originalPlannedQuery = finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ageProfile.diagnosticProbeQuery));
     const profileText = [
         ...profile.genreFamily.map((row) => row.value),
@@ -1274,6 +1303,8 @@ function normalizeOpenLibraryDoc(doc, queryPlan) {
         emergencyFallback: Boolean(queryPlan.emergencyFallback),
         fallbackAlignment: queryPlan.fallbackAlignment,
         profileSpecific: queryPlan.profileSpecific,
+        adultPostFinalEligibilityRecovery: queryPlan.routingReason === "adult_post_final_eligibility_recovery" || undefined,
+        adultPostFinalEligibilityRecoveryQuery: queryPlan.routingReason === "adult_post_final_eligibility_recovery" ? query : undefined,
         rawOpenLibraryDoc: doc,
     };
 }
@@ -1319,6 +1350,7 @@ async function fetchOpenLibraryDocs(queryPlan, limit, signal, diagnosticOnly = f
     const abortControllerId = `openlibrary-fetch-${++openLibraryAbortControllerSequence}`;
     const diagnostic = {
         query,
+        requestUrl: url,
         fetchStartedAt,
         requestStart: fetchStartedAt,
         attemptNumber,
@@ -1364,6 +1396,13 @@ async function fetchOpenLibraryDocs(queryPlan, limit, signal, diagnosticOnly = f
     try {
         const response = await fetch(url, { signal: queryController.signal });
         diagnostic.httpStatus = response.status;
+        diagnostic.responseDate = response.headers.get("date") || undefined;
+        diagnostic.responseCacheControl = response.headers.get("cache-control") || undefined;
+        diagnostic.responseCacheAge = response.headers.get("age") || undefined;
+        diagnostic.responseVia = response.headers.get("via") || undefined;
+        diagnostic.responseEtag = response.headers.get("etag") || undefined;
+        diagnostic.responseLastModified = response.headers.get("last-modified") || undefined;
+        diagnostic.responseXCache = response.headers.get("x-cache") || undefined;
         diagnostic.responseHeadersReceived = nowIso();
         diagnostic.bodyStarted = nowIso();
         const text = await response.text();
@@ -1393,6 +1432,8 @@ async function fetchOpenLibraryDocs(queryPlan, limit, signal, diagnosticOnly = f
             diagnostic.responseShape = "docs_array";
             diagnostic.docsReturned = docs.length;
             diagnostic.firstReturnedTitles = uniqueStrings(docs.map((doc) => doc?.title), 5);
+            diagnostic.returnedWorkIds = docs.map((doc) => String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || "").trim());
+            diagnostic.returnedWorkTitles = docs.map((doc) => String(doc?.title || "").trim());
             return { docs, diagnostic };
         }
         catch (error) {
@@ -1420,6 +1461,63 @@ async function fetchOpenLibraryDocs(queryPlan, limit, signal, diagnosticOnly = f
     finally {
         clearTimeout(timeout);
         signal?.removeEventListener("abort", abortFromParent);
+    }
+}
+function openLibraryLineageQueryKey(query, queryCascadeIndex) {
+    const normalizedQuery = String(query || "").toLowerCase().replace(/\s+/g, " ").trim();
+    const normalizedIndex = Number.isFinite(Number(queryCascadeIndex)) ? String(Number(queryCascadeIndex)) : "";
+    return `${normalizedIndex}:${normalizedQuery}`;
+}
+function openLibraryLineageItemKey(item) {
+    const row = (item || {});
+    return openLibraryLineageQueryKey(row.queryText, row.queryCascadeIndex);
+}
+function incrementOpenLibraryLineageGroup(groups, item) {
+    const row = (item || {});
+    const key = openLibraryLineageItemKey(row);
+    if (!key || key === ":")
+        return;
+    const group = groups.get(key) || { count: 0, titles: [] };
+    group.count += 1;
+    const title = String(row.title || "").trim();
+    if (title && !group.titles.includes(title))
+        group.titles.push(title);
+    groups.set(key, group);
+}
+function lineageFetchForQuery(fetches, key) {
+    const matching = fetches.filter((fetch) => !fetch.diagnosticOnly && openLibraryLineageQueryKey(fetch.query, fetch.queryCascadeIndex) === key);
+    return [...matching].reverse().find((fetch) => !fetch.timedOut && !fetch.failedReason && Number(fetch.docsReturned || 0) > 0)
+        || matching[matching.length - 1];
+}
+function applyOpenLibraryPerQuerySourceLineage(fetches, acceptedAfterSourcePolicyItems, mergedCandidateItems) {
+    const acceptedByQuery = new Map();
+    const mergedByQuery = new Map();
+    for (const item of acceptedAfterSourcePolicyItems)
+        incrementOpenLibraryLineageGroup(acceptedByQuery, item);
+    for (const item of mergedCandidateItems)
+        incrementOpenLibraryLineageGroup(mergedByQuery, item);
+    for (const fetch of fetches) {
+        fetch.rawRetrieved = Number(fetch.docsReturned || 0);
+        fetch.structuralRejects = Number(fetch.docsReturned || 0);
+        fetch.acceptedAfterSourcePolicy = 0;
+        fetch.mergedCandidates = 0;
+        fetch.finalContribution = 0;
+        fetch.acceptedAfterSourcePolicyTitles = [];
+        fetch.mergedCandidateTitles = [];
+        fetch.finalContributionTitles = [];
+    }
+    const keys = new Set([...acceptedByQuery.keys(), ...mergedByQuery.keys()]);
+    for (const key of keys) {
+        const target = lineageFetchForQuery(fetches, key);
+        if (!target)
+            continue;
+        const accepted = acceptedByQuery.get(key) || { count: 0, titles: [] };
+        const merged = mergedByQuery.get(key) || { count: 0, titles: [] };
+        target.acceptedAfterSourcePolicy = accepted.count;
+        target.acceptedAfterSourcePolicyTitles = accepted.titles;
+        target.mergedCandidates = merged.count;
+        target.mergedCandidateTitles = merged.titles;
+        target.structuralRejects = Math.max(0, Number(target.rawRetrieved || 0) - accepted.count);
     }
 }
 function openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, failedReason) {
@@ -2795,6 +2893,7 @@ exports.openLibrarySourceAdapter = {
             ? middleGradesDeepDebugActivationSourceRaw && middleGradesDeepDebugActivationSourceRaw !== "none" ? middleGradesDeepDebugActivationSourceRaw : "profile"
             : "none";
         const forceTeenPostFinalEligibilityRecovery = ageProfile.key === "teen" && Boolean(context.profile.diagnostics?.forceTeenPostFinalEligibilityRecovery);
+        const forceAdultPostFinalEligibilityRecovery = ageProfile.key === "adult" && Boolean(context.profile.diagnostics?.forceAdultPostFinalEligibilityRecovery);
         const sourceBudgetMs = ageProfile.key === "middleGrades"
             ? debugMiddleGradesDeepTrace
                 ? Math.max(plan.timeoutMs, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_TOTAL_BUDGET_MS)
@@ -4949,7 +5048,7 @@ exports.openLibrarySourceAdapter = {
             }
         }
         const adultUnderfillRecoveryTarget = Math.min(ageProfile.docLimit, 8);
-        if (ageProfile.key === "adult" && rawItems.length > 0 && (rawItems.length < 5 || (!adultPrimaryQueryTimedOutTwice && rawItems.length < adultUnderfillRecoveryTarget)) && !context.signal?.aborted) {
+        if (ageProfile.key === "adult" && !forceAdultPostFinalEligibilityRecovery && rawItems.length > 0 && (rawItems.length < 5 || (!adultPrimaryQueryTimedOutTwice && rawItems.length < adultUnderfillRecoveryTarget)) && !context.signal?.aborted) {
             const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
             const recoveryQueries = adultUnderfillRecoveryQueries(queryPlans)
                 .filter((query) => !attemptedMainQueries.has(query.toLowerCase()));
@@ -5025,7 +5124,7 @@ exports.openLibrarySourceAdapter = {
                 }
             }
         }
-        if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
+        if (ageProfile.key === "adult" && !forceAdultPostFinalEligibilityRecovery && adultPrimaryQueryTimedOutTwice && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
             const delayedRetryQuery = queryPlans[0]?.query || adultUnderfillRecoveryQueries(queryPlans)[0] || "";
             if (delayedRetryQuery) {
                 const delayedRetryPlan = {
@@ -5232,7 +5331,7 @@ exports.openLibrarySourceAdapter = {
         }
         const teenMainQueryTimedOutDuringRun = ageProfile.key === "teen" && fetches.some((fetch) => !fetch.diagnosticOnly && fetch.timedOut);
         const middleGradesAllRealFetchesTimedOutDuringRun = ageProfile.key === "middleGrades" && fetches.some((fetch) => !fetch.diagnosticOnly) && fetches.filter((fetch) => !fetch.diagnosticOnly).every((fetch) => fetch.timedOut);
-        if (!rawItems.length && !forceMiddleGradesCleanCandidateShortfallExpansion && !context.signal?.aborted && !teenMainQueryTimedOutDuringRun && !middleGradesAllRealFetchesTimedOutDuringRun) {
+        if (!rawItems.length && !forceMiddleGradesCleanCandidateShortfallExpansion && !forceAdultPostFinalEligibilityRecovery && !context.signal?.aborted && !teenMainQueryTimedOutDuringRun && !middleGradesAllRealFetchesTimedOutDuringRun) {
             const probeQuery = context.profile.ageBand === "adult"
                 ? (queryPlans[0]?.routingReason === "adult_scifi"
                     ? "science fiction thriller"
@@ -5537,6 +5636,9 @@ exports.openLibrarySourceAdapter = {
             ? uniqueStrings(queries, 20)
             : uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20);
         const statusForHandoff = openLibraryScoringHandoffItems.length ? "succeeded" : status;
+        if (ageProfile.key === "teen") {
+            applyOpenLibraryPerQuerySourceLineage(fetches, rawItems, openLibraryScoringHandoffItems);
+        }
         return {
             source: "openLibrary",
             status: statusForHandoff,

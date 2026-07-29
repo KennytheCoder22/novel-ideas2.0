@@ -1,0 +1,433 @@
+{
+  "generatedAt": "2026-07-21T02:27:03.205Z",
+  "summary": {
+    "total": 12,
+    "same_name_different_semantics": 3,
+    "truly_shared": 3,
+    "behaviorally_equivalent_duplication": 4,
+    "adult_production_teen_diagnostic": 1,
+    "age_specific_by_necessity": 1
+  },
+  "rows": [
+    {
+      "capability": "Query quality comparison",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [],
+        "teenFunctions": [],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": true,
+        "teenTypeKeysPresent": false,
+        "scriptsMatched": [
+          "run-v2-googlebooks-teen-query-family-overlap-audit.mjs",
+          "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs"
+        ]
+      },
+      "stage": "retrieval planning",
+      "inputsConsumed": "query, fetched titles, classification outcomes, prior-query pool",
+      "evidenceProvenanceAllowed": "query metadata + candidate classification telemetry",
+      "outputs": [
+        "adultGoogleBooksQueryQualityByQuery",
+        "adultGoogleBooksNarrativeYieldByQuery",
+        "adultGoogleBooksNarrativeEfficiencyByQuery",
+        "teen-query-marginal-yield-audit"
+      ],
+      "effectSurface": "retrieval (currently mixed production+diagnostic)",
+      "constantsThresholds": "none hard-coded in shared core",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "diagnostic_only",
+        "teen": "diagnostic_only"
+      },
+      "behavioralClassification": "same_name_different_semantics",
+      "recommendation": "Define shared contract before unification"
+    },
+    {
+      "capability": "Query promotion / replacement",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [
+          "addAdultGoogleBooksSelectionObservability",
+          "addTeenGoogleBooksMeaningfulTasteObservability",
+          "adultGoogleBooksFinalEligibility"
+        ],
+        "teenFunctions": [
+          "addTeenGoogleBooksMeaningfulTasteObservability"
+        ],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": false,
+        "teenTypeKeysPresent": true,
+        "scriptsMatched": []
+      },
+      "stage": "retrieval planning",
+      "inputsConsumed": "candidate families, narrative cues, ranking context",
+      "evidenceProvenanceAllowed": "candidate-derived narrative + policy",
+      "outputs": [
+        "adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle",
+        "teenGoogleBooksTasteTierSelectionDecisionByTitle"
+      ],
+      "effectSurface": "retrieval/ranking handoff",
+      "constantsThresholds": "policy-based",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "production_or_core",
+        "teen": "production_or_core"
+      },
+      "behavioralClassification": "truly_shared",
+      "recommendation": "Keep shared core; move policy to age-band config"
+    },
+    {
+      "capability": "Family-scoped query competition",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [],
+        "teenFunctions": [],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": true,
+        "teenTypeKeysPresent": false,
+        "scriptsMatched": [
+          "run-v2-googlebooks-teen-query-family-overlap-audit.mjs",
+          "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs"
+        ]
+      },
+      "stage": "retrieval planning",
+      "inputsConsumed": "query-family, accepted pool, final slate contribution",
+      "evidenceProvenanceAllowed": "query-level performance telemetry",
+      "outputs": [
+        "adultGoogleBooksNarrativeYieldByQuery",
+        "adultGoogleBooksNarrativeEfficiencyByQuery"
+      ],
+      "effectSurface": "retrieval policy",
+      "constantsThresholds": "family-level yield comparisons",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "diagnostic_only",
+        "teen": "diagnostic_only"
+      },
+      "behavioralClassification": "same_name_different_semantics",
+      "recommendation": "Define shared contract before unification"
+    },
+    {
+      "capability": "Narrative-strength scoring",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [
+          "addAdultGoogleBooksSelectionObservability",
+          "adultGoogleBooksApplyNarrativeStrengthRanking",
+          "adultGoogleBooksNarrativeStrength",
+          "adultGoogleBooksNarrativeStrengthAdd",
+          "adultGoogleBooksNarrativeStrengthAdjustedSelectionScore",
+          "selectRecommendations"
+        ],
+        "teenFunctions": [
+          "addNonAdultGoogleBooksSelectionLineageObservability",
+          "addPreteenGoogleBooksPublicationIdentityObservability",
+          "rejectReason",
+          "selectRecommendations",
+          "teenGoogleBooksPublicationIdentityAudit"
+        ],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": false,
+        "teenTypeKeysPresent": true,
+        "scriptsMatched": []
+      },
+      "stage": "scoring/ranking",
+      "inputsConsumed": "title/subtitle/description/categories + metadata",
+      "evidenceProvenanceAllowed": "candidate-native content fields",
+      "outputs": [
+        "adultGoogleBooksNarrativeStrengthScore",
+        "googleBooksNarrativeConfidenceByTitle"
+      ],
+      "effectSurface": "ranking + eligibility support",
+      "constantsThresholds": "adult narrative-strength component weights",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "production_or_core",
+        "teen": "production_or_core"
+      },
+      "behavioralClassification": "truly_shared",
+      "recommendation": "Keep shared core; move policy to age-band config"
+    },
+    {
+      "capability": "Semantic phrase extraction",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [
+          "addAdultGoogleBooksSelectionObservability",
+          "adultGoogleBooksNarrativeCueEvidence",
+          "adultGoogleBooksNarrativeFamilyExtractionAnalysis"
+        ],
+        "teenFunctions": [
+          "addTeenGoogleBooksMeaningfulTasteObservability"
+        ],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": true,
+        "teenTypeKeysPresent": true,
+        "scriptsMatched": []
+      },
+      "stage": "scoring/diagnostics",
+      "inputsConsumed": "candidate text fields + signal lexicon",
+      "evidenceProvenanceAllowed": "candidate-native fields",
+      "outputs": [
+        "adultGoogleBooksSignalMatchTraceByTitle",
+        "teenGoogleBooksSignalFieldsByTitle"
+      ],
+      "effectSurface": "diagnostic + potential ranking hooks",
+      "constantsThresholds": "signal lexicon driven",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "production_or_core",
+        "teen": "production_or_core"
+      },
+      "behavioralClassification": "behaviorally_equivalent_duplication",
+      "recommendation": "Extract shared primitive and parametrize age policy"
+    },
+    {
+      "capability": "Canonical cue promotion",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [
+          "addAdultGoogleBooksSelectionObservability",
+          "adultGoogleBooksCanonicalNarrativeFamilyPromotions",
+          "adultGoogleBooksCueClassification",
+          "adultGoogleBooksMeaningfulAlignmentFailureDetails",
+          "adultGoogleBooksNarrativeFamilyExtractionAnalysis"
+        ],
+        "teenFunctions": [
+          "addTeenGoogleBooksMeaningfulTasteObservability"
+        ],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": false,
+        "teenTypeKeysPresent": true,
+        "scriptsMatched": []
+      },
+      "stage": "scoring/family mapping",
+      "inputsConsumed": "semantic cues -> family mapping",
+      "evidenceProvenanceAllowed": "candidate-derived cues",
+      "outputs": [
+        "adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle",
+        "teenGoogleBooksDocumentNativeSpecificSignalsByTitle"
+      ],
+      "effectSurface": "family weighting and diagnostics",
+      "constantsThresholds": "cue confidence and family mapping rules",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "production_or_core",
+        "teen": "production_or_core"
+      },
+      "behavioralClassification": "behaviorally_equivalent_duplication",
+      "recommendation": "Extract shared primitive and parametrize age policy"
+    },
+    {
+      "capability": "Final slate identity auditing",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [
+          "addAdultGoogleBooksSelectionObservability",
+          "adultGoogleBooksFinalSlateIdentityAudit",
+          "adultGoogleBooksIdentityEnforcement"
+        ],
+        "teenFunctions": [
+          "addNonAdultGoogleBooksSelectionLineageObservability",
+          "addPreteenGoogleBooksPublicationIdentityObservability"
+        ],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": false,
+        "teenTypeKeysPresent": true,
+        "scriptsMatched": []
+      },
+      "stage": "post-selection audit",
+      "inputsConsumed": "selected candidate + identity evidence",
+      "evidenceProvenanceAllowed": "candidate-native identity + policy flags",
+      "outputs": [
+        "adultGoogleBooksFinalSlateIdentityByTitle",
+        "teenGoogleBooksPublicationIdentityDecisionByTitle"
+      ],
+      "effectSurface": "eligibility + reporting",
+      "constantsThresholds": "identity confidence and rejection categories",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "production_or_core",
+        "teen": "production_or_core"
+      },
+      "behavioralClassification": "behaviorally_equivalent_duplication",
+      "recommendation": "Extract shared primitive and parametrize age policy"
+    },
+    {
+      "capability": "Meaningful taste tiers",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [
+          "addAdultGoogleBooksSelectionObservability",
+          "addTeenGoogleBooksMeaningfulTasteObservability",
+          "adultGoogleBooksAmbiguousCueClassification",
+          "adultGoogleBooksCanonicalMissingFamilyRows",
+          "adultGoogleBooksCanonicalNarrativeFamilyPromotions",
+          "adultGoogleBooksCueClassification",
+          "adultGoogleBooksFinalEligibility",
+          "adultGoogleBooksMeaningfulAlignmentFailureDetails",
+          "adultGoogleBooksMeaningfulTasteEligibility",
+          "adultGoogleBooksMeaningfulTasteFamilies",
+          "adultGoogleBooksNarrativeFamilyExtractionAnalysis",
+          "adultGoogleBooksWeightedCounterfactualDecision"
+        ],
+        "teenFunctions": [
+          "addTeenGoogleBooksMeaningfulTasteObservability"
+        ],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": false,
+        "teenTypeKeysPresent": true,
+        "scriptsMatched": []
+      },
+      "stage": "selection quality tiering",
+      "inputsConsumed": "liked/disliked signals + net score + provenance",
+      "evidenceProvenanceAllowed": "policy-dependent",
+      "outputs": [
+        "teenGoogleBooksMeaningfulTasteClassificationByTitle"
+      ],
+      "effectSurface": "selection/ranking/reporting",
+      "constantsThresholds": "tier boundaries in Teen classifier",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "production_or_core",
+        "teen": "production_or_core"
+      },
+      "behavioralClassification": "truly_shared",
+      "recommendation": "Keep shared core; move policy to age-band config"
+    },
+    {
+      "capability": "Counterfactual final slate",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [
+          "addAdultGoogleBooksSelectionObservability"
+        ],
+        "teenFunctions": [
+          "addTeenGoogleBooksMeaningfulTasteObservability"
+        ],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": false,
+        "teenTypeKeysPresent": true,
+        "scriptsMatched": []
+      },
+      "stage": "selection audit",
+      "inputsConsumed": "tier outputs + eligibility outputs",
+      "evidenceProvenanceAllowed": "same as upstream tiers",
+      "outputs": [
+        "teenGoogleBooksCounterfactualFinalTitles",
+        "teenGoogleBooksCounterfactualFinalCount"
+      ],
+      "effectSurface": "diagnostic/reporting",
+      "constantsThresholds": "min clean slate target=5 (Teen)",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "production_or_core",
+        "teen": "production_or_core"
+      },
+      "behavioralClassification": "behaviorally_equivalent_duplication",
+      "recommendation": "Extract shared primitive and parametrize age policy"
+    },
+    {
+      "capability": "Evidence-origin reconciliation audit",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [
+          "addAdultGoogleBooksSelectionObservability"
+        ],
+        "teenFunctions": [],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": true,
+        "teenTypeKeysPresent": false,
+        "scriptsMatched": [
+          "run-v2-googlebooks-teen-evidence-origin-reconciliation-audit.mjs"
+        ]
+      },
+      "stage": "diagnostic audit",
+      "inputsConsumed": "signal traces + query context + per-title classifications",
+      "evidenceProvenanceAllowed": "audit compares trusted vs untrusted channels",
+      "outputs": [
+        "adultGoogleBooksSignalMatchTraceByTitle",
+        "teen-evidence-origin-reconciliation-audit"
+      ],
+      "effectSurface": "diagnostic/reporting",
+      "constantsThresholds": "none",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "production_or_core",
+        "teen": "diagnostic_only"
+      },
+      "behavioralClassification": "adult_production_teen_diagnostic",
+      "recommendation": "Promote Teen path from diagnostic to production integration"
+    },
+    {
+      "capability": "Marginal decision-worthy yield",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [],
+        "teenFunctions": [],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": true,
+        "teenTypeKeysPresent": false,
+        "scriptsMatched": [
+          "run-v2-googlebooks-teen-query-marginal-yield-audit.mjs"
+        ]
+      },
+      "stage": "retrieval audit",
+      "inputsConsumed": "query candidates + strong/secondary classifications",
+      "evidenceProvenanceAllowed": "query-level performance metrics",
+      "outputs": [
+        "adultGoogleBooksNarrativeYieldByQuery",
+        "teen-query-marginal-yield-audit"
+      ],
+      "effectSurface": "retrieval policy / diagnostic",
+      "constantsThresholds": "none",
+      "ageBandSpecificBranches": false,
+      "productionStatus": {
+        "adult": "diagnostic_only",
+        "teen": "diagnostic_only"
+      },
+      "behavioralClassification": "same_name_different_semantics",
+      "recommendation": "Define shared contract before unification"
+    },
+    {
+      "capability": "Adult content weighting branch",
+      "implementation": {
+        "selectFile": "app/recommender-v2/select.ts",
+        "adultFunctions": [
+          "addAdultGoogleBooksSelectionObservability",
+          "adultGoogleBooksFinalEligibility",
+          "adultGoogleBooksIdentityEnforcement",
+          "adultGoogleBooksIdentityEnforcementForIdentity",
+          "adultGoogleBooksPolarityCausalityForCandidate",
+          "rejectReason"
+        ],
+        "teenFunctions": [
+          "addPreteenGoogleBooksPublicationIdentityObservability",
+          "rejectReason",
+          "teenGoogleBooksAudienceReconciliationAudit",
+          "teenGoogleBooksPublicationIdentityAudit"
+        ],
+        "typesFile": "app/recommender-v2/types.ts",
+        "adultTypeKeysPresent": false,
+        "teenTypeKeysPresent": false,
+        "scriptsMatched": []
+      },
+      "stage": "eligibility/policy",
+      "inputsConsumed": "age-band policy + identity + maturity",
+      "evidenceProvenanceAllowed": "age-policy specific",
+      "outputs": [
+        "adult_googlebooks_*",
+        "teen_googlebooks_*"
+      ],
+      "effectSurface": "eligibility",
+      "constantsThresholds": "age-specific by design",
+      "ageBandSpecificBranches": true,
+      "productionStatus": {
+        "adult": "production_or_core",
+        "teen": "production_or_core"
+      },
+      "behavioralClassification": "age_specific_by_necessity",
+      "recommendation": "Keep separate policy branch with explicit invariants"
+    }
+  ]
+}
