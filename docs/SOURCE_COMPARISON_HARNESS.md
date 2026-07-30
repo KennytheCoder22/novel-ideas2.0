@@ -42,6 +42,37 @@ Phase 1 deliberately reuses existing project concepts:
 
 It does not define a competing terminal-state taxonomy or a numeric recommendation-quality score.
 
+## Evidence classes and comparison validity
+
+Evidence class describes what produced an artifact and therefore what claims the artifact can support. It is a taxonomy of scope, not a ranking of truth or importance:
+
+1. **Fixture Class** — deterministic synthetic or mocked contract evidence.
+2. **Representative Frozen Class** — immutable representative source records captured under a documented method.
+3. **Live Observation Class** — bounded observations of current external source behavior.
+4. **Human Review Class** — structured judgments linked to exact machine artifacts.
+5. **Production Telemetry Class** — longitudinal observations from real production use.
+
+The governing comparison rule is:
+
+> **Comparative conclusions are valid only when they are derived from equivalent evidence classes and equivalent measurements. When evidence classes differ, the comparison must explicitly report the asymmetry rather than infer equivalence.**
+
+Every claim inherits the limitations of its evidence class. Fixture evidence cannot establish operational suitability. A live observation cannot establish long-term stability. Human Review cannot establish deterministic correctness. Production telemetry cannot retroactively prove identity preservation.
+
+Likewise, two artifacts from the same evidence class are not comparable when they measure different concepts or lifecycle stages. Schema richness is not evidence completeness. Documented discovery capability is not recommendation usefulness.
+
+| Proposed comparison | Validity | Required result |
+| --- | --- | --- |
+| Fixture GCD versus Fixture ComicVine | Valid when the same profile, contract, and measurement are used | Report fixture-level differences only. |
+| Live GCD versus Live ComicVine | Valid when capture conditions and measurements are equivalent | Report bounded live observations only. |
+| Representative Frozen GCD versus Representative Frozen ComicVine | Valid when capture and profile equivalence are established | Report representative frozen differences only. |
+| Fixture GCD versus Live ComicVine | Invalid for a comparative conclusion | `comparison_unavailable_evidence_class_asymmetry` |
+| Schema richness versus evidence completeness | Invalid measurement equivalence | `comparison_unavailable_measurement_asymmetry` |
+| Discovery documentation versus recommendation usefulness | Invalid lifecycle equivalence | `comparison_unavailable_lifecycle_asymmetry` |
+
+Comparison unavailability is a correct engineering result. The harness must not coerce, normalize, or broaden an artifact to manufacture equivalence. Reports must preserve both artifact classes, identify the exact asymmetry, and state which claim remains unsupported.
+
+Phase 1's existing deterministic comparison fixtures are Fixture Class by their declared capture kind. Adding an explicit `evidenceClass` field and enforcing these unavailable states in code requires a separately reviewed, versioned harness change; this documentation amendment does not modify the locked implementation or reinterpret existing results.
+
 ## Input contract
 
 A comparison fixture contains one or more cases. Every case has:
