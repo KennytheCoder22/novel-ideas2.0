@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "human_review_record_v1",
+  "reviewId": "rqb-v1-teens-sci-fi-identity-v1-alpha",
+  "snapshotId": "c8cd114ed4660a58",
+  "profileId": "teens-sci-fi-identity-v1",
+  "rubricId": "novelideas-human-review",
+  "rubricVersion": "v1",
+  "reviewerId": "reviewer-alpha",
+  "createdAt": "2026-08-01T00:00:00.000Z",
+  "reviewScope": {
+    "studyId": "recommendation-quality-baseline-study-v1",
+    "ageBand": "teens"
+  },
+  "itemReviews": [
+    {
+      "rank": 1,
+      "title": "The Lantern Archive",
+      "overallScore": 4,
+      "decision": "recommend",
+      "criteriaRatings": {
+        "taste_alignment": 4,
+        "novelty": 3,
+        "confidence": 3
+      },
+      "concernTags": [
+        "maturity_boundary_uncertainty"
+      ],
+      "uncertainty": {
+        "level": "medium",
+        "note": "fit appears plausible but not fully certain"
+      }
+    },
+    {
+      "rank": 2,
+      "title": "Signal in the Stacks",
+      "overallScore": 3,
+      "decision": "weak_recommend",
+      "criteriaRatings": {
+        "taste_alignment": 3,
+        "novelty": 2,
+        "confidence": 2
+      },
+      "concernTags": [
+        "maturity_boundary_uncertainty"
+      ],
+      "uncertainty": {
+        "level": "medium",
+        "note": "fit appears plausible but not fully certain"
+      }
+    }
+  ],
+  "summary": {
+    "wouldUseSlate": true,
+    "slateConcernTags": [
+      "maturity_boundary_uncertainty"
+    ],
+    "notes": "baseline reviewer alpha for teens-sci-fi-identity-v1"
+  }
+}

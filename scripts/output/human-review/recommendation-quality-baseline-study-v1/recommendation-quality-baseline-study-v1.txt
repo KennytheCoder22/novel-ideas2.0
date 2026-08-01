@@ -1,0 +1,28 @@
+=== RECOMMENDATION QUALITY BASELINE STUDY (v1) ===
+Status: completed_observation_only
+Profiles reviewed: 6
+Snapshots: 6
+Review records: 8
+Evidence signature: 428f9d10c187f36cf12b3a918babd919
+
+Recurring concern patterns:
+- series_entrypoint_unclear: 6
+- maturity_boundary_uncertainty: 6
+- low_novelty_repeat_signal: 4
+- reviewer_disagreement: 4
+- evidence_specificity_weak: 3
+- tone_intensity_mismatch: 3
+
+Prioritized hypotheses:
+- (6) Richer independent age-fit evidence could reduce maturity-boundary uncertainty in teen mystery/sci-fi slates.
+- (6) Entry-point uncertainty may be reduced by explicit sequence/volume provenance in candidate diagnostics.
+- (4) Novelty concerns may indicate insufficient diversification cues at selection time for some profiles.
+- (3) Tone-intensity mismatch may be reduced by stronger tone-evidence normalization before scoring.
+
+Unsupported conclusions:
+- Causal source effects
+- Source superiority
+- Production readiness
+- Reader satisfaction
+- Launch readiness
+- Any observed weakness must be fixed before a controlled intervention is designed

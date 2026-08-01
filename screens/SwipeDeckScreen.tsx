@@ -11,10 +11,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   Platform,
   Pressable,
+  Modal,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
@@ -49,6 +51,16 @@ import type { RecommenderInput } from "./recommenders/types";
 import { estimateReaderSophisticationFromTaste } from "./recommenders/taste/sophisticationModel";
 import { cardIdentityKey, selectAdaptiveCard } from "./swipe/adaptiveCardQueue";
 import { getSwipeCardFallbackImage } from "../assets/swipeCardFallback";
+import {
+  HUMAN_REVIEW_CONCERN_OPTIONS,
+  createDefaultHumanReviewForm,
+  createHumanReviewRecordFromForm,
+  createHumanReviewSnapshot,
+  type HumanReviewConcernTag,
+  type HumanReviewSessionContext,
+  type HumanReviewSnapshotV1,
+  type HumanReviewSlateForm,
+} from "./swipe/humanReviewContract";
 
 const DEFAULT_SWIPE_CATEGORIES = {
   books: true,
@@ -64,6 +76,22 @@ const DEFAULT_SWIPE_CATEGORIES = {
 const DEFAULT_ADULT_CARDS: any[] = [];
 const MIN_20Q_DECISION_SWIPES = 4;
 const MAX_SINGLE_CARD_DIRECT_TRAIT_WEIGHT = 1.1;
+const HUMAN_REVIEW_FAMILIARITY_OPTIONS: Array<{
+  value: "never_heard_of_it" | "know_of_it" | "read_it" | "tried_but_did_not_finish";
+  label: string;
+}> = [
+  { value: "never_heard_of_it", label: "Never heard of it" },
+  { value: "know_of_it", label: "Know of it" },
+  { value: "read_it", label: "Read it" },
+  { value: "tried_but_did_not_finish", label: "Tried, didn't finish" },
+];
+const HUMAN_REVIEW_EXPECTED_ENJOYMENT_OPTIONS: Array<{ value: 1 | 2 | 3 | 4 | 5; label: string }> = [
+  { value: 5, label: "Very likely" },
+  { value: 4, label: "Probably" },
+  { value: 3, label: "Maybe" },
+  { value: 2, label: "Probably not" },
+  { value: 1, label: "Very unlikely" },
+];
 
 type DeckKey = SwipeDeck["deckKey"];
 
@@ -720,6 +748,41 @@ function recommendationCoverUrl(doc: any): string | null {
   return thumbnail ? thumbnail.replace(/^http:\/\//, "https://") : null;
 }
 
+function safeStorageGet(key: string): string {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return "";
+    return String(window.localStorage.getItem(key) || "");
+  } catch {
+    return "";
+  }
+}
+
+function safeStorageSet(key: string, value: string): void {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    window.localStorage.setItem(key, value);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function storageList(key: string): string[] {
+  const raw = safeStorageGet(key);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map((row) => String(row || "")).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function storagePushUnique(key: string, value: string): void {
+  const existing = new Set(storageList(key));
+  existing.add(String(value || ""));
+  safeStorageSet(key, JSON.stringify(Array.from(existing)));
+}
+
 function directTraitsFromCard(card: SwipeDeckCard | null | undefined): TasteVector | null {
   if (!card || !(card as any)?.tasteTraits) return null;
   return tasteVectorFromAxes((card as any).tasteTraits);
@@ -1120,6 +1183,12 @@ export default function SwipeDeckScreen(props: Props) {
   const [v2DebugResult, setV2DebugResult] = useState<RecommendationResultV2 | null>(null);
   const [v2DebugLoading, setV2DebugLoading] = useState(false);
   const [v2DebugError, setV2DebugError] = useState<string>("");
+  const [showHumanReviewPanel, setShowHumanReviewPanel] = useState(false);
+  const [humanReviewSnapshot, setHumanReviewSnapshot] = useState<HumanReviewSnapshotV1 | null>(null);
+  const [humanReviewForm, setHumanReviewForm] = useState<HumanReviewSlateForm | null>(null);
+  const [humanReviewStatus, setHumanReviewStatus] = useState<string>("");
+  const [humanReviewSubmitting, setHumanReviewSubmitting] = useState(false);
+  const [showHumanReviewContext, setShowHumanReviewContext] = useState(false);
   const [middleGradesDeepDebugUiEnabled, setMiddleGradesDeepDebugUiEnabled] = useState(() => readMiddleGradesDeepDebugRequest().active);
   const v2UrlTriggeredRef = useRef(false);
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
@@ -4524,6 +4593,257 @@ function handleLeft() {
     Alert.alert("Copied", "Diagnostics copied to clipboard.");
   }
 
+  function openHumanReviewForCurrentSlate() {
+    if (!recItems.length) {
+      Alert.alert("No recommendations", "Run recommendations first, then review the current slate.");
+      return;
+    }
+    const truncateSynopsis = (value: string, maxLength = 300): string =>
+      value.length > maxLength ? `${value.slice(0, maxLength - 3).trimEnd()}...` : value;
+    const normalizeSynopsis = (value: unknown): string | undefined => {
+      const raw =
+        typeof value === "string"
+          ? value
+          : value && typeof value === "object" && typeof (value as any).value === "string"
+            ? String((value as any).value)
+            : "";
+      const cleaned = raw.replace(/\s+/g, " ").trim();
+      if (!cleaned) return undefined;
+      return truncateSynopsis(cleaned, 300);
+    };
+    const normalizeLabel = (value: unknown): string => {
+      const text = String(value || "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+      return text ? text.replace(/\b\w/g, (c) => c.toUpperCase()) : "";
+    };
+    const buildSignalSummary = (): string[] => {
+      const likeSignals = swipeHistoryToV2Signals(swipeHistory).filter((signal) => signal.action === "like");
+      const counts = new Map<string, number>();
+      for (const signal of likeSignals) {
+        const buckets = [
+          ...(Array.isArray(signal.genres) ? signal.genres : []),
+          ...(Array.isArray(signal.tones) ? signal.tones : []),
+          ...(Array.isArray(signal.themes) ? signal.themes : []),
+        ];
+        for (const raw of buckets) {
+          const token = normalizeLabel(raw).toLowerCase();
+          if (!token) continue;
+          counts.set(token, (counts.get(token) || 0) + 1);
+        }
+      }
+      return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 6)
+        .map(([token]) => normalizeLabel(token));
+    };
+    const swipeCardTitle = (card: any): string => String(card?.title || card?.prompt || "").trim();
+    const swipeCardAuthor = (card: any): string => String(card?.author || "").trim();
+    const swipeCardCover = (card: any): string | undefined => {
+      const explicitImage = String((card as any)?.imageUri || "").trim();
+      if (explicitImage) return explicitImage;
+      const key = `${swipeCardTitle(card)}::${swipeCardAuthor(card)}`.toLowerCase();
+      const cached = String(swipeCoverCache[key] || "").trim();
+      return cached || undefined;
+    };
+    const swipeRowsForDirection = (direction: SwipeHistoryEntry["direction"]) =>
+      swipeHistory
+        .filter((entry) => entry.direction === direction)
+        .map((entry) => ({
+          title: swipeCardTitle(entry.card),
+          coverUrl: swipeCardCover(entry.card),
+        }))
+        .filter((row) => row.title);
+    const likedSignalRows = swipeHistoryToV2Signals(swipeHistory)
+      .filter((signal) => signal.action === "like")
+      .map((signal) => {
+        const title = String(signal.title || "").trim();
+        const tokenList = [
+          ...(Array.isArray(signal.genres) ? signal.genres : []),
+          ...(Array.isArray(signal.tones) ? signal.tones : []),
+          ...(Array.isArray(signal.themes) ? signal.themes : []),
+          ...(Array.isArray(signal.tags) ? signal.tags : []),
+        ]
+          .map((token) => normalizeLabel(token).toLowerCase())
+          .filter(Boolean);
+        return {
+          title,
+          titleNormalized: title.toLowerCase(),
+          tokens: new Set(tokenList),
+        };
+      })
+      .filter((row) => row.title);
+    const recommendationItems = recItems.map((item, index) => {
+      const title = item.kind === "open_library" ? String(item.doc?.title || "") : String(item.book?.title || "");
+      const author = item.kind === "open_library" ? recommendationAuthor(item.doc) : String(item.book?.author || "Unknown author");
+      const source = item.kind === "open_library" ? String((item.doc as any)?.source || "unknown") : "fallback";
+      const coverUrl = item.kind === "open_library" ? recommendationCoverUrl(item.doc) || undefined : undefined;
+      const matchedSignals = item.kind === "open_library" && Array.isArray((item.doc as any)?.diagnostics?.matchedSignals)
+        ? ((item.doc as any).diagnostics.matchedSignals as unknown[]).map((signal) => normalizeLabel(signal)).filter(Boolean)
+        : [];
+      const rawTags = item.kind === "open_library"
+        ? [
+            ...((Array.isArray((item.doc as any)?.subjects) ? (item.doc as any).subjects : []) as unknown[]),
+            ...((Array.isArray((item.doc as any)?.subject) ? (item.doc as any).subject : []) as unknown[]),
+            ...((Array.isArray((item.doc as any)?.categories) ? (item.doc as any).categories : []) as unknown[]),
+            ...((Array.isArray((item.doc as any)?.diagnostics?.genres) ? (item.doc as any).diagnostics.genres : []) as unknown[]),
+          ]
+        : [];
+      const genreTags = Array.from(
+        new Set(
+          rawTags
+            .map((tag) => normalizeLabel(tag))
+            .filter(Boolean)
+        )
+      ).slice(0, 4);
+      const synopsis = item.kind === "open_library" ? normalizeSynopsis((item.doc as any)?.description) : undefined;
+      return {
+        rank: index + 1,
+        title,
+        author,
+        source,
+        coverUrl,
+        matchedSignals,
+        synopsis,
+        genreTags,
+      };
+    });
+    const snapshot = createHumanReviewSnapshot({
+      ageBand: deckKeyToAgeBandV2(deckKey),
+      deckKey,
+      engineVersion: lastEngineActuallyUsed || "recommender-v2",
+      swipeSignals: swipeHistoryToV2Signals(swipeHistory),
+      recommendationItems,
+    });
+    const form = createDefaultHumanReviewForm(snapshot);
+    const sessionContext: HumanReviewSessionContext | undefined = (() => {
+      const likedItems = swipeRowsForDirection("like");
+      const dislikedItems = swipeRowsForDirection("dislike");
+      const unsureItems = swipeRowsForDirection("skip");
+      const engineSignals = buildSignalSummary();
+      if (!likedItems.length && !dislikedItems.length && !unsureItems.length && !engineSignals.length) return undefined;
+      return { likedItems, dislikedItems, unsureItems, engineSignals };
+    })();
+    form.itemReviews = form.itemReviews.map((row, index) => ({
+      ...row,
+      author: recommendationItems[index]?.author || row.author,
+      synopsis: recommendationItems[index]?.synopsis,
+      genreTags: recommendationItems[index]?.genreTags,
+      whyRecommended: recommendationItems[index]?.matchedSignals || [],
+      becauseLiked: (() => {
+        const recMatched = new Set(
+          (recommendationItems[index]?.matchedSignals || [])
+            .map((signal: string) => normalizeLabel(signal).toLowerCase())
+            .filter(Boolean)
+        );
+        if (!recMatched.size) {
+          return (sessionContext?.likedItems || []).map((item) => item.title).slice(0, 3);
+        }
+        const overlapped = likedSignalRows
+          .filter((liked) => {
+            for (const signal of recMatched) {
+              if (liked.tokens.has(signal)) return true;
+              if (signal && liked.titleNormalized.includes(signal)) return true;
+              if (signal && signal.includes(liked.titleNormalized) && liked.titleNormalized.length > 3) return true;
+            }
+            return false;
+          })
+          .map((liked) => liked.title);
+        const unique = Array.from(new Set(overlapped)).slice(0, 3);
+        if (unique.length) return unique;
+        return (sessionContext?.likedItems || []).map((item) => item.title).slice(0, 3);
+      })(),
+      expectedEnjoyment: null,
+      familiarity: null,
+    }));
+    if (sessionContext) form.sessionContext = sessionContext;
+    const defaultReviewer = safeStorageGet("novelideas_human_review_reviewer_id");
+    if (defaultReviewer) form.reviewerId = defaultReviewer;
+    setHumanReviewSnapshot(snapshot);
+    setHumanReviewForm(form);
+    setHumanReviewStatus("");
+    setShowHumanReviewContext(false);
+    setShowHumanReviewPanel(true);
+  }
+
+  function updateHumanReviewItem(
+    rank: number,
+    updater: (item: HumanReviewSlateForm["itemReviews"][number]) => HumanReviewSlateForm["itemReviews"][number]
+  ) {
+    setHumanReviewForm((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itemReviews: prev.itemReviews.map((item) => (item.rank === rank ? updater(item) : item)),
+      };
+    });
+  }
+
+  function toggleHumanReviewConcern(rank: number, concern: HumanReviewConcernTag) {
+    updateHumanReviewItem(rank, (item) => {
+      const has = item.concerns.includes(concern);
+      return {
+        ...item,
+        concerns: has ? item.concerns.filter((row) => row !== concern) : [...item.concerns, concern],
+      };
+    });
+  }
+
+  async function submitHumanReview() {
+    if (!humanReviewSnapshot || !humanReviewForm) return;
+    const reviewerId = String(humanReviewForm.reviewerId || "").trim();
+    if (!reviewerId) {
+      setHumanReviewStatus("Reviewer ID is required.");
+      return;
+    }
+    const allTitlesPresent = humanReviewForm.itemReviews.every((item) => String(item.title || "").trim().length > 0);
+    if (!allTitlesPresent) {
+      setHumanReviewStatus("Every recommendation row must keep its exact title.");
+      return;
+    }
+    const duplicateKey = `${humanReviewSnapshot.snapshotId}::${reviewerId.toLowerCase()}`;
+    const existingSubmissionKeys = new Set(storageList("novelideas_human_review_submissions"));
+    if (existingSubmissionKeys.has(duplicateKey)) {
+      setHumanReviewStatus("Duplicate submission blocked for this reviewer and snapshot.");
+      return;
+    }
+
+    setHumanReviewSubmitting(true);
+    setHumanReviewStatus("");
+    try {
+      safeStorageSet("novelideas_human_review_reviewer_id", reviewerId);
+      const record = createHumanReviewRecordFromForm({
+        snapshot: humanReviewSnapshot,
+        form: humanReviewForm,
+      });
+
+      const response = await fetch("/api/human-review-append", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          snapshot: humanReviewSnapshot,
+          record,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = String((payload as any)?.error || `append_failed_http_${response.status}`);
+        setHumanReviewStatus(`Submit failed: ${message}`);
+        return;
+      }
+
+      storagePushUnique("novelideas_human_review_submissions", duplicateKey);
+      const storageMode: string = String((payload as any)?.storageMode || "local_filesystem");
+      setHumanReviewStatus(
+        `Review saved successfully.\nReview ID: ${String((payload as any)?.appendedReviewId || record.reviewId)}\nSnapshot unchanged: ${(payload as any)?.snapshotUnchanged ? "Yes" : "No (new snapshot recorded)"}\nStorage: ${storageMode} (Admin/local only — not durable on Vercel serverless)`
+      );
+      setShowHumanReviewPanel(false);
+      setShowHumanReviewContext(false);
+    } catch (error: any) {
+      setHumanReviewStatus(`Submit failed: ${String(error?.message || error || "unknown_error")}`);
+    } finally {
+      setHumanReviewSubmitting(false);
+    }
+  }
+
 
 
   React.useEffect(() => {
@@ -4963,9 +5283,311 @@ function handleLeft() {
             <TouchableOpacity style={styles.testPillButton} onPress={handleFreshUserReset}>
               <Text style={styles.debugToggleText}>Fresh User</Text>
             </TouchableOpacity>
+            {Platform.OS === "web" ? (
+              <TouchableOpacity style={styles.humanReviewToggle} onPress={openHumanReviewForCurrentSlate}>
+                <Text style={styles.debugToggleText}>Review This Slate</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       </View>
+
+      {Platform.OS === "web" ? (
+        <Modal
+          visible={showHumanReviewPanel && humanReviewSnapshot != null && humanReviewForm != null}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => {
+            setShowHumanReviewPanel(false);
+            setShowHumanReviewContext(false);
+          }}
+        >
+          <View style={styles.humanReviewModalOverlay}>
+            {humanReviewSnapshot && humanReviewForm ? (
+              <View style={styles.humanReviewPanel}>
+                <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={true}>
+                  <Text style={styles.v2DebugTitle}>Human Review (Admin)</Text>
+                  <Text style={[styles.v2DebugText, { color: "#f5a623", fontStyle: "italic", marginBottom: 4 }]}>
+                    ⚠ Storage: local filesystem only. Records will not persist on Vercel serverless after redeployment.
+                    Suitable for Admin/local review only.
+                  </Text>
+                  <Text style={styles.v2DebugText}>Age band: {humanReviewSnapshot.ageBand}</Text>
+                  <Text style={styles.v2DebugText}>Profile: {humanReviewSnapshot.profileId}</Text>
+                  <Text style={styles.v2DebugText}>Snapshot: {humanReviewSnapshot.snapshotId}</Text>
+                  <Text style={styles.v2DebugText}>Rubric: v1</Text>
+
+                  <TextInput
+                    style={styles.humanReviewInput}
+                    placeholder="Reviewer ID"
+                    placeholderTextColor="#9db3d9"
+                    value={humanReviewForm.reviewerId}
+                    onChangeText={(value) => setHumanReviewForm((prev) => (prev ? { ...prev, reviewerId: value } : prev))}
+                  />
+
+                  {humanReviewForm.sessionContext &&
+                  (humanReviewForm.sessionContext.likedItems.length > 0 ||
+                    humanReviewForm.sessionContext.dislikedItems.length > 0 ||
+                    humanReviewForm.sessionContext.unsureItems.length > 0 ||
+                    humanReviewForm.sessionContext.engineSignals.length > 0) ? (
+                    <View style={styles.humanReviewContextSection}>
+                      <TouchableOpacity
+                        style={styles.humanReviewContextToggle}
+                        onPress={() => setShowHumanReviewContext((prev) => !prev)}
+                      >
+                        <Text style={styles.humanReviewContextToggleText}>
+                          Review Context {showHumanReviewContext ? "▾" : "▸"}
+                        </Text>
+                      </TouchableOpacity>
+                      {showHumanReviewContext ? (
+                        <View style={styles.humanReviewContextBody}>
+                          {[
+                            { label: "Liked", items: humanReviewForm.sessionContext.likedItems },
+                            { label: "Disliked", items: humanReviewForm.sessionContext.dislikedItems },
+                            { label: "Unsure", items: humanReviewForm.sessionContext.unsureItems },
+                          ].map((group) =>
+                            group.items.length ? (
+                              <View key={group.label} style={styles.humanReviewContextGroup}>
+                                <Text style={styles.humanReviewContextLabel}>
+                                  {group.label} ({group.items.length})
+                                </Text>
+                                {group.items.slice(0, 8).map((entry, index) => (
+                                  <View key={`${group.label}-${index}-${entry.title}`} style={styles.humanReviewContextRow}>
+                                    {entry.coverUrl ? (
+                                      <Image source={{ uri: entry.coverUrl }} style={styles.humanReviewContextThumb} resizeMode="cover" />
+                                    ) : (
+                                      <View style={[styles.humanReviewContextThumb, styles.humanReviewCoverPlaceholder]} />
+                                    )}
+                                    <Text style={styles.humanReviewContextRowText} numberOfLines={1}>
+                                      {entry.title}
+                                    </Text>
+                                  </View>
+                                ))}
+                                {group.items.length > 8 ? (
+                                  <Text style={styles.humanReviewContextMore}>and {group.items.length - 8} more</Text>
+                                ) : null}
+                              </View>
+                            ) : null
+                          )}
+                          {humanReviewForm.sessionContext.engineSignals.length ? (
+                            <View style={styles.humanReviewContextGroup}>
+                              <Text style={styles.humanReviewContextLabel}>Engine Signals</Text>
+                              <Text style={styles.humanReviewContextSignals}>
+                                {humanReviewForm.sessionContext.engineSignals.join(" · ")}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+
+                  <View style={styles.humanReviewItemsWrap}>
+                    {humanReviewForm.itemReviews.map((item) => (
+                      <View key={item.rank} style={styles.humanReviewItemCard}>
+                        <View style={styles.humanReviewItemHeader}>
+                          {item.coverUrl ? (
+                            <Image
+                              source={{ uri: item.coverUrl }}
+                              style={styles.humanReviewCoverThumb}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={[styles.humanReviewCoverThumb, styles.humanReviewCoverPlaceholder]} />
+                          )}
+                          <View style={{ flex: 1, gap: 4 }}>
+                            <Text style={styles.humanReviewItemTitle}>#{item.rank} {item.title}</Text>
+                            {item.author ? <Text style={styles.humanReviewItemAuthor}>{item.author}</Text> : null}
+                            {Array.isArray(item.genreTags) && item.genreTags.length ? (
+                              <View style={styles.humanReviewGenreTagsRow}>
+                                {item.genreTags.slice(0, 4).map((tag) => (
+                                  <View key={`${item.rank}-${tag}`} style={styles.humanReviewGenreTagPill}>
+                                    <Text style={styles.humanReviewGenreTagText}>{tag}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            ) : null}
+                            {item.synopsis ? (
+                              <Text style={styles.humanReviewSynopsis} numberOfLines={3}>
+                                {item.synopsis}
+                              </Text>
+                            ) : null}
+                            {((Array.isArray(item.becauseLiked) && item.becauseLiked.length) ||
+                              (Array.isArray(item.whyRecommended) && item.whyRecommended.length)) ? (
+                              <View style={styles.humanReviewWhyBlock}>
+                                <Text style={styles.humanReviewWhyHeading}>Why recommended</Text>
+                                {Array.isArray(item.becauseLiked) && item.becauseLiked.length ? (
+                                  <Text style={styles.humanReviewMatchedSignals} numberOfLines={2}>
+                                    <Text style={styles.humanReviewMatchedLabel}>Because you liked:</Text>{" "}
+                                    {item.becauseLiked.slice(0, 3).join(" · ")}
+                                  </Text>
+                                ) : null}
+                                {Array.isArray(item.whyRecommended) && item.whyRecommended.length ? (
+                                  <Text style={styles.humanReviewMatchedSignals} numberOfLines={2}>
+                                    <Text style={styles.humanReviewMatchedLabel}>Matched:</Text>{" "}
+                                    {item.whyRecommended.slice(0, 4).join(" · ")}
+                                  </Text>
+                                ) : null}
+                              </View>
+                            ) : null}
+                          </View>
+                        </View>
+                        <View style={styles.humanReviewExpectedEnjoymentRow}>
+                          <Text style={styles.humanReviewScaleLabel}>Expected enjoyment</Text>
+                          {HUMAN_REVIEW_EXPECTED_ENJOYMENT_OPTIONS.map((option) => (
+                            <TouchableOpacity
+                              key={`${item.rank}-expected-${option.value}`}
+                              style={[
+                                styles.humanReviewExpectedEnjoymentPill,
+                                item.expectedEnjoyment === option.value && styles.humanReviewExpectedEnjoymentPillActive,
+                              ]}
+                              onPress={() =>
+                                updateHumanReviewItem(item.rank, (prev) => ({
+                                  ...prev,
+                                  expectedEnjoyment: prev.expectedEnjoyment === option.value ? null : option.value,
+                                }))
+                              }
+                            >
+                              <Text style={styles.humanReviewExpectedEnjoymentValue}>{option.value}</Text>
+                              <Text style={styles.humanReviewExpectedEnjoymentText}>{option.label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <View style={styles.humanReviewScaleRow}>
+                          <Text style={styles.humanReviewScaleLabel}>Taste fit</Text>
+                          {[1, 2, 3, 4, 5].map((score) => (
+                            <TouchableOpacity
+                              key={`taste-${item.rank}-${score}`}
+                              style={[styles.humanReviewScalePill, item.tasteAlignment === score && styles.humanReviewScalePillActive]}
+                              onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, tasteAlignment: score }))}
+                            >
+                              <Text style={styles.humanReviewScalePillText}>{score}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <View style={styles.humanReviewScaleRow}>
+                          <Text style={styles.humanReviewScaleLabel}>Novelty</Text>
+                          {[1, 2, 3, 4, 5].map((score) => (
+                            <TouchableOpacity
+                              key={`novelty-${item.rank}-${score}`}
+                              style={[styles.humanReviewScalePill, item.novelty === score && styles.humanReviewScalePillActive]}
+                              onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, novelty: score }))}
+                            >
+                              <Text style={styles.humanReviewScalePillText}>{score}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <View style={styles.humanReviewScaleRow}>
+                          <Text style={styles.humanReviewScaleLabel}>Confidence</Text>
+                          {[1, 2, 3, 4, 5].map((score) => (
+                            <TouchableOpacity
+                              key={`confidence-${item.rank}-${score}`}
+                              style={[styles.humanReviewScalePill, item.confidence === score && styles.humanReviewScalePillActive]}
+                              onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, confidence: score }))}
+                            >
+                              <Text style={styles.humanReviewScalePillText}>{score}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <View style={styles.humanReviewFamiliarityRow}>
+                          <Text style={styles.humanReviewScaleLabel}>Familiarity</Text>
+                          {HUMAN_REVIEW_FAMILIARITY_OPTIONS.map((option) => (
+                            <TouchableOpacity
+                              key={`${item.rank}-familiarity-${option.value}`}
+                              style={[
+                                styles.humanReviewFamiliarityPill,
+                                item.familiarity === option.value && styles.humanReviewFamiliarityPillActive,
+                              ]}
+                              onPress={() =>
+                                updateHumanReviewItem(item.rank, (prev) => ({
+                                  ...prev,
+                                  familiarity: prev.familiarity === option.value ? null : option.value,
+                                }))
+                              }
+                            >
+                              <Text style={styles.humanReviewFamiliarityText}>{option.label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+
+                        <View style={styles.humanReviewDecisionRow}>
+                          {(["recommend", "weak_recommend", "not_recommended"] as const).map((decision) => (
+                            <TouchableOpacity
+                              key={`${item.rank}-${decision}`}
+                              style={[styles.humanReviewDecisionPill, item.decision === decision && styles.humanReviewDecisionPillActive]}
+                              onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, decision }))}
+                            >
+                              <Text style={styles.humanReviewDecisionText}>{decision}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+
+                        <View style={styles.humanReviewConcernWrap}>
+                          {HUMAN_REVIEW_CONCERN_OPTIONS.map((option) => (
+                            <TouchableOpacity
+                              key={`${item.rank}-${option.tag}`}
+                              style={[styles.humanReviewConcernPill, item.concerns.includes(option.tag) && styles.humanReviewConcernPillActive]}
+                              onPress={() => toggleHumanReviewConcern(item.rank, option.tag)}
+                            >
+                              <Text style={styles.humanReviewConcernText}>{option.label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+
+                        <TextInput
+                          style={styles.humanReviewInput}
+                          placeholder="Optional item notes"
+                          placeholderTextColor="#9db3d9"
+                          value={item.notes || ""}
+                          onChangeText={(value) => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, notes: value }))}
+                        />
+                      </View>
+                    ))}
+                  </View>
+
+                  <Text style={styles.v2DebugText}>Would you use this slate for the represented reader?</Text>
+                  <View style={styles.humanReviewDecisionRow}>
+                    {(["yes", "no", "unsure"] as const).map((decision) => (
+                      <TouchableOpacity
+                        key={`slate-${decision}`}
+                        style={[styles.humanReviewDecisionPill, humanReviewForm.wouldUseSlate === decision && styles.humanReviewDecisionPillActive]}
+                        onPress={() => setHumanReviewForm((prev) => (prev ? { ...prev, wouldUseSlate: decision } : prev))}
+                      >
+                        <Text style={styles.humanReviewDecisionText}>{decision.toUpperCase()}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <TextInput
+                    style={[styles.humanReviewInput, styles.humanReviewNotesInput]}
+                    placeholder="Overall review notes"
+                    placeholderTextColor="#9db3d9"
+                    multiline
+                    value={humanReviewForm.notes || ""}
+                    onChangeText={(value) => setHumanReviewForm((prev) => (prev ? { ...prev, notes: value } : prev))}
+                  />
+
+                  {humanReviewStatus ? <Text style={styles.humanReviewStatus}>{humanReviewStatus}</Text> : null}
+
+                  <View style={styles.humanReviewActionRow}>
+                    <TouchableOpacity
+                      style={styles.humanReviewActionButton}
+                      onPress={() => {
+                        setShowHumanReviewPanel(false);
+                        setShowHumanReviewContext(false);
+                      }}
+                    >
+                      <Text style={styles.debugToggleText}>Close</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.humanReviewActionButton} onPress={() => void submitHumanReview()} disabled={humanReviewSubmitting}>
+                      <Text style={styles.debugToggleText}>{humanReviewSubmitting ? "Submitting…" : "Submit Review"}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
+            ) : null}
+          </View>
+        </Modal>
+      ) : null}
 
       <RecommenderEqualizerPanel
         deckKey={deckKey}
@@ -5229,6 +5851,244 @@ const styles = StyleSheet.create({
   },
   v2DebugTitle: { color: "#e5efff", fontWeight: "900", fontSize: 12 },
   v2DebugText: { color: "#cbd5f5", fontWeight: "700", fontSize: 10 },
+  humanReviewToggle: {
+    minWidth: 132,
+    alignItems: "center",
+    backgroundColor: "#1d4ed8",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  humanReviewModalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.72)",
+  },
+  humanReviewPanel: {
+    maxHeight: "85%",
+    backgroundColor: "rgba(8, 16, 28, 0.98)",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  humanReviewContextSection: {
+    marginTop: 8,
+    marginBottom: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "rgba(11, 30, 51, 0.75)",
+    padding: 8,
+    gap: 6,
+  },
+  humanReviewContextToggle: {
+    paddingVertical: 2,
+  },
+  humanReviewContextToggleText: {
+    color: "#bfdbfe",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  humanReviewContextBody: {
+    gap: 8,
+  },
+  humanReviewContextGroup: {
+    gap: 4,
+  },
+  humanReviewContextLabel: {
+    color: "#cbd5f5",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  humanReviewContextRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  humanReviewContextThumb: {
+    width: 32,
+    height: 40,
+    borderRadius: 4,
+    flexShrink: 0,
+  },
+  humanReviewContextRowText: {
+    color: "#dbeafe",
+    fontSize: 10,
+    fontWeight: "600",
+    flex: 1,
+  },
+  humanReviewContextMore: {
+    color: "#93c5fd",
+    fontSize: 10,
+    fontStyle: "italic",
+  },
+  humanReviewContextSignals: {
+    color: "#dbeafe",
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: "700",
+  },
+  humanReviewItemsWrap: {
+    gap: 8,
+  },
+  humanReviewItemCard: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(15, 23, 42, 0.82)",
+    padding: 8,
+    gap: 6,
+  },
+  humanReviewItemTitle: { color: "#e5efff", fontWeight: "800", fontSize: 11 },
+  humanReviewItemAuthor: { color: "#cbd5f5", fontWeight: "700", fontSize: 10 },
+  humanReviewGenreTagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  humanReviewGenreTagPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#36537a",
+    backgroundColor: "#10243f",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  humanReviewGenreTagText: { color: "#dbeafe", fontWeight: "700", fontSize: 9 },
+  humanReviewSynopsis: {
+    color: "#cbd5f5",
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  humanReviewMatchedSignals: {
+    color: "#bae6fd",
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  humanReviewMatchedLabel: {
+    fontWeight: "800",
+    color: "#7dd3fc",
+  },
+  humanReviewWhyBlock: {
+    gap: 2,
+  },
+  humanReviewWhyHeading: {
+    color: "#dbeafe",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  humanReviewItemHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  humanReviewCoverThumb: { width: 40, height: 54, borderRadius: 4, flexShrink: 0 },
+  humanReviewCoverPlaceholder: { backgroundColor: "#1e3a5f" },
+  humanReviewExpectedEnjoymentRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
+  humanReviewExpectedEnjoymentPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#334155",
+    backgroundColor: "#0b1e33",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  humanReviewExpectedEnjoymentPillActive: {
+    backgroundColor: "#0369a1",
+    borderColor: "#7dd3fc",
+  },
+  humanReviewExpectedEnjoymentValue: { color: "#fff", fontSize: 10, fontWeight: "900" },
+  humanReviewExpectedEnjoymentText: { color: "#fff", fontSize: 9, fontWeight: "700" },
+  humanReviewScaleRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
+  humanReviewScaleLabel: { color: "#cbd5f5", fontSize: 10, width: 70, fontWeight: "700" },
+  humanReviewScalePill: {
+    minWidth: 24,
+    alignItems: "center",
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#475569",
+    backgroundColor: "#0b1e33",
+  },
+  humanReviewScalePillActive: {
+    backgroundColor: "#2563eb",
+    borderColor: "#93c5fd",
+  },
+  humanReviewScalePillText: { color: "#fff", fontWeight: "800", fontSize: 10 },
+  humanReviewFamiliarityRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
+  humanReviewFamiliarityPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#334155",
+    backgroundColor: "#0b1e33",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  humanReviewFamiliarityPillActive: {
+    backgroundColor: "#1d4ed8",
+    borderColor: "#93c5fd",
+  },
+  humanReviewFamiliarityText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  humanReviewDecisionRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  humanReviewDecisionPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#334155",
+    backgroundColor: "#0b1e33",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  humanReviewDecisionPillActive: {
+    backgroundColor: "#0f766e",
+    borderColor: "#5eead4",
+  },
+  humanReviewDecisionText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  humanReviewConcernWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  humanReviewConcernPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#475569",
+    backgroundColor: "#0b1e33",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  humanReviewConcernPillActive: {
+    backgroundColor: "#7c3aed",
+    borderColor: "#d8b4fe",
+  },
+  humanReviewConcernText: { color: "#e5efff", fontSize: 10, fontWeight: "700" },
+  humanReviewInput: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#334155",
+    backgroundColor: "#0b1e33",
+    color: "#f8fafc",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12,
+  },
+  humanReviewNotesInput: {
+    minHeight: 72,
+    textAlignVertical: "top",
+  },
+  humanReviewStatus: {
+    color: "#bfdbfe",
+    fontSize: 10,
+    fontWeight: "700",
+    lineHeight: 14,
+  },
+  humanReviewActionRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  humanReviewActionButton: {
+    minWidth: 110,
+    alignItems: "center",
+    backgroundColor: "#334155",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
   randomizeToggle: {
     minWidth: 112,
     alignItems: "center",

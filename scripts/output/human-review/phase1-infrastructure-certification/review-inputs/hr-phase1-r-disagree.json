@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "human_review_record_v1",
+  "reviewId": "hr-phase1-r-disagree",
+  "snapshotId": "22c73f18d4266bed",
+  "profileId": "adult-mystery-core-v1",
+  "rubricId": "novelideas-human-review",
+  "rubricVersion": "v1",
+  "reviewerId": "reviewer-beta",
+  "createdAt": "2026-08-01T00:00:00.000Z",
+  "itemReviews": [
+    {
+      "rank": 1,
+      "title": "The Lantern Archive",
+      "overallScore": 2,
+      "decision": "not_recommended",
+      "criteriaRatings": {
+        "taste_alignment": 2,
+        "novelty": 2,
+        "confidence": 2
+      }
+    },
+    {
+      "rank": 2,
+      "title": "Signal in the Stacks",
+      "overallScore": 1,
+      "decision": "not_recommended",
+      "criteriaRatings": {
+        "taste_alignment": 2,
+        "novelty": 2,
+        "confidence": 2
+      }
+    }
+  ],
+  "summary": {
+    "wouldUseSlate": false,
+    "notes": "intentional disagreement record"
+  }
+}
