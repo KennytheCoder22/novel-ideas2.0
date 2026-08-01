@@ -708,6 +708,24 @@ function cardTagCounts(card: any): TagCounts {
   return {};
 }
 
+// Patron-identity admission: reject titles that are format abbreviations, volume-only
+// strings, issue-number-only strings, or bare format-genre labels.
+// These patterns catch any structurally non-bibliographic title; they are not title-specific rules.
+const PATRON_TITLE_FORMAT_ABBREV = /^(gn|hc|tpb|sc|ogn|mgn|tp|tn|pb|vhs|dvd)$/i;
+const PATRON_TITLE_VOLUME_ONLY = /^(?:vol(?:ume)?\.?\s*\d+|book\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten))$/i;
+const PATRON_TITLE_ISSUE_NUMBER_ONLY = /^#\s*\d+$/;
+const PATRON_TITLE_FORMAT_LABEL_ONLY = /^(?:graphic novels?|trade paperbacks?|hardcover|omnibus|compendium|annual|special edition|one-?shots?|zero issue)$/i;
+
+function isReliablePatronTitleIdentity(title: unknown): boolean {
+  const t = String(title || "").trim();
+  if (!t || t.length < 2) return false;
+  if (PATRON_TITLE_FORMAT_ABBREV.test(t)) return false;
+  if (PATRON_TITLE_VOLUME_ONLY.test(t)) return false;
+  if (PATRON_TITLE_ISSUE_NUMBER_ONLY.test(t)) return false;
+  if (PATRON_TITLE_FORMAT_LABEL_ONLY.test(t)) return false;
+  return true;
+}
+
 function recommendationAuthor(doc: any): string {
   if (!doc) return "Unknown author";
   if (Array.isArray(doc.author_name) && doc.author_name.length > 0) return String(doc.author_name[0]);
@@ -1843,12 +1861,14 @@ function handleLeft() {
   }
 
   function normalizeRecommenderV2Items(rawItems: RecommendationResultV2["items"]): RecItem[] {
-    return rawItems.map((candidate) => ({
+    return rawItems
+      .filter((candidate) => isReliablePatronTitleIdentity(candidate.title))
+      .map((candidate) => ({
       kind: "open_library",
       doc: {
         key: `/recommender-v2/${candidate.source}/${candidate.sourceId || candidate.id}`,
         title: candidate.title,
-        author_name: candidate.creators.length ? candidate.creators : ["Recommender V2"],
+        author_name: candidate.creators.length ? candidate.creators : [],
         source: candidate.source,
         description: candidate.description,
         first_publish_year: (candidate.publicationYear as number | undefined) ?? ((candidate.raw as any)?.first_publish_year as number | undefined),
@@ -5199,7 +5219,7 @@ function handleLeft() {
                         {currentRec.kind === "open_library" ? currentRec.doc.title ?? "Untitled" : currentRec.book.title ?? "Untitled"}
                       </Text>
                       <Text style={styles.recBookAuthor} numberOfLines={1}>
-                        {SHOW_REC_SOURCE
+                        {(SHOW_REC_SOURCE && !isTestingMode)
                           ? recSourceLabel(currentRec)
                           : currentRec.kind === "open_library"
                             ? recommendationAuthor(currentRec.doc)
