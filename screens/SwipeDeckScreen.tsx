@@ -1096,6 +1096,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [recItems, setRecItems] = useState<RecItem[]>([]);
   const [recIndex, setRecIndex] = useState(0);
   const [recCoverCache, setRecCoverCache] = useState<Record<string, string>>({});
+  const [recCoverFailedKeys, setRecCoverFailedKeys] = useState<Record<string, true>>({});
   const [autoSearched, setAutoSearched] = useState(false);
   const [forceRecommendationsView, setForceRecommendationsView] = useState(false);
   const [presetTestName, setPresetTestName] = useState<string>("");
@@ -1496,6 +1497,7 @@ export default function SwipeDeckScreen(props: Props) {
   }, [isDone, deckKey, remainingCards, tagCounts, recentCardKeys, activeTwentyQObjective]);
 
   const [swipeCoverCache, setSwipeCoverCache] = useState<Record<string, string>>({});
+  const [swipeCoverFailedKeys, setSwipeCoverFailedKeys] = useState<Record<string, true>>({});
 
   const currentCardKey = useMemo(() => {
     const t = (currentCard as any)?.title ?? "";
@@ -4719,20 +4721,35 @@ function handleLeft() {
                     <View style={styles.bigCoverWrap}>
                       {currentRec.kind === "open_library" ? (
                         (() => {
-                          const cover = recommendationCoverUrl(currentRec.doc) || recCoverCache[currentRecKey] || null;
-                          return cover ? (
-                            <Image source={{ uri: cover }} style={styles.bigCover} resizeMode="contain" />
+                          const cover = (recommendationCoverUrl(currentRec.doc) || recCoverCache[currentRecKey] || null);
+                          const recTitle = currentRec.doc.title ?? "";
+                          return cover && !recCoverFailedKeys[currentRecKey] ? (
+                            <Image
+                              source={{ uri: cover }}
+                              style={styles.bigCover}
+                              resizeMode="contain"
+                              onError={() => setRecCoverFailedKeys((prev) => ({ ...prev, [currentRecKey]: true }))}
+                            />
                           ) : (
                             <View style={styles.bigCoverPlaceholder}>
-                              <Text style={styles.bigCoverPlaceholderText}>No cover</Text>
+                              <Text style={styles.bigCoverPlaceholderIcon}>📖</Text>
+                              <Text style={styles.bigCoverPlaceholderTitle} numberOfLines={4}>{recTitle}</Text>
                             </View>
                           );
                         })()
-                      ) : recCoverCache[currentRecKey] ? (
-                        <Image source={{ uri: recCoverCache[currentRecKey] }} style={styles.bigCover} resizeMode="contain" />
+                      ) : recCoverCache[currentRecKey] && !recCoverFailedKeys[currentRecKey] ? (
+                        <Image
+                          source={{ uri: recCoverCache[currentRecKey] }}
+                          style={styles.bigCover}
+                          resizeMode="contain"
+                          onError={() => setRecCoverFailedKeys((prev) => ({ ...prev, [currentRecKey]: true }))}
+                        />
                       ) : (
                         <View style={styles.bigCoverPlaceholder}>
-                          <Text style={styles.bigCoverPlaceholderText}>No cover</Text>
+                          <Text style={styles.bigCoverPlaceholderIcon}>📖</Text>
+                          <Text style={styles.bigCoverPlaceholderTitle} numberOfLines={4}>
+                            {currentRec.book?.title ?? ""}
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -4845,8 +4862,24 @@ function handleLeft() {
                       { transform: [{ translateX: position.x }, { translateY: position.y }] },
                     ]}
                   >
-                    {currentSwipeCoverUri ? (
-                      <Image source={{ uri: currentSwipeCoverUri }} style={styles.swipeCover} resizeMode="contain" />
+                    {currentSwipeCoverUri && !swipeCoverFailedKeys[currentCardKey] ? (
+                      <Image
+                        source={{ uri: currentSwipeCoverUri }}
+                        style={styles.swipeCover}
+                        resizeMode="contain"
+                        onError={() => setSwipeCoverFailedKeys((prev) => ({ ...prev, [currentCardKey]: true }))}
+                      />
+                    ) : (currentCard as any)?.title ? (
+                      <View style={styles.swipeCoverPlaceholder}>
+                        <Text style={styles.swipeCoverPlaceholderIcon}>
+                          {(currentCard as any)?.tags?.some?.((t: string) => t === "media:movie") ? "🎬" :
+                           (currentCard as any)?.tags?.some?.((t: string) => t === "media:tv") ? "📺" :
+                           (currentCard as any)?.tags?.some?.((t: string) => t === "media:game") ? "🎮" : "📖"}
+                        </Text>
+                        <Text style={styles.swipeCoverPlaceholderTitle} numberOfLines={3}>
+                          {(currentCard as any).title}
+                        </Text>
+                      </View>
                     ) : null}
 
                     {((currentCard as any)?.title || (currentCard as any)?.author || (currentCard as any)?.genre) ? (
@@ -5027,6 +5060,17 @@ const styles = StyleSheet.create({
 
   swipeCover: { backgroundColor: "#000", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 18 },
 
+  swipeCoverPlaceholder: {
+    position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 18,
+    backgroundColor: "#0d1f35",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 22,
+    gap: 14,
+  },
+  swipeCoverPlaceholderIcon: { fontSize: 52 },
+  swipeCoverPlaceholderTitle: { color: "#ddeeff", fontSize: 18, fontWeight: "700", textAlign: "center", lineHeight: 24 },
+
   swipeMetaBox: {
     position: "absolute",
     left: 14,
@@ -5084,8 +5128,15 @@ const styles = StyleSheet.create({
   recCard: { marginTop: 16 },
   bigCoverWrap: { width: "100%", alignItems: "center" },
   bigCover: { aspectRatio: 2 / 3, backgroundColor: "#000", width: 220, height: 320, borderRadius: 10 },
-  bigCoverPlaceholder: { width: 220, height: 320, borderRadius: 10, borderWidth: 1, borderColor: "#223b6b", alignItems: "center", justifyContent: "center" },
-  bigCoverPlaceholderText: { color: "#cbd5f5", fontWeight: "800" },
+  bigCoverPlaceholder: {
+    width: 220, height: 320, borderRadius: 10,
+    backgroundColor: "#0d1f35",
+    borderWidth: 1, borderColor: "#223b6b",
+    alignItems: "center", justifyContent: "center",
+    paddingHorizontal: 18, gap: 12,
+  },
+  bigCoverPlaceholderIcon: { fontSize: 40, color: "#8cb4e8" },
+  bigCoverPlaceholderTitle: { color: "#c8d8f0", fontWeight: "700", fontSize: 14, textAlign: "center", lineHeight: 20 },
 
   recActions: { marginTop: 12, flexDirection: "row", gap: 12, justifyContent: "center" },
   smallNote: { color: "#cbd5f5", fontWeight: "800", fontSize: 12, marginTop: 8 },
