@@ -1,0 +1,14 @@
+=== HUMAN REVIEW REPORT (v1) ===
+GeneratedAt: 2026-08-01T06:10:23.909Z
+SnapshotCount: 6
+RecordCount: 7
+ItemReviews: 14
+AverageOverallScore: 2.786
+RecommendRate: 0.214
+ProfilesWithoutReviews: 0
+  - adult-fantasy-ensemble-v1: reviews=1, itemReviews=2, avg=2.5, recommendRate=0
+  - adult-mystery-core-v1: reviews=2, itemReviews=4, avg=2.5, recommendRate=0.25
+  - kids-adventure-kindness-v1: reviews=1, itemReviews=2, avg=3.5, recommendRate=0.5
+  - preteens-adventure-humor-v1: reviews=1, itemReviews=2, avg=2.5, recommendRate=0
+  - teens-mystery-tension-v1: reviews=1, itemReviews=2, avg=2.5, recommendRate=0
+  - teens-sci-fi-identity-v1: reviews=1, itemReviews=2, avg=3.5, recommendRate=0.5

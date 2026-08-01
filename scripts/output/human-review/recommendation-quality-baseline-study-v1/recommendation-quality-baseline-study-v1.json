@@ -1,0 +1,192 @@
+{
+  "schemaVersion": "recommendation_quality_baseline_study_v1",
+  "status": "completed_observation_only",
+  "objective": "Evaluate recommendation quality observations using the certified Human Review instrument (not to draw tuning conclusions).",
+  "scope": {
+    "profileIds": [
+      "kids-adventure-kindness-v1",
+      "preteens-adventure-humor-v1",
+      "teens-sci-fi-identity-v1",
+      "teens-mystery-tension-v1",
+      "adult-mystery-core-v1",
+      "adult-fantasy-ensemble-v1"
+    ],
+    "profileCount": 6,
+    "ageBandsRepresented": [
+      "kids",
+      "preteens",
+      "teens",
+      "adult"
+    ],
+    "rubricVersion": "v1",
+    "sourceConstraint": "existing recommendation outputs only"
+  },
+  "outputs": {
+    "phaseRoot": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\recommendation-quality-baseline-study-v1",
+    "snapshotsWritten": 6,
+    "reviewRecordsWritten": 8,
+    "evidenceSignature": "428f9d10c187f36cf12b3a918babd919",
+    "deterministicReportSignature": "64d75c5561cf2bfeb626f8069bfcb18a"
+  },
+  "acceptanceCriteria": [
+    {
+      "name": "Snapshot IDs remain immutable",
+      "pass": true
+    },
+    {
+      "name": "Reviews are append-only",
+      "pass": true
+    },
+    {
+      "name": "Rubric version preserved for every judgment",
+      "pass": true
+    },
+    {
+      "name": "Export->Import->Export is lossless",
+      "pass": true
+    },
+    {
+      "name": "Report generation is deterministic from identical inputs",
+      "pass": true
+    },
+    {
+      "name": "Reviewer disagreement and uncertainty preserved",
+      "pass": true
+    },
+    {
+      "name": "Every review links to exact frozen profile and recommendation snapshot",
+      "pass": true
+    }
+  ],
+  "observations": [
+    {
+      "id": "obs-1",
+      "observation": "Maturity-boundary uncertainty appears repeatedly in teen-focused reviewed slates.",
+      "evidence": {
+        "candidateConcernFrequency": 6,
+        "slateConcernFrequency": 3
+      }
+    },
+    {
+      "id": "obs-2",
+      "observation": "Series entry-point concerns recur across preteen/adult reviewed profiles.",
+      "evidence": {
+        "candidateConcernFrequency": 6,
+        "slateConcernFrequency": 3
+      }
+    },
+    {
+      "id": "obs-3",
+      "observation": "Reviewer disagreement is preserved for selected mystery profiles and remains visible in raw records.",
+      "evidence": {
+        "disagreementProfiles": [
+          "adult-mystery-core-v1",
+          "teens-mystery-tension-v1"
+        ],
+        "disagreementProfileCount": 2
+      }
+    },
+    {
+      "id": "obs-4",
+      "observation": "Average reviewed item scores vary by age band in this bounded sample and should be treated as descriptive only.",
+      "evidence": {
+        "adult": {
+          "reviews": 3,
+          "itemReviews": 6,
+          "avgOverallScore": 3
+        },
+        "kids": {
+          "reviews": 1,
+          "itemReviews": 2,
+          "avgOverallScore": 3.5
+        },
+        "preteens": {
+          "reviews": 1,
+          "itemReviews": 2,
+          "avgOverallScore": 3.5
+        },
+        "teens": {
+          "reviews": 3,
+          "itemReviews": 6,
+          "avgOverallScore": 3
+        }
+      }
+    }
+  ],
+  "recurringConcernPatterns": [
+    {
+      "concern": "series_entrypoint_unclear",
+      "frequency": 6
+    },
+    {
+      "concern": "maturity_boundary_uncertainty",
+      "frequency": 6
+    },
+    {
+      "concern": "low_novelty_repeat_signal",
+      "frequency": 4
+    },
+    {
+      "concern": "reviewer_disagreement",
+      "frequency": 4
+    },
+    {
+      "concern": "evidence_specificity_weak",
+      "frequency": 3
+    },
+    {
+      "concern": "tone_intensity_mismatch",
+      "frequency": 3
+    }
+  ],
+  "prioritizedHypotheses": [
+    {
+      "concern": "maturity_boundary_uncertainty",
+      "hypothesis": "Richer independent age-fit evidence could reduce maturity-boundary uncertainty in teen mystery/sci-fi slates.",
+      "controlledIntervention": "Add diagnostics-only evidence lineage for teen-fit authority, then run controlled eligibility-only A/B on frozen fixtures before policy changes.",
+      "frequency": 6
+    },
+    {
+      "concern": "series_entrypoint_unclear",
+      "hypothesis": "Entry-point uncertainty may be reduced by explicit sequence/volume provenance in candidate diagnostics.",
+      "controlledIntervention": "Introduce source-neutral sequence diagnostics; compare pre/post Human Review deltas without ranking changes first.",
+      "frequency": 6
+    },
+    {
+      "concern": "low_novelty_repeat_signal",
+      "hypothesis": "Novelty concerns may indicate insufficient diversification cues at selection time for some profiles.",
+      "controlledIntervention": "Design bounded diversity-cue experiment with deterministic replay and post-change Human Review rerun.",
+      "frequency": 4
+    },
+    {
+      "concern": "tone_intensity_mismatch",
+      "hypothesis": "Tone-intensity mismatch may be reduced by stronger tone-evidence normalization before scoring.",
+      "controlledIntervention": "Run normalization-only shadow experiment and compare deterministic outputs before any production change.",
+      "frequency": 3
+    }
+  ],
+  "unsupportedConclusions": [
+    "Causal source effects",
+    "Source superiority",
+    "Production readiness",
+    "Reader satisfaction",
+    "Launch readiness",
+    "Any observed weakness must be fixed before a controlled intervention is designed"
+  ],
+  "studyBoundaries": {
+    "allowedConclusionShape": "observation_and_hypothesis_only",
+    "disallowedConclusionShape": "direct_tuning_or_policy_change_conclusions",
+    "recommendedNextSequence": [
+      "Human Review observation",
+      "Bounded hypothesis",
+      "Controlled engineering intervention",
+      "Deterministic comparison",
+      "Repeat Human Review"
+    ]
+  },
+  "notes": [
+    "This study establishes a reproducible quality observation baseline.",
+    "Review records in this run are synthetic study fixtures intended to exercise the certified pipeline end-to-end.",
+    "Follow-up quality studies should replace fixture reviewers with real reviewer submissions while preserving artifact invariants."
+  ]
+}

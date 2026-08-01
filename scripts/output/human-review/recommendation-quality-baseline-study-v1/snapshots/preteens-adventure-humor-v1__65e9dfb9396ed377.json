@@ -1,0 +1,1242 @@
+{
+  "schemaVersion": "human_review_snapshot_v1",
+  "manifestVersion": "v1",
+  "profileId": "preteens-adventure-humor-v1",
+  "profileVersion": 1,
+  "rubricVersion": "v1",
+  "engineVersion": "recommender-v2-openlibrary-baseline",
+  "recommendationItems": [
+    {
+      "rank": 1,
+      "title": "The Lantern Archive",
+      "source": "mock",
+      "sourceId": "mock-1",
+      "score": 19.89,
+      "matchedSignals": [
+        "genreFacetMatch:adventure",
+        "genreFacetMatch:fantasy",
+        "genreFacetMatch:mystery",
+        "positiveTasteMatch:friendship",
+        "positiveTasteMatch:quest",
+        "positiveTasteMatch:siblings",
+        "positiveTasteMatch:funny",
+        "positiveTasteMatch:witty"
+      ],
+      "scoreBreakdown": {
+        "base": 1,
+        "genreFacetMatch": 9,
+        "positiveTasteMatch": 7.5,
+        "ageTeenSuitability": 0.25,
+        "ageBandSuitability": 0.25,
+        "sourceQualityRelevance": 1.94,
+        "queryRungBonus": 0.2
+      }
+    },
+    {
+      "rank": 2,
+      "title": "Signal in the Stacks",
+      "source": "mock",
+      "sourceId": "mock-2",
+      "score": 6.44,
+      "matchedSignals": [
+        "genreFacetMatch:mystery",
+        "positiveTasteMatch:friendship"
+      ],
+      "scoreBreakdown": {
+        "base": 1,
+        "genreFacetMatch": 3,
+        "positiveTasteMatch": 1.7,
+        "ageTeenSuitability": 0.25,
+        "ageBandSuitability": 0.25,
+        "sourceQualityRelevance": 0.29000000000000004,
+        "queryRungBonus": 0.2
+      }
+    }
+  ],
+  "finalSelectionTitles": [
+    "The Lantern Archive",
+    "Signal in the Stacks"
+  ],
+  "rejectedReasons": {
+    "underfill_deferred_available": 1,
+    "underfill_relaxed_diversity": 1,
+    "middleGradesFallbackDefaultPrecedenceExplanations": {},
+    "middle_grades_final_count_recovery_candidates": 0,
+    "underfillRecoveryStoppedReason": "no_safe_recovery_candidates_remaining",
+    "remainingUnattemptedReliableFallbacks": [],
+    "slateGenreFacetMatchAverage": 6,
+    "fallbackSlateSpecificityScore": 1,
+    "routeAlignmentScoreByTitle": {
+      "The Lantern Archive": 0,
+      "Signal in the Stacks": 0
+    },
+    "genreFacetMatchScoreByTitle": {
+      "The Lantern Archive": 9,
+      "Signal in the Stacks": 3
+    },
+    "candidateTasteMatchScoreByTitle": {
+      "The Lantern Archive": 16.5,
+      "Signal in the Stacks": 4.7
+    },
+    "candidateTastePenaltyByTitle": {
+      "The Lantern Archive": 0,
+      "Signal in the Stacks": 0
+    },
+    "candidateMatchedLikedSignalsByTitle": {
+      "The Lantern Archive": [
+        "genreFacetMatch:adventure",
+        "genreFacetMatch:fantasy",
+        "genreFacetMatch:mystery",
+        "positiveTasteMatch:friendship",
+        "positiveTasteMatch:quest",
+        "positiveTasteMatch:siblings",
+        "positiveTasteMatch:funny",
+        "positiveTasteMatch:witty"
+      ],
+      "Signal in the Stacks": [
+        "genreFacetMatch:mystery",
+        "positiveTasteMatch:friendship"
+      ]
+    },
+    "candidateMatchedDislikedSignalsByTitle": {
+      "The Lantern Archive": [],
+      "Signal in the Stacks": []
+    },
+    "finalScoreComponentsByTitle": {
+      "The Lantern Archive": {
+        "base": 1,
+        "genreFacetMatch": 9,
+        "positiveTasteMatch": 7.5,
+        "ageTeenSuitability": 0.25,
+        "ageBandSuitability": 0.25,
+        "sourceQualityRelevance": 1.94,
+        "queryRungBonus": 0.2,
+        "genreTasteScore": 16.5,
+        "penaltyScore": 0,
+        "finalScore": 19.89,
+        "adjustedSelectionScore": 19.89,
+        "routeAlignmentScore": 0,
+        "fallbackPenalty": 0,
+        "genericOnlyTasteMatchPenalty": 0
+      },
+      "Signal in the Stacks": {
+        "base": 1,
+        "genreFacetMatch": 3,
+        "positiveTasteMatch": 1.7,
+        "ageTeenSuitability": 0.25,
+        "ageBandSuitability": 0.25,
+        "sourceQualityRelevance": 0.29000000000000004,
+        "queryRungBonus": 0.2,
+        "genreTasteScore": 4.7,
+        "penaltyScore": 0,
+        "finalScore": 6.44,
+        "adjustedSelectionScore": 6.44,
+        "routeAlignmentScore": 0,
+        "fallbackPenalty": 0,
+        "genericOnlyTasteMatchPenalty": 0
+      }
+    },
+    "finalRankingReasonByTitle": {
+      "The Lantern Archive": "selected_ranked_candidate",
+      "Signal in the Stacks": "selected_ranked_candidate"
+    },
+    "rankedDocsTitles": [
+      "The Lantern Archive",
+      "Signal in the Stacks"
+    ],
+    "finalEligibilityAcceptedTitles": [],
+    "finalEligibilityCleanCandidateCount": 0,
+    "middleGradesScoredCandidateAttribution": [
+      {
+        "title": "The Lantern Archive",
+        "sourceQuery": "",
+        "documentEvidenceFields": [],
+        "documentEvidenceText": {},
+        "evidenceTier": "query_only",
+        "matchedLikedSignals": [
+          "genreFacetMatch:adventure",
+          "genreFacetMatch:fantasy",
+          "genreFacetMatch:mystery",
+          "positiveTasteMatch:friendship",
+          "positiveTasteMatch:quest",
+          "positiveTasteMatch:siblings",
+          "positiveTasteMatch:funny",
+          "positiveTasteMatch:witty"
+        ],
+        "matchedDislikedSignals": [],
+        "genericTasteSignalsRemoved": [],
+        "documentBackedTasteSignals": [
+          "adventure",
+          "fantasy",
+          "mystery",
+          "friendship",
+          "quest",
+          "siblings",
+          "funny",
+          "witty"
+        ],
+        "genericOnlyTasteMatch": false,
+        "genreTasteScore": 16.5,
+        "penaltyScore": 0,
+        "finalScore": 19.89,
+        "finalRankingReason": "selected_ranked_candidate",
+        "selected": true,
+        "rejectionReason": "selected"
+      },
+      {
+        "title": "Signal in the Stacks",
+        "sourceQuery": "",
+        "documentEvidenceFields": [],
+        "documentEvidenceText": {},
+        "evidenceTier": "query_only",
+        "matchedLikedSignals": [
+          "genreFacetMatch:mystery",
+          "positiveTasteMatch:friendship"
+        ],
+        "matchedDislikedSignals": [],
+        "genericTasteSignalsRemoved": [],
+        "documentBackedTasteSignals": [
+          "mystery",
+          "friendship"
+        ],
+        "genericOnlyTasteMatch": false,
+        "genreTasteScore": 4.7,
+        "penaltyScore": 0,
+        "finalScore": 6.44,
+        "finalRankingReason": "selected_ranked_candidate",
+        "selected": true,
+        "rejectionReason": "selected"
+      }
+    ],
+    "genericTasteSignalsRemovedByTitle": {
+      "The Lantern Archive": [],
+      "Signal in the Stacks": []
+    },
+    "genericOnlyTasteMatchTitles": [],
+    "documentBackedTasteSignalsByTitle": {
+      "The Lantern Archive": [
+        "adventure",
+        "fantasy",
+        "mystery",
+        "friendship",
+        "quest",
+        "siblings",
+        "funny",
+        "witty"
+      ],
+      "Signal in the Stacks": [
+        "mystery",
+        "friendship"
+      ]
+    },
+    "selectedGenericOnlyTasteMatchCount": 0,
+    "zeroTasteCandidateRejectedTitles": [],
+    "middleGradesTopZeroDocBackedTasteAudit": [],
+    "broadAdventureOnlyRejectedTitles": [],
+    "meaningfulTasteEligibleTitles": [],
+    "underfilledBecauseOnlyWeakOrZeroTaste": false,
+    "emergencyFallbackUsedForZeroTasteFill": false,
+    "meaningfulTasteRecoveryMergedIntoScoring": false,
+    "meaningfulTasteRecoveryMergedCandidateCount": 0,
+    "meaningfulTasteRecoveryDroppedAfterMergeByReason": {},
+    "meaningfulTasteRecoveryAcceptedButNotReturnedTitles": [],
+    "meaningfulTasteRecoveryFinalSelectionCount": 0,
+    "middleGradesRecoveryFinalShortfallReason": "no_recovery_candidates_merged",
+    "middleGradesRecoveryRejectedReasonCounts": {},
+    "middleGradesRecoveryBestRejectedTitlesByReason": {},
+    "middleGradesRecoveryNextBestSelectableTitles": [],
+    "middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate": false,
+    "middleGradesRecoveryRelaxedGateNeeded": "none",
+    "queryTextSignalsRemovedFromTasteMatchByTitle": {
+      "The Lantern Archive": [],
+      "Signal in the Stacks": []
+    },
+    "documentOnlyTasteMatchByTitle": {
+      "The Lantern Archive": [
+        "adventure",
+        "fantasy",
+        "mystery",
+        "friendship",
+        "quest",
+        "siblings",
+        "funny",
+        "witty"
+      ],
+      "Signal in the Stacks": [
+        "mystery",
+        "friendship"
+      ]
+    },
+    "fallbackPenaltyByTitle": {
+      "The Lantern Archive": 0,
+      "Signal in the Stacks": 0
+    },
+    "finalSelectionReasonByTitle": {
+      "The Lantern Archive": "selected_ranked_candidate",
+      "Signal in the Stacks": "selected_ranked_candidate"
+    },
+    "middleGradesReturnedItemQualityAudit": [
+      {
+        "title": "The Lantern Archive",
+        "sourceQuery": "",
+        "routeEvidenceTier": "query_only",
+        "documentEvidenceFields": [],
+        "tasteSignalsMatched": [
+          "genreFacetMatch:adventure",
+          "genreFacetMatch:fantasy",
+          "genreFacetMatch:mystery",
+          "positiveTasteMatch:friendship",
+          "positiveTasteMatch:quest",
+          "positiveTasteMatch:siblings",
+          "positiveTasteMatch:funny",
+          "positiveTasteMatch:witty"
+        ],
+        "tasteAlignmentScore": 18.5,
+        "score": 19.89,
+        "adjustedSelectionScore": 19.89,
+        "scoreComponents": {
+          "base": 1,
+          "genreFacetMatch": 9,
+          "positiveTasteMatch": 7.5,
+          "ageTeenSuitability": 0.25,
+          "ageBandSuitability": 0.25,
+          "sourceQualityRelevance": 1.94,
+          "queryRungBonus": 0.2
+        },
+        "fallbackDefaultStatus": "route_aligned",
+        "sameRootCollectionRoot": "the lantern archive",
+        "finalEligibilityAllowed": true,
+        "finalEligibilityEvidence": [
+          "not_middle_grades_openlibrary"
+        ],
+        "selected": true,
+        "rejectionReason": "selected",
+        "wouldImproveSlateDiversity": false
+      },
+      {
+        "title": "Signal in the Stacks",
+        "sourceQuery": "",
+        "routeEvidenceTier": "query_only",
+        "documentEvidenceFields": [],
+        "tasteSignalsMatched": [
+          "genreFacetMatch:mystery",
+          "positiveTasteMatch:friendship"
+        ],
+        "tasteAlignmentScore": 5.2,
+        "score": 6.44,
+        "adjustedSelectionScore": 6.44,
+        "scoreComponents": {
+          "base": 1,
+          "genreFacetMatch": 3,
+          "positiveTasteMatch": 1.7,
+          "ageTeenSuitability": 0.25,
+          "ageBandSuitability": 0.25,
+          "sourceQualityRelevance": 0.29000000000000004,
+          "queryRungBonus": 0.2
+        },
+        "fallbackDefaultStatus": "route_aligned",
+        "sameRootCollectionRoot": "signal in stacks",
+        "finalEligibilityAllowed": true,
+        "finalEligibilityEvidence": [
+          "not_middle_grades_openlibrary"
+        ],
+        "selected": true,
+        "rejectionReason": "selected",
+        "wouldImproveSlateDiversity": false
+      }
+    ],
+    "middleGradesTopRejectedQualityAudit": [],
+    "queryLevelRouteAlignmentByTitle": {
+      "The Lantern Archive": false,
+      "Signal in the Stacks": false
+    },
+    "documentLevelRouteAlignmentByTitle": {
+      "The Lantern Archive": false,
+      "Signal in the Stacks": false
+    },
+    "routeAlignmentEvidenceFieldsByTitle": {
+      "The Lantern Archive": [],
+      "Signal in the Stacks": []
+    },
+    "documentEvidenceTierByTitle": {
+      "The Lantern Archive": "query_only",
+      "Signal in the Stacks": "query_only"
+    },
+    "documentEvidenceTextByTitle": {
+      "The Lantern Archive": {},
+      "Signal in the Stacks": {}
+    },
+    "routeAlignmentDemotedReasonByTitle": {},
+    "finalEligibilityEvidenceByTitle": {
+      "The Lantern Archive": [
+        "not_middle_grades_openlibrary"
+      ],
+      "Signal in the Stacks": [
+        "not_middle_grades_openlibrary"
+      ]
+    },
+    "finalEligibilityEvidenceFieldCountByTitle": {
+      "The Lantern Archive": 0,
+      "Signal in the Stacks": 0
+    },
+    "titleOnlyEvidenceFinalEligibleTitles": [],
+    "repeatedTitleTokenClusterDetected": false,
+    "finalEligibilityRejectedQueryOnlyTitles": [],
+    "humorKeywordOnlyLeakageByTitle": {
+      "The Lantern Archive": false,
+      "Signal in the Stacks": false
+    },
+    "humorKeywordOnlyRejectedTitles": [],
+    "preteenAgeShapeEvidenceByTitle": {
+      "The Lantern Archive": false,
+      "Signal in the Stacks": false
+    },
+    "adultOrYaHumorLeakageRejectedTitles": [],
+    "routeAlignedCandidateRejectedForFallbackReason": {},
+    "emergencyFallbackOverrideUsedByTitle": {},
+    "falseRouteAlignedDueToQueryOnlyCount": 0,
+    "documentRouteAlignmentEvidenceMissingButTrueCount": 0,
+    "weakEvidenceOnlySlate": false,
+    "titleOnlySlateDowngradedLockQuality": false,
+    "selectedTitleOnlyCount": 0,
+    "selectedMediumStrongEvidenceCount": 0,
+    "mediumStrongEvidenceTargetCount": 5,
+    "weakEvidenceFinalizedBecause": "medium_strong_evidence_target_not_met_after_selection_pool_exhausted",
+    "weakEvidenceReturnedOnlyAfterEvidenceSearchExhausted": true,
+    "sameSeriesTitleOnlyClusterDetected": false,
+    "finalCountContractStatus": "underfilled_fallback_only",
+    "genericAdventureUsedAsLastResortOnly": true,
+    "selectedNonHumorAlignmentCount": 2,
+    "genericFunnySlateDetected": false,
+    "genericFunnySlateLockQualityBlocked": false,
+    "lockQualityPass": false,
+    "lockQualityFailReasons": [
+      "final_items_length_not_five",
+      "underfilled_fallback_only"
+    ],
+    "strongEvidenceRejectedTitles": [],
+    "strongEvidenceRejectedReasons": {},
+    "weakEvidenceSelectedOverStrongEvidence": false,
+    "evidenceGateTooStrictSuspected": false,
+    "evidenceGateTooLooseSuspected": false,
+    "topRejectedRouteAlignedCandidates": [],
+    "selectedVsRejectedRouteAlignmentSummary": {
+      "selectedRouteAlignedCount": 0,
+      "selectedFallbackCount": 0,
+      "rejectedRouteAlignedCount": 0,
+      "fallbackSurvivedWithRejectedRouteAligned": false
+    },
+    "adultGoogleBooksFinalGateApplied": false,
+    "adultGoogleBooksEligibilityReasonByTitle": {},
+    "adultGoogleBooksArtifactReasonsByTitle": {},
+    "adultGoogleBooksNarrativeEvidenceByTitle": {},
+    "adultGoogleBooksCredibleFictionSignalsByTitle": {},
+    "adultGoogleBooksNarrativeWorkIdentitySignalsByTitle": {},
+    "adultGoogleBooksSourceQualityScoreByTitle": {},
+    "adultGoogleBooksSourceQualityFailureReasonsByTitle": {},
+    "adultGoogleBooksStrongNarrativeOverrideAppliedByTitle": {},
+    "adultGoogleBooksStrongNarrativeOverrideBlockedByTasteByTitle": {},
+    "adultGoogleBooksPeriodicalCorroborationByTitle": {},
+    "adultGoogleBooksInstructionalCraftReasonsByTitle": {},
+    "adultGoogleBooksReferenceSurveyReasonsByTitle": {},
+    "adultGoogleBooksEncyclopediaReferenceReasonsByTitle": {},
+    "adultGoogleBooksMultiVolumeReferenceCorroborationByTitle": {},
+    "adultGoogleBooksAnnualAnthologyReasonsByTitle": {},
+    "adultGoogleBooksAnthologyCorroborationByTitle": {},
+    "adultGoogleBooksAuthorCapAppliedByTitle": {},
+    "adultGoogleBooksSeriesCapAppliedByTitle": {},
+    "adultGoogleBooksNormalizedSeriesRootByTitle": {},
+    "adultGoogleBooksDeferredForAuthorDiversityTitles": [],
+    "adultGoogleBooksDeferredForSeriesDiversityTitles": [],
+    "adultGoogleBooksDistinctAuthorCount": 0,
+    "adultGoogleBooksDistinctSeriesRootCount": 0,
+    "adultGoogleBooksDocumentBackedLikedSignalsByTitle": {},
+    "adultGoogleBooksDocumentBackedDislikedSignalsByTitle": {},
+    "adultGoogleBooksPositiveNetTasteFamiliesByTitle": {},
+    "adultGoogleBooksMeaningfulTastePassedByTitle": {},
+    "adultGoogleBooksMeaningfulTasteFailureReasonByTitle": {},
+    "adultGoogleBooksBroadToneOnlyRejectedByTitle": {},
+    "adultGoogleBooksCandidateTasteFamiliesByTitle": {},
+    "adultGoogleBooksNegativeNetTasteFamiliesByTitle": {},
+    "adultGoogleBooksTasteEvidenceSourceByTitle": {},
+    "adultGoogleBooksMeaningfulAlignmentScoreByTitle": {},
+    "adultGoogleBooksMeaningfulAlignmentThresholdByTitle": {},
+    "adultGoogleBooksProfileLikedFamilies": [],
+    "adultGoogleBooksProfileAvoidFamilies": [],
+    "adultGoogleBooksCandidateDocumentSignalsByTitle": {},
+    "adultGoogleBooksSpecificTasteEvidenceByTitle": {},
+    "adultGoogleBooksBroadToneEvidenceByTitle": {},
+    "adultGoogleBooksContextOnlyEvidenceByTitle": {},
+    "adultGoogleBooksMeaningfulAlignmentRuleByTitle": {},
+    "adultGoogleBooksMeaningfulAlignmentDecisionByTitle": {},
+    "adultGoogleBooksMeaningfulAlignmentOverrideByTitle": {},
+    "adultGoogleBooksAvoidFamilyOverlapByTitle": {},
+    "adultTasteWeightedCounterfactualCandidateDecisionByTitle": {},
+    "adultTasteWeightedCounterfactualNewPassTitles": [],
+    "adultTasteWeightedCounterfactualNewFailTitles": [],
+    "adultTasteWeightedProductionDecisionReasonByTitle": {},
+    "adultTasteWeightedProductionNewPassTitles": [],
+    "adultTasteWeightedProductionNewFailTitles": [],
+    "adultTasteOverlapAffectedCandidateTitlesByFamily": {},
+    "adultGoogleBooksProductionNonPositiveFamilyPresenceRuleHistogram": {},
+    "adultGoogleBooksProductionNonPositiveFamilyPresenceCandidatesByRule": {},
+    "adultGoogleBooksProductionNonPositiveFamilyPresenceFamiliesByTitle": {},
+    "adultGoogleBooksProductionNonPositiveFamilyPresenceDetailsByTitle": {},
+    "adultGoogleBooksFamilyPolarityEffectByTitle": {},
+    "adultGoogleBooksFamilyPolarityEffectHistogram": {},
+    "adultGoogleBooksFamilyPositiveSupportSuppressedByTitle": {},
+    "adultGoogleBooksPolarityNondecisiveEffectsByTitle": {},
+    "adultGoogleBooksPolarityDecisiveRejectionByTitle": {},
+    "adultGoogleBooksPolarityMultiFactorRejectionByTitle": {},
+    "adultGoogleBooksPolarityUnrelatedRejectionByTitle": {},
+    "adultGoogleBooksPolarityCausalityStateByTitle": {},
+    "adultGoogleBooksPolarityCausalityHistogram": {},
+    "adultGoogleBooksPolarityCounterfactualsByTitle": {},
+    "adultGoogleBooksPolarityCounterfactualPassTitles": [],
+    "adultGoogleBooksPolarityCounterfactualStillFailTitles": [],
+    "adultGoogleBooksPolarityDecisiveRuleHistogram": {},
+    "adultGoogleBooksSignalMatchTraceByTitle": {},
+    "adultGoogleBooksSignalMatchedFieldByTitle": {},
+    "adultGoogleBooksSignalMatchedTextByTitle": {},
+    "adultGoogleBooksSignalMatchMethodByTitle": {},
+    "adultGoogleBooksShortSignalSubstringMatchesByTitle": {},
+    "adultGoogleBooksRejectedShortSignalMatchesByTitle": {},
+    "adultGoogleBooksMeaningfulAlignmentFailureHistogram": {},
+    "adultGoogleBooksMeaningfulAlignmentFailurePercentages": {},
+    "adultGoogleBooksMeaningfulAlignmentFailureExamples": {},
+    "adultGoogleBooksMeaningfulAlignmentFailureReasonByTitle": {},
+    "adultGoogleBooksMeaningfulAlignmentFailureDetailsByTitle": {},
+    "adultGoogleBooksMeaningfulAlignmentRootCauseSummary": "",
+    "adultGoogleBooksNarrativeDescriptionByTitle": {},
+    "adultGoogleBooksNarrativeSemanticPhrasesByTitle": {},
+    "adultGoogleBooksNarrativeFamilyMappingsByTitle": {},
+    "adultGoogleBooksIgnoredNarrativePhrasesByTitle": {},
+    "adultGoogleBooksUnmappedNarrativeCuesByTitle": {},
+    "adultGoogleBooksFutureAliasCandidatesByTitle": {},
+    "adultGoogleBooksNarrativeParserConfidenceByTitle": {},
+    "adultGoogleBooksExpectedVsExtractedFamilyEvidenceByTitle": {},
+    "adultGoogleBooksUnmappedNarrativePhraseHistogram": {},
+    "adultGoogleBooksUnmappedNarrativeCueHistogramByFamily": {},
+    "adultGoogleBooksFutureAliasCandidateHistogram": {},
+    "adultGoogleBooksNarrativeFamilyExtractionExamplesByFamily": {},
+    "adultGoogleBooksNarrativeFamilyExtractionRootCauseSummary": "",
+    "adultGoogleBooksNarrativeCueClassificationByTitle": {},
+    "adultGoogleBooksNarrativeCueClassificationHistogram": {},
+    "adultGoogleBooksCanonicalCueMissingFamilyByTitle": {},
+    "adultGoogleBooksCanonicalCueMissingFamilyHistogram": {},
+    "adultGoogleBooksGenuineAliasCandidatesByTitle": {},
+    "adultGoogleBooksGenuineAliasCandidateHistogram": {},
+    "adultGoogleBooksNarrativeCuePolarityOutcomeByTitle": {},
+    "adultGoogleBooksNarrativeCueFalseUnmappedSuppressedByTitle": {},
+    "adultGoogleBooksNarrativeExtractionDiagnosticSummary": "",
+    "adultGoogleBooksCanonicalNarrativeFamilyPromotionsByTitle": {},
+    "adultGoogleBooksCanonicalNarrativeFamilyPromotionEvidenceByTitle": {},
+    "adultGoogleBooksCanonicalNarrativeFamilyPromotionFieldByTitle": {},
+    "adultGoogleBooksCanonicalNarrativeFamilyPromotionPhraseByTitle": {},
+    "adultGoogleBooksCanonicalNarrativeFamilyPromotionDecisionByTitle": {},
+    "adultGoogleBooksCanonicalMissingFamilyBeforeByTitle": {},
+    "adultGoogleBooksCanonicalMissingFamilyAfterByTitle": {},
+    "adultGoogleBooksCanonicalMissingFamilyResolvedTitles": [],
+    "adultGoogleBooksCanonicalMissingFamilyUnresolvedTitles": [],
+    "adultGoogleBooksCanonicalNarrativeFamilyPromotionHistogram": {},
+    "adultGoogleBooksCanonicalNarrativeFamilyPromotionEligibilityChanges": {},
+    "adultGoogleBooksFinalSlateIdentityByTitle": {},
+    "adultGoogleBooksFinalSlateIdentityEvidenceByTitle": {},
+    "adultGoogleBooksFinalSlateIdentityConfidenceByTitle": {},
+    "adultGoogleBooksFinalSlateIdentityAgreementByTitle": {},
+    "adultGoogleBooksFinalSlateIdentityHistogram": {},
+    "adultGoogleBooksLikelyNonNarrativeFalseAcceptedTitles": [],
+    "adultGoogleBooksLikelyCollectionFalseAcceptedTitles": [],
+    "adultGoogleBooksLikelyNarrativeFalseRejectedTitles": [],
+    "adultGoogleBooksRenderedIdentityAudit": {},
+    "adultGoogleBooksFinalSlateIdentityRootCauseHistogram": {},
+    "adultGoogleBooksFinalSlateIdentityAuditSummary": "",
+    "adultGoogleBooksFinalSlateIdentityFlaggedDetailsByTitle": {},
+    "adultGoogleBooksIdentityEnforcementDecisionByTitle": {},
+    "adultGoogleBooksIdentityEnforcementReasonByTitle": {},
+    "adultGoogleBooksIdentityRejectedTitles": [],
+    "adultGoogleBooksIdentityAcceptedTitles": [],
+    "adultGoogleBooksIdentityEnforcementHistogram": {},
+    "adultGoogleBooksIdentityBehaviorChanges": {},
+    "adultGoogleBooksNarrativeStrengthScoreByTitle": {},
+    "adultGoogleBooksNarrativeStrengthComponentsByTitle": {},
+    "adultGoogleBooksNarrativeStrengthEvidenceByTitle": {},
+    "adultGoogleBooksNarrativeStrengthSelectionScoreByTitle": {},
+    "adultGoogleBooksNarrativeStrengthRankBeforeByTitle": {},
+    "adultGoogleBooksNarrativeStrengthRankAfterByTitle": {},
+    "adultGoogleBooksNarrativeStrengthRankDeltaByTitle": {},
+    "adultGoogleBooksNarrativeStrengthAppliedTitles": [],
+    "adultGoogleBooksNarrativeStrengthRankingChanges": {},
+    "googleBooksPlannedQueries": [],
+    "googleBooksQueriesAttempted": [],
+    "googleBooksRawCountByQuery": {},
+    "googleBooksAcceptedCountByQuery": {},
+    "googleBooksRejectedCountByQueryAndReason": {},
+    "adultGoogleBooksRejectedTitlesByReason": {},
+    "adultGoogleBooksAcceptedTitles": [],
+    "googleBooksFinalEligibilityDecisionByTitle": {},
+    "googleBooksFinalEligibilityReasonByTitle": {},
+    "googleBooksFinalEligibilityEvidenceByTitle": {},
+    "googleBooksPostRankingGateByTitle": {},
+    "googleBooksPostRankingGateReasonByTitle": {},
+    "googleBooksFinalSelectionDecisionByTitle": {},
+    "googleBooksFinalSelectionExclusionReasonByTitle": {},
+    "preteenGoogleBooksPublicationIdentityByTitle": {},
+    "preteenGoogleBooksPublicationIdentityConfidenceByTitle": {},
+    "preteenGoogleBooksPublicationIdentityEvidenceByTitle": {},
+    "preteenGoogleBooksPublicationNarrativeEvidenceByTitle": {},
+    "preteenGoogleBooksPublicationArtifactEvidenceByTitle": {},
+    "preteenGoogleBooksPublicationNarrativeConfidenceSourceByTitle": {},
+    "preteenGoogleBooksPublicationTrustedFieldEvidenceByTitle": {},
+    "preteenGoogleBooksPublicationOverriddenNarrativeEvidenceByTitle": {},
+    "preteenGoogleBooksPublicationDecisionByTitle": {},
+    "preteenGoogleBooksPublicationReasonByTitle": {},
+    "preteenGoogleBooksPublicationRecommendedFuturePolicyByTitle": {},
+    "preteenGoogleBooksPublicationRejectedTitles": [],
+    "preteenGoogleBooksPublicationIdentityRejectedBeforeScoringByTitle": {},
+    "preteenGoogleBooksPublicationIdentityEnteredScoringTitles": [],
+    "preteenGoogleBooksPublicationIdentityPreScoringSummary": {
+      "scope": "preteen_googlebooks_recognized_publication_identity_pre_scoring_enforcement",
+      "consideredCount": 0,
+      "rejectedBeforeScoringCount": 0,
+      "enteredScoringCount": 0,
+      "classifierRulesChanged": false,
+      "ageSuitabilityRulesChanged": false,
+      "scoringOrSelectionRulesChanged": false
+    },
+    "kidsGoogleBooksPreScoringDecisionByTitle": {},
+    "kidsGoogleBooksRejectedBeforeScoringByTitle": {},
+    "kidsGoogleBooksEnteredScoringTitles": [],
+    "kidsGoogleBooksInferredAudienceBandByTitle": {},
+    "kidsGoogleBooksAudienceEvidenceByTitle": {},
+    "kidsGoogleBooksFormatIdentityByTitle": {},
+    "kidsGoogleBooksFormatEvidenceByTitle": {},
+    "kidsGoogleBooksAudienceDecisionByTitle": {},
+    "kidsGoogleBooksAudienceRejectionReasonByTitle": {},
+    "kidsGoogleBooksRequestContextExcludedFromEvidenceByTitle": {},
+    "kidsGoogleBooksNotMatureExcludedFromAgeEvidenceByTitle": {},
+    "kidsGoogleBooksLikelyAdultOrYaTitles": [],
+    "kidsGoogleBooksLikelyK2Titles": [],
+    "kidsGoogleBooksAmbiguousAudienceTitles": [],
+    "kidsGoogleBooksRecommendationIdentityByTitle": {},
+    "kidsGoogleBooksCollectionEvidenceByTitle": {},
+    "kidsGoogleBooksSinglePublicationEvidenceByTitle": {},
+    "kidsGoogleBooksMarketingKeywordEvidenceByTitle": {},
+    "kidsGoogleBooksTrustedIdentityFieldsByTitle": {},
+    "kidsGoogleBooksIdentityDecisionByTitle": {},
+    "kidsGoogleBooksIdentityRejectionReasonByTitle": {},
+    "kidsGoogleBooksCollectionRejectedTitles": [],
+    "kidsGoogleBooksGenericBundleRejectedTitles": [],
+    "kidsGoogleBooksSingleStoryAcceptedTitles": [],
+    "kidsGoogleBooksAmbiguousIdentityTitles": [],
+    "kidsGoogleBooksAudienceFormatGateDecisionByTitle": {},
+    "kidsGoogleBooksPreScoringSummary": {
+      "scope": "kids_googlebooks_conclusive_identity_and_age_suitability_pre_scoring_enforcement",
+      "consideredCount": 0,
+      "rejectedBeforeScoringCount": 0,
+      "enteredScoringCount": 0,
+      "classifierRulesChanged": false,
+      "rescuePolicyChanged": false,
+      "scoringOrRankingRulesChanged": false
+    },
+    "teensGoogleBooksPreScoringAgeSuitabilityScoreByTitle": {},
+    "teensGoogleBooksPreScoringDecisionByTitle": {},
+    "teensGoogleBooksRejectedBeforeScoringByTitle": {},
+    "teensGoogleBooksEnteredScoringTitles": [],
+    "teensGoogleBooksPreScoringSummary": {
+      "scope": "teens_googlebooks_conclusive_age_suitability_pre_scoring_enforcement",
+      "consideredCount": 0,
+      "rejectedBeforeScoringCount": 0,
+      "enteredScoringCount": 0,
+      "conclusiveAgeSuitabilityMaximum": -4.5,
+      "explicitMaturePolicy": "tracked_separately_not_rejected",
+      "classifierRulesChanged": false,
+      "rescuePolicyChanged": false,
+      "scoringOrRankingRulesChanged": false
+    },
+    "googleBooksNormalizedRejectReasonByTitle": {},
+    "googleBooksNormalizationEligibilityByTitle": {},
+    "googleBooksNarrativeEvidenceByTitle": {},
+    "googleBooksAnthologyEvidenceByTitle": {},
+    "googleBooksReferenceEvidenceByTitle": {},
+    "googleBooksPublisherEvidenceByTitle": {},
+    "googleBooksPublicationShapeByTitle": {},
+    "googleBooksNarrativeConfidenceByTitle": {},
+    "googleBooksPublicationShapeEvidenceByTitle": {},
+    "googleBooksNarrativePriorityAdjustmentByTitle": {},
+    "googleBooksPublicationShapeRejectedBeforeRankingByTitle": {},
+    "googleBooksDominantPublicationShapeEvidenceByTitle": {},
+    "googleBooksOverriddenNarrativeEvidenceByTitle": {},
+    "googleBooksPublicationShapePrecedenceDecisionByTitle": {},
+    "googleBooksExplicitNonNarrativeIdentityByTitle": {},
+    "googleBooksStoryLevelNarrativeEvidenceByTitle": {},
+    "googleBooksGenericCategoryTitleByTitle": {},
+    "googleBooksGenericCategoryEvidenceByTitle": {},
+    "googleBooksGenericCategoryRejectedBeforeRankingByTitle": {},
+    "googleBooksUnknownShapeEligibilityByTitle": {},
+    "googleBooksUnknownShapeEvidenceByTitle": {},
+    "googleBooksUnknownShapeRejectedReasonByTitle": {},
+    "googleBooksUnknownStoryEvidenceCountByTitle": {},
+    "googleBooksUnknownStoryEvidenceFamiliesByTitle": {},
+    "googleBooksUnknownNarrativeCorroborationByTitle": {},
+    "googleBooksUnknownEligibilityThresholdDecisionByTitle": {},
+    "googleBooksSubjectOfStudyTitleByTitle": {},
+    "googleBooksSubjectOfStudyEvidenceByTitle": {},
+    "googleBooksSubjectOfStudyRejectedBeforeRankingByTitle": {},
+    "googleBooksCuratedBookGuideIdentityByTitle": {},
+    "googleBooksCuratedBookGuideEvidenceByTitle": {},
+    "googleBooksPeriodicalIdentityEvidenceByTitle": {},
+    "googleBooksPeriodicalIdentityDecisionByTitle": {},
+    "googleBooksRankedCandidateTitles": [],
+    "googleBooksEnteredRanking": [],
+    "googleBooksRejectedBeforeRankingReason": {},
+    "googleBooksAgeBandInfrastructureByDeck": {
+      "kids": {
+        "queryPlanning": {
+          "status": "shared",
+          "file": "app/recommender-v2/searchPlan.ts",
+          "note": "buildGoogleBooksIntents emits age-prefixed Google Books queries for non-Adult age bands."
+        },
+        "dispatch": {
+          "status": "shared",
+          "file": "app/recommender-v2/engine.ts",
+          "note": "runRecommenderV2 dispatches any enabled googleBooks source plan through sourceAdapters.googleBooks."
+        },
+        "fetchAdapter": {
+          "status": "shared",
+          "file": "app/recommender-v2/sources/googleBooksSource.ts",
+          "note": "The V2 adapter accepts all age bands; Adult-only fetch-query rewriting is bypassed for younger age bands."
+        },
+        "normalization": {
+          "status": "shared",
+          "file": "app/recommender-v2/normalize.ts",
+          "note": "normalizeSourceResults converts accepted Google Books rows into the shared NormalizedCandidate model."
+        },
+        "scoring": {
+          "status": "shared",
+          "file": "app/recommender-v2/score.ts",
+          "note": "scoreCandidates scores Google Books candidates for all age bands."
+        },
+        "ageSuitability": {
+          "status": "shared",
+          "file": "app/recommender-v2/score.ts",
+          "note": "ageSuitabilityScore contributes age-band suitability for all sources."
+        },
+        "publicationArtifacts": {
+          "status": "shared",
+          "file": "app/recommender-v2/sources/googleBooksSource.ts",
+          "note": "Publication-shape filtering currently runs in the shared Google Books adapter; it is not tuned here for younger age bands."
+        },
+        "sourceQuality": {
+          "status": "shared",
+          "file": "app/recommender-v2/score.ts",
+          "note": "sourceQualityRelevanceScore is calculated for all Google Books candidates."
+        },
+        "seriesDuplication": {
+          "status": "shared",
+          "file": "app/recommender-v2/select.ts",
+          "note": "Generic title, author, and series-root diversity is shared; Adult Google Books cluster handling remains Adult-only."
+        },
+        "countsLineage": {
+          "status": "available",
+          "file": "app/recommender-v2/engine.ts",
+          "note": "This audit reports query, dispatch, normalization, scoring, eligibility, selection, wrapper, and renderer handoff counts."
+        },
+        "wrapperRenderer": {
+          "status": "available",
+          "file": "screens/SwipeDeckScreen.tsx",
+          "note": "The V2 diagnostic wrapper exposes Google Books wrapper and renderer title handoffs."
+        },
+        "googleBooksOnlyRegression": {
+          "status": "available",
+          "file": "scripts/run-v2-googlebooks-age-band-infrastructure-audit-regressions.mjs",
+          "note": "Deterministic Google Books-only infrastructure fixtures cover Kids, Pre-Teens, and Teens."
+        },
+        "finalEligibility": {
+          "status": "age_specific",
+          "file": "app/recommender-v2/select.ts",
+          "note": "Kids use the shared Kids clean-final gate for all sources, including Google Books."
+        },
+        "meaningfulTasteAlignment": {
+          "status": "missing",
+          "file": "app/recommender-v2/select.ts",
+          "note": "No Google Books-specific Kids meaningful-taste final gate exists; only general scoring and Kids clean-final checks apply."
+        },
+        "googleBooksMetadataOnlyTasteEvidence": {
+          "status": "missing",
+          "file": "app/recommender-v2/score.ts",
+          "note": "Metadata-only scoring isolation is Adult Google Books-only; Kids Google Books still uses full candidateText."
+        }
+      },
+      "preteens": {
+        "queryPlanning": {
+          "status": "shared",
+          "file": "app/recommender-v2/searchPlan.ts",
+          "note": "buildGoogleBooksIntents emits age-prefixed Google Books queries for non-Adult age bands."
+        },
+        "dispatch": {
+          "status": "shared",
+          "file": "app/recommender-v2/engine.ts",
+          "note": "runRecommenderV2 dispatches any enabled googleBooks source plan through sourceAdapters.googleBooks."
+        },
+        "fetchAdapter": {
+          "status": "shared",
+          "file": "app/recommender-v2/sources/googleBooksSource.ts",
+          "note": "The V2 adapter accepts all age bands; Adult-only fetch-query rewriting is bypassed for younger age bands."
+        },
+        "normalization": {
+          "status": "shared",
+          "file": "app/recommender-v2/normalize.ts",
+          "note": "normalizeSourceResults converts accepted Google Books rows into the shared NormalizedCandidate model."
+        },
+        "scoring": {
+          "status": "shared",
+          "file": "app/recommender-v2/score.ts",
+          "note": "scoreCandidates scores Google Books candidates for all age bands."
+        },
+        "ageSuitability": {
+          "status": "shared",
+          "file": "app/recommender-v2/score.ts",
+          "note": "ageSuitabilityScore contributes age-band suitability for all sources."
+        },
+        "publicationArtifacts": {
+          "status": "shared",
+          "file": "app/recommender-v2/sources/googleBooksSource.ts",
+          "note": "Publication-shape filtering currently runs in the shared Google Books adapter; it is not tuned here for younger age bands."
+        },
+        "sourceQuality": {
+          "status": "shared",
+          "file": "app/recommender-v2/score.ts",
+          "note": "sourceQualityRelevanceScore is calculated for all Google Books candidates."
+        },
+        "seriesDuplication": {
+          "status": "shared",
+          "file": "app/recommender-v2/select.ts",
+          "note": "Generic title, author, and series-root diversity is shared; Adult Google Books cluster handling remains Adult-only."
+        },
+        "countsLineage": {
+          "status": "available",
+          "file": "app/recommender-v2/engine.ts",
+          "note": "This audit reports query, dispatch, normalization, scoring, eligibility, selection, wrapper, and renderer handoff counts."
+        },
+        "wrapperRenderer": {
+          "status": "available",
+          "file": "screens/SwipeDeckScreen.tsx",
+          "note": "The V2 diagnostic wrapper exposes Google Books wrapper and renderer title handoffs."
+        },
+        "googleBooksOnlyRegression": {
+          "status": "available",
+          "file": "scripts/run-v2-googlebooks-age-band-infrastructure-audit-regressions.mjs",
+          "note": "Deterministic Google Books-only infrastructure fixtures cover Kids, Pre-Teens, and Teens."
+        },
+        "finalEligibility": {
+          "status": "missing",
+          "file": "app/recommender-v2/select.ts",
+          "note": "Pre-Teen final eligibility helpers are called, but the current middle-grades rules allow non-Open-Library candidates through without Google Books-specific checks."
+        },
+        "meaningfulTasteAlignment": {
+          "status": "missing",
+          "file": "app/recommender-v2/select.ts",
+          "note": "middleGradesMeaningfulTasteEligibility is Open Library-only; Pre-Teen Google Books has no source-specific meaningful-taste gate."
+        },
+        "googleBooksMetadataOnlyTasteEvidence": {
+          "status": "missing",
+          "file": "app/recommender-v2/score.ts",
+          "note": "Metadata-only scoring isolation is Adult Google Books-only; Pre-Teen Google Books still uses full candidateText."
+        }
+      },
+      "teens": {
+        "queryPlanning": {
+          "status": "shared",
+          "file": "app/recommender-v2/searchPlan.ts",
+          "note": "buildGoogleBooksIntents emits age-prefixed Google Books queries for non-Adult age bands."
+        },
+        "dispatch": {
+          "status": "shared",
+          "file": "app/recommender-v2/engine.ts",
+          "note": "runRecommenderV2 dispatches any enabled googleBooks source plan through sourceAdapters.googleBooks."
+        },
+        "fetchAdapter": {
+          "status": "shared",
+          "file": "app/recommender-v2/sources/googleBooksSource.ts",
+          "note": "The V2 adapter accepts all age bands; Adult-only fetch-query rewriting is bypassed for younger age bands."
+        },
+        "normalization": {
+          "status": "shared",
+          "file": "app/recommender-v2/normalize.ts",
+          "note": "normalizeSourceResults converts accepted Google Books rows into the shared NormalizedCandidate model."
+        },
+        "scoring": {
+          "status": "shared",
+          "file": "app/recommender-v2/score.ts",
+          "note": "scoreCandidates scores Google Books candidates for all age bands."
+        },
+        "ageSuitability": {
+          "status": "shared",
+          "file": "app/recommender-v2/score.ts",
+          "note": "ageSuitabilityScore contributes age-band suitability for all sources."
+        },
+        "publicationArtifacts": {
+          "status": "shared",
+          "file": "app/recommender-v2/sources/googleBooksSource.ts",
+          "note": "Publication-shape filtering currently runs in the shared Google Books adapter; it is not tuned here for younger age bands."
+        },
+        "sourceQuality": {
+          "status": "shared",
+          "file": "app/recommender-v2/score.ts",
+          "note": "sourceQualityRelevanceScore is calculated for all Google Books candidates."
+        },
+        "seriesDuplication": {
+          "status": "shared",
+          "file": "app/recommender-v2/select.ts",
+          "note": "Generic title, author, and series-root diversity is shared; Adult Google Books cluster handling remains Adult-only."
+        },
+        "countsLineage": {
+          "status": "available",
+          "file": "app/recommender-v2/engine.ts",
+          "note": "This audit reports query, dispatch, normalization, scoring, eligibility, selection, wrapper, and renderer handoff counts."
+        },
+        "wrapperRenderer": {
+          "status": "available",
+          "file": "screens/SwipeDeckScreen.tsx",
+          "note": "The V2 diagnostic wrapper exposes Google Books wrapper and renderer title handoffs."
+        },
+        "googleBooksOnlyRegression": {
+          "status": "available",
+          "file": "scripts/run-v2-googlebooks-age-band-infrastructure-audit-regressions.mjs",
+          "note": "Deterministic Google Books-only infrastructure fixtures cover Kids, Pre-Teens, and Teens."
+        },
+        "finalEligibility": {
+          "status": "missing",
+          "file": "app/recommender-v2/select.ts",
+          "note": "Teen Open Library has a Teen-specific final gate, but Teen Google Books has no source-specific final eligibility gate."
+        },
+        "meaningfulTasteAlignment": {
+          "status": "missing",
+          "file": "app/recommender-v2/select.ts",
+          "note": "Teen Google Books has no Teen-specific meaningful metadata taste gate; Teen Open Library-only rules do not apply."
+        },
+        "googleBooksMetadataOnlyTasteEvidence": {
+          "status": "missing",
+          "file": "app/recommender-v2/score.ts",
+          "note": "Metadata-only scoring isolation is Adult Google Books-only; Teen Google Books still uses full candidateText."
+        }
+      }
+    },
+    "googleBooksAgeBandQueryPlanningByDeck": {
+      "kids": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      },
+      "preteens": {
+        "status": "disabled",
+        "sourcePlanPresent": true,
+        "enabled": false,
+        "plannedQueryCount": 0,
+        "plannedQueries": [],
+        "skippedReason": "source_disabled",
+        "failureKind": "source_disabled",
+        "preteenGoogleBooksGenreSignals": [
+          "adventure",
+          "fantasy"
+        ],
+        "preteenGoogleBooksThemeSignals": [
+          "friendship",
+          "quest"
+        ],
+        "preteenGoogleBooksToneSignals": [
+          "funny",
+          "witty"
+        ],
+        "preteenGoogleBooksRawSignalsInspected": [
+          "adventure",
+          "fantasy"
+        ],
+        "preteenGoogleBooksSignalsSkippedAfterSatisfied": [
+          "mystery"
+        ],
+        "preteenGoogleBooksGenreAnchorBySignal": {
+          "adventure": "adventure",
+          "fantasy": "fantasy"
+        },
+        "preteenGoogleBooksGenreAnchorsResolved": [
+          "adventure",
+          "fantasy"
+        ],
+        "preteenGoogleBooksDiscardedGenreSignals": [],
+        "preteenGoogleBooksPrimaryGenre": "adventure",
+        "preteenGoogleBooksSecondaryGenre": "fantasy",
+        "preteenGoogleBooksAdjacentGenre": "fantasy",
+        "preteenGoogleBooksGenericFallbackOccurred": false,
+        "preteenGoogleBooksQueryPlanReason": "primary_family_resolved:adventure",
+        "preteenGoogleBooksWinningMargin": "tied_multi_anchor",
+        "preteenGoogleBooksQueryFamilyByQuery": {
+          "middle grade adventure fiction novel": "adventure",
+          "middle grade fantasy humorous fiction": "fantasy",
+          "middle grade adventure contemporary fiction": "adventure"
+        },
+        "preteenGoogleBooksPlannedQueryList": [
+          "middle grade adventure fiction novel",
+          "middle grade fantasy humorous fiction",
+          "middle grade adventure contemporary fiction"
+        ],
+        "preteenGoogleBooksSignalScoreHistogram": {
+          "adventure": "recognized_anchor:adventure",
+          "fantasy": "recognized_anchor:fantasy",
+          "friendship": "discarded_no_anchor_match",
+          "quest": "recognized_anchor:adventure",
+          "funny": "recognized_anchor:humorous",
+          "witty": "discarded_no_anchor_match"
+        },
+        "preteenGoogleBooksSkippedSignalCount": 0,
+        "preteenGoogleBooksDiscardedSignalNote": "all_genre_signals_recognized"
+      },
+      "teens": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      }
+    },
+    "googleBooksAgeBandDispatchByDeck": {
+      "kids": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      },
+      "preteens": {
+        "status": "disabled",
+        "sourceResultPresent": true,
+        "attempted": false,
+        "sourceStatus": "skipped",
+        "skippedReason": "source_disabled",
+        "failedReason": "",
+        "timedOut": false,
+        "attemptedQueries": [],
+        "rawApiResultCount": 0,
+        "rawAcceptedCount": 0,
+        "failureKind": ""
+      },
+      "teens": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      }
+    },
+    "googleBooksAgeBandNormalizationByDeck": {
+      "kids": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      },
+      "preteens": {
+        "status": "bypassed",
+        "reason": "no_googlebooks_candidates_entered_stage",
+        "entered": 0,
+        "exited": 0,
+        "rawAcceptedCount": 0,
+        "normalizedCount": 0,
+        "ageBandLabelsPreservedInRawRows": true,
+        "rawAgeBandLabels": [],
+        "normalizedMaturityBandValues": [],
+        "normalizedContentMaturityValues": [],
+        "sourceMaturityRatingValues": [],
+        "note": "V2 normalization keeps Google Books source maturityRating as content maturity and does not compare NOT_MATURE to requested age-band labels."
+      },
+      "teens": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      }
+    },
+    "googleBooksAgeBandScoringHandoffByDeck": {
+      "kids": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      },
+      "preteens": {
+        "status": "bypassed",
+        "reason": "no_googlebooks_candidates_entered_stage",
+        "entered": 0,
+        "exited": 0,
+        "normalizedCount": 0,
+        "scoredCount": 0,
+        "scoredTitles": [],
+        "sourceQualityEvaluated": true,
+        "ageSuitabilityEvaluated": true
+      },
+      "teens": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      }
+    },
+    "googleBooksAgeBandEligibilityHandoffByDeck": {
+      "kids": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      },
+      "preteens": {
+        "status": "bypassed",
+        "scoredCount": 0,
+        "rejectedCount": 0,
+        "cleanCandidateCount": 0,
+        "finalEligibilityApplied": {
+          "status": "missing",
+          "file": "app/recommender-v2/select.ts",
+          "note": "Pre-Teen final eligibility helpers are called, but the current middle-grades rules allow non-Open-Library candidates through without Google Books-specific checks."
+        },
+        "meaningfulTasteAlignmentApplied": {
+          "status": "missing",
+          "file": "app/recommender-v2/select.ts",
+          "note": "middleGradesMeaningfulTasteEligibility is Open Library-only; Pre-Teen Google Books has no source-specific meaningful-taste gate."
+        }
+      },
+      "teens": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      }
+    },
+    "googleBooksAgeBandFinalSelectionHandoffByDeck": {
+      "kids": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      },
+      "preteens": {
+        "status": "bypassed",
+        "reason": "no_googlebooks_candidates_entered_stage",
+        "entered": 0,
+        "exited": 0,
+        "scoredCount": 0,
+        "selectedCount": 0,
+        "selectedTitles": []
+      },
+      "teens": {
+        "status": "bypassed",
+        "reason": "not_current_session_age_band",
+        "currentAgeBand": "preteens"
+      }
+    },
+    "googleBooksAgeBandRenderedTitlesByDeck": {
+      "kids": [],
+      "preteens": [],
+      "teens": []
+    },
+    "googleBooksAgeBandDropStageByTitle": {},
+    "googleBooksAgeBandDropReasonByTitle": {},
+    "googleBooksStageDecisionByTitle": {},
+    "googleBooksStageReasonByTitle": {},
+    "googleBooksStageGateByTitle": {},
+    "googleBooksStageOrder": [
+      "source_admission",
+      "normalization",
+      "publication_identity_or_shape_policy",
+      "audience_maturity_policy",
+      "pre_scoring",
+      "scoring_admission",
+      "ranking",
+      "final_eligibility",
+      "selection",
+      "rendering"
+    ],
+    "googleBooksAgeBandInfrastructureGaps": {
+      "kids": [
+        "Publication-shape filtering is shared but Adult-designed; younger age-band quality rules should be audited before tuning.",
+        "Reading-level evidence and age-category reliability are not independently validated for Google Books.",
+        "Graphic novel, manga, and light-novel handling should be age-band-specific future work.",
+        "Series-entry preference for younger readers is not Google Books-specific.",
+        "Picture-book versus chapter-book identity is not modeled for Google Books.",
+        "Early-reader identity is not modeled for Google Books.",
+        "Juvenile nonfiction, activity-book, workbook, and classroom artifact leakage needs a Kids-specific source audit."
+      ],
+      "preteens": [
+        "Publication-shape filtering is shared but Adult-designed; younger age-band quality rules should be audited before tuning.",
+        "Reading-level evidence and age-category reliability are not independently validated for Google Books.",
+        "Graphic novel, manga, and light-novel handling should be age-band-specific future work.",
+        "Series-entry preference for younger readers is not Google Books-specific.",
+        "Middle-grade versus YA distinction is not Google Books-specific.",
+        "School-assignment and classroom artifact suppression needs Google Books validation.",
+        "Middle-grade mature-content protection should not reuse Adult or Teen thresholds directly."
+      ],
+      "teens": [
+        "Publication-shape filtering is shared but Adult-designed; younger age-band quality rules should be audited before tuning.",
+        "Reading-level evidence and age-category reliability are not independently validated for Google Books.",
+        "Graphic novel, manga, and light-novel handling should be age-band-specific future work.",
+        "Series-entry preference for younger readers is not Google Books-specific.",
+        "YA versus Adult crossover and mature-content protection is not modeled for Teen Google Books.",
+        "Teen Google Books does not yet have a Teen-specific final meaningful-taste gate.",
+        "Teen source tuning must stay separate from the frozen Teen Open Library path."
+      ]
+    },
+    "googleBooksAgeBandInfrastructureSummary": {
+      "scope": "diagnostic_only_googlebooks_non_adult_infrastructure_audit",
+      "currentAgeBand": "preteens",
+      "currentDeck": "preteens",
+      "productionBehaviorChanged": false,
+      "sharedInfrastructureAvailable": [
+        "query_planning",
+        "dispatch",
+        "fetch_adapter",
+        "normalization",
+        "scoring",
+        "age_suitability_score",
+        "source_quality_score",
+        "generic_selection_diversity",
+        "session_count_lineage"
+      ],
+      "adultOnlyAssumptionsNotReused": [
+        "Adult Google Books metadata-only semantic matcher",
+        "Adult Google Books final meaningful-alignment gate",
+        "Adult Google Books identity enforcement",
+        "Adult Google Books narrative-strength ranking",
+        "Adult Google Books cluster diversity",
+        "Adult query rewriting with subject:fiction and exclusion terms"
+      ],
+      "recommendedImplementationSequence": [
+        "Verify each younger age band can produce Google Books rows with appropriate age metadata.",
+        "Decide whether Google Books maturityRating should be treated separately from app ageBand labels.",
+        "Add age-band-specific publication-shape and artifact audits before quality tuning.",
+        "Only after those audits, design Kids, Pre-Teen, or Teen Google Books final eligibility gates independently."
+      ]
+    },
+    "googleBooksAudienceBandByTitle": {},
+    "googleBooksContentMaturityByTitle": {},
+    "googleBooksSourceMaturityRatingByTitle": {},
+    "googleBooksRequestedDeckByTitle": {},
+    "googleBooksAgeSuitabilityDecisionByTitle": {},
+    "googleBooksMaturityDecisionByTitle": {},
+    "googleBooksAudienceMaturityComparisonByTitle": {},
+    "googleBooksAudienceMaturityMismatchTitles": [],
+    "googleBooksAudienceMaturitySemanticChanges": [
+      "google_books_maturity_rating_preserved_as_source_maturity_rating",
+      "google_books_not_mature_mapped_to_content_maturity_not_age_band",
+      "requested_deck_age_band_kept_separate_from_content_maturity",
+      "explicit_mature_google_books_content_rejected_for_kids_and_preteens",
+      "unknown_google_books_maturity_is_not_treated_as_mature_or_as_a_deck_label"
+    ],
+    "preteenGoogleBooksPublicationShapeRescueAppliedByTitle": {},
+    "preteenGoogleBooksPublicationShapeRescueReasonByTitle": {},
+    "preteenGoogleBooksPublicationShapeRescueEvidenceByTitle": {},
+    "preteenGoogleBooksPublicationShapeRescuedTitles": [],
+    "preteenGoogleBooksPublicationShapeRescueRejectedTitles": [],
+    "preteenGoogleBooksPublicationShapeRescueRejectedReasonByTitle": {},
+    "preteenGoogleBooksPublicationShapeRescueEnteredScoringTitles": [],
+    "preteenGoogleBooksPublicationShapeRescueSelectedTitles": [],
+    "preteenGoogleBooksPublicationShapeRescueNotSelectedReasonByTitle": {},
+    "preteenGoogleBooksPublicationShapeRescueSummary": {
+      "enteredScoringCount": 0,
+      "laterSelectedCount": 0,
+      "laterNotSelectedCount": 0,
+      "scoringCandidateCountChange": 0,
+      "finalRecommendationCountChange": 0,
+      "automaticFinalAcceptance": false
+    }
+  },
+  "snapshotId": "65e9dfb9396ed377",
+  "capturedAt": "2026-08-01T05:25:13.468Z",
+  "contentSha256": "03b5d8cd5cfe9759ebdb8ed3a84e183bc280709ad0c04ae56a1176d64fffc6a1"
+}

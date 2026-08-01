@@ -1,0 +1,31 @@
+{
+  "rubricId": "novelideas-human-review",
+  "version": "v1",
+  "scale": {
+    "min": 1,
+    "max": 5
+  },
+  "criteria": [
+    {
+      "id": "taste_alignment",
+      "label": "Taste alignment",
+      "description": "How well the title matches the user's stated taste signals."
+    },
+    {
+      "id": "novelty",
+      "label": "Novelty",
+      "description": "Whether the title feels meaningfully new instead of repeating known picks."
+    },
+    {
+      "id": "confidence",
+      "label": "Confidence",
+      "description": "How confident the reviewer is that this recommendation is a good fit."
+    }
+  ],
+  "decisionOptions": [
+    "recommend",
+    "weak_recommend",
+    "not_recommended"
+  ],
+  "notes": "Versioned rubric file. New rubric versions must use a new file and version string."
+}

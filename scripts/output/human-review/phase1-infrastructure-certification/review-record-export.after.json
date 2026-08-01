@@ -1,0 +1,275 @@
+{
+  "schemaVersion": "human_review_record_export_v1",
+  "exportedAt": "2026-08-01T06:10:23.543Z",
+  "sourceRecordsPath": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\phase1-infrastructure-certification\\review-records.imported.v1.ndjson",
+  "recordCount": 7,
+  "contentSignature": "015d9b4afcaa4eb819694d357a7d61ca",
+  "records": [
+    {
+      "schemaVersion": "human_review_record_v1",
+      "reviewId": "hr-phase1-r1",
+      "snapshotId": "c4e7a066abe1db3b",
+      "profileId": "kids-adventure-kindness-v1",
+      "rubricId": "novelideas-human-review",
+      "rubricVersion": "v1",
+      "reviewerId": "reviewer-alpha",
+      "createdAt": "2026-08-01T00:00:00.000Z",
+      "itemReviews": [
+        {
+          "rank": 1,
+          "title": "The Lantern Archive",
+          "overallScore": 4,
+          "decision": "recommend",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        },
+        {
+          "rank": 2,
+          "title": "Signal in the Stacks",
+          "overallScore": 3,
+          "decision": "weak_recommend",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        }
+      ],
+      "summary": {
+        "wouldUseSlate": true,
+        "notes": "phase1 primary review for kids-adventure-kindness-v1"
+      }
+    },
+    {
+      "schemaVersion": "human_review_record_v1",
+      "reviewId": "hr-phase1-r2",
+      "snapshotId": "65e9dfb9396ed377",
+      "profileId": "preteens-adventure-humor-v1",
+      "rubricId": "novelideas-human-review",
+      "rubricVersion": "v1",
+      "reviewerId": "reviewer-alpha",
+      "createdAt": "2026-08-01T00:00:00.000Z",
+      "itemReviews": [
+        {
+          "rank": 1,
+          "title": "The Lantern Archive",
+          "overallScore": 3,
+          "decision": "weak_recommend",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        },
+        {
+          "rank": 2,
+          "title": "Signal in the Stacks",
+          "overallScore": 2,
+          "decision": "not_recommended",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        }
+      ],
+      "summary": {
+        "wouldUseSlate": true,
+        "notes": "phase1 primary review for preteens-adventure-humor-v1"
+      }
+    },
+    {
+      "schemaVersion": "human_review_record_v1",
+      "reviewId": "hr-phase1-r3",
+      "snapshotId": "c8cd114ed4660a58",
+      "profileId": "teens-sci-fi-identity-v1",
+      "rubricId": "novelideas-human-review",
+      "rubricVersion": "v1",
+      "reviewerId": "reviewer-alpha",
+      "createdAt": "2026-08-01T00:00:00.000Z",
+      "itemReviews": [
+        {
+          "rank": 1,
+          "title": "The Lantern Archive",
+          "overallScore": 4,
+          "decision": "recommend",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        },
+        {
+          "rank": 2,
+          "title": "Signal in the Stacks",
+          "overallScore": 3,
+          "decision": "weak_recommend",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        }
+      ],
+      "summary": {
+        "wouldUseSlate": true,
+        "notes": "phase1 primary review for teens-sci-fi-identity-v1"
+      }
+    },
+    {
+      "schemaVersion": "human_review_record_v1",
+      "reviewId": "hr-phase1-r4",
+      "snapshotId": "eba0a0e98e4bac62",
+      "profileId": "teens-mystery-tension-v1",
+      "rubricId": "novelideas-human-review",
+      "rubricVersion": "v1",
+      "reviewerId": "reviewer-alpha",
+      "createdAt": "2026-08-01T00:00:00.000Z",
+      "itemReviews": [
+        {
+          "rank": 1,
+          "title": "The Lantern Archive",
+          "overallScore": 3,
+          "decision": "weak_recommend",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        },
+        {
+          "rank": 2,
+          "title": "Signal in the Stacks",
+          "overallScore": 2,
+          "decision": "not_recommended",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        }
+      ],
+      "summary": {
+        "wouldUseSlate": true,
+        "notes": "phase1 primary review for teens-mystery-tension-v1"
+      }
+    },
+    {
+      "schemaVersion": "human_review_record_v1",
+      "reviewId": "hr-phase1-r5",
+      "snapshotId": "22c73f18d4266bed",
+      "profileId": "adult-mystery-core-v1",
+      "rubricId": "novelideas-human-review",
+      "rubricVersion": "v1",
+      "reviewerId": "reviewer-alpha",
+      "createdAt": "2026-08-01T00:00:00.000Z",
+      "itemReviews": [
+        {
+          "rank": 1,
+          "title": "The Lantern Archive",
+          "overallScore": 4,
+          "decision": "recommend",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        },
+        {
+          "rank": 2,
+          "title": "Signal in the Stacks",
+          "overallScore": 3,
+          "decision": "weak_recommend",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        }
+      ],
+      "summary": {
+        "wouldUseSlate": true,
+        "notes": "phase1 primary review for adult-mystery-core-v1"
+      }
+    },
+    {
+      "schemaVersion": "human_review_record_v1",
+      "reviewId": "hr-phase1-r6",
+      "snapshotId": "1f3a18fb36fcaa53",
+      "profileId": "adult-fantasy-ensemble-v1",
+      "rubricId": "novelideas-human-review",
+      "rubricVersion": "v1",
+      "reviewerId": "reviewer-alpha",
+      "createdAt": "2026-08-01T00:00:00.000Z",
+      "itemReviews": [
+        {
+          "rank": 1,
+          "title": "The Lantern Archive",
+          "overallScore": 3,
+          "decision": "weak_recommend",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        },
+        {
+          "rank": 2,
+          "title": "Signal in the Stacks",
+          "overallScore": 2,
+          "decision": "not_recommended",
+          "criteriaRatings": {
+            "taste_alignment": 4,
+            "novelty": 3,
+            "confidence": 4
+          }
+        }
+      ],
+      "summary": {
+        "wouldUseSlate": true,
+        "notes": "phase1 primary review for adult-fantasy-ensemble-v1"
+      }
+    },
+    {
+      "schemaVersion": "human_review_record_v1",
+      "reviewId": "hr-phase1-r-disagree",
+      "snapshotId": "22c73f18d4266bed",
+      "profileId": "adult-mystery-core-v1",
+      "rubricId": "novelideas-human-review",
+      "rubricVersion": "v1",
+      "reviewerId": "reviewer-beta",
+      "createdAt": "2026-08-01T00:00:00.000Z",
+      "itemReviews": [
+        {
+          "rank": 1,
+          "title": "The Lantern Archive",
+          "overallScore": 2,
+          "decision": "not_recommended",
+          "criteriaRatings": {
+            "taste_alignment": 2,
+            "novelty": 2,
+            "confidence": 2
+          }
+        },
+        {
+          "rank": 2,
+          "title": "Signal in the Stacks",
+          "overallScore": 1,
+          "decision": "not_recommended",
+          "criteriaRatings": {
+            "taste_alignment": 2,
+            "novelty": 2,
+            "confidence": 2
+          }
+        }
+      ],
+      "summary": {
+        "wouldUseSlate": false,
+        "notes": "intentional disagreement record"
+      }
+    }
+  ]
+}

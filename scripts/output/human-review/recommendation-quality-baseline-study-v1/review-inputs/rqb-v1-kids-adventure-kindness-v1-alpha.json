@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "human_review_record_v1",
+  "reviewId": "rqb-v1-kids-adventure-kindness-v1-alpha",
+  "snapshotId": "c4e7a066abe1db3b",
+  "profileId": "kids-adventure-kindness-v1",
+  "rubricId": "novelideas-human-review",
+  "rubricVersion": "v1",
+  "reviewerId": "reviewer-alpha",
+  "createdAt": "2026-08-01T00:00:00.000Z",
+  "reviewScope": {
+    "studyId": "recommendation-quality-baseline-study-v1",
+    "ageBand": "kids"
+  },
+  "itemReviews": [
+    {
+      "rank": 1,
+      "title": "The Lantern Archive",
+      "overallScore": 4,
+      "decision": "recommend",
+      "criteriaRatings": {
+        "taste_alignment": 4,
+        "novelty": 3,
+        "confidence": 3
+      },
+      "concernTags": [
+        "low_novelty_repeat_signal"
+      ],
+      "uncertainty": {
+        "level": "low",
+        "note": "fit appears plausible but not fully certain"
+      }
+    },
+    {
+      "rank": 2,
+      "title": "Signal in the Stacks",
+      "overallScore": 3,
+      "decision": "weak_recommend",
+      "criteriaRatings": {
+        "taste_alignment": 3,
+        "novelty": 2,
+        "confidence": 2
+      },
+      "concernTags": [
+        "low_novelty_repeat_signal"
+      ],
+      "uncertainty": {
+        "level": "medium",
+        "note": "fit appears plausible but not fully certain"
+      }
+    }
+  ],
+  "summary": {
+    "wouldUseSlate": true,
+    "slateConcernTags": [
+      "low_novelty_repeat_signal"
+    ],
+    "notes": "baseline reviewer alpha for kids-adventure-kindness-v1"
+  }
+}

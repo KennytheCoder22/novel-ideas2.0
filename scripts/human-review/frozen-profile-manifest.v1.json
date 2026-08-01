@@ -1,0 +1,292 @@
+{
+  "manifestId": "novelideas-human-review-frozen-profiles",
+  "manifestVersion": "v1",
+  "createdAt": "2026-08-01T00:00:00.000Z",
+  "profiles": [
+    {
+      "id": "adult-mystery-core-v1",
+      "version": 1,
+      "session": {
+        "ageBand": "adult",
+        "limit": 5,
+        "enabledSources": {
+          "mock": true,
+          "googleBooks": false,
+          "openLibrary": false,
+          "kitsu": false,
+          "comicVine": false,
+          "localLibrary": false,
+          "nyt": false
+        },
+        "signals": [
+          {
+            "action": "like",
+            "title": "The Girl with the Dragon Tattoo",
+            "genres": [
+              "mystery",
+              "thriller"
+            ],
+            "themes": [
+              "investigation",
+              "justice"
+            ],
+            "tones": [
+              "dark",
+              "tense"
+            ]
+          },
+          {
+            "action": "like",
+            "title": "Gone Girl",
+            "genres": [
+              "mystery",
+              "psychological thriller"
+            ],
+            "themes": [
+              "deception"
+            ],
+            "tones": [
+              "suspenseful"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "adult-fantasy-ensemble-v1",
+      "version": 1,
+      "session": {
+        "ageBand": "adult",
+        "limit": 5,
+        "enabledSources": {
+          "mock": true,
+          "googleBooks": false,
+          "openLibrary": false,
+          "kitsu": false,
+          "comicVine": false,
+          "localLibrary": false,
+          "nyt": false
+        },
+        "signals": [
+          {
+            "action": "like",
+            "title": "The Name of the Wind",
+            "genres": [
+              "fantasy"
+            ],
+            "themes": [
+              "coming of age",
+              "destiny"
+            ],
+            "tones": [
+              "epic"
+            ]
+          },
+          {
+            "action": "like",
+            "title": "Mistborn",
+            "genres": [
+              "fantasy"
+            ],
+            "themes": [
+              "heist",
+              "rebellion"
+            ],
+            "tones": [
+              "adventurous"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "teens-sci-fi-identity-v1",
+      "version": 1,
+      "session": {
+        "ageBand": "teens",
+        "limit": 5,
+        "enabledSources": {
+          "mock": true,
+          "googleBooks": false,
+          "openLibrary": false,
+          "kitsu": false,
+          "comicVine": false,
+          "localLibrary": false,
+          "nyt": false
+        },
+        "signals": [
+          {
+            "action": "like",
+            "title": "Skyward",
+            "genres": [
+              "science fiction"
+            ],
+            "themes": [
+              "identity",
+              "courage"
+            ],
+            "tones": [
+              "fast-paced"
+            ]
+          },
+          {
+            "action": "like",
+            "title": "Scythe",
+            "genres": [
+              "science fiction",
+              "dystopian"
+            ],
+            "themes": [
+              "ethics",
+              "power"
+            ],
+            "tones": [
+              "thoughtful"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "teens-mystery-tension-v1",
+      "version": 1,
+      "session": {
+        "ageBand": "teens",
+        "limit": 5,
+        "enabledSources": {
+          "mock": true,
+          "googleBooks": false,
+          "openLibrary": false,
+          "kitsu": false,
+          "comicVine": false,
+          "localLibrary": false,
+          "nyt": false
+        },
+        "signals": [
+          {
+            "action": "like",
+            "title": "One of Us Is Lying",
+            "genres": [
+              "mystery",
+              "thriller"
+            ],
+            "themes": [
+              "secrets",
+              "friendship"
+            ],
+            "tones": [
+              "suspenseful"
+            ]
+          },
+          {
+            "action": "like",
+            "title": "A Good Girl's Guide to Murder",
+            "genres": [
+              "mystery"
+            ],
+            "themes": [
+              "investigation"
+            ],
+            "tones": [
+              "tense"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "preteens-adventure-humor-v1",
+      "version": 1,
+      "session": {
+        "ageBand": "preteens",
+        "limit": 5,
+        "enabledSources": {
+          "mock": true,
+          "googleBooks": false,
+          "openLibrary": false,
+          "kitsu": false,
+          "comicVine": false,
+          "localLibrary": false,
+          "nyt": false
+        },
+        "signals": [
+          {
+            "action": "like",
+            "title": "Percy Jackson and the Lightning Thief",
+            "genres": [
+              "fantasy",
+              "adventure"
+            ],
+            "themes": [
+              "friendship",
+              "quest"
+            ],
+            "tones": [
+              "funny"
+            ]
+          },
+          {
+            "action": "like",
+            "title": "The Bad Beginning",
+            "genres": [
+              "mystery"
+            ],
+            "themes": [
+              "siblings"
+            ],
+            "tones": [
+              "witty"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "kids-adventure-kindness-v1",
+      "version": 1,
+      "session": {
+        "ageBand": "kids",
+        "limit": 5,
+        "enabledSources": {
+          "mock": true,
+          "googleBooks": false,
+          "openLibrary": false,
+          "kitsu": false,
+          "comicVine": false,
+          "localLibrary": false,
+          "nyt": false
+        },
+        "signals": [
+          {
+            "action": "like",
+            "title": "Charlotte's Web",
+            "genres": [
+              "general"
+            ],
+            "themes": [
+              "friendship",
+              "kindness"
+            ],
+            "tones": [
+              "warm"
+            ]
+          },
+          {
+            "action": "like",
+            "title": "The Wild Robot",
+            "genres": [
+              "adventure"
+            ],
+            "themes": [
+              "belonging",
+              "courage"
+            ],
+            "tones": [
+              "hopeful"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

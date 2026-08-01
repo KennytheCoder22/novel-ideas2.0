@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "human_review_report_v1",
+  "generatedAt": "2026-08-01T06:10:23.909Z",
+  "snapshotsDir": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\phase1-infrastructure-certification\\snapshots",
+  "recordsPath": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\phase1-infrastructure-certification\\review-records.v1.ndjson",
+  "snapshotCount": 6,
+  "snapshots": [
+    {
+      "snapshotId": "1f3a18fb36fcaa53",
+      "profileId": "adult-fantasy-ensemble-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\phase1-infrastructure-certification\\snapshots\\adult-fantasy-ensemble-v1__1f3a18fb36fcaa53.json",
+      "titleCount": 1
+    },
+    {
+      "snapshotId": "22c73f18d4266bed",
+      "profileId": "adult-mystery-core-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\phase1-infrastructure-certification\\snapshots\\adult-mystery-core-v1__22c73f18d4266bed.json",
+      "titleCount": 2
+    },
+    {
+      "snapshotId": "c4e7a066abe1db3b",
+      "profileId": "kids-adventure-kindness-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\phase1-infrastructure-certification\\snapshots\\kids-adventure-kindness-v1__c4e7a066abe1db3b.json",
+      "titleCount": 0
+    },
+    {
+      "snapshotId": "65e9dfb9396ed377",
+      "profileId": "preteens-adventure-humor-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\phase1-infrastructure-certification\\snapshots\\preteens-adventure-humor-v1__65e9dfb9396ed377.json",
+      "titleCount": 2
+    },
+    {
+      "snapshotId": "eba0a0e98e4bac62",
+      "profileId": "teens-mystery-tension-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\phase1-infrastructure-certification\\snapshots\\teens-mystery-tension-v1__eba0a0e98e4bac62.json",
+      "titleCount": 2
+    },
+    {
+      "snapshotId": "c8cd114ed4660a58",
+      "profileId": "teens-sci-fi-identity-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\phase1-infrastructure-certification\\snapshots\\teens-sci-fi-identity-v1__c8cd114ed4660a58.json",
+      "titleCount": 1
+    }
+  ],
+  "summary": {
+    "records": 7,
+    "itemReviews": 14,
+    "avgOverallScore": 2.786,
+    "recommendRate": 0.214,
+    "profiles": [
+      {
+        "profileId": "adult-fantasy-ensemble-v1",
+        "reviewCount": 1,
+        "itemReviews": 2,
+        "avgOverallScore": 2.5,
+        "recommendRate": 0
+      },
+      {
+        "profileId": "adult-mystery-core-v1",
+        "reviewCount": 2,
+        "itemReviews": 4,
+        "avgOverallScore": 2.5,
+        "recommendRate": 0.25
+      },
+      {
+        "profileId": "kids-adventure-kindness-v1",
+        "reviewCount": 1,
+        "itemReviews": 2,
+        "avgOverallScore": 3.5,
+        "recommendRate": 0.5
+      },
+      {
+        "profileId": "preteens-adventure-humor-v1",
+        "reviewCount": 1,
+        "itemReviews": 2,
+        "avgOverallScore": 2.5,
+        "recommendRate": 0
+      },
+      {
+        "profileId": "teens-mystery-tension-v1",
+        "reviewCount": 1,
+        "itemReviews": 2,
+        "avgOverallScore": 2.5,
+        "recommendRate": 0
+      },
+      {
+        "profileId": "teens-sci-fi-identity-v1",
+        "reviewCount": 1,
+        "itemReviews": 2,
+        "avgOverallScore": 3.5,
+        "recommendRate": 0.5
+      }
+    ]
+  },
+  "profilesWithoutReviews": [],
+  "deterministicContentSignature": "8091022d092f2ad271bd0d84870c477a",
+  "reportSignature": "2229d58c34d2af1eb797eede8b985345"
+}

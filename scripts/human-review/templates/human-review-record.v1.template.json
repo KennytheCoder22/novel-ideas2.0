@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "human_review_record_v1",
+  "reviewId": "replace-with-unique-review-id",
+  "snapshotId": "copy-exact-snapshotId-from-snapshot-file",
+  "profileId": "copy-exact-profileId-from-snapshot-file",
+  "rubricId": "novelideas-human-review",
+  "rubricVersion": "v1",
+  "reviewerId": "replace-with-reviewer-id",
+  "createdAt": "replace-with-iso8601-utc-timestamp",
+  "itemReviews": [
+    {
+      "rank": 1,
+      "title": "copy-exact-rank-1-title-from-snapshot",
+      "overallScore": 3,
+      "decision": "weak_recommend",
+      "criteriaRatings": {
+        "taste_alignment": 3,
+        "novelty": 3,
+        "confidence": 3
+      }
+    },
+    {
+      "rank": 2,
+      "title": "copy-exact-rank-2-title-from-snapshot",
+      "overallScore": 3,
+      "decision": "weak_recommend",
+      "criteriaRatings": {
+        "taste_alignment": 3,
+        "novelty": 3,
+        "confidence": 3
+      }
+    },
+    {
+      "rank": 3,
+      "title": "copy-exact-rank-3-title-from-snapshot",
+      "overallScore": 3,
+      "decision": "weak_recommend",
+      "criteriaRatings": {
+        "taste_alignment": 3,
+        "novelty": 3,
+        "confidence": 3
+      }
+    },
+    {
+      "rank": 4,
+      "title": "copy-exact-rank-4-title-from-snapshot",
+      "overallScore": 3,
+      "decision": "weak_recommend",
+      "criteriaRatings": {
+        "taste_alignment": 3,
+        "novelty": 3,
+        "confidence": 3
+      }
+    },
+    {
+      "rank": 5,
+      "title": "copy-exact-rank-5-title-from-snapshot",
+      "overallScore": 3,
+      "decision": "weak_recommend",
+      "criteriaRatings": {
+        "taste_alignment": 3,
+        "novelty": 3,
+        "confidence": 3
+      }
+    }
+  ],
+  "summary": {
+    "wouldUseSlate": true,
+    "notes": "optional reviewer note"
+  }
+}
