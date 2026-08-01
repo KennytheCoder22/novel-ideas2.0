@@ -389,6 +389,12 @@ export interface SourceDiagnosticV2 {
   nytRetryAfterMs?: number;
   nytCacheHitByList?: Record<string, boolean>;
   nytUsedOverview?: boolean;
+  // Routing observability: intent-to-family inference and family-to-list selection.
+  nytFamilyInferredByIntent?: Record<string, string>;
+  nytListsSelectedByFamily?: Record<string, string[]>;
+  // Per-title rank and weeks_on_list captured from API for certification visibility.
+  nytRankByTitle?: Record<string, number>;
+  nytWeeksOnListByTitle?: Record<string, number>;
   googleBooksPlannedQueries?: string[];
   googleBooksQueriesAttempted?: string[];
   googleBooksRawCountByQuery?: Record<string, number>;

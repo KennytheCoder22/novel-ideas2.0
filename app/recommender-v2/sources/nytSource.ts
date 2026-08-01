@@ -187,25 +187,43 @@ function nytListsForFamily(family: string): string[] {
   return ["combined-print-and-e-book-fiction", "hardcover-fiction"];
 }
 
-function selectRequestedLists(plan: SourcePlan, _profile: TasteProfile): string[] {
+type ListSelectionResult = {
+  lists: string[];
+  familyInferredByIntent: Record<string, string>;
+  listsSelectedByFamily: Record<string, string[]>;
+};
+
+function selectRequestedLists(plan: SourcePlan, _profile: TasteProfile): ListSelectionResult {
   const explicit = String(process.env.V2_NYT_LISTS_OVERRIDE || "").trim();
   if (explicit) {
-    return uniqueStrings(
+    const lists = uniqueStrings(
       explicit
         .split(/[|,]/)
         .map((value) => String(value || "").trim().toLowerCase())
         .filter(Boolean),
       6,
     );
+    return { lists, familyInferredByIntent: {}, listsSelectedByFamily: { override: lists } };
   }
 
   const fromQueries = new Set<string>();
+  const familyInferredByIntent: Record<string, string> = {};
+  const listsSelectedByFamily: Record<string, string[]> = {};
+
   for (const intent of plan.intents || []) {
     const family = inferFamilyFromQuery(intent.query);
+    familyInferredByIntent[intent.query] = family;
+    if (!listsSelectedByFamily[family]) listsSelectedByFamily[family] = nytListsForFamily(family);
     for (const list of nytListsForFamily(family)) fromQueries.add(list);
   }
+
   const selected = Array.from(fromQueries);
-  return selected.length ? selected : nytListsForFamily("general");
+  if (!selected.length) {
+    const fallbackLists = nytListsForFamily("general");
+    listsSelectedByFamily.general = fallbackLists;
+    return { lists: fallbackLists, familyInferredByIntent, listsSelectedByFamily };
+  }
+  return { lists: selected, familyInferredByIntent, listsSelectedByFamily };
 }
 
 // Shared book-parsing core used by both the per-list path and the overview path.
@@ -436,7 +454,7 @@ export const nytSourceAdapter: SourceAdapterV2 = {
   source: "nyt",
   async search(plan, context): Promise<SourceResult> {
     const startedAt = nowIso();
-    const requestedLists = selectRequestedLists(plan, context.profile);
+    const { lists: requestedLists, familyInferredByIntent, listsSelectedByFamily } = selectRequestedLists(plan, context.profile);
     const apiKey = getNytApiKey();
 
     if (!apiKey) {
@@ -597,6 +615,8 @@ export const nytSourceAdapter: SourceAdapterV2 = {
 
     const seen = new Set<string>();
     const rawItems: Record<string, unknown>[] = [];
+    const rankByTitle: Record<string, number> = {};
+    const weeksByTitle: Record<string, number> = {};
     for (const book of allBooks) {
       const title = String(book.title || "").trim();
       const author = String(book.author || "").trim();
@@ -618,6 +638,9 @@ export const nytSourceAdapter: SourceAdapterV2 = {
       }
       seen.add(sourceKey);
       normalizedTitles.push(title);
+      // Capture rank and weeks_on_list for certification diagnostics (capped at 40 titles).
+      if (Object.keys(rankByTitle).length < 40 && Number.isFinite(book.rank)) rankByTitle[title] = book.rank!;
+      if (Object.keys(weeksByTitle).length < 40 && Number.isFinite(book.weeks_on_list)) weeksByTitle[title] = book.weeks_on_list!;
       const listLabel = String(book.display_name || book.list_name || "nyt-bestsellers").trim();
       rawItems.push({
         id: `nyt:${sourceKey}`,
@@ -705,6 +728,10 @@ export const nytSourceAdapter: SourceAdapterV2 = {
       nytRetryAfterMs: runRetryAfterMs,
       nytCacheHitByList: cacheHitByList,
       nytUsedOverview: usedOverview || undefined,
+      nytFamilyInferredByIntent: Object.keys(familyInferredByIntent).length ? familyInferredByIntent : undefined,
+      nytListsSelectedByFamily: Object.keys(listsSelectedByFamily).length ? listsSelectedByFamily : undefined,
+      nytRankByTitle: Object.keys(rankByTitle).length ? rankByTitle : undefined,
+      nytWeeksOnListByTitle: Object.keys(weeksByTitle).length ? weeksByTitle : undefined,
     };
 
     return {
