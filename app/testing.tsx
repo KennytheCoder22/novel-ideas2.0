@@ -120,7 +120,7 @@ export default function TestingRoute() {
 
       <View style={styles.swipeStage}>
         <SwipeDeckScreen
-          isTestingMode
+          isTestingMode={true}
           enabledDecks={enabledDecks}
           swipeCategories={swipeCategories}
           recommendationSourceEnabled={recommendationSourceEnabled as any}

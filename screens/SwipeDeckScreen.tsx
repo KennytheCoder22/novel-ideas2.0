@@ -5426,29 +5426,40 @@ function handleLeft() {
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
           <View style={styles.testPillRow}>
-            {!isTestingMode && testSessionPresets.map((preset) => (
-              <TouchableOpacity key={preset.id} style={styles.testPillButton} onPress={() => runTestSessionPreset(preset)}>
-                <Text style={styles.debugToggleText}>{preset.label}</Text>
-              </TouchableOpacity>
-            ))}
-            {!isTestingMode && (
-              <TouchableOpacity style={styles.testPillButton} onPress={handleCopyDiagnostics}>
-                <Text style={styles.debugToggleText}>Diagnostics</Text>
-              </TouchableOpacity>
+            {isTestingMode ? (
+              <>
+                {Platform.OS === "web" ? (
+                  <TouchableOpacity style={styles.humanReviewToggle} onPress={openHumanReviewForCurrentSlate}>
+                    <Text style={styles.debugToggleText}>Evaluate Recommendations</Text>
+                  </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity style={styles.testPillButton} onPress={handleFreshUserReset}>
+                  <Text style={styles.debugToggleText}>Fresh User</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {testSessionPresets.map((preset) => (
+                  <TouchableOpacity key={preset.id} style={styles.testPillButton} onPress={() => runTestSessionPreset(preset)}>
+                    <Text style={styles.debugToggleText}>{preset.label}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={styles.testPillButton} onPress={handleCopyDiagnostics}>
+                  <Text style={styles.debugToggleText}>Diagnostics</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.testPillButton} onPress={() => void handleCopyCodexDiagnostics()}>
+                  <Text style={styles.debugToggleText}>{v2DebugLoading ? "Codex Running..." : "Codex Diagnostics"}</Text>
+                </TouchableOpacity>
+                {Platform.OS === "web" ? (
+                  <TouchableOpacity style={styles.humanReviewToggle} onPress={openHumanReviewForCurrentSlate}>
+                    <Text style={styles.debugToggleText}>Review This Slate</Text>
+                  </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity style={styles.testPillButton} onPress={handleFreshUserReset}>
+                  <Text style={styles.debugToggleText}>Fresh User</Text>
+                </TouchableOpacity>
+              </>
             )}
-            {!isTestingMode && (
-              <TouchableOpacity style={styles.testPillButton} onPress={() => void handleCopyCodexDiagnostics()}>
-                <Text style={styles.debugToggleText}>{v2DebugLoading ? "Codex Running..." : "Codex Diagnostics"}</Text>
-              </TouchableOpacity>
-            )}
-            {Platform.OS === "web" ? (
-              <TouchableOpacity style={styles.humanReviewToggle} onPress={openHumanReviewForCurrentSlate}>
-                <Text style={styles.debugToggleText}>{isTestingMode ? "Evaluate Recommendations" : "Review This Slate"}</Text>
-              </TouchableOpacity>
-            ) : null}
-            <TouchableOpacity style={styles.testPillButton} onPress={handleFreshUserReset}>
-              <Text style={styles.debugToggleText}>Fresh User</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </View>

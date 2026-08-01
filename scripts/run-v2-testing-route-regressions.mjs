@@ -10,9 +10,9 @@
  *   T3  — app/testing.tsx does NOT pass any raw diagnostic props (adultKitsuOnlyForceQueryForValidation etc.)
  *   T4  — SwipeDeckScreen Props type includes isTestingMode?: boolean
  *   T5  — In testing mode, "Evaluate Recommendations" label is used (not "Review This Slate")
- *   T6  — In testing mode, Test preset controls are conditionally hidden (!isTestingMode guard)
- *   T7  — In testing mode, Diagnostics controls are conditionally hidden (!isTestingMode guard)
- *   T8  — "Fresh User" control always rendered (no isTestingMode guard)
+ *   T6  — testing mode lower-right branch contains only Evaluate Recommendations + Fresh User
+ *   T7  — admin branch still contains Test A/B/C, Diagnostics, Codex Diagnostics, Review This Slate, and Fresh User
+ *   T8  — "Fresh User" remains rendered in the testing branch
  *   T9  — "Review This Slate" label still used when isTestingMode is false/absent
  *   T10 — app/_layout.tsx registers the "testing" Stack.Screen
  *   T11 — testing.tsx does not import any internal recommendation engine modules
@@ -24,6 +24,8 @@
  *   T17 — reviewer field autofocuses in testing mode for keyboard-first completion
  *   T18 — review modal keeps taps active while keyboard is open and remains scrollable on small screens
  *   T19 — testing modal copy hides raw profile/snapshot IDs while admin copy remains available
+ *   T20 — extracted testing control branch omits Test A/B/C, Diagnostics, and Codex Diagnostics
+ *   T21 — extracted admin control branch still includes the internal controls
  */
 
 import { readFileSync } from "node:fs";
@@ -50,6 +52,17 @@ function assertNotIncludes(content, fragment, msg) {
 const testingSource = readFileSync(resolve(ROOT, "app/testing.tsx"), "utf8");
 const swipeDeckSource = readFileSync(resolve(ROOT, "screens/SwipeDeckScreen.tsx"), "utf8");
 const layoutSource = readFileSync(resolve(ROOT, "app/_layout.tsx"), "utf8");
+const testingBranchStart = swipeDeckSource.indexOf("{isTestingMode ? (");
+const adminBranchDivider = swipeDeckSource.indexOf(") : (", testingBranchStart);
+const testingBranchSource =
+  testingBranchStart >= 0 && adminBranchDivider > testingBranchStart
+    ? swipeDeckSource.slice(testingBranchStart, adminBranchDivider)
+    : "";
+const adminBranchEnd = swipeDeckSource.indexOf("</>", adminBranchDivider);
+const adminBranchSource =
+  adminBranchDivider >= 0 && adminBranchEnd > adminBranchDivider
+    ? swipeDeckSource.slice(adminBranchDivider, adminBranchEnd + 3)
+    : "";
 
 // T1: testing.tsx exists and has default export
 {
@@ -60,12 +73,7 @@ const layoutSource = readFileSync(resolve(ROOT, "app/_layout.tsx"), "utf8");
 
 // T2: testing.tsx passes isTestingMode={true} or isTestingMode
 {
-  const hasTestingModeProp =
-    testingSource.includes("isTestingMode={true}") ||
-    testingSource.includes("isTestingMode\n") ||
-    testingSource.includes("isTestingMode\r") ||
-    testingSource.match(/isTestingMode\s*[^=]/) !== null;
-  assertIncludes(testingSource, "isTestingMode", "T2: testing.tsx passes isTestingMode prop to SwipeDeckScreen");
+  assertIncludes(testingSource, "isTestingMode={true}", "T2: testing.tsx must pass isTestingMode={true} explicitly to SwipeDeckScreen");
   console.log("PASS T2: app/testing.tsx passes isTestingMode prop to SwipeDeckScreen");
 }
 
@@ -85,35 +93,37 @@ const layoutSource = readFileSync(resolve(ROOT, "app/_layout.tsx"), "utf8");
 // T5: In testing mode, "Evaluate Recommendations" label is used
 {
   assertIncludes(swipeDeckSource, "Evaluate Recommendations", "T5: 'Evaluate Recommendations' label must exist in SwipeDeckScreen");
-  assertIncludes(swipeDeckSource, "isTestingMode ? \"Evaluate Recommendations\"", "T5: label is conditional on isTestingMode");
+  assertIncludes(swipeDeckSource, "{isTestingMode ? (", "T5: controls must branch explicitly for testing mode");
   console.log("PASS T5: 'Evaluate Recommendations' label used when isTestingMode is true");
 }
 
-// T6: Test preset controls are conditionally hidden
+// T6: testing branch contains only the two public controls
 {
-  assertIncludes(swipeDeckSource, "!isTestingMode && testSessionPresets", "T6: testSessionPresets render is guarded by !isTestingMode");
-  console.log("PASS T6: Test preset controls (Test A/B/C) are guarded by !isTestingMode");
-}
-
-// T7: Diagnostics controls are conditionally hidden
-{
-  assertIncludes(swipeDeckSource, "!isTestingMode && (", "T7: Diagnostics/Codex controls are guarded by !isTestingMode");
-  console.log("PASS T7: Diagnostics controls are guarded by !isTestingMode");
-}
-
-// T8: Fresh User always rendered (no isTestingMode guard around it)
-{
-  // Find the Fresh User button block and verify it is NOT inside an isTestingMode conditional
-  const freshUserIdx = swipeDeckSource.indexOf('"Fresh User"');
-  assert(freshUserIdx >= 0, "T8: 'Fresh User' text must exist in SwipeDeckScreen");
-  // The 300 chars preceding the Fresh User text should not contain "isTestingMode" as a guard
-  const precedingContext = swipeDeckSource.slice(Math.max(0, freshUserIdx - 300), freshUserIdx);
-  // It should NOT have a direct {!isTestingMode && immediately before the Fresh User TouchableOpacity
-  assert(
-    !precedingContext.includes("!isTestingMode && (\n              <TouchableOpacity style={styles.testPillButton} onPress={handleFreshUserReset}"),
-    "T8: Fresh User must not be wrapped in !isTestingMode guard"
+  assertIncludes(swipeDeckSource, "{isTestingMode ? (", "T6: controls must split into an explicit testing-mode branch");
+  assertIncludes(swipeDeckSource, "<Text style={styles.debugToggleText}>Evaluate Recommendations</Text>", "T6: testing branch must render Evaluate Recommendations");
+  assertIncludes(swipeDeckSource, "<Text style={styles.debugToggleText}>Fresh User</Text>", "T6: testing branch must render Fresh User");
+  assertNotIncludes(
+    swipeDeckSource,
+    "{!isTestingMode && testSessionPresets.map",
+    "T6: testing branch should not rely on a shared label that can leak admin copy"
   );
-  console.log("PASS T8: 'Fresh User' control is always rendered (no isTestingMode guard)");
+  console.log("PASS T6: testing branch contains only Evaluate Recommendations and Fresh User");
+}
+
+// T7: admin branch retains the internal controls
+{
+  assertIncludes(swipeDeckSource, "{testSessionPresets.map((preset) => (", "T7: admin branch must still render test presets");
+  assertIncludes(swipeDeckSource, "<Text style={styles.debugToggleText}>Diagnostics</Text>", "T7: admin branch must still render Diagnostics");
+  assertIncludes(swipeDeckSource, "Codex Diagnostics", "T7: admin branch must still render Codex Diagnostics");
+  assertIncludes(swipeDeckSource, "<Text style={styles.debugToggleText}>Review This Slate</Text>", "T7: admin branch must still render Review This Slate");
+  console.log("PASS T7: admin branch preserves the internal controls");
+}
+
+// T8: Fresh User remains available in testing mode
+{
+  assert(testingBranchSource.length > 0, "T8: testing branch must be present");
+  assertIncludes(testingBranchSource, "Fresh User", "T8: Fresh User text must exist in testing branch");
+  console.log("PASS T8: 'Fresh User' remains available in testing mode");
 }
 
 // T9: "Review This Slate" label used when isTestingMode is false
@@ -224,4 +234,24 @@ const layoutSource = readFileSync(resolve(ROOT, "app/_layout.tsx"), "utf8");
   console.log("PASS T19: testing modal hides raw IDs while preserving admin copy");
 }
 
-console.log("\n✓ All testing-route regressions passed (19 tests).");
+  // T20: extracted testing control branch omits all five internal controls
+  {
+    assert(testingBranchSource.length > 0, "T20: testing control branch must be extractable");
+    for (const forbidden of ["Test A", "Test B", "Test C", "Diagnostics", "Codex Diagnostics"]) {
+      assertNotIncludes(testingBranchSource, forbidden, `T20: testing control branch must not include ${forbidden}`);
+    }
+    assertIncludes(testingBranchSource, "Evaluate Recommendations", "T20: testing control branch must include Evaluate Recommendations");
+    assertIncludes(testingBranchSource, "Fresh User", "T20: testing control branch must include Fresh User");
+    console.log("PASS T20: testing control branch omits Test A/B/C, Diagnostics, and Codex Diagnostics");
+  }
+
+  // T21: extracted admin control branch preserves the internal controls
+  {
+    assert(adminBranchSource.length > 0, "T21: admin control branch must be extractable");
+    for (const required of ["testSessionPresets", "Diagnostics", "Codex Diagnostics", "Review This Slate", "Fresh User"]) {
+      assertIncludes(adminBranchSource, required, `T21: admin control branch must include ${required}`);
+    }
+    console.log("PASS T21: admin control branch still includes the internal controls");
+  }
+
+  console.log("\n✓ All testing-route regressions passed (21 tests).");
