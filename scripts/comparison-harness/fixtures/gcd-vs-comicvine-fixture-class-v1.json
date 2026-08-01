@@ -1,0 +1,1388 @@
+{
+  "adapterVersion": "1.0.0",
+  "captureKind": "source_competence_fixture_class_comparison",
+  "cases": [
+    {
+      "caseId": "gn-adult-speculative-ensemble",
+      "humanReviewArtifacts": [],
+      "profile": {
+        "ageBand": "adult",
+        "formatIntent": [
+          "graphic_novel"
+        ],
+        "negativeSignals": [],
+        "positiveSignals": [],
+        "profileId": "gn-adult-speculative-ensemble",
+        "readerIntentSummary": "Speculative graphic novels with ensemble or found-family adventure; avoid reference and art books."
+      },
+      "sources": [
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:gcd:gn-adult-speculative-ensemble:frozen",
+          "diagnostics": {
+            "dropCounts": {
+              "collapsed_publication_variant": 2
+            },
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-adult-speculative-ensemble",
+          "selected": [
+            {
+              "creators": [
+                "Avery North",
+                "June Vale"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "single_issue"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "gcd-series:101",
+              "stableId": "gcd-recommendation:1001",
+              "themes": [],
+              "title": "Beacon Patrol",
+              "workKey": "gcd-recommendation:1001"
+            },
+            {
+              "creators": [
+                "Avery North"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "collected_volume"
+              ],
+              "genres": [],
+              "isbn13": "SYNTH-TRADE-1101",
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "gcd-series:102",
+              "stableId": "gcd-recommendation:issues:1001,1003,1004,1005",
+              "themes": [],
+              "title": "Beacon Patrol: First Light",
+              "workKey": "gcd-recommendation:issues:1001,1003,1004,1005"
+            },
+            {
+              "creators": [
+                "Mara Tide"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "collected_volume"
+              ],
+              "genres": [],
+              "isbn13": "SYNTH-HC-1201",
+              "publicationYear": 2023,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 3,
+              "seriesKey": "gcd-series:103",
+              "stableId": "gcd-recommendation:issues:12001,12002,12003",
+              "themes": [],
+              "title": "Harbor Witches: Tides",
+              "workKey": "gcd-recommendation:issues:12001,12002,12003"
+            },
+            {
+              "creators": [
+                "Mika Sora"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "omnibus"
+              ],
+              "genres": [],
+              "isbn13": "SYNTH-OMNI-1301",
+              "publicationYear": 2025,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 4,
+              "seriesKey": "gcd-series:104",
+              "stableId": "gcd-recommendation:1301",
+              "themes": [],
+              "title": "Clockwork Orchard Omnibus 1",
+              "workKey": "gcd-recommendation:1301"
+            },
+            {
+              "creators": [
+                "Rowan Ellis"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": "SYNTH-GN-1401",
+              "publicationYear": 2022,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 5,
+              "seriesKey": "gcd-series:105",
+              "stableId": "gcd-recommendation:1401",
+              "themes": [],
+              "title": "The Cartographer's Lantern",
+              "workKey": "gcd-recommendation:1401"
+            },
+            {
+              "creators": [],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "boxed_set"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2025,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 6,
+              "seriesKey": "gcd-series:106",
+              "stableId": "gcd-recommendation:1501",
+              "themes": [],
+              "title": "Beacon Patrol Library Box",
+              "workKey": "gcd-recommendation:1501"
+            }
+          ],
+          "source": "gcd",
+          "targetSlateSize": 6,
+          "terminalState": "classified_complete"
+        },
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:comicvine:gn-adult-speculative-ensemble:frozen",
+          "diagnostics": {
+            "dropCounts": {
+              "collapsed_publication_variant": 2
+            },
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-adult-speculative-ensemble",
+          "selected": [
+            {
+              "creators": [
+                "Sable Morrow",
+                "Fen Okura"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "single_issue"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "cv-series:201",
+              "stableId": "cv-recommendation:2001",
+              "themes": [],
+              "title": "First Contact",
+              "workKey": "cv-recommendation:2001"
+            },
+            {
+              "creators": [
+                "Sable Morrow"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "collected_volume"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "cv-series:202",
+              "stableId": "cv-recommendation:issues:2001,2003,2004,2005",
+              "themes": [],
+              "title": "Drift Engine Vol. 1: First Contact",
+              "workKey": "cv-recommendation:issues:2001,2003,2004,2005"
+            },
+            {
+              "creators": [
+                "Sable Morrow"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "omnibus"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2025,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 3,
+              "seriesKey": "cv-series:203",
+              "stableId": "cv-recommendation:2201",
+              "themes": [],
+              "title": "Drift Engine: The Omnibus",
+              "workKey": "cv-recommendation:2201"
+            },
+            {
+              "creators": [
+                "Petra Vance",
+                "Fen Okura"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "boxed_set"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2025,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 4,
+              "seriesKey": "cv-series:204",
+              "stableId": "cv-recommendation:2301",
+              "themes": [],
+              "title": "The Threshold Archives [Boxed Set]",
+              "workKey": "cv-recommendation:2301"
+            },
+            {
+              "creators": [
+                "Petra Vance",
+                "Cael Ingrid"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 5,
+              "seriesKey": "cv-series:205",
+              "stableId": "cv-recommendation:2401",
+              "themes": [],
+              "title": "Glass Meridian",
+              "workKey": "cv-recommendation:2401"
+            },
+            {
+              "creators": [
+                "Cael Ingrid"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-speculative-ensemble",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 6,
+              "seriesKey": "cv-series:206",
+              "stableId": "cv-recommendation:2501",
+              "themes": [],
+              "title": "Signals from the Fold",
+              "workKey": "cv-recommendation:2501"
+            }
+          ],
+          "source": "comicvine",
+          "targetSlateSize": 6,
+          "terminalState": "classified_complete"
+        }
+      ]
+    },
+    {
+      "caseId": "gn-adult-horror-mystery",
+      "humanReviewArtifacts": [],
+      "profile": {
+        "ageBand": "adult",
+        "formatIntent": [
+          "graphic_novel"
+        ],
+        "negativeSignals": [],
+        "positiveSignals": [],
+        "profileId": "gn-adult-horror-mystery",
+        "readerIntentSummary": "Atmospheric horror and mystery graphic works; avoid non-narrative guides."
+      },
+      "sources": [
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:gcd:gn-adult-horror-mystery:frozen",
+          "diagnostics": {
+            "dropCounts": {
+              "supporting_reference": 1
+            },
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-adult-horror-mystery",
+          "selected": [
+            {
+              "creators": [
+                "Sam Rivera"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2021,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-horror-mystery",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "gcd-series:201",
+              "stableId": "gcd-recommendation:2001",
+              "themes": [],
+              "title": "Winter Bus",
+              "workKey": "gcd-recommendation:2001"
+            },
+            {
+              "creators": [
+                "Dana West"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "single_issue"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 1988,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-horror-mystery",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "gcd-series:202",
+              "stableId": "gcd-recommendation:2101",
+              "themes": [],
+              "title": "Night Garden",
+              "workKey": "gcd-recommendation:2101"
+            },
+            {
+              "creators": [
+                "Lee Nwosu"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "single_issue"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2022,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-horror-mystery",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 3,
+              "seriesKey": "gcd-series:203",
+              "stableId": "gcd-recommendation:2201",
+              "themes": [],
+              "title": "Night Garden",
+              "workKey": "gcd-recommendation:2201"
+            }
+          ],
+          "source": "gcd",
+          "targetSlateSize": 3,
+          "terminalState": "classified_complete_with_metadata_limits"
+        },
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:comicvine:gn-adult-horror-mystery:frozen",
+          "diagnostics": {
+            "dropCounts": {
+              "supporting_reference": 1
+            },
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-adult-horror-mystery",
+          "selected": [
+            {
+              "creators": [
+                "Rhys Ellory",
+                "Orin Shale"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-horror-mystery",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "cv-series:301",
+              "stableId": "cv-recommendation:3001",
+              "themes": [],
+              "title": "Night Garden",
+              "workKey": "cv-recommendation:3001"
+            },
+            {
+              "creators": [
+                "Vesper Cole"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2022,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-horror-mystery",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "cv-series:302",
+              "stableId": "cv-recommendation:3101",
+              "themes": [],
+              "title": "Night Garden",
+              "workKey": "cv-recommendation:3101"
+            },
+            {
+              "creators": [
+                "Rhys Ellory",
+                "Orin Shale"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2023,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-adult-horror-mystery",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 3,
+              "seriesKey": "cv-series:303",
+              "stableId": "cv-recommendation:3201",
+              "themes": [],
+              "title": "The Warden",
+              "workKey": "cv-recommendation:3201"
+            }
+          ],
+          "source": "comicvine",
+          "targetSlateSize": 3,
+          "terminalState": "classified_complete_with_metadata_limits"
+        }
+      ]
+    },
+    {
+      "caseId": "gn-teen-fantasy-adventure",
+      "humanReviewArtifacts": [],
+      "profile": {
+        "ageBand": "teens",
+        "formatIntent": [
+          "graphic_novel"
+        ],
+        "negativeSignals": [],
+        "positiveSignals": [],
+        "profileId": "gn-teen-fantasy-adventure",
+        "readerIntentSummary": "Teen fantasy/adventure graphic novels with friendship and identity themes."
+      },
+      "sources": [
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:gcd:gn-teen-fantasy-adventure:frozen",
+          "diagnostics": {
+            "dropCounts": {
+              "collapsed_publication_variant": 1
+            },
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-teen-fantasy-adventure",
+          "selected": [
+            {
+              "creators": [
+                "Pia Woods"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2020,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-fantasy-adventure",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "gcd-series:301",
+              "stableId": "gcd-recommendation:3001",
+              "themes": [],
+              "title": "River Knights: The Glass Ford",
+              "workKey": "gcd-recommendation:3001"
+            },
+            {
+              "creators": [
+                "Nora Bell"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "collected_volume"
+              ],
+              "genres": [],
+              "isbn13": "SYNTH-RED-HC",
+              "publicationYear": 2020,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-fantasy-adventure",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "gcd-series:302",
+              "stableId": "gcd-recommendation:issues:31001,31002,31003",
+              "themes": [],
+              "title": "Red Valley",
+              "workKey": "gcd-recommendation:issues:31001,31002,31003"
+            },
+            {
+              "creators": [
+                "Nora Bell"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2023,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-fantasy-adventure",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 3,
+              "seriesKey": "gcd-series:303",
+              "stableId": "gcd-recommendation:3201",
+              "themes": [],
+              "title": "Salt City Signals",
+              "workKey": "gcd-recommendation:3201"
+            }
+          ],
+          "source": "gcd",
+          "targetSlateSize": 3,
+          "terminalState": "identity_preserved_audience_unsupported"
+        },
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:comicvine:gn-teen-fantasy-adventure:frozen",
+          "diagnostics": {
+            "dropCounts": {
+              "collapsed_publication_variant": 1
+            },
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-teen-fantasy-adventure",
+          "selected": [
+            {
+              "creators": [
+                "Emi Strand",
+                "Teo Vargas"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-fantasy-adventure",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "cv-series:401",
+              "stableId": "cv-recommendation:4001",
+              "themes": [],
+              "title": "The Lantern Road",
+              "workKey": "cv-recommendation:4001"
+            },
+            {
+              "creators": [
+                "Emi Strand"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-fantasy-adventure",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "cv-series:402",
+              "stableId": "cv-recommendation:4101",
+              "themes": [],
+              "title": "Stormhaven Vol. 3",
+              "workKey": "cv-recommendation:4101"
+            },
+            {
+              "creators": [],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "collected_volume"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-fantasy-adventure",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 3,
+              "seriesKey": "cv-series:403",
+              "stableId": "cv-recommendation:issues:4401,4402,4403,4404,4405",
+              "themes": [],
+              "title": "Ember Crossing Vol. 1 [Trade]",
+              "workKey": "cv-recommendation:issues:4401,4402,4403,4404,4405"
+            }
+          ],
+          "source": "comicvine",
+          "targetSlateSize": 3,
+          "terminalState": "identity_preserved_audience_unsupported"
+        }
+      ]
+    },
+    {
+      "caseId": "gn-teen-superhero-identity",
+      "humanReviewArtifacts": [],
+      "profile": {
+        "ageBand": "teens",
+        "formatIntent": [
+          "graphic_novel"
+        ],
+        "negativeSignals": [],
+        "positiveSignals": [],
+        "profileId": "gn-teen-superhero-identity",
+        "readerIntentSummary": "Accessible teen superhero identity stories; avoid inaccessible middle issues."
+      },
+      "sources": [
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:gcd:gn-teen-superhero-identity:frozen",
+          "diagnostics": {
+            "dropCounts": {
+              "ambiguous_reading_unit": 1,
+              "collapsed_publication_variant": 1
+            },
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-teen-superhero-identity",
+          "selected": [
+            {
+              "creators": [
+                "Dev Patel"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "single_issue"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-superhero-identity",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "gcd-series:401",
+              "stableId": "gcd-recommendation:4001",
+              "themes": [],
+              "title": "Sky Engine",
+              "workKey": "gcd-recommendation:4001"
+            },
+            {
+              "creators": [
+                "Dev Patel"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "single_issue"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-superhero-identity",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "gcd-series:401",
+              "stableId": "gcd-recommendation:4003",
+              "themes": [],
+              "title": "Sky Engine",
+              "workKey": "gcd-recommendation:4003"
+            }
+          ],
+          "source": "gcd",
+          "targetSlateSize": 2,
+          "terminalState": "classified_with_ambiguity_and_audience_limit"
+        },
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:comicvine:gn-teen-superhero-identity:frozen",
+          "diagnostics": {
+            "dropCounts": {
+              "ambiguous_reading_unit": 1,
+              "collapsed_publication_variant": 1
+            },
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-teen-superhero-identity",
+          "selected": [
+            {
+              "creators": [
+                "Kay Linden",
+                "Orion Bell"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "single_issue"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-superhero-identity",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "cv-series:501",
+              "stableId": "cv-recommendation:5001",
+              "themes": [],
+              "title": "Circuit #1",
+              "workKey": "cv-recommendation:5001"
+            },
+            {
+              "creators": [
+                "Kay Linden",
+                "Orion Bell"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "single_issue"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-superhero-identity",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "cv-series:501",
+              "stableId": "cv-recommendation:5201",
+              "themes": [],
+              "title": "Circuit #7",
+              "workKey": "cv-recommendation:5201"
+            }
+          ],
+          "source": "comicvine",
+          "targetSlateSize": 2,
+          "terminalState": "classified_with_ambiguity_and_audience_limit"
+        }
+      ]
+    },
+    {
+      "caseId": "gn-preteen-humor-adventure",
+      "humanReviewArtifacts": [],
+      "profile": {
+        "ageBand": "preteens",
+        "formatIntent": [
+          "graphic_novel"
+        ],
+        "negativeSignals": [],
+        "positiveSignals": [],
+        "profileId": "gn-preteen-humor-adventure",
+        "readerIntentSummary": "Preteen humorous adventure graphic novels with age-appropriate stakes."
+      },
+      "sources": [
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:gcd:gn-preteen-humor-adventure:frozen",
+          "diagnostics": {
+            "dropCounts": {},
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-preteen-humor-adventure",
+          "selected": [
+            {
+              "creators": [
+                "Kit Snow",
+                "Pia Moss"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "standalone_graphic_work"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2022,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-preteen-humor-adventure",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "gcd-series:501",
+              "stableId": "gcd-recommendation:5001",
+              "themes": [],
+              "title": "Dragon Club Detectives",
+              "workKey": "gcd-recommendation:5001"
+            },
+            {
+              "creators": [
+                "Ari Reed"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "collected_volume"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2023,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-preteen-humor-adventure",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "gcd-series:502",
+              "stableId": "gcd-recommendation:issues:50021,50022,50023",
+              "themes": [],
+              "title": "Library Door Adventures",
+              "workKey": "gcd-recommendation:issues:50021,50022,50023"
+            }
+          ],
+          "source": "gcd",
+          "targetSlateSize": 2,
+          "terminalState": "identity_preserved_audience_and_maturity_unsupported"
+        },
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:comicvine:gn-preteen-humor-adventure:frozen",
+          "diagnostics": {
+            "dropCounts": {},
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-preteen-humor-adventure",
+          "selected": [
+            {
+              "creators": [
+                "Nia Cross"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "single_issue"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-preteen-humor-adventure",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "cv-series:601",
+              "stableId": "cv-recommendation:6001",
+              "themes": [],
+              "title": "The Wild Patrol Vol. 1",
+              "workKey": "cv-recommendation:6001"
+            },
+            {
+              "creators": [
+                "Nia Cross"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "single_issue"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-preteen-humor-adventure",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "cv-series:601",
+              "stableId": "cv-recommendation:6002",
+              "themes": [],
+              "title": "The Wild Patrol Vol. 2",
+              "workKey": "cv-recommendation:6002"
+            }
+          ],
+          "source": "comicvine",
+          "targetSlateSize": 2,
+          "terminalState": "identity_preserved_audience_and_maturity_unsupported"
+        }
+      ]
+    },
+    {
+      "caseId": "gn-teen-manga-volume",
+      "humanReviewArtifacts": [],
+      "profile": {
+        "ageBand": "teens",
+        "formatIntent": [
+          "graphic_novel"
+        ],
+        "negativeSignals": [],
+        "positiveSignals": [],
+        "profileId": "gn-teen-manga-volume",
+        "readerIntentSummary": "Teen manga volume with fantasy/adventure and a viable series entry."
+      },
+      "sources": [
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:gcd:gn-teen-manga-volume:frozen",
+          "diagnostics": {
+            "dropCounts": {},
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-teen-manga-volume",
+          "selected": [
+            {
+              "creators": [
+                "Mika Sora"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "manga_volume"
+              ],
+              "genres": [],
+              "isbn13": "SYNTH-MANGA-6001",
+              "publicationYear": 2023,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-manga-volume",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "gcd-series:601",
+              "stableId": "gcd-recommendation:6001",
+              "themes": [],
+              "title": "Clockwork Orchard, Volume 3",
+              "workKey": "gcd-recommendation:6001"
+            },
+            {
+              "creators": [
+                "Mika Sora"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "omnibus"
+              ],
+              "genres": [],
+              "isbn13": "SYNTH-MANGA-OMNI-6002",
+              "publicationYear": 2025,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-manga-volume",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "gcd-series:602",
+              "stableId": "gcd-recommendation:6002",
+              "themes": [],
+              "title": "Clockwork Orchard Omnibus 1",
+              "workKey": "gcd-recommendation:6002"
+            }
+          ],
+          "source": "gcd",
+          "targetSlateSize": 2,
+          "terminalState": "classified_complete_audience_unsupported"
+        },
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:comicvine:gn-teen-manga-volume:frozen",
+          "diagnostics": {
+            "dropCounts": {},
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "gn-teen-manga-volume",
+          "selected": [
+            {
+              "creators": [
+                "Hana Fujita"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "manga_volume"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2024,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-manga-volume",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 1,
+              "seriesKey": "cv-series:701",
+              "stableId": "cv-recommendation:7001",
+              "themes": [],
+              "title": "Crystal Gate Vol. 3",
+              "workKey": "cv-recommendation:7001"
+            },
+            {
+              "creators": [
+                "Hana Fujita"
+              ],
+              "description": null,
+              "documentEvidence": {
+                "negative": [],
+                "positive": []
+              },
+              "formats": [
+                "omnibus"
+              ],
+              "genres": [],
+              "isbn13": null,
+              "publicationYear": 2025,
+              "queryProvenance": {
+                "fallback": false,
+                "query": "synthetic_fixture_competence_replay:gn-teen-manga-volume",
+                "queryFamily": "source_competence_fixture"
+              },
+              "selectedRank": 2,
+              "seriesKey": "cv-series:702",
+              "stableId": "cv-recommendation:7101",
+              "themes": [],
+              "title": "Crystal Gate: Complete Omnibus",
+              "workKey": "cv-recommendation:7101"
+            }
+          ],
+          "source": "comicvine",
+          "targetSlateSize": 2,
+          "terminalState": "classified_complete_audience_unsupported"
+        }
+      ]
+    },
+    {
+      "caseId": "control-valid_empty_response",
+      "humanReviewArtifacts": [],
+      "profile": {
+        "ageBand": "adult",
+        "formatIntent": [
+          "graphic_novel"
+        ],
+        "negativeSignals": [],
+        "positiveSignals": [],
+        "profileId": "control-valid_empty_response",
+        "readerIntentSummary": "Operational empty-response control."
+      },
+      "sources": [
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:gcd:control-valid_empty_response:frozen",
+          "diagnostics": {
+            "dropCounts": {},
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "control-valid_empty_response",
+          "selected": [],
+          "source": "gcd",
+          "targetSlateSize": 0,
+          "terminalState": "valid_empty_response"
+        },
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:comicvine:control-valid_empty_response:frozen",
+          "diagnostics": {
+            "dropCounts": {},
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "control-valid_empty_response",
+          "selected": [],
+          "source": "comicvine",
+          "targetSlateSize": 0,
+          "terminalState": "valid_empty_response"
+        }
+      ]
+    },
+    {
+      "caseId": "control-response_invalid",
+      "humanReviewArtifacts": [],
+      "profile": {
+        "ageBand": "adult",
+        "formatIntent": [
+          "graphic_novel"
+        ],
+        "negativeSignals": [],
+        "positiveSignals": [],
+        "profileId": "control-response_invalid",
+        "readerIntentSummary": "Operational invalid-response control."
+      },
+      "sources": [
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:gcd:control-response_invalid:frozen",
+          "diagnostics": {
+            "dropCounts": {},
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "control-response_invalid",
+          "selected": [],
+          "source": "gcd",
+          "targetSlateSize": 0,
+          "terminalState": "response_invalid"
+        },
+        {
+          "actualActivation": "attempted",
+          "artifactId": "source-competence:comicvine:control-response_invalid:frozen",
+          "diagnostics": {
+            "dropCounts": {},
+            "rejectionCounts": {}
+          },
+          "failureReason": null,
+          "mode": "source_competence_fixture_replay",
+          "profileId": "control-response_invalid",
+          "selected": [],
+          "source": "comicvine",
+          "targetSlateSize": 0,
+          "terminalState": "response_invalid"
+        }
+      ]
+    }
+  ],
+  "equivalenceCertification": "comparison_valid",
+  "evidenceClass": "Fixture Class",
+  "fixtureId": "gcd-vs-comicvine-fixture-class-v1",
+  "phaseIArtifact": "scripts/source-competence/frozen/gcd-phase1-summary.json",
+  "phaseIIArtifact": "scripts/source-competence/frozen/comicvine-phase2-summary.json",
+  "schemaVersion": "1.0.0"
+}
