@@ -26,9 +26,13 @@
  *   T19 — testing modal copy hides raw profile/snapshot IDs while admin copy remains available
  *   T20 — extracted testing control branch omits Test A/B/C, Diagnostics, and Codex Diagnostics
  *   T21 — extracted admin control branch still includes the internal controls
+ *   T22 — vercel.json exists to support direct navigation to /testing on static web output
+ *   T23 — vercel.json rewrites direct /testing requests to the SPA shell without redirecting
+ *   T24 — vercel.json rewrites refreshes and nested /testing paths to the SPA shell
+ *   T25 — root route configuration remains unchanged (no redirect/rewrite from /)
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,6 +56,8 @@ function assertNotIncludes(content, fragment, msg) {
 const testingSource = readFileSync(resolve(ROOT, "app/testing.tsx"), "utf8");
 const swipeDeckSource = readFileSync(resolve(ROOT, "screens/SwipeDeckScreen.tsx"), "utf8");
 const layoutSource = readFileSync(resolve(ROOT, "app/_layout.tsx"), "utf8");
+const vercelConfigPath = resolve(ROOT, "vercel.json");
+const vercelConfig = existsSync(vercelConfigPath) ? JSON.parse(readFileSync(vercelConfigPath, "utf8")) : null;
 const testingBranchStart = swipeDeckSource.indexOf("{isTestingMode ? (");
 const adminBranchDivider = swipeDeckSource.indexOf(") : (", testingBranchStart);
 const testingBranchSource =
@@ -254,4 +260,37 @@ const adminBranchSource =
     console.log("PASS T21: admin control branch still includes the internal controls");
   }
 
-  console.log("\n✓ All testing-route regressions passed (21 tests).");
+  // T22: vercel.json exists for static-web route publishing
+  {
+    assert(vercelConfig !== null, "T22: vercel.json must exist");
+    assert(Array.isArray(vercelConfig.rewrites), "T22: vercel.json must define rewrites");
+    console.log("PASS T22: vercel.json exists and defines rewrites");
+  }
+
+  // T23: direct /testing navigation rewrites to the SPA shell without a redirect
+  {
+    const directTestingRewrite = vercelConfig.rewrites.find(
+      (rewrite) => rewrite && rewrite.source === "/testing" && rewrite.destination === "/"
+    );
+    assert(Boolean(directTestingRewrite), "T23: vercel.json must rewrite /testing to /");
+    assert(!("redirects" in vercelConfig), "T23: vercel.json must use rewrites, not redirects, for /testing");
+    console.log("PASS T23: direct /testing navigation rewrites to the SPA shell without redirecting");
+  }
+
+  // T24: refresh on /testing (and nested testing paths) resolves to the SPA shell
+  {
+    const nestedTestingRewrite = vercelConfig.rewrites.find(
+      (rewrite) => rewrite && rewrite.source === "/testing/:path*" && rewrite.destination === "/"
+    );
+    assert(Boolean(nestedTestingRewrite), "T24: vercel.json must rewrite /testing/:path* to /");
+    console.log("PASS T24: refreshes and nested /testing paths rewrite to the SPA shell");
+  }
+
+  // T25: root route remains unchanged
+  {
+    const rootRewrite = vercelConfig.rewrites.find((rewrite) => rewrite && rewrite.source === "/");
+    assert(!rootRewrite, "T25: vercel.json must not rewrite the root route");
+    console.log("PASS T25: root route remains unchanged");
+  }
+
+  console.log("\n✓ All testing-route regressions passed (25 tests).");
