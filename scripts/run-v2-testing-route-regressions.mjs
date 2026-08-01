@@ -16,9 +16,14 @@
  *   T9  — "Review This Slate" label still used when isTestingMode is false/absent
  *   T10 — app/_layout.tsx registers the "testing" Stack.Screen
  *   T11 — testing.tsx does not import any internal recommendation engine modules
- *   T12 — submitHumanReview success message uses storage-mode-aware text (no hardcoded "not durable")
+ *   T12 — submitHumanReview success message uses storage-mode-aware text
  *   T13 — Intro banner localStorage key is defined and reasonable
  *   T14 — testing.tsx enables all four age-band decks
+ *   T15 — testing mode blocks non-durable save responses with explicit operator-facing error text
+ *   T16 — testing mode renders a thank-you completion screen with a Start Fresh CTA
+ *   T17 — reviewer field autofocuses in testing mode for keyboard-first completion
+ *   T18 — review modal keeps taps active while keyboard is open and remains scrollable on small screens
+ *   T19 — testing modal copy hides raw profile/snapshot IDs while admin copy remains available
  */
 
 import { readFileSync } from "node:fs";
@@ -147,11 +152,9 @@ const layoutSource = readFileSync(resolve(ROOT, "app/_layout.tsx"), "utf8");
 
 // T12: submitHumanReview success message is storage-mode-aware
 {
-  // The old hardcoded text "not durable on Vercel serverless" should still exist in non-durable path
-  // but the new code should have "durable_postgres" check for testing mode path
   assertIncludes(swipeDeckSource, "durableSaved", "T12: submitHumanReview must have durableSaved variable");
   assertIncludes(swipeDeckSource, "durable_postgres", "T12: submitHumanReview must check for durable_postgres storageMode");
-  assertIncludes(swipeDeckSource, "Evaluation saved", "T12: durable path must say 'Evaluation saved' (clean confirmation)");
+  assertIncludes(swipeDeckSource, "Thank you! Your evaluation was saved.", "T12: durable testing path must use a clean thank-you confirmation");
   assertIncludes(swipeDeckSource, "Review saved locally", "T12: non-durable path must distinguish with 'Review saved locally'");
   console.log("PASS T12: submitHumanReview success message is storage-mode-aware (no false durable claims)");
 }
@@ -174,4 +177,51 @@ const layoutSource = readFileSync(resolve(ROOT, "app/_layout.tsx"), "utf8");
   console.log("PASS T14: app/testing.tsx enables all four age-band decks");
 }
 
-console.log("\n✓ All testing-route regressions passed (14 tests).");
+// T15: testing mode explicitly blocks non-durable saves
+{
+  assertIncludes(swipeDeckSource, "if (isTestingMode && !durableSaved)", "T15: testing mode must guard against non-durable save success responses");
+  assertIncludes(
+    swipeDeckSource,
+    "durable review storage is unavailable. Please tell the test operator and try again later.",
+    "T15: testing mode must show an explicit operator-facing durable storage failure message"
+  );
+  assertIncludes(
+    swipeDeckSource,
+    "testing database isn't configured yet. Please tell the test operator and try again later.",
+    "T15: testing mode must handle missing Postgres config with explicit copy"
+  );
+  console.log("PASS T15: testing mode blocks non-durable saves with explicit durable-storage failure text");
+}
+
+// T16: testing mode shows a dedicated thank-you completion state with Start Fresh CTA
+{
+  assertIncludes(swipeDeckSource, "showHumanReviewCompletion", "T16: completion state must be tracked in SwipeDeckScreen");
+  assertIncludes(swipeDeckSource, "Thanks for helping test NovelIdeas", "T16: completion screen title must exist");
+  assertIncludes(swipeDeckSource, "Start Fresh", "T16: completion screen must expose a Start Fresh CTA");
+  console.log("PASS T16: testing mode renders a thank-you completion state with Start Fresh CTA");
+}
+
+// T17: reviewer field autofocuses in testing mode for keyboard-first completion
+{
+  assertIncludes(swipeDeckSource, "autoFocus={isTestingMode}", "T17: reviewer input must autofocus in testing mode");
+  assertIncludes(swipeDeckSource, 'returnKeyType="next"', "T17: reviewer input should expose forward keyboard navigation");
+  console.log("PASS T17: reviewer field autofocuses in testing mode");
+}
+
+// T18: modal remains scrollable and keyboard-safe on small screens
+{
+  assertIncludes(swipeDeckSource, 'keyboardShouldPersistTaps="handled"', "T18: review modal ScrollView must keep taps active while keyboard is open");
+  assertIncludes(swipeDeckSource, 'maxHeight: "85%"', "T18: review panel must remain height-capped for small-screen scrolling");
+  console.log("PASS T18: review modal supports scrolling and keyboard-safe taps on small screens");
+}
+
+// T19: testing copy hides raw IDs while admin copy remains available
+{
+  assertIncludes(swipeDeckSource, 'isTestingMode ? "Evaluate Recommendations" : "Human Review (Admin)"', "T19: modal heading must switch between testing and admin copy");
+  assertIncludes(swipeDeckSource, 'Tell us whether these recommendations fit the tastes you showed while swiping.', "T19: testing intro copy must exist");
+  assertIncludes(swipeDeckSource, 'Profile: {humanReviewSnapshot.profileId}', "T19: admin-only profile line must still exist");
+  assertIncludes(swipeDeckSource, 'Snapshot: {humanReviewSnapshot.snapshotId}', "T19: admin-only snapshot line must still exist");
+  console.log("PASS T19: testing modal hides raw IDs while preserving admin copy");
+}
+
+console.log("\n✓ All testing-route regressions passed (19 tests).");

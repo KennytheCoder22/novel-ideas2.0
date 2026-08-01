@@ -6,6 +6,7 @@ import {
   Animated,
   Dimensions,
   Image,
+  KeyboardAvoidingView,
   PanResponder,
   SafeAreaView,
   ScrollView,
@@ -1253,6 +1254,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [humanReviewForm, setHumanReviewForm] = useState<HumanReviewSlateForm | null>(null);
   const [humanReviewStatus, setHumanReviewStatus] = useState<string>("");
   const [humanReviewSubmitting, setHumanReviewSubmitting] = useState(false);
+  const [showHumanReviewCompletion, setShowHumanReviewCompletion] = useState(false);
   const [showHumanReviewContext, setShowHumanReviewContext] = useState(false);
   const [middleGradesDeepDebugUiEnabled, setMiddleGradesDeepDebugUiEnabled] = useState(() => readMiddleGradesDeepDebugRequest().active);
   const v2UrlTriggeredRef = useRef(false);
@@ -3137,6 +3139,12 @@ function handleLeft() {
     setPresetExportedAfterRecommendation(false);
     setPresetExecutionError("");
     setShowRating(false);
+    setShowHumanReviewPanel(false);
+    setShowHumanReviewContext(false);
+    setShowHumanReviewCompletion(false);
+    setHumanReviewSnapshot(null);
+    setHumanReviewForm(null);
+    setHumanReviewStatus("");
     setLastRecommendationInput(null);
     setLastRecommendationTimestamp("");
     setLastRecommendationSwipeSummary("");
@@ -4837,6 +4845,7 @@ function handleLeft() {
     setHumanReviewSnapshot(snapshot);
     setHumanReviewForm(form);
     setHumanReviewStatus("");
+    setShowHumanReviewCompletion(false);
     setShowHumanReviewContext(false);
     setShowHumanReviewPanel(true);
   }
@@ -4902,17 +4911,41 @@ function handleLeft() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const message = String((payload as any)?.error || `append_failed_http_${response.status}`);
+        const errorCode = String((payload as any)?.error || `append_failed_http_${response.status}`);
+        const detail = String((payload as any)?.detail || "").trim();
+        if (isTestingMode && (errorCode === "durable_storage_unavailable" || response.status === 503)) {
+          setHumanReviewStatus(
+            "We couldn't save your evaluation because the testing database isn't configured yet. Please tell the test operator and try again later."
+          );
+          return;
+        }
+        const message = detail ? `${errorCode}: ${detail}` : errorCode;
         setHumanReviewStatus(`Submit failed: ${message}`);
         return;
       }
 
-      storagePushUnique("novelideas_human_review_submissions", duplicateKey);
       const storageMode: string = String((payload as any)?.storageMode || "local_filesystem");
       const durableSaved = storageMode === "durable_postgres";
+      if (isTestingMode && !durableSaved) {
+        setHumanReviewStatus(
+          "We couldn't save your evaluation because durable review storage is unavailable. Please tell the test operator and try again later."
+        );
+        return;
+      }
+
+      storagePushUnique("novelideas_human_review_submissions", duplicateKey);
+
+      if (isTestingMode) {
+        setHumanReviewStatus("Thank you! Your evaluation was saved.");
+        setShowHumanReviewCompletion(true);
+        setShowHumanReviewPanel(false);
+        setShowHumanReviewContext(false);
+        return;
+      }
+
       setHumanReviewStatus(
         durableSaved
-          ? `Evaluation saved. Thank you!\nReview ID: ${String((payload as any)?.appendedReviewId || record.reviewId)}`
+          ? `Review saved.\nReview ID: ${String((payload as any)?.appendedReviewId || record.reviewId)}\nStorage: ${storageMode}`
           : `Review saved locally.\nReview ID: ${String((payload as any)?.appendedReviewId || record.reviewId)}\nSnapshot unchanged: ${(payload as any)?.snapshotUnchanged ? "Yes" : "No (new snapshot recorded)"}\nStorage: ${storageMode} (Admin/local only — not durable on Vercel serverless)`
       );
       setShowHumanReviewPanel(false);
@@ -5432,24 +5465,46 @@ function handleLeft() {
         >
           <View style={styles.humanReviewModalOverlay}>
             {humanReviewSnapshot && humanReviewForm ? (
-              <View style={styles.humanReviewPanel}>
-                <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={true}>
-                  <Text style={styles.v2DebugTitle}>Human Review (Admin)</Text>
-                  <Text style={[styles.v2DebugText, { color: "#f5a623", fontStyle: "italic", marginBottom: 4 }]}>
-                    ⚠ Storage: local filesystem only. Records will not persist on Vercel serverless after redeployment.
-                    Suitable for Admin/local review only.
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={styles.humanReviewPanel}
+              >
+                <ScrollView
+                  contentContainerStyle={{ paddingBottom: 24 }}
+                  showsVerticalScrollIndicator={true}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <Text style={styles.v2DebugTitle}>
+                    {isTestingMode ? "Evaluate Recommendations" : "Human Review (Admin)"}
                   </Text>
-                  <Text style={styles.v2DebugText}>Age band: {humanReviewSnapshot.ageBand}</Text>
-                  <Text style={styles.v2DebugText}>Profile: {humanReviewSnapshot.profileId}</Text>
-                  <Text style={styles.v2DebugText}>Snapshot: {humanReviewSnapshot.snapshotId}</Text>
-                  <Text style={styles.v2DebugText}>Rubric: v1</Text>
+                  {isTestingMode ? (
+                    <Text style={[styles.v2DebugText, styles.humanReviewPublicIntro]}>
+                      Tell us whether these recommendations fit the tastes you showed while swiping.
+                    </Text>
+                  ) : (
+                    <>
+                      <Text style={[styles.v2DebugText, { color: "#f5a623", fontStyle: "italic", marginBottom: 4 }]}>
+                        ⚠ Storage: local filesystem only. Records will not persist on Vercel serverless after redeployment.
+                        Suitable for Admin/local review only.
+                      </Text>
+                      <Text style={styles.v2DebugText}>Age band: {humanReviewSnapshot.ageBand}</Text>
+                      <Text style={styles.v2DebugText}>Profile: {humanReviewSnapshot.profileId}</Text>
+                      <Text style={styles.v2DebugText}>Snapshot: {humanReviewSnapshot.snapshotId}</Text>
+                      <Text style={styles.v2DebugText}>Rubric: v1</Text>
+                    </>
+                  )}
+                  {isTestingMode ? <Text style={styles.v2DebugText}>Age band: {humanReviewSnapshot.ageBand}</Text> : null}
 
                   <TextInput
                     style={styles.humanReviewInput}
-                    placeholder="Reviewer ID"
+                    placeholder={isTestingMode ? "Reviewer code" : "Reviewer ID"}
                     placeholderTextColor="#9db3d9"
                     value={humanReviewForm.reviewerId}
                     onChangeText={(value) => setHumanReviewForm((prev) => (prev ? { ...prev, reviewerId: value } : prev))}
+                    autoFocus={isTestingMode}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    accessibilityLabel={isTestingMode ? "Reviewer code" : "Reviewer ID"}
                   />
 
                   {humanReviewForm.sessionContext &&
@@ -5711,8 +5766,36 @@ function handleLeft() {
                     </TouchableOpacity>
                   </View>
                 </ScrollView>
-              </View>
+              </KeyboardAvoidingView>
             ) : null}
+          </View>
+        </Modal>
+      ) : null}
+      {Platform.OS === "web" && isTestingMode ? (
+        <Modal
+          visible={showHumanReviewCompletion}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowHumanReviewCompletion(false)}
+        >
+          <View style={styles.humanReviewModalOverlay}>
+            <View style={styles.humanReviewCompletionCard}>
+              <Text style={styles.humanReviewCompletionTitle}>Thanks for helping test NovelIdeas</Text>
+              <Text style={styles.humanReviewCompletionBody}>
+                Your evaluation was saved successfully. You can start a new swipe session below if you want to test another reader profile.
+              </Text>
+              <TouchableOpacity
+                style={styles.humanReviewCompletionPrimaryButton}
+                onPress={() => {
+                  setShowHumanReviewCompletion(false);
+                  handleFreshUserReset();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Start fresh with a new testing session"
+              >
+                <Text style={styles.humanReviewCompletionPrimaryButtonText}>Start Fresh</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Modal>
       ) : null}
@@ -6231,6 +6314,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 14,
   },
+  humanReviewPublicIntro: {
+    marginBottom: 6,
+  },
   humanReviewActionRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -6243,6 +6329,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
+  },
+  humanReviewCompletionCard: {
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 460,
+    marginHorizontal: 20,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#2a4a7a",
+    backgroundColor: "#0e2442",
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    alignItems: "center",
+    gap: 14,
+  },
+  humanReviewCompletionTitle: {
+    color: "#e5efff",
+    fontSize: 22,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  humanReviewCompletionBody: {
+    color: "#cbd5f5",
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+  },
+  humanReviewCompletionPrimaryButton: {
+    minWidth: 180,
+    alignItems: "center",
+    backgroundColor: "#1d4ed8",
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+  },
+  humanReviewCompletionPrimaryButtonText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "900",
   },
   randomizeToggle: {
     minWidth: 112,
