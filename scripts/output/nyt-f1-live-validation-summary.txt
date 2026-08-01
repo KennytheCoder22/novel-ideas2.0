@@ -15,7 +15,7 @@ Original regressions
   nytDisabledSkipPass=true
   otherSourceUnchangedPass=true
   mockedAdapterPass=true
-  legacyLineagePass=true
+  legacyLineagePass=false
 
 Resilience regressions
   R1 cacheHit=true
@@ -24,5 +24,6 @@ Resilience regressions
   R4 mixedCacheLive=true
   R5 concurrentDedup=true
   R6 diagnosticSecrecy=true
+  R7 overviewPath=true
 
-Overall: PASS
+Overall: PARTIAL/FAIL

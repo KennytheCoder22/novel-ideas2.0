@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-23T01:09:23.399Z",
+  "generatedAt": "2026-08-01T00:28:21.411Z",
   "status": {
     "nytF0": "CLOSED — INFRASTRUCTURE AUDIT COMPLETE",
     "nytV2Adapter": "IMPLEMENTED",
@@ -37,9 +37,9 @@
           "trade-fiction-paperback": 15
         },
         "nytEndpointCalledByList": {
-          "combined-print-and-e-book-fiction": "https://api.nytimes.com/svc/books/v3/lists/current/combined-print-and-e-book-fiction.json?api-key=%5Bredacted%5D",
-          "hardcover-fiction": "https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=%5Bredacted%5D",
-          "trade-fiction-paperback": "https://api.nytimes.com/svc/books/v3/lists/current/trade-fiction-paperback.json?api-key=%5Bredacted%5D"
+          "combined-print-and-e-book-fiction": "https://api.nytimes.com/svc/books/v3/lists/overview.json?api-key=%5Bredacted%5D",
+          "hardcover-fiction": "https://api.nytimes.com/svc/books/v3/lists/overview.json?api-key=%5Bredacted%5D",
+          "trade-fiction-paperback": "https://api.nytimes.com/svc/books/v3/lists/overview.json?api-key=%5Bredacted%5D"
         },
         "nytHttpStatusByList": {
           "combined-print-and-e-book-fiction": 200,
@@ -55,54 +55,63 @@
           "duplicate_book": 13
         },
         "nytNormalizedTitles": [
-          "RANSOM",
           "THEO OF GOLDEN",
-          "YESTERYEAR",
           "THE CALAMITY CLUB",
-          "PROJECT HAIL MARY",
+          "YESTERYEAR",
           "WHISTLER",
-          "THE COUNTRY ROAD MURDERS",
+          "PROJECT HAIL MARY",
           "DUNGEON CRAWLER CARL",
-          "THE LEGACY",
-          "THE ROMANCE REVIVAL",
+          "RANSOM",
+          "COOL MACHINE",
           "THE CORRESPONDENT",
-          "THE GOAL",
-          "THE FIVE-STAR WEEKEND",
+          "THE COUNTRY ROAD MURDERS",
+          "A FORSAKEN PROPHECY",
+          "THE SHAMPOO EFFECT",
           "THE DEAL",
-          "THE DIVORCE",
+          "MAD MABEL",
+          "THE FIVE-STAR WEEKEND",
           "CARL'S DOOMSDAY SCENARIO",
           "THE DUNGEON ANARCHIST'S COOKBOOK",
-          "THE SHAMPOO EFFECT",
-          "LOVE YOU MORE",
+          "PRINCE OF SWORDS",
           "THE GATE OF THE FERAL GODS",
-          "FORSAKING MIDNIGHT",
+          "THE BUTCHER'S MASQUERADE",
+          "THE DIVORCE",
           "THE MISTAKE",
           "REMARKABLY BRIGHT CREATURES",
+          "MY FRIENDS",
           "THE SCORE",
-          "IN STORMY WEATHER",
+          "CIRCE",
+          "LORENZO",
+          "HAUNTING ADELINE",
           "RED RISING",
-          "DOLLY ALL THE TIME",
-          "THE HOUSEMAID'S WEDDING"
+          "DOLLY ALL THE TIME"
         ],
         "fetches": [
           {
-            "query": "combined-print-and-e-book-fiction",
+            "query": "__overview__",
             "status": "succeeded",
             "httpStatus": 200,
+            "timedOut": false,
+            "failedReason": ""
+          },
+          {
+            "query": "combined-print-and-e-book-fiction",
+            "status": "succeeded",
+            "httpStatus": 0,
             "timedOut": false,
             "failedReason": ""
           },
           {
             "query": "hardcover-fiction",
             "status": "succeeded",
-            "httpStatus": 200,
+            "httpStatus": 0,
             "timedOut": false,
             "failedReason": ""
           },
           {
             "query": "trade-fiction-paperback",
             "status": "succeeded",
-            "httpStatus": 200,
+            "httpStatus": 0,
             "timedOut": false,
             "failedReason": ""
           }
@@ -113,16 +122,16 @@
       "finalAcceptedTitles": [
         "DUNGEON CRAWLER CARL",
         "REMARKABLY BRIGHT CREATURES",
+        "MAD MABEL",
         "RANSOM",
-        "THE DEAL",
-        "THE DIVORCE"
+        "THE DEAL"
       ],
       "renderedTitles": [
         "DUNGEON CRAWLER CARL",
         "REMARKABLY BRIGHT CREATURES",
+        "MAD MABEL",
         "RANSOM",
-        "THE DEAL",
-        "THE DIVORCE"
+        "THE DEAL"
       ],
       "lineage": [
         {
@@ -140,6 +149,13 @@
           "hasNytMetadata": true
         },
         {
+          "title": "MAD MABEL",
+          "source": "nyt",
+          "sourceId": "nyt:9781250284556",
+          "rawSource": "nyt",
+          "hasNytMetadata": true
+        },
+        {
           "title": "RANSOM",
           "source": "nyt",
           "sourceId": "nyt:9780063384262",
@@ -150,13 +166,6 @@
           "title": "THE DEAL",
           "source": "nyt",
           "sourceId": "nyt:9781775293934",
-          "rawSource": "nyt",
-          "hasNytMetadata": true
-        },
-        {
-          "title": "THE DIVORCE",
-          "source": "nyt",
-          "sourceId": "nyt:9781464249631",
           "rawSource": "nyt",
           "hasNytMetadata": true
         }
@@ -297,9 +306,9 @@
     },
     "legacyLineage": {
       "sourceValues": [
-        "nyt"
+        "openLibrary"
       ],
-      "pass": true
+      "pass": false
     }
   },
   "regressions2": {
@@ -361,6 +370,22 @@
       "keyPresentInRaw": true,
       "keyPresentInRedacted": false,
       "redactedMarkerPresent": true,
+      "pass": true
+    },
+    "overviewPath": {
+      "firstStatus": "succeeded",
+      "firstRawCount": 4,
+      "firstNytUsedOverview": true,
+      "fetchesAfterFirst": 1,
+      "secondStatus": "succeeded",
+      "secondRawCount": 4,
+      "fetchesAfterSecond": 0,
+      "cacheHitsR2": {
+        "combined-print-and-e-book-fiction": true,
+        "hardcover-fiction": true,
+        "trade-fiction-paperback": true
+      },
+      "allCachedOnSecondCall": true,
       "pass": true
     }
   }
