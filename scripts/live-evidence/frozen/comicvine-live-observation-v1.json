@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "source": "comicvine",
+  "artifactStatus": "pending_legal_clearance",
+  "artifactStatusDetail": "ComicVine live observation artifact will be committed here after CV-1 (commercial use definition), CV-2 (metadata transformation), CV-3 (cache retention), CV-4 (payload storage), and CV-6 (API key authorization) questions are resolved in docs/GRAPHIC_NOVEL_LIVE_EVIDENCE_LICENSING_DECISION.md and a live probe session is authorized and run.",
+  "blockedByQuestions": ["CV-1", "CV-2", "CV-3", "CV-4", "CV-6"],
+  "licenseDecisionRecordRef": "docs/GRAPHIC_NOVEL_LIVE_EVIDENCE_LICENSING_DECISION.md",
+  "captureProtocolRef": "scripts/live-evidence/capture-protocol.md",
+  "requestManifestRef": "scripts/live-evidence/request-manifest-v1.json",
+  "profiles": [],
+  "liveCallsMade": false,
+  "provenance": {
+    "source": "ComicVine",
+    "sourceUrl": "https://comicvine.gamespot.com",
+    "linkbackRequired": true,
+    "redistribution": "restricted_pending_written_permission",
+    "covers": "excluded_pending_rights_clarification",
+    "commercialUseStatus": "pending_cv1_resolution",
+    "capturePermitted": false,
+    "captureDate": null
+  }
+}

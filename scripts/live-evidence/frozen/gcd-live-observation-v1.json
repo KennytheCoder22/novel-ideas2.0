@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0",
+  "source": "gcd",
+  "artifactStatus": "pending_legal_clearance",
+  "artifactStatusDetail": "GCD live observation artifact will be committed here after GC-4 (access arrangement) and GC-5 (anonymous vs. authenticated access) questions are resolved in docs/GRAPHIC_NOVEL_LIVE_EVIDENCE_LICENSING_DECISION.md and a live probe session is authorized and run.",
+  "blockedByQuestions": ["GC-4", "GC-5"],
+  "licenseDecisionRecordRef": "docs/GRAPHIC_NOVEL_LIVE_EVIDENCE_LICENSING_DECISION.md",
+  "captureProtocolRef": "scripts/live-evidence/capture-protocol.md",
+  "requestManifestRef": "scripts/live-evidence/request-manifest-v1.json",
+  "profiles": [],
+  "liveCallsMade": false,
+  "provenance": {
+    "source": "Grand Comics Database",
+    "sourceUrl": "https://www.comics.org",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "shareAlikeAssessmentPending": true,
+    "coversExcluded": true,
+    "captureDate": null
+  }
+}

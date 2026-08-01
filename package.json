@@ -61,7 +61,11 @@
     "audit:v2:teen-openlibrary-timeouts": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs",
     "audit:v2:teen-openlibrary-timeout-budget-matrix": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs --budget-matrix",
     "audit:v2:teen-openlibrary-targeted-retry-experiment": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs --targeted-retry-experiment",
-    "audit:v2:teen-openlibrary-counterfactual-impact": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs --counterfactual-impact"
+    "audit:v2:teen-openlibrary-counterfactual-impact": "node scripts/run-v2-teen-openlibrary-timeout-audit.mjs --counterfactual-impact",
+    "test:live-evidence:regressions": "node scripts/live-evidence/run-live-evidence-regressions.mjs",
+    "probe:gcd:replay": "node scripts/live-evidence/run-gcd-live-probe.mjs --mode replay --profile all --verify-no-network",
+    "probe:comicvine:replay": "node scripts/live-evidence/run-comicvine-live-probe.mjs --mode replay --profile all --verify-no-network",
+    "delta:live-evidence": "node scripts/live-evidence/run-frozen-live-delta.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
