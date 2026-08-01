@@ -748,6 +748,60 @@ function recommendationCoverUrl(doc: any): string | null {
   return thumbnail ? thumbnail.replace(/^http:\/\//, "https://") : null;
 }
 
+function normalizeImageUrl(raw: unknown): string | null {
+  const value = String(raw || "").trim();
+  if (!value) return null;
+  const normalized = value.replace(/^http:\/\//i, "https://");
+  try {
+    const parsed = new URL(normalized);
+    if (!/^https?:$/i.test(parsed.protocol)) return null;
+    if (!parsed.hostname || !parsed.pathname || parsed.pathname === "/") return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function uniqueCoverCandidates(values: unknown[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const normalized = normalizeImageUrl(value);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function recommendationCoverCandidates(doc: any, cachedCover?: string): string[] {
+  const raw = doc?.raw && typeof doc.raw === "object" ? doc.raw : {};
+  const docImageLinks = doc?.imageLinks && typeof doc.imageLinks === "object" ? doc.imageLinks : {};
+  const volumeInfo = doc?.volumeInfo && typeof doc.volumeInfo === "object" ? doc.volumeInfo : {};
+  const volumeImageLinks = volumeInfo?.imageLinks && typeof volumeInfo.imageLinks === "object" ? volumeInfo.imageLinks : {};
+  const rawVolumeInfo = raw?.volumeInfo && typeof raw.volumeInfo === "object" ? raw.volumeInfo : {};
+  const rawVolumeImageLinks = rawVolumeInfo?.imageLinks && typeof rawVolumeInfo.imageLinks === "object" ? rawVolumeInfo.imageLinks : {};
+  const primary = recommendationCoverUrl(doc);
+  return uniqueCoverCandidates([
+    primary,
+    doc?.thumbnail,
+    doc?.smallThumbnail,
+    docImageLinks?.thumbnail,
+    docImageLinks?.smallThumbnail,
+    volumeImageLinks?.thumbnail,
+    volumeImageLinks?.smallThumbnail,
+    raw?.thumbnail,
+    raw?.smallThumbnail,
+    raw?.coverImageUrl,
+    raw?.imageUrl,
+    rawVolumeImageLinks?.thumbnail,
+    rawVolumeImageLinks?.smallThumbnail,
+    cachedCover,
+  ]);
+}
+
 function safeStorageGet(key: string): string {
   try {
     if (typeof window === "undefined" || !window.localStorage) return "";
@@ -1159,6 +1213,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [recItems, setRecItems] = useState<RecItem[]>([]);
   const [recIndex, setRecIndex] = useState(0);
   const [recCoverCache, setRecCoverCache] = useState<Record<string, string>>({});
+  const [recCoverFailures, setRecCoverFailures] = useState<Record<string, string[]>>({});
   const [autoSearched, setAutoSearched] = useState(false);
   const [forceRecommendationsView, setForceRecommendationsView] = useState(false);
   const [presetTestName, setPresetTestName] = useState<string>("");
@@ -1535,6 +1590,10 @@ export default function SwipeDeckScreen(props: Props) {
     setV2DebugResult(null);
     setV2DebugError("");
     setV2DebugLoading(false);
+    setSwipeCoverCache({});
+    setSwipeCoverFailures({});
+    setRecCoverCache({});
+    setRecCoverFailures({});
     sessionSwipeStoreRef.current[pipelineSessionId] = [];
     delete moodStoreRef.current[pipelineSessionId];
     position.setValue({ x: 0, y: 0 });
@@ -1565,6 +1624,7 @@ export default function SwipeDeckScreen(props: Props) {
   }, [isDone, deckKey, remainingCards, tagCounts, recentCardKeys, activeTwentyQObjective]);
 
   const [swipeCoverCache, setSwipeCoverCache] = useState<Record<string, string>>({});
+  const [swipeCoverFailures, setSwipeCoverFailures] = useState<Record<string, string[]>>({});
 
   const currentCardKey = useMemo(() => {
     const t = (currentCard as any)?.title ?? "";
@@ -1574,10 +1634,13 @@ export default function SwipeDeckScreen(props: Props) {
 
   const currentSwipeCoverUri = useMemo(() => {
     if (!currentCard) return undefined;
-    const explicitImage = (currentCard as any)?.imageUri as string | undefined;
-    if (explicitImage && explicitImage.trim().length > 0) return explicitImage;
-    return swipeCoverCache[currentCardKey];
-  }, [currentCard, currentCardKey, swipeCoverCache]);
+    const blocked = new Set((swipeCoverFailures[currentCardKey] || []).map((value) => String(value || "").toLowerCase()));
+    const explicitImage = normalizeImageUrl((currentCard as any)?.imageUri);
+    if (explicitImage && !blocked.has(explicitImage.toLowerCase())) return explicitImage;
+    const cached = normalizeImageUrl(swipeCoverCache[currentCardKey]);
+    if (cached && !blocked.has(cached.toLowerCase())) return cached;
+    return undefined;
+  }, [currentCard, currentCardKey, swipeCoverCache, swipeCoverFailures]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1592,13 +1655,14 @@ export default function SwipeDeckScreen(props: Props) {
 
       const wikiTitle = (currentCard as any)?.wikiTitle as string | undefined;
       const explicitImage = (currentCard as any)?.imageUri as string | undefined;
-      if (!explicitImage && wikiTitle && wikiTitle.trim().length > 0) {
+      if (!normalizeImageUrl(explicitImage) && wikiTitle && wikiTitle.trim().length > 0) {
         if (!swipeCoverCache[currentCardKey]) {
           try {
             const foundWiki = await lookupWikipediaThumbnail(wikiTitle);
             if (cancelled) return;
-            if (foundWiki?.imageUrl) {
-              setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: foundWiki.imageUrl! }));
+            const wikiImage = normalizeImageUrl(foundWiki?.imageUrl);
+            if (wikiImage) {
+              setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: wikiImage }));
               return;
             }
           } catch {
@@ -1614,8 +1678,9 @@ export default function SwipeDeckScreen(props: Props) {
         try {
           const found = await lookupOpenLibraryCover(title, author);
           if (cancelled) return;
-          if (found?.coverUrl) {
-            setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: found.coverUrl! }));
+          const coverUrl = normalizeImageUrl(found?.coverUrl);
+          if (coverUrl) {
+            setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: coverUrl }));
             return;
           }
         } catch {
@@ -4638,11 +4703,13 @@ function handleLeft() {
     const swipeCardTitle = (card: any): string => String(card?.title || card?.prompt || "").trim();
     const swipeCardAuthor = (card: any): string => String(card?.author || "").trim();
     const swipeCardCover = (card: any): string | undefined => {
-      const explicitImage = String((card as any)?.imageUri || "").trim();
-      if (explicitImage) return explicitImage;
+      const explicitImage = normalizeImageUrl((card as any)?.imageUri);
       const key = `${swipeCardTitle(card)}::${swipeCardAuthor(card)}`.toLowerCase();
-      const cached = String(swipeCoverCache[key] || "").trim();
-      return cached || undefined;
+      const blocked = new Set((swipeCoverFailures[key] || []).map((value) => String(value || "").toLowerCase()));
+      if (explicitImage && !blocked.has(explicitImage.toLowerCase())) return explicitImage;
+      const cached = normalizeImageUrl(swipeCoverCache[key]);
+      if (cached && !blocked.has(cached.toLowerCase())) return cached;
+      return undefined;
     };
     const swipeRowsForDirection = (direction: SwipeHistoryEntry["direction"]) =>
       swipeHistory
@@ -4870,27 +4937,48 @@ function handleLeft() {
     return `fb::${t}::${a}`.toLowerCase();
   }, [currentRec]);
 
+  const currentRecCoverUri = useMemo(() => {
+    if (!currentRec || !currentRecKey) return "";
+    const blocked = new Set((recCoverFailures[currentRecKey] || []).map((value) => String(value || "").toLowerCase()));
+    const candidates = currentRec.kind === "open_library"
+      ? recommendationCoverCandidates(currentRec.doc, recCoverCache[currentRecKey])
+      : uniqueCoverCandidates([recCoverCache[currentRecKey]]);
+    return candidates.find((candidate) => !blocked.has(candidate.toLowerCase())) || "";
+  }, [currentRec, currentRecKey, recCoverCache, recCoverFailures]);
+
+  const currentRecPlaceholderTitle = useMemo(() => {
+    if (!currentRec) return "Untitled";
+    return currentRec.kind === "open_library" ? String(currentRec.doc?.title || "Untitled") : String(currentRec.book?.title || "Untitled");
+  }, [currentRec]);
+
   useEffect(() => {
     let cancelled = false;
     async function run() {
       if (!currentRec) return;
       const key = currentRecKey;
-      if (!key || recCoverCache[key]) return;
+      if (!key) return;
+      const blocked = new Set((recCoverFailures[key] || []).map((value) => String(value || "").toLowerCase()));
+      const cachedCover = normalizeImageUrl(recCoverCache[key]);
+      if (cachedCover && blocked.has(cachedCover.toLowerCase())) return;
       const title = currentRec.kind === "open_library" ? currentRec.doc?.title : currentRec.book?.title;
       const author = currentRec.kind === "open_library" ? recommendationAuthor(currentRec.doc) : currentRec.book?.author;
       if (!title) return;
-      if (currentRec.kind === "open_library" && recommendationCoverUrl(currentRec.doc)) return;
+      if (currentRec.kind === "open_library") {
+        const sourceCover = recommendationCoverCandidates(currentRec.doc).find((candidate) => !blocked.has(candidate.toLowerCase()));
+        if (sourceCover) return;
+      }
       try {
         const found = await lookupOpenLibraryCover(title, author);
         if (cancelled) return;
-        if (found?.coverUrl) setRecCoverCache((prev) => ({ ...prev, [key]: found.coverUrl! }));
+        const normalizedCover = normalizeImageUrl(found?.coverUrl);
+        if (normalizedCover) setRecCoverCache((prev) => ({ ...prev, [key]: normalizedCover }));
       } catch {}
     }
     run();
     return () => {
       cancelled = true;
     };
-  }, [currentRec, currentRecKey, recCoverCache]);
+  }, [currentRec, currentRecKey, recCoverCache, recCoverFailures]);
 
   function advanceRec() {
     setShowRating(false);
@@ -5037,22 +5125,25 @@ function handleLeft() {
                 {recItems.length > 0 && !recLoading && currentRec ? (
                   <View style={styles.recCard}>
                     <View style={styles.bigCoverWrap}>
-                      {currentRec.kind === "open_library" ? (
-                        (() => {
-                          const cover = recommendationCoverUrl(currentRec.doc) || recCoverCache[currentRecKey] || null;
-                          return cover ? (
-                            <Image source={{ uri: cover }} style={styles.bigCover} resizeMode="contain" />
-                          ) : (
-                            <View style={styles.bigCoverPlaceholder}>
-                              <Text style={styles.bigCoverPlaceholderText}>No cover</Text>
-                            </View>
-                          );
-                        })()
-                      ) : recCoverCache[currentRecKey] ? (
-                        <Image source={{ uri: recCoverCache[currentRecKey] }} style={styles.bigCover} resizeMode="contain" />
+                      {currentRecCoverUri ? (
+                        <Image
+                          source={{ uri: currentRecCoverUri }}
+                          style={styles.bigCover}
+                          resizeMode="contain"
+                          onError={() => {
+                            if (!currentRecKey || !currentRecCoverUri) return;
+                            setRecCoverFailures((prev) => {
+                              const existing = Array.isArray(prev[currentRecKey]) ? prev[currentRecKey] : [];
+                              const normalized = currentRecCoverUri.toLowerCase();
+                              if (existing.some((row) => row.toLowerCase() === normalized)) return prev;
+                              return { ...prev, [currentRecKey]: [...existing, currentRecCoverUri] };
+                            });
+                          }}
+                        />
                       ) : (
                         <View style={styles.bigCoverPlaceholder}>
-                          <Text style={styles.bigCoverPlaceholderText}>No cover</Text>
+                          <Text style={styles.bigCoverPlaceholderTitle} numberOfLines={2}>{currentRecPlaceholderTitle}</Text>
+                          <Text style={styles.bigCoverPlaceholderText}>Cover unavailable</Text>
                         </View>
                       )}
                     </View>
@@ -5166,8 +5257,28 @@ function handleLeft() {
                     ]}
                   >
                     {currentSwipeCoverUri ? (
-                      <Image source={{ uri: currentSwipeCoverUri }} style={styles.swipeCover} resizeMode="contain" />
-                    ) : null}
+                      <Image
+                        source={{ uri: currentSwipeCoverUri }}
+                        style={styles.swipeCover}
+                        resizeMode="contain"
+                        onError={() => {
+                          if (!currentCardKey || !currentSwipeCoverUri) return;
+                          setSwipeCoverFailures((prev) => {
+                            const existing = Array.isArray(prev[currentCardKey]) ? prev[currentCardKey] : [];
+                            const normalized = currentSwipeCoverUri.toLowerCase();
+                            if (existing.some((row) => row.toLowerCase() === normalized)) return prev;
+                            return { ...prev, [currentCardKey]: [...existing, currentSwipeCoverUri] };
+                          });
+                        }}
+                      />
+                    ) : (
+                      <View style={styles.swipeCoverPlaceholder}>
+                        <Text style={styles.swipeCoverPlaceholderTitle} numberOfLines={2}>
+                          {String((currentCard as any)?.title || (currentCard as any)?.prompt || "Untitled")}
+                        </Text>
+                        <Text style={styles.swipeCoverPlaceholderText}>Image unavailable</Text>
+                      </View>
+                    )}
 
                     {((currentCard as any)?.title || (currentCard as any)?.author || (currentCard as any)?.genre) ? (
                       <View style={styles.swipeMetaBox}>
@@ -5648,6 +5759,32 @@ const styles = StyleSheet.create({
   },
 
   swipeCover: { backgroundColor: "#000", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 18 },
+  swipeCoverPlaceholder: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(224,184,75,0.4)",
+    backgroundColor: "#10243f",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  swipeCoverPlaceholderTitle: {
+    color: "#e5efff",
+    fontWeight: "800",
+    fontSize: 20,
+    textAlign: "center",
+  },
+  swipeCoverPlaceholderText: {
+    color: "#cbd5f5",
+    fontWeight: "700",
+    fontSize: 12,
+  },
 
   swipeMetaBox: {
     position: "absolute",
@@ -5706,8 +5843,9 @@ const styles = StyleSheet.create({
   recCard: { marginTop: 16 },
   bigCoverWrap: { width: "100%", alignItems: "center" },
   bigCover: { aspectRatio: 2 / 3, backgroundColor: "#000", width: 220, height: 320, borderRadius: 10 },
-  bigCoverPlaceholder: { width: 220, height: 320, borderRadius: 10, borderWidth: 1, borderColor: "#223b6b", alignItems: "center", justifyContent: "center" },
-  bigCoverPlaceholderText: { color: "#cbd5f5", fontWeight: "800" },
+  bigCoverPlaceholder: { width: 220, height: 320, borderRadius: 10, borderWidth: 1, borderColor: "#223b6b", backgroundColor: "#10243f", alignItems: "center", justifyContent: "center", paddingHorizontal: 14, gap: 8 },
+  bigCoverPlaceholderTitle: { color: "#e5efff", fontWeight: "800", textAlign: "center", fontSize: 15 },
+  bigCoverPlaceholderText: { color: "#cbd5f5", fontWeight: "800", fontSize: 12 },
 
   recActions: { marginTop: 12, flexDirection: "row", gap: 12, justifyContent: "center" },
   smallNote: { color: "#cbd5f5", fontWeight: "800", fontSize: 12, marginTop: 8 },
