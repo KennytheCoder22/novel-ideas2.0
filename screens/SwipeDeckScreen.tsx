@@ -280,6 +280,15 @@ type Props = {
     anime?: boolean;
     podcasts?: boolean;
   };
+  /**
+   * When true, hides all engineering/debug controls (Test A/B/C, Diagnostics,
+   * Engine selectors, Deep-debug) and shows only "Evaluate Recommendations"
+   * (above) and "Fresh User" (below) in the lower-right corner.
+   * Also relabels the Human Review button from "Review This Slate" to
+   * "Evaluate Recommendations" and adjusts the submission success message.
+   * Set this on the public /testing route.
+   */
+  isTestingMode?: boolean;
 };
 
 
@@ -1155,6 +1164,7 @@ function shouldFinishTwentyQSession(args: {
 
 export default function SwipeDeckScreen(props: Props) {
   const router = useRouter();
+  const isTestingMode = props.isTestingMode === true;
   const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
   const isSmallScreen = windowWidth < 420 || windowHeight < 750;
   const needsCardOffset = isSmallScreen || (Platform.OS === "web" && windowWidth < 600);
@@ -4899,8 +4909,11 @@ function handleLeft() {
 
       storagePushUnique("novelideas_human_review_submissions", duplicateKey);
       const storageMode: string = String((payload as any)?.storageMode || "local_filesystem");
+      const durableSaved = storageMode === "durable_postgres";
       setHumanReviewStatus(
-        `Review saved successfully.\nReview ID: ${String((payload as any)?.appendedReviewId || record.reviewId)}\nSnapshot unchanged: ${(payload as any)?.snapshotUnchanged ? "Yes" : "No (new snapshot recorded)"}\nStorage: ${storageMode} (Admin/local only — not durable on Vercel serverless)`
+        durableSaved
+          ? `Evaluation saved. Thank you!\nReview ID: ${String((payload as any)?.appendedReviewId || record.reviewId)}`
+          : `Review saved locally.\nReview ID: ${String((payload as any)?.appendedReviewId || record.reviewId)}\nSnapshot unchanged: ${(payload as any)?.snapshotUnchanged ? "Yes" : "No (new snapshot recorded)"}\nStorage: ${storageMode} (Admin/local only — not durable on Vercel serverless)`
       );
       setShowHumanReviewPanel(false);
       setShowHumanReviewContext(false);
@@ -5380,25 +5393,29 @@ function handleLeft() {
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
           <View style={styles.testPillRow}>
-            {testSessionPresets.map((preset) => (
+            {!isTestingMode && testSessionPresets.map((preset) => (
               <TouchableOpacity key={preset.id} style={styles.testPillButton} onPress={() => runTestSessionPreset(preset)}>
                 <Text style={styles.debugToggleText}>{preset.label}</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={styles.testPillButton} onPress={handleCopyDiagnostics}>
-              <Text style={styles.debugToggleText}>Diagnostics</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.testPillButton} onPress={() => void handleCopyCodexDiagnostics()}>
-              <Text style={styles.debugToggleText}>{v2DebugLoading ? "Codex Running..." : "Codex Diagnostics"}</Text>
-            </TouchableOpacity>
+            {!isTestingMode && (
+              <TouchableOpacity style={styles.testPillButton} onPress={handleCopyDiagnostics}>
+                <Text style={styles.debugToggleText}>Diagnostics</Text>
+              </TouchableOpacity>
+            )}
+            {!isTestingMode && (
+              <TouchableOpacity style={styles.testPillButton} onPress={() => void handleCopyCodexDiagnostics()}>
+                <Text style={styles.debugToggleText}>{v2DebugLoading ? "Codex Running..." : "Codex Diagnostics"}</Text>
+              </TouchableOpacity>
+            )}
+            {Platform.OS === "web" ? (
+              <TouchableOpacity style={styles.humanReviewToggle} onPress={openHumanReviewForCurrentSlate}>
+                <Text style={styles.debugToggleText}>{isTestingMode ? "Evaluate Recommendations" : "Review This Slate"}</Text>
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity style={styles.testPillButton} onPress={handleFreshUserReset}>
               <Text style={styles.debugToggleText}>Fresh User</Text>
             </TouchableOpacity>
-            {Platform.OS === "web" ? (
-              <TouchableOpacity style={styles.humanReviewToggle} onPress={openHumanReviewForCurrentSlate}>
-                <Text style={styles.debugToggleText}>Review This Slate</Text>
-              </TouchableOpacity>
-            ) : null}
           </View>
         </View>
       </View>
