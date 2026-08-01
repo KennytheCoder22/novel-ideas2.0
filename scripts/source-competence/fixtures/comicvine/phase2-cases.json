@@ -1,0 +1,406 @@
+{
+  "schemaVersion": "1.0.0",
+  "source": "comicvine",
+  "captureKind": "synthetic_comicvine_contract_fixture",
+  "sourceSchemaBasis": {
+    "documentation": "https://comicvine.gamespot.com/api/documentation",
+    "observedOn": "2026-07-31",
+    "warning": "ComicVine API terms restrict use to non-commercial projects; redistribution of real payloads is not authorized. All fixtures are wholly synthetic.",
+    "livePayloadCaptured": false
+  },
+  "provenance": {
+    "containsLiveSourceData": false,
+    "containsCoverUrls": false,
+    "containsCoverImages": false,
+    "licenseTreatment": "Wholly synthetic fixture content; ComicVine field concepts are represented only to exercise the approved source-neutral contract."
+  },
+  "cases": {
+    "cv-adult-speculative-ensemble": {
+      "fixtureId": "cv-adult-speculative-ensemble-v1",
+      "payload": {
+        "status_code": 1,
+        "error": "OK",
+        "limit": 20,
+        "offset": 0,
+        "number_of_page_results": 8,
+        "number_of_total_results": 8,
+        "results": [
+          {
+            "id": 2001,
+            "resource_type": "issue",
+            "name": "First Contact",
+            "issue_number": "1",
+            "volume": {"id": 201, "name": "Drift Engine"},
+            "cover_date": "2024-03-01",
+            "deck": "Issue one of a limited series.",
+            "person_credits": [{"name": "Sable Morrow", "role": "writer"}, {"name": "Fen Okura", "role": "penciler"}],
+            "publisher": {"name": "Meridian Press"}
+          },
+          {
+            "id": 2002,
+            "resource_type": "issue",
+            "name": "First Contact [Variant]",
+            "issue_number": "1",
+            "volume": {"id": 201, "name": "Drift Engine"},
+            "cover_date": "2024-03-01",
+            "deck": "Variant cover edition of issue one.",
+            "person_credits": [{"name": "Sable Morrow", "role": "writer"}, {"name": "Fen Okura", "role": "penciler"}],
+            "publisher": {"name": "Meridian Press"},
+            "_synthetic_variant_of": 2001
+          },
+          {
+            "id": 2101,
+            "resource_type": "issue",
+            "name": "Drift Engine Vol. 1: First Contact",
+            "issue_number": null,
+            "volume": {"id": 202, "name": "Drift Engine Collections"},
+            "cover_date": "2024-09-01",
+            "deck": "Trade paperback collecting Drift Engine #1-4.",
+            "person_credits": [{"name": "Sable Morrow", "role": "writer"}],
+            "publisher": {"name": "Meridian Press"},
+            "_synthetic_collects_issue_ids": [2001, 2003, 2004, 2005],
+            "_synthetic_publication_format": "trade paperback"
+          },
+          {
+            "id": 2102,
+            "resource_type": "issue",
+            "name": "Drift Engine Vol. 1: First Contact [Hardcover]",
+            "issue_number": null,
+            "volume": {"id": 202, "name": "Drift Engine Collections"},
+            "cover_date": "2024-11-01",
+            "deck": "Hardcover edition collecting Drift Engine #1-4.",
+            "person_credits": [{"name": "Sable Morrow", "role": "writer"}],
+            "publisher": {"name": "Meridian Press"},
+            "_synthetic_collects_issue_ids": [2001, 2003, 2004, 2005],
+            "_synthetic_publication_format": "hardcover"
+          },
+          {
+            "id": 2201,
+            "resource_type": "issue",
+            "name": "Drift Engine: The Omnibus",
+            "issue_number": null,
+            "volume": {"id": 203, "name": "Drift Engine Omnibus"},
+            "cover_date": "2025-06-01",
+            "deck": "Omnibus collecting Drift Engine volumes 1-3.",
+            "person_credits": [{"name": "Sable Morrow", "role": "writer"}],
+            "publisher": {"name": "Meridian Press"},
+            "_synthetic_contains_volume_labels": ["Drift Engine Vol. 1", "Drift Engine Vol. 2", "Drift Engine Vol. 3"],
+            "_synthetic_publication_format": "omnibus"
+          },
+          {
+            "id": 2301,
+            "resource_type": "issue",
+            "name": "The Threshold Archives [Boxed Set]",
+            "issue_number": null,
+            "volume": {"id": 204, "name": "The Threshold Archives"},
+            "cover_date": "2025-03-01",
+            "deck": "Boxed set collecting all three Threshold Archives volumes.",
+            "person_credits": [{"name": "Petra Vance", "role": "writer"}, {"name": "Fen Okura", "role": "artist"}],
+            "publisher": {"name": "Meridian Press"},
+            "_synthetic_contains_volume_labels": ["Threshold Archives Vol. 1", "Threshold Archives Vol. 2", "Threshold Archives Vol. 3"],
+            "_synthetic_publication_format": "boxed set"
+          },
+          {
+            "id": 2401,
+            "resource_type": "issue",
+            "name": "Glass Meridian",
+            "issue_number": null,
+            "volume": {"id": 205, "name": "Glass Meridian"},
+            "cover_date": "2024-05-01",
+            "deck": "Standalone graphic novel: a self-contained speculative narrative.",
+            "person_credits": [{"name": "Petra Vance", "role": "writer"}, {"name": "Cael Ingrid", "role": "artist"}],
+            "publisher": {"name": "Meridian Press"},
+            "_synthetic_publication_format": "graphic novel"
+          },
+          {
+            "id": 2501,
+            "resource_type": "issue",
+            "name": "Signals from the Fold",
+            "issue_number": null,
+            "volume": {"id": 206, "name": "Signals from the Fold"},
+            "cover_date": "2024-07-01",
+            "deck": "Graphic memoir blending speculative and autobiographical narrative.",
+            "person_credits": [{"name": "Cael Ingrid", "role": "writer/artist"}],
+            "publisher": {"name": "Meridian Press"},
+            "_synthetic_publication_format": "graphic memoir"
+          }
+        ]
+      }
+    },
+    "cv-adult-horror-mystery": {
+      "fixtureId": "cv-adult-horror-mystery-v1",
+      "payload": {
+        "status_code": 1,
+        "error": "OK",
+        "limit": 20,
+        "offset": 0,
+        "number_of_page_results": 4,
+        "number_of_total_results": 4,
+        "results": [
+          {
+            "id": 3001,
+            "resource_type": "issue",
+            "name": "Night Garden",
+            "issue_number": null,
+            "volume": {"id": 301, "name": "Night Garden"},
+            "cover_date": "2024-02-01",
+            "deck": "Atmospheric horror graphic novel.",
+            "person_credits": [{"name": "Rhys Ellory", "role": "writer"}, {"name": "Orin Shale", "role": "artist"}],
+            "publisher": {"name": "Shadowline Comics"},
+            "_synthetic_publication_format": "graphic novel"
+          },
+          {
+            "id": 3101,
+            "resource_type": "issue",
+            "name": "Night Garden",
+            "issue_number": null,
+            "volume": {"id": 302, "name": "Night Garden"},
+            "cover_date": "2022-08-01",
+            "deck": "An earlier mystery graphic novel, same title, unrelated series.",
+            "person_credits": [{"name": "Vesper Cole", "role": "writer/artist"}],
+            "publisher": {"name": "Ashwick Press"},
+            "_synthetic_publication_format": "graphic novel",
+            "_synthetic_unrelated_series": true
+          },
+          {
+            "id": 3201,
+            "resource_type": "issue",
+            "name": "The Warden",
+            "issue_number": null,
+            "volume": {"id": 303, "name": "The Warden"},
+            "cover_date": "2023-11-01",
+            "deck": "A gothic mystery graphic memoir.",
+            "person_credits": [{"name": "Rhys Ellory", "role": "writer"}, {"name": "Orin Shale", "role": "artist"}],
+            "publisher": {"name": "Shadowline Comics"},
+            "_synthetic_publication_format": "graphic memoir"
+          },
+          {
+            "id": 3301,
+            "resource_type": "issue",
+            "name": "Horror Classics: Companion Guide",
+            "issue_number": null,
+            "volume": {"id": 304, "name": "Horror Classics"},
+            "cover_date": "2024-01-01",
+            "deck": "Reference companion guide to horror comics. Not a narrative work.",
+            "person_credits": [{"name": "Vesper Cole", "role": "writer"}],
+            "publisher": {"name": "Ashwick Press"},
+            "_synthetic_publication_format": "reference book"
+          }
+        ]
+      }
+    },
+    "cv-teen-fantasy-adventure": {
+      "fixtureId": "cv-teen-fantasy-adventure-v1",
+      "payload": {
+        "status_code": 1,
+        "error": "OK",
+        "limit": 20,
+        "offset": 0,
+        "number_of_page_results": 4,
+        "number_of_total_results": 4,
+        "results": [
+          {
+            "id": 4001,
+            "resource_type": "issue",
+            "name": "The Lantern Road",
+            "issue_number": null,
+            "volume": {"id": 401, "name": "The Lantern Road"},
+            "cover_date": "2024-04-01",
+            "deck": "Teen fantasy adventure graphic novel.",
+            "person_credits": [{"name": "Emi Strand", "role": "writer"}, {"name": "Teo Vargas", "role": "artist"}],
+            "publisher": {"name": "Waypoint Books"}
+          },
+          {
+            "id": 4101,
+            "resource_type": "issue",
+            "name": "Stormhaven Vol. 3",
+            "issue_number": null,
+            "volume": {"id": 402, "name": "Stormhaven"},
+            "cover_date": "2024-06-01",
+            "deck": "Third volume of a fantasy adventure graphic novel series. Volume number absent from record.",
+            "person_credits": [{"name": "Emi Strand", "role": "writer"}],
+            "publisher": {"name": "Waypoint Books"},
+            "_synthetic_publication_format": "graphic novel",
+            "_synthetic_missing_sequence": true
+          },
+          {
+            "id": 4201,
+            "resource_type": "issue",
+            "name": "Ember Crossing Vol. 1 [Trade]",
+            "issue_number": null,
+            "volume": {"id": 403, "name": "Ember Crossing Collections"},
+            "cover_date": "2024-03-15",
+            "deck": "Trade paperback collecting Ember Crossing chapters 1-5.",
+            "person_credits": [],
+            "publisher": {"name": "Waypoint Books"},
+            "_synthetic_collects_issue_ids": [4401, 4402, 4403, 4404, 4405],
+            "_synthetic_publication_format": "trade paperback",
+            "_synthetic_incomplete_creator_credits": true
+          },
+          {
+            "id": 4301,
+            "resource_type": "issue",
+            "name": "Ember Crossing Vol. 1 [Library Hardcover]",
+            "issue_number": null,
+            "volume": {"id": 403, "name": "Ember Crossing Collections"},
+            "cover_date": "2024-08-01",
+            "deck": "Hardcover library edition collecting Ember Crossing chapters 1-5.",
+            "person_credits": [],
+            "publisher": {"name": "Waypoint Books"},
+            "_synthetic_collects_issue_ids": [4401, 4402, 4403, 4404, 4405],
+            "_synthetic_publication_format": "hardcover"
+          }
+        ]
+      }
+    },
+    "cv-teen-superhero-identity": {
+      "fixtureId": "cv-teen-superhero-identity-v1",
+      "payload": {
+        "status_code": 1,
+        "error": "OK",
+        "limit": 20,
+        "offset": 0,
+        "number_of_page_results": 4,
+        "number_of_total_results": 4,
+        "results": [
+          {
+            "id": 5001,
+            "resource_type": "issue",
+            "name": "Circuit #1",
+            "issue_number": "1",
+            "volume": {"id": 501, "name": "Circuit"},
+            "cover_date": "2024-05-01",
+            "deck": "First issue of a teen superhero series.",
+            "person_credits": [{"name": "Kay Linden", "role": "writer"}, {"name": "Orion Bell", "role": "penciler"}],
+            "publisher": {"name": "Apex Comics"}
+          },
+          {
+            "id": 5002,
+            "resource_type": "issue",
+            "name": "Circuit #1 [Variant Cover]",
+            "issue_number": "1",
+            "volume": {"id": 501, "name": "Circuit"},
+            "cover_date": "2024-05-01",
+            "deck": "Variant cover of Circuit #1.",
+            "person_credits": [{"name": "Kay Linden", "role": "writer"}, {"name": "Orion Bell", "role": "penciler"}],
+            "publisher": {"name": "Apex Comics"},
+            "_synthetic_variant_of": 5001
+          },
+          {
+            "id": 5101,
+            "resource_type": "issue",
+            "name": "Circuit: Collected Stories",
+            "issue_number": "1",
+            "volume": {"id": 502, "name": "Circuit: Collected Stories"},
+            "cover_date": "2024-10-01",
+            "deck": "Collected stories — issue number and collected-edition signals conflict.",
+            "person_credits": [{"name": "Kay Linden", "role": "writer"}],
+            "publisher": {"name": "Apex Comics"},
+            "_synthetic_ambiguous_issue_vs_collection": true
+          },
+          {
+            "id": 5201,
+            "resource_type": "issue",
+            "name": "Circuit #7",
+            "issue_number": "7",
+            "volume": {"id": 501, "name": "Circuit"},
+            "cover_date": "2024-11-01",
+            "deck": "Middle issue — not a series entry point.",
+            "person_credits": [{"name": "Kay Linden", "role": "writer"}, {"name": "Orion Bell", "role": "penciler"}],
+            "publisher": {"name": "Apex Comics"},
+            "_synthetic_middle_issue": true
+          }
+        ]
+      }
+    },
+    "cv-preteen-humor-adventure": {
+      "fixtureId": "cv-preteen-humor-adventure-v1",
+      "payload": {
+        "status_code": 1,
+        "error": "OK",
+        "limit": 20,
+        "offset": 0,
+        "number_of_page_results": 2,
+        "number_of_total_results": 2,
+        "results": [
+          {
+            "id": 6001,
+            "resource_type": "issue",
+            "name": "The Wild Patrol Vol. 1",
+            "issue_number": "1",
+            "volume": {"id": 601, "name": "The Wild Patrol"},
+            "cover_date": "2024-02-01",
+            "deck": "Humorous preteen adventure.",
+            "person_credits": [{"name": "Nia Cross", "role": "writer/artist"}],
+            "publisher": {"name": "Funny Bone Press"}
+          },
+          {
+            "id": 6002,
+            "resource_type": "issue",
+            "name": "The Wild Patrol Vol. 2",
+            "issue_number": "2",
+            "volume": {"id": 601, "name": "The Wild Patrol"},
+            "cover_date": "2024-08-01",
+            "deck": "Second volume of the preteen adventure series.",
+            "person_credits": [{"name": "Nia Cross", "role": "writer/artist"}],
+            "publisher": {"name": "Funny Bone Press"}
+          }
+        ]
+      }
+    },
+    "cv-teen-manga-volume": {
+      "fixtureId": "cv-teen-manga-volume-v1",
+      "payload": {
+        "status_code": 1,
+        "error": "OK",
+        "limit": 20,
+        "offset": 0,
+        "number_of_page_results": 2,
+        "number_of_total_results": 2,
+        "results": [
+          {
+            "id": 7001,
+            "resource_type": "issue",
+            "name": "Crystal Gate Vol. 3",
+            "issue_number": "3",
+            "volume": {"id": 701, "name": "Crystal Gate"},
+            "cover_date": "2024-07-01",
+            "deck": "Volume 3 of a teen manga fantasy series.",
+            "person_credits": [{"name": "Hana Fujita", "role": "story/art"}],
+            "publisher": {"name": "Shōkai USA"},
+            "_synthetic_publication_format": "manga"
+          },
+          {
+            "id": 7101,
+            "resource_type": "issue",
+            "name": "Crystal Gate: Complete Omnibus",
+            "issue_number": null,
+            "volume": {"id": 702, "name": "Crystal Gate Omnibus"},
+            "cover_date": "2025-01-01",
+            "deck": "Omnibus collecting all Crystal Gate volumes.",
+            "person_credits": [{"name": "Hana Fujita", "role": "story/art"}],
+            "publisher": {"name": "Shōkai USA"},
+            "_synthetic_contains_volume_labels": ["Crystal Gate Vol. 1", "Crystal Gate Vol. 2", "Crystal Gate Vol. 3"],
+            "_synthetic_publication_format": "omnibus manga"
+          }
+        ]
+      }
+    },
+    "cv-valid-empty": {
+      "fixtureId": "cv-valid-empty-v1",
+      "payload": {
+        "status_code": 1,
+        "error": "OK",
+        "limit": 20,
+        "offset": 0,
+        "number_of_page_results": 0,
+        "number_of_total_results": 0,
+        "results": []
+      }
+    },
+    "cv-invalid-response": {
+      "fixtureId": "cv-invalid-response-v1",
+      "payload": null
+    }
+  }
+}
