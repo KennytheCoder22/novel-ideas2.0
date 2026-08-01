@@ -53,6 +53,8 @@ export interface HumanReviewItemFormEntry {
   synopsis?: string;
   genreTags?: string[];
   whyRecommended?: string[];
+  becauseLiked?: string[];
+  expectedEnjoyment?: 1 | 2 | 3 | 4 | 5 | null;
   familiarity?: "never_heard_of_it" | "know_of_it" | "read_it" | "tried_but_did_not_finish" | null;
   tasteAlignment: number;
   novelty: number;
@@ -101,6 +103,7 @@ export interface HumanReviewRecordV1 {
       novelty: number;
       confidence: number;
     };
+    expectedEnjoyment?: 1 | 2 | 3 | 4 | 5;
     familiarity?: "never_heard_of_it" | "know_of_it" | "read_it" | "tried_but_did_not_finish";
     concernTags?: HumanReviewConcernTag[];
     notes?: string;
@@ -227,6 +230,7 @@ export function createDefaultHumanReviewForm(snapshot: HumanReviewSnapshotV1): H
       author: item.author,
       coverUrl: item.coverUrl,
       whyRecommended: Array.isArray(item.matchedSignals) ? item.matchedSignals.map((signal) => String(signal || "")).filter(Boolean) : [],
+      expectedEnjoyment: null,
       familiarity: null,
       tasteAlignment: 3,
       novelty: 3,
@@ -257,6 +261,7 @@ export function createHumanReviewRecordFromForm(args: {
         novelty: clampScore(item.novelty),
         confidence: clampScore(item.confidence),
       },
+      ...(typeof item.expectedEnjoyment === "number" ? { expectedEnjoyment: clampScore(item.expectedEnjoyment) as 1 | 2 | 3 | 4 | 5 } : {}),
       ...(item.familiarity ? { familiarity: item.familiarity } : {}),
       concernTags: item.concerns,
       notes: String(item.notes || "").trim(),

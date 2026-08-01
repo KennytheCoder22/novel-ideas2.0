@@ -137,6 +137,14 @@ export function validateReviewRecord(record, rubric) {
     for (const criteriaId of rubricCriteria) {
       if (!(criteriaId in item.criteriaRatings)) throw new Error(`missing_criteria_score:${criteriaId}`);
     }
+    if ("expectedEnjoyment" in item) {
+      if (item.expectedEnjoyment !== null && typeof item.expectedEnjoyment !== "undefined") {
+        const enjoyment = Number(item.expectedEnjoyment);
+        if (!Number.isInteger(enjoyment) || enjoyment < scaleMin || enjoyment > scaleMax) {
+          throw new Error("invalid_item_expected_enjoyment");
+        }
+      }
+    }
     if ("familiarity" in item) {
       if (item.familiarity !== null && typeof item.familiarity !== "undefined" && !familiarityOptions.has(item.familiarity)) {
         throw new Error("invalid_item_familiarity");

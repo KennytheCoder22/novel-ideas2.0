@@ -59,6 +59,7 @@ function run() {
   form.wouldUseSlate = "unsure";
   form.itemReviews[0].decision = "recommend";
   form.itemReviews[0].concerns = ["insufficient_information", "wrong_format_or_non_narrative"];
+  form.itemReviews[0].expectedEnjoyment = 5;
   form.itemReviews[0].familiarity = "read_it";
   form.itemReviews[1].decision = "not_recommended";
   form.itemReviews[1].concerns = ["wrong_genre_or_tone"];
@@ -72,6 +73,7 @@ function run() {
   assert(recordA.summary.wouldUseSlate === null, "unsure_not_preserved_as_null");
   assert(recordA.itemReviews[0].concernTags.includes("insufficient_information"), "concern_tag_missing");
   assert(recordA.itemReviews[0].concernTags.includes("wrong_format_or_non_narrative"), "wrong_format_concern_tag_missing");
+  assert(recordA.itemReviews[0].expectedEnjoyment === 5, "expected_enjoyment_not_preserved");
   assert(recordA.itemReviews[0].familiarity === "read_it", "familiarity_not_preserved");
 
   // Verify panel open precondition: when recItems is non-empty, openHumanReviewForCurrentSlate
@@ -113,6 +115,7 @@ function run() {
       "unsure_preserved",
       "structured_concern_tags_preserved",
       "wrong_format_concern_tag_preserved",
+      "expected_enjoyment_field_preserved",
       "familiarity_optional_preserved",
       "panel_open_precondition",
     ],

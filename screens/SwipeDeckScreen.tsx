@@ -85,6 +85,13 @@ const HUMAN_REVIEW_FAMILIARITY_OPTIONS: Array<{
   { value: "read_it", label: "Read it" },
   { value: "tried_but_did_not_finish", label: "Tried, didn't finish" },
 ];
+const HUMAN_REVIEW_EXPECTED_ENJOYMENT_OPTIONS: Array<{ value: 1 | 2 | 3 | 4 | 5; label: string }> = [
+  { value: 5, label: "Very likely" },
+  { value: 4, label: "Probably" },
+  { value: 3, label: "Maybe" },
+  { value: 2, label: "Probably not" },
+  { value: 1, label: "Very unlikely" },
+];
 
 type DeckKey = SwipeDeck["deckKey"];
 
@@ -4645,6 +4652,25 @@ function handleLeft() {
           coverUrl: swipeCardCover(entry.card),
         }))
         .filter((row) => row.title);
+    const likedSignalRows = swipeHistoryToV2Signals(swipeHistory)
+      .filter((signal) => signal.action === "like")
+      .map((signal) => {
+        const title = String(signal.title || "").trim();
+        const tokenList = [
+          ...(Array.isArray(signal.genres) ? signal.genres : []),
+          ...(Array.isArray(signal.tones) ? signal.tones : []),
+          ...(Array.isArray(signal.themes) ? signal.themes : []),
+          ...(Array.isArray(signal.tags) ? signal.tags : []),
+        ]
+          .map((token) => normalizeLabel(token).toLowerCase())
+          .filter(Boolean);
+        return {
+          title,
+          titleNormalized: title.toLowerCase(),
+          tokens: new Set(tokenList),
+        };
+      })
+      .filter((row) => row.title);
     const recommendationItems = recItems.map((item, index) => {
       const title = item.kind === "open_library" ? String(item.doc?.title || "") : String(item.book?.title || "");
       const author = item.kind === "open_library" ? recommendationAuthor(item.doc) : String(item.book?.author || "Unknown author");
@@ -4702,6 +4728,30 @@ function handleLeft() {
       synopsis: recommendationItems[index]?.synopsis,
       genreTags: recommendationItems[index]?.genreTags,
       whyRecommended: recommendationItems[index]?.matchedSignals || [],
+      becauseLiked: (() => {
+        const recMatched = new Set(
+          (recommendationItems[index]?.matchedSignals || [])
+            .map((signal: string) => normalizeLabel(signal).toLowerCase())
+            .filter(Boolean)
+        );
+        if (!recMatched.size) {
+          return (sessionContext?.likedItems || []).map((item) => item.title).slice(0, 3);
+        }
+        const overlapped = likedSignalRows
+          .filter((liked) => {
+            for (const signal of recMatched) {
+              if (liked.tokens.has(signal)) return true;
+              if (signal && liked.titleNormalized.includes(signal)) return true;
+              if (signal && signal.includes(liked.titleNormalized) && liked.titleNormalized.length > 3) return true;
+            }
+            return false;
+          })
+          .map((liked) => liked.title);
+        const unique = Array.from(new Set(overlapped)).slice(0, 3);
+        if (unique.length) return unique;
+        return (sessionContext?.likedItems || []).map((item) => item.title).slice(0, 3);
+      })(),
+      expectedEnjoyment: null,
       familiarity: null,
     }));
     if (sessionContext) form.sessionContext = sessionContext;
@@ -5361,13 +5411,46 @@ function handleLeft() {
                                 {item.synopsis}
                               </Text>
                             ) : null}
-                            {Array.isArray(item.whyRecommended) && item.whyRecommended.length ? (
-                              <Text style={styles.humanReviewMatchedSignals} numberOfLines={2}>
-                                <Text style={styles.humanReviewMatchedLabel}>Matched:</Text>{" "}
-                                {item.whyRecommended.slice(0, 4).join(" · ")}
-                              </Text>
+                            {((Array.isArray(item.becauseLiked) && item.becauseLiked.length) ||
+                              (Array.isArray(item.whyRecommended) && item.whyRecommended.length)) ? (
+                              <View style={styles.humanReviewWhyBlock}>
+                                <Text style={styles.humanReviewWhyHeading}>Why recommended</Text>
+                                {Array.isArray(item.becauseLiked) && item.becauseLiked.length ? (
+                                  <Text style={styles.humanReviewMatchedSignals} numberOfLines={2}>
+                                    <Text style={styles.humanReviewMatchedLabel}>Because you liked:</Text>{" "}
+                                    {item.becauseLiked.slice(0, 3).join(" · ")}
+                                  </Text>
+                                ) : null}
+                                {Array.isArray(item.whyRecommended) && item.whyRecommended.length ? (
+                                  <Text style={styles.humanReviewMatchedSignals} numberOfLines={2}>
+                                    <Text style={styles.humanReviewMatchedLabel}>Matched:</Text>{" "}
+                                    {item.whyRecommended.slice(0, 4).join(" · ")}
+                                  </Text>
+                                ) : null}
+                              </View>
                             ) : null}
                           </View>
+                        </View>
+                        <View style={styles.humanReviewExpectedEnjoymentRow}>
+                          <Text style={styles.humanReviewScaleLabel}>Expected enjoyment</Text>
+                          {HUMAN_REVIEW_EXPECTED_ENJOYMENT_OPTIONS.map((option) => (
+                            <TouchableOpacity
+                              key={`${item.rank}-expected-${option.value}`}
+                              style={[
+                                styles.humanReviewExpectedEnjoymentPill,
+                                item.expectedEnjoyment === option.value && styles.humanReviewExpectedEnjoymentPillActive,
+                              ]}
+                              onPress={() =>
+                                updateHumanReviewItem(item.rank, (prev) => ({
+                                  ...prev,
+                                  expectedEnjoyment: prev.expectedEnjoyment === option.value ? null : option.value,
+                                }))
+                              }
+                            >
+                              <Text style={styles.humanReviewExpectedEnjoymentValue}>{option.value}</Text>
+                              <Text style={styles.humanReviewExpectedEnjoymentText}>{option.label}</Text>
+                            </TouchableOpacity>
+                          ))}
                         </View>
                         <View style={styles.humanReviewScaleRow}>
                           <Text style={styles.humanReviewScaleLabel}>Taste fit</Text>
@@ -5885,9 +5968,35 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#7dd3fc",
   },
+  humanReviewWhyBlock: {
+    gap: 2,
+  },
+  humanReviewWhyHeading: {
+    color: "#dbeafe",
+    fontSize: 10,
+    fontWeight: "800",
+  },
   humanReviewItemHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   humanReviewCoverThumb: { width: 40, height: 54, borderRadius: 4, flexShrink: 0 },
   humanReviewCoverPlaceholder: { backgroundColor: "#1e3a5f" },
+  humanReviewExpectedEnjoymentRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
+  humanReviewExpectedEnjoymentPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#334155",
+    backgroundColor: "#0b1e33",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  humanReviewExpectedEnjoymentPillActive: {
+    backgroundColor: "#0369a1",
+    borderColor: "#7dd3fc",
+  },
+  humanReviewExpectedEnjoymentValue: { color: "#fff", fontSize: 10, fontWeight: "900" },
+  humanReviewExpectedEnjoymentText: { color: "#fff", fontSize: 9, fontWeight: "700" },
   humanReviewScaleRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
   humanReviewScaleLabel: { color: "#cbd5f5", fontSize: 10, width: 70, fontWeight: "700" },
   humanReviewScalePill: {
