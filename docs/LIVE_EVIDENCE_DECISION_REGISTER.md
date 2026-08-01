@@ -429,8 +429,25 @@ The following engineering work is currently authorized and does not require any 
 
 ---
 
+## Decision Change Log
+
+This table provides traceability from each governing product decision to its effect on individual gate statuses in this register.
+
+| Decision | Source | Date | Effect |
+|---|---|---|---|
+| PD-1: NovelIdeas is free to use. | Product owner (Ken) | 2026-07-31 | Eliminates subscription, advertising, licensing-fee, and sales scenarios from CV-1 scope. Narrows the ComicVine "commercial use" question materially. Does not resolve CV-1 — written confirmation from ComicVine is still required. No gate changes on its own. |
+| PD-2: No planned revenue model (no subscriptions, advertising, licensing fees, or sales). | Product owner (Ken) | 2026-07-31 | Reinforces and specifies PD-1. Together, PD-1 and PD-2 support the non-commercial argument to ComicVine but are insufficient substitutes for ComicVine's own written determination. No gate changes on their own. |
+| PD-3: NovelIdeas is a recommendation engine, not a metadata service. Retrieves only what is necessary for recommendations; not a searchable replica or redistribution platform. | Product owner (Ken) | 2026-07-31 | Narrows scope of CV-2 (metadata transformation) and CV-3 (cache retention) queries to ComicVine; narrows GC-1 (ShareAlike) inputs to legal counsel. Does not resolve any of these gates — ComicVine's written authorization and counsel's legal determination are still required. No gate status changes on its own. |
+| PD-4: Not intended to cache or redistribute source metadata beyond what is necessary to provide the recommendation experience. | Product owner (Ken) | 2026-07-31 | Governs NovelIdeas intent for CV-3 (cache retention scope) and CV-4 (fixture storage). Strengthens the framing for the ComicVine clarification request. Does not resolve CV-3 or CV-4 because those gates concern what ComicVine authorizes, not what NovelIdeas intends. No gate status changes on its own. |
+| PD-5: NovelIdeas displays covers only where applicable rights and terms permit. Cover rights remain separate from metadata rights. | Product owner (Ken) | 2026-07-31 | **Resolves CV-5 as No-go confirmed.** ComicVine API terms do not grant cover-image rights; PD-5 confirms NovelIdeas will not display ComicVine covers without a separate rights basis. Cover URLs and binaries permanently excluded from all ComicVine capture artifacts. Probe runners' cover-exclusion enforcement confirmed as correct product behavior. |
+| PD-5 (continued) | Product owner (Ken) | 2026-07-31 | **Resolves GC-3 as No-go confirmed.** GCD database license expressly excludes cover images; PD-5 confirms NovelIdeas will not display GCD covers without a separate rights basis. Cover URLs and binaries permanently excluded from all GCD capture artifacts. |
+| PD-5 (continued) | Product owner (Ken) | 2026-07-31 | **Provides context for GC-2 provisional resolution.** PD-5's separation of cover rights from metadata rights reinforces the scope of the provisional CC BY-SA attribution form (metadata-only). GC-2 remains provisionally resolved — the provisional form is adopted; legal confirmation is recommended but does not block execution. |
+
+---
+
 ## Changelog
 
 | Date | Change |
 |---|---|
 | 2026-07-31 | Initial register created. CV-5 and GC-3 resolved by PD-5. GC-2 provisionally resolved. All other gates confirmed open. Prioritized action checklist produced. |
+| 2026-07-31 | Added Decision Change Log section: full traceability from PD-1–PD-5 to gate-status transitions. |
