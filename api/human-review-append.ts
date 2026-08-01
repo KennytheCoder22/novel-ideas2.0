@@ -1,16 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { existsSync, readFileSync } from "node:fs";
+import { createRepository } from "../lib/humanReview/index";
 
 type CoreModule = {
   loadRubric: (versionOrPath?: string) => { path: string; rubric: any };
-  validateReviewRecord: (record: any, rubric: any) => void;
-  listNdjsonRecords: (path: string) => any[];
-  dedupeReviewIds: (records: any[]) => void;
-  appendNdjsonRecord: (path: string, record: any) => void;
-  writeJson: (path: string, value: any) => void;
-  stableStringify: (value: any) => string;
 };
 
 let cachedCore: CoreModule | null = null;
@@ -33,6 +27,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "method_not_allowed" });
   }
 
+  // Fail fast if durable mode is expected but POSTGRES_URL is missing.
+  const requestedMode = process.env.HUMAN_REVIEW_STORAGE_MODE;
+  if (requestedMode === "durable_postgres" && !process.env.POSTGRES_URL) {
+    return res.status(503).json({
+      error: "durable_storage_unavailable",
+      detail:
+        "HUMAN_REVIEW_STORAGE_MODE is set to durable_postgres but POSTGRES_URL is not configured. " +
+        "Link a Vercel Postgres store and re-deploy.",
+    });
+  }
+
   try {
     const core = await loadCore();
     const payload = req.body;
@@ -49,47 +54,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "snapshot_record_identity_mismatch" });
     }
 
-    const snapshotsDir = resolve(process.cwd(), "scripts", "output", "human-review", "snapshots");
-    const snapshotPath = resolve(snapshotsDir, `${profileId}__${snapshotId}.json`);
-    let snapshotUnchanged = false;
-    if (existsSync(snapshotPath)) {
-      const existing = JSON.parse(readFileSync(snapshotPath, "utf8"));
-      if (core.stableStringify(existing) !== core.stableStringify(snapshot)) {
-        return res.status(409).json({ error: "snapshot_content_conflict", snapshotId, profileId });
-      }
-      snapshotUnchanged = true;
-    } else {
-      core.writeJson(snapshotPath, snapshot);
-    }
-
+    // Load rubric for validation (rubric loading is always local — rubric files are part of the repo).
     const { rubric } = core.loadRubric(String(record.rubricVersion || "v1"));
     if (String(record.rubricId || "") !== String(rubric.rubricId || "")) {
       return res.status(400).json({ error: "rubric_id_mismatch" });
     }
-    core.validateReviewRecord(record, rubric);
 
-    const recordsPath = resolve(process.cwd(), "scripts", "output", "human-review", "review-records.v1.ndjson");
-    const existingRecords = core.listNdjsonRecords(recordsPath);
-    core.dedupeReviewIds(existingRecords);
-    if (existingRecords.some((row) => String(row.reviewId || "") === String(record.reviewId || ""))) {
-      return res.status(409).json({ error: "duplicate_review_id", reviewId: record.reviewId });
-    }
+    const repo = createRepository();
 
-    core.appendNdjsonRecord(recordsPath, record);
+    const snapshotResult = await repo.saveSnapshot(snapshot);
+    const reviewResult = await repo.appendReview(record, rubric);
+
     return res.status(200).json({
       status: "ok",
-      appendedReviewId: record.reviewId,
-      snapshotId,
-      profileId,
-      snapshotUnchanged,
-      recordsPath,
-      storageMode: "local_filesystem",
-      storageModeNote:
-        "Records are written to the local filesystem. This is suitable for Admin/local review only. " +
-        "Filesystem writes do not persist on Vercel serverless deployments. " +
-        "Durable storage (database, object storage, or GitHub commit) is required before remote reviewer use.",
+      appendedReviewId: reviewResult.appendedReviewId,
+      snapshotId: reviewResult.snapshotId,
+      profileId: reviewResult.profileId,
+      snapshotUnchanged: snapshotResult.status === "unchanged",
+      storageMode: repo.storageMode,
     });
   } catch (error: any) {
+    const code = error?.code || error?.message;
+
+    if (code === "snapshot_content_conflict") {
+      return res.status(409).json({
+        error: "snapshot_content_conflict",
+        snapshotId: error.snapshotId,
+        profileId: error.profileId,
+      });
+    }
+    if (code === "duplicate_review_id") {
+      return res.status(409).json({ error: "duplicate_review_id", reviewId: error.reviewId });
+    }
+    if (code === "duplicate_reviewer_snapshot") {
+      return res.status(409).json({
+        error: "duplicate_reviewer_snapshot",
+        reviewerId: error.reviewerId,
+        snapshotId: error.snapshotId,
+      });
+    }
+
     return res.status(500).json({
       error: typeof error?.message === "string" ? error.message : "human_review_append_failed",
     });
