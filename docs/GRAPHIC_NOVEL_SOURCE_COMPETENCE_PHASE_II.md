@@ -373,10 +373,11 @@ The following locks were verified before and after all Phase II changes:
 | `npm run test:v2:comicvine-source-certification` | **PASS** |
 | `npm run test:v2:comicvine-cert-gap-closure` | **PASS** |
 | `npm run test:source-competence:gcd` | **PASS** |
+| `npm run characterize:gcd` (with `--verify-frozen`) | **PASS** |
 | `npm run characterize:comicvine` (with `--verify-frozen`) | **PASS** |
 | `npm run test:source-competence:comicvine` | **PASS** |
 
-Note: `npm run characterize:gcd` (with `--verify-frozen`) fails due to a pre-existing condition on this branch: the `engine.ts` production hash in the frozen GCD artifact diverges from the current file hash, which reflects the NYT integration changes on the `backport-main-comicvine` branch. This failure predates Phase II and is not caused by any Phase II change.
+Note: `npm run characterize:gcd` (with `--verify-frozen`) required a one-time evidence-integrity correction in a separate commit (`ec0ffb4`): the frozen GCD artifact had captured an uncommitted working-tree state of `engine.ts` at freeze time. After correcting the recorded hash to the committed state — with no characterization results changed — this check passes.
 
 ## Unsupported conclusions
 
