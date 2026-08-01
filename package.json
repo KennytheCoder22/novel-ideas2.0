@@ -15,6 +15,8 @@
     "test:source-competence:googlebooks": "node scripts/source-competence/run-googlebooks-certification-regressions.mjs",
     "characterize:gcd": "node scripts/source-competence/run-gcd-characterization.mjs --mode replay --profile all --verify-no-network --verify-determinism --verify-frozen",
     "test:source-competence:gcd": "node scripts/source-competence/run-gcd-characterization-regressions.mjs",
+    "characterize:comicvine": "node scripts/source-competence/run-comicvine-characterization.mjs --mode replay --profile all --verify-no-network --verify-determinism --verify-frozen",
+    "test:source-competence:comicvine": "node scripts/source-competence/run-comicvine-characterization-regressions.mjs",
     "test:v2:googlebooks-query-quality": "node scripts/run-v2-googlebooks-query-quality-regressions.mjs",
     "test:v2:googlebooks-query-refinement-root-cause": "node scripts/run-v2-googlebooks-query-refinement-root-cause-regressions.mjs",
     "test:v2:googlebooks-general-publication-identity": "node scripts/run-v2-googlebooks-general-publication-identity-regressions.mjs",

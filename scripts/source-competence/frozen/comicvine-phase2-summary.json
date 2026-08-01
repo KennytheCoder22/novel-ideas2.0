@@ -1,0 +1,3816 @@
+{
+  "cases": [
+    {
+      "characterizationOutcome": "classified_complete",
+      "comparison": {
+        "comparativeConclusionAuthorized": false,
+        "performed": false,
+        "reason": "Independent ComicVine characterization only; no equivalent independently frozen GCD characterization was consumed for comparison."
+      },
+      "expectedOutcome": "classified_complete",
+      "expectedRecommendationCapableCount": 6,
+      "fixture": {
+        "captureKind": "synthetic_comicvine_contract_fixture",
+        "fixtureId": "cv-adult-speculative-ensemble-v1",
+        "liveSourceData": false,
+        "payloadHash": "f415ccb41ce140d4cf7ae7510afa5537fdaeb4f96f7e5463132bf8eb9248779c",
+        "responseShape": "results_array"
+      },
+      "harness": {
+        "characterization": "Graphic Novel Source Competence Phase II",
+        "mode": "fixture_replay",
+        "name": "NovelIdeas Source Competence Harness",
+        "networkPolicy": "fixture_only_hard_block",
+        "schemaVersion": "1.0.0",
+        "version": "1.0.0"
+      },
+      "humanReview": {
+        "machineIdentityCompetenceIsNotRecommendationUsefulness": true,
+        "performedByHarness": false,
+        "status": "not_reviewed"
+      },
+      "identity": {
+        "ambiguousCount": 0,
+        "ambiguousSourceRecordIds": [],
+        "collapseGroups": [
+          {
+            "publicationIds": [
+              "cv-publication:2001",
+              "cv-publication:2002"
+            ],
+            "readableWorkId": "cv-readable:2001",
+            "reasons": [
+              "variant_of"
+            ],
+            "recommendationId": "cv-recommendation:2001"
+          },
+          {
+            "publicationIds": [
+              "cv-publication:2101",
+              "cv-publication:2102"
+            ],
+            "readableWorkId": "cv-readable:issues:2001,2003,2004,2005",
+            "reasons": [
+              "contains",
+              "same_explicit_constituents"
+            ],
+            "recommendationId": "cv-recommendation:issues:2001,2003,2004,2005"
+          }
+        ],
+        "dateConflictSourceRecordIds": [
+          "cv:2101",
+          "cv:2102"
+        ],
+        "incompleteCreatorCreditSourceRecordIds": [],
+        "missingSequenceSourceRecordIds": [
+          "cv:2101",
+          "cv:2102",
+          "cv:2201",
+          "cv:2301",
+          "cv:2401",
+          "cv:2501"
+        ],
+        "neutralContractCases": [
+          "single-issue",
+          "same-issue-variant-cover",
+          "trade-collecting-issues",
+          "hardcover-paperback-same-collection",
+          "manga-volume",
+          "omnibus-multiple-volumes",
+          "creator-owned-standalone",
+          "graphic-memoir",
+          "similar-title-unrelated-series",
+          "missing-volume-numbering",
+          "conflicting-publication-dates",
+          "incomplete-creator-credits",
+          "ambiguous-issue-versus-collection"
+        ],
+        "neutralContractVersion": "graphic-reading-unit-identity/1.0.0",
+        "normalizedRecordCount": 8,
+        "readingUnitKindHistogram": {
+          "boxed_set": 1,
+          "collected_volume": 2,
+          "omnibus": 1,
+          "single_issue": 2,
+          "standalone_graphic_work": 2
+        },
+        "recommendationCapableIdentityCount": 6,
+        "sameTitleDistinctSeries": []
+      },
+      "licensingBoundary": {
+        "commercialUseGated": true,
+        "coverImagesPresent": false,
+        "coverUrlsPresent": false,
+        "fixtureContent": "wholly_synthetic",
+        "liveCharacterizationAuthorized": false,
+        "liveMetadataCaptured": false,
+        "publicProductionAuthorized": false
+      },
+      "metadataCoverage": {
+        "audienceAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 8
+        },
+        "constituentIdentity": {
+          "present": 4,
+          "rate": 0.5,
+          "total": 8
+        },
+        "creatorRoles": {
+          "present": 8,
+          "rate": 1,
+          "total": 8
+        },
+        "creators": {
+          "present": 8,
+          "rate": 1,
+          "total": 8
+        },
+        "dates": {
+          "present": 8,
+          "rate": 1,
+          "total": 8
+        },
+        "genreAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 8
+        },
+        "language": {
+          "present": 0,
+          "rate": 0,
+          "total": 8
+        },
+        "maturityAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 8
+        },
+        "publisher": {
+          "present": 8,
+          "rate": 1,
+          "total": 8
+        },
+        "sequence": {
+          "present": 2,
+          "rate": 0.25,
+          "total": 8
+        },
+        "seriesIdentity": {
+          "present": 8,
+          "rate": 1,
+          "total": 8
+        },
+        "stableSourceId": {
+          "present": 8,
+          "rate": 1,
+          "total": 8
+        },
+        "summary": {
+          "present": 0,
+          "rate": 0,
+          "total": 8
+        },
+        "title": {
+          "present": 8,
+          "rate": 1,
+          "total": 8
+        }
+      },
+      "productionBoundary": {
+        "eligibilityExercised": false,
+        "productionAdapterState": "adapter_implemented",
+        "productionHashes": {
+          "app/recommender-v2/comicVineAdmission.ts": "b80e7c091c6f93364386372a0906ab8adb5aec8331b871b6e20696214b721551",
+          "app/recommender-v2/comicVineIdentity.ts": "ed10cf8d7f43e360614a58af4e608336167d6e34230d29c09f04ae29e7d36181",
+          "app/recommender-v2/engine.ts": "b4af04ca855f309315bd2df7e482633e4c8d41cb67b4f4cc3c8b3c46c366bb0d",
+          "app/recommender-v2/normalize.ts": "98d62df24ed4257cff596db07cd8f544e5416f5c9bc96561dcfbacac170ed6b6",
+          "app/recommender-v2/score.ts": "feed888d344ad68f3e760d9fa1a302c25b13d6f5fb6f59f4e5b486283fcb37ac",
+          "app/recommender-v2/select.ts": "2330275c83ef7cdffe38a0fa4b22ca4cafd6c9172df832e993f3ee0c683a2037",
+          "app/recommender-v2/sources/comicVineSource.ts": "07177ff1284d1f59e614703f0b4df715d2adbf7d45e5ff03c88c2b093ae3f8be",
+          "app/recommender-v2/types.ts": "aef9e62ca1e93d9a4c080ed9c5009d4318bc35015fcb04584c28fe2249d3ceea"
+        },
+        "productionLifecycleTerminalState": "not_exercised_by_characterization",
+        "productionRoutingExercised": false,
+        "recommendationBehaviorChanged": false,
+        "scoringExercised": false,
+        "selectionExercised": false
+      },
+      "profile": {
+        "ageBand": "adult",
+        "characterizationPurpose": "Broad narrative discovery, reading-unit identity, edition collapse, and creator/publisher metadata.",
+        "expectedOutcome": "classified_complete",
+        "expectedRecommendationCapableCount": 6,
+        "humanReview": {
+          "status": "not_reviewed"
+        },
+        "intent": "Speculative graphic novels with ensemble or found-family adventure; avoid reference and art books.",
+        "matrixProfileId": "gn-adult-speculative-ensemble",
+        "profileId": "cv-adult-speculative-ensemble"
+      },
+      "raw": {
+        "declaredCount": 8,
+        "nativeIdsInReturnedOrder": [
+          2001,
+          2002,
+          2101,
+          2102,
+          2201,
+          2301,
+          2401,
+          2501
+        ],
+        "recordCount": 8,
+        "structuralRejects": []
+      },
+      "records": [
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-03-01"
+              }
+            ],
+            "format": "single_issue",
+            "groupDateEvidence": [
+              "cover_date:2024-03-01"
+            ],
+            "id": "cv-publication:2001",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Meridian Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer",
+              "penciler"
+            ],
+            "creators": [
+              "Sable Morrow",
+              "Fen Okura"
+            ],
+            "evidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-readable:2001",
+            "kind": "single_issue",
+            "title": "First Contact"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-reading-unit:2001",
+            "kind": "single_issue",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:2001"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:201",
+            "orderConfidence": "explicit",
+            "parsedOrdinal": 1,
+            "publisher": "Meridian Press",
+            "rawSequenceLabel": "1",
+            "startYear": null,
+            "title": "Drift Engine"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:2001",
+            "nativeId": "2001",
+            "rawHash": "3214767cd005a090473db08569eed95605d061476782a9b5586d38570fd45bb7",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-03-01"
+              }
+            ],
+            "format": "single_issue",
+            "groupDateEvidence": [
+              "cover_date:2024-03-01"
+            ],
+            "id": "cv-publication:2002",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Meridian Press",
+            "variantName": "Variant of cv:2001"
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer",
+              "penciler"
+            ],
+            "creators": [
+              "Sable Morrow",
+              "Fen Okura"
+            ],
+            "evidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-readable:2001",
+            "kind": "single_issue",
+            "title": "First Contact [Variant]"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-reading-unit:2001",
+            "kind": "single_issue",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:2001"
+          },
+          "relationships": [
+            {
+              "target": "cv-publication:2001",
+              "type": "variant_of"
+            }
+          ],
+          "seriesIdentity": {
+            "id": "cv-series:201",
+            "orderConfidence": "explicit",
+            "parsedOrdinal": 1,
+            "publisher": "Meridian Press",
+            "rawSequenceLabel": "1",
+            "startYear": null,
+            "title": "Drift Engine"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:2002",
+            "nativeId": "2002",
+            "rawHash": "567eeb706d64cdc2eacd2d8881becc18d12d313d4ad94aca2cf9ec93c0655ef4",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": true,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-09-01"
+              }
+            ],
+            "format": "trade paperback",
+            "groupDateEvidence": [
+              "cover_date:2024-09-01",
+              "cover_date:2024-11-01"
+            ],
+            "id": "cv-publication:2101",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Meridian Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [
+              "cv:2001",
+              "cv:2003",
+              "cv:2004",
+              "cv:2005"
+            ],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer"
+            ],
+            "creators": [
+              "Sable Morrow"
+            ],
+            "evidence": [
+              "trade_or_collection_format",
+              "explicit_constituent_issues"
+            ],
+            "id": "cv-readable:issues:2001,2003,2004,2005",
+            "kind": "collected_volume",
+            "title": "Drift Engine Vol. 1: First Contact"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "trade_or_collection_format",
+              "explicit_constituent_issues"
+            ],
+            "id": "cv-reading-unit:issues:2001,2003,2004,2005",
+            "kind": "collected_volume",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:issues:2001,2003,2004,2005"
+          },
+          "relationships": [
+            {
+              "target": "cv:2001",
+              "type": "contains"
+            },
+            {
+              "target": "cv:2003",
+              "type": "contains"
+            },
+            {
+              "target": "cv:2004",
+              "type": "contains"
+            },
+            {
+              "target": "cv:2005",
+              "type": "contains"
+            }
+          ],
+          "seriesIdentity": {
+            "id": "cv-series:202",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Meridian Press",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Drift Engine Collections"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:2101",
+            "nativeId": "2101",
+            "rawHash": "63b1e03a7855a9ebe1fe6f654ce902b6607bcc699bd14b62c4b847beb646ab7b",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": true,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-11-01"
+              }
+            ],
+            "format": "hardcover",
+            "groupDateEvidence": [
+              "cover_date:2024-09-01",
+              "cover_date:2024-11-01"
+            ],
+            "id": "cv-publication:2102",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Meridian Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [
+              "cv:2001",
+              "cv:2003",
+              "cv:2004",
+              "cv:2005"
+            ],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer"
+            ],
+            "creators": [
+              "Sable Morrow"
+            ],
+            "evidence": [
+              "hardcover_collection_format",
+              "explicit_constituent_issues"
+            ],
+            "id": "cv-readable:issues:2001,2003,2004,2005",
+            "kind": "collected_volume",
+            "title": "Drift Engine Vol. 1: First Contact [Hardcover]"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "hardcover_collection_format",
+              "explicit_constituent_issues"
+            ],
+            "id": "cv-reading-unit:issues:2001,2003,2004,2005",
+            "kind": "collected_volume",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:issues:2001,2003,2004,2005"
+          },
+          "relationships": [
+            {
+              "target": "cv:2001",
+              "type": "contains"
+            },
+            {
+              "target": "cv:2003",
+              "type": "contains"
+            },
+            {
+              "target": "cv:2004",
+              "type": "contains"
+            },
+            {
+              "target": "cv:2005",
+              "type": "contains"
+            }
+          ],
+          "seriesIdentity": {
+            "id": "cv-series:202",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Meridian Press",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Drift Engine Collections"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:2102",
+            "nativeId": "2102",
+            "rawHash": "0c87fbdcbc66726c5b729582069c7008a947f7b8bc6f6c0f409fe95ad4b8785d",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2025-06-01"
+              }
+            ],
+            "format": "omnibus",
+            "groupDateEvidence": [
+              "cover_date:2025-06-01"
+            ],
+            "id": "cv-publication:2201",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Meridian Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [
+              "Drift Engine Vol. 1",
+              "Drift Engine Vol. 2",
+              "Drift Engine Vol. 3"
+            ],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer"
+            ],
+            "creators": [
+              "Sable Morrow"
+            ],
+            "evidence": [
+              "omnibus_format",
+              "explicit_contained_volumes"
+            ],
+            "id": "cv-readable:2201",
+            "kind": "omnibus",
+            "title": "Drift Engine: The Omnibus"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "omnibus_format",
+              "explicit_contained_volumes"
+            ],
+            "id": "cv-reading-unit:2201",
+            "kind": "omnibus",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:2201"
+          },
+          "relationships": [
+            {
+              "target": "Drift Engine Vol. 1",
+              "type": "contains_unresolved_volume_label"
+            },
+            {
+              "target": "Drift Engine Vol. 2",
+              "type": "contains_unresolved_volume_label"
+            },
+            {
+              "target": "Drift Engine Vol. 3",
+              "type": "contains_unresolved_volume_label"
+            }
+          ],
+          "seriesIdentity": {
+            "id": "cv-series:203",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Meridian Press",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Drift Engine Omnibus"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:2201",
+            "nativeId": "2201",
+            "rawHash": "74c942f3f5447a81842fb78a1221b848efd784707084cc7f2412b2d57c0f3bf3",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2025-03-01"
+              }
+            ],
+            "format": "boxed set",
+            "groupDateEvidence": [
+              "cover_date:2025-03-01"
+            ],
+            "id": "cv-publication:2301",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Meridian Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [
+              "Threshold Archives Vol. 1",
+              "Threshold Archives Vol. 2",
+              "Threshold Archives Vol. 3"
+            ],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer",
+              "artist"
+            ],
+            "creators": [
+              "Petra Vance",
+              "Fen Okura"
+            ],
+            "evidence": [
+              "boxed_set_format",
+              "explicit_contained_volumes"
+            ],
+            "id": "cv-readable:2301",
+            "kind": "boxed_set",
+            "title": "The Threshold Archives [Boxed Set]"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "boxed_set_format",
+              "explicit_contained_volumes"
+            ],
+            "id": "cv-reading-unit:2301",
+            "kind": "boxed_set",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:2301"
+          },
+          "relationships": [
+            {
+              "target": "Threshold Archives Vol. 1",
+              "type": "contains_unresolved_volume_label"
+            },
+            {
+              "target": "Threshold Archives Vol. 2",
+              "type": "contains_unresolved_volume_label"
+            },
+            {
+              "target": "Threshold Archives Vol. 3",
+              "type": "contains_unresolved_volume_label"
+            }
+          ],
+          "seriesIdentity": {
+            "id": "cv-series:204",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Meridian Press",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "The Threshold Archives"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:2301",
+            "nativeId": "2301",
+            "rawHash": "07007955ddabdcacc58b42e3187b9bf67d06bd8847f114fa4524b7f843ab9a4c",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-05-01"
+              }
+            ],
+            "format": "graphic novel",
+            "groupDateEvidence": [
+              "cover_date:2024-05-01"
+            ],
+            "id": "cv-publication:2401",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Meridian Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer",
+              "artist"
+            ],
+            "creators": [
+              "Petra Vance",
+              "Cael Ingrid"
+            ],
+            "evidence": [
+              "graphic_novel_format"
+            ],
+            "id": "cv-readable:2401",
+            "kind": "standalone_graphic_work",
+            "title": "Glass Meridian"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "graphic_novel_format"
+            ],
+            "id": "cv-reading-unit:2401",
+            "kind": "standalone_graphic_work",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:2401"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:205",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Meridian Press",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Glass Meridian"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:2401",
+            "nativeId": "2401",
+            "rawHash": "b61f8202c657a669415bf585549938cc04a40c9c7687c67d8ae47dc987e9464f",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-07-01"
+              }
+            ],
+            "format": "graphic memoir",
+            "groupDateEvidence": [
+              "cover_date:2024-07-01"
+            ],
+            "id": "cv-publication:2501",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Meridian Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer/artist"
+            ],
+            "creators": [
+              "Cael Ingrid"
+            ],
+            "evidence": [
+              "graphic_memoir_format"
+            ],
+            "id": "cv-readable:2501",
+            "kind": "standalone_graphic_work",
+            "title": "Signals from the Fold"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "graphic_memoir_format"
+            ],
+            "id": "cv-reading-unit:2501",
+            "kind": "standalone_graphic_work",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:2501"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:206",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Meridian Press",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Signals from the Fold"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:2501",
+            "nativeId": "2501",
+            "rawHash": "c6e2b92a55c6ca557ab13ddc7078b6d23cf7b98de1ca503aed3217331f001550",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        }
+      ],
+      "source": "comicvine",
+      "sourceContract": {
+        "authentication": [
+          "api_key_required"
+        ],
+        "broadRecommendationSearch": "documented_available_subject_to_terms",
+        "commercialTerms": "non_commercial_only",
+        "discoverySurface": [
+          "search_endpoint_issues"
+        ],
+        "documentationObservedOn": "2026-07-31",
+        "endpointStability": "not_independently_verified",
+        "fieldAndFormatStability": "not_independently_verified",
+        "officialApiDocumentation": "https://comicvine.gamespot.com/api/documentation",
+        "redistributionRestriction": "redistribution_restricted_per_terms"
+      }
+    },
+    {
+      "characterizationOutcome": "classified_complete_with_metadata_limits",
+      "comparison": {
+        "comparativeConclusionAuthorized": false,
+        "performed": false,
+        "reason": "Independent ComicVine characterization only; no equivalent independently frozen GCD characterization was consumed for comparison."
+      },
+      "expectedOutcome": "classified_complete_with_metadata_limits",
+      "expectedRecommendationCapableCount": 3,
+      "fixture": {
+        "captureKind": "synthetic_comicvine_contract_fixture",
+        "fixtureId": "cv-adult-horror-mystery-v1",
+        "liveSourceData": false,
+        "payloadHash": "fd464224faf9ca525fe26554af53487dc2b69779423dddbdc65c5f497c065709",
+        "responseShape": "results_array"
+      },
+      "harness": {
+        "characterization": "Graphic Novel Source Competence Phase II",
+        "mode": "fixture_replay",
+        "name": "NovelIdeas Source Competence Harness",
+        "networkPolicy": "fixture_only_hard_block",
+        "schemaVersion": "1.0.0",
+        "version": "1.0.0"
+      },
+      "humanReview": {
+        "machineIdentityCompetenceIsNotRecommendationUsefulness": true,
+        "performedByHarness": false,
+        "status": "not_reviewed"
+      },
+      "identity": {
+        "ambiguousCount": 0,
+        "ambiguousSourceRecordIds": [],
+        "collapseGroups": [],
+        "dateConflictSourceRecordIds": [],
+        "incompleteCreatorCreditSourceRecordIds": [],
+        "missingSequenceSourceRecordIds": [
+          "cv:3001",
+          "cv:3101",
+          "cv:3201",
+          "cv:3301"
+        ],
+        "neutralContractCases": [
+          "single-issue",
+          "same-issue-variant-cover",
+          "trade-collecting-issues",
+          "hardcover-paperback-same-collection",
+          "manga-volume",
+          "omnibus-multiple-volumes",
+          "creator-owned-standalone",
+          "graphic-memoir",
+          "similar-title-unrelated-series",
+          "missing-volume-numbering",
+          "conflicting-publication-dates",
+          "incomplete-creator-credits",
+          "ambiguous-issue-versus-collection"
+        ],
+        "neutralContractVersion": "graphic-reading-unit-identity/1.0.0",
+        "normalizedRecordCount": 4,
+        "readingUnitKindHistogram": {
+          "standalone_graphic_work": 3,
+          "supporting_reference": 1
+        },
+        "recommendationCapableIdentityCount": 3,
+        "sameTitleDistinctSeries": [
+          {
+            "automaticMerge": false,
+            "seriesIds": [
+              "cv-series:301",
+              "cv-series:302"
+            ],
+            "title": "night garden"
+          }
+        ]
+      },
+      "licensingBoundary": {
+        "commercialUseGated": true,
+        "coverImagesPresent": false,
+        "coverUrlsPresent": false,
+        "fixtureContent": "wholly_synthetic",
+        "liveCharacterizationAuthorized": false,
+        "liveMetadataCaptured": false,
+        "publicProductionAuthorized": false
+      },
+      "metadataCoverage": {
+        "audienceAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "constituentIdentity": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "creatorRoles": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "creators": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "dates": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "genreAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "language": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "maturityAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "publisher": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "sequence": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "seriesIdentity": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "stableSourceId": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "summary": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "title": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        }
+      },
+      "productionBoundary": {
+        "eligibilityExercised": false,
+        "productionAdapterState": "adapter_implemented",
+        "productionHashes": {
+          "app/recommender-v2/comicVineAdmission.ts": "b80e7c091c6f93364386372a0906ab8adb5aec8331b871b6e20696214b721551",
+          "app/recommender-v2/comicVineIdentity.ts": "ed10cf8d7f43e360614a58af4e608336167d6e34230d29c09f04ae29e7d36181",
+          "app/recommender-v2/engine.ts": "b4af04ca855f309315bd2df7e482633e4c8d41cb67b4f4cc3c8b3c46c366bb0d",
+          "app/recommender-v2/normalize.ts": "98d62df24ed4257cff596db07cd8f544e5416f5c9bc96561dcfbacac170ed6b6",
+          "app/recommender-v2/score.ts": "feed888d344ad68f3e760d9fa1a302c25b13d6f5fb6f59f4e5b486283fcb37ac",
+          "app/recommender-v2/select.ts": "2330275c83ef7cdffe38a0fa4b22ca4cafd6c9172df832e993f3ee0c683a2037",
+          "app/recommender-v2/sources/comicVineSource.ts": "07177ff1284d1f59e614703f0b4df715d2adbf7d45e5ff03c88c2b093ae3f8be",
+          "app/recommender-v2/types.ts": "aef9e62ca1e93d9a4c080ed9c5009d4318bc35015fcb04584c28fe2249d3ceea"
+        },
+        "productionLifecycleTerminalState": "not_exercised_by_characterization",
+        "productionRoutingExercised": false,
+        "recommendationBehaviorChanged": false,
+        "scoringExercised": false,
+        "selectionExercised": false
+      },
+      "profile": {
+        "ageBand": "adult",
+        "characterizationPurpose": "Story/creator evidence, standalone and memoir identity, and similarly titled series separation.",
+        "expectedOutcome": "classified_complete_with_metadata_limits",
+        "expectedRecommendationCapableCount": 3,
+        "humanReview": {
+          "status": "not_reviewed"
+        },
+        "intent": "Atmospheric horror and mystery graphic works; avoid non-narrative guides.",
+        "matrixProfileId": "gn-adult-horror-mystery",
+        "profileId": "cv-adult-horror-mystery"
+      },
+      "raw": {
+        "declaredCount": 4,
+        "nativeIdsInReturnedOrder": [
+          3001,
+          3101,
+          3201,
+          3301
+        ],
+        "recordCount": 4,
+        "structuralRejects": []
+      },
+      "records": [
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-02-01"
+              }
+            ],
+            "format": "graphic novel",
+            "groupDateEvidence": [
+              "cover_date:2024-02-01"
+            ],
+            "id": "cv-publication:3001",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Shadowline Comics",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer",
+              "artist"
+            ],
+            "creators": [
+              "Rhys Ellory",
+              "Orin Shale"
+            ],
+            "evidence": [
+              "graphic_novel_format"
+            ],
+            "id": "cv-readable:3001",
+            "kind": "standalone_graphic_work",
+            "title": "Night Garden"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "graphic_novel_format"
+            ],
+            "id": "cv-reading-unit:3001",
+            "kind": "standalone_graphic_work",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:3001"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:301",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Shadowline Comics",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Night Garden"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:3001",
+            "nativeId": "3001",
+            "rawHash": "2a37bd482fb95c9a774a94f10556595186490c43d47221fe3837c913d6d8dfbc",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2022-08-01"
+              }
+            ],
+            "format": "graphic novel",
+            "groupDateEvidence": [
+              "cover_date:2022-08-01"
+            ],
+            "id": "cv-publication:3101",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Ashwick Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer/artist"
+            ],
+            "creators": [
+              "Vesper Cole"
+            ],
+            "evidence": [
+              "graphic_novel_format"
+            ],
+            "id": "cv-readable:3101",
+            "kind": "standalone_graphic_work",
+            "title": "Night Garden"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "graphic_novel_format"
+            ],
+            "id": "cv-reading-unit:3101",
+            "kind": "standalone_graphic_work",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:3101"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:302",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Ashwick Press",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Night Garden"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:3101",
+            "nativeId": "3101",
+            "rawHash": "abc9877d06fbe64be5d3329910586cbf22db8f0e3dea2c0c768204dd95001390",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2023-11-01"
+              }
+            ],
+            "format": "graphic memoir",
+            "groupDateEvidence": [
+              "cover_date:2023-11-01"
+            ],
+            "id": "cv-publication:3201",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Shadowline Comics",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer",
+              "artist"
+            ],
+            "creators": [
+              "Rhys Ellory",
+              "Orin Shale"
+            ],
+            "evidence": [
+              "graphic_memoir_format"
+            ],
+            "id": "cv-readable:3201",
+            "kind": "standalone_graphic_work",
+            "title": "The Warden"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "graphic_memoir_format"
+            ],
+            "id": "cv-reading-unit:3201",
+            "kind": "standalone_graphic_work",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:3201"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:303",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Shadowline Comics",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "The Warden"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:3201",
+            "nativeId": "3201",
+            "rawHash": "ca6b8d9c213d7a1682a112d54d6172a8d99baae6b2a242c120fe324004d01c3d",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-01-01"
+              }
+            ],
+            "format": "reference book",
+            "groupDateEvidence": [
+              "cover_date:2024-01-01"
+            ],
+            "id": "cv-publication:3301",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Ashwick Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer"
+            ],
+            "creators": [
+              "Vesper Cole"
+            ],
+            "evidence": [
+              "reference_format_or_descriptor"
+            ],
+            "id": "cv-readable:3301",
+            "kind": "supporting_reference",
+            "title": "Horror Classics: Companion Guide"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "reference_format_or_descriptor"
+            ],
+            "id": "cv-reading-unit:3301",
+            "kind": "supporting_reference",
+            "recommendationCapable": false
+          },
+          "recommendationIdentity": null,
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:304",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Ashwick Press",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Horror Classics"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:3301",
+            "nativeId": "3301",
+            "rawHash": "b2416afae14474a4539109b2eec7ebae84457ddb492a8648392afafd29d36901",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        }
+      ],
+      "source": "comicvine",
+      "sourceContract": {
+        "authentication": [
+          "api_key_required"
+        ],
+        "broadRecommendationSearch": "documented_available_subject_to_terms",
+        "commercialTerms": "non_commercial_only",
+        "discoverySurface": [
+          "search_endpoint_issues"
+        ],
+        "documentationObservedOn": "2026-07-31",
+        "endpointStability": "not_independently_verified",
+        "fieldAndFormatStability": "not_independently_verified",
+        "officialApiDocumentation": "https://comicvine.gamespot.com/api/documentation",
+        "redistributionRestriction": "redistribution_restricted_per_terms"
+      }
+    },
+    {
+      "characterizationOutcome": "identity_preserved_audience_unsupported",
+      "comparison": {
+        "comparativeConclusionAuthorized": false,
+        "performed": false,
+        "reason": "Independent ComicVine characterization only; no equivalent independently frozen GCD characterization was consumed for comparison."
+      },
+      "expectedOutcome": "identity_preserved_audience_unsupported",
+      "expectedRecommendationCapableCount": 3,
+      "fixture": {
+        "captureKind": "synthetic_comicvine_contract_fixture",
+        "fixtureId": "cv-teen-fantasy-adventure-v1",
+        "liveSourceData": false,
+        "payloadHash": "c8a37b58a9041abd84f787990e8fe1b4f4e0c0e0024a72fb39c5fef161dc4aab",
+        "responseShape": "results_array"
+      },
+      "harness": {
+        "characterization": "Graphic Novel Source Competence Phase II",
+        "mode": "fixture_replay",
+        "name": "NovelIdeas Source Competence Harness",
+        "networkPolicy": "fixture_only_hard_block",
+        "schemaVersion": "1.0.0",
+        "version": "1.0.0"
+      },
+      "humanReview": {
+        "machineIdentityCompetenceIsNotRecommendationUsefulness": true,
+        "performedByHarness": false,
+        "status": "not_reviewed"
+      },
+      "identity": {
+        "ambiguousCount": 0,
+        "ambiguousSourceRecordIds": [],
+        "collapseGroups": [
+          {
+            "publicationIds": [
+              "cv-publication:4201",
+              "cv-publication:4301"
+            ],
+            "readableWorkId": "cv-readable:issues:4401,4402,4403,4404,4405",
+            "reasons": [
+              "contains",
+              "same_explicit_constituents"
+            ],
+            "recommendationId": "cv-recommendation:issues:4401,4402,4403,4404,4405"
+          }
+        ],
+        "dateConflictSourceRecordIds": [
+          "cv:4201",
+          "cv:4301"
+        ],
+        "incompleteCreatorCreditSourceRecordIds": [
+          "cv:4201",
+          "cv:4301"
+        ],
+        "missingSequenceSourceRecordIds": [
+          "cv:4001",
+          "cv:4101",
+          "cv:4201",
+          "cv:4301"
+        ],
+        "neutralContractCases": [
+          "single-issue",
+          "same-issue-variant-cover",
+          "trade-collecting-issues",
+          "hardcover-paperback-same-collection",
+          "manga-volume",
+          "omnibus-multiple-volumes",
+          "creator-owned-standalone",
+          "graphic-memoir",
+          "similar-title-unrelated-series",
+          "missing-volume-numbering",
+          "conflicting-publication-dates",
+          "incomplete-creator-credits",
+          "ambiguous-issue-versus-collection"
+        ],
+        "neutralContractVersion": "graphic-reading-unit-identity/1.0.0",
+        "normalizedRecordCount": 4,
+        "readingUnitKindHistogram": {
+          "collected_volume": 2,
+          "standalone_graphic_work": 2
+        },
+        "recommendationCapableIdentityCount": 3,
+        "sameTitleDistinctSeries": []
+      },
+      "licensingBoundary": {
+        "commercialUseGated": true,
+        "coverImagesPresent": false,
+        "coverUrlsPresent": false,
+        "fixtureContent": "wholly_synthetic",
+        "liveCharacterizationAuthorized": false,
+        "liveMetadataCaptured": false,
+        "publicProductionAuthorized": false
+      },
+      "metadataCoverage": {
+        "audienceAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "constituentIdentity": {
+          "present": 2,
+          "rate": 0.5,
+          "total": 4
+        },
+        "creatorRoles": {
+          "present": 2,
+          "rate": 0.5,
+          "total": 4
+        },
+        "creators": {
+          "present": 2,
+          "rate": 0.5,
+          "total": 4
+        },
+        "dates": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "genreAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "language": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "maturityAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "publisher": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "sequence": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "seriesIdentity": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "stableSourceId": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "summary": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "title": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        }
+      },
+      "productionBoundary": {
+        "eligibilityExercised": false,
+        "productionAdapterState": "adapter_implemented",
+        "productionHashes": {
+          "app/recommender-v2/comicVineAdmission.ts": "b80e7c091c6f93364386372a0906ab8adb5aec8331b871b6e20696214b721551",
+          "app/recommender-v2/comicVineIdentity.ts": "ed10cf8d7f43e360614a58af4e608336167d6e34230d29c09f04ae29e7d36181",
+          "app/recommender-v2/engine.ts": "b4af04ca855f309315bd2df7e482633e4c8d41cb67b4f4cc3c8b3c46c366bb0d",
+          "app/recommender-v2/normalize.ts": "98d62df24ed4257cff596db07cd8f544e5416f5c9bc96561dcfbacac170ed6b6",
+          "app/recommender-v2/score.ts": "feed888d344ad68f3e760d9fa1a302c25b13d6f5fb6f59f4e5b486283fcb37ac",
+          "app/recommender-v2/select.ts": "2330275c83ef7cdffe38a0fa4b22ca4cafd6c9172df832e993f3ee0c683a2037",
+          "app/recommender-v2/sources/comicVineSource.ts": "07177ff1284d1f59e614703f0b4df715d2adbf7d45e5ff03c88c2b093ae3f8be",
+          "app/recommender-v2/types.ts": "aef9e62ca1e93d9a4c080ed9c5009d4318bc35015fcb04584c28fe2249d3ceea"
+        },
+        "productionLifecycleTerminalState": "not_exercised_by_characterization",
+        "productionRoutingExercised": false,
+        "recommendationBehaviorChanged": false,
+        "scoringExercised": false,
+        "selectionExercised": false
+      },
+      "profile": {
+        "ageBand": "teens",
+        "characterizationPurpose": "Audience authority, missing order, conflicting dates, and incomplete credit preservation.",
+        "expectedOutcome": "identity_preserved_audience_unsupported",
+        "expectedRecommendationCapableCount": 3,
+        "humanReview": {
+          "status": "not_reviewed"
+        },
+        "intent": "Teen fantasy/adventure graphic novels with friendship and identity themes.",
+        "matrixProfileId": "gn-teen-fantasy-adventure",
+        "profileId": "cv-teen-fantasy-adventure"
+      },
+      "raw": {
+        "declaredCount": 4,
+        "nativeIdsInReturnedOrder": [
+          4001,
+          4101,
+          4201,
+          4301
+        ],
+        "recordCount": 4,
+        "structuralRejects": []
+      },
+      "records": [
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-04-01"
+              }
+            ],
+            "format": "unknown",
+            "groupDateEvidence": [
+              "cover_date:2024-04-01"
+            ],
+            "id": "cv-publication:4001",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Waypoint Books",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer",
+              "artist"
+            ],
+            "creators": [
+              "Emi Strand",
+              "Teo Vargas"
+            ],
+            "evidence": [
+              "graphic_novel_format"
+            ],
+            "id": "cv-readable:4001",
+            "kind": "standalone_graphic_work",
+            "title": "The Lantern Road"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "graphic_novel_format"
+            ],
+            "id": "cv-reading-unit:4001",
+            "kind": "standalone_graphic_work",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:4001"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:401",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Waypoint Books",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "The Lantern Road"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:4001",
+            "nativeId": "4001",
+            "rawHash": "311a1f854c60b3142c741a8e775fd92e497410a448c88af6f6afde557b23d4c4",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-06-01"
+              }
+            ],
+            "format": "graphic novel",
+            "groupDateEvidence": [
+              "cover_date:2024-06-01"
+            ],
+            "id": "cv-publication:4101",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Waypoint Books",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer"
+            ],
+            "creators": [
+              "Emi Strand"
+            ],
+            "evidence": [
+              "graphic_novel_format"
+            ],
+            "id": "cv-readable:4101",
+            "kind": "standalone_graphic_work",
+            "title": "Stormhaven Vol. 3"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "graphic_novel_format"
+            ],
+            "id": "cv-reading-unit:4101",
+            "kind": "standalone_graphic_work",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:4101"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:402",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Waypoint Books",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Stormhaven"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:4101",
+            "nativeId": "4101",
+            "rawHash": "974a1cb642f5465158e377488ddb509ebe2665ddd7df18776eeaf4dd6e941c1f",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": true,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-03-15"
+              }
+            ],
+            "format": "trade paperback",
+            "groupDateEvidence": [
+              "cover_date:2024-03-15",
+              "cover_date:2024-08-01"
+            ],
+            "id": "cv-publication:4201",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Waypoint Books",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [
+              "cv:4401",
+              "cv:4402",
+              "cv:4403",
+              "cv:4404",
+              "cv:4405"
+            ],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": false,
+            "creatorRoles": [],
+            "creators": [],
+            "evidence": [
+              "trade_or_collection_format",
+              "explicit_constituent_issues"
+            ],
+            "id": "cv-readable:issues:4401,4402,4403,4404,4405",
+            "kind": "collected_volume",
+            "title": "Ember Crossing Vol. 1 [Trade]"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "trade_or_collection_format",
+              "explicit_constituent_issues"
+            ],
+            "id": "cv-reading-unit:issues:4401,4402,4403,4404,4405",
+            "kind": "collected_volume",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:issues:4401,4402,4403,4404,4405"
+          },
+          "relationships": [
+            {
+              "target": "cv:4401",
+              "type": "contains"
+            },
+            {
+              "target": "cv:4402",
+              "type": "contains"
+            },
+            {
+              "target": "cv:4403",
+              "type": "contains"
+            },
+            {
+              "target": "cv:4404",
+              "type": "contains"
+            },
+            {
+              "target": "cv:4405",
+              "type": "contains"
+            }
+          ],
+          "seriesIdentity": {
+            "id": "cv-series:403",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Waypoint Books",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Ember Crossing Collections"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": false,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:4201",
+            "nativeId": "4201",
+            "rawHash": "8cfff0960cd019cf86c729cb1ac6c8cfec559606d2b83ed457bcce9c769b6015",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": true,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-08-01"
+              }
+            ],
+            "format": "hardcover",
+            "groupDateEvidence": [
+              "cover_date:2024-03-15",
+              "cover_date:2024-08-01"
+            ],
+            "id": "cv-publication:4301",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Waypoint Books",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [
+              "cv:4401",
+              "cv:4402",
+              "cv:4403",
+              "cv:4404",
+              "cv:4405"
+            ],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": false,
+            "creatorRoles": [],
+            "creators": [],
+            "evidence": [
+              "hardcover_collection_format",
+              "explicit_constituent_issues"
+            ],
+            "id": "cv-readable:issues:4401,4402,4403,4404,4405",
+            "kind": "collected_volume",
+            "title": "Ember Crossing Vol. 1 [Library Hardcover]"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "hardcover_collection_format",
+              "explicit_constituent_issues"
+            ],
+            "id": "cv-reading-unit:issues:4401,4402,4403,4404,4405",
+            "kind": "collected_volume",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:issues:4401,4402,4403,4404,4405"
+          },
+          "relationships": [
+            {
+              "target": "cv:4401",
+              "type": "contains"
+            },
+            {
+              "target": "cv:4402",
+              "type": "contains"
+            },
+            {
+              "target": "cv:4403",
+              "type": "contains"
+            },
+            {
+              "target": "cv:4404",
+              "type": "contains"
+            },
+            {
+              "target": "cv:4405",
+              "type": "contains"
+            }
+          ],
+          "seriesIdentity": {
+            "id": "cv-series:403",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Waypoint Books",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Ember Crossing Collections"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": false,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:4301",
+            "nativeId": "4301",
+            "rawHash": "143998f4c5347a0d9542a34d91290062af7105b3e36d565bce18148b593c0271",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        }
+      ],
+      "source": "comicvine",
+      "sourceContract": {
+        "authentication": [
+          "api_key_required"
+        ],
+        "broadRecommendationSearch": "documented_available_subject_to_terms",
+        "commercialTerms": "non_commercial_only",
+        "discoverySurface": [
+          "search_endpoint_issues"
+        ],
+        "documentationObservedOn": "2026-07-31",
+        "endpointStability": "not_independently_verified",
+        "fieldAndFormatStability": "not_independently_verified",
+        "officialApiDocumentation": "https://comicvine.gamespot.com/api/documentation",
+        "redistributionRestriction": "redistribution_restricted_per_terms"
+      }
+    },
+    {
+      "characterizationOutcome": "classified_with_ambiguity_and_audience_limit",
+      "comparison": {
+        "comparativeConclusionAuthorized": false,
+        "performed": false,
+        "reason": "Independent ComicVine characterization only; no equivalent independently frozen GCD characterization was consumed for comparison."
+      },
+      "expectedOutcome": "classified_with_ambiguity_and_audience_limit",
+      "expectedRecommendationCapableCount": 2,
+      "fixture": {
+        "captureKind": "synthetic_comicvine_contract_fixture",
+        "fixtureId": "cv-teen-superhero-identity-v1",
+        "liveSourceData": false,
+        "payloadHash": "37a035f15dbd995f14a197c508a5145ab9457f29b17bd2e42e01fb1be41c6776",
+        "responseShape": "results_array"
+      },
+      "harness": {
+        "characterization": "Graphic Novel Source Competence Phase II",
+        "mode": "fixture_replay",
+        "name": "NovelIdeas Source Competence Harness",
+        "networkPolicy": "fixture_only_hard_block",
+        "schemaVersion": "1.0.0",
+        "version": "1.0.0"
+      },
+      "humanReview": {
+        "machineIdentityCompetenceIsNotRecommendationUsefulness": true,
+        "performedByHarness": false,
+        "status": "not_reviewed"
+      },
+      "identity": {
+        "ambiguousCount": 1,
+        "ambiguousSourceRecordIds": [
+          "cv:5101"
+        ],
+        "collapseGroups": [
+          {
+            "publicationIds": [
+              "cv-publication:5001",
+              "cv-publication:5002"
+            ],
+            "readableWorkId": "cv-readable:5001",
+            "reasons": [
+              "variant_of"
+            ],
+            "recommendationId": "cv-recommendation:5001"
+          }
+        ],
+        "dateConflictSourceRecordIds": [],
+        "incompleteCreatorCreditSourceRecordIds": [],
+        "missingSequenceSourceRecordIds": [],
+        "neutralContractCases": [
+          "single-issue",
+          "same-issue-variant-cover",
+          "trade-collecting-issues",
+          "hardcover-paperback-same-collection",
+          "manga-volume",
+          "omnibus-multiple-volumes",
+          "creator-owned-standalone",
+          "graphic-memoir",
+          "similar-title-unrelated-series",
+          "missing-volume-numbering",
+          "conflicting-publication-dates",
+          "incomplete-creator-credits",
+          "ambiguous-issue-versus-collection"
+        ],
+        "neutralContractVersion": "graphic-reading-unit-identity/1.0.0",
+        "normalizedRecordCount": 4,
+        "readingUnitKindHistogram": {
+          "ambiguous_reading_unit": 1,
+          "single_issue": 3
+        },
+        "recommendationCapableIdentityCount": 2,
+        "sameTitleDistinctSeries": []
+      },
+      "licensingBoundary": {
+        "commercialUseGated": true,
+        "coverImagesPresent": false,
+        "coverUrlsPresent": false,
+        "fixtureContent": "wholly_synthetic",
+        "liveCharacterizationAuthorized": false,
+        "liveMetadataCaptured": false,
+        "publicProductionAuthorized": false
+      },
+      "metadataCoverage": {
+        "audienceAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "constituentIdentity": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "creatorRoles": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "creators": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "dates": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "genreAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "language": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "maturityAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "publisher": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "sequence": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "seriesIdentity": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "stableSourceId": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        },
+        "summary": {
+          "present": 0,
+          "rate": 0,
+          "total": 4
+        },
+        "title": {
+          "present": 4,
+          "rate": 1,
+          "total": 4
+        }
+      },
+      "productionBoundary": {
+        "eligibilityExercised": false,
+        "productionAdapterState": "adapter_implemented",
+        "productionHashes": {
+          "app/recommender-v2/comicVineAdmission.ts": "b80e7c091c6f93364386372a0906ab8adb5aec8331b871b6e20696214b721551",
+          "app/recommender-v2/comicVineIdentity.ts": "ed10cf8d7f43e360614a58af4e608336167d6e34230d29c09f04ae29e7d36181",
+          "app/recommender-v2/engine.ts": "b4af04ca855f309315bd2df7e482633e4c8d41cb67b4f4cc3c8b3c46c366bb0d",
+          "app/recommender-v2/normalize.ts": "98d62df24ed4257cff596db07cd8f544e5416f5c9bc96561dcfbacac170ed6b6",
+          "app/recommender-v2/score.ts": "feed888d344ad68f3e760d9fa1a302c25b13d6f5fb6f59f4e5b486283fcb37ac",
+          "app/recommender-v2/select.ts": "2330275c83ef7cdffe38a0fa4b22ca4cafd6c9172df832e993f3ee0c683a2037",
+          "app/recommender-v2/sources/comicVineSource.ts": "07177ff1284d1f59e614703f0b4df715d2adbf7d45e5ff03c88c2b093ae3f8be",
+          "app/recommender-v2/types.ts": "aef9e62ca1e93d9a4c080ed9c5009d4318bc35015fcb04584c28fe2249d3ceea"
+        },
+        "productionLifecycleTerminalState": "not_exercised_by_characterization",
+        "productionRoutingExercised": false,
+        "recommendationBehaviorChanged": false,
+        "scoringExercised": false,
+        "selectionExercised": false
+      },
+      "profile": {
+        "ageBand": "teens",
+        "characterizationPurpose": "Issue entry points, variants, and ambiguous issue-versus-collection shape.",
+        "expectedOutcome": "classified_with_ambiguity_and_audience_limit",
+        "expectedRecommendationCapableCount": 2,
+        "humanReview": {
+          "status": "not_reviewed"
+        },
+        "intent": "Accessible teen superhero identity stories; avoid inaccessible middle issues.",
+        "matrixProfileId": "gn-teen-superhero-identity",
+        "profileId": "cv-teen-superhero-identity"
+      },
+      "raw": {
+        "declaredCount": 4,
+        "nativeIdsInReturnedOrder": [
+          5001,
+          5002,
+          5101,
+          5201
+        ],
+        "recordCount": 4,
+        "structuralRejects": []
+      },
+      "records": [
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-05-01"
+              }
+            ],
+            "format": "single_issue",
+            "groupDateEvidence": [
+              "cover_date:2024-05-01"
+            ],
+            "id": "cv-publication:5001",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Apex Comics",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer",
+              "penciler"
+            ],
+            "creators": [
+              "Kay Linden",
+              "Orion Bell"
+            ],
+            "evidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-readable:5001",
+            "kind": "single_issue",
+            "title": "Circuit #1"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-reading-unit:5001",
+            "kind": "single_issue",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:5001"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:501",
+            "orderConfidence": "explicit",
+            "parsedOrdinal": 1,
+            "publisher": "Apex Comics",
+            "rawSequenceLabel": "1",
+            "startYear": null,
+            "title": "Circuit"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:5001",
+            "nativeId": "5001",
+            "rawHash": "e1fb470f87d2f07ad1c520f91aaab69b252ff77761b728a05e7ff5ecb752a3ab",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-05-01"
+              }
+            ],
+            "format": "single_issue",
+            "groupDateEvidence": [
+              "cover_date:2024-05-01"
+            ],
+            "id": "cv-publication:5002",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Apex Comics",
+            "variantName": "Variant of cv:5001"
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer",
+              "penciler"
+            ],
+            "creators": [
+              "Kay Linden",
+              "Orion Bell"
+            ],
+            "evidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-readable:5001",
+            "kind": "single_issue",
+            "title": "Circuit #1 [Variant Cover]"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-reading-unit:5001",
+            "kind": "single_issue",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:5001"
+          },
+          "relationships": [
+            {
+              "target": "cv-publication:5001",
+              "type": "variant_of"
+            }
+          ],
+          "seriesIdentity": {
+            "id": "cv-series:501",
+            "orderConfidence": "explicit",
+            "parsedOrdinal": 1,
+            "publisher": "Apex Comics",
+            "rawSequenceLabel": "1",
+            "startYear": null,
+            "title": "Circuit"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:5002",
+            "nativeId": "5002",
+            "rawHash": "5857dc142c8084e9a105605a78a80df787c1237ff3dd9fb06d29e4fb89ce4f3a",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-10-01"
+              }
+            ],
+            "format": "single_issue",
+            "groupDateEvidence": [
+              "cover_date:2024-10-01"
+            ],
+            "id": "cv-publication:5101",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Apex Comics",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "low",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer"
+            ],
+            "creators": [
+              "Kay Linden"
+            ],
+            "evidence": [
+              "issue_and_collection_signals_conflict",
+              "constituents_missing"
+            ],
+            "id": "cv-readable:5101",
+            "kind": "ambiguous_reading_unit",
+            "title": "Circuit: Collected Stories"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "issue_and_collection_signals_conflict",
+              "constituents_missing"
+            ],
+            "id": "cv-reading-unit:5101",
+            "kind": "ambiguous_reading_unit",
+            "recommendationCapable": false
+          },
+          "recommendationIdentity": null,
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:502",
+            "orderConfidence": "explicit",
+            "parsedOrdinal": 1,
+            "publisher": "Apex Comics",
+            "rawSequenceLabel": "1",
+            "startYear": null,
+            "title": "Circuit: Collected Stories"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:5101",
+            "nativeId": "5101",
+            "rawHash": "6145bd991c5c938e8ed702900f8b215fdaad20604897e6172b9aab4c8c4d5299",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-11-01"
+              }
+            ],
+            "format": "single_issue",
+            "groupDateEvidence": [
+              "cover_date:2024-11-01"
+            ],
+            "id": "cv-publication:5201",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Apex Comics",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer",
+              "penciler"
+            ],
+            "creators": [
+              "Kay Linden",
+              "Orion Bell"
+            ],
+            "evidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-readable:5201",
+            "kind": "single_issue",
+            "title": "Circuit #7"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-reading-unit:5201",
+            "kind": "single_issue",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:5201"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:501",
+            "orderConfidence": "explicit",
+            "parsedOrdinal": 7,
+            "publisher": "Apex Comics",
+            "rawSequenceLabel": "7",
+            "startYear": null,
+            "title": "Circuit"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:5201",
+            "nativeId": "5201",
+            "rawHash": "589feb4553343e46887a081cb97fbe2192572792b1bd8ddfafd59274642022eb",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        }
+      ],
+      "source": "comicvine",
+      "sourceContract": {
+        "authentication": [
+          "api_key_required"
+        ],
+        "broadRecommendationSearch": "documented_available_subject_to_terms",
+        "commercialTerms": "non_commercial_only",
+        "discoverySurface": [
+          "search_endpoint_issues"
+        ],
+        "documentationObservedOn": "2026-07-31",
+        "endpointStability": "not_independently_verified",
+        "fieldAndFormatStability": "not_independently_verified",
+        "officialApiDocumentation": "https://comicvine.gamespot.com/api/documentation",
+        "redistributionRestriction": "redistribution_restricted_per_terms"
+      }
+    },
+    {
+      "characterizationOutcome": "identity_preserved_audience_and_maturity_unsupported",
+      "comparison": {
+        "comparativeConclusionAuthorized": false,
+        "performed": false,
+        "reason": "Independent ComicVine characterization only; no equivalent independently frozen GCD characterization was consumed for comparison."
+      },
+      "expectedOutcome": "identity_preserved_audience_and_maturity_unsupported",
+      "expectedRecommendationCapableCount": 2,
+      "fixture": {
+        "captureKind": "synthetic_comicvine_contract_fixture",
+        "fixtureId": "cv-preteen-humor-adventure-v1",
+        "liveSourceData": false,
+        "payloadHash": "2552d2ee498b944db4b83debcd3cc6d4984c8fcb564e65bb736676a5564fa913",
+        "responseShape": "results_array"
+      },
+      "harness": {
+        "characterization": "Graphic Novel Source Competence Phase II",
+        "mode": "fixture_replay",
+        "name": "NovelIdeas Source Competence Harness",
+        "networkPolicy": "fixture_only_hard_block",
+        "schemaVersion": "1.0.0",
+        "version": "1.0.0"
+      },
+      "humanReview": {
+        "machineIdentityCompetenceIsNotRecommendationUsefulness": true,
+        "performedByHarness": false,
+        "status": "not_reviewed"
+      },
+      "identity": {
+        "ambiguousCount": 0,
+        "ambiguousSourceRecordIds": [],
+        "collapseGroups": [],
+        "dateConflictSourceRecordIds": [],
+        "incompleteCreatorCreditSourceRecordIds": [],
+        "missingSequenceSourceRecordIds": [],
+        "neutralContractCases": [
+          "single-issue",
+          "same-issue-variant-cover",
+          "trade-collecting-issues",
+          "hardcover-paperback-same-collection",
+          "manga-volume",
+          "omnibus-multiple-volumes",
+          "creator-owned-standalone",
+          "graphic-memoir",
+          "similar-title-unrelated-series",
+          "missing-volume-numbering",
+          "conflicting-publication-dates",
+          "incomplete-creator-credits",
+          "ambiguous-issue-versus-collection"
+        ],
+        "neutralContractVersion": "graphic-reading-unit-identity/1.0.0",
+        "normalizedRecordCount": 2,
+        "readingUnitKindHistogram": {
+          "single_issue": 2
+        },
+        "recommendationCapableIdentityCount": 2,
+        "sameTitleDistinctSeries": []
+      },
+      "licensingBoundary": {
+        "commercialUseGated": true,
+        "coverImagesPresent": false,
+        "coverUrlsPresent": false,
+        "fixtureContent": "wholly_synthetic",
+        "liveCharacterizationAuthorized": false,
+        "liveMetadataCaptured": false,
+        "publicProductionAuthorized": false
+      },
+      "metadataCoverage": {
+        "audienceAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "constituentIdentity": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "creatorRoles": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "creators": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "dates": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "genreAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "language": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "maturityAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "publisher": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "sequence": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "seriesIdentity": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "stableSourceId": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "summary": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "title": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        }
+      },
+      "productionBoundary": {
+        "eligibilityExercised": false,
+        "productionAdapterState": "adapter_implemented",
+        "productionHashes": {
+          "app/recommender-v2/comicVineAdmission.ts": "b80e7c091c6f93364386372a0906ab8adb5aec8331b871b6e20696214b721551",
+          "app/recommender-v2/comicVineIdentity.ts": "ed10cf8d7f43e360614a58af4e608336167d6e34230d29c09f04ae29e7d36181",
+          "app/recommender-v2/engine.ts": "b4af04ca855f309315bd2df7e482633e4c8d41cb67b4f4cc3c8b3c46c366bb0d",
+          "app/recommender-v2/normalize.ts": "98d62df24ed4257cff596db07cd8f544e5416f5c9bc96561dcfbacac170ed6b6",
+          "app/recommender-v2/score.ts": "feed888d344ad68f3e760d9fa1a302c25b13d6f5fb6f59f4e5b486283fcb37ac",
+          "app/recommender-v2/select.ts": "2330275c83ef7cdffe38a0fa4b22ca4cafd6c9172df832e993f3ee0c683a2037",
+          "app/recommender-v2/sources/comicVineSource.ts": "07177ff1284d1f59e614703f0b4df715d2adbf7d45e5ff03c88c2b093ae3f8be",
+          "app/recommender-v2/types.ts": "aef9e62ca1e93d9a4c080ed9c5009d4318bc35015fcb04584c28fe2249d3ceea"
+        },
+        "productionLifecycleTerminalState": "not_exercised_by_characterization",
+        "productionRoutingExercised": false,
+        "recommendationBehaviorChanged": false,
+        "scoringExercised": false,
+        "selectionExercised": false
+      },
+      "profile": {
+        "ageBand": "preteens",
+        "characterizationPurpose": "Younger-reader authority and maturity evidence boundaries.",
+        "expectedOutcome": "identity_preserved_audience_and_maturity_unsupported",
+        "expectedRecommendationCapableCount": 2,
+        "humanReview": {
+          "status": "not_reviewed"
+        },
+        "intent": "Preteen humorous adventure graphic novels with age-appropriate stakes.",
+        "matrixProfileId": "gn-preteen-humor-adventure",
+        "profileId": "cv-preteen-humor-adventure"
+      },
+      "raw": {
+        "declaredCount": 2,
+        "nativeIdsInReturnedOrder": [
+          6001,
+          6002
+        ],
+        "recordCount": 2,
+        "structuralRejects": []
+      },
+      "records": [
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-02-01"
+              }
+            ],
+            "format": "single_issue",
+            "groupDateEvidence": [
+              "cover_date:2024-02-01"
+            ],
+            "id": "cv-publication:6001",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Funny Bone Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer/artist"
+            ],
+            "creators": [
+              "Nia Cross"
+            ],
+            "evidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-readable:6001",
+            "kind": "single_issue",
+            "title": "The Wild Patrol Vol. 1"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-reading-unit:6001",
+            "kind": "single_issue",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:6001"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:601",
+            "orderConfidence": "explicit",
+            "parsedOrdinal": 1,
+            "publisher": "Funny Bone Press",
+            "rawSequenceLabel": "1",
+            "startYear": null,
+            "title": "The Wild Patrol"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:6001",
+            "nativeId": "6001",
+            "rawHash": "1d8fb0d4d40fc4c44522afa178d49cebf96797ba820ab38fd7b57e9ae02cf59b",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-08-01"
+              }
+            ],
+            "format": "single_issue",
+            "groupDateEvidence": [
+              "cover_date:2024-08-01"
+            ],
+            "id": "cv-publication:6002",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Funny Bone Press",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "writer/artist"
+            ],
+            "creators": [
+              "Nia Cross"
+            ],
+            "evidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-readable:6002",
+            "kind": "single_issue",
+            "title": "The Wild Patrol Vol. 2"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "issue_number_present",
+              "comic_publication_shape"
+            ],
+            "id": "cv-reading-unit:6002",
+            "kind": "single_issue",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:6002"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:601",
+            "orderConfidence": "explicit",
+            "parsedOrdinal": 2,
+            "publisher": "Funny Bone Press",
+            "rawSequenceLabel": "2",
+            "startYear": null,
+            "title": "The Wild Patrol"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:6002",
+            "nativeId": "6002",
+            "rawHash": "3a398a7aa6c960063a71649137247c4b17c75682f17ff3af688066a7e714d5b3",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        }
+      ],
+      "source": "comicvine",
+      "sourceContract": {
+        "authentication": [
+          "api_key_required"
+        ],
+        "broadRecommendationSearch": "documented_available_subject_to_terms",
+        "commercialTerms": "non_commercial_only",
+        "discoverySurface": [
+          "search_endpoint_issues"
+        ],
+        "documentationObservedOn": "2026-07-31",
+        "endpointStability": "not_independently_verified",
+        "fieldAndFormatStability": "not_independently_verified",
+        "officialApiDocumentation": "https://comicvine.gamespot.com/api/documentation",
+        "redistributionRestriction": "redistribution_restricted_per_terms"
+      }
+    },
+    {
+      "characterizationOutcome": "classified_complete_audience_unsupported",
+      "comparison": {
+        "comparativeConclusionAuthorized": false,
+        "performed": false,
+        "reason": "Independent ComicVine characterization only; no equivalent independently frozen GCD characterization was consumed for comparison."
+      },
+      "expectedOutcome": "classified_complete_audience_unsupported",
+      "expectedRecommendationCapableCount": 2,
+      "fixture": {
+        "captureKind": "synthetic_comicvine_contract_fixture",
+        "fixtureId": "cv-teen-manga-volume-v1",
+        "liveSourceData": false,
+        "payloadHash": "f8789659eb02dbe430a13fe90c741d009cd293e93bd98ec08ae38e3c8a8aa89e",
+        "responseShape": "results_array"
+      },
+      "harness": {
+        "characterization": "Graphic Novel Source Competence Phase II",
+        "mode": "fixture_replay",
+        "name": "NovelIdeas Source Competence Harness",
+        "networkPolicy": "fixture_only_hard_block",
+        "schemaVersion": "1.0.0",
+        "version": "1.0.0"
+      },
+      "humanReview": {
+        "machineIdentityCompetenceIsNotRecommendationUsefulness": true,
+        "performedByHarness": false,
+        "status": "not_reviewed"
+      },
+      "identity": {
+        "ambiguousCount": 0,
+        "ambiguousSourceRecordIds": [],
+        "collapseGroups": [],
+        "dateConflictSourceRecordIds": [],
+        "incompleteCreatorCreditSourceRecordIds": [],
+        "missingSequenceSourceRecordIds": [
+          "cv:7101"
+        ],
+        "neutralContractCases": [
+          "single-issue",
+          "same-issue-variant-cover",
+          "trade-collecting-issues",
+          "hardcover-paperback-same-collection",
+          "manga-volume",
+          "omnibus-multiple-volumes",
+          "creator-owned-standalone",
+          "graphic-memoir",
+          "similar-title-unrelated-series",
+          "missing-volume-numbering",
+          "conflicting-publication-dates",
+          "incomplete-creator-credits",
+          "ambiguous-issue-versus-collection"
+        ],
+        "neutralContractVersion": "graphic-reading-unit-identity/1.0.0",
+        "normalizedRecordCount": 2,
+        "readingUnitKindHistogram": {
+          "manga_volume": 1,
+          "omnibus": 1
+        },
+        "recommendationCapableIdentityCount": 2,
+        "sameTitleDistinctSeries": []
+      },
+      "licensingBoundary": {
+        "commercialUseGated": true,
+        "coverImagesPresent": false,
+        "coverUrlsPresent": false,
+        "fixtureContent": "wholly_synthetic",
+        "liveCharacterizationAuthorized": false,
+        "liveMetadataCaptured": false,
+        "publicProductionAuthorized": false
+      },
+      "metadataCoverage": {
+        "audienceAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "constituentIdentity": {
+          "present": 1,
+          "rate": 0.5,
+          "total": 2
+        },
+        "creatorRoles": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "creators": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "dates": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "genreAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "language": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "maturityAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "publisher": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "sequence": {
+          "present": 1,
+          "rate": 0.5,
+          "total": 2
+        },
+        "seriesIdentity": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "stableSourceId": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        },
+        "summary": {
+          "present": 0,
+          "rate": 0,
+          "total": 2
+        },
+        "title": {
+          "present": 2,
+          "rate": 1,
+          "total": 2
+        }
+      },
+      "productionBoundary": {
+        "eligibilityExercised": false,
+        "productionAdapterState": "adapter_implemented",
+        "productionHashes": {
+          "app/recommender-v2/comicVineAdmission.ts": "b80e7c091c6f93364386372a0906ab8adb5aec8331b871b6e20696214b721551",
+          "app/recommender-v2/comicVineIdentity.ts": "ed10cf8d7f43e360614a58af4e608336167d6e34230d29c09f04ae29e7d36181",
+          "app/recommender-v2/engine.ts": "b4af04ca855f309315bd2df7e482633e4c8d41cb67b4f4cc3c8b3c46c366bb0d",
+          "app/recommender-v2/normalize.ts": "98d62df24ed4257cff596db07cd8f544e5416f5c9bc96561dcfbacac170ed6b6",
+          "app/recommender-v2/score.ts": "feed888d344ad68f3e760d9fa1a302c25b13d6f5fb6f59f4e5b486283fcb37ac",
+          "app/recommender-v2/select.ts": "2330275c83ef7cdffe38a0fa4b22ca4cafd6c9172df832e993f3ee0c683a2037",
+          "app/recommender-v2/sources/comicVineSource.ts": "07177ff1284d1f59e614703f0b4df715d2adbf7d45e5ff03c88c2b093ae3f8be",
+          "app/recommender-v2/types.ts": "aef9e62ca1e93d9a4c080ed9c5009d4318bc35015fcb04584c28fe2249d3ceea"
+        },
+        "productionLifecycleTerminalState": "not_exercised_by_characterization",
+        "productionRoutingExercised": false,
+        "recommendationBehaviorChanged": false,
+        "scoringExercised": false,
+        "selectionExercised": false
+      },
+      "profile": {
+        "ageBand": "teens",
+        "characterizationPurpose": "Manga-volume identity, series order, and omnibus containment.",
+        "expectedOutcome": "classified_complete_audience_unsupported",
+        "expectedRecommendationCapableCount": 2,
+        "humanReview": {
+          "status": "not_reviewed"
+        },
+        "intent": "Teen manga volume with fantasy/adventure and a viable series entry.",
+        "matrixProfileId": "gn-teen-manga-volume",
+        "profileId": "cv-teen-manga-volume"
+      },
+      "raw": {
+        "declaredCount": 2,
+        "nativeIdsInReturnedOrder": [
+          7001,
+          7101
+        ],
+        "recordCount": 2,
+        "structuralRejects": []
+      },
+      "records": [
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2024-07-01"
+              }
+            ],
+            "format": "manga",
+            "groupDateEvidence": [
+              "cover_date:2024-07-01"
+            ],
+            "id": "cv-publication:7001",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Shōkai USA",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "story/art"
+            ],
+            "creators": [
+              "Hana Fujita"
+            ],
+            "evidence": [
+              "manga_format",
+              "volume_number_present"
+            ],
+            "id": "cv-readable:7001",
+            "kind": "manga_volume",
+            "title": "Crystal Gate Vol. 3"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "manga_format",
+              "volume_number_present"
+            ],
+            "id": "cv-reading-unit:7001",
+            "kind": "manga_volume",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:7001"
+          },
+          "relationships": [],
+          "seriesIdentity": {
+            "id": "cv-series:701",
+            "orderConfidence": "explicit",
+            "parsedOrdinal": 3,
+            "publisher": "Shōkai USA",
+            "rawSequenceLabel": "3",
+            "startYear": null,
+            "title": "Crystal Gate"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:7001",
+            "nativeId": "7001",
+            "rawHash": "ba073ae3168eb81f2f2051014afe5d9810d494b83260f415389b206960c79dd8",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        },
+        {
+          "publicationIdentity": {
+            "brand": null,
+            "dateConflictPreserved": false,
+            "dates": [
+              {
+                "type": "cover_date",
+                "value": "2025-01-01"
+              }
+            ],
+            "format": "omnibus manga",
+            "groupDateEvidence": [
+              "cover_date:2025-01-01"
+            ],
+            "id": "cv-publication:7101",
+            "identifier": null,
+            "indiciaPublisher": null,
+            "language": null,
+            "printing": null,
+            "publicationType": "issue",
+            "publisher": "Shōkai USA",
+            "variantName": null
+          },
+          "readableWorkIdentity": {
+            "confidence": "high",
+            "constituentIssueIds": [],
+            "constituentVolumeLabels": [
+              "Crystal Gate Vol. 1",
+              "Crystal Gate Vol. 2",
+              "Crystal Gate Vol. 3"
+            ],
+            "creatorCreditsComplete": true,
+            "creatorRoles": [
+              "story/art"
+            ],
+            "creators": [
+              "Hana Fujita"
+            ],
+            "evidence": [
+              "omnibus_format",
+              "explicit_contained_volumes"
+            ],
+            "id": "cv-readable:7101",
+            "kind": "omnibus",
+            "title": "Crystal Gate: Complete Omnibus"
+          },
+          "readingUnitIdentity": {
+            "boundedExperienceEvidence": [
+              "omnibus_format",
+              "explicit_contained_volumes"
+            ],
+            "id": "cv-reading-unit:7101",
+            "kind": "omnibus",
+            "recommendationCapable": true
+          },
+          "recommendationIdentity": {
+            "collapseLevel": "reading_unit",
+            "id": "cv-recommendation:7101"
+          },
+          "relationships": [
+            {
+              "target": "Crystal Gate Vol. 1",
+              "type": "contains_unresolved_volume_label"
+            },
+            {
+              "target": "Crystal Gate Vol. 2",
+              "type": "contains_unresolved_volume_label"
+            },
+            {
+              "target": "Crystal Gate Vol. 3",
+              "type": "contains_unresolved_volume_label"
+            }
+          ],
+          "seriesIdentity": {
+            "id": "cv-series:702",
+            "orderConfidence": "unknown",
+            "parsedOrdinal": null,
+            "publisher": "Shōkai USA",
+            "rawSequenceLabel": null,
+            "startYear": null,
+            "title": "Crystal Gate Omnibus"
+          },
+          "sourceEvidence": {
+            "audienceAuthorityPresent": false,
+            "coverExcludedByFixturePolicy": true,
+            "deckPresent": true,
+            "genreAuthorityPresent": false,
+            "maturityAuthorityPresent": false,
+            "personCreditsPresent": true,
+            "summaryPresent": false
+          },
+          "sourceRecordIdentity": {
+            "id": "cv:7101",
+            "nativeId": "7101",
+            "rawHash": "7aaafc97d2a7c34aeb6a1074f65fdfe4ad35d78364be2286b8890138baba5628",
+            "source": "comicvine",
+            "sourceRecordType": "issue"
+          }
+        }
+      ],
+      "source": "comicvine",
+      "sourceContract": {
+        "authentication": [
+          "api_key_required"
+        ],
+        "broadRecommendationSearch": "documented_available_subject_to_terms",
+        "commercialTerms": "non_commercial_only",
+        "discoverySurface": [
+          "search_endpoint_issues"
+        ],
+        "documentationObservedOn": "2026-07-31",
+        "endpointStability": "not_independently_verified",
+        "fieldAndFormatStability": "not_independently_verified",
+        "officialApiDocumentation": "https://comicvine.gamespot.com/api/documentation",
+        "redistributionRestriction": "redistribution_restricted_per_terms"
+      }
+    },
+    {
+      "characterizationOutcome": "valid_empty_response",
+      "comparison": {
+        "comparativeConclusionAuthorized": false,
+        "performed": false,
+        "reason": "Independent ComicVine characterization only; no equivalent independently frozen GCD characterization was consumed for comparison."
+      },
+      "expectedOutcome": "valid_empty_response",
+      "expectedRecommendationCapableCount": 0,
+      "fixture": {
+        "captureKind": "synthetic_comicvine_contract_fixture",
+        "fixtureId": "cv-valid-empty-v1",
+        "liveSourceData": false,
+        "payloadHash": "956dc70f7fdaa2358ebf85622b176b7d8b916a92c56746b94bf66a755437fbb7",
+        "responseShape": "results_array"
+      },
+      "harness": {
+        "characterization": "Graphic Novel Source Competence Phase II",
+        "mode": "fixture_replay",
+        "name": "NovelIdeas Source Competence Harness",
+        "networkPolicy": "fixture_only_hard_block",
+        "schemaVersion": "1.0.0",
+        "version": "1.0.0"
+      },
+      "humanReview": {
+        "machineIdentityCompetenceIsNotRecommendationUsefulness": true,
+        "performedByHarness": false,
+        "status": "not_applicable"
+      },
+      "identity": {
+        "ambiguousCount": 0,
+        "ambiguousSourceRecordIds": [],
+        "collapseGroups": [],
+        "dateConflictSourceRecordIds": [],
+        "incompleteCreatorCreditSourceRecordIds": [],
+        "missingSequenceSourceRecordIds": [],
+        "neutralContractCases": [
+          "single-issue",
+          "same-issue-variant-cover",
+          "trade-collecting-issues",
+          "hardcover-paperback-same-collection",
+          "manga-volume",
+          "omnibus-multiple-volumes",
+          "creator-owned-standalone",
+          "graphic-memoir",
+          "similar-title-unrelated-series",
+          "missing-volume-numbering",
+          "conflicting-publication-dates",
+          "incomplete-creator-credits",
+          "ambiguous-issue-versus-collection"
+        ],
+        "neutralContractVersion": "graphic-reading-unit-identity/1.0.0",
+        "normalizedRecordCount": 0,
+        "readingUnitKindHistogram": {},
+        "recommendationCapableIdentityCount": 0,
+        "sameTitleDistinctSeries": []
+      },
+      "licensingBoundary": {
+        "commercialUseGated": true,
+        "coverImagesPresent": false,
+        "coverUrlsPresent": false,
+        "fixtureContent": "wholly_synthetic",
+        "liveCharacterizationAuthorized": false,
+        "liveMetadataCaptured": false,
+        "publicProductionAuthorized": false
+      },
+      "metadataCoverage": {
+        "audienceAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "constituentIdentity": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "creatorRoles": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "creators": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "dates": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "genreAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "language": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "maturityAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "publisher": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "sequence": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "seriesIdentity": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "stableSourceId": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "summary": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "title": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        }
+      },
+      "productionBoundary": {
+        "eligibilityExercised": false,
+        "productionAdapterState": "adapter_implemented",
+        "productionHashes": {
+          "app/recommender-v2/comicVineAdmission.ts": "b80e7c091c6f93364386372a0906ab8adb5aec8331b871b6e20696214b721551",
+          "app/recommender-v2/comicVineIdentity.ts": "ed10cf8d7f43e360614a58af4e608336167d6e34230d29c09f04ae29e7d36181",
+          "app/recommender-v2/engine.ts": "b4af04ca855f309315bd2df7e482633e4c8d41cb67b4f4cc3c8b3c46c366bb0d",
+          "app/recommender-v2/normalize.ts": "98d62df24ed4257cff596db07cd8f544e5416f5c9bc96561dcfbacac170ed6b6",
+          "app/recommender-v2/score.ts": "feed888d344ad68f3e760d9fa1a302c25b13d6f5fb6f59f4e5b486283fcb37ac",
+          "app/recommender-v2/select.ts": "2330275c83ef7cdffe38a0fa4b22ca4cafd6c9172df832e993f3ee0c683a2037",
+          "app/recommender-v2/sources/comicVineSource.ts": "07177ff1284d1f59e614703f0b4df715d2adbf7d45e5ff03c88c2b093ae3f8be",
+          "app/recommender-v2/types.ts": "aef9e62ca1e93d9a4c080ed9c5009d4318bc35015fcb04584c28fe2249d3ceea"
+        },
+        "productionLifecycleTerminalState": "not_exercised_by_characterization",
+        "productionRoutingExercised": false,
+        "recommendationBehaviorChanged": false,
+        "scoringExercised": false,
+        "selectionExercised": false
+      },
+      "profile": {
+        "ageBand": "adult",
+        "characterizationPurpose": "Distinguish a valid empty result set from invalid response structure.",
+        "expectedOutcome": "valid_empty_response",
+        "expectedRecommendationCapableCount": 0,
+        "humanReview": {
+          "status": "not_applicable"
+        },
+        "intent": "Operational empty-response control.",
+        "matrixProfileId": null,
+        "profileId": "cv-valid-empty"
+      },
+      "raw": {
+        "declaredCount": 0,
+        "nativeIdsInReturnedOrder": [],
+        "recordCount": 0,
+        "structuralRejects": []
+      },
+      "records": [],
+      "source": "comicvine",
+      "sourceContract": {
+        "authentication": [
+          "api_key_required"
+        ],
+        "broadRecommendationSearch": "documented_available_subject_to_terms",
+        "commercialTerms": "non_commercial_only",
+        "discoverySurface": [
+          "search_endpoint_issues"
+        ],
+        "documentationObservedOn": "2026-07-31",
+        "endpointStability": "not_independently_verified",
+        "fieldAndFormatStability": "not_independently_verified",
+        "officialApiDocumentation": "https://comicvine.gamespot.com/api/documentation",
+        "redistributionRestriction": "redistribution_restricted_per_terms"
+      }
+    },
+    {
+      "characterizationOutcome": "response_invalid",
+      "comparison": {
+        "comparativeConclusionAuthorized": false,
+        "performed": false,
+        "reason": "Independent ComicVine characterization only; no equivalent independently frozen GCD characterization was consumed for comparison."
+      },
+      "expectedOutcome": "response_invalid",
+      "expectedRecommendationCapableCount": 0,
+      "fixture": {
+        "captureKind": "synthetic_comicvine_contract_fixture",
+        "fixtureId": "cv-invalid-response-v1",
+        "liveSourceData": false,
+        "payloadHash": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+        "responseShape": "invalid_missing_results_array"
+      },
+      "harness": {
+        "characterization": "Graphic Novel Source Competence Phase II",
+        "mode": "fixture_replay",
+        "name": "NovelIdeas Source Competence Harness",
+        "networkPolicy": "fixture_only_hard_block",
+        "schemaVersion": "1.0.0",
+        "version": "1.0.0"
+      },
+      "humanReview": {
+        "machineIdentityCompetenceIsNotRecommendationUsefulness": true,
+        "performedByHarness": false,
+        "status": "not_applicable"
+      },
+      "identity": {
+        "ambiguousCount": 0,
+        "ambiguousSourceRecordIds": [],
+        "collapseGroups": [],
+        "dateConflictSourceRecordIds": [],
+        "incompleteCreatorCreditSourceRecordIds": [],
+        "missingSequenceSourceRecordIds": [],
+        "neutralContractCases": [
+          "single-issue",
+          "same-issue-variant-cover",
+          "trade-collecting-issues",
+          "hardcover-paperback-same-collection",
+          "manga-volume",
+          "omnibus-multiple-volumes",
+          "creator-owned-standalone",
+          "graphic-memoir",
+          "similar-title-unrelated-series",
+          "missing-volume-numbering",
+          "conflicting-publication-dates",
+          "incomplete-creator-credits",
+          "ambiguous-issue-versus-collection"
+        ],
+        "neutralContractVersion": "graphic-reading-unit-identity/1.0.0",
+        "normalizedRecordCount": 0,
+        "readingUnitKindHistogram": {},
+        "recommendationCapableIdentityCount": 0,
+        "sameTitleDistinctSeries": []
+      },
+      "licensingBoundary": {
+        "commercialUseGated": true,
+        "coverImagesPresent": false,
+        "coverUrlsPresent": false,
+        "fixtureContent": "wholly_synthetic",
+        "liveCharacterizationAuthorized": false,
+        "liveMetadataCaptured": false,
+        "publicProductionAuthorized": false
+      },
+      "metadataCoverage": {
+        "audienceAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "constituentIdentity": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "creatorRoles": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "creators": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "dates": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "genreAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "language": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "maturityAuthority": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "publisher": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "sequence": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "seriesIdentity": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "stableSourceId": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "summary": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        },
+        "title": {
+          "present": 0,
+          "rate": 0,
+          "total": 0
+        }
+      },
+      "productionBoundary": {
+        "eligibilityExercised": false,
+        "productionAdapterState": "adapter_implemented",
+        "productionHashes": {
+          "app/recommender-v2/comicVineAdmission.ts": "b80e7c091c6f93364386372a0906ab8adb5aec8331b871b6e20696214b721551",
+          "app/recommender-v2/comicVineIdentity.ts": "ed10cf8d7f43e360614a58af4e608336167d6e34230d29c09f04ae29e7d36181",
+          "app/recommender-v2/engine.ts": "b4af04ca855f309315bd2df7e482633e4c8d41cb67b4f4cc3c8b3c46c366bb0d",
+          "app/recommender-v2/normalize.ts": "98d62df24ed4257cff596db07cd8f544e5416f5c9bc96561dcfbacac170ed6b6",
+          "app/recommender-v2/score.ts": "feed888d344ad68f3e760d9fa1a302c25b13d6f5fb6f59f4e5b486283fcb37ac",
+          "app/recommender-v2/select.ts": "2330275c83ef7cdffe38a0fa4b22ca4cafd6c9172df832e993f3ee0c683a2037",
+          "app/recommender-v2/sources/comicVineSource.ts": "07177ff1284d1f59e614703f0b4df715d2adbf7d45e5ff03c88c2b093ae3f8be",
+          "app/recommender-v2/types.ts": "aef9e62ca1e93d9a4c080ed9c5009d4318bc35015fcb04584c28fe2249d3ceea"
+        },
+        "productionLifecycleTerminalState": "not_exercised_by_characterization",
+        "productionRoutingExercised": false,
+        "recommendationBehaviorChanged": false,
+        "scoringExercised": false,
+        "selectionExercised": false
+      },
+      "profile": {
+        "ageBand": "adult",
+        "characterizationPurpose": "Preserve schema failure rather than treating it as an empty source result.",
+        "expectedOutcome": "response_invalid",
+        "expectedRecommendationCapableCount": 0,
+        "humanReview": {
+          "status": "not_applicable"
+        },
+        "intent": "Operational invalid-response control.",
+        "matrixProfileId": null,
+        "profileId": "cv-invalid-response"
+      },
+      "raw": {
+        "declaredCount": 0,
+        "nativeIdsInReturnedOrder": [],
+        "recordCount": 0,
+        "structuralRejects": []
+      },
+      "records": [],
+      "source": "comicvine",
+      "sourceContract": {
+        "authentication": [
+          "api_key_required"
+        ],
+        "broadRecommendationSearch": "documented_available_subject_to_terms",
+        "commercialTerms": "non_commercial_only",
+        "discoverySurface": [
+          "search_endpoint_issues"
+        ],
+        "documentationObservedOn": "2026-07-31",
+        "endpointStability": "not_independently_verified",
+        "fieldAndFormatStability": "not_independently_verified",
+        "officialApiDocumentation": "https://comicvine.gamespot.com/api/documentation",
+        "redistributionRestriction": "redistribution_restricted_per_terms"
+      }
+    }
+  ],
+  "characterization": "Graphic Novel Source Competence Phase II",
+  "characterizationVersion": "1.0.0",
+  "source": "comicvine"
+}
