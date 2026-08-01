@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "human_review_report_v1",
+  "generatedAt": "2026-08-01T05:25:14.920Z",
+  "snapshotsDir": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\recommendation-quality-baseline-study-v1\\snapshots",
+  "recordsPath": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\recommendation-quality-baseline-study-v1\\review-records.v1.ndjson",
+  "snapshotCount": 6,
+  "snapshots": [
+    {
+      "snapshotId": "1f3a18fb36fcaa53",
+      "profileId": "adult-fantasy-ensemble-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\recommendation-quality-baseline-study-v1\\snapshots\\adult-fantasy-ensemble-v1__1f3a18fb36fcaa53.json",
+      "titleCount": 1
+    },
+    {
+      "snapshotId": "22c73f18d4266bed",
+      "profileId": "adult-mystery-core-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\recommendation-quality-baseline-study-v1\\snapshots\\adult-mystery-core-v1__22c73f18d4266bed.json",
+      "titleCount": 2
+    },
+    {
+      "snapshotId": "c4e7a066abe1db3b",
+      "profileId": "kids-adventure-kindness-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\recommendation-quality-baseline-study-v1\\snapshots\\kids-adventure-kindness-v1__c4e7a066abe1db3b.json",
+      "titleCount": 0
+    },
+    {
+      "snapshotId": "65e9dfb9396ed377",
+      "profileId": "preteens-adventure-humor-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\recommendation-quality-baseline-study-v1\\snapshots\\preteens-adventure-humor-v1__65e9dfb9396ed377.json",
+      "titleCount": 2
+    },
+    {
+      "snapshotId": "eba0a0e98e4bac62",
+      "profileId": "teens-mystery-tension-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\recommendation-quality-baseline-study-v1\\snapshots\\teens-mystery-tension-v1__eba0a0e98e4bac62.json",
+      "titleCount": 2
+    },
+    {
+      "snapshotId": "c8cd114ed4660a58",
+      "profileId": "teens-sci-fi-identity-v1",
+      "profileVersion": 1,
+      "path": "C:\\Users\\KenBR\\.copilot\\repos\\copilot-worktrees\\novel-ideas2.0\\kennythecoder22-super-waddle\\scripts\\output\\human-review\\recommendation-quality-baseline-study-v1\\snapshots\\teens-sci-fi-identity-v1__c8cd114ed4660a58.json",
+      "titleCount": 1
+    }
+  ],
+  "summary": {
+    "records": 8,
+    "itemReviews": 16,
+    "avgOverallScore": 3.125,
+    "recommendRate": 0.375,
+    "profiles": [
+      {
+        "profileId": "adult-fantasy-ensemble-v1",
+        "reviewCount": 1,
+        "itemReviews": 2,
+        "avgOverallScore": 3.5,
+        "recommendRate": 0.5
+      },
+      {
+        "profileId": "adult-mystery-core-v1",
+        "reviewCount": 2,
+        "itemReviews": 4,
+        "avgOverallScore": 2.75,
+        "recommendRate": 0.25
+      },
+      {
+        "profileId": "kids-adventure-kindness-v1",
+        "reviewCount": 1,
+        "itemReviews": 2,
+        "avgOverallScore": 3.5,
+        "recommendRate": 0.5
+      },
+      {
+        "profileId": "preteens-adventure-humor-v1",
+        "reviewCount": 1,
+        "itemReviews": 2,
+        "avgOverallScore": 3.5,
+        "recommendRate": 0.5
+      },
+      {
+        "profileId": "teens-mystery-tension-v1",
+        "reviewCount": 2,
+        "itemReviews": 4,
+        "avgOverallScore": 2.75,
+        "recommendRate": 0.25
+      },
+      {
+        "profileId": "teens-sci-fi-identity-v1",
+        "reviewCount": 1,
+        "itemReviews": 2,
+        "avgOverallScore": 3.5,
+        "recommendRate": 0.5
+      }
+    ]
+  },
+  "profilesWithoutReviews": [],
+  "deterministicContentSignature": "64d75c5561cf2bfeb626f8069bfcb18a",
+  "reportSignature": "2451b134fa5f820429468cc98d9dd2d4"
+}

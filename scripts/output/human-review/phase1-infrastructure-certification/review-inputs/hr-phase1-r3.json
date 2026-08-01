@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "human_review_record_v1",
+  "reviewId": "hr-phase1-r3",
+  "snapshotId": "217759950f9cebcf",
+  "profileId": "teens-sci-fi-identity-v1",
+  "rubricId": "novelideas-human-review",
+  "rubricVersion": "v1",
+  "reviewerId": "reviewer-alpha",
+  "createdAt": "2026-08-01T00:00:00.000Z",
+  "itemReviews": [
+    {
+      "rank": 1,
+      "title": "The Lantern Archive",
+      "overallScore": 4,
+      "decision": "recommend",
+      "criteriaRatings": {
+        "taste_alignment": 4,
+        "novelty": 3,
+        "confidence": 4
+      }
+    },
+    {
+      "rank": 2,
+      "title": "Signal in the Stacks",
+      "overallScore": 3,
+      "decision": "weak_recommend",
+      "criteriaRatings": {
+        "taste_alignment": 4,
+        "novelty": 3,
+        "confidence": 4
+      }
+    }
+  ],
+  "summary": {
+    "wouldUseSlate": true,
+    "notes": "phase1 primary review for teens-sci-fi-identity-v1"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "human_review_record_v1",
+  "reviewId": "rqb-v1-teens-mystery-tension-v1-alpha",
+  "snapshotId": "eba0a0e98e4bac62",
+  "profileId": "teens-mystery-tension-v1",
+  "rubricId": "novelideas-human-review",
+  "rubricVersion": "v1",
+  "reviewerId": "reviewer-alpha",
+  "createdAt": "2026-08-01T00:00:00.000Z",
+  "reviewScope": {
+    "studyId": "recommendation-quality-baseline-study-v1",
+    "ageBand": "teens"
+  },
+  "itemReviews": [
+    {
+      "rank": 1,
+      "title": "The Lantern Archive",
+      "overallScore": 4,
+      "decision": "recommend",
+      "criteriaRatings": {
+        "taste_alignment": 4,
+        "novelty": 3,
+        "confidence": 3
+      },
+      "concernTags": [
+        "maturity_boundary_uncertainty"
+      ],
+      "uncertainty": {
+        "level": "medium",
+        "note": "fit appears plausible but not fully certain"
+      }
+    },
+    {
+      "rank": 2,
+      "title": "Signal in the Stacks",
+      "overallScore": 3,
+      "decision": "weak_recommend",
+      "criteriaRatings": {
+        "taste_alignment": 3,
+        "novelty": 2,
+        "confidence": 2
+      },
+      "concernTags": [
+        "maturity_boundary_uncertainty",
+        "tone_intensity_mismatch"
+      ],
+      "uncertainty": {
+        "level": "medium",
+        "note": "fit appears plausible but not fully certain"
+      }
+    }
+  ],
+  "summary": {
+    "wouldUseSlate": true,
+    "slateConcernTags": [
+      "maturity_boundary_uncertainty",
+      "tone_intensity_mismatch"
+    ],
+    "notes": "baseline reviewer alpha for teens-mystery-tension-v1"
+  }
+}
