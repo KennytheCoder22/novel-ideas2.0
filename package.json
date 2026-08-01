@@ -50,6 +50,7 @@
     "test:v2:comicvine-cert-gap-closure": "node scripts/run-v2-comicvine-cert-gap-closure-regressions.mjs",
     "test:v2:human-review-infrastructure": "node scripts/run-v2-human-review-regressions.mjs",
     "test:v2:human-review-admin-form": "node scripts/run-v2-human-review-admin-form-regressions.mjs",
+    "test:v2:human-review-durable-storage": "node scripts/run-v2-human-review-durable-regressions.mjs",
     "human-review:capture-snapshots": "node scripts/run-v2-human-review-capture-snapshot.mjs",
     "human-review:append-review": "node scripts/run-v2-human-review-append-review.mjs",
     "human-review:export-records": "node scripts/run-v2-human-review-export-records.mjs",
@@ -81,6 +82,7 @@
     "delta:live-evidence": "node scripts/live-evidence/run-frozen-live-delta.mjs"
   },
   "dependencies": {
+    "@vercel/postgres": "^0.10.0",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.0.1",
