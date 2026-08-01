@@ -121,6 +121,7 @@ export function validateReviewRecord(record, rubric) {
   const scaleMin = Number(rubric.scale?.min ?? 1);
   const scaleMax = Number(rubric.scale?.max ?? 5);
   const decisionOptions = new Set(Array.isArray(rubric.decisionOptions) ? rubric.decisionOptions : []);
+  const familiarityOptions = new Set(["never_heard_of_it", "know_of_it", "read_it", "tried_but_did_not_finish"]);
   for (const item of record.itemReviews) {
     if (typeof item.rank !== "number" || item.rank < 1) throw new Error("invalid_item_rank");
     if (typeof item.title !== "string" || !item.title.trim()) throw new Error("missing_item_title");
@@ -135,6 +136,11 @@ export function validateReviewRecord(record, rubric) {
     }
     for (const criteriaId of rubricCriteria) {
       if (!(criteriaId in item.criteriaRatings)) throw new Error(`missing_criteria_score:${criteriaId}`);
+    }
+    if ("familiarity" in item) {
+      if (item.familiarity !== null && typeof item.familiarity !== "undefined" && !familiarityOptions.has(item.familiarity)) {
+        throw new Error("invalid_item_familiarity");
+      }
     }
   }
 }

@@ -26,6 +26,7 @@ export interface HumanReviewSlateItem {
   author: string;
   source?: string;
   coverUrl?: string;
+  matchedSignals?: string[];
 }
 
 export interface HumanReviewSnapshotV1 {
@@ -47,7 +48,12 @@ export interface HumanReviewSnapshotV1 {
 export interface HumanReviewItemFormEntry {
   rank: number;
   title: string;
+  author?: string;
   coverUrl?: string;
+  synopsis?: string;
+  genreTags?: string[];
+  whyRecommended?: string[];
+  familiarity?: "never_heard_of_it" | "know_of_it" | "read_it" | "tried_but_did_not_finish" | null;
   tasteAlignment: number;
   novelty: number;
   confidence: number;
@@ -56,11 +62,24 @@ export interface HumanReviewItemFormEntry {
   notes?: string;
 }
 
+export interface HumanReviewSessionContextItem {
+  title: string;
+  coverUrl?: string;
+}
+
+export interface HumanReviewSessionContext {
+  likedItems: HumanReviewSessionContextItem[];
+  dislikedItems: HumanReviewSessionContextItem[];
+  unsureItems: HumanReviewSessionContextItem[];
+  engineSignals: string[];
+}
+
 export interface HumanReviewSlateForm {
   reviewerId: string;
   itemReviews: HumanReviewItemFormEntry[];
   wouldUseSlate: HumanReviewSlateDecision;
   notes?: string;
+  sessionContext?: HumanReviewSessionContext;
 }
 
 export interface HumanReviewRecordV1 {
@@ -82,6 +101,7 @@ export interface HumanReviewRecordV1 {
       novelty: number;
       confidence: number;
     };
+    familiarity?: "never_heard_of_it" | "know_of_it" | "read_it" | "tried_but_did_not_finish";
     concernTags?: HumanReviewConcernTag[];
     notes?: string;
   }>;
@@ -191,6 +211,7 @@ export function createHumanReviewSnapshot(args: {
       author: item.author,
       source: item.source,
       coverUrl: item.coverUrl,
+      matchedSignals: item.matchedSignals,
     })),
   };
 }
@@ -203,7 +224,10 @@ export function createDefaultHumanReviewForm(snapshot: HumanReviewSnapshotV1): H
     itemReviews: snapshot.recommendationItems.map((item) => ({
       rank: item.rank,
       title: item.title,
+      author: item.author,
       coverUrl: item.coverUrl,
+      whyRecommended: Array.isArray(item.matchedSignals) ? item.matchedSignals.map((signal) => String(signal || "")).filter(Boolean) : [],
+      familiarity: null,
       tasteAlignment: 3,
       novelty: 3,
       confidence: 3,
@@ -233,6 +257,7 @@ export function createHumanReviewRecordFromForm(args: {
         novelty: clampScore(item.novelty),
         confidence: clampScore(item.confidence),
       },
+      ...(item.familiarity ? { familiarity: item.familiarity } : {}),
       concernTags: item.concerns,
       notes: String(item.notes || "").trim(),
     }));
