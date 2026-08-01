@@ -4148,6 +4148,7 @@ const TEEN_OPENLIBRARY_BROAD_SINGLE_TASTE_SIGNAL = /^(action|adventure|mystery|f
 const TEEN_OPENLIBRARY_AUTHORITY_BOUND_TASTE_SIGNAL = /^(contemporary|realistic|coming of age|school|identity)$/;
 const TEEN_OPENLIBRARY_DISTINCTIVE_TASTE_SIGNAL = /^(dystopia|dystopian|science fiction|sci fi|thriller|survival|contemporary|realistic|school|identity|horror|romance|romantic|historical|history|crime|paranormal|psychological|competition|heist|sports?|sport|coming of age)$/;
 const TEEN_OPENLIBRARY_SINGLE_SIGNAL_REQUIRES_STRONG_AUTHORITY = /^(action|adventure|fantasy|mystery|drama|crime|sports?|sport|horror)$/;
+const TEEN_OPENLIBRARY_GENERIC_TEEN_AUTHORITY_SIGNAL = new Set(["young adult", "american young adult fiction", "young adult fiction", "description teen fiction"]);
 
 type TeenOpenLibraryTasteEligibility = {
   allowed: boolean;
@@ -4562,6 +4563,7 @@ function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, p
   const weakTeenFitSignals = teenOpenLibraryWeakTeenFitSignals(nonTitleMetadataValues, nonTitleMetadataText);
   const adultOrCrossoverShapeReasons = teenOpenLibraryAdultOrCrossoverShapeReasons(nonTitleMetadataText);
   const hasReliableTeenFit = reliableTeenFitSignals.length > 0;
+  const hasIndependentTeenAuthority = reliableTeenFitSignals.some((signal) => !TEEN_OPENLIBRARY_GENERIC_TEEN_AUTHORITY_SIGNAL.has(signal));
   const nonNarrativeShapeReasons = teenOpenLibraryNonNarrativeShapeReasons(nonTitleMetadataText, hasTeenAuthority);
   const baseResult = {
     signals: likedSignals,
@@ -4623,6 +4625,9 @@ function teenOpenLibraryMeaningfulTasteEligibility(candidate: ScoredCandidate, p
     nonNarrativeShapeReasons,
   };
   if (nonNarrativeShapeReasons.length > 0) return { allowed: false, reason: "teen_openlibrary_non_narrative_or_adult_shape", ...resultEvidence };
+  if (adultOrCrossoverShapeReasons.length > 0 && !hasIndependentTeenAuthority) {
+    return { allowed: false, reason: "teen_openlibrary_adult_or_crossover_shape_without_independent_teen_authority", ...resultEvidence };
+  }
   if (!contentSignals.length) return { allowed: false, reason: nonTitleLikedSignals.length ? "teen_openlibrary_context_or_generic_only_metadata_taste" : "teen_openlibrary_title_only_metadata_taste", ...resultEvidence };
   if (contentSignals.length === 1 && likedDislikedOverlapSignals.includes(contentSignals[0])) {
     return { allowed: false, reason: "teen_openlibrary_single_signal_negated_by_dislike", ...resultEvidence };
