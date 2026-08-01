@@ -726,6 +726,36 @@ function isReliablePatronTitleIdentity(title: unknown): boolean {
   return true;
 }
 
+// Patron-identity admission: reject author identity that is empty or consists only of
+// implementation labels (engine names, source identifiers, route labels).
+// These are general prefix/equality rules; they are not author-specific special cases.
+const PATRON_AUTHOR_IMPL_LABELS = new Set([
+  "recommender v2",
+  "recommender v1",
+  "open library",
+  "openlibrary",
+  "google books",
+  "googlebooks",
+  "comicvine",
+  "comic vine",
+  "kitsu",
+  "nyt",
+  "new york times",
+  "unknown",
+  "unknown author",
+]);
+
+function hasReliablePatronAuthorIdentity(creators: unknown): boolean {
+  if (!Array.isArray(creators) || creators.length === 0) return false;
+  const nonEmpty = creators
+    .map((c) => String(c || "").trim())
+    .filter(Boolean);
+  if (nonEmpty.length === 0) return false;
+  // Reject if every creator string is an implementation label
+  const allLabels = nonEmpty.every((c) => PATRON_AUTHOR_IMPL_LABELS.has(c.toLowerCase()));
+  return !allLabels;
+}
+
 function recommendationAuthor(doc: any): string {
   if (!doc) return "Unknown author";
   if (Array.isArray(doc.author_name) && doc.author_name.length > 0) return String(doc.author_name[0]);
@@ -1863,6 +1893,7 @@ function handleLeft() {
   function normalizeRecommenderV2Items(rawItems: RecommendationResultV2["items"]): RecItem[] {
     return rawItems
       .filter((candidate) => isReliablePatronTitleIdentity(candidate.title))
+      .filter((candidate) => hasReliablePatronAuthorIdentity(candidate.creators))
       .map((candidate) => ({
       kind: "open_library",
       doc: {
