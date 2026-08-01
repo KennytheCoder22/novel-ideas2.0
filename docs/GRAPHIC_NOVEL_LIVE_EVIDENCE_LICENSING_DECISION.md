@@ -192,9 +192,9 @@ Modified: [yes/no] [modification description if yes]
 
 **Why it matters:** GCD states anonymous access currently receives hourly limits (unspecified size) and that anonymous access may later be disabled. If authenticated access is required, credentials must be provisioned and stored server-side before any probe.
 
-**Required before:** Probe session design is finalized.
+**Required before:** Probe session design is finalized. **Enforced as a hard pre-request gate.**
 
-**Current status:** **Unresolved.** Probe design defaults to anonymous with authenticated fallback. If anonymous access fails or is limited, authenticated mode requires credential provisioning.
+**Current status:** **Unresolved. Enforced as a hard gate by the probe runner.** The runner checks `GCD_ACCESS_MODE_CONFIRMED=true` before any fetch call. Missing this flag emits `live_evidence_unavailable_gcd_access_mode_unconfirmed` and makes zero network calls. Setting `GCD_ACCESS_CONFIRMED=true` without also setting `GCD_ACCESS_MODE_CONFIRMED=true` will not open the gate.
 
 **Resolution record:** _(to be filled)_
 
@@ -234,7 +234,7 @@ Before any live session begins, ALL of the following must be checked in this doc
 - [ ] CV-4 resolved (for any repository commit of real payload)
 - [ ] CV-6 confirmed (key present, valid, authorized)
 - [ ] GC-4 confirmed (GCD access arrangement)
-- [ ] GC-5 determined (anonymous vs. authenticated mode confirmed)
+- [ ] GC-5 resolved (anonymous vs. authenticated access mode confirmed; runner requires `GCD_ACCESS_MODE_CONFIRMED=true`)
 - [ ] Rate budget predeclared in `scripts/live-evidence/request-manifest-v1.json`
 - [ ] Capture protocol documented in `scripts/live-evidence/capture-protocol.md`
 - [ ] No cover URLs or cover binaries in capture scope

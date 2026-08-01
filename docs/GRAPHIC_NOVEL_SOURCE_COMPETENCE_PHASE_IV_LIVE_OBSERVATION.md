@@ -35,7 +35,7 @@ All of the following must be satisfied before any live request:
 1. Phase III comparison is complete (`comparison_complete`) — **satisfied**
 2. `docs/GRAPHIC_NOVEL_LIVE_EVIDENCE_LICENSING_DECISION.md` pre-probe checklist is fully checked — **not yet satisfied**
 3. For ComicVine: CV-1, CV-2, CV-3, CV-4, and CV-6 resolved with written clarification — **not yet satisfied**
-4. For GCD: GC-4 and GC-5 resolved — **not yet satisfied**
+4. For GCD: GC-4 confirmed AND GC-5 confirmed (both enforced as hard pre-request gates) — **not yet satisfied**
 5. `scripts/live-evidence/request-manifest-v1.json` predeclared — **satisfied**
 6. `scripts/live-evidence/capture-protocol.md` documented — **satisfied**
 7. GCD and ComicVine probe runners implemented and regression suite passing — **satisfied**
@@ -123,6 +123,7 @@ Any of the following halts Phase IV and locks the result as `live_evidence_unava
 | CV-4 not resolved | `live_evidence_unavailable_legal_block_cv_storage` for ComicVine |
 | ComicVine key absent or invalid | `live_evidence_unavailable_credentials_missing` |
 | GC-4 not confirmed | `live_evidence_unavailable_legal_block_gcd_access` for GCD |
+| GC-5 not confirmed (access mode) | `live_evidence_unavailable_gcd_access_mode_unconfirmed` for GCD |
 | Access refused or key revoked | `live_evidence_unavailable_access_refused` |
 | Critical field absent in live response | `live_evidence_unavailable_schema_drift` |
 | Session budget exhausted | `live_evidence_budget_exhausted` |

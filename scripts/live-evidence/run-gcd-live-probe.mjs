@@ -19,7 +19,9 @@
  *   docs/NOVELIDEAS_COMPLETION_ROADMAP.md §5
  *
  * Hard constraints enforced here:
- *   - No live requests until GC-4 question is resolved (legal block stop condition).
+ *   - No live requests until GC-4 (access arrangement) AND GC-5 (access mode) are resolved.
+ *   - --dry-run is a GUARANTEED no-network path: fetch is trapped and throws regardless of mode,
+ *     credentials, or legal-gate state. Returns only planned manifest, gate status, and bounds.
  *   - No cover URL values stored in any artifact.
  *   - No API credentials in any artifact or log line.
  *   - Max 18 requests per session; 2s inter-request delay; 15s per-request timeout.
@@ -40,6 +42,7 @@ const EVIDENCE_CLASS_LIVE = "Live Observation Class";
 
 const STOP_CONDITIONS = {
   LEGAL_BLOCK_GCD_ACCESS: "live_evidence_unavailable_legal_block_gcd_access",
+  GCD_ACCESS_MODE_UNCONFIRMED: "live_evidence_unavailable_gcd_access_mode_unconfirmed",
   GCD_ANON_DISABLED: "live_evidence_unavailable_gcd_anon_disabled",
   CREDENTIALS_MISSING: "live_evidence_unavailable_credentials_missing",
   ACCESS_REFUSED: "live_evidence_unavailable_access_refused",
@@ -157,20 +160,22 @@ function sortObject(value) {
 
 function checkLegalGate() {
   // GC-4: GCD access arrangement must be confirmed before any live session.
-  // In the implementation phase, this check reads a resolved flag from the
-  // licensing decision record or from an environment variable set by the
-  // operator after receiving written confirmation from GCD.
-  //
-  // Until that confirmation exists, all live probes emit the legal block stop
-  // condition. This is the correct behavior — it enforces the governance
-  // boundary without requiring a code change when access is authorized; the
-  // operator sets GCD_ACCESS_CONFIRMED=true in the environment.
   const confirmed = process.env.GCD_ACCESS_CONFIRMED === "true";
   if (!confirmed) {
     return {
       blocked: true,
       code: STOP_CONDITIONS.LEGAL_BLOCK_GCD_ACCESS,
       detail: "GC-4 unresolved: GCD access arrangement not confirmed. Set GCD_ACCESS_CONFIRMED=true after receiving written confirmation from GCD.",
+    };
+  }
+  // GC-5: Access mode (anonymous vs. authenticated) must be determined before any request.
+  // Anonymous access may be disabled at any time; choosing the wrong mode risks silent failures.
+  const accessModeConfirmed = process.env.GCD_ACCESS_MODE_CONFIRMED === "true";
+  if (!accessModeConfirmed) {
+    return {
+      blocked: true,
+      code: STOP_CONDITIONS.GCD_ACCESS_MODE_UNCONFIRMED,
+      detail: "GC-5 unresolved: GCD access mode (anonymous vs. authenticated) not confirmed. Set GCD_ACCESS_MODE_CONFIRMED=true after determining appropriate access mode per GC-5.",
     };
   }
   return { blocked: false };
@@ -408,6 +413,51 @@ async function runLive(profile, rateLimitState) {
 async function main() {
   if (verifyNoNetwork && mode === "live") {
     throw new Error("--verify-no-network is incompatible with --mode live");
+  }
+
+  // --dry-run is a GUARANTEED no-network path.
+  // fetch is trapped here unconditionally — mode, credentials, and legal-gate
+  // state cannot bypass this guard. Returns planned manifest, gate status,
+  // rate bounds, and expected output paths only. No artifact writes.
+  if (dryRun) {
+    const originalFetch = globalThis.fetch;
+    let fetchAttempted = false;
+    globalThis.fetch = async (url) => {
+      fetchAttempted = true;
+      throw new Error(`DRY_RUN_NETWORK_BLOCKED:${url}`);
+    };
+    try {
+      const gateStatus = checkLegalGate();
+      const dryRunResult = {
+        pass: true,
+        dryRun: true,
+        source: "gcd",
+        mode,
+        networkCallsMade: 0,
+        artifactsWritten: 0,
+        gateStatus: gateStatus.blocked
+          ? { blocked: true, code: gateStatus.code, detail: gateStatus.detail }
+          : { blocked: false },
+        plannedProfiles: profiles.map((p) => ({
+          profileId: p.profileId,
+          maxRequestsThisProfile: p.requestsPerSource?.gcd?.maxRequestsThisProfile ?? 0,
+        })),
+        rateBounds: {
+          maxRequestsPerSession: MAX_REQUESTS_PER_SESSION,
+          minInterRequestDelayMs: MIN_INTER_REQUEST_DELAY_MS,
+          perRequestTimeoutMs: PER_REQUEST_TIMEOUT_MS,
+        },
+        expectedOutputLocations: {
+          draftArtifact: outputDir.replace(`${repoRoot}\\`, "").replace(`${repoRoot}/`, "") + "/gcd-live-observation-draft.json",
+          frozenArtifact: "scripts/live-evidence/frozen/gcd-live-observation-v1.json",
+        },
+      };
+      if (fetchAttempted) throw new Error("fetch was called during dry-run — this is a bug");
+      console.log(JSON.stringify(dryRunResult, null, 2));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+    return;
   }
 
   if (verifyNoNetwork) {

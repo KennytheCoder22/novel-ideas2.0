@@ -20,6 +20,8 @@
  *
  * Hard constraints enforced here:
  *   - No live requests until CV-1 (commercial use) and CV-4 (storage) are resolved.
+ *   - --dry-run is a GUARANTEED no-network path: fetch is trapped and throws regardless of mode,
+ *     credentials, or legal-gate state. Returns only planned manifest, gate status, and bounds.
  *   - No cover URL values stored in any artifact.
  *   - No API credentials in any artifact or log line.
  *   - Max 18 requests per session; 2s inter-request delay; 10s per-request timeout.
@@ -421,6 +423,51 @@ async function runLive(profile, rateLimitState) {
 async function main() {
   if (verifyNoNetwork && mode === "live") {
     throw new Error("--verify-no-network is incompatible with --mode live");
+  }
+
+  // --dry-run is a GUARANTEED no-network path.
+  // fetch is trapped here unconditionally — mode, credentials, and legal-gate
+  // state cannot bypass this guard. Returns planned manifest, gate status,
+  // rate bounds, and expected output paths only. No artifact writes.
+  if (dryRun) {
+    const originalFetch = globalThis.fetch;
+    let fetchAttempted = false;
+    globalThis.fetch = async (url) => {
+      fetchAttempted = true;
+      throw new Error(`DRY_RUN_NETWORK_BLOCKED:${url}`);
+    };
+    try {
+      const gateStatus = checkLegalGate();
+      const dryRunResult = {
+        pass: true,
+        dryRun: true,
+        source: "comicvine",
+        mode,
+        networkCallsMade: 0,
+        artifactsWritten: 0,
+        gateStatus: gateStatus.blocked
+          ? { blocked: true, code: gateStatus.code, detail: gateStatus.detail }
+          : { blocked: false },
+        plannedProfiles: profiles.map((p) => ({
+          profileId: p.profileId,
+          maxRequestsThisProfile: p.requestsPerSource?.comicvine?.maxRequestsThisProfile ?? 0,
+        })),
+        rateBounds: {
+          maxRequestsPerSession: MAX_REQUESTS_PER_SESSION,
+          minInterRequestDelayMs: MIN_INTER_REQUEST_DELAY_MS,
+          perRequestTimeoutMs: PER_REQUEST_TIMEOUT_MS,
+        },
+        expectedOutputLocations: {
+          draftArtifact: outputDir.replace(`${repoRoot}\\`, "").replace(`${repoRoot}/`, "") + "/comicvine-live-observation-draft.json",
+          frozenArtifact: "scripts/live-evidence/frozen/comicvine-live-observation-v1.json",
+        },
+      };
+      if (fetchAttempted) throw new Error("fetch was called during dry-run — this is a bug");
+      console.log(JSON.stringify(dryRunResult, null, 2));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+    return;
   }
 
   if (verifyNoNetwork) {

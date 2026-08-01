@@ -166,7 +166,18 @@ Field presence data in Tier 1 records whether each schema field was present (non
 
 ---
 
-## 5. Replay Safety Contract
+## 5. Replay Safety Contract and Dry-Run Guarantee
+
+### Dry-run guarantee
+
+`--dry-run` is a **guaranteed no-network path**. When `--dry-run` is passed:
+- `fetch` is trapped before any other logic executes; any call to it throws `DRY_RUN_NETWORK_BLOCKED`.
+- The trap is installed regardless of `--mode`, credentials, or legal-gate state. No combination of satisfied gates can bypass it.
+- The runner returns only: planned request manifest, gate status, rate bounds, and expected output paths.
+- Zero artifacts are written.
+- Exit code 0 on successful dry-run inspection (even if gates are blocked — blocked gates are findings, not errors in dry-run mode).
+
+### Replay safety contract
 
 A Tier 1 observation artifact is replay-safe when all of the following hold:
 
@@ -197,6 +208,7 @@ Each stop condition is checked in order before, during, and after the network ca
 | CV-4 not resolved | Pre-run | `live_evidence_unavailable_legal_block_cv_storage` |
 | ComicVine API key absent from environment | Pre-run | `live_evidence_unavailable_credentials_missing` |
 | GC-4 not confirmed in licensing decision record | Pre-run | `live_evidence_unavailable_legal_block_gcd_access` |
+| GC-5 not confirmed (access mode: anonymous vs. authenticated) | Pre-run | `live_evidence_unavailable_gcd_access_mode_unconfirmed` |
 | HTTP 401 / 403 / key revocation signal | Post-request | `live_evidence_unavailable_access_refused` |
 | HTTP 429 and window > session budget | Post-request | `live_evidence_unavailable_rate_limit` |
 | Request timeout exceeded (all retries) | Post-request | `live_evidence_unavailable_transport_timeout` |
