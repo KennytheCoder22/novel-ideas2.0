@@ -1,0 +1,308 @@
+{
+  "schemaVersion": "1.0",
+  "manifestId": "gn-live-evidence-v1",
+  "description": "Representative profile and request matrix for Phase IV live observation of GCD and ComicVine. Predeclared and immutable before any probe runs. No API keys. Rate budget enforced by runners.",
+  "governingDocuments": [
+    "docs/GRAPHIC_NOVEL_LIVE_EVIDENCE_LICENSING_DECISION.md",
+    "scripts/live-evidence/capture-protocol.md",
+    "docs/NOVELIDEAS_COMPLETION_ROADMAP.md"
+  ],
+  "baselineCommit": "26a7b8bf815a61ebba4498a16788e543b5acaca7",
+  "evidencePhase": "IV",
+  "sources": {
+    "gcd": {
+      "sourceId": "gcd",
+      "endpointTemplate": "https://www.comics.org/api/series/",
+      "authMode": "anonymous",
+      "authModeNote": "Anonymous access currently functional; may require authenticated mode per GC-5 resolution",
+      "rateBudget": {
+        "maxRequestsPerSession": 18,
+        "minInterRequestDelayMs": 2000,
+        "perRequestTimeoutMs": 15000,
+        "maxLatencyPerProfileMs": 45000
+      },
+      "retryPolicy": {
+        "maxRetries": 1,
+        "retryOnlyAfterWindowResetSeconds": 60,
+        "retryableCodes": [429],
+        "nonRetryableCodes": [401, 403]
+      },
+      "legalStatus": {
+        "licenseDecisionRecordRef": "docs/GRAPHIC_NOVEL_LIVE_EVIDENCE_LICENSING_DECISION.md",
+        "blockedByQuestions": ["GC-4", "GC-5"],
+        "coversExcluded": true,
+        "provenanceBlockRequired": true
+      }
+    },
+    "comicvine": {
+      "sourceId": "comicvine",
+      "endpointTemplate": "https://comicvine.gamespot.com/api/volumes/",
+      "authMode": "api_key",
+      "authModeNote": "API key from COMICVINE_API_KEY environment variable; never in artifacts",
+      "rateBudget": {
+        "maxRequestsPerSession": 18,
+        "minInterRequestDelayMs": 2000,
+        "perRequestTimeoutMs": 10000,
+        "maxLatencyPerProfileMs": 30000
+      },
+      "retryPolicy": {
+        "maxRetries": 0,
+        "retryOnlyAfterWindowResetSeconds": null,
+        "retryableCodes": [],
+        "nonRetryableCodes": [401, 403, 429]
+      },
+      "legalStatus": {
+        "licenseDecisionRecordRef": "docs/GRAPHIC_NOVEL_LIVE_EVIDENCE_LICENSING_DECISION.md",
+        "blockedByQuestions": ["CV-1", "CV-2", "CV-3", "CV-4", "CV-6"],
+        "coversExcluded": true,
+        "provenanceBlockRequired": true,
+        "linkbackRequired": true
+      }
+    }
+  },
+  "profiles": [
+    {
+      "profileId": "gn-adult-speculative-ensemble",
+      "matrixProfileId": "gn-adult-speculative-ensemble",
+      "ageBand": "adult",
+      "description": "Adult speculative fiction with ensemble cast",
+      "fixturePhase": "I_and_II",
+      "requestsPerSource": {
+        "gcd": {
+          "primaryQuery": {
+            "queryFamily": "series_lookup",
+            "queryDescription": "Series-oriented lookup for speculative fiction adult titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        },
+        "comicvine": {
+          "primaryQuery": {
+            "queryFamily": "volume_search",
+            "queryDescription": "Relevance-ranked volume search for speculative fiction adult titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        }
+      }
+    },
+    {
+      "profileId": "gn-adult-horror-mystery",
+      "matrixProfileId": "gn-adult-horror-mystery",
+      "ageBand": "adult",
+      "description": "Adult horror and mystery graphic novels",
+      "fixturePhase": "I_and_II",
+      "requestsPerSource": {
+        "gcd": {
+          "primaryQuery": {
+            "queryFamily": "series_lookup",
+            "queryDescription": "Series-oriented lookup for horror/mystery adult titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        },
+        "comicvine": {
+          "primaryQuery": {
+            "queryFamily": "volume_search",
+            "queryDescription": "Relevance-ranked volume search for horror/mystery adult titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        }
+      }
+    },
+    {
+      "profileId": "gn-teen-fantasy-adventure",
+      "matrixProfileId": "gn-teen-fantasy-adventure",
+      "ageBand": "teen",
+      "description": "Teen fantasy and adventure graphic novels",
+      "fixturePhase": "I_and_II",
+      "requestsPerSource": {
+        "gcd": {
+          "primaryQuery": {
+            "queryFamily": "series_lookup",
+            "queryDescription": "Series-oriented lookup for teen fantasy/adventure titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        },
+        "comicvine": {
+          "primaryQuery": {
+            "queryFamily": "volume_search",
+            "queryDescription": "Relevance-ranked volume search for teen fantasy/adventure titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        }
+      }
+    },
+    {
+      "profileId": "gn-teen-superhero-identity",
+      "matrixProfileId": "gn-teen-superhero-identity",
+      "ageBand": "teen",
+      "description": "Teen superhero and identity graphic novels",
+      "fixturePhase": "I_and_II",
+      "requestsPerSource": {
+        "gcd": {
+          "primaryQuery": {
+            "queryFamily": "series_lookup",
+            "queryDescription": "Series-oriented lookup for teen superhero/identity titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        },
+        "comicvine": {
+          "primaryQuery": {
+            "queryFamily": "volume_search",
+            "queryDescription": "Relevance-ranked volume search for teen superhero/identity titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        }
+      }
+    },
+    {
+      "profileId": "gn-preteen-humor-adventure",
+      "matrixProfileId": "gn-preteen-humor-adventure",
+      "ageBand": "preteen",
+      "description": "Preteen humor and adventure graphic novels",
+      "fixturePhase": "I_and_II",
+      "requestsPerSource": {
+        "gcd": {
+          "primaryQuery": {
+            "queryFamily": "series_lookup",
+            "queryDescription": "Series-oriented lookup for preteen humor/adventure titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        },
+        "comicvine": {
+          "primaryQuery": {
+            "queryFamily": "volume_search",
+            "queryDescription": "Relevance-ranked volume search for preteen humor/adventure titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        }
+      }
+    },
+    {
+      "profileId": "gn-teen-manga-volume",
+      "matrixProfileId": "gn-teen-manga-volume",
+      "ageBand": "teen",
+      "description": "Teen manga volume format",
+      "fixturePhase": "I_and_II",
+      "requestsPerSource": {
+        "gcd": {
+          "primaryQuery": {
+            "queryFamily": "series_lookup",
+            "queryDescription": "Series-oriented lookup for teen manga volume titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        },
+        "comicvine": {
+          "primaryQuery": {
+            "queryFamily": "volume_search",
+            "queryDescription": "Relevance-ranked volume search for teen manga volume titles"
+          },
+          "paginationFollowup": {
+            "condition": "resultCount >= 10",
+            "maxAdditionalRequests": 1
+          },
+          "maxRequestsThisProfile": 2
+        }
+      }
+    },
+    {
+      "profileId": "control-valid_empty_response",
+      "matrixProfileId": "control-valid_empty_response",
+      "ageBand": "control",
+      "description": "Operational control: valid empty response path",
+      "fixturePhase": "I_and_II",
+      "requestsPerSource": {
+        "gcd": {
+          "primaryQuery": {
+            "queryFamily": "series_lookup",
+            "queryDescription": "Query designed to return a valid empty result"
+          },
+          "paginationFollowup": null,
+          "maxRequestsThisProfile": 1
+        },
+        "comicvine": {
+          "primaryQuery": {
+            "queryFamily": "volume_search",
+            "queryDescription": "Query designed to return a valid empty result"
+          },
+          "paginationFollowup": null,
+          "maxRequestsThisProfile": 1
+        }
+      }
+    },
+    {
+      "profileId": "control-response_invalid",
+      "matrixProfileId": "control-response_invalid",
+      "ageBand": "control",
+      "description": "Operational control: invalid response path — verified via synthetic fixture only; no live invalid response should be forced",
+      "fixturePhase": "I_and_II",
+      "requestsPerSource": {
+        "gcd": {
+          "primaryQuery": null,
+          "paginationFollowup": null,
+          "maxRequestsThisProfile": 0,
+          "note": "Invalid-response control is a fixture-only case; no live request should be made to trigger an invalid response"
+        },
+        "comicvine": {
+          "primaryQuery": null,
+          "paginationFollowup": null,
+          "maxRequestsThisProfile": 0,
+          "note": "Invalid-response control is a fixture-only case; no live request should be made to trigger an invalid response"
+        }
+      }
+    }
+  ],
+  "sessionBudgetSummary": {
+    "maxContentProfiles": 6,
+    "maxControlProfiles": 2,
+    "maxRequestsPerContentProfile": 2,
+    "maxRequestsPerControlProfile": 1,
+    "invalidResponseControlRequests": 0,
+    "rateLimitProbeRequestsPerSession": 1,
+    "maxTotalRequestsPerSourcePerSession": 18,
+    "sessionSpreadMinimumMinutes": 30,
+    "note": "Total: 6 content profiles × 2 + 1 valid-empty control × 1 + 1 rate-probe = 14 typical; hard cap 18 includes pagination allowance"
+  }
+}
