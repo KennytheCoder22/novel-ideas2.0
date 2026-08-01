@@ -7,6 +7,7 @@ export type HumanReviewConcernTag =
   | "too_mature"
   | "poor_series_entry"
   | "wrong_genre_or_tone"
+  | "wrong_format_or_non_narrative"
   | "redundant_with_another_result"
   | "insufficient_information";
 
@@ -14,6 +15,7 @@ export const HUMAN_REVIEW_CONCERN_OPTIONS: Array<{ tag: HumanReviewConcernTag; l
   { tag: "too_mature", label: "Too mature" },
   { tag: "poor_series_entry", label: "Poor series entry" },
   { tag: "wrong_genre_or_tone", label: "Wrong genre or tone" },
+  { tag: "wrong_format_or_non_narrative", label: "Wrong format / not a narrative book" },
   { tag: "redundant_with_another_result", label: "Redundant with another result" },
   { tag: "insufficient_information", label: "Insufficient information" },
 ];
@@ -45,6 +47,7 @@ export interface HumanReviewSnapshotV1 {
 export interface HumanReviewItemFormEntry {
   rank: number;
   title: string;
+  coverUrl?: string;
   tasteAlignment: number;
   novelty: number;
   confidence: number;
@@ -200,6 +203,7 @@ export function createDefaultHumanReviewForm(snapshot: HumanReviewSnapshotV1): H
     itemReviews: snapshot.recommendationItems.map((item) => ({
       rank: item.rank,
       title: item.title,
+      coverUrl: item.coverUrl,
       tasteAlignment: 3,
       novelty: 3,
       confidence: 3,

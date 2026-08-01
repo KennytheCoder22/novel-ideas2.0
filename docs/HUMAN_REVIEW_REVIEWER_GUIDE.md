@@ -65,6 +65,18 @@ Then fill in:
      - `taste_alignment` (1-5)
      - `novelty` (1-5)
      - `confidence` (1-5)
+   - optionally add `concernTags` (array of strings) from the list below
+
+### Concern tags
+
+| Tag | Label | When to use |
+|-----|-------|-------------|
+| `too_mature` | Too mature | Content is age-inappropriate for the profile's target reader |
+| `poor_series_entry` | Poor series entry | Valid book but a mid-series entry unsuitable as a first read |
+| `wrong_genre_or_tone` | Wrong genre or tone | Valid narrative, but genre/tone doesn't match the taste profile |
+| `wrong_format_or_non_narrative` | Wrong format / not a narrative book | Publication is a guide, reference, workbook, literary criticism, classroom material, anthology mismatch, nonfiction mismatch, or other non-narrative format — the source admitted something that is *about* a genre rather than *in* it. Use this instead of `wrong_genre_or_tone` when the issue is publication shape/format, not taste fit. |
+| `redundant_with_another_result` | Redundant with another result | Same series, author, or thematic duplicate already present in the slate |
+| `insufficient_information` | Insufficient information | Not enough metadata to make a confident judgment |
 
 ### If your snapshot has more or fewer than 5 recommendations
 

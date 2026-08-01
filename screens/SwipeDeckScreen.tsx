@@ -5167,7 +5167,18 @@ function handleLeft() {
                   <View style={styles.humanReviewItemsWrap}>
                     {humanReviewForm.itemReviews.map((item) => (
                       <View key={item.rank} style={styles.humanReviewItemCard}>
-                        <Text style={styles.humanReviewItemTitle}>#{item.rank} {item.title}</Text>
+                        <View style={styles.humanReviewItemHeader}>
+                          {item.coverUrl ? (
+                            <Image
+                              source={{ uri: item.coverUrl }}
+                              style={styles.humanReviewCoverThumb}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={[styles.humanReviewCoverThumb, styles.humanReviewCoverPlaceholder]} />
+                          )}
+                          <Text style={[styles.humanReviewItemTitle, { flex: 1 }]}>#{item.rank} {item.title}</Text>
+                        </View>
                         <View style={styles.humanReviewScaleRow}>
                           <Text style={styles.humanReviewScaleLabel}>Taste fit</Text>
                           {[1, 2, 3, 4, 5].map((score) => (
@@ -5576,6 +5587,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   humanReviewItemTitle: { color: "#e5efff", fontWeight: "800", fontSize: 11 },
+  humanReviewItemHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  humanReviewCoverThumb: { width: 40, height: 54, borderRadius: 4, flexShrink: 0 },
+  humanReviewCoverPlaceholder: { backgroundColor: "#1e3a5f" },
   humanReviewScaleRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
   humanReviewScaleLabel: { color: "#cbd5f5", fontSize: 10, width: 70, fontWeight: "700" },
   humanReviewScalePill: {
