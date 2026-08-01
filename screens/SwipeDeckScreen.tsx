@@ -16,6 +16,7 @@ import {
   View,
   Platform,
   Pressable,
+  Modal,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
@@ -5134,135 +5135,148 @@ function handleLeft() {
         </View>
       </View>
 
-      {Platform.OS === "web" && showHumanReviewPanel && humanReviewSnapshot && humanReviewForm ? (
-        <View style={styles.humanReviewPanel}>
-          <Text style={styles.v2DebugTitle}>Human Review (Admin)</Text>
-          <Text style={[styles.v2DebugText, { color: "#f5a623", fontStyle: "italic", marginBottom: 4 }]}>
-            ⚠ Storage: local filesystem only. Records will not persist on Vercel serverless after redeployment.
-            Suitable for Admin/local review only.
-          </Text>
-          <Text style={styles.v2DebugText}>Age band: {humanReviewSnapshot.ageBand}</Text>
-          <Text style={styles.v2DebugText}>Profile: {humanReviewSnapshot.profileId}</Text>
-          <Text style={styles.v2DebugText}>Snapshot: {humanReviewSnapshot.snapshotId}</Text>
-          <Text style={styles.v2DebugText}>Rubric: v1</Text>
+      {Platform.OS === "web" ? (
+        <Modal
+          visible={showHumanReviewPanel && humanReviewSnapshot != null && humanReviewForm != null}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowHumanReviewPanel(false)}
+        >
+          <View style={styles.humanReviewModalOverlay}>
+            {humanReviewSnapshot && humanReviewForm ? (
+              <View style={styles.humanReviewPanel}>
+                <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={true}>
+                  <Text style={styles.v2DebugTitle}>Human Review (Admin)</Text>
+                  <Text style={[styles.v2DebugText, { color: "#f5a623", fontStyle: "italic", marginBottom: 4 }]}>
+                    ⚠ Storage: local filesystem only. Records will not persist on Vercel serverless after redeployment.
+                    Suitable for Admin/local review only.
+                  </Text>
+                  <Text style={styles.v2DebugText}>Age band: {humanReviewSnapshot.ageBand}</Text>
+                  <Text style={styles.v2DebugText}>Profile: {humanReviewSnapshot.profileId}</Text>
+                  <Text style={styles.v2DebugText}>Snapshot: {humanReviewSnapshot.snapshotId}</Text>
+                  <Text style={styles.v2DebugText}>Rubric: v1</Text>
 
-          <TextInput
-            style={styles.humanReviewInput}
-            placeholder="Reviewer ID"
-            placeholderTextColor="#9db3d9"
-            value={humanReviewForm.reviewerId}
-            onChangeText={(value) => setHumanReviewForm((prev) => (prev ? { ...prev, reviewerId: value } : prev))}
-          />
+                  <TextInput
+                    style={styles.humanReviewInput}
+                    placeholder="Reviewer ID"
+                    placeholderTextColor="#9db3d9"
+                    value={humanReviewForm.reviewerId}
+                    onChangeText={(value) => setHumanReviewForm((prev) => (prev ? { ...prev, reviewerId: value } : prev))}
+                  />
 
-          <View style={styles.humanReviewItemsWrap}>
-            {humanReviewForm.itemReviews.map((item) => (
-              <View key={item.rank} style={styles.humanReviewItemCard}>
-                <Text style={styles.humanReviewItemTitle}>#{item.rank} {item.title}</Text>
-                <View style={styles.humanReviewScaleRow}>
-                  <Text style={styles.humanReviewScaleLabel}>Taste fit</Text>
-                  {[1, 2, 3, 4, 5].map((score) => (
-                    <TouchableOpacity
-                      key={`taste-${item.rank}-${score}`}
-                      style={[styles.humanReviewScalePill, item.tasteAlignment === score && styles.humanReviewScalePillActive]}
-                      onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, tasteAlignment: score }))}
-                    >
-                      <Text style={styles.humanReviewScalePillText}>{score}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <View style={styles.humanReviewScaleRow}>
-                  <Text style={styles.humanReviewScaleLabel}>Novelty</Text>
-                  {[1, 2, 3, 4, 5].map((score) => (
-                    <TouchableOpacity
-                      key={`novelty-${item.rank}-${score}`}
-                      style={[styles.humanReviewScalePill, item.novelty === score && styles.humanReviewScalePillActive]}
-                      onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, novelty: score }))}
-                    >
-                      <Text style={styles.humanReviewScalePillText}>{score}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <View style={styles.humanReviewScaleRow}>
-                  <Text style={styles.humanReviewScaleLabel}>Confidence</Text>
-                  {[1, 2, 3, 4, 5].map((score) => (
-                    <TouchableOpacity
-                      key={`confidence-${item.rank}-${score}`}
-                      style={[styles.humanReviewScalePill, item.confidence === score && styles.humanReviewScalePillActive]}
-                      onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, confidence: score }))}
-                    >
-                      <Text style={styles.humanReviewScalePillText}>{score}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                  <View style={styles.humanReviewItemsWrap}>
+                    {humanReviewForm.itemReviews.map((item) => (
+                      <View key={item.rank} style={styles.humanReviewItemCard}>
+                        <Text style={styles.humanReviewItemTitle}>#{item.rank} {item.title}</Text>
+                        <View style={styles.humanReviewScaleRow}>
+                          <Text style={styles.humanReviewScaleLabel}>Taste fit</Text>
+                          {[1, 2, 3, 4, 5].map((score) => (
+                            <TouchableOpacity
+                              key={`taste-${item.rank}-${score}`}
+                              style={[styles.humanReviewScalePill, item.tasteAlignment === score && styles.humanReviewScalePillActive]}
+                              onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, tasteAlignment: score }))}
+                            >
+                              <Text style={styles.humanReviewScalePillText}>{score}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <View style={styles.humanReviewScaleRow}>
+                          <Text style={styles.humanReviewScaleLabel}>Novelty</Text>
+                          {[1, 2, 3, 4, 5].map((score) => (
+                            <TouchableOpacity
+                              key={`novelty-${item.rank}-${score}`}
+                              style={[styles.humanReviewScalePill, item.novelty === score && styles.humanReviewScalePillActive]}
+                              onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, novelty: score }))}
+                            >
+                              <Text style={styles.humanReviewScalePillText}>{score}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <View style={styles.humanReviewScaleRow}>
+                          <Text style={styles.humanReviewScaleLabel}>Confidence</Text>
+                          {[1, 2, 3, 4, 5].map((score) => (
+                            <TouchableOpacity
+                              key={`confidence-${item.rank}-${score}`}
+                              style={[styles.humanReviewScalePill, item.confidence === score && styles.humanReviewScalePillActive]}
+                              onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, confidence: score }))}
+                            >
+                              <Text style={styles.humanReviewScalePillText}>{score}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
 
-                <View style={styles.humanReviewDecisionRow}>
-                  {(["recommend", "weak_recommend", "not_recommended"] as const).map((decision) => (
-                    <TouchableOpacity
-                      key={`${item.rank}-${decision}`}
-                      style={[styles.humanReviewDecisionPill, item.decision === decision && styles.humanReviewDecisionPillActive]}
-                      onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, decision }))}
-                    >
-                      <Text style={styles.humanReviewDecisionText}>{decision}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                        <View style={styles.humanReviewDecisionRow}>
+                          {(["recommend", "weak_recommend", "not_recommended"] as const).map((decision) => (
+                            <TouchableOpacity
+                              key={`${item.rank}-${decision}`}
+                              style={[styles.humanReviewDecisionPill, item.decision === decision && styles.humanReviewDecisionPillActive]}
+                              onPress={() => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, decision }))}
+                            >
+                              <Text style={styles.humanReviewDecisionText}>{decision}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
 
-                <View style={styles.humanReviewConcernWrap}>
-                  {HUMAN_REVIEW_CONCERN_OPTIONS.map((option) => (
-                    <TouchableOpacity
-                      key={`${item.rank}-${option.tag}`}
-                      style={[styles.humanReviewConcernPill, item.concerns.includes(option.tag) && styles.humanReviewConcernPillActive]}
-                      onPress={() => toggleHumanReviewConcern(item.rank, option.tag)}
-                    >
-                      <Text style={styles.humanReviewConcernText}>{option.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                        <View style={styles.humanReviewConcernWrap}>
+                          {HUMAN_REVIEW_CONCERN_OPTIONS.map((option) => (
+                            <TouchableOpacity
+                              key={`${item.rank}-${option.tag}`}
+                              style={[styles.humanReviewConcernPill, item.concerns.includes(option.tag) && styles.humanReviewConcernPillActive]}
+                              onPress={() => toggleHumanReviewConcern(item.rank, option.tag)}
+                            >
+                              <Text style={styles.humanReviewConcernText}>{option.label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
 
-                <TextInput
-                  style={styles.humanReviewInput}
-                  placeholder="Optional item notes"
-                  placeholderTextColor="#9db3d9"
-                  value={item.notes || ""}
-                  onChangeText={(value) => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, notes: value }))}
-                />
+                        <TextInput
+                          style={styles.humanReviewInput}
+                          placeholder="Optional item notes"
+                          placeholderTextColor="#9db3d9"
+                          value={item.notes || ""}
+                          onChangeText={(value) => updateHumanReviewItem(item.rank, (prev) => ({ ...prev, notes: value }))}
+                        />
+                      </View>
+                    ))}
+                  </View>
+
+                  <Text style={styles.v2DebugText}>Would you use this slate for the represented reader?</Text>
+                  <View style={styles.humanReviewDecisionRow}>
+                    {(["yes", "no", "unsure"] as const).map((decision) => (
+                      <TouchableOpacity
+                        key={`slate-${decision}`}
+                        style={[styles.humanReviewDecisionPill, humanReviewForm.wouldUseSlate === decision && styles.humanReviewDecisionPillActive]}
+                        onPress={() => setHumanReviewForm((prev) => (prev ? { ...prev, wouldUseSlate: decision } : prev))}
+                      >
+                        <Text style={styles.humanReviewDecisionText}>{decision.toUpperCase()}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <TextInput
+                    style={[styles.humanReviewInput, styles.humanReviewNotesInput]}
+                    placeholder="Overall review notes"
+                    placeholderTextColor="#9db3d9"
+                    multiline
+                    value={humanReviewForm.notes || ""}
+                    onChangeText={(value) => setHumanReviewForm((prev) => (prev ? { ...prev, notes: value } : prev))}
+                  />
+
+                  {humanReviewStatus ? <Text style={styles.humanReviewStatus}>{humanReviewStatus}</Text> : null}
+
+                  <View style={styles.humanReviewActionRow}>
+                    <TouchableOpacity style={styles.humanReviewActionButton} onPress={() => setShowHumanReviewPanel(false)}>
+                      <Text style={styles.debugToggleText}>Close</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.humanReviewActionButton} onPress={() => void submitHumanReview()} disabled={humanReviewSubmitting}>
+                      <Text style={styles.debugToggleText}>{humanReviewSubmitting ? "Submitting…" : "Submit Review"}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
               </View>
-            ))}
+            ) : null}
           </View>
-
-          <Text style={styles.v2DebugText}>Would you use this slate for the represented reader?</Text>
-          <View style={styles.humanReviewDecisionRow}>
-            {(["yes", "no", "unsure"] as const).map((decision) => (
-              <TouchableOpacity
-                key={`slate-${decision}`}
-                style={[styles.humanReviewDecisionPill, humanReviewForm.wouldUseSlate === decision && styles.humanReviewDecisionPillActive]}
-                onPress={() => setHumanReviewForm((prev) => (prev ? { ...prev, wouldUseSlate: decision } : prev))}
-              >
-                <Text style={styles.humanReviewDecisionText}>{decision.toUpperCase()}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TextInput
-            style={[styles.humanReviewInput, styles.humanReviewNotesInput]}
-            placeholder="Overall review notes"
-            placeholderTextColor="#9db3d9"
-            multiline
-            value={humanReviewForm.notes || ""}
-            onChangeText={(value) => setHumanReviewForm((prev) => (prev ? { ...prev, notes: value } : prev))}
-          />
-
-          {humanReviewStatus ? <Text style={styles.humanReviewStatus}>{humanReviewStatus}</Text> : null}
-
-          <View style={styles.humanReviewActionRow}>
-            <TouchableOpacity style={styles.humanReviewActionButton} onPress={() => setShowHumanReviewPanel(false)}>
-              <Text style={styles.debugToggleText}>Close</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.humanReviewActionButton} onPress={() => void submitHumanReview()} disabled={humanReviewSubmitting}>
-              <Text style={styles.debugToggleText}>{humanReviewSubmitting ? "Submitting…" : "Submit Review"}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        </Modal>
       ) : null}
 
       <RecommenderEqualizerPanel
@@ -5535,19 +5549,22 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
+  humanReviewModalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.72)",
+  },
   humanReviewPanel: {
-    width: 360,
-    maxWidth: "95%",
-    alignSelf: "flex-end",
-    borderRadius: 12,
+    maxHeight: "85%",
+    backgroundColor: "rgba(8, 16, 28, 0.98)",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.18)",
-    backgroundColor: "rgba(8, 16, 28, 0.96)",
-    padding: 10,
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   humanReviewItemsWrap: {
-    maxHeight: 320,
     gap: 8,
   },
   humanReviewItemCard: {

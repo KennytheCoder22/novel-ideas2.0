@@ -71,6 +71,32 @@ function run() {
   assert(recordA.summary.wouldUseSlate === null, "unsure_not_preserved_as_null");
   assert(recordA.itemReviews[0].concernTags.includes("insufficient_information"), "concern_tag_missing");
 
+  // Verify panel open precondition: when recItems is non-empty, openHumanReviewForCurrentSlate
+  // will call createHumanReviewSnapshot + createDefaultHumanReviewForm and then setShowHumanReviewPanel(true).
+  // We verify the pre-conditions succeed (non-null snapshot + form) so the state transition is reached.
+  const panelBase = {
+    ageBand: "kids",
+    deckKey: "k2",
+    engineVersion: "recommender-v2",
+    swipeSignals: [
+      { id: "p1", title: "Charlotte's Web", action: "like", source: "mock", format: "book" },
+    ],
+    recommendationItems: [
+      { rank: 1, title: "Stuart Little", author: "E.B. White", source: "mock" },
+      { rank: 2, title: "The Mouse and the Motorcycle", author: "Beverly Cleary", source: "mock" },
+      { rank: 3, title: "Fantastic Mr Fox", author: "Roald Dahl", source: "mock" },
+    ],
+  };
+  const panelSnapshot = createHumanReviewSnapshot(panelBase);
+  const panelForm = createDefaultHumanReviewForm(panelSnapshot);
+  assert(panelSnapshot != null, "panel_snapshot_null");
+  assert(panelForm != null, "panel_form_null");
+  assert(typeof panelSnapshot.snapshotId === "string" && panelSnapshot.snapshotId.length > 0, "panel_snapshot_id_empty");
+  assert(Array.isArray(panelForm.itemReviews) && panelForm.itemReviews.length === 3, "panel_form_item_count_wrong");
+  // The state transition: snapshot+form non-null => setShowHumanReviewPanel(true) would be called
+  const wouldOpenPanel = panelSnapshot != null && panelForm != null;
+  assert(wouldOpenPanel, "panel_open_precondition_not_met");
+
   console.log(JSON.stringify({
     name: "human-review-admin-form-regressions",
     status: "pass",
@@ -83,6 +109,7 @@ function run() {
       "rubric_v1_enforced",
       "unsure_preserved",
       "structured_concern_tags_preserved",
+      "panel_open_precondition",
     ],
   }, null, 2));
 }
