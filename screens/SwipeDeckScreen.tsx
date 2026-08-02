@@ -5324,18 +5324,22 @@ function handleLeft() {
             <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 30 }}>
               <View style={[styles.doneCard, { borderColor: highlightColor }]}>
                 <Text style={styles.doneTitle}>Recommendations</Text>
-                <Text style={styles.doneSub}>
-                  Deck: {deck.deckLabel} • Engine: V2 • Used: {(lastEngineActuallyUsed || "—").toUpperCase()} • Engine label: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
-                </Text>
+                {!isTestingMode ? (
+                  <>
+                    <Text style={styles.doneSub}>
+                      Deck: {deck.deckLabel} • Engine: V2 • Used: {(lastEngineActuallyUsed || "—").toUpperCase()} • Engine label: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
+                    </Text>
 
-                {recQuery ? (
-                  <Text style={styles.smallNote}>
-                    Search query: <Text style={{ fontWeight: "900" }}>{recQuery}</Text>
-                  </Text>
-                ) : null}
+                    {recQuery ? (
+                      <Text style={styles.smallNote}>
+                        Search query: <Text style={{ fontWeight: "900" }}>{recQuery}</Text>
+                      </Text>
+                    ) : null}
 
-                {lastRecommendationTimestamp ? (
-                  <Text style={styles.smallNote}>Saved query time: {lastRecommendationTimestamp}</Text>
+                    {lastRecommendationTimestamp ? (
+                      <Text style={styles.smallNote}>Saved query time: {lastRecommendationTimestamp}</Text>
+                    ) : null}
+                  </>
                 ) : null}
 
                 {recLoading ? (
@@ -5694,14 +5698,14 @@ function handleLeft() {
 
                   <TextInput
                     style={styles.humanReviewInput}
-                    placeholder={isTestingMode ? "Reviewer code" : "Reviewer ID"}
+                    placeholder={isTestingMode ? "Your name or initials" : "Reviewer ID"}
                     placeholderTextColor="#9db3d9"
                     value={humanReviewForm.reviewerId}
                     onChangeText={(value) => setHumanReviewForm((prev) => (prev ? { ...prev, reviewerId: value } : prev))}
                     autoFocus={isTestingMode}
                     returnKeyType="next"
                     blurOnSubmit={false}
-                    accessibilityLabel={isTestingMode ? "Reviewer code" : "Reviewer ID"}
+                    accessibilityLabel={isTestingMode ? "Your name or initials" : "Reviewer ID"}
                   />
 
                   {humanReviewForm.sessionContext &&
@@ -5715,7 +5719,7 @@ function handleLeft() {
                         onPress={() => setShowHumanReviewContext((prev) => !prev)}
                       >
                         <Text style={styles.humanReviewContextToggleText}>
-                          Review Context {showHumanReviewContext ? "▾" : "▸"}
+                          What you swiped {showHumanReviewContext ? "▾" : "▸"}
                         </Text>
                       </TouchableOpacity>
                       {showHumanReviewContext ? (
