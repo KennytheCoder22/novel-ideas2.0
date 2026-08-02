@@ -5323,19 +5323,23 @@ function handleLeft() {
           })}
         </View>
 
-        <View style={styles.statusRow}>
-          <Text style={styles.statusText}>
-            20Q: {resolvedTwentyQCount}/{twentyQObjectives.length} resolved
-          </Text>
-          <Text style={styles.statusText}>
-            Engine: V2 • Last used: {(lastEngineActuallyUsed || "—").toUpperCase()}
-          </Text>
-          <Text style={styles.statusText}>
-            {activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung}: ${activeTwentyQObjective.label}` : "20Q complete"}
-          </Text>
-        </View>
+        {isAdminMode ? (
+          <>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusText}>
+                20Q: {resolvedTwentyQCount}/{twentyQObjectives.length} resolved
+              </Text>
+              <Text style={styles.statusText}>
+                Engine: V2 • Last used: {(lastEngineActuallyUsed || "—").toUpperCase()}
+              </Text>
+              <Text style={styles.statusText}>
+                {activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung}: ${activeTwentyQObjective.label}` : "20Q complete"}
+              </Text>
+            </View>
 
-        <View style={styles.statusDivider} />
+            <View style={styles.statusDivider} />
+          </>
+        ) : null}
 
         <View style={[styles.stage, needsCardOffset && styles.stageTop]}>
           {showRecommendationsView ? (

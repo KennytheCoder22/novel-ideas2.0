@@ -1725,11 +1725,28 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     Alert.alert(title, "Coming soon.");
   }
 
+  function openTestingInvite() {
+    closeHeaderMenu();
+    Alert.alert(
+      "Help Improve NovelIdeas",
+      "NovelIdeas is continually improving its recommendations. If you'd like to help, you can anonymously review recommendation slates. Your feedback helps make recommendations better for everyone.",
+      [
+        { text: "Not now", style: "cancel" },
+        {
+          text: "Go to testing",
+          onPress: () => {
+            router.push("/testing");
+          },
+        },
+      ]
+    );
+  }
+
   const showAdminMenuItems = adminUnlocked || tapCount >= 7;
 
   function renderHeaderMenu() {
     return (
-      <View style={styles.headerRight}>
+      <View style={styles.menuAnchor}>
         <TouchableOpacity
           onPress={toggleHeaderMenu}
           style={[styles.headerMenuButton, { borderColor: theme.lightBorder, backgroundColor: theme.inputBg }]}
@@ -1740,28 +1757,48 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
         </TouchableOpacity>
         {showHeaderMenu ? (
           <View style={[styles.headerMenuPopover, { borderColor: theme.lightBorder, backgroundColor: theme.inputBg }]}>
-            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("About NovelIdeas")}>
-              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>About NovelIdeas</Text>
+            <TouchableOpacity
+              style={styles.headerMenuItem}
+              onPress={() => {
+                closeHeaderMenu();
+                openAdminEntry();
+              }}
+            >
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Customize</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("How it works")}>
-              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How it works</Text>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={openTestingInvite}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Help Improve NovelIdeas</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("How NovelIdeas Works")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How NovelIdeas Works</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Send Feedback")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Send Feedback</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Privacy")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Privacy</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Feedback")}>
-              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Feedback</Text>
-            </TouchableOpacity>
             {showAdminMenuItems ? (
-              <TouchableOpacity
-                style={[styles.headerMenuItem, styles.headerMenuItemLast]}
-                onPress={() => {
-                  closeHeaderMenu();
-                  openAdminEntry();
-                }}
-              >
-                <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Customize</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity style={[styles.headerMenuItem, styles.headerMenuItemLast]} onPress={() => showMenuInfoStub("Diagnostics")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Diagnostics</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Human Review Dashboard")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Human Review Dashboard</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Recommendation tuning")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Recommendation tuning</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Library management")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Library management</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Import / Export")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Import / Export</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Developer tools")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Developer tools</Text>
+                </TouchableOpacity>
+              </>
             ) : null}
           </View>
         ) : null}
@@ -2049,11 +2086,12 @@ logoDataUrl={logoDataUrl}
               <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
             </TouchableOpacity>
 
-            {renderHeaderMenu()}
+            <View style={styles.headerRight} />
           </View>
 </View>
 
         <View style={styles.swipeStage}>
+          <View style={styles.contentMenuRow}>{renderHeaderMenu()}</View>
           <SwipeDeckScreen
             swipeCategories={swipeCategories}
             enabledDecks={enabledDecks}
@@ -2101,7 +2139,7 @@ logoDataUrl={logoDataUrl}
             </View>
             <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
           </TouchableOpacity>
-          {renderHeaderMenu()}
+          <View style={styles.headerRight} />
         </View>
       </View>
 
@@ -2119,6 +2157,7 @@ logoDataUrl={logoDataUrl}
         >
           <Text style={[styles.smallBtnText, { color: theme.text }]}>Back to Swipe</Text>
         </TouchableOpacity>
+        {renderHeaderMenu()}
       </View>
 
       <StudentView
@@ -2176,7 +2215,8 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   headerLeft: { width: 72, alignItems: "flex-start", justifyContent: "center" },
   headerCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
-  headerRight: { width: 72, alignItems: "flex-end", justifyContent: "center", position: "relative" },
+  headerRight: { width: 72 },
+  menuAnchor: { alignItems: "flex-end", justifyContent: "center", position: "relative" },
   headerMenuButton: {
     width: 36,
     height: 36,
@@ -2346,7 +2386,9 @@ const styles = StyleSheet.create({
 
   searchTopRow: {
     width: "100%",
-    alignItems: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 10,
   },
 
@@ -2360,6 +2402,15 @@ const styles = StyleSheet.create({
   swipeStage: {
     flex: 1,
     position: "relative",
+  },
+  contentMenuRow: {
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
+    alignItems: "flex-end",
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    zIndex: 30,
   },
 
 });
