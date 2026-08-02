@@ -18,6 +18,7 @@ export default function RootLayout() {
         {/* Let (tabs) control its own header */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="app_admin-web" options={{ headerShown: false }} />
+        <Stack.Screen name="testing" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
       </Stack>
       <StatusBar style="auto" />
