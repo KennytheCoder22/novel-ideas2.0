@@ -1425,7 +1425,6 @@ export default function HomeScreen() {
   const [adminPinError, setAdminPinError] = useState<string | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);
-  const [pendingAdminMenuUnlock, setPendingAdminMenuUnlock] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
 
   const [config, setConfig] = useState<any>(() => {
@@ -1571,7 +1570,6 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
               setShowAdminPinPrompt(false);
               setAdminPinEntry("");
               setAdminPinError(null);
-              setPendingAdminMenuUnlock(false);
             }}
             style={{ flexDirection: "row", alignItems: "center" }}
           >
@@ -1644,7 +1642,6 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   setShowAdminPinPrompt(false);
                   setAdminPinEntry("");
                   setAdminPinError(null);
-                  setPendingAdminMenuUnlock(false);
                 }}
               >
                 <Text style={{ color: theme.text, fontWeight: "900" }}>Cancel</Text>
@@ -1671,8 +1668,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   setShowAdminPinPrompt(false);
                   setAdminPinEntry("");
                   setAdminPinError(null);
-                  setAdminMenuUnlocked(pendingAdminMenuUnlock);
-                  setPendingAdminMenuUnlock(false);
+                  setAdminMenuUnlocked(true);
                   if (Platform.OS === "web") {
                     router.push("/app_admin-web");
                   } else {
@@ -1695,7 +1691,6 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     if (adminPinReady) {
       setAdminPinEntry("");
       setAdminPinError(null);
-      setPendingAdminMenuUnlock(unlockMenu);
       setShowAdminPinPrompt(true);
       setTapCount(0);
       return;
@@ -2021,7 +2016,10 @@ logoDataUrl={logoDataUrl}
           setSourceEnabled={setSourceEnabledValue}
           setSourceEnabledForDeck={setSourceEnabledForDeckValue}
           setAdultKitsuOnlyForceQueryForValidation={setAdultKitsuOnlyForceQueryForValidationValue}
-          onExit={() => setAdminUnlocked(false)}
+          onExit={() => {
+            setAdminUnlocked(false);
+            setAdminMenuUnlocked(false);
+          }}
           onSaveSettings={saveSettings}
           saveButtonLabel={saveButtonLabel}
           saveButtonStyle={saveButtonStyle}
