@@ -59,6 +59,7 @@ const {
 const {
   allHumanReviewItemStepsComplete,
   buildHumanReviewDraft,
+  computeSwipeVibeSummary,
   estimateRemainingReviewSeconds,
   formatRemainingReviewTime,
   getHumanReviewProgressLabel,
@@ -254,6 +255,60 @@ async function run() {
     }
   }
   checks.push({ id: 9, name: "recommendation_output_byte_identity", pass: true, profiles: manifest.profiles.length });
+
+  // --- Check 10: vibe summary function presence, correctness, and fallback ---
+  const screenSrcForVibe = readFileSync(swipeScreenPath, "utf8");
+  assert(
+    screenSrcForVibe.includes("computeSwipeVibeSummary"),
+    "vibe_summary_not_referenced_in_screen_source"
+  );
+  assert(
+    screenSrcForVibe.includes("humanReviewContextVibeSummary"),
+    "vibe_summary_style_missing_from_screen_source"
+  );
+
+  // liked with engine signals → uses the top two signals
+  const likedWithSignals = computeSwipeVibeSummary(
+    [{ title: "Book A" }, { title: "Book B" }],
+    ["Fantasy", "Adventure"],
+    "liked"
+  );
+  assert(
+    typeof likedWithSignals === "string" && likedWithSignals.length > 0,
+    `vibe_summary_liked_with_signals_empty: "${likedWithSignals}"`
+  );
+  assert(
+    likedWithSignals.toLowerCase().includes("fantasy") || likedWithSignals.toLowerCase().includes("adventure"),
+    `vibe_summary_liked_must_reference_engine_signals: "${likedWithSignals}"`
+  );
+
+  // liked with no signals → non-empty fallback
+  const likedNoSignals = computeSwipeVibeSummary(
+    [{ title: "Book A" }, { title: "Book B" }],
+    [],
+    "liked"
+  );
+  assert(
+    typeof likedNoSignals === "string" && likedNoSignals.length > 0,
+    `vibe_summary_liked_fallback_empty: "${likedNoSignals}"`
+  );
+
+  // disliked with 3+ items → non-empty avoidance statement
+  const dislikedVibe = computeSwipeVibeSummary(
+    [{ title: "Book X" }, { title: "Book Y" }, { title: "Book Z" }],
+    ["Fantasy"],
+    "disliked"
+  );
+  assert(
+    typeof dislikedVibe === "string" && dislikedVibe.length > 0,
+    `vibe_summary_disliked_non_empty: "${dislikedVibe}"`
+  );
+
+  // empty items → returns empty string (not rendered)
+  const emptyVibe = computeSwipeVibeSummary([], ["Fantasy"], "liked");
+  assert(emptyVibe === "", `vibe_summary_empty_items_must_return_empty_string: "${emptyVibe}"`);
+
+  checks.push({ id: 10, name: "vibe_summary_rendering_and_fallback", pass: true });
 
   console.log(
     JSON.stringify(

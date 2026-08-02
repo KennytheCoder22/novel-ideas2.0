@@ -155,3 +155,60 @@ export function formatRemainingReviewTime(seconds: number | null): string {
   if (remainder === 0) return `About ${minutes}m remaining`;
   return `About ${minutes}m ${remainder}s remaining`;
 }
+
+const VIBE_GENRE_PATTERNS: Array<[string, string[]]> = [
+  ["fantasy", ["magic", "wizard", "dragon", "spell", "realm", "enchant", "fae", "fairy", "sorcerer", "mythic"]],
+  ["sci-fi", ["space", "galaxy", "alien", "robot", "planet", "cosmos", "quantum", "android", "dystopian"]],
+  ["mystery or thriller", ["murder", "detective", "crime", "killer", "thriller", "suspect", "investigation", "noir"]],
+  ["adventure", ["quest", "expedition", "journey", "explorer", "voyage", "discover", "hunt", "survival"]],
+  ["romance", ["love", "heart", "kiss", "soulmate", "forever", "desire", "falling", "wedding"]],
+  ["horror", ["horror", "ghost", "haunt", "demon", "undead", "nightmare", "curse", "sinister", "dread", "terror"]],
+  ["historical fiction", ["king", "queen", "emperor", "empire", "medieval", "ancient", "war", "battle", "revolution", "victorian"]],
+];
+
+function inferGenreFromTitles(items: Array<{ title: string }>): string | null {
+  const allWords = items.flatMap((item) =>
+    item.title
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => w.length > 2)
+  );
+  for (const [genre, keywords] of VIBE_GENRE_PATTERNS) {
+    const hitCount = keywords.filter((kw) => allWords.some((w) => w.includes(kw))).length;
+    if (hitCount >= 2 || (hitCount >= 1 && items.length >= 4)) return genre;
+  }
+  return null;
+}
+
+/**
+ * Derives a short plain-language vibe sentence for the "What you swiped" section.
+ * Uses engineSignals (top liked genre/tone tokens) for the liked row; falls back to
+ * title-keyword inference or a count-based neutral line. No network calls.
+ */
+export function computeSwipeVibeSummary(
+  items: Array<{ title: string }>,
+  engineSignals: string[],
+  mode: "liked" | "disliked"
+): string {
+  if (!items.length) return "";
+  if (mode === "liked") {
+    const signals = engineSignals.map((s) => s.trim().toLowerCase()).filter(Boolean);
+    if (signals.length >= 2) {
+      return `You seem to enjoy ${signals[0]} and ${signals[1]} stories.`;
+    }
+    if (signals.length === 1) {
+      return `You seem to enjoy ${signals[0]} stories.`;
+    }
+    const inferred = inferGenreFromTitles(items);
+    if (inferred) return `You seem to gravitate toward ${inferred} stories.`;
+    return items.length >= 5
+      ? "You have a clear sense of what you enjoy."
+      : "These caught your attention while swiping.";
+  } else {
+    const inferred = inferGenreFromTitles(items);
+    if (inferred) return `You tended to pass on ${inferred} picks.`;
+    if (items.length >= 6) return "You were selective and passed on quite a few picks.";
+    if (items.length >= 3) return "You passed on several picks that didn\u2019t resonate.";
+    return "A few picks didn\u2019t feel like a fit.";
+  }
+}

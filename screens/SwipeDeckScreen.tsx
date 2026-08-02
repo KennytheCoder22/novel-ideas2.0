@@ -66,6 +66,7 @@ import {
   allHumanReviewItemStepsComplete,
   buildHumanReviewDraft,
   clampHumanReviewStepIndex,
+  computeSwipeVibeSummary,
   estimateRemainingReviewSeconds,
   formatRemainingReviewTime,
   getHumanReviewProgressLabel,
@@ -5742,11 +5743,21 @@ function handleLeft() {
                               label: "Liked",
                               items: humanReviewForm.sessionContext.likedItems,
                               thumbStyle: styles.humanReviewContextThumbLiked,
+                              vibeText: computeSwipeVibeSummary(
+                                humanReviewForm.sessionContext.likedItems,
+                                humanReviewForm.sessionContext.engineSignals,
+                                "liked"
+                              ),
                             },
                             {
                               label: "Disliked",
                               items: humanReviewForm.sessionContext.dislikedItems,
                               thumbStyle: styles.humanReviewContextThumbDisliked,
+                              vibeText: computeSwipeVibeSummary(
+                                humanReviewForm.sessionContext.dislikedItems,
+                                humanReviewForm.sessionContext.engineSignals,
+                                "disliked"
+                              ),
                             },
                           ].map((group) =>
                             group.items.length ? (
@@ -5754,24 +5765,31 @@ function handleLeft() {
                                 <Text style={styles.humanReviewContextLabel}>
                                   {group.label} ({group.items.length})
                                 </Text>
-                                <View style={styles.humanReviewContextThumbGrid}>
-                                  {group.items.slice(0, 18).map((entry, index) => (
-                                    <View
-                                      key={`${group.label}-${index}-${entry.title}`}
-                                      style={[styles.humanReviewContextThumbFrame, group.thumbStyle]}
-                                      accessibilityLabel={`${group.label}: ${entry.title}`}
-                                    >
-                                      {entry.coverUrl ? (
-                                        <Image source={{ uri: entry.coverUrl }} style={styles.humanReviewContextThumb} resizeMode="cover" />
-                                      ) : (
-                                        <View style={[styles.humanReviewContextThumb, styles.humanReviewCoverPlaceholder]} />
-                                      )}
+                                <View style={isWebTestingMode ? styles.humanReviewContextVibeRow : undefined}>
+                                  <View>
+                                    <View style={styles.humanReviewContextThumbGrid}>
+                                      {group.items.slice(0, 18).map((entry, index) => (
+                                        <View
+                                          key={`${group.label}-${index}-${entry.title}`}
+                                          style={[styles.humanReviewContextThumbFrame, group.thumbStyle]}
+                                          accessibilityLabel={`${group.label}: ${entry.title}`}
+                                        >
+                                          {entry.coverUrl ? (
+                                            <Image source={{ uri: entry.coverUrl }} style={styles.humanReviewContextThumb} resizeMode="cover" />
+                                          ) : (
+                                            <View style={[styles.humanReviewContextThumb, styles.humanReviewCoverPlaceholder]} />
+                                          )}
+                                        </View>
+                                      ))}
                                     </View>
-                                  ))}
+                                    {group.items.length > 18 ? (
+                                      <Text style={styles.humanReviewContextMore}>and {group.items.length - 18} more</Text>
+                                    ) : null}
+                                  </View>
+                                  {group.vibeText ? (
+                                    <Text style={styles.humanReviewContextVibeSummary}>{group.vibeText}</Text>
+                                  ) : null}
                                 </View>
-                                {group.items.length > 18 ? (
-                                  <Text style={styles.humanReviewContextMore}>and {group.items.length - 18} more</Text>
-                                ) : null}
                               </View>
                             ) : null
                           )}
@@ -6433,6 +6451,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 14,
     fontWeight: "700",
+  },
+  humanReviewContextVibeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  humanReviewContextVibeSummary: {
+    flex: 1,
+    color: "#93c5fd",
+    fontSize: 11,
+    fontStyle: "italic",
+    lineHeight: 16,
+    paddingTop: 4,
   },
   humanReviewItemsWrap: {
     gap: 8,
