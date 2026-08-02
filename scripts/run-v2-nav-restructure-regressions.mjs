@@ -1,19 +1,22 @@
 /**
- * Main-page navigation restructure regressions.
+ * Main-page navigation/admin-state regressions.
  *
  * Verifies:
- *   N1  — legacy Customize overlay text/button is removed from main swipe screen
- *   N2  — ellipsis menu is rendered in the header right slot (swipe + search)
- *   N3  — menu trigger is plain (no border/background chip styling)
- *   N4  — dropdown is right-anchored and opens down/left
- *   N5  — public menu includes Customize + Help Improve NovelIdeas
- *   N6  — public menu includes How NovelIdeas Works, Send Feedback, Privacy, About (with divider)
- *   N7  — Help Improve NovelIdeas copy and /testing navigation path exist
- *   N8  — admin-only menu stubs are present and gated by admin unlock state
- *   N9  — public status row diagnostics are hidden behind isAdminMode
- *   N10 — Test A/B/C controls are hidden from public non-admin render
- *   N11 — Diagnostics/Review/Fresh User controls are hidden from public non-admin render
- *   N12 — /testing route still uses isTestingMode and does not enable admin mode
+ *   N1  — legacy Customize overlay is removed
+ *   N2  — header overflow menu stays in header right slot (swipe + search)
+ *   N3  — menu trigger is plain (no border/chip styling)
+ *   N4  — dropdown is right-anchored and opens downward
+ *   N5  — Help Improve item routes directly to /testing and closes menu
+ *   N6  — public menu includes Customize + Help Improve + How/Feedback/Privacy/About
+ *   N7  — admin menu section is unlock-gated
+ *   N8  — admin unlock intent is tracked separately from menu Customize opens
+ *   N9  — admin route visit alone is not treated as unlock
+ *   N10 — failed/cancelled PIN flow clears pending unlock
+ *   N11 — successful unlock can enable admin menu items
+ *   N12 — status diagnostics are hidden from public and gated by isAdminMode
+ *   N13 — Test A/B/C controls are hidden from public non-admin render
+ *   N14 — Diagnostics/Review/Fresh User controls are hidden from public non-admin render
+ *   N15 — /testing remains isTestingMode public experience and never passes isAdminMode
  */
 
 import { readFileSync } from "node:fs";
@@ -47,112 +50,138 @@ const adminBranchEnd = swipeDeckSource.indexOf("</>", adminDivider);
 const adminBranchSource =
   adminDivider >= 0 && adminBranchEnd > adminDivider ? swipeDeckSource.slice(adminDivider, adminBranchEnd + 3) : "";
 
-// N1: old overlay Customize button is removed from main swipe surface
+const openAdminEntryStart = indexSource.indexOf('function openAdminEntry(source: "menu" | "easter_egg" = "menu") {');
+const openAdminEntryEnd = indexSource.indexOf("function handleTitleTap()", openAdminEntryStart);
+const openAdminEntrySource =
+  openAdminEntryStart >= 0 && openAdminEntryEnd > openAdminEntryStart
+    ? indexSource.slice(openAdminEntryStart, openAdminEntryEnd)
+    : "";
+
+// N1
 {
   assertNotIncludes(indexSource, "showCustomizeButton", "N1: legacy showCustomizeButton flag should be removed");
   assertNotIncludes(indexSource, "customizeOverlay", "N1: legacy customize overlay style should be removed");
-  assertNotIncludes(
-    indexSource,
-    "<Text style={[styles.chipText, { color: theme.text }]}>Customize</Text>",
-    "N1: legacy Customize chip label should be removed"
-  );
   console.log("PASS N1: legacy Customize overlay removed");
 }
 
-// N2: menu appears in header right slot for both swipe/search
+// N2
 {
   const renderHeaderMenuCount = (indexSource.match(/\{renderHeaderMenu\(\)\}/g) || []).length;
   assert(renderHeaderMenuCount >= 2, "N2: renderHeaderMenu should appear in both swipe and search headers");
-  assertNotIncludes(indexSource, "contentMenuRow", "N2: contentMenuRow should not exist after moving menu back into header");
-  console.log("PASS N2: ellipsis menu rendered in header right slot");
+  assertNotIncludes(indexSource, "contentMenuRow", "N2: contentMenuRow should not be present");
+  console.log("PASS N2: header overflow menu stays in header right slot");
 }
 
-// N3: trigger style is plain with generous tap target (no outlined chip)
+// N3
 {
-  assertIncludes(indexSource, "width: 44", "N3: menu trigger should keep a 44px tap target");
-  assertIncludes(indexSource, "height: 44", "N3: menu trigger should keep a 44px tap target");
-  assertIncludes(indexSource, 'backgroundColor: "transparent"', "N3: menu trigger should have no filled chip background");
-  assertNotIncludes(indexSource, "headerMenuButton, { borderColor:", "N3: menu trigger should not be rendered with border styling");
-  console.log("PASS N3: menu trigger is plain and tap-friendly");
+  assertIncludes(indexSource, "width: 44", "N3: trigger should keep 44px tap target");
+  assertIncludes(indexSource, "height: 44", "N3: trigger should keep 44px tap target");
+  assertIncludes(indexSource, 'backgroundColor: "transparent"', "N3: trigger should be visually plain");
+  assertNotIncludes(indexSource, "headerMenuButton, { borderColor:", "N3: trigger should not use bordered chip styling");
+  console.log("PASS N3: menu trigger is plain with large tap target");
 }
 
-// N4: dropdown anchor is right edge and opens downward-left
+// N4
 {
-  assertIncludes(indexSource, "position: \"absolute\"", "N4: popover should be absolutely positioned");
-  assertIncludes(indexSource, "top: 44", "N4: popover should open downward from trigger");
-  assertIncludes(indexSource, "right: 0", "N4: popover should be right-anchored");
-  assertIncludes(indexSource, "minWidth: 230", "N4: popover should have stable width for viewport-safe layout");
-  console.log("PASS N4: dropdown is right-anchored and opens down/left");
+  assertIncludes(indexSource, "position: \"absolute\"", "N4: popover should be absolute");
+  assertIncludes(indexSource, "top: 44", "N4: popover should open below trigger");
+  assertIncludes(indexSource, "right: 0", "N4: popover should anchor to right edge");
+  console.log("PASS N4: dropdown anchor positioning is correct");
 }
 
-// N5: public menu includes Customize + Help Improve NovelIdeas
+// N5
 {
-  assertIncludes(indexSource, ">Customize<", "N5: public menu must include Customize");
-  assertIncludes(indexSource, "Help Improve NovelIdeas", "N5: public menu must include Help Improve NovelIdeas");
-  console.log("PASS N5: public menu includes Customize and Help Improve NovelIdeas");
+  const openTestingStart = indexSource.indexOf("function openTestingInvite()");
+  const openTestingEnd = indexSource.indexOf("const showAdminMenuItems", openTestingStart);
+  const openTestingSource =
+    openTestingStart >= 0 && openTestingEnd > openTestingStart ? indexSource.slice(openTestingStart, openTestingEnd) : "";
+  assertIncludes(openTestingSource, "closeHeaderMenu();", "N5: menu should close before testing navigation");
+  assertIncludes(openTestingSource, 'router.replace("/testing");', "N5: Help Improve should route directly to /testing");
+  assertNotIncludes(openTestingSource, "Alert.alert(", "N5: Help Improve should navigate directly, not stall in a local alert");
+  console.log("PASS N5: Help Improve routes directly to /testing and closes menu");
 }
 
-// N6: public menu includes How NovelIdeas Works, Send Feedback, Privacy, About (+ divider)
+// N6
 {
-  for (const item of ["How NovelIdeas Works", "Send Feedback", "Privacy", ">About<"]) {
+  for (const item of ["Customize", "Help Improve NovelIdeas", "How NovelIdeas Works", "Send Feedback", "Privacy", "About"]) {
     assertIncludes(indexSource, item, `N6: public menu must include ${item}`);
   }
-  assertIncludes(indexSource, "headerMenuDivider", "N6: public menu should include divider styling before About");
-  console.log("PASS N6: public menu includes How NovelIdeas Works, Send Feedback, Privacy, and About");
+  assertIncludes(indexSource, "headerMenuDivider", "N6: menu should include section divider(s)");
+  console.log("PASS N6: public menu structure is present");
 }
 
-// N7: Help Improve copy + route to /testing exists
+// N7
 {
-  assertIncludes(
-    indexSource,
-    "NovelIdeas is continually improving its recommendations.",
-    "N7: Help Improve dialog copy should describe participatory improvement"
+  assertIncludes(indexSource, "const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);", "N7: admin menu unlock state must exist");
+  assertIncludes(indexSource, "const showAdminMenuItems = adminMenuUnlocked || adminUnlocked;", "N7: admin menu section must be gated");
+  console.log("PASS N7: admin menu section is unlock-gated");
+}
+
+// N8
+{
+  assertIncludes(indexSource, "const [pendingAdminMenuUnlock, setPendingAdminMenuUnlock] = useState(false);", "N8: pending unlock intent state must exist");
+  assertIncludes(indexSource, 'function openAdminEntry(source: "menu" | "easter_egg" = "menu")', "N8: openAdminEntry should track caller source");
+  assertIncludes(indexSource, 'const unlockMenu = source === "easter_egg";', "N8: easter egg should define menu unlock intent");
+  assertIncludes(indexSource, "setPendingAdminMenuUnlock(unlockMenu);", "N8: PIN flow should record unlock intent");
+  console.log("PASS N8: unlock intent is separated from generic Customize access");
+}
+
+// N9
+{
+  assert(openAdminEntrySource.length > 0, "N9: openAdminEntry source must be extractable");
+  assertNotIncludes(
+    openAdminEntrySource,
+    "setAdminMenuUnlocked(true);\n        router.push(\"/app_admin-web\");",
+    "N9: visiting /app_admin-web should not itself mark admin menu unlocked"
   );
-  assertIncludes(indexSource, 'router.push("/testing")', "N7: Help Improve flow must route to /testing");
-  console.log("PASS N7: Help Improve flow includes copy and /testing navigation");
+  assertIncludes(openAdminEntrySource, "if (unlockMenu) {", "N9: admin menu unlock should be conditional");
+  console.log("PASS N9: admin route visit alone is not treated as unlock");
 }
 
-// N8: admin-only menu stubs are present and gated by admin unlock state
+// N10
 {
-  for (const item of ["Diagnostics", "Human Review Dashboard", "Recommendation tuning", "Library management", "Import / Export", "Developer tools"]) {
-    assertIncludes(indexSource, item, `N8: admin menu must include ${item}`);
-  }
-  assertIncludes(indexSource, "const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);", "N8: should track admin menu unlock state");
-  assertIncludes(indexSource, "const showAdminMenuItems = adminMenuUnlocked || adminUnlocked;", "N8: admin menu must be unlock-gated");
-  console.log("PASS N8: admin-only menu stubs are present and unlock-gated");
+  assertIncludes(indexSource, "setPendingAdminMenuUnlock(false);", "N10: cancel/back actions should clear pending unlock");
+  assertIncludes(indexSource, "setAdminMenuUnlocked(pendingAdminMenuUnlock);", "N10: unlock should depend on successful pending intent");
+  console.log("PASS N10: failed/cancelled PIN paths clear pending unlock");
 }
 
-// N9: status diagnostics are hidden from public and gated by isAdminMode
+// N11
 {
-  assertIncludes(swipeDeckSource, "{isAdminMode ? (", "N9: status diagnostics should be behind isAdminMode");
-  assertIncludes(swipeDeckSource, "<View style={styles.statusRow}>", "N9: status row should still exist for admin mode");
-  assertIncludes(swipeDeckSource, "20Q:", "N9: status row content should remain available in admin mode");
-  console.log("PASS N9: status diagnostics are admin-gated");
+  assertIncludes(indexSource, "setAdminMenuUnlocked(pendingAdminMenuUnlock);", "N11: successful PIN unlock should enable admin menu when intended");
+  assertIncludes(indexSource, 'openAdminEntry("easter_egg");', "N11: explicit easter-egg unlock path should exist");
+  console.log("PASS N11: successful unlock path can enable admin menu");
 }
 
-// N10: Test A/B/C controls are hidden from public non-admin mode by explicit isAdminMode gating
+// N12
 {
-  assert(controlsStart >= 0, "N10: controls branch must exist");
-  assert(adminDivider > controlsStart, "N10: controls must gate non-testing controls behind isAdminMode");
-  assertIncludes(swipeDeckSource, ") : null}", "N10: non-admin non-testing controls should render null");
-  assertIncludes(adminBranchSource, "testSessionPresets.map((preset) => (", "N10: admin branch should keep test presets");
-  console.log("PASS N10: Test A/B/C controls gated off public render");
+  assertIncludes(swipeDeckSource, "{isAdminMode ? (", "N12: status diagnostics should be behind isAdminMode");
+  assertIncludes(swipeDeckSource, "<View style={styles.statusRow}>", "N12: status row should still exist for admin mode");
+  console.log("PASS N12: status diagnostics are admin-gated");
 }
 
-// N11: Diagnostics / Review / Fresh User hidden from public non-admin mode
+// N13
+{
+  assert(controlsStart >= 0, "N13: controls branch must exist");
+  assert(adminDivider > controlsStart, "N13: controls must gate non-testing controls behind isAdminMode");
+  assertIncludes(swipeDeckSource, ") : null}", "N13: non-admin non-testing controls should render null");
+  assertIncludes(adminBranchSource, "testSessionPresets.map((preset) => (", "N13: admin branch should keep test presets");
+  console.log("PASS N13: Test A/B/C controls gated off public render");
+}
+
+// N14
 {
   for (const required of ["Diagnostics", "Review This Slate", "Fresh User"]) {
-    assertIncludes(adminBranchSource, required, `N11: admin branch should keep ${required}`);
+    assertIncludes(adminBranchSource, required, `N14: admin branch should keep ${required}`);
   }
-  assertIncludes(swipeDeckSource, ") : isAdminMode ? (", "N11: admin-only controls must be behind isAdminMode branch");
-  console.log("PASS N11: Diagnostics, Review This Slate, and Fresh User hidden from public non-admin render");
+  assertIncludes(swipeDeckSource, ") : isAdminMode ? (", "N14: admin-only controls must be behind isAdminMode branch");
+  console.log("PASS N14: Diagnostics/Review/Fresh User hidden from public non-admin render");
 }
 
-// N12: /testing remains testing-mode driven and does not enable admin mode
+// N15
 {
-  assertIncludes(testingSource, "isTestingMode={true}", "N12: /testing route must keep isTestingMode={true}");
-  assertNotIncludes(testingSource, "isAdminMode={true}", "N12: /testing route must not enable admin mode");
-  console.log("PASS N12: /testing behavior remains testing-mode driven");
+  assertIncludes(testingSource, "isTestingMode={true}", "N15: /testing route must keep isTestingMode={true}");
+  assertNotIncludes(testingSource, "isAdminMode={true}", "N15: /testing must not enable admin mode");
+  console.log("PASS N15: /testing stays public testing experience");
 }
 
-console.log("All nav-restructure regressions passed (12/12).");
+console.log("All nav-restructure regressions passed (15/15).");

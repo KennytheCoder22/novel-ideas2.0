@@ -1425,6 +1425,7 @@ export default function HomeScreen() {
   const [adminPinError, setAdminPinError] = useState<string | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);
+  const [pendingAdminMenuUnlock, setPendingAdminMenuUnlock] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
 
   const [config, setConfig] = useState<any>(() => {
@@ -1570,6 +1571,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
               setShowAdminPinPrompt(false);
               setAdminPinEntry("");
               setAdminPinError(null);
+              setPendingAdminMenuUnlock(false);
             }}
             style={{ flexDirection: "row", alignItems: "center" }}
           >
@@ -1642,6 +1644,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   setShowAdminPinPrompt(false);
                   setAdminPinEntry("");
                   setAdminPinError(null);
+                  setPendingAdminMenuUnlock(false);
                 }}
               >
                 <Text style={{ color: theme.text, fontWeight: "900" }}>Cancel</Text>
@@ -1668,7 +1671,8 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   setShowAdminPinPrompt(false);
                   setAdminPinEntry("");
                   setAdminPinError(null);
-                  setAdminMenuUnlocked(true);
+                  setAdminMenuUnlocked(pendingAdminMenuUnlock);
+                  setPendingAdminMenuUnlock(false);
                   if (Platform.OS === "web") {
                     router.push("/app_admin-web");
                   } else {
@@ -1686,24 +1690,27 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
   }
 
 
-  function openAdminEntry() {
+  function openAdminEntry(source: "menu" | "easter_egg" = "menu") {
+    const unlockMenu = source === "easter_egg";
     if (adminPinReady) {
       setAdminPinEntry("");
       setAdminPinError(null);
+      setPendingAdminMenuUnlock(unlockMenu);
       setShowAdminPinPrompt(true);
       setTapCount(0);
       return;
     }
 
+    if (unlockMenu) {
+      setAdminMenuUnlocked(true);
+    }
     if (Platform.OS === "web") {
       try {
-        setAdminMenuUnlocked(true);
         router.push("/app_admin-web");
         return;
       } catch {}
     }
 
-    setAdminMenuUnlocked(true);
     setAdminUnlocked(true);
     setTapCount(0);
   }
@@ -1712,7 +1719,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     const next = tapCount + 1;
     setTapCount(next);
     if (next >= 7) {
-      openAdminEntry();
+      openAdminEntry("easter_egg");
     }
   }
 
@@ -1731,19 +1738,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   function openTestingInvite() {
     closeHeaderMenu();
-    Alert.alert(
-      "Help Improve NovelIdeas",
-      "NovelIdeas is continually improving its recommendations. If you'd like to help, you can anonymously review recommendation slates. Your feedback helps make recommendations better for everyone.",
-      [
-        { text: "Not now", style: "cancel" },
-        {
-          text: "Go to testing",
-          onPress: () => {
-            router.push("/testing");
-          },
-        },
-      ]
-    );
+    router.replace("/testing");
   }
 
   const showAdminMenuItems = adminMenuUnlocked || adminUnlocked;
