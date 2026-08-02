@@ -1334,6 +1334,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [humanReviewSubmitting, setHumanReviewSubmitting] = useState(false);
   const [showHumanReviewCompletion, setShowHumanReviewCompletion] = useState(false);
   const [showHumanReviewContext, setShowHumanReviewContext] = useState(false);
+  const [humanReviewSynopsisExpanded, setHumanReviewSynopsisExpanded] = useState(false);
   const [humanReviewStepIndex, setHumanReviewStepIndex] = useState(0);
   const [humanReviewStepStartedAtByRank, setHumanReviewStepStartedAtByRank] = useState<Record<string, string>>({});
   const [humanReviewStepCompletedAtByRank, setHumanReviewStepCompletedAtByRank] = useState<Record<string, string>>({});
@@ -5013,6 +5014,7 @@ function handleLeft() {
     const total = humanReviewForm.itemReviews.length;
     setHumanReviewStepIndex((prev) => clampHumanReviewStepIndex(prev - 1, total));
     setHumanReviewStatus("");
+    setHumanReviewSynopsisExpanded(false);
   }
 
   function goToNextHumanReviewStep() {
@@ -5045,6 +5047,7 @@ function handleLeft() {
     }
     setHumanReviewStepIndex(nextStepIndex);
     setHumanReviewStatus("");
+    setHumanReviewSynopsisExpanded(false);
   }
 
   async function submitHumanReview() {
@@ -5803,7 +5806,7 @@ function handleLeft() {
 
                   {visibleHumanReviewItem ? (
                     <View style={styles.humanReviewItemsWrap}>
-                      <View key={visibleHumanReviewItem.rank} style={styles.humanReviewItemCard}>
+                      <View key={visibleHumanReviewItem.rank} style={[styles.humanReviewItemCard, visibleHumanReviewItem.rank === 1 && styles.humanReviewItemCardPrimary]}>
                         <View style={styles.humanReviewItemHeader}>
                           {visibleHumanReviewItem.coverUrl ? (
                             <Image
@@ -5846,7 +5849,7 @@ function handleLeft() {
                             <View style={isWebTestingMode ? styles.humanReviewDesktopColumn : undefined}>
                               {Array.isArray(visibleHumanReviewItem.genreTags) && visibleHumanReviewItem.genreTags.length ? (
                                 <View style={styles.humanReviewGenreTagsRow}>
-                                  {visibleHumanReviewItem.genreTags.slice(0, 4).map((tag) => (
+                                  {visibleHumanReviewItem.genreTags.slice(0, 3).map((tag) => (
                                     <View key={`${visibleHumanReviewItem.rank}-${tag}`} style={styles.humanReviewGenreTagPill}>
                                       <Text style={styles.humanReviewGenreTagText}>{tag}</Text>
                                     </View>
@@ -5854,14 +5857,19 @@ function handleLeft() {
                                 </View>
                               ) : null}
                               {visibleHumanReviewItem.synopsis ? (
-                                <Text style={styles.humanReviewSynopsis} numberOfLines={isWebTestingMode ? 2 : 3}>
-                                  {visibleHumanReviewItem.synopsis}
-                                </Text>
+                                <>
+                                  <Text style={styles.humanReviewSynopsis} numberOfLines={humanReviewSynopsisExpanded ? undefined : (isWebTestingMode ? 2 : 3)}>
+                                    {visibleHumanReviewItem.synopsis}
+                                  </Text>
+                                  <TouchableOpacity onPress={() => setHumanReviewSynopsisExpanded((prev) => !prev)} accessibilityRole="button">
+                                    <Text style={styles.humanReviewSynopsisToggle}>{humanReviewSynopsisExpanded ? "Show less" : "Read more"}</Text>
+                                  </TouchableOpacity>
+                                </>
                               ) : null}
                               {((Array.isArray(visibleHumanReviewItem.becauseLiked) && visibleHumanReviewItem.becauseLiked.length) ||
                                 (Array.isArray(visibleHumanReviewItem.whyRecommended) && visibleHumanReviewItem.whyRecommended.length)) ? (
                                 <View style={styles.humanReviewWhyBlock}>
-                                  <Text style={styles.humanReviewWhyHeading}>Why recommended</Text>
+                                  <Text style={styles.humanReviewWhyHeading}>Why we think you'll enjoy this</Text>
                                   {Array.isArray(visibleHumanReviewItem.becauseLiked) && visibleHumanReviewItem.becauseLiked.length ? (
                                     <Text style={styles.humanReviewMatchedSignals} numberOfLines={isWebTestingMode ? 1 : 2}>
                                       <Text style={styles.humanReviewMatchedLabel}>Because you liked:</Text>{" "}
@@ -6008,7 +6016,7 @@ function handleLeft() {
                         setShowHumanReviewContext(false);
                       }}
                     >
-                      <Text style={styles.humanReviewActionButtonText}>Close</Text>
+                      <Text style={styles.humanReviewActionButtonText}>Save & Exit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.humanReviewActionButton}
@@ -6486,22 +6494,37 @@ const styles = StyleSheet.create({
     padding: 8,
     gap: 6,
   },
+  humanReviewItemCardPrimary: {
+    borderColor: "#2563eb",
+    borderWidth: 2,
+    backgroundColor: "rgba(15, 23, 52, 0.92)",
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
   humanReviewItemTitle: { color: "#e5efff", fontWeight: "800", fontSize: 14 },
   humanReviewItemAuthor: { color: "#cbd5f5", fontWeight: "700", fontSize: 12 },
-  humanReviewGenreTagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  humanReviewGenreTagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
   humanReviewGenreTagPill: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#36537a",
-    backgroundColor: "#10243f",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    borderColor: "#273d5a",
+    backgroundColor: "#0c1b2e",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
   },
-  humanReviewGenreTagText: { color: "#dbeafe", fontWeight: "700", fontSize: 12 },
+  humanReviewGenreTagText: { color: "#93b8d9", fontWeight: "600", fontSize: 11 },
   humanReviewSynopsis: {
-    color: "#cbd5f5",
-    fontSize: 12,
-    lineHeight: 17,
+    color: "#8ba7c8",
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  humanReviewSynopsisToggle: {
+    color: "#60a5fa",
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 2,
   },
   humanReviewMatchedSignals: {
     color: "#bae6fd",

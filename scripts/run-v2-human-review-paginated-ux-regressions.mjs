@@ -310,6 +310,38 @@ async function run() {
 
   checks.push({ id: 10, name: "vibe_summary_rendering_and_fallback", pass: true });
 
+  // --- Check 11: "Save & Exit" action label present in source ---
+  assert(
+    swipeScreenSource.includes("Save & Exit"),
+    "save_and_exit_label_missing"
+  );
+  checks.push({ id: 11, name: "save_and_exit_label_present", pass: true });
+
+  // --- Check 12: "Why we think you'll enjoy this" heading present ---
+  assert(
+    swipeScreenSource.includes("Why we think you'll enjoy this"),
+    "why_enjoy_heading_missing"
+  );
+  checks.push({ id: 12, name: "why_enjoy_heading_present", pass: true });
+
+  // --- Check 13: synopsis read-more toggle is wired ---
+  assert(
+    swipeScreenSource.includes("humanReviewSynopsisExpanded"),
+    "synopsis_read_more_not_wired"
+  );
+  checks.push({ id: 13, name: "synopsis_read_more_wired", pass: true });
+
+  // --- Check 14: genre tags capped at 3, not 4 ---
+  assert(
+    swipeScreenSource.includes("genreTags.slice(0, 3)"),
+    "tag_count_not_capped_at_three"
+  );
+  assert(
+    !swipeScreenSource.includes("genreTags.slice(0, 4)"),
+    "tag_count_still_four"
+  );
+  checks.push({ id: 14, name: "tag_count_capped_at_three", pass: true });
+
   console.log(
     JSON.stringify(
       {
