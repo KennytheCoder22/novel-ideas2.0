@@ -6350,7 +6350,9 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   humanReviewPanelWeb: {
+    height: "96%",
     maxHeight: "96%",
+    minHeight: "90%",
     paddingTop: 10,
     paddingHorizontal: 14,
   },
