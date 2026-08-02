@@ -342,6 +342,84 @@ async function run() {
   );
   checks.push({ id: 14, name: "tag_count_capped_at_three", pass: true });
 
+  // --- Check 15: public /testing hides reviewer name/initials fields ---
+  assert(
+    swipeScreenSource.includes("{!isTestingMode ? ("),
+    "public_identity_field_not_conditionally_hidden"
+  );
+  assert(
+    !swipeScreenSource.includes("Your name or initials"),
+    "public_name_or_initials_copy_still_present"
+  );
+  checks.push({ id: 15, name: "public_testing_hides_identity_field", pass: true });
+
+  // --- Check 16: anonymous reviewer ID is still created and used internally ---
+  assert(
+    swipeScreenSource.includes("function getOrCreateAnonymousHumanReviewerId(): string"),
+    "anonymous_reviewer_id_factory_missing"
+  );
+  assert(
+    swipeScreenSource.includes('form.reviewerId = getOrCreateAnonymousHumanReviewerId()'),
+    "anonymous_reviewer_id_not_assigned_on_public_open"
+  );
+  assert(
+    swipeScreenSource.includes('effectiveForm.reviewerId = getOrCreateAnonymousHumanReviewerId()'),
+    "anonymous_reviewer_id_not_restored_after_refresh"
+  );
+  assert(
+    swipeScreenSource.includes('const reviewerId = reviewerIdInput || getOrCreateAnonymousHumanReviewerId()'),
+    "anonymous_reviewer_id_not_used_for_submit"
+  );
+  checks.push({ id: 16, name: "anonymous_reviewer_identity_preserved", pass: true });
+
+  // --- Check 17: duplicate reviewer/snapshot protection remains intact ---
+  assert(
+    swipeScreenSource.includes('const duplicateKey = `${humanReviewSnapshot.snapshotId}::${reviewerId.toLowerCase()}`'),
+    "duplicate_key_generation_missing"
+  );
+  assert(
+    swipeScreenSource.includes('storageList("novelideas_human_review_submissions")'),
+    "duplicate_submission_lookup_missing"
+  );
+  assert(
+    swipeScreenSource.includes('storagePushUnique("novelideas_human_review_submissions", duplicateKey)'),
+    "duplicate_submission_writeback_missing"
+  );
+  checks.push({ id: 17, name: "duplicate_protection_preserved", pass: true });
+
+  // --- Check 18: sticky action row remains present across recommendation steps ---
+  const scrollIndex = swipeScreenSource.indexOf("<ScrollView");
+  const stickyFooterIndex = swipeScreenSource.indexOf("humanReviewStickyFooter");
+  assert(scrollIndex >= 0, "scroll_area_missing");
+  assert(stickyFooterIndex > scrollIndex, "sticky_footer_not_rendered_after_scroll_area");
+  assert(
+    swipeScreenSource.includes("humanReviewPanelBody") &&
+      swipeScreenSource.includes("humanReviewScrollArea") &&
+      swipeScreenSource.includes("humanReviewActionRow"),
+    "sticky_footer_structure_missing"
+  );
+  assert(
+    swipeScreenSource.includes('? "Next: Slate Questions" : "Next Recommendation"') &&
+      swipeScreenSource.includes('{humanReviewSubmitting ? "Submitting…" : "Submit Review"}'),
+    "final_step_action_swap_missing"
+  );
+  checks.push({ id: 18, name: "sticky_action_footer_present", pass: true });
+
+  // --- Check 19: sticky footer UI state does not change stored evidence ---
+  const evidenceBeforeSticky = createHumanReviewRecordFromForm({ snapshot, form: navRestored.form });
+  const evidenceAfterSticky = createHumanReviewRecordFromForm({
+    snapshot,
+    form: {
+      ...navRestored.form,
+      reviewerId: navRestored.form.reviewerId,
+    },
+  });
+  assert(
+    stableStringify(evidenceBeforeSticky) === stableStringify(evidenceAfterSticky),
+    "sticky_footer_changed_stored_evidence"
+  );
+  checks.push({ id: 19, name: "sticky_footer_preserves_stored_evidence", pass: true });
+
   console.log(
     JSON.stringify(
       {
