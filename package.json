@@ -53,6 +53,7 @@
     "test:v2:human-review-durable-storage": "node scripts/run-v2-human-review-durable-regressions.mjs",
     "test:v2:human-review-paginated-ux": "node scripts/run-v2-human-review-paginated-ux-regressions.mjs",
     "test:v2:testing-route": "node scripts/run-v2-testing-route-regressions.mjs",
+    "test:v2:local-collection-import-foundation": "node scripts/run-v2-local-collection-import-foundation-regressions.mjs",
     "human-review:capture-snapshots": "node scripts/run-v2-human-review-capture-snapshot.mjs",
     "human-review:append-review": "node scripts/run-v2-human-review-append-review.mjs",
     "human-review:export-records": "node scripts/run-v2-human-review-export-records.mjs",
