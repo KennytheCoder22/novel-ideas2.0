@@ -27,11 +27,11 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function runImport(csvText, sourceFilename = "fixture.csv") {
+function runImport(csvText, sourceFilename = "fixture.csv", importTimestamp = "2026-08-02T00:00:00.000Z") {
   return importLocalCollectionCsv({
     csvText,
     sourceFilename,
-    importTimestamp: "2026-08-02T00:00:00.000Z",
+    importTimestamp,
     collectionName: "YVHS",
     libraryId: "yvhs",
   });
@@ -158,6 +158,14 @@ checks.push(check("deterministic_ids_across_repeated_imports", () => {
   assert(a.acceptedRecords[0].localId === b.acceptedRecords[0].localId, "local_id_not_stable");
 }));
 
+checks.push(check("stable_hash_and_ids_across_different_import_timestamps", () => {
+  const csv = "title,author,isbn\nStable,Author,9780439708180\n";
+  const a = runImport(csv, "stable.csv", "2026-08-02T00:00:00.000Z");
+  const b = runImport(csv, "stable.csv", "2026-08-03T00:00:00.000Z");
+  assert(a.acceptedRecords[0].localId === b.acceptedRecords[0].localId, "local_id_changed_with_timestamp");
+  assert(a.deterministicContentHash === b.deterministicContentHash, "hash_changed_with_timestamp");
+}));
+
 checks.push(check("stable_summary_counts", () => {
   const csv = [
     "book title,creator,isbn,copies,cover url",
@@ -171,9 +179,35 @@ checks.push(check("stable_summary_counts", () => {
   assert(a.deterministicContentHash === b.deterministicContentHash, "hash_not_stable");
 }));
 
+checks.push(check("artifact_is_self_contained_for_export_or_inspection", () => {
+  const csv = "title,author,isbn\nInspectable,Author,9780439708180\n";
+  const result = runImport(csv, "inspect.csv");
+  const exported = JSON.parse(JSON.stringify(result));
+  assert(Array.isArray(exported.acceptedRecords), "accepted_records_missing");
+  assert(Array.isArray(exported.rejectedRecords), "rejected_records_missing");
+  assert(typeof exported.summary?.acceptedTitles === "number", "summary_missing");
+  assert(typeof exported.deterministicContentHash === "string" && exported.deterministicContentHash.length > 0, "hash_missing");
+}));
+
 checks.push(check("no_recommender_local_adapter_activation", () => {
   const sourceIndexText = readFileSync(resolve(repoRoot, "app", "recommender-v2", "sources", "index.ts"), "utf8");
   assert(/localLibrary:\s*null/.test(sourceIndexText), "local_library_adapter_was_activated");
+}));
+
+checks.push(check("import_does_not_auto_enable_local_collection_source", () => {
+  const adminWebText = readFileSync(resolve(repoRoot, "app", "app_admin-web.tsx"), "utf8");
+  assert(
+    !adminWebText.includes("setPath([\"recommendations\", \"sourceEnabled\", \"localLibrary\"], true)"),
+    "import_flow_auto_enabled_local_collection_source"
+  );
+}));
+
+checks.push(check("import_does_not_overwrite_legacy_local_collection_key", () => {
+  const adminWebText = readFileSync(resolve(repoRoot, "app", "app_admin-web.tsx"), "utf8");
+  assert(
+    !adminWebText.includes("localStorage.setItem(\"novelideas_local_collection\","),
+    "legacy_local_collection_key_overwritten"
+  );
 }));
 
 globalThis.fetch = originalFetch;

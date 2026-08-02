@@ -642,11 +642,9 @@ export default function AdminWebScreen() {
           localStorage.setItem("novelideas_local_collection_csv", raw);
           localStorage.setItem("novelideas_local_collection_artifact_v1", JSON.stringify(artifact));
           localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
-          localStorage.setItem("novelideas_local_collection", JSON.stringify(artifact.acceptedRecords));
 
           setUploadedCollectionCount(artifact.summary.acceptedTitles);
           setPath(["recommendations", "localLibrarySupported"], true);
-          setPath(["recommendations", "sourceEnabled", "localLibrary"], true);
           Alert.alert(
             "Collection imported",
             [
