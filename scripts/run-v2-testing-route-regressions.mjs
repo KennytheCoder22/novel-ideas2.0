@@ -46,6 +46,7 @@
  *   T39 — author-identity label rejection is case-insensitive
  *   T40 — anonymous reviewer identity remains internal for public testing
  *   T41 — Evaluate Recommendations still opens the Human Review modal path
+ *   T42 — testing modal keeps the bookstore framing copy and book-first hierarchy
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -459,4 +460,18 @@ const adminBranchSource =
     console.log("PASS T41: Evaluate Recommendations still drives the modal-open path");
   }
 
-  console.log("\n✓ All testing-route regressions passed (41 tests).");
+  // T42: testing modal keeps the bookstore framing copy and book-first hierarchy
+  {
+    assertIncludes(
+      swipeDeckSource,
+      "Imagine you're standing in a bookstore. Based only on what you see here, how interested would you be in",
+      "T42: testing modal must include the bookstore framing sentence"
+    );
+    assertIncludes(swipeDeckSource, "reading this book?", "T42: testing modal framing sentence must complete the bookstore prompt");
+    assertIncludes(swipeDeckSource, "<Text style={styles.humanReviewItemTitle}>{visibleHumanReviewItem.title}</Text>", "T42: title must render as the dominant recommendation label");
+    assertIncludes(swipeDeckSource, "<Text style={styles.humanReviewProgressText}>{humanReviewProgressLabel}</Text>", "T42: progress must still render on each recommendation step");
+    assertNotIncludes(swipeDeckSource, "#{visibleHumanReviewItem.rank} {visibleHumanReviewItem.title}", "T42: title must no longer be prefixed by the rank");
+    console.log("PASS T42: testing modal keeps the bookstore framing and book-first hierarchy");
+  }
+
+  console.log("\n✓ All testing-route regressions passed (42 tests).");

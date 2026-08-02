@@ -5709,6 +5709,10 @@ function handleLeft() {
                       </>
                     )}
                     {isTestingMode ? <Text style={styles.v2DebugText}>Age band: {humanReviewSnapshot.ageBand}</Text> : null}
+                    <Text style={styles.humanReviewFramingText}>
+                      Imagine you're standing in a bookstore. Based only on what you see here, how interested would you be in
+                      reading this book?
+                    </Text>
 
                     {!isTestingMode ? (
                       <TextInput
@@ -5798,11 +5802,6 @@ function handleLeft() {
                       </View>
                     ) : null}
 
-                    <View style={styles.humanReviewProgressHeader}>
-                      <Text style={styles.humanReviewProgressText}>{humanReviewProgressLabel}</Text>
-                      <Text style={styles.humanReviewTimeRemainingText}>{humanReviewTimeRemainingText}</Text>
-                    </View>
-
                     {visibleHumanReviewItem ? (
                       <View style={styles.humanReviewItemsWrap}>
                         <View key={visibleHumanReviewItem.rank} style={[styles.humanReviewItemCard, visibleHumanReviewItem.rank === 1 && styles.humanReviewItemCardPrimary]}>
@@ -5817,8 +5816,12 @@ function handleLeft() {
                               <View style={[styles.humanReviewCoverThumb, styles.humanReviewCoverPlaceholder]} />
                             )}
                             <View style={styles.humanReviewItemMeta}>
-                              <Text style={styles.humanReviewItemTitle}>#{visibleHumanReviewItem.rank} {visibleHumanReviewItem.title}</Text>
+                              <Text style={styles.humanReviewItemTitle}>{visibleHumanReviewItem.title}</Text>
                               {visibleHumanReviewItem.author ? <Text style={styles.humanReviewItemAuthor}>{visibleHumanReviewItem.author}</Text> : null}
+                              <View style={styles.humanReviewStepMeta}>
+                                <Text style={styles.humanReviewProgressText}>{humanReviewProgressLabel}</Text>
+                                <Text style={styles.humanReviewTimeRemainingText}>{humanReviewTimeRemainingText}</Text>
+                              </View>
                             </View>
                           </View>
 
@@ -6522,8 +6525,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   humanReviewItemMeta: { flex: 1, gap: 6, justifyContent: "center" },
-  humanReviewItemTitle: { color: "#f8fbff", fontWeight: "900", fontSize: 18, lineHeight: 23 },
-  humanReviewItemAuthor: { color: "#dbeafe", fontWeight: "800", fontSize: 14, lineHeight: 18 },
+  humanReviewItemTitle: { color: "#f8fbff", fontWeight: "900", fontSize: 26, lineHeight: 31 },
+  humanReviewItemAuthor: { color: "#dbeafe", fontWeight: "800", fontSize: 17, lineHeight: 22 },
+  humanReviewStepMeta: { gap: 2, marginTop: 4 },
   humanReviewGenreTagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
   humanReviewGenreTagPill: {
     borderRadius: 999,
@@ -6562,8 +6566,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "900",
   },
-  humanReviewItemHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  humanReviewCoverThumb: { width: 88, height: 124, borderRadius: 8, flexShrink: 0 },
+  humanReviewItemHeader: { flexDirection: "row", alignItems: "flex-start", gap: 16 },
+  humanReviewCoverThumb: { width: 116, height: 170, borderRadius: 10, flexShrink: 0 },
   humanReviewCoverPlaceholder: { backgroundColor: "#1e3a5f" },
   humanReviewExpectedEnjoymentRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
   humanReviewExpectedEnjoymentPill: {
@@ -6667,27 +6671,25 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   humanReviewProgressText: {
-    color: "#f8fbff",
-    fontSize: 18,
-    fontWeight: "900",
-    lineHeight: 22,
+    color: "#c7d7eb",
+    fontSize: 13,
+    fontWeight: "800",
+    lineHeight: 17,
   },
   humanReviewTimeRemainingText: {
-    color: "#a9c8eb",
+    color: "#8fb0d2",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   humanReviewPublicIntro: {
     marginBottom: 6,
   },
-  humanReviewProgressHeader: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(96,165,250,0.24)",
-    backgroundColor: "rgba(15, 23, 42, 0.72)",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 4,
+  humanReviewFramingText: {
+    color: "#9fb6d3",
+    fontSize: 12,
+    fontStyle: "italic",
+    lineHeight: 18,
+    marginBottom: 2,
   },
   humanReviewStickyFooter: {
     borderTopWidth: 1,

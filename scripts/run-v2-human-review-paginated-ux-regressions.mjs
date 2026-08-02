@@ -464,6 +464,21 @@ async function run() {
   );
   checks.push({ id: 20, name: "evaluate_results_opens_modal_path", pass: true });
 
+  // --- Check 21: recommendation step frames the book first, with progress below title/author ---
+  assert(
+    swipeScreenSource.includes("Imagine you're standing in a bookstore. Based only on what you see here, how interested would you be in") &&
+      swipeScreenSource.includes("reading this book?"),
+    "bookstore_framing_copy_missing"
+  );
+  const titleIndex = swipeScreenSource.indexOf("<Text style={styles.humanReviewItemTitle}>{visibleHumanReviewItem.title}</Text>");
+  const authorIndex = swipeScreenSource.indexOf("{visibleHumanReviewItem.author ? <Text style={styles.humanReviewItemAuthor}>{visibleHumanReviewItem.author}</Text> : null}");
+  const progressIndex = swipeScreenSource.indexOf("<Text style={styles.humanReviewProgressText}>{humanReviewProgressLabel}</Text>");
+  assert(titleIndex >= 0, "book_title_render_missing");
+  assert(authorIndex > titleIndex, "book_author_must_render_after_title");
+  assert(progressIndex > authorIndex, "progress_must_render_after_title_and_author");
+  assert(!swipeScreenSource.includes("#{visibleHumanReviewItem.rank} {visibleHumanReviewItem.title}"), "rank_prefix_still_dominates_title");
+  checks.push({ id: 21, name: "book_first_visual_hierarchy", pass: true });
+
   console.log(
     JSON.stringify(
       {
