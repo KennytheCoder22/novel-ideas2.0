@@ -76,7 +76,10 @@ const layoutSource = readFileSync(resolve(ROOT, "app/_layout.tsx"), "utf8");
 const vercelConfigPath = resolve(ROOT, "vercel.json");
 const vercelConfig = existsSync(vercelConfigPath) ? JSON.parse(readFileSync(vercelConfigPath, "utf8")) : null;
 const testingBranchStart = swipeDeckSource.indexOf("{isTestingMode ? (");
-const adminBranchDivider = swipeDeckSource.indexOf(") : (", testingBranchStart);
+const adminBranchDivider =
+  swipeDeckSource.indexOf(") : isAdminMode ? (", testingBranchStart) >= 0
+    ? swipeDeckSource.indexOf(") : isAdminMode ? (", testingBranchStart)
+    : swipeDeckSource.indexOf(") : (", testingBranchStart);
 const testingBranchSource =
   testingBranchStart >= 0 && adminBranchDivider > testingBranchStart
     ? swipeDeckSource.slice(testingBranchStart, adminBranchDivider)

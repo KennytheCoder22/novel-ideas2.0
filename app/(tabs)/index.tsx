@@ -1424,6 +1424,7 @@ export default function HomeScreen() {
   const [adminPinEntry, setAdminPinEntry] = useState("");
   const [adminPinError, setAdminPinError] = useState<string | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
 
   const [config, setConfig] = useState<any>(() => {
     // Desktop web: if the admin-web page saved a draft into localStorage,
@@ -1503,7 +1504,6 @@ export default function HomeScreen() {
   const adminPinEnabled: boolean = !!config?.admin?.pinEnabled;
   const adminPin: string = typeof config?.admin?.pin === "string" ? config.admin.pin : "";
   const adminPinReady: boolean = adminPinEnabled && /^\d{6}$/.test(adminPin);
-  const showCustomizeButton = Platform.OS === "web";
 
   
 const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
@@ -1710,6 +1710,63 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     if (next >= 7) {
       openAdminEntry();
     }
+  }
+
+  function toggleHeaderMenu() {
+    setShowHeaderMenu((prev) => !prev);
+  }
+
+  function closeHeaderMenu() {
+    setShowHeaderMenu(false);
+  }
+
+  function showMenuInfoStub(title: string) {
+    closeHeaderMenu();
+    Alert.alert(title, "Coming soon.");
+  }
+
+  const showAdminMenuItems = adminUnlocked || tapCount >= 7;
+
+  function renderHeaderMenu() {
+    return (
+      <View style={styles.headerRight}>
+        <TouchableOpacity
+          onPress={toggleHeaderMenu}
+          style={[styles.headerMenuButton, { borderColor: theme.lightBorder, backgroundColor: theme.inputBg }]}
+          accessibilityRole="button"
+          accessibilityLabel="Open main menu"
+        >
+          <Text style={[styles.headerMenuButtonText, { color: theme.text }]}>⋮</Text>
+        </TouchableOpacity>
+        {showHeaderMenu ? (
+          <View style={[styles.headerMenuPopover, { borderColor: theme.lightBorder, backgroundColor: theme.inputBg }]}>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("About NovelIdeas")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>About NovelIdeas</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("How it works")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How it works</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Privacy")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Privacy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Feedback")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Feedback</Text>
+            </TouchableOpacity>
+            {showAdminMenuItems ? (
+              <TouchableOpacity
+                style={[styles.headerMenuItem, styles.headerMenuItemLast]}
+                onPress={() => {
+                  closeHeaderMenu();
+                  openAdminEntry();
+                }}
+              >
+                <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Customize</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    );
   }
 
   function setInConfig(path: (string | number)[], value: any) {
@@ -1992,7 +2049,7 @@ logoDataUrl={logoDataUrl}
               <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
             </TouchableOpacity>
 
-            <View style={styles.headerRight} />
+            {renderHeaderMenu()}
           </View>
 </View>
 
@@ -2005,24 +2062,12 @@ logoDataUrl={logoDataUrl}
             adultKitsuOnlyForceQueryForValidation={adultKitsuOnlyForceQueryForValidation}
             localLibrarySupported={localLibrarySupported}
             onOpenSearch={() => {
+              closeHeaderMenu();
               setMode("search");
               setTimeout(() => queryInputRef.current?.focus?.(), 50);
             }}
+            isAdminMode={adminUnlocked}
           />
-
-          {showCustomizeButton ? (
-            <View style={styles.customizeOverlay}>
-              <TouchableOpacity
-                style={[
-                  styles.chip,
-                  { borderColor: theme.highlight, backgroundColor: theme.inputBg },
-                ]}
-                onPress={openAdminEntry}
-              >
-                <Text style={[styles.chipText, { color: theme.text }]}>Customize</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
         </View>
       </View>
     );
@@ -2056,7 +2101,7 @@ logoDataUrl={logoDataUrl}
             </View>
             <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
           </TouchableOpacity>
-          <View style={styles.headerRight} />
+          {renderHeaderMenu()}
         </View>
       </View>
 
@@ -2067,7 +2112,10 @@ logoDataUrl={logoDataUrl}
             styles.smallBtn,
             { borderColor: theme.lightBorder, backgroundColor: theme.inputBg, minWidth: 120 },
           ]}
-          onPress={() => setMode("swipe")}
+          onPress={() => {
+            closeHeaderMenu();
+            setMode("swipe");
+          }}
         >
           <Text style={[styles.smallBtnText, { color: theme.text }]}>Back to Swipe</Text>
         </TouchableOpacity>
@@ -2128,7 +2176,37 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   headerLeft: { width: 72, alignItems: "flex-start", justifyContent: "center" },
   headerCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
-  headerRight: { width: 72 },
+  headerRight: { width: 72, alignItems: "flex-end", justifyContent: "center", position: "relative" },
+  headerMenuButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerMenuButtonText: { fontSize: 20, fontWeight: "900", lineHeight: 20 },
+  headerMenuPopover: {
+    position: "absolute",
+    top: 40,
+    right: 0,
+    minWidth: 180,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 6,
+    zIndex: 40,
+  },
+  headerMenuItem: {
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+  },
+  headerMenuItemLast: {
+    borderTopWidth: 1,
+    borderTopColor: "rgba(148,163,184,0.4)",
+    marginTop: 4,
+    paddingTop: 10,
+  },
+  headerMenuItemText: { fontSize: 14, fontWeight: "700" },
 
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 as any },
   title: { fontSize: 30, fontWeight: "900", marginBottom: 2 },
@@ -2284,10 +2362,4 @@ const styles = StyleSheet.create({
     position: "relative",
   },
 
-  customizeOverlay: {
-    position: "absolute",
-    top: 12,
-    right: 16,
-    zIndex: 20,
-  },
 });
