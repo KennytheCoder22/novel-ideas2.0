@@ -115,6 +115,54 @@ export function restoreHumanReviewDraft(args: {
   }
 }
 
+export function prepareHumanReviewModalState(args: {
+  snapshotId: string;
+  form: HumanReviewSlateForm;
+  rawDraft: string;
+  nowIso: string;
+  isTestingMode: boolean;
+  anonymousReviewerId?: string;
+}): {
+  effectiveForm: HumanReviewSlateForm;
+  initialStepIndex: number;
+  initialStartedAtByRank: Record<string, string>;
+  initialCompletedAtByRank: Record<string, string>;
+} {
+  const baseForm =
+    args.isTestingMode && args.anonymousReviewerId
+      ? { ...args.form, reviewerId: args.anonymousReviewerId }
+      : args.form;
+
+  const restoredDraft = restoreHumanReviewDraft({
+    rawDraft: args.rawDraft,
+    snapshotId: args.snapshotId,
+    defaultForm: baseForm,
+  });
+  const restoredForm = restoredDraft?.form || baseForm;
+  const effectiveForm =
+    args.isTestingMode && args.anonymousReviewerId
+      ? { ...restoredForm, reviewerId: args.anonymousReviewerId }
+      : restoredForm;
+  const totalRecommendations = effectiveForm.itemReviews.length;
+  const initialStepIndex = restoredDraft
+    ? clampHumanReviewStepIndex(restoredDraft.stepIndex, totalRecommendations)
+    : 0;
+  const initialStartedAtByRank =
+    restoredDraft?.stepStartedAtByRank && Object.keys(restoredDraft.stepStartedAtByRank).length
+      ? restoredDraft.stepStartedAtByRank
+      : totalRecommendations > 0
+        ? { "1": args.nowIso }
+        : {};
+  const initialCompletedAtByRank = restoredDraft?.stepCompletedAtByRank || {};
+
+  return {
+    effectiveForm,
+    initialStepIndex,
+    initialStartedAtByRank,
+    initialCompletedAtByRank,
+  };
+}
+
 export function estimateRemainingReviewSeconds(args: {
   totalRecommendations: number;
   stepStartedAtByRank: Record<string, string>;

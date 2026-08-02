@@ -72,7 +72,7 @@ import {
   getHumanReviewProgressLabel,
   humanReviewDraftStorageKey,
   isHumanReviewItemStepComplete,
-  restoreHumanReviewDraft,
+  prepareHumanReviewModalState,
 } from "./swipe/humanReviewPaginatedUx";
 
 const DEFAULT_SWIPE_CATEGORIES = {
@@ -4938,27 +4938,15 @@ function handleLeft() {
       if (defaultReviewer) form.reviewerId = defaultReviewer;
     }
     const nowIso = new Date().toISOString();
-    const draftKey = humanReviewDraftStorageKey(snapshot.snapshotId);
-    const restoredDraft = restoreHumanReviewDraft({
-      rawDraft: safeStorageGet(draftKey),
-      snapshotId: snapshot.snapshotId,
-      defaultForm: form,
-    });
-    const effectiveForm = restoredDraft?.form || form;
-    if (isTestingMode) {
-      effectiveForm.reviewerId = getOrCreateAnonymousHumanReviewerId();
-    }
-    const totalRecommendations = effectiveForm.itemReviews.length;
-    const initialStepIndex = restoredDraft
-      ? clampHumanReviewStepIndex(restoredDraft.stepIndex, totalRecommendations)
-      : 0;
-    const initialStartedAtByRank =
-      restoredDraft?.stepStartedAtByRank && Object.keys(restoredDraft.stepStartedAtByRank).length
-        ? restoredDraft.stepStartedAtByRank
-        : totalRecommendations > 0
-          ? { "1": nowIso }
-          : {};
-    const initialCompletedAtByRank = restoredDraft?.stepCompletedAtByRank || {};
+    const { effectiveForm, initialStepIndex, initialStartedAtByRank, initialCompletedAtByRank } =
+      prepareHumanReviewModalState({
+        snapshotId: snapshot.snapshotId,
+        form,
+        rawDraft: safeStorageGet(humanReviewDraftStorageKey(snapshot.snapshotId)),
+        nowIso,
+        isTestingMode,
+        anonymousReviewerId: isTestingMode ? getOrCreateAnonymousHumanReviewerId() : undefined,
+      });
     setHumanReviewSnapshot(snapshot);
     setHumanReviewForm(effectiveForm);
     setHumanReviewStepIndex(initialStepIndex);
@@ -4966,7 +4954,7 @@ function handleLeft() {
     setHumanReviewStepCompletedAtByRank(initialCompletedAtByRank);
     setHumanReviewStatus("");
     setShowHumanReviewCompletion(false);
-    setShowHumanReviewSynopsisExpanded(false);
+    setHumanReviewSynopsisExpanded(false);
     setShowHumanReviewContext(false);
     setShowHumanReviewPanel(true);
   }

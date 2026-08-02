@@ -44,6 +44,8 @@
  *   T37 — implementation-label-only creators (Recommender V2, source names) are rejected
  *   T38 — valid single-creator is preserved by the author-identity gate
  *   T39 — author-identity label rejection is case-insensitive
+ *   T40 — anonymous reviewer identity remains internal for public testing
+ *   T41 — Evaluate Recommendations still opens the Human Review modal path
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -443,4 +445,18 @@ const adminBranchSource =
     console.log("PASS T40: public testing still uses anonymous reviewer identity internally");
   }
 
-  console.log("\n✓ All testing-route regressions passed (40 tests).");
+  // T41: Evaluate Recommendations still opens the modal path with the real open handler
+  {
+    assertIncludes(swipeDeckSource, "onPress={openHumanReviewForCurrentSlate}", "T41: Evaluate Recommendations must still call openHumanReviewForCurrentSlate");
+    assertIncludes(swipeDeckSource, "prepareHumanReviewModalState({", "T41: open handler must still prepare modal state");
+    assertIncludes(
+      swipeDeckSource,
+      "visible={showHumanReviewPanel && humanReviewSnapshot != null && humanReviewForm != null}",
+      "T41: modal visibility guard must still depend on open state plus prepared snapshot/form"
+    );
+    assertIncludes(swipeDeckSource, "setHumanReviewSynopsisExpanded(false);", "T41: open handler must reset synopsis expansion with the real setter");
+    assertNotIncludes(swipeDeckSource, "setShowHumanReviewSynopsisExpanded(", "T41: open handler must not reference a missing synopsis setter");
+    console.log("PASS T41: Evaluate Recommendations still drives the modal-open path");
+  }
+
+  console.log("\n✓ All testing-route regressions passed (41 tests).");

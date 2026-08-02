@@ -64,6 +64,7 @@ const {
   formatRemainingReviewTime,
   getHumanReviewProgressLabel,
   humanReviewDraftStorageKey,
+  prepareHumanReviewModalState,
   restoreHumanReviewDraft,
 } = require(resolve(screenDir, "humanReviewPaginatedUx.ts"));
 const { runRecommenderV2 } = require(resolve(appDir, "engine.ts"));
@@ -169,7 +170,7 @@ async function run() {
     "draft_autosave_write_missing"
   );
   assert(
-    swipeScreenSource.includes("restoreHumanReviewDraft("),
+    swipeScreenSource.includes("prepareHumanReviewModalState({") || swipeScreenSource.includes("restoreHumanReviewDraft("),
     "draft_restore_read_missing"
   );
   assert(
@@ -359,16 +360,33 @@ async function run() {
     "anonymous_reviewer_id_factory_missing"
   );
   assert(
-    swipeScreenSource.includes('form.reviewerId = getOrCreateAnonymousHumanReviewerId()'),
-    "anonymous_reviewer_id_not_assigned_on_public_open"
-  );
-  assert(
-    swipeScreenSource.includes('effectiveForm.reviewerId = getOrCreateAnonymousHumanReviewerId()'),
-    "anonymous_reviewer_id_not_restored_after_refresh"
-  );
-  assert(
     swipeScreenSource.includes('const reviewerId = reviewerIdInput || getOrCreateAnonymousHumanReviewerId()'),
     "anonymous_reviewer_id_not_used_for_submit"
+  );
+  const anonymousDraftForm = createDefaultHumanReviewForm(snapshot);
+  anonymousDraftForm.reviewerId = "named-reviewer";
+  anonymousDraftForm.itemReviews[0].notes = "restored anonymously";
+  const anonymousDraft = buildHumanReviewDraft({
+    snapshotId: snapshot.snapshotId,
+    form: anonymousDraftForm,
+    stepIndex: 1,
+    stepStartedAtByRank: { "1": "2026-08-01T00:00:00.000Z", "2": "2026-08-01T00:01:00.000Z" },
+    stepCompletedAtByRank: { "1": "2026-08-01T00:01:00.000Z" },
+    updatedAt: "2026-08-01T00:01:10.000Z",
+  });
+  const preparedModalState = prepareHumanReviewModalState({
+    snapshotId: snapshot.snapshotId,
+    form: createDefaultHumanReviewForm(snapshot),
+    rawDraft: JSON.stringify(anonymousDraft),
+    nowIso: "2026-08-01T00:02:00.000Z",
+    isTestingMode: true,
+    anonymousReviewerId: "anon-reviewer-123",
+  });
+  assert(preparedModalState.effectiveForm.reviewerId === "anon-reviewer-123", "anonymous_reviewer_id_not_restored");
+  assert(preparedModalState.initialStepIndex === 1, "anonymous_draft_step_not_restored");
+  assert(
+    preparedModalState.effectiveForm.itemReviews[0].notes === "restored anonymously",
+    "anonymous_draft_item_state_not_restored"
   );
   checks.push({ id: 16, name: "anonymous_reviewer_identity_preserved", pass: true });
 
@@ -419,6 +437,32 @@ async function run() {
     "sticky_footer_changed_stored_evidence"
   );
   checks.push({ id: 19, name: "sticky_footer_preserves_stored_evidence", pass: true });
+
+  // --- Check 20: results CTA still opens the modal path with valid state setters ---
+  assert(
+    swipeScreenSource.includes("onPress={openHumanReviewForCurrentSlate}"),
+    "evaluate_recommendations_button_not_wired_to_open_handler"
+  );
+  assert(
+    swipeScreenSource.includes("visible={showHumanReviewPanel && humanReviewSnapshot != null && humanReviewForm != null}"),
+    "human_review_modal_visibility_guard_missing"
+  );
+  assert(
+    swipeScreenSource.includes("prepareHumanReviewModalState({") &&
+      swipeScreenSource.includes("setHumanReviewSnapshot(snapshot);") &&
+      swipeScreenSource.includes("setHumanReviewForm(effectiveForm);") &&
+      swipeScreenSource.includes("setShowHumanReviewPanel(true);"),
+    "open_handler_no_longer_populates_modal_state"
+  );
+  assert(
+    swipeScreenSource.includes("setHumanReviewSynopsisExpanded(false);"),
+    "open_handler_must_reset_synopsis_expansion_with_real_setter"
+  );
+  assert(
+    !swipeScreenSource.includes("setShowHumanReviewSynopsisExpanded("),
+    "open_handler_references_missing_synopsis_setter"
+  );
+  checks.push({ id: 20, name: "evaluate_results_opens_modal_path", pass: true });
 
   console.log(
     JSON.stringify(
