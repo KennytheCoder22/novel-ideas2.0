@@ -31,11 +31,7 @@ import SwipeDeckScreen from "../screens/SwipeDeckScreen";
 
 const INTRO_DISMISSED_KEY = "novelideas_testing_intro_dismissed";
 const INTRO_TEXT =
-  "NovelIdeas is testing how well it understands readers' tastes. " +
-  "Swipe according to your immediate reaction. After receiving recommendations, " +
-  "you will be asked whether the results fit the preferences you expressed. " +
-  "You do not need to know or have read every recommended book. " +
-  "There are no right or wrong answers.";
+  "NovelIdeas is testing how well it understands readers' tastes. Swipe according to your immediate reaction. After receiving recommendations, press the Evaluate Recommendations button and you will be asked whether the results fit the preferences you expressed. You do not need to know or have read every recommended book. There are no right or wrong answers.";
 
 function safeGetStorage(key: string): string | null {
   try {
