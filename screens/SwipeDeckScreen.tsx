@@ -311,6 +311,11 @@ type Props = {
    * Set this on the public /testing route.
    */
   isTestingMode?: boolean;
+  /**
+   * When true, exposes internal admin/dev controls on non-testing routes.
+   * Keep false for the public home screen.
+   */
+  isAdminMode?: boolean;
 };
 
 
@@ -1244,6 +1249,7 @@ function shouldFinishTwentyQSession(args: {
 export default function SwipeDeckScreen(props: Props) {
   const router = useRouter();
   const isTestingMode = props.isTestingMode === true;
+  const isAdminMode = props.isAdminMode === true;
   const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
   const isSmallScreen = windowWidth < 420 || windowHeight < 750;
   const needsCardOffset = isSmallScreen || (Platform.OS === "web" && windowWidth < 600);
@@ -5317,26 +5323,30 @@ function handleLeft() {
           })}
         </View>
 
-        <View style={styles.statusRow}>
-          <Text style={styles.statusText}>
-            20Q: {resolvedTwentyQCount}/{twentyQObjectives.length} resolved
-          </Text>
-          <Text style={styles.statusText}>
-            Engine: V2 • Last used: {(lastEngineActuallyUsed || "—").toUpperCase()}
-          </Text>
-          <Text style={styles.statusText}>
-            {activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung}: ${activeTwentyQObjective.label}` : "20Q complete"}
-          </Text>
-        </View>
+        {isAdminMode ? (
+          <>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusText}>
+                20Q: {resolvedTwentyQCount}/{twentyQObjectives.length} resolved
+              </Text>
+              <Text style={styles.statusText}>
+                Engine: V2 • Last used: {(lastEngineActuallyUsed || "—").toUpperCase()}
+              </Text>
+              <Text style={styles.statusText}>
+                {activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung}: ${activeTwentyQObjective.label}` : "20Q complete"}
+              </Text>
+            </View>
 
-        <View style={styles.statusDivider} />
+            <View style={styles.statusDivider} />
+          </>
+        ) : null}
 
         <View style={[styles.stage, needsCardOffset && styles.stageTop]}>
           {showRecommendationsView ? (
             <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 30 }}>
               <View style={[styles.doneCard, { borderColor: highlightColor }]}>
                 <Text style={styles.doneTitle}>Recommendations</Text>
-                {!isTestingMode ? (
+                {isAdminMode ? (
                   <>
                     <Text style={styles.doneSub}>
                       Deck: {deck.deckLabel} • Engine: V2 • Used: {(lastEngineActuallyUsed || "—").toUpperCase()} • Engine label: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
@@ -5639,7 +5649,7 @@ function handleLeft() {
                   <Text style={styles.debugToggleText}>Fresh User</Text>
                 </TouchableOpacity>
               </>
-            ) : (
+            ) : isAdminMode ? (
               <>
                 {testSessionPresets.map((preset) => (
                   <TouchableOpacity key={preset.id} style={styles.testPillButton} onPress={() => runTestSessionPreset(preset)}>
@@ -5661,7 +5671,7 @@ function handleLeft() {
                   <Text style={styles.debugToggleText}>Fresh User</Text>
                 </TouchableOpacity>
               </>
-            )}
+            ) : null}
           </View>
         </View>
       </View>

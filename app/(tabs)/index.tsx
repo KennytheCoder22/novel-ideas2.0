@@ -1424,6 +1424,8 @@ export default function HomeScreen() {
   const [adminPinEntry, setAdminPinEntry] = useState("");
   const [adminPinError, setAdminPinError] = useState<string | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
 
   const [config, setConfig] = useState<any>(() => {
     // Desktop web: if the admin-web page saved a draft into localStorage,
@@ -1503,7 +1505,6 @@ export default function HomeScreen() {
   const adminPinEnabled: boolean = !!config?.admin?.pinEnabled;
   const adminPin: string = typeof config?.admin?.pin === "string" ? config.admin.pin : "";
   const adminPinReady: boolean = adminPinEnabled && /^\d{6}$/.test(adminPin);
-  const showCustomizeButton = Platform.OS === "web";
 
   
 const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
@@ -1667,6 +1668,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   setShowAdminPinPrompt(false);
                   setAdminPinEntry("");
                   setAdminPinError(null);
+                  setAdminMenuUnlocked(true);
                   if (Platform.OS === "web") {
                     router.push("/app_admin-web");
                   } else {
@@ -1684,7 +1686,8 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
   }
 
 
-  function openAdminEntry() {
+  function openAdminEntry(source: "menu" | "easter_egg" = "menu") {
+    const unlockMenu = source === "easter_egg";
     if (adminPinReady) {
       setAdminPinEntry("");
       setAdminPinError(null);
@@ -1693,6 +1696,9 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
       return;
     }
 
+    if (unlockMenu) {
+      setAdminMenuUnlocked(true);
+    }
     if (Platform.OS === "web") {
       try {
         router.push("/app_admin-web");
@@ -1708,8 +1714,95 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     const next = tapCount + 1;
     setTapCount(next);
     if (next >= 7) {
-      openAdminEntry();
+      openAdminEntry("easter_egg");
     }
+  }
+
+  function toggleHeaderMenu() {
+    setShowHeaderMenu((prev) => !prev);
+  }
+
+  function closeHeaderMenu() {
+    setShowHeaderMenu(false);
+  }
+
+  function showMenuInfoStub(title: string) {
+    closeHeaderMenu();
+    Alert.alert(title, "Coming soon.");
+  }
+
+  function openTestingInvite() {
+    closeHeaderMenu();
+    router.replace("/testing");
+  }
+
+  const showAdminMenuItems = adminMenuUnlocked || adminUnlocked;
+
+  function renderHeaderMenu() {
+    return (
+      <View style={styles.menuAnchor}>
+        <TouchableOpacity
+          onPress={toggleHeaderMenu}
+          style={styles.headerMenuButton}
+          accessibilityRole="button"
+          accessibilityLabel="Open main menu"
+        >
+          <Text style={[styles.headerMenuButtonText, { color: theme.titleText || "#f8fafc" }]}>⋮</Text>
+        </TouchableOpacity>
+        {showHeaderMenu ? (
+          <View style={[styles.headerMenuPopover, { borderColor: theme.lightBorder, backgroundColor: theme.inputBg }]}>
+            <TouchableOpacity
+              style={styles.headerMenuItem}
+              onPress={() => {
+                closeHeaderMenu();
+                openAdminEntry();
+              }}
+            >
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Customize</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={openTestingInvite}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Help Improve NovelIdeas</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("How NovelIdeas Works")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How NovelIdeas Works</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Send Feedback")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Send Feedback</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Privacy")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Privacy</Text>
+            </TouchableOpacity>
+            <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("About")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>About</Text>
+            </TouchableOpacity>
+            {showAdminMenuItems ? (
+              <>
+                <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Diagnostics")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Diagnostics</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Human Review Dashboard")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Human Review Dashboard</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Recommendation tuning")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Recommendation tuning</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Library management")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Library management</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Import / Export")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Import / Export</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Developer tools")}>
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Developer tools</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    );
   }
 
   function setInConfig(path: (string | number)[], value: any) {
@@ -1923,7 +2016,10 @@ logoDataUrl={logoDataUrl}
           setSourceEnabled={setSourceEnabledValue}
           setSourceEnabledForDeck={setSourceEnabledForDeckValue}
           setAdultKitsuOnlyForceQueryForValidation={setAdultKitsuOnlyForceQueryForValidationValue}
-          onExit={() => setAdminUnlocked(false)}
+          onExit={() => {
+            setAdminUnlocked(false);
+            setAdminMenuUnlocked(false);
+          }}
           onSaveSettings={saveSettings}
           saveButtonLabel={saveButtonLabel}
           saveButtonStyle={saveButtonStyle}
@@ -1992,7 +2088,7 @@ logoDataUrl={logoDataUrl}
               <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
             </TouchableOpacity>
 
-            <View style={styles.headerRight} />
+            {renderHeaderMenu()}
           </View>
 </View>
 
@@ -2005,24 +2101,12 @@ logoDataUrl={logoDataUrl}
             adultKitsuOnlyForceQueryForValidation={adultKitsuOnlyForceQueryForValidation}
             localLibrarySupported={localLibrarySupported}
             onOpenSearch={() => {
+              closeHeaderMenu();
               setMode("search");
               setTimeout(() => queryInputRef.current?.focus?.(), 50);
             }}
+            isAdminMode={adminUnlocked}
           />
-
-          {showCustomizeButton ? (
-            <View style={styles.customizeOverlay}>
-              <TouchableOpacity
-                style={[
-                  styles.chip,
-                  { borderColor: theme.highlight, backgroundColor: theme.inputBg },
-                ]}
-                onPress={openAdminEntry}
-              >
-                <Text style={[styles.chipText, { color: theme.text }]}>Customize</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
         </View>
       </View>
     );
@@ -2056,7 +2140,7 @@ logoDataUrl={logoDataUrl}
             </View>
             <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
           </TouchableOpacity>
-          <View style={styles.headerRight} />
+          {renderHeaderMenu()}
         </View>
       </View>
 
@@ -2067,7 +2151,10 @@ logoDataUrl={logoDataUrl}
             styles.smallBtn,
             { borderColor: theme.lightBorder, backgroundColor: theme.inputBg, minWidth: 120 },
           ]}
-          onPress={() => setMode("swipe")}
+          onPress={() => {
+            closeHeaderMenu();
+            setMode("swipe");
+          }}
         >
           <Text style={[styles.smallBtnText, { color: theme.text }]}>Back to Swipe</Text>
         </TouchableOpacity>
@@ -2122,13 +2209,43 @@ const styles = StyleSheet.create({
     position: "relative",
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    overflow: "hidden",
+    overflow: "visible",
   },
 
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   headerLeft: { width: 72, alignItems: "flex-start", justifyContent: "center" },
   headerCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
   headerRight: { width: 72 },
+  menuAnchor: { alignItems: "flex-end", justifyContent: "center", position: "relative" },
+  headerMenuButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+  },
+  headerMenuButtonText: { fontSize: 26, fontWeight: "700", lineHeight: 26 },
+  headerMenuPopover: {
+    position: "absolute",
+    top: 44,
+    right: 0,
+    minWidth: 230,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 6,
+    zIndex: 40,
+  },
+  headerMenuItem: {
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+  },
+  headerMenuDivider: {
+    borderTopWidth: 1,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  headerMenuItemText: { fontSize: 14, fontWeight: "700" },
 
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 as any },
   title: { fontSize: 30, fontWeight: "900", marginBottom: 2 },
@@ -2284,10 +2401,4 @@ const styles = StyleSheet.create({
     position: "relative",
   },
 
-  customizeOverlay: {
-    position: "absolute",
-    top: 12,
-    right: 16,
-    zIndex: 20,
-  },
 });
