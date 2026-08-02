@@ -104,6 +104,7 @@ const HUMAN_REVIEW_EXPECTED_ENJOYMENT_OPTIONS: Array<{ value: 1 | 2 | 3 | 4 | 5;
   { value: 2, label: "Probably not" },
   { value: 1, label: "Very unlikely" },
 ];
+const HUMAN_REVIEW_ANON_REVIEWER_STORAGE_KEY = "novelideas_human_review_anon_reviewer_id";
 
 type DeckKey = SwipeDeck["deckKey"];
 
@@ -214,6 +215,14 @@ function middleGradesDeepDebugDiagnosticsForSession(ageBand: AgeBandV2, uiToggle
     debugMiddleGradesNoTimeouts: true,
     middleGradesDeepDebugActivationSource: uiToggleActive ? "localStorage" : browserRequest.source,
   };
+}
+
+function getOrCreateAnonymousHumanReviewerId(): string {
+  const existing = String(safeStorageGet(HUMAN_REVIEW_ANON_REVIEWER_STORAGE_KEY) || "").trim();
+  if (existing) return existing;
+  const generated = `anon-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  safeStorageSet(HUMAN_REVIEW_ANON_REVIEWER_STORAGE_KEY, generated);
+  return generated;
 }
 
 function formatFromTagsForV2(tags: string[]): SwipeSignalV2["format"] {
@@ -5039,11 +5048,8 @@ function handleLeft() {
 
   async function submitHumanReview() {
     if (!humanReviewSnapshot || !humanReviewForm) return;
-    const reviewerId = String(humanReviewForm.reviewerId || "").trim();
-    if (!reviewerId) {
-      setHumanReviewStatus("Reviewer ID is required.");
-      return;
-    }
+    const reviewerIdInput = String(humanReviewForm.reviewerId || "").trim();
+    const reviewerId = reviewerIdInput || getOrCreateAnonymousHumanReviewerId();
     if (!allHumanReviewItemStepsComplete(humanReviewForm)) {
       setHumanReviewStatus("Complete each recommendation step before submitting slate-level feedback.");
       return;
@@ -5063,10 +5069,17 @@ function handleLeft() {
     setHumanReviewSubmitting(true);
     setHumanReviewStatus("");
     try {
-      safeStorageSet("novelideas_human_review_reviewer_id", reviewerId);
+      if (reviewerIdInput) safeStorageSet("novelideas_human_review_reviewer_id", reviewerIdInput);
+      const formForSubmission: HumanReviewSlateForm =
+        reviewerIdInput.length > 0
+          ? humanReviewForm
+          : {
+              ...humanReviewForm,
+              reviewerId,
+            };
       const record = createHumanReviewRecordFromForm({
         snapshot: humanReviewSnapshot,
-        form: humanReviewForm,
+        form: formForSubmission,
       });
 
       const response = await fetch("/api/human-review-append", {
@@ -5700,14 +5713,14 @@ function handleLeft() {
 
                   <TextInput
                     style={styles.humanReviewInput}
-                    placeholder={isTestingMode ? "Your name or initials" : "Reviewer ID"}
+                    placeholder={isTestingMode ? "Your name or initials (optional)" : "Reviewer ID"}
                     placeholderTextColor="#9db3d9"
                     value={humanReviewForm.reviewerId}
                     onChangeText={(value) => setHumanReviewForm((prev) => (prev ? { ...prev, reviewerId: value } : prev))}
                     autoFocus={isTestingMode}
                     returnKeyType="next"
                     blurOnSubmit={false}
-                    accessibilityLabel={isTestingMode ? "Your name or initials" : "Reviewer ID"}
+                    accessibilityLabel={isTestingMode ? "Your name or initials (optional)" : "Reviewer ID"}
                   />
 
                   {humanReviewForm.sessionContext &&
@@ -6371,7 +6384,7 @@ const styles = StyleSheet.create({
   },
   humanReviewContextToggleText: {
     color: "#bfdbfe",
-    fontSize: 11,
+    fontSize: 18,
     fontWeight: "800",
   },
   humanReviewContextBody: {
@@ -6382,7 +6395,7 @@ const styles = StyleSheet.create({
   },
   humanReviewContextLabel: {
     color: "#cbd5f5",
-    fontSize: 10,
+    fontSize: 16,
     fontWeight: "800",
   },
   humanReviewContextThumbGrid: {
@@ -6391,10 +6404,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   humanReviewContextThumbFrame: {
-    width: 38,
-    height: 52,
+    width: 76,
+    height: 104,
     borderRadius: 6,
-    padding: 1,
+    padding: 2,
   },
   humanReviewContextThumbLiked: {
     borderWidth: 2,
@@ -6412,7 +6425,7 @@ const styles = StyleSheet.create({
   },
   humanReviewContextMore: {
     color: "#93c5fd",
-    fontSize: 10,
+    fontSize: 16,
     fontStyle: "italic",
   },
   humanReviewContextSignals: {
@@ -6442,8 +6455,8 @@ const styles = StyleSheet.create({
     padding: 8,
     gap: 6,
   },
-  humanReviewItemTitle: { color: "#e5efff", fontWeight: "800", fontSize: 11 },
-  humanReviewItemAuthor: { color: "#cbd5f5", fontWeight: "700", fontSize: 10 },
+  humanReviewItemTitle: { color: "#e5efff", fontWeight: "800", fontSize: 20 },
+  humanReviewItemAuthor: { color: "#cbd5f5", fontWeight: "700", fontSize: 18 },
   humanReviewGenreTagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   humanReviewGenreTagPill: {
     borderRadius: 999,
@@ -6453,16 +6466,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  humanReviewGenreTagText: { color: "#dbeafe", fontWeight: "700", fontSize: 9 },
+  humanReviewGenreTagText: { color: "#dbeafe", fontWeight: "700", fontSize: 16 },
   humanReviewSynopsis: {
     color: "#cbd5f5",
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 18,
+    lineHeight: 26,
   },
   humanReviewMatchedSignals: {
     color: "#bae6fd",
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 18,
+    lineHeight: 26,
   },
   humanReviewMatchedLabel: {
     fontWeight: "800",
@@ -6473,11 +6486,11 @@ const styles = StyleSheet.create({
   },
   humanReviewWhyHeading: {
     color: "#dbeafe",
-    fontSize: 10,
+    fontSize: 18,
     fontWeight: "800",
   },
   humanReviewItemHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  humanReviewCoverThumb: { width: 40, height: 54, borderRadius: 4, flexShrink: 0 },
+  humanReviewCoverThumb: { width: 72, height: 96, borderRadius: 6, flexShrink: 0 },
   humanReviewCoverPlaceholder: { backgroundColor: "#1e3a5f" },
   humanReviewExpectedEnjoymentRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
   humanReviewExpectedEnjoymentPill: {
@@ -6495,15 +6508,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#0369a1",
     borderColor: "#7dd3fc",
   },
-  humanReviewExpectedEnjoymentValue: { color: "#fff", fontSize: 10, fontWeight: "900" },
-  humanReviewExpectedEnjoymentText: { color: "#fff", fontSize: 9, fontWeight: "700" },
+  humanReviewExpectedEnjoymentValue: { color: "#fff", fontSize: 18, fontWeight: "900" },
+  humanReviewExpectedEnjoymentText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   humanReviewScaleRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
-  humanReviewScaleLabel: { color: "#cbd5f5", fontSize: 10, width: 70, fontWeight: "700" },
+  humanReviewScaleLabel: { color: "#cbd5f5", fontSize: 18, width: 132, fontWeight: "700" },
   humanReviewScalePill: {
-    minWidth: 24,
+    minWidth: 44,
     alignItems: "center",
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: "#475569",
@@ -6513,7 +6526,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2563eb",
     borderColor: "#93c5fd",
   },
-  humanReviewScalePillText: { color: "#fff", fontWeight: "800", fontSize: 10 },
+  humanReviewScalePillText: { color: "#fff", fontWeight: "800", fontSize: 18 },
   humanReviewFamiliarityRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
   humanReviewFamiliarityPill: {
     borderRadius: 999,
@@ -6527,7 +6540,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1d4ed8",
     borderColor: "#93c5fd",
   },
-  humanReviewFamiliarityText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  humanReviewFamiliarityText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   humanReviewDecisionRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   humanReviewDecisionPill: {
     borderRadius: 999,
@@ -6541,7 +6554,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f766e",
     borderColor: "#5eead4",
   },
-  humanReviewDecisionText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  humanReviewDecisionText: { color: "#fff", fontSize: 16, fontWeight: "800" },
   humanReviewConcernWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   humanReviewConcernPill: {
     borderRadius: 999,
@@ -6555,7 +6568,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#7c3aed",
     borderColor: "#d8b4fe",
   },
-  humanReviewConcernText: { color: "#e5efff", fontSize: 10, fontWeight: "700" },
+  humanReviewConcernText: { color: "#e5efff", fontSize: 16, fontWeight: "700" },
   humanReviewInput: {
     borderRadius: 8,
     borderWidth: 1,
@@ -6564,7 +6577,7 @@ const styles = StyleSheet.create({
     color: "#f8fafc",
     paddingHorizontal: 10,
     paddingVertical: 8,
-    fontSize: 12,
+    fontSize: 20,
   },
   humanReviewInputCompact: {
     minHeight: 48,
@@ -6576,19 +6589,19 @@ const styles = StyleSheet.create({
   },
   humanReviewStatus: {
     color: "#bfdbfe",
-    fontSize: 10,
+    fontSize: 16,
     fontWeight: "700",
-    lineHeight: 14,
+    lineHeight: 24,
   },
   humanReviewProgressText: {
     color: "#dbeafe",
-    fontSize: 12,
+    fontSize: 20,
     fontWeight: "900",
     marginTop: 4,
   },
   humanReviewTimeRemainingText: {
     color: "#93c5fd",
-    fontSize: 10,
+    fontSize: 16,
     fontWeight: "700",
     marginBottom: 4,
   },
