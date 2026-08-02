@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
 import {
   Alert,
@@ -16,6 +16,24 @@ import QRCode from "react-native-qrcode-svg";
 import configFile from "../NovelIdeas.json";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
 import { importLocalCollectionCsv } from "../lib/localCollection";
+import {
+  autoChooseFontColor,
+  highlightKeyToHex,
+  hexToHighlightKey,
+  hexToMainKey,
+  isValidHex,
+  mainKeyToHex,
+  type HighlightKey,
+  type ThemeKey,
+  type TitleTextKey,
+} from "../constants/brandTheme";
+import { ColorPickerField } from "../components/admin/ColorPickerField";
+import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
+import { CollapsibleSection } from "../components/admin/CollapsibleSection";
+
+// ---------------------------------------------------------------------------
+// Constants & flags
+// ---------------------------------------------------------------------------
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
   String(
@@ -24,100 +42,111 @@ const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
       ""
   ).toLowerCase() === "true";
 
+const DEFAULT_MAIN_COLOR = "#0b1e33";
+const DEFAULT_HIGHLIGHT_COLOR = "#fbbf24";
+const DEFAULT_FONT_COLOR = "#ffffff";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type DeckKey = "k2" | "36" | "ms_hs" | "adult";
+type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary" | "kitsu" | "gcd" | "nyt";
+type RecommendationSourceEnabled = Record<RecommendationSourceToggleKey, boolean>;
+type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
+
+const DEFAULT_SWIPE_CATEGORIES: Record<SwipeCategoryKey, boolean> = {
+  books: true, movies: true, tv: true, games: true, youtube: true, anime: true, podcasts: true,
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
 async function makeTinyLogoDataUrl(dataUrl: string, size = 32): Promise<string> {
-  // Create a tiny, QR-friendly logo. Default: 32x32.
-  // Prefer JPEG for size unless we detect transparency (alpha), in which case use PNG.
   return await new Promise((resolve) => {
     try {
       if (typeof document === "undefined") return resolve(dataUrl);
-
       const img = new Image();
       img.onload = () => {
         try {
           const canvas = document.createElement("canvas");
-          canvas.width = size;
-          canvas.height = size;
-
+          canvas.width = size; canvas.height = size;
           const ctx = canvas.getContext("2d", { willReadFrequently: true } as any);
           if (!ctx) return resolve(dataUrl);
-
           ctx.clearRect(0, 0, size, size);
-
-          // Cover-fit (center crop) into a square.
-          const sw = img.width;
-          const sh = img.height;
+          const sw = img.width, sh = img.height;
           const s = Math.min(sw, sh);
-          const sx = Math.floor((sw - s) / 2);
-          const sy = Math.floor((sh - s) / 2);
+          const sx = Math.floor((sw - s) / 2), sy = Math.floor((sh - s) / 2);
           ctx.drawImage(img, sx, sy, s, s, 0, 0, size, size);
-
-          // Detect transparency (alpha) in the downscaled image.
           let hasAlpha = false;
           try {
             const imgData = ctx.getImageData(0, 0, size, size).data;
             for (let i = 3; i < imgData.length; i += 4) {
-              if (imgData[i] < 250) {
-                hasAlpha = true;
-                break;
-              }
+              if (imgData[i] < 250) { hasAlpha = true; break; }
             }
-          } catch {
-            // If we can't read pixels, fall back to PNG (safe for transparency).
-            hasAlpha = true;
-          }
-
-          if (hasAlpha) {
-            const png = canvas.toDataURL("image/png");
-            return resolve(png);
-          }
-
-          // Opaque: JPEG is usually much smaller.
-          const jpg = canvas.toDataURL("image/jpeg", 0.55);
-          return resolve(jpg);
-        } catch {
-          return resolve(dataUrl);
-        }
+          } catch { hasAlpha = true; }
+          resolve(hasAlpha ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.55));
+        } catch { resolve(dataUrl); }
       };
       img.onerror = () => resolve(dataUrl);
       img.src = dataUrl;
-    } catch {
-      resolve(dataUrl);
-    }
+    } catch { resolve(dataUrl); }
   });
 }
 
-// Keep desktop admin compatible with both the older config schema and the
-// current canonical schema.
-// Canonical:
-//   - branding.libraryName
-//   - enabledDecks.{k2,"36",ms_hs,adult}
-// Legacy (still seen in older JSON/config files):
-//   - library.name
-//   - decks.enabled.{k2,"36",ms_hs,adult}
+function slugifyLibraryId(name: string) {
+  const raw = String(name || "").trim().toLowerCase();
+  const slug = raw.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+  return slug || "default-library";
+}
+
+function deckLabel(k: DeckKey) {
+  if (k === "k2") return "Kids (K\u20132)";
+  if (k === "36") return "Pre-Teens (3\u20136)";
+  if (k === "ms_hs") return "Teens (Middle & High School)";
+  if (k === "adult") return "Adults";
+  return k;
+}
+
+function sourceLabel(s: RecommendationSourceToggleKey) {
+  if (s === "googleBooks") return "Google Books";
+  if (s === "openLibrary") return "Open Library";
+  if (s === "localLibrary") return "This library's collection";
+  if (s === "kitsu") return "Kitsu (Manga)";
+  if (s === "gcd") return "ComicVine (Comics)";
+  if (s === "nyt") return "New York Times (limited)";
+  return s;
+}
+
+function swipeCategoryLabel(k: SwipeCategoryKey) {
+  const map: Record<SwipeCategoryKey, string> = {
+    books: "Books", movies: "Movies", tv: "TV Shows", games: "Games",
+    youtube: "YouTube", anime: "Anime / Manga", podcasts: "Podcasts",
+  };
+  return map[k] ?? k;
+}
+
+// ---------------------------------------------------------------------------
+// Config schema sync (structural initialization only — no logic changes)
+// ---------------------------------------------------------------------------
+
 function syncSchema(cfg: any) {
   if (!cfg || typeof cfg !== "object") return;
 
-  // Branding / library name
   cfg.branding = (cfg.branding && typeof cfg.branding === "object") ? cfg.branding : {};
   cfg.library = (cfg.library && typeof cfg.library === "object") ? cfg.library : {};
 
   const hasCanonName = typeof cfg.branding?.libraryName === "string";
   const hasLegacyName = typeof cfg.library?.name === "string";
-
-  const canonName = hasCanonName ? cfg.branding.libraryName : undefined;
-  const legacyName = hasLegacyName ? cfg.library.name : undefined;
-
-  // Prefer canonical if present (even if it's an empty string); otherwise adopt legacy.
-  const chosenName = (hasCanonName ? canonName : (legacyName ?? "")).toString();
-
+  const chosenName = (hasCanonName ? cfg.branding.libraryName : (hasLegacyName ? cfg.library.name : "")).toString();
   cfg.branding.libraryName = chosenName;
   cfg.library.name = chosenName;
 
-  // Deck enablement
   cfg.enabledDecks = (cfg.enabledDecks && typeof cfg.enabledDecks === "object") ? cfg.enabledDecks : {};
   cfg.decks = (cfg.decks && typeof cfg.decks === "object") ? cfg.decks : {};
   cfg.decks.enabled = (cfg.decks.enabled && typeof cfg.decks.enabled === "object") ? cfg.decks.enabled : {};
@@ -126,13 +155,7 @@ function syncSchema(cfg: any) {
   for (const k of deckKeys) {
     const canonVal = cfg.enabledDecks?.[k];
     const legacyVal = cfg.decks?.enabled?.[k];
-
-    // Determine a boolean value without forcing defaults unless neither exists.
-    let v: boolean;
-    if (typeof canonVal === "boolean") v = canonVal;
-    else if (typeof legacyVal === "boolean") v = legacyVal;
-    else v = true;
-
+    const v: boolean = typeof canonVal === "boolean" ? canonVal : (typeof legacyVal === "boolean" ? legacyVal : true);
     cfg.enabledDecks[k] = v;
     cfg.decks.enabled[k] = v;
   }
@@ -143,67 +166,7 @@ function syncSchema(cfg: any) {
     if (typeof cfg.swipe.categories[k] !== "boolean") cfg.swipe.categories[k] = DEFAULT_SWIPE_CATEGORIES[k];
   }
 
-  // Theme compatibility
-  // Canonical (mobile + Home): branding.mainTheme + branding.highlight
-  // Legacy (older web configs): theme.mainThemeKey + theme.highlightKey
   cfg.theme = (cfg.theme && typeof cfg.theme === "object") ? cfg.theme : {};
-
-  const themeKeys = ["classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "pink", "purple", "slate", "gold_accent"] as const;
-
-const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly ThemeKey[];
-  const highlightKeys = ["white", "black", "silver", ...themeKeys] as const;
-
-  const isThemeKey = (v: any): v is (typeof themeKeys)[number] =>
-    typeof v === "string" && (themeKeys as readonly string[]).includes(v);
-
-  const isHighlightKey = (v: any): v is (typeof highlightKeys)[number] =>
-    typeof v === "string" && (highlightKeys as readonly string[]).includes(v);
-
-  const isTitleTextKey = (v: any): v is TitleTextKey => v === "white" || v === "black";
-
-  const mainCandidate = cfg?.branding?.mainTheme ?? cfg?.branding?.theme ?? cfg?.theme?.mainThemeKey;
-  // Default highlight should be Gold unless an explicit branding highlight exists.
-  // Ignore legacy theme.highlightKey for first-load defaults to avoid blue override.
-  const highlightCandidate = cfg?.branding?.highlight;
-  const titleTextCandidate = cfg?.branding?.titleTextColor ?? cfg?.theme?.titleTextColor;
-
-  // UI default: if nothing is set, treat it as Dark Blue (i.e., the app's built-in default theme).
-  const mainTheme = isThemeKey(mainCandidate) ? mainCandidate : "dark_blue";
-  const highlight = isHighlightKey(highlightCandidate) ? highlightCandidate : "gold_accent";
-  const titleTextColor: TitleTextKey = isTitleTextKey(titleTextCandidate) ? titleTextCandidate : "white";
-
-  if (!cfg.branding) cfg.branding = {};
-  if (!cfg.theme) cfg.theme = {};
-
-  // Persist main theme only when it's not the default. The default is represented by "unset".
-  if (mainTheme === "dark_blue") {
-    delete cfg.branding.mainTheme;
-    delete cfg.branding.theme;
-    delete cfg.theme.mainThemeKey;
-  } else {
-    cfg.branding.mainTheme = mainTheme;
-    // Back-compat: older code may read branding.theme
-    cfg.branding.theme = mainTheme;
-    cfg.theme.mainThemeKey = mainTheme;
-  }
-
-  // Persist highlight always (existing behavior), but keep back-compat fields aligned.
-  cfg.branding.highlight = highlight;
-  cfg.theme.highlightKey = highlight;
-  cfg.branding.highlight = highlight;
-
-  // Persist title text color only when it differs from the default (white).
-  if (titleTextColor === "white") {
-    delete cfg.branding.titleTextColor;
-    delete cfg.theme.titleTextColor;
-  } else {
-    cfg.branding.titleTextColor = titleTextColor;
-    cfg.theme.titleTextColor = titleTextColor;
-  }
-
-  cfg.theme.mainThemeKey = mainTheme;
-  cfg.theme.highlightKey = highlight;
-
   cfg.recommendations = (cfg.recommendations && typeof cfg.recommendations === "object") ? cfg.recommendations : {};
   const localLibrarySupported = Boolean(cfg?.recommendations?.localLibrarySupported);
   const configured = cfg?.recommendations?.sourceEnabled || {};
@@ -231,189 +194,125 @@ const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly 
   }
 
   cfg.recommendations.sourceEnabled = sourceEnabled;
+
   const adultKitsuForceQuery = String(cfg.recommendations.adultKitsuOnlyForceQueryForValidation || "").trim().toLowerCase();
-  if (SHOW_ADULT_KITSU_DEBUG_CONTROLS && adultKitsuForceQuery === "dystopian") cfg.recommendations.adultKitsuOnlyForceQueryForValidation = "dystopian";
+  if (SHOW_ADULT_KITSU_DEBUG_CONTROLS && adultKitsuForceQuery === "dystopian")
+    cfg.recommendations.adultKitsuOnlyForceQueryForValidation = "dystopian";
   else delete cfg.recommendations.adultKitsuOnlyForceQueryForValidation;
+
   if (typeof cfg.recommendations.localLibrarySupported !== "boolean") {
     cfg.recommendations.localLibrarySupported = false;
   }
 }
 
-type ThemeKey =
-  | "dark_blue"
-  | "classic_blue"
-  | "sky_blue"
-  | "forest_green"
-  | "kelly_green"
-  | "cardinal_red"
-  | "pink"
-  | "purple"
-  | "slate"
-  | "gold_accent";
+/** Read existing config (named keys or hex) and produce hex strings for color pickers. */
+function loadColorHex(cfg: any): {
+  mainColorHex: string;
+  highlightColorHex: string;
+  fontColorHex: string;
+  autoFontColorEnabled: boolean;
+} {
+  // Prefer already-saved hex; fall back to named key -> hex conversion.
+  let mainColorHex = cfg?.branding?.mainColorHex;
+  if (!isValidHex(mainColorHex)) {
+    const namedMain = cfg?.branding?.mainTheme ?? cfg?.branding?.theme ?? cfg?.theme?.mainThemeKey ?? "dark_blue";
+    mainColorHex = mainKeyToHex(namedMain as ThemeKey);
+  }
 
-type HighlightKey = ThemeKey | "white" | "black" | "silver";
+  let highlightColorHex = cfg?.branding?.highlightColorHex;
+  if (!isValidHex(highlightColorHex)) {
+    const namedHighlight = cfg?.branding?.highlight ?? cfg?.theme?.highlightKey ?? "gold_accent";
+    highlightColorHex = highlightKeyToHex(namedHighlight as HighlightKey);
+  }
 
-type TitleTextKey = "white" | "black";
+  const autoFontColorEnabled =
+    typeof cfg?.branding?.autoFontColor === "boolean" ? cfg.branding.autoFontColor : true;
 
-type DeckKey = "k2" | "36" | "ms_hs" | "adult";
-type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary" | "kitsu" | "gcd" | "nyt";
-type RecommendationSourceEnabled = Record<RecommendationSourceToggleKey, boolean>;
+  let fontColorHex = cfg?.branding?.fontColorHex;
+  if (!isValidHex(fontColorHex)) {
+    const namedFont = cfg?.branding?.titleTextColor ?? cfg?.theme?.titleTextColor;
+    if (namedFont === "black") fontColorHex = "#000000";
+    else fontColorHex = autoFontColorEnabled ? autoChooseFontColor(mainColorHex) : DEFAULT_FONT_COLOR;
+  }
 
-type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
-const DEFAULT_SWIPE_CATEGORIES: Record<SwipeCategoryKey, boolean> = {
-  books: true,
-  movies: true,
-  tv: true,
-  games: true,
-  youtube: true,
-  anime: true,
-  podcasts: true,
-};
-
-function deckLabel(k: DeckKey) {
-  if (k === "k2") return "Kids";
-  if (k === "36") return "Pre-Teens";
-  if (k === "ms_hs") return "Teens";
-  if (k === "adult") return "Adults";
-  return k;
+  return {
+    mainColorHex: isValidHex(mainColorHex) ? mainColorHex : DEFAULT_MAIN_COLOR,
+    highlightColorHex: isValidHex(highlightColorHex) ? highlightColorHex : DEFAULT_HIGHLIGHT_COLOR,
+    fontColorHex: isValidHex(fontColorHex) ? fontColorHex : DEFAULT_FONT_COLOR,
+    autoFontColorEnabled,
+  };
 }
 
-function sourceLabel(s: RecommendationSourceToggleKey) {
-  if (s === "googleBooks") return "Google Books";
-  if (s === "openLibrary") return "Open Library";
-  if (s === "localLibrary") return "This library’s collection";
-  if (s === "kitsu") return "Kitsu (Manga)";
-  if (s === "gcd") return "ComicVine (Comics)";
-  if (s === "nyt") return "New York Times (limited)";
-  return s;
-}
+/** Write hex color values back to config, maintaining back-compat named keys where possible. */
+function applyColorHex(
+  cfg: any,
+  mainColorHex: string,
+  highlightColorHex: string,
+  fontColorHex: string,
+  autoFontColorEnabled: boolean
+) {
+  if (!cfg.branding) cfg.branding = {};
+  if (!cfg.theme) cfg.theme = {};
 
-function themeLabel(t: ThemeKey) {
-  switch (t) {
-    case "dark_blue":
-      return "Dark Blue";
-    case "classic_blue":
-      return "Blue";
-    case "sky_blue":
-      return "Sky Blue";
-    case "forest_green":
-      return "Forest Green";
-    case "kelly_green":
-      return "Kelly Green";
-    case "cardinal_red":
-      return "Cardinal Red";
-    case "pink":
-      return "Pink";
-    case "purple":
-      return "Purple";
-    case "slate":
-      return "Slate";
-    case "gold_accent":
-      return "Gold";
+  cfg.branding.mainColorHex = mainColorHex;
+  cfg.branding.highlightColorHex = highlightColorHex;
+  cfg.branding.fontColorHex = autoFontColorEnabled ? autoChooseFontColor(mainColorHex) : fontColorHex;
+  cfg.branding.autoFontColor = autoFontColorEnabled;
+
+  // Back-compat named keys (best-effort)
+  const mainKey = hexToMainKey(mainColorHex);
+  if (mainKey && mainKey !== "dark_blue") {
+    cfg.branding.mainTheme = mainKey;
+    cfg.branding.theme = mainKey;
+    cfg.theme.mainThemeKey = mainKey;
+  } else {
+    delete cfg.branding.mainTheme;
+    delete cfg.branding.theme;
+    delete cfg.theme.mainThemeKey;
+  }
+
+  const highlightKey = hexToHighlightKey(highlightColorHex);
+  if (highlightKey) {
+    cfg.branding.highlight = highlightKey;
+    cfg.theme.highlightKey = highlightKey;
+  } else {
+    delete cfg.branding.highlight;
+    delete cfg.theme.highlightKey;
+  }
+
+  const titleTextKey: TitleTextKey = (fontColorHex.toLowerCase() === "#000000") ? "black" : "white";
+  if (titleTextKey === "white") {
+    delete cfg.branding.titleTextColor;
+    delete cfg.theme.titleTextColor;
+  } else {
+    cfg.branding.titleTextColor = titleTextKey;
+    cfg.theme.titleTextColor = titleTextKey;
   }
 }
 
-function highlightLabel(h: HighlightKey) {
-  if (h === "white") return "White";
-  if (h === "black") return "Black";
-  if (h === "silver") return "Silver / Gray";
-  return themeLabel(h as ThemeKey);
-}
+// ---------------------------------------------------------------------------
+// Fixed admin UI theme (dark, independent of configured app colors)
+// ---------------------------------------------------------------------------
 
-function slugifyLibraryId(name: string) {
-  const raw = String(name || "").trim().toLowerCase();
-  const slug = raw
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-  return slug || "default-library";
-}
+const ADMIN_THEME = {
+  appBg: "#0b1e33",
+  cardBg: "#10243f",
+  cardBorder: "#223b6b",
+  text: "#e5efff",
+  subtext: "#cbd5f5",
+  muted: "#93c5fd",
+  inputBg: "#0b1e33",
+  inputBorder: "#223b6b",
+  danger: "#fecaca",
+  success: "#86efac",
+  accent: "#fbbf24",
+  accentTextOn: "#1f2933",
+  accentBorder: "#f59e0b",
+};
 
-function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
-  const base = {
-    appBg: "#0b1e33",
-    cardBg: "#10243f",
-    cardBorder: "#223b6b",
-    text: "#e5efff",
-    subtext: "#cbd5f5",
-    muted: "#93c5fd",
-    inputBg: "#0b1e33",
-    inputBorder: "#223b6b",
-    danger: "#fecaca",
-  };
-
-  const mainPresets: Record<ThemeKey, { accent: string; accentBorder: string; accentTextOn: string }> = {
-    dark_blue: { accent: "#0b1e33", accentBorder: "#223b6b", accentTextOn: "#e5efff" },
-    classic_blue: { accent: "#2563eb", accentBorder: "#1d4ed8", accentTextOn: "#f9fafb" },
-    sky_blue: { accent: "#38bdf8", accentBorder: "#0284c7", accentTextOn: "#0b1e33" },    forest_green: { accent: "#15803d", accentBorder: "#166534", accentTextOn: "#f9fafb" },
-    kelly_green: { accent: "#22c55e", accentBorder: "#16a34a", accentTextOn: "#0b1e33" },
-    cardinal_red: { accent: "#ef4444", accentBorder: "#dc2626", accentTextOn: "#0b1e33" },
-    pink: { accent: "#ec4899", accentBorder: "#db2777", accentTextOn: "#0b1e33" },
-    purple: { accent: "#a855f7", accentBorder: "#7c3aed", accentTextOn: "#0b1e33" },
-    slate: { accent: "#64748b", accentBorder: "#475569", accentTextOn: "#f9fafb" },
-    gold_accent: { accent: "#fbbf24", accentBorder: "#f59e0b", accentTextOn: "#1f2933" },
-  };
-
-  const highlightPresets: Record<HighlightKey, { highlight: string; highlightBorder: string; highlightTextOn: string }> = {
-    classic_blue: { highlight: "#2563eb", highlightBorder: "#1d4ed8", highlightTextOn: "#f9fafb" },
-    sky_blue: { highlight: "#38bdf8", highlightBorder: "#0284c7", highlightTextOn: "#0b1e33" },    forest_green: { highlight: "#15803d", highlightBorder: "#166534", highlightTextOn: "#f9fafb" },
-    kelly_green: { highlight: "#22c55e", highlightBorder: "#16a34a", highlightTextOn: "#0b1e33" },
-    cardinal_red: { highlight: "#ef4444", highlightBorder: "#dc2626", highlightTextOn: "#0b1e33" },
-    pink: { highlight: "#ec4899", highlightBorder: "#db2777", highlightTextOn: "#0b1e33" },
-    purple: { highlight: "#a855f7", highlightBorder: "#7c3aed", highlightTextOn: "#0b1e33" },
-    slate: { highlight: "#64748b", highlightBorder: "#475569", highlightTextOn: "#f9fafb" },
-    gold_accent: { highlight: "#fbbf24", highlightBorder: "#f59e0b", highlightTextOn: "#1f2933" },
-    white: { highlight: "#ffffff", highlightBorder: "#e5e7eb", highlightTextOn: "#0b1e33" },
-    black: { highlight: "#111827", highlightBorder: "#0b1220", highlightTextOn: "#f9fafb" },
-    silver: { highlight: "#d1d5db", highlightBorder: "#9ca3af", highlightTextOn: "#0b1e33" },
-  };
-
-  const main = mainPresets[mainThemeKey];
-  const hi = highlightPresets[highlightKey];
-
-  return {
-    ...base,
-    ...main,
-    ...hi,
-    highlightBg: hi.highlight,
-    highlightText: hi.highlightTextOn,
-  };
-}
-
-
-function PillButton(props: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  theme: any;
-}) {
-  const { label, selected, onPress, theme } = props;
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={{
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: selected ? theme.accentBorder : theme.cardBorder,
-        backgroundColor: selected ? theme.accent : theme.inputBg,
-      }}
-    >
-      <Text
-        style={{
-          fontWeight: "900",
-          fontSize: 12,
-          color: selected ? theme.accentTextOn : theme.text,
-        }}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 
 export default function AdminWebScreen() {
   const isWeb = Platform.OS === "web";
@@ -421,8 +320,7 @@ export default function AdminWebScreen() {
   const [config, setConfig] = useState<any>(() => {
     const base = deepClone(configFile);
     try {
-      // Web-only: hydrate saved draft if present.
-      if (Platform.OS === "web") {
+      if (isWeb && typeof localStorage !== "undefined") {
         const saved = localStorage.getItem("novelideas_admin_config");
         if (saved) {
           const parsed = JSON.parse(saved);
@@ -434,7 +332,38 @@ export default function AdminWebScreen() {
     syncSchema(base);
     return base;
   });
-  const [showQr, setShowQr] = useState(true);
+
+  // Derive initial hex colors from config once
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const initialColors = useMemo(() => loadColorHex(config), []);
+
+  const [mainColorHex, setMainColorHex] = useState(initialColors.mainColorHex);
+  const [highlightColorHex, setHighlightColorHex] = useState(initialColors.highlightColorHex);
+  const [fontColorHex, setFontColorHex] = useState(initialColors.fontColorHex);
+  const [autoFontColor, setAutoFontColor] = useState(initialColors.autoFontColorEnabled);
+
+  // Update font color live when Auto is on and main color changes
+  useEffect(() => {
+    if (autoFontColor) setFontColorHex(autoChooseFontColor(mainColorHex));
+  }, [autoFontColor, mainColorHex]);
+
+  // Dirty tracking
+  const savedConfigRef = useRef(JSON.stringify(config));
+  const savedColorsRef = useRef({ mainColorHex, highlightColorHex, fontColorHex, autoFontColor });
+  const [isDirty, setIsDirty] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+
+  useEffect(() => {
+    const configChanged = JSON.stringify(config) !== savedConfigRef.current;
+    const colorsChanged =
+      mainColorHex !== savedColorsRef.current.mainColorHex ||
+      highlightColorHex !== savedColorsRef.current.highlightColorHex ||
+      fontColorHex !== savedColorsRef.current.fontColorHex ||
+      autoFontColor !== savedColorsRef.current.autoFontColor;
+    setIsDirty(configChanged || colorsChanged);
+    if (configChanged || colorsChanged) setSaveStatus("idle");
+  }, [config, mainColorHex, highlightColorHex, fontColorHex, autoFontColor]);
+
   const [uploadedCollectionCount, setUploadedCollectionCount] = useState<number>(() => {
     try {
       if (!isWeb || typeof localStorage === "undefined") return 0;
@@ -450,46 +379,28 @@ export default function AdminWebScreen() {
         if (Array.isArray(parsed)) return parsed.length;
       }
       const csv = localStorage.getItem("novelideas_local_collection_csv");
-      if (csv) {
-        const rows = csv.split(/\r?\n/).filter((r) => r.trim().length > 0);
-        return Math.max(0, rows.length - 1);
-      }
+      if (csv) return Math.max(0, csv.split(/\r?\n/).filter((r) => r.trim().length > 0).length - 1);
       return 0;
-    } catch {
-      return 0;
-    }
+    } catch { return 0; }
   });
 
-  // Persist draft on web so desktop edits survive refresh.
-  useEffect(() => {
-    if (!isWeb) return;
-    try {
-      localStorage.setItem("novelideas_admin_config", JSON.stringify(config));
-    } catch {
-      // ignore
-    }
-  }, [config, isWeb]);
-
-  const mainThemeKey = (config?.branding?.mainTheme || config?.branding?.theme || config?.theme?.mainThemeKey || "dark_blue") as ThemeKey;
-  const highlightKey = (config?.branding?.highlight || "gold_accent") as HighlightKey;
-  const titleTextKey = (config?.branding?.titleTextColor || config?.theme?.titleTextColor || "white") as TitleTextKey;
-
-  const theme = useMemo(() => buildTheme(mainThemeKey, highlightKey), [mainThemeKey, highlightKey]);
-  useEffect(() => {
-    if (Platform.OS !== "web" || typeof document === "undefined") return;
-    document.documentElement.style.setProperty("--highlight-color", theme.highlight);
-  }, [theme.highlight]);
-
+  // Derived
   const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
   const libraryId = useMemo(() => slugifyLibraryId(libraryName), [libraryName]);
   const hostedConfigUrl = useMemo(() => `https://novelideas.app/c/${libraryId}`, [libraryId]);
-
   const configText = useMemo(() => JSON.stringify(config, null, 2), [config]);
-  const adultKitsuOnlyForceQueryForValidation = config?.recommendations?.adultKitsuOnlyForceQueryForValidation === "dystopian" ? "dystopian" : "";
+  const adultKitsuOnlyForceQueryForValidation =
+    config?.recommendations?.adultKitsuOnlyForceQueryForValidation === "dystopian" ? "dystopian" : "";
   const qrPayload = hostedConfigUrl;
   const qrTooBig = qrPayload.length > 2200;
 
-  const setPath = (path: string[], value: any) => {
+  const t = ADMIN_THEME;
+
+  // ---------------------------------------------------------------------------
+  // State setters
+  // ---------------------------------------------------------------------------
+
+  const setPath = useCallback((path: string[], value: any) => {
     setConfig((prev: any) => {
       const next = deepClone(prev);
       let cur = next;
@@ -502,63 +413,9 @@ export default function AdminWebScreen() {
       syncSchema(next);
       return next;
     });
-  };
+  }, []);
 
-  // Theme setters: write to canonical keys and keep legacy keys mirrored.
-  const setThemeMain = (tk: ThemeKey) => {
-    setConfig((prev: any) => {
-      const next = deepClone(prev);
-      if (next.branding == null) next.branding = {};
-      if (next.theme == null) next.theme = {};
-
-      if (tk === "dark_blue") {
-        delete next.branding.mainTheme;
-        delete next.branding.theme; // back-compat
-        delete next.theme.mainThemeKey; // back-compat
-      } else {
-        next.branding.mainTheme = tk;
-        next.branding.theme = tk; // back-compat
-        next.theme.mainThemeKey = tk; // back-compat
-      }
-
-      syncSchema(next);
-      return next;
-    });
-  };
-
-  const setThemeHighlight = (hk: HighlightKey) => {
-    setConfig((prev: any) => {
-      const next = deepClone(prev);
-      if (next.branding == null) next.branding = {};
-      if (next.theme == null) next.theme = {};
-      next.branding.highlight = hk;
-      next.theme.highlightKey = hk; // back-compat
-      syncSchema(next);
-      return next;
-    });
-  };
-
-  const setThemeTitleText = (t: TitleTextKey) => {
-    setConfig((prev: any) => {
-      const next = deepClone(prev);
-      if (next.branding == null) next.branding = {};
-      if (next.theme == null) next.theme = {};
-
-      // Store only when non-default to keep JSON clean.
-      if (t === "white") {
-        delete next.branding.titleTextColor;
-        delete next.theme.titleTextColor;
-      } else {
-        next.branding.titleTextColor = t;
-        next.theme.titleTextColor = t; // back-compat
-      }
-
-      syncSchema(next);
-      return next;
-    });
-  };
-
-  const togglePathBool = (path: string[]) => {
+  const togglePathBool = useCallback((path: string[]) => {
     setConfig((prev: any) => {
       const next = deepClone(prev);
       let cur = next;
@@ -572,23 +429,41 @@ export default function AdminWebScreen() {
       syncSchema(next);
       return next;
     });
-  };
+  }, []);
 
-  const toggleSwipeCategory = (k: SwipeCategoryKey) => {
+  const toggleSwipeCategory = useCallback((k: SwipeCategoryKey) => {
     setConfig((prev: any) => {
       const next = deepClone(prev);
       syncSchema(next);
-      const current = {
-        ...DEFAULT_SWIPE_CATEGORIES,
-        ...(next?.swipe?.categories || {}),
-      };
+      const current = { ...DEFAULT_SWIPE_CATEGORIES, ...(next?.swipe?.categories || {}) };
       current[k] = !current[k];
       if (!Object.values(current).some(Boolean)) current.books = true;
       next.swipe.categories = current;
       syncSchema(next);
       return next;
     });
-  };
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Theme utility actions (draft-only, do not save until Save is pressed)
+  // ---------------------------------------------------------------------------
+
+  const resetThemeToDefault = useCallback(() => {
+    setMainColorHex(DEFAULT_MAIN_COLOR);
+    setHighlightColorHex(DEFAULT_HIGHLIGHT_COLOR);
+    setAutoFontColor(true);
+    setFontColorHex(autoChooseFontColor(DEFAULT_MAIN_COLOR));
+  }, []);
+
+  const copyMainToHighlight = useCallback(() => setHighlightColorHex(mainColorHex), [mainColorHex]);
+  const copyHighlightToMain = useCallback(() => {
+    setMainColorHex(highlightColorHex);
+    if (autoFontColor) setFontColorHex(autoChooseFontColor(highlightColorHex));
+  }, [highlightColorHex, autoFontColor]);
+
+  // ---------------------------------------------------------------------------
+  // Logo
+  // ---------------------------------------------------------------------------
 
   const onUploadLogoWeb = async () => {
     try {
@@ -618,6 +493,10 @@ export default function AdminWebScreen() {
     setPath(["branding", "logoTinyDataUrl"], null);
   };
 
+  // ---------------------------------------------------------------------------
+  // Local Collection upload
+  // ---------------------------------------------------------------------------
+
   const onUploadCollectionWeb = () => {
     if (!isWeb || typeof document === "undefined" || typeof localStorage === "undefined") {
       Alert.alert("Upload unavailable", "Collection upload is available on desktop web.");
@@ -642,8 +521,8 @@ export default function AdminWebScreen() {
           localStorage.setItem("novelideas_local_collection_csv", raw);
           localStorage.setItem("novelideas_local_collection_artifact_v1", JSON.stringify(artifact));
           localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
-
           setUploadedCollectionCount(artifact.summary.acceptedTitles);
+          // Mark collection as available (supported) but do NOT auto-enable the source toggle.
           setPath(["recommendations", "localLibrarySupported"], true);
           Alert.alert(
             "Collection imported",
@@ -664,133 +543,153 @@ export default function AdminWebScreen() {
     input.click();
   };
 
+  // ---------------------------------------------------------------------------
+  // Save / Discard
+  // ---------------------------------------------------------------------------
+
+  const onSave = () => {
+    try {
+      const next = deepClone(config);
+      const effectiveFontColor = autoFontColor ? autoChooseFontColor(mainColorHex) : fontColorHex;
+      applyColorHex(next, mainColorHex, highlightColorHex, effectiveFontColor, autoFontColor);
+      syncSchema(next);
+
+      if (isWeb && typeof localStorage !== "undefined") {
+        localStorage.setItem("novelideas_admin_config", JSON.stringify(next));
+      }
+
+      setConfig(next);
+      savedConfigRef.current = JSON.stringify(next);
+      savedColorsRef.current = { mainColorHex, highlightColorHex, fontColorHex: effectiveFontColor, autoFontColor };
+      setIsDirty(false);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch {
+      setSaveStatus("error");
+    }
+  };
+
+  const onDiscard = () => {
+    try {
+      if (isWeb && typeof localStorage !== "undefined") {
+        const saved = localStorage.getItem("novelideas_admin_config");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          syncSchema(parsed);
+          const colors = loadColorHex(parsed);
+          setMainColorHex(colors.mainColorHex);
+          setHighlightColorHex(colors.highlightColorHex);
+          setFontColorHex(colors.fontColorHex);
+          setAutoFontColor(colors.autoFontColorEnabled);
+          setConfig(parsed);
+          savedConfigRef.current = JSON.stringify(parsed);
+          savedColorsRef.current = colors;
+          setIsDirty(false);
+          return;
+        }
+      }
+    } catch {}
+    const base = deepClone(configFile);
+    syncSchema(base);
+    const colors = loadColorHex(base);
+    setMainColorHex(colors.mainColorHex);
+    setHighlightColorHex(colors.highlightColorHex);
+    setFontColorHex(colors.fontColorHex);
+    setAutoFontColor(colors.autoFontColorEnabled);
+    setConfig(base);
+    savedConfigRef.current = JSON.stringify(base);
+    savedColorsRef.current = colors;
+    setIsDirty(false);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Non-web fallback
+  // ---------------------------------------------------------------------------
+
   if (!isWeb) {
-    return <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}><Text>Desktop Admin (Web Only)</Text></View>;
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: "#e5efff" }}>Library Settings (desktop web only)</Text>
+      </View>
+    );
   }
+
+  // ---------------------------------------------------------------------------
+  // Derived state for recommendation sources
+  // ---------------------------------------------------------------------------
+
+  const localLibrarySupported = Boolean(config?.recommendations?.localLibrarySupported);
+  const localLibraryEnabled =
+    localLibrarySupported && Boolean(config?.recommendations?.sourceEnabled?.localLibrary);
+  const noSourceEnabled =
+    !config?.recommendations?.sourceEnabled?.googleBooks &&
+    !config?.recommendations?.sourceEnabled?.openLibrary &&
+    !localLibraryEnabled &&
+    !config?.recommendations?.sourceEnabled?.kitsu &&
+    !config?.recommendations?.sourceEnabled?.gcd &&
+    !config?.recommendations?.sourceEnabled?.nyt;
 
   const adminPinEnabled = !!config?.admin?.pinEnabled;
   const adminPin = String(config?.admin?.pin || "");
 
+  // ---------------------------------------------------------------------------
+  // Render helpers
+  // ---------------------------------------------------------------------------
+
+  const Divider = () => <View style={[styles.divider, { backgroundColor: t.cardBorder }]} />;
+
+  const SectionTitle = ({ children }: { children: string }) => (
+    <Text style={[styles.sectionTitle, { color: t.text }]}>{children}</Text>
+  );
+
+  const Note = ({ children, color }: { children: React.ReactNode; color?: string }) => (
+    <Text style={[styles.note, { color: color ?? t.subtext }]}>{children}</Text>
+  );
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.appBg }} contentContainerStyle={{ paddingBottom: 56 }}>
-      <View style={[styles.wrap, { borderColor: theme.highlightBorder, backgroundColor: theme.cardBg }]}>
-        <View style={styles.headerRow}>
+    <ScrollView style={{ flex: 1, backgroundColor: t.appBg }} contentContainerStyle={{ paddingBottom: 100 }}>
+      <View style={[styles.wrap, { borderColor: t.cardBorder, backgroundColor: t.cardBg }]}>
+
+        {/* Page header */}
+        <View style={styles.pageHeader}>
           <View>
-            <Text style={[styles.h1, { color: theme.text }]}>Desktop Admin</Text>
-            <Text style={[styles.sub, { color: theme.subtext }]}>
-              Edit settings on desktop, upload logo, then generate a hosted library QR.
+            <Text style={[styles.h1, { color: t.text }]}>Library Settings</Text>
+            <Text style={[styles.sub, { color: t.subtext }]}>
+              Configure your library's branding, content, and appearance.
             </Text>
           </View>
-
-          <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
-            
-            <TouchableOpacity
-              style={[styles.btn, { borderColor: theme.cardBorder, backgroundColor: "transparent" }]}
-              onPress={() => {
-                Alert.alert(
-                  "Tip $5 (coming soon)",
-                  "This will become an optional in-app tip. It will never be required to use NovelIdeas."
-                );
-              }}
-            >
-              <Text style={[styles.btnText, { color: theme.text }]}>Tip $5</Text>
-            </TouchableOpacity>
-
-            
-            <TouchableOpacity
-              style={[styles.btnPrimary, { borderColor: theme.accentBorder, backgroundColor: theme.accent }]}
-              onPress={() => {
-                let savedOk = false;
-                let copiedOk = false;
-
-                try {
-                  if (Platform.OS === "web") {
-                    localStorage.setItem("novelideas_admin_config", configText);
-                    savedOk = true;
-                  }
-                } catch {
-                  savedOk = false;
-                }
-
-                try {
-                  navigator.clipboard?.writeText(qrPayload);
-                  copiedOk = true;
-                } catch {
-                  copiedOk = false;
-                }
-
-                if (savedOk && copiedOk) {
-                  router.replace("/");
-    Alert.alert("Saved", "Saved to this browser and copied settings to clipboard.");
-                } else if (savedOk && !copiedOk) {
-                  Alert.alert(
-                    "Partially saved",
-                    "Saved to this browser, but clipboard copy failed. (Clipboard may be blocked in this browser.)"
-                  );
-                } else if (!savedOk && copiedOk) {
-                  Alert.alert("Partially saved", "Copied settings to clipboard, but local browser save failed.");
-                } else {
-                  Alert.alert("Save failed", "Could not save or copy settings in this browser.");
-                }
-              }}
-            >
-              <Text style={[styles.btnText, { color: theme.accentTextOn }]}>Save</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.btn, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
-              onPress={() => {
-                try {
-                  if (Platform.OS === "web") {
-                    localStorage.removeItem("novelideas_admin_config");
-                    const base = deepClone(configFile);
-                    syncSchema(base);
-                    setConfig(base);
-                    Alert.alert("Reset", "Reverted to defaults (and cleared saved draft).");
-                  } else {
-                    const base = deepClone(configFile);
-                    syncSchema(base);
-                    setConfig(base);
-                    Alert.alert("Reset", "Reverted to defaults.");
-                  }
-                } catch {
-                  const base = deepClone(configFile);
-                  syncSchema(base);
-                  setConfig(base);
-                }
-              }}
-            >
-              <Text style={[styles.btnText, { color: theme.text }]}>Reset</Text>
-            </TouchableOpacity>
-</View>
+          {isDirty ? (
+            <View style={[styles.badge, { borderColor: t.accent }]}>
+              <Text style={{ color: t.accent, fontSize: 11, fontWeight: "900" }}>Unsaved changes</Text>
+            </View>
+          ) : saveStatus === "saved" ? (
+            <View style={[styles.badge, { borderColor: t.success }]}>
+              <Text style={{ color: t.success, fontSize: 11, fontWeight: "900" }}>{"Saved \u2713"}</Text>
+            </View>
+          ) : null}
         </View>
 
-        <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
+        <Divider />
 
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Branding</Text>
+        {/* ── A. Library Identity ── */}
+        <SectionTitle>A. Library Identity</SectionTitle>
 
-        <Text style={[styles.label, { color: theme.muted }]}>Library name</Text>
+        <Text style={[styles.label, { color: t.muted }]}>Library name</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
+          style={[styles.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.text }]}
           value={String(config?.branding?.libraryName || "")}
           onChangeText={(v) => setPath(["branding", "libraryName"], v)}
-          placeholder="Library name"
+          placeholder="Your library's name"
           placeholderTextColor="#7a8aa0"
         />
-        <Text style={[styles.note, { color: theme.subtext, marginTop: 8 }]}>
-          Hosted library ID: <Text style={{ fontWeight: "900", color: theme.text }}>{libraryId}</Text>
-        </Text>
-        <Text style={[styles.note, { color: theme.subtext, marginTop: 4 }]}>
-          Hosted URL: <Text style={{ fontWeight: "900", color: theme.text }}>{hostedConfigUrl}</Text>
-        </Text>
 
-        <Text style={[styles.label, { color: theme.muted, marginTop: 14 }]}>Library logo</Text>
-        <Text style={[styles.note, { color: theme.subtext }]}>
-          Upload a logo here on desktop. Hosted config loading comes next.
-        </Text>
-
+        <Text style={[styles.label, { color: t.muted, marginTop: 14 }]}>Library logo</Text>
         <View style={styles.logoRow}>
-          <View style={[styles.logoPreview, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}>
+          <View style={[styles.logoPreview, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}>
             {config?.branding?.logoDataUrl ? (
               <Image
                 source={{ uri: config.branding.logoDataUrl }}
@@ -798,285 +697,375 @@ export default function AdminWebScreen() {
                 resizeMode="contain"
               />
             ) : (
-              <Text style={{ color: theme.muted, fontWeight: "700" }}>No logo</Text>
+              <Text style={{ color: t.muted, fontWeight: "700" }}>No logo</Text>
             )}
           </View>
-
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, gap: 10 }}>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
               <TouchableOpacity
-                style={[styles.btn, { borderColor: theme.accentBorder, backgroundColor: theme.inputBg }]}
+                style={[styles.btn, { borderColor: t.accentBorder, backgroundColor: t.inputBg }]}
                 onPress={onUploadLogoWeb}
               >
-                <Text style={[styles.btnText, { color: theme.text }]}>Upload logo</Text>
+                <Text style={[styles.btnText, { color: t.text }]}>Upload logo</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={[styles.btn, { borderColor: theme.highlightBorder, backgroundColor: theme.inputBg }]}
+                style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
                 onPress={onRemoveLogo}
               >
-                <Text style={[styles.btnText, { color: theme.text }]}>Remove logo</Text>
+                <Text style={[styles.btnText, { color: t.text }]}>Remove logo</Text>
               </TouchableOpacity>
             </View>
-
-            <Text style={[styles.note, { color: theme.subtext, marginTop: 10 }]}>
-              This stage only changes the QR target. Route loading and config hydration are separate next steps.
-            </Text>
+            <Note>Accepted: PNG, JPG, SVG. Logo appears in the app header.</Note>
           </View>
         </View>
 
-        <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
+        <Divider />
 
-        <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Theme</Text>
-        </View>
+        {/* ── B. Appearance ── */}
+        <SectionTitle>B. Appearance</SectionTitle>
 
-        <Text style={[styles.label, { color: theme.muted }]}>Main color</Text>
-        <View style={styles.rowWrap}>
-          {(
-            ["dark_blue", "classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "pink", "purple", "slate", "gold_accent"] as ThemeKey[]
-          ).map((tk) => {
-            const selected = mainThemeKey === tk;
-            const tkTheme = buildTheme(tk, highlightKey);
-            return (
-              <TouchableOpacity
-                key={tk}
-                onPress={() => setThemeMain(tk)}
-                style={[
-                  styles.chip,
-                  { borderColor: tkTheme.accentBorder, backgroundColor: theme.inputBg },
-                  selected && { borderWidth: 2, borderColor: tkTheme.accentBorder, backgroundColor: tkTheme.accent },
-                ]}
-              >
-                <Text style={[styles.chipText, { color: theme.text }, selected && { fontWeight: "700", color: tkTheme.accentTextOn }]}>
-                  {themeLabel(tk)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <ColorPickerField
+          label="Main Color"
+          value={mainColorHex}
+          onChange={(hex) => {
+            setMainColorHex(hex);
+            if (autoFontColor) setFontColorHex(autoChooseFontColor(hex));
+          }}
+          theme={t}
+          hint="Used for the app header and primary action areas."
+          testID="color-picker-main"
+        />
 
-        <Text style={[styles.label, { color: theme.muted }]}>Highlight color</Text>
-        <View style={styles.rowWrap}>
-          {(
-            ["gold_accent", "white", "black", "silver", "classic_blue", "sky_blue", "forest_green", "cardinal_red", "pink", "purple", "slate"] as HighlightKey[]
-          ).map((hk) => {
-            const selected = highlightKey === hk;
-            const hkTheme = buildTheme(mainThemeKey, hk);
-            return (
-              <TouchableOpacity
-                key={hk}
-                onPress={() => setThemeHighlight(hk)}
-                style={[
-                  styles.chip,
-                  { borderColor: hkTheme.highlightBorder, backgroundColor: theme.inputBg },
-                  selected && { borderWidth: 2, borderColor: hkTheme.highlightBorder, backgroundColor: hkTheme.highlight },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    { color: theme.text },
-                    selected && { fontWeight: "700", color: hkTheme.highlightTextOn },
-                  ]}
-                >
-                  {highlightLabel(hk)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <ColorPickerField
+          label="Highlight Color"
+          value={highlightColorHex}
+          onChange={setHighlightColorHex}
+          theme={t}
+          hint="Used for borders, selected states, and accents."
+          testID="color-picker-highlight"
+        />
 
-        <Text style={[styles.label, { color: theme.muted, marginTop: 10 }]}>Title text color</Text>
-        <View style={styles.rowWrap}>
-          {(["white", "black"] as TitleTextKey[]).map((t) => (
-            <PillButton
-              key={t}
-              label={t === "black" ? "Black" : "White"}
-              selected={titleTextKey === t}
-              onPress={() => setThemeTitleText(t)}
-              theme={theme}
-            />
-          ))}
-        </View>
-
-        <View style={{ flexDirection: "row", marginTop: 10 }}>
-        </View>
-
-
-        <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
-
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Recommendation Source</Text>
-        <Text style={[styles.note, { color: theme.subtext }]}>
-          Toggle one or more sources. If all are off, recommendations will not run.
-        </Text>
-        <View style={{ gap: 10 }}>
-          {(["googleBooks", "openLibrary", "localLibrary", "kitsu", "gcd", "nyt"] as RecommendationSourceToggleKey[]).map((sourceKey) => {
-            const localLibrarySupported = Boolean(config?.recommendations?.localLibrarySupported);
-            const disabled = sourceKey === "localLibrary" && !localLibrarySupported;
-            const enabled = sourceKey === "localLibrary"
-              ? Boolean(config?.recommendations?.sourceEnabled?.localLibrary) && localLibrarySupported
-              : Boolean(config?.recommendations?.sourceEnabled?.[sourceKey]);
-
-            return (
-              <View key={sourceKey} style={styles.rowBetween}>
-                <View>
-                  <Text style={{ color: theme.text, fontWeight: "700" }}>{sourceLabel(sourceKey)}</Text>
-                  {sourceKey === "localLibrary" && disabled ? (
-                    <Text style={[styles.note, { color: theme.subtext }]}>Not supported in this build yet.</Text>
-                  ) : null}
-                </View>
-                <Switch
-                  value={enabled}
-                  disabled={disabled}
-                  onValueChange={(next) => setPath(["recommendations", "sourceEnabled", sourceKey], next)}
-                />
-              </View>
-            );
-          })}
-        </View>
-        {!config?.recommendations?.sourceEnabled?.googleBooks &&
-        !config?.recommendations?.sourceEnabled?.openLibrary &&
-        !(Boolean(config?.recommendations?.sourceEnabled?.localLibrary) && Boolean(config?.recommendations?.localLibrarySupported)) &&
-        !config?.recommendations?.sourceEnabled?.kitsu &&
-        !config?.recommendations?.sourceEnabled?.gcd &&
-        !config?.recommendations?.sourceEnabled?.nyt ? (
-          <Text style={[styles.note, { color: theme.danger }]}>
-            All recommendation sources are disabled. Enable at least one source.
-          </Text>
-        ) : null}
-
-        {SHOW_ADULT_KITSU_DEBUG_CONTROLS ? (
-          <View style={styles.rowBetween}>
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={{ color: theme.text, fontWeight: "700" }}>Force Adult Kitsu query: dystopian</Text>
-              <Text style={[styles.note, { color: theme.subtext }]}>Hidden debug validation only. Applies only when Adult has Kitsu as the sole enabled source.</Text>
-            </View>
-            <Switch
-              value={adultKitsuOnlyForceQueryForValidation === "dystopian"}
-              onValueChange={(next) => setPath(["recommendations", "adultKitsuOnlyForceQueryForValidation"], next ? "dystopian" : "")}
-            />
+        <View style={[styles.rowBetween, { marginBottom: 8 }]}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={[styles.label, { color: t.muted }]}>Auto Font Color</Text>
+            <Note>
+              Automatically chooses black or white for text legibility on the header background.
+              Governs the library name and banner text color.
+            </Note>
           </View>
+          <Switch
+            value={autoFontColor}
+            onValueChange={(v) => {
+              setAutoFontColor(v);
+              if (v) setFontColorHex(autoChooseFontColor(mainColorHex));
+            }}
+          />
+        </View>
+
+        {!autoFontColor ? (
+          <ColorPickerField
+            label="Font Color"
+            value={fontColorHex}
+            onChange={setFontColorHex}
+            theme={t}
+            hint="Header and banner text color. Only adjustable when Auto Font Color is off."
+            testID="color-picker-font"
+          />
         ) : null}
-        <View style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
+
+        {/* Theme utility buttons */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4, marginBottom: 14 }}>
           <TouchableOpacity
-            style={[styles.btn, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
-            onPress={onUploadCollectionWeb}
+            style={[styles.utilBtn, { borderColor: t.cardBorder }]}
+            onPress={resetThemeToDefault}
           >
-            <Text style={[styles.btnText, { color: theme.text }]}>Upload Collection (CSV)</Text>
+            <Text style={[styles.utilBtnText, { color: t.subtext }]}>Reset Theme to Default</Text>
           </TouchableOpacity>
-          <Text style={{ color: theme.subtext, fontSize: 12 }}>Items: {uploadedCollectionCount}</Text>
+          <TouchableOpacity
+            style={[styles.utilBtn, { borderColor: t.cardBorder }]}
+            onPress={copyMainToHighlight}
+          >
+            <Text style={[styles.utilBtnText, { color: t.subtext }]}>{"Copy Main \u2192 Highlight"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.utilBtn, { borderColor: t.cardBorder }]}
+            onPress={copyHighlightToMain}
+          >
+            <Text style={[styles.utilBtnText, { color: t.subtext }]}>{"Copy Highlight \u2192 Main"}</Text>
+          </TouchableOpacity>
         </View>
 
-        <View
-          accessibilityLabel="Collection Opportunities, Planned"
-          style={[styles.plannedCard, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
-        >
-          <View style={styles.plannedCardHeader}>
-            <Text style={{ color: theme.text, fontSize: 14, fontWeight: "900" }}>Collection Opportunities</Text>
-            <View style={[styles.plannedBadge, { borderColor: theme.highlightBorder }]}>
-              <Text style={{ color: theme.text, fontSize: 11, fontWeight: "900" }}>Planned</Text>
-            </View>
-          </View>
-          <Text style={[styles.note, { color: theme.subtext }]}>{COLLECTION_OPPORTUNITIES_DESCRIPTION}</Text>
-          <Text style={[styles.note, { color: theme.muted, marginTop: 6 }]}>
-            Librarian-only placeholder. No demand data is collected and no acquisition suggestions are generated.
-          </Text>
+        {/* Live preview */}
+        <Text style={[styles.label, { color: t.muted, marginBottom: 6 }]}>Live Preview</Text>
+        <Note>Updates immediately from your draft selections. Not saved until you click Save Changes.</Note>
+        <View style={{ marginTop: 12, marginBottom: 4 }}>
+          <ThemePreviewPanel
+            mainColor={mainColorHex}
+            highlightColor={highlightColorHex}
+            fontColor={autoFontColor ? autoChooseFontColor(mainColorHex) : fontColorHex}
+            libraryName={libraryName || "Your Library"}
+          />
         </View>
 
-        <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
+        <Divider />
 
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Decks</Text>
-        <View style={{ gap: 10 }}>
+        {/* ── C. Reader Experience ── */}
+        <SectionTitle>C. Reader Experience</SectionTitle>
+
+        <Text style={[styles.label, { color: t.muted, marginBottom: 6 }]}>Age Groups</Text>
+        <Note>Enable the reading levels available at your library.</Note>
+        <View style={{ gap: 10, marginTop: 10 }}>
           {(["k2", "36", "ms_hs", "adult"] as DeckKey[]).map((dk) => {
             const enabled = !!(config?.enabledDecks?.[dk] ?? config?.decks?.enabled?.[dk]);
             return (
               <View key={dk} style={styles.rowBetween}>
-                <Text style={{ color: theme.text, fontWeight: "700" }}>{deckLabel(dk)}</Text>
+                <Text style={{ color: t.text, fontWeight: "700" }}>{deckLabel(dk)}</Text>
                 <Switch value={enabled} onValueChange={() => togglePathBool(["enabledDecks", dk])} />
               </View>
             );
           })}
         </View>
 
-        <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
-
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Swipe Categories</Text>
-        <Text style={[styles.note, { color: theme.subtext }]}>
-          These control which signal cards appear in swipe mode (books + media).
-        </Text>
-        <View style={{ gap: 10 }}>
+        <Text style={[styles.label, { color: t.muted, marginTop: 18, marginBottom: 6 }]}>Swipe Categories</Text>
+        <Note>Control which types of media appear in patron preference swiping.</Note>
+        <View style={{ gap: 10, marginTop: 10 }}>
           {(["books", "movies", "tv", "games", "youtube", "anime", "podcasts"] as SwipeCategoryKey[]).map((k) => {
             const enabled = !!(config?.swipe?.categories?.[k] ?? DEFAULT_SWIPE_CATEGORIES[k]);
             return (
               <View key={k} style={styles.rowBetween}>
-                <Text style={{ color: theme.text, fontWeight: "700" }}>{k.toUpperCase()}</Text>
+                <Text style={{ color: t.text, fontWeight: "700" }}>{swipeCategoryLabel(k)}</Text>
                 <Switch value={enabled} onValueChange={() => toggleSwipeCategory(k)} />
               </View>
             );
           })}
         </View>
 
-        <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
+        <Divider />
 
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Admin Lock</Text>
-        <View style={styles.rowBetween}>
-          <Text style={{ color: theme.text, fontWeight: "700" }}>Enable PIN</Text>
+        {/* ── D. Recommendation Sources ── */}
+        <SectionTitle>D. Recommendation Sources</SectionTitle>
+        <Note>Enable one or more external sources for book and media recommendations.</Note>
+
+        <View style={{ gap: 10, marginTop: 10 }}>
+          {(["googleBooks", "openLibrary", "kitsu", "gcd", "nyt"] as RecommendationSourceToggleKey[]).map(
+            (sourceKey) => {
+              const enabled = Boolean(config?.recommendations?.sourceEnabled?.[sourceKey]);
+              return (
+                <View key={sourceKey} style={styles.rowBetween}>
+                  <Text style={{ color: t.text, fontWeight: "700" }}>{sourceLabel(sourceKey)}</Text>
+                  <Switch
+                    value={enabled}
+                    onValueChange={(next) =>
+                      setPath(["recommendations", "sourceEnabled", sourceKey], next)
+                    }
+                  />
+                </View>
+              );
+            }
+          )}
+        </View>
+
+        {noSourceEnabled && !localLibraryEnabled ? (
+          <Note color={t.danger}>
+            All recommendation sources are off. Enable at least one source or activate Local Collection below.
+          </Note>
+        ) : null}
+
+        {SHOW_ADULT_KITSU_DEBUG_CONTROLS ? (
+          <View style={[styles.rowBetween, { marginTop: 14 }]}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={{ color: t.text, fontWeight: "700" }}>Force Adult Kitsu query: dystopian</Text>
+              <Note>Debug validation only. Applies when Adult deck has Kitsu as sole source.</Note>
+            </View>
+            <Switch
+              value={adultKitsuOnlyForceQueryForValidation === "dystopian"}
+              onValueChange={(next) =>
+                setPath(
+                  ["recommendations", "adultKitsuOnlyForceQueryForValidation"],
+                  next ? "dystopian" : ""
+                )
+              }
+            />
+          </View>
+        ) : null}
+
+        <Divider />
+
+        {/* ── E. Local Collection ── */}
+        <SectionTitle>E. Local Collection</SectionTitle>
+
+        <View style={[styles.infoCard, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}>
+          <Text style={{ color: t.text, fontWeight: "700", marginBottom: 4 }}>
+            {uploadedCollectionCount > 0
+              ? `${uploadedCollectionCount.toLocaleString()} titles imported`
+              : "No collection imported"}
+          </Text>
+          <Note>
+            Upload a CSV export of your library's holdings. Local Collection recommends only from this
+            library's imported titles and cannot run alongside external sources.
+          </Note>
+        </View>
+
+        <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <TouchableOpacity
+            style={[styles.btn, { borderColor: t.accentBorder, backgroundColor: t.inputBg }]}
+            onPress={onUploadCollectionWeb}
+          >
+            <Text style={[styles.btnText, { color: t.text }]}>Upload Collection (CSV)</Text>
+          </TouchableOpacity>
+        </View>
+
+        {localLibrarySupported ? (
+          <View style={[styles.rowBetween, { marginTop: 16 }]}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={{ color: t.text, fontWeight: "700" }}>
+                Use Local Collection for recommendations
+              </Text>
+              <Note>
+                When enabled, external sources are disabled and recommendations come only from your
+                imported holdings.
+              </Note>
+            </View>
+            <Switch
+              value={localLibraryEnabled}
+              onValueChange={(next) => {
+                if (next) {
+                  // Turning on: disable all external sources first
+                  setConfig((prev: any) => {
+                    const n = deepClone(prev);
+                    syncSchema(n);
+                    n.recommendations.sourceEnabled.googleBooks = false;
+                    n.recommendations.sourceEnabled.openLibrary = false;
+                    n.recommendations.sourceEnabled.kitsu = false;
+                    n.recommendations.sourceEnabled.gcd = false;
+                    n.recommendations.sourceEnabled.nyt = false;
+                    n.recommendations.sourceEnabled.localLibrary = true;
+                    return n;
+                  });
+                } else {
+                  setPath(["recommendations", "sourceEnabled", "localLibrary"], false);
+                }
+              }}
+            />
+          </View>
+        ) : null}
+
+        <Divider />
+
+        {/* ── F. Admin Security ── */}
+        <SectionTitle>F. Admin Security</SectionTitle>
+        <Note>
+          Set a PIN to protect these settings from casual access. This does not affect patrons using
+          the app in Guest mode.
+        </Note>
+
+        <View style={[styles.rowBetween, { marginTop: 12 }]}>
+          <Text style={{ color: t.text, fontWeight: "700" }}>Enable Admin PIN</Text>
           <Switch value={adminPinEnabled} onValueChange={() => togglePathBool(["admin", "pinEnabled"])} />
         </View>
 
-        <Text style={[styles.label, { color: theme.muted, marginTop: 10 }]}>6-digit PIN</Text>
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text, maxWidth: 260 },
-          ]}
-          value={adminPin}
-          onChangeText={(t) => {
-            const clean = t.replace(/\D/g, "").slice(0, 6);
-            setPath(["admin", "pin"], clean);
-          }}
-          placeholder="123456"
-          placeholderTextColor="#7a8aa0"
-          keyboardType="number-pad"
-        />
-        {adminPinEnabled && adminPin.length !== 6 ? (
-          <Text style={[styles.note, { color: theme.danger }]}>PIN must be exactly 6 digits.</Text>
+        {adminPinEnabled ? (
+          <>
+            <Text style={[styles.label, { color: t.muted, marginTop: 14 }]}>6-digit PIN</Text>
+            <TextInput
+              style={[
+                styles.input,
+                { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.text, maxWidth: 260 },
+              ]}
+              value={adminPin}
+              onChangeText={(text) =>
+                setPath(["admin", "pin"], text.replace(/\D/g, "").slice(0, 6))
+              }
+              placeholder="123456"
+              placeholderTextColor="#7a8aa0"
+              keyboardType="number-pad"
+            />
+            {adminPin.length > 0 && adminPin.length !== 6 ? (
+              <Note color={t.danger}>PIN must be exactly 6 digits.</Note>
+            ) : null}
+          </>
         ) : null}
 
-        <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
+        <Divider />
 
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>QR Export</Text>
-        <View style={styles.rowBetween}>
-          <Text style={{ color: theme.subtext }}>Show QR</Text>
-          <Switch value={showQr} onValueChange={setShowQr} />
-        </View>
+        {/* ── G. Advanced (collapsible) ── */}
+        <CollapsibleSection title="G. Advanced" defaultOpen={false} theme={t}>
+          <View style={{ paddingTop: 8, gap: 4 }}>
+            <Note>
+              Library ID and hosted URL are derived from your library name and identify your
+              configuration in the NovelIdeas network.
+            </Note>
+            <Text style={[styles.note, { color: t.subtext, marginTop: 8 }]}>
+              {"Library ID: "}
+              <Text style={{ fontWeight: "900", color: t.text }}>{libraryId}</Text>
+            </Text>
+            <Text style={[styles.note, { color: t.subtext, marginTop: 4 }]}>
+              {"Hosted URL: "}
+              <Text style={{ fontWeight: "900", color: t.text }}>{hostedConfigUrl}</Text>
+            </Text>
 
-        {showQr ? (
-          qrTooBig ? (
-            <View style={{ marginTop: 14 }}>
-              <Text style={[styles.note, { color: theme.danger, textAlign: "center" }]}>
-                QR payload is too large to render. (Tip: the logo is excluded from QR, but other settings may still be large.)
-              </Text>
-            </View>
-          ) : (
-            <View style={{ marginTop: 14, alignItems: "center", gap: 10 }}>
-              <View style={{ padding: 14, backgroundColor: "#ffffff", borderRadius: 14 }}>
-                <QRCode value={qrPayload} size={240} />
+            <View style={[styles.divider, { backgroundColor: t.cardBorder }]} />
+
+            <Text style={[styles.label, { color: t.muted, marginBottom: 8 }]}>QR Export</Text>
+            {qrTooBig ? (
+              <Note color={t.danger}>QR payload is too large to render.</Note>
+            ) : (
+              <View style={{ alignItems: "flex-start", gap: 10 }}>
+                <View style={{ padding: 14, backgroundColor: "#ffffff", borderRadius: 14 }}>
+                  <QRCode value={qrPayload} size={200} />
+                </View>
+                <Note>Scan to open your library's hosted URL.</Note>
               </View>
-              <Text style={[styles.note, { color: theme.subtext, textAlign: "center" }]}>
-                This QR now points to the hosted library URL only. Config loading is not connected yet in this stage.
-              </Text>
-              <Text style={[styles.note, { color: theme.subtext, textAlign: "center" }]}>
-                {hostedConfigUrl}
-              </Text>
-            </View>
-          )
-        ) : null}
+            )}
+
+            {SHOW_ADULT_KITSU_DEBUG_CONTROLS ? (
+              <>
+                <View style={[styles.divider, { backgroundColor: t.cardBorder }]} />
+                <Text style={[styles.label, { color: t.muted, marginBottom: 6 }]}>Raw Config (JSON)</Text>
+                <ScrollView horizontal style={{ maxHeight: 200 }}>
+                  <Text style={{ fontFamily: "monospace", fontSize: 11, color: t.subtext }}>
+                    {configText}
+                  </Text>
+                </ScrollView>
+              </>
+            ) : null}
+          </View>
+        </CollapsibleSection>
+
       </View>
+
+      {/* ── Sticky Save / Discard bar ── */}
+      {isDirty ? (
+        <View
+          style={[styles.stickyBar, { backgroundColor: t.cardBg, borderTopColor: t.cardBorder }]}
+          accessibilityLabel="Unsaved changes action bar"
+        >
+          <TouchableOpacity
+            style={[styles.btnPrimary, { borderColor: t.accentBorder, backgroundColor: t.accent }]}
+            onPress={onSave}
+            accessibilityLabel="Save Changes"
+          >
+            <Text style={[styles.btnText, { color: t.accentTextOn }]}>Save Changes</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+            onPress={onDiscard}
+            accessibilityLabel="Discard Changes"
+          >
+            <Text style={[styles.btnText, { color: t.text }]}>Discard Changes</Text>
+          </TouchableOpacity>
+          <Text style={{ color: t.subtext, fontSize: 11, marginLeft: 4 }}>
+            You have unsaved changes.
+          </Text>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   wrap: {
@@ -1084,60 +1073,25 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
     borderWidth: 2,
     borderRadius: 18,
-    padding: 16,
+    padding: 20,
     maxWidth: 980,
     alignSelf: "center",
     width: "100%",
   },
-  headerRow: {
+  pageHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 14,
     alignItems: "flex-start",
     flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 14,
   },
   h1: { fontSize: 22, fontWeight: "900" },
   sub: { marginTop: 6, fontSize: 13, lineHeight: 18, maxWidth: 620 },
-  divider: { height: 1, marginVertical: 14 },
-  sectionTitle: { fontSize: 16, fontWeight: "900", marginBottom: 10 },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 10,
-  },
-  smallButton: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  smallButtonText: {
-    fontSize: 12,
-    fontWeight: "800",
-  },
+  divider: { height: 1, marginVertical: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: "900", marginBottom: 12 },
   label: { fontSize: 12, fontWeight: "800", marginBottom: 6 },
   note: { fontSize: 12, lineHeight: 18 },
-  plannedCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    marginTop: 12,
-    padding: 12,
-    gap: 8,
-  },
-  plannedCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-  },
-  plannedBadge: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
   input: {
     borderWidth: 1,
     borderRadius: 12,
@@ -1146,36 +1100,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
-  rowWrap: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  chip: {
-    borderWidth: 2,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  chipText: { fontSize: 12, fontWeight: "800" },
-  btn: {
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  btnPrimary: {
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
+  btn: { borderWidth: 2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  btnPrimary: { borderWidth: 2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
   btnText: { fontSize: 12, fontWeight: "900" },
-  logoRow: { flexDirection: "row", gap: 14, marginTop: 10, alignItems: "flex-start", flexWrap: "wrap" },
+  utilBtn: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  utilBtnText: { fontSize: 11, fontWeight: "800" },
+  logoRow: {
+    flexDirection: "row",
+    gap: 14,
+    marginTop: 10,
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+  },
   logoPreview: {
-    width: 140,
-    height: 140,
+    width: 120,
+    height: 120,
     borderWidth: 2,
-    borderRadius: 16,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
+  },
+  infoCard: { borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 10 },
+  badge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  stickyBar: {
+    position: "fixed" as any,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    flexWrap: "wrap",
   },
 });
