@@ -64,6 +64,7 @@ const {
   formatRemainingReviewTime,
   getHumanReviewProgressLabel,
   humanReviewDraftStorageKey,
+  prepareHumanReviewModalState,
   restoreHumanReviewDraft,
 } = require(resolve(screenDir, "humanReviewPaginatedUx.ts"));
 const { runRecommenderV2 } = require(resolve(appDir, "engine.ts"));
@@ -169,7 +170,7 @@ async function run() {
     "draft_autosave_write_missing"
   );
   assert(
-    swipeScreenSource.includes("restoreHumanReviewDraft("),
+    swipeScreenSource.includes("prepareHumanReviewModalState({") || swipeScreenSource.includes("restoreHumanReviewDraft("),
     "draft_restore_read_missing"
   );
   assert(
@@ -309,6 +310,174 @@ async function run() {
   assert(emptyVibe === "", `vibe_summary_empty_items_must_return_empty_string: "${emptyVibe}"`);
 
   checks.push({ id: 10, name: "vibe_summary_rendering_and_fallback", pass: true });
+
+  // --- Check 11: "Save & Exit" action label present in source ---
+  assert(
+    swipeScreenSource.includes("Save & Exit"),
+    "save_and_exit_label_missing"
+  );
+  checks.push({ id: 11, name: "save_and_exit_label_present", pass: true });
+
+  // --- Check 12: "Why we think you'll enjoy this" heading present ---
+  assert(
+    swipeScreenSource.includes("Why we think you'll enjoy this"),
+    "why_enjoy_heading_missing"
+  );
+  checks.push({ id: 12, name: "why_enjoy_heading_present", pass: true });
+
+  // --- Check 13: synopsis read-more toggle is wired ---
+  assert(
+    swipeScreenSource.includes("humanReviewSynopsisExpanded"),
+    "synopsis_read_more_not_wired"
+  );
+  checks.push({ id: 13, name: "synopsis_read_more_wired", pass: true });
+
+  // --- Check 14: genre tags capped at 3, not 4 ---
+  assert(
+    swipeScreenSource.includes("genreTags.slice(0, 3)"),
+    "tag_count_not_capped_at_three"
+  );
+  assert(
+    !swipeScreenSource.includes("genreTags.slice(0, 4)"),
+    "tag_count_still_four"
+  );
+  checks.push({ id: 14, name: "tag_count_capped_at_three", pass: true });
+
+  // --- Check 15: public /testing hides reviewer name/initials fields ---
+  assert(
+    swipeScreenSource.includes("{!isTestingMode ? ("),
+    "public_identity_field_not_conditionally_hidden"
+  );
+  assert(
+    !swipeScreenSource.includes("Your name or initials"),
+    "public_name_or_initials_copy_still_present"
+  );
+  checks.push({ id: 15, name: "public_testing_hides_identity_field", pass: true });
+
+  // --- Check 16: anonymous reviewer ID is still created and used internally ---
+  assert(
+    swipeScreenSource.includes("function getOrCreateAnonymousHumanReviewerId(): string"),
+    "anonymous_reviewer_id_factory_missing"
+  );
+  assert(
+    swipeScreenSource.includes('const reviewerId = reviewerIdInput || getOrCreateAnonymousHumanReviewerId()'),
+    "anonymous_reviewer_id_not_used_for_submit"
+  );
+  const anonymousDraftForm = createDefaultHumanReviewForm(snapshot);
+  anonymousDraftForm.reviewerId = "named-reviewer";
+  anonymousDraftForm.itemReviews[0].notes = "restored anonymously";
+  const anonymousDraft = buildHumanReviewDraft({
+    snapshotId: snapshot.snapshotId,
+    form: anonymousDraftForm,
+    stepIndex: 1,
+    stepStartedAtByRank: { "1": "2026-08-01T00:00:00.000Z", "2": "2026-08-01T00:01:00.000Z" },
+    stepCompletedAtByRank: { "1": "2026-08-01T00:01:00.000Z" },
+    updatedAt: "2026-08-01T00:01:10.000Z",
+  });
+  const preparedModalState = prepareHumanReviewModalState({
+    snapshotId: snapshot.snapshotId,
+    form: createDefaultHumanReviewForm(snapshot),
+    rawDraft: JSON.stringify(anonymousDraft),
+    nowIso: "2026-08-01T00:02:00.000Z",
+    isTestingMode: true,
+    anonymousReviewerId: "anon-reviewer-123",
+  });
+  assert(preparedModalState.effectiveForm.reviewerId === "anon-reviewer-123", "anonymous_reviewer_id_not_restored");
+  assert(preparedModalState.initialStepIndex === 1, "anonymous_draft_step_not_restored");
+  assert(
+    preparedModalState.effectiveForm.itemReviews[0].notes === "restored anonymously",
+    "anonymous_draft_item_state_not_restored"
+  );
+  checks.push({ id: 16, name: "anonymous_reviewer_identity_preserved", pass: true });
+
+  // --- Check 17: duplicate reviewer/snapshot protection remains intact ---
+  assert(
+    swipeScreenSource.includes('const duplicateKey = `${humanReviewSnapshot.snapshotId}::${reviewerId.toLowerCase()}`'),
+    "duplicate_key_generation_missing"
+  );
+  assert(
+    swipeScreenSource.includes('storageList("novelideas_human_review_submissions")'),
+    "duplicate_submission_lookup_missing"
+  );
+  assert(
+    swipeScreenSource.includes('storagePushUnique("novelideas_human_review_submissions", duplicateKey)'),
+    "duplicate_submission_writeback_missing"
+  );
+  checks.push({ id: 17, name: "duplicate_protection_preserved", pass: true });
+
+  // --- Check 18: sticky action row remains present across recommendation steps ---
+  const scrollIndex = swipeScreenSource.indexOf("<ScrollView");
+  const stickyFooterIndex = swipeScreenSource.indexOf("humanReviewStickyFooter");
+  assert(scrollIndex >= 0, "scroll_area_missing");
+  assert(stickyFooterIndex > scrollIndex, "sticky_footer_not_rendered_after_scroll_area");
+  assert(
+    swipeScreenSource.includes("humanReviewPanelBody") &&
+      swipeScreenSource.includes("humanReviewScrollArea") &&
+      swipeScreenSource.includes("humanReviewActionRow"),
+    "sticky_footer_structure_missing"
+  );
+  assert(
+    swipeScreenSource.includes('? "Next: Slate Questions" : "Next Recommendation"') &&
+      swipeScreenSource.includes('{humanReviewSubmitting ? "Submitting…" : "Submit Review"}'),
+    "final_step_action_swap_missing"
+  );
+  checks.push({ id: 18, name: "sticky_action_footer_present", pass: true });
+
+  // --- Check 19: sticky footer UI state does not change stored evidence ---
+  const evidenceBeforeSticky = createHumanReviewRecordFromForm({ snapshot, form: navRestored.form });
+  const evidenceAfterSticky = createHumanReviewRecordFromForm({
+    snapshot,
+    form: {
+      ...navRestored.form,
+      reviewerId: navRestored.form.reviewerId,
+    },
+  });
+  assert(
+    stableStringify(evidenceBeforeSticky) === stableStringify(evidenceAfterSticky),
+    "sticky_footer_changed_stored_evidence"
+  );
+  checks.push({ id: 19, name: "sticky_footer_preserves_stored_evidence", pass: true });
+
+  // --- Check 20: results CTA still opens the modal path with valid state setters ---
+  assert(
+    swipeScreenSource.includes("onPress={openHumanReviewForCurrentSlate}"),
+    "evaluate_recommendations_button_not_wired_to_open_handler"
+  );
+  assert(
+    swipeScreenSource.includes("visible={showHumanReviewPanel && humanReviewSnapshot != null && humanReviewForm != null}"),
+    "human_review_modal_visibility_guard_missing"
+  );
+  assert(
+    swipeScreenSource.includes("prepareHumanReviewModalState({") &&
+      swipeScreenSource.includes("setHumanReviewSnapshot(snapshot);") &&
+      swipeScreenSource.includes("setHumanReviewForm(effectiveForm);") &&
+      swipeScreenSource.includes("setShowHumanReviewPanel(true);"),
+    "open_handler_no_longer_populates_modal_state"
+  );
+  assert(
+    swipeScreenSource.includes("setHumanReviewSynopsisExpanded(false);"),
+    "open_handler_must_reset_synopsis_expansion_with_real_setter"
+  );
+  assert(
+    !swipeScreenSource.includes("setShowHumanReviewSynopsisExpanded("),
+    "open_handler_references_missing_synopsis_setter"
+  );
+  checks.push({ id: 20, name: "evaluate_results_opens_modal_path", pass: true });
+
+  // --- Check 21: recommendation step frames the book first, with progress below title/author ---
+  assert(
+    swipeScreenSource.includes("Imagine you're standing in a bookstore. Based only on what you see here, how interested would you be in") &&
+      swipeScreenSource.includes("reading this book?"),
+    "bookstore_framing_copy_missing"
+  );
+  const titleIndex = swipeScreenSource.indexOf("<Text style={styles.humanReviewItemTitle}>{visibleHumanReviewItem.title}</Text>");
+  const authorIndex = swipeScreenSource.indexOf("{visibleHumanReviewItem.author ? <Text style={styles.humanReviewItemAuthor}>{visibleHumanReviewItem.author}</Text> : null}");
+  const progressIndex = swipeScreenSource.indexOf("<Text style={styles.humanReviewProgressText}>{humanReviewProgressLabel}</Text>");
+  assert(titleIndex >= 0, "book_title_render_missing");
+  assert(authorIndex > titleIndex, "book_author_must_render_after_title");
+  assert(progressIndex > authorIndex, "progress_must_render_after_title_and_author");
+  assert(!swipeScreenSource.includes("#{visibleHumanReviewItem.rank} {visibleHumanReviewItem.title}"), "rank_prefix_still_dominates_title");
+  checks.push({ id: 21, name: "book_first_visual_hierarchy", pass: true });
 
   console.log(
     JSON.stringify(

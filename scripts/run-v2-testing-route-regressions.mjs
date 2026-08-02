@@ -21,8 +21,8 @@
  *   T14 — testing.tsx enables all four age-band decks
  *   T15 — testing mode blocks non-durable save responses with explicit operator-facing error text
  *   T16 — testing mode renders a thank-you completion screen with a Start Fresh CTA
- *   T17 — reviewer field autofocuses in testing mode for keyboard-first completion
- *   T18 — review modal keeps taps active while keyboard is open and remains scrollable on small screens
+ *   T17 — public testing renders no reviewer name/initials field and explains anonymous saving
+ *   T18 — review modal keeps taps active while keyboard is open, scrolls independently, and keeps sticky actions visible
  *   T19 — testing modal copy hides raw profile/snapshot IDs while admin copy remains available
  *   T20 — extracted testing control branch omits Test A/B/C, Diagnostics, and Codex Diagnostics
  *   T21 — extracted admin control branch still includes the internal controls
@@ -44,6 +44,9 @@
  *   T37 — implementation-label-only creators (Recommender V2, source names) are rejected
  *   T38 — valid single-creator is preserved by the author-identity gate
  *   T39 — author-identity label rejection is case-insensitive
+ *   T40 — anonymous reviewer identity remains internal for public testing
+ *   T41 — Evaluate Recommendations still opens the Human Review modal path
+ *   T42 — testing modal keeps the bookstore framing copy and book-first hierarchy
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -231,18 +234,23 @@ const adminBranchSource =
   console.log("PASS T16: testing mode renders a thank-you completion state with Start Fresh CTA");
 }
 
-// T17: reviewer field autofocuses in testing mode for keyboard-first completion
+// T17: public testing hides the reviewer identity field and uses anonymous copy
 {
-  assertIncludes(swipeDeckSource, "autoFocus={isTestingMode}", "T17: reviewer input must autofocus in testing mode");
-  assertIncludes(swipeDeckSource, 'returnKeyType="next"', "T17: reviewer input should expose forward keyboard navigation");
-  console.log("PASS T17: reviewer field autofocuses in testing mode");
+  assertIncludes(swipeDeckSource, "{!isTestingMode ? (", "T17: reviewer identity input must be hidden in testing mode");
+  assertNotIncludes(swipeDeckSource, "Your name or initials", "T17: testing mode must not prompt for names or initials");
+  assertIncludes(swipeDeckSource, "Your feedback is saved anonymously.", "T17: testing copy must explain anonymous saving");
+  console.log("PASS T17: testing mode removes the public reviewer identity field");
 }
 
-// T18: modal remains scrollable and keyboard-safe on small screens
+// T18: modal remains scrollable, keyboard-safe, and keeps sticky actions outside the scroll area
 {
   assertIncludes(swipeDeckSource, 'keyboardShouldPersistTaps="handled"', "T18: review modal ScrollView must keep taps active while keyboard is open");
   assertIncludes(swipeDeckSource, 'maxHeight: "85%"', "T18: review panel must remain height-capped for small-screen scrolling");
-  console.log("PASS T18: review modal supports scrolling and keyboard-safe taps on small screens");
+  assertIncludes(swipeDeckSource, "humanReviewPanelBody", "T18: review panel must define a body wrapper for independent scrolling");
+  assertIncludes(swipeDeckSource, "humanReviewScrollArea", "T18: review panel must use a dedicated scroll area");
+  assertIncludes(swipeDeckSource, "humanReviewStickyFooter", "T18: review panel must define a sticky footer");
+  assert(swipeDeckSource.indexOf("humanReviewStickyFooter") > swipeDeckSource.indexOf("</ScrollView>"), "T18: sticky footer must render after the ScrollView");
+  console.log("PASS T18: review modal uses an independent scroll area with a sticky action footer");
 }
 
 // T19: testing copy hides raw IDs while admin copy remains available
@@ -430,4 +438,40 @@ const adminBranchSource =
     console.log("PASS T39: author-identity label rejection is case-insensitive");
   }
 
-  console.log("\n✓ All testing-route regressions passed (39 tests).");
+  // T40: anonymous reviewer identity remains internal for public testing
+  {
+    assertIncludes(swipeDeckSource, "HUMAN_REVIEW_ANON_REVIEWER_STORAGE_KEY", "T40: anonymous reviewer storage key must exist");
+    assertIncludes(swipeDeckSource, "getOrCreateAnonymousHumanReviewerId()", "T40: public testing must still rely on anonymous reviewer identity internally");
+    assertIncludes(swipeDeckSource, 'storagePushUnique("novelideas_human_review_submissions", duplicateKey)', "T40: anonymous reviewer identity must still back duplicate protection");
+    console.log("PASS T40: public testing still uses anonymous reviewer identity internally");
+  }
+
+  // T41: Evaluate Recommendations still opens the modal path with the real open handler
+  {
+    assertIncludes(swipeDeckSource, "onPress={openHumanReviewForCurrentSlate}", "T41: Evaluate Recommendations must still call openHumanReviewForCurrentSlate");
+    assertIncludes(swipeDeckSource, "prepareHumanReviewModalState({", "T41: open handler must still prepare modal state");
+    assertIncludes(
+      swipeDeckSource,
+      "visible={showHumanReviewPanel && humanReviewSnapshot != null && humanReviewForm != null}",
+      "T41: modal visibility guard must still depend on open state plus prepared snapshot/form"
+    );
+    assertIncludes(swipeDeckSource, "setHumanReviewSynopsisExpanded(false);", "T41: open handler must reset synopsis expansion with the real setter");
+    assertNotIncludes(swipeDeckSource, "setShowHumanReviewSynopsisExpanded(", "T41: open handler must not reference a missing synopsis setter");
+    console.log("PASS T41: Evaluate Recommendations still drives the modal-open path");
+  }
+
+  // T42: testing modal keeps the bookstore framing copy and book-first hierarchy
+  {
+    assertIncludes(
+      swipeDeckSource,
+      "Imagine you're standing in a bookstore. Based only on what you see here, how interested would you be in",
+      "T42: testing modal must include the bookstore framing sentence"
+    );
+    assertIncludes(swipeDeckSource, "reading this book?", "T42: testing modal framing sentence must complete the bookstore prompt");
+    assertIncludes(swipeDeckSource, "<Text style={styles.humanReviewItemTitle}>{visibleHumanReviewItem.title}</Text>", "T42: title must render as the dominant recommendation label");
+    assertIncludes(swipeDeckSource, "<Text style={styles.humanReviewProgressText}>{humanReviewProgressLabel}</Text>", "T42: progress must still render on each recommendation step");
+    assertNotIncludes(swipeDeckSource, "#{visibleHumanReviewItem.rank} {visibleHumanReviewItem.title}", "T42: title must no longer be prefixed by the rank");
+    console.log("PASS T42: testing modal keeps the bookstore framing and book-first hierarchy");
+  }
+
+  console.log("\n✓ All testing-route regressions passed (42 tests).");
