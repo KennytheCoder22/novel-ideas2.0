@@ -17,6 +17,9 @@ import configFile from "../NovelIdeas.json";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
 import { importLocalCollectionCsv } from "../lib/localCollection";
 import {
+  ADMIN_CONFIG_CHANGED_EVENT,
+  ADMIN_CONFIG_STORAGE_KEY,
+  applyWebHighlightColor,
   autoChooseFontColor,
   highlightKeyToHex,
   hexToHighlightKey,
@@ -243,6 +246,18 @@ function loadColorHex(cfg: any): {
   };
 }
 
+function dispatchAdminConfigSavedWebEvent(serializedConfig: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(ADMIN_CONFIG_CHANGED_EVENT, {
+      detail: {
+        key: ADMIN_CONFIG_STORAGE_KEY,
+        value: serializedConfig,
+      },
+    })
+  );
+}
+
 /** Write hex color values back to config, maintaining back-compat named keys where possible. */
 function applyColorHex(
   cfg: any,
@@ -321,7 +336,7 @@ export default function AdminWebScreen() {
     const base = deepClone(configFile);
     try {
       if (isWeb && typeof localStorage !== "undefined") {
-        const saved = localStorage.getItem("novelideas_admin_config");
+        const saved = localStorage.getItem(ADMIN_CONFIG_STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
           syncSchema(parsed);
@@ -547,36 +562,50 @@ export default function AdminWebScreen() {
   // Save / Discard
   // ---------------------------------------------------------------------------
 
-  const onSave = useCallback(() => {
+  const persistDraftConfig = useCallback(() => {
     try {
       const next = deepClone(config);
       const effectiveFontColor = autoFontColor ? autoChooseFontColor(mainColorHex) : fontColorHex;
       applyColorHex(next, mainColorHex, highlightColorHex, effectiveFontColor, autoFontColor);
       syncSchema(next);
+      const serializedNext = JSON.stringify(next);
 
       if (isWeb && typeof localStorage !== "undefined") {
-        localStorage.setItem("novelideas_admin_config", JSON.stringify(next));
+        localStorage.setItem(ADMIN_CONFIG_STORAGE_KEY, serializedNext);
+        applyWebHighlightColor(next?.branding?.highlightColorHex || highlightColorHex);
+        dispatchAdminConfigSavedWebEvent(serializedNext);
       }
 
       setConfig(next);
       // Sync fontColorHex state with the effective value that was saved so dirty
       // tracking doesn't re-trigger immediately after save when autoFontColor is on.
       setFontColorHex(effectiveFontColor);
-      savedConfigRef.current = JSON.stringify(next);
+      savedConfigRef.current = serializedNext;
       savedColorsRef.current = { mainColorHex, highlightColorHex, fontColorHex: effectiveFontColor, autoFontColor };
       setIsDirty(false);
       setSaveStatus("saved");
       // Only clear "saved" status; don't overwrite an "error" that arrives from a concurrent call.
       setTimeout(() => setSaveStatus((s) => (s === "saved" ? "idle" : s)), 3000);
+      return true;
     } catch {
       setSaveStatus("error");
+      return false;
     }
   }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb]);
+
+  const onSave = useCallback(() => {
+    persistDraftConfig();
+  }, [persistDraftConfig]);
+
+  const onSaveAndReturn = useCallback(() => {
+    if (!persistDraftConfig()) return;
+    router.replace("/");
+  }, [persistDraftConfig]);
 
   const onDiscard = useCallback(() => {
     try {
       if (isWeb && typeof localStorage !== "undefined") {
-        const saved = localStorage.getItem("novelideas_admin_config");
+        const saved = localStorage.getItem(ADMIN_CONFIG_STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
           syncSchema(parsed);
@@ -587,8 +616,14 @@ export default function AdminWebScreen() {
           setAutoFontColor(colors.autoFontColorEnabled);
           setConfig(parsed);
           savedConfigRef.current = JSON.stringify(parsed);
-          savedColorsRef.current = colors;
+          savedColorsRef.current = {
+            mainColorHex: colors.mainColorHex,
+            highlightColorHex: colors.highlightColorHex,
+            fontColorHex: colors.fontColorHex,
+            autoFontColor: colors.autoFontColorEnabled,
+          };
           setIsDirty(false);
+          setSaveStatus("idle");
           return;
         }
       }
@@ -602,8 +637,14 @@ export default function AdminWebScreen() {
     setAutoFontColor(colors.autoFontColorEnabled);
     setConfig(base);
     savedConfigRef.current = JSON.stringify(base);
-    savedColorsRef.current = colors;
+    savedColorsRef.current = {
+      mainColorHex: colors.mainColorHex,
+      highlightColorHex: colors.highlightColorHex,
+      fontColorHex: colors.fontColorHex,
+      autoFontColor: colors.autoFontColorEnabled,
+    };
     setIsDirty(false);
+    setSaveStatus("idle");
   }, [isWeb]);
 
   // ---------------------------------------------------------------------------
@@ -669,15 +710,30 @@ export default function AdminWebScreen() {
               Configure your library's branding, content, and appearance.
             </Text>
           </View>
-          {isDirty ? (
-            <View style={[styles.badge, { borderColor: t.accent }]}>
-              <Text style={{ color: t.accent, fontSize: 11, fontWeight: "900" }}>Unsaved changes</Text>
-            </View>
-          ) : saveStatus === "saved" ? (
-            <View style={[styles.badge, { borderColor: t.success }]}>
-              <Text style={{ color: t.success, fontSize: 11, fontWeight: "900" }}>{"Saved \u2713"}</Text>
-            </View>
-          ) : null}
+          <View style={styles.pageHeaderActions}>
+            <TouchableOpacity
+              style={[styles.btnPrimary, styles.headerActionButton, { borderColor: t.accentBorder, backgroundColor: t.accent }]}
+              onPress={onSaveAndReturn}
+              accessibilityRole="button"
+              accessibilityLabel="Save and return to home"
+              testID="save-return-button"
+            >
+              <Text style={[styles.btnText, { color: t.accentTextOn }]}>Save & Return</Text>
+            </TouchableOpacity>
+            {isDirty ? (
+              <View style={[styles.badge, { borderColor: t.accent }]}>
+                <Text style={{ color: t.accent, fontSize: 11, fontWeight: "900" }}>Unsaved changes</Text>
+              </View>
+            ) : saveStatus === "saved" ? (
+              <View style={[styles.badge, { borderColor: t.success }]}>
+                <Text style={{ color: t.success, fontSize: 11, fontWeight: "900" }}>{"Saved \u2713"}</Text>
+              </View>
+            ) : saveStatus === "error" ? (
+              <View style={[styles.badge, { borderColor: t.danger }]}>
+                <Text style={{ color: t.danger, fontSize: 11, fontWeight: "900" }}>Save failed</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         <Divider />
@@ -730,6 +786,7 @@ export default function AdminWebScreen() {
 
         {/* ── B. Appearance ── */}
         <SectionTitle>B. Appearance</SectionTitle>
+        <Note>Finish choosing the color, then select Save Changes or Save & Return.</Note>
 
         <ColorPickerField
           label="Main Color"
@@ -1104,6 +1161,14 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 12,
     marginBottom: 14,
+  },
+  pageHeaderActions: {
+    alignItems: "flex-end",
+    gap: 10,
+  },
+  headerActionButton: {
+    minWidth: 160,
+    alignItems: "center",
   },
   h1: { fontSize: 22, fontWeight: "900" },
   sub: { marginTop: 6, fontSize: 13, lineHeight: 18, maxWidth: 620 },

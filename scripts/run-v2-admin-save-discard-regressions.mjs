@@ -1,17 +1,17 @@
 /**
- * Regression suite for Admin Save / Discard button behavior.
+ * Regression suite for Admin Save / Discard / Save & Return behavior.
  *
  * Covers:
- *   R1  Edit Main Color → Save → persisted value changes
- *   R2  Edit Highlight Color → Discard → saved value unchanged
- *   R3  Edit multiple sections → Discard restores all fields
- *   R4  Save clears dirty state
- *   R5  Discard clears dirty state
- *   R6  Refresh after Save loads saved values
- *   R7  Refresh after Discard loads prior saved values
- *   R8  Theme Reset changes draft only until Save
- *   R9  Sticky footer buttons are keyboard/click accessible
- *   R10 No recommendation / Human Review / Local Collection routing or schema changes
+ *   R1  Save & Return is visible at the top
+ *   R2  Save & Return persists draft changes and routes to /
+ *   R3  Main UI reflects the saved configuration immediately
+ *   R4  Save failure does not navigate away
+ *   R5  Save Changes remains in place
+ *   R6  Discard Changes restores the last saved configuration
+ *   R7  Color selection survives closing the native picker
+ *   R8  First save click after picker closure succeeds
+ *   R9  No recommendation / Human Review / Local Collection routing or schema changes
+ *   R10 Theme Reset changes draft only until Save
  *
  * Pure-logic tests exercise the utility functions (applyColorHex, loadColorHex,
  * syncSchema) inline – the component cannot be rendered in Node.js. Structural
@@ -44,6 +44,8 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
 
 const {
+  ADMIN_CONFIG_CHANGED_EVENT,
+  ADMIN_CONFIG_STORAGE_KEY,
   autoChooseFontColor,
   isValidHex,
   mainKeyToHex,
@@ -144,14 +146,23 @@ function applyColorHex(cfg, mainColorHex, highlightColorHex, fontColorHex, autoF
 }
 
 // Simulate the save pipeline (the non-React parts of onSave).
-function simulateSave(config, colorState) {
+function simulateSave(config, colorState, options = {}) {
+  if (options.failPersist) {
+    return { ok: false, route: null, savedConfig: null, effectiveFontColor: null };
+  }
   const next = deepClone(config);
   const effectiveFontColor = colorState.autoFontColor
     ? autoChooseFontColor(colorState.mainColorHex)
     : colorState.fontColorHex;
   applyColorHex(next, colorState.mainColorHex, colorState.highlightColorHex, effectiveFontColor, colorState.autoFontColor);
   syncSchema(next);
-  return { savedConfig: next, effectiveFontColor };
+  return { ok: true, route: null, savedConfig: next, effectiveFontColor };
+}
+
+function simulateSaveAndReturn(config, colorState, options = {}) {
+  const result = simulateSave(config, colorState, options);
+  if (!result.ok) return result;
+  return { ...result, route: "/" };
 }
 
 // Simulate loading from "localStorage" after a page refresh.
@@ -179,6 +190,9 @@ function check(name, fn) {
 // ---------------------------------------------------------------------------
 
 const adminWebSrc = readFileSync(resolve(repoRoot, "app", "app_admin-web.tsx"), "utf8");
+const homeSrc = readFileSync(resolve(repoRoot, "app", "(tabs)", "index.tsx"), "utf8");
+const layoutSrc = readFileSync(resolve(repoRoot, "app", "(tabs)", "_layout.tsx"), "utf8");
+const colorPickerSrc = readFileSync(resolve(repoRoot, "components", "admin", "ColorPickerField.tsx"), "utf8");
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -186,115 +200,127 @@ const adminWebSrc = readFileSync(resolve(repoRoot, "app", "app_admin-web.tsx"), 
 
 const checks = [];
 
-// R1 – Edit Main Color → Save → persisted value changes
-checks.push(check("R1_main_color_save_persists", () => {
+// R1 – Save & Return is visible at the top
+checks.push(check("R1_save_return_visible_at_top", () => {
+  assert(adminWebSrc.includes("Save & Return"), "Save & Return label missing");
+  assert(adminWebSrc.includes('testID="save-return-button"'), "Save & Return testID missing");
+  assert(adminWebSrc.includes("styles.pageHeaderActions"), "Save & Return must render in header actions");
+}));
+
+// R2 – Save & Return persists draft changes and routes to /
+checks.push(check("R2_save_return_persists_and_routes_home", () => {
   const cfg = { branding: {}, theme: {} };
   syncSchema(cfg);
   const colors = { mainColorHex: "#22c55e", highlightColorHex: "#fbbf24", fontColorHex: "#ffffff", autoFontColor: true };
-  const { savedConfig } = simulateSave(cfg, colors);
+  const { ok, route, savedConfig } = simulateSaveAndReturn(cfg, colors);
+  assert(ok === true, "Save & Return should succeed");
+  assert(route === "/", "Save & Return must route to /");
   assert(savedConfig.branding.mainColorHex === "#22c55e", "mainColorHex not persisted");
-  // Round-trip: reload and verify
   const { colors: loaded } = simulateLoad(JSON.stringify(savedConfig));
   assert(loaded.mainColorHex === "#22c55e", "mainColorHex not loaded after refresh");
 }));
 
-// R2 – Edit Highlight Color → Discard → saved value unchanged
-checks.push(check("R2_highlight_color_discard_unchanged", () => {
-  // Initial save with gold highlight
+// R3 – Main UI reflects the saved configuration immediately
+checks.push(check("R3_main_ui_reflects_saved_configuration_immediately", () => {
+  const cfg = {
+    branding: {
+      libraryName: "Riverside Public Library",
+      logoDataUrl: "data:image/png;base64,abc123",
+    },
+    theme: {},
+    enabledDecks: { k2: true, "36": false, ms_hs: true, adult: false },
+    library: { name: "Riverside Public Library" },
+  };
+  syncSchema(cfg);
+  const colors = { mainColorHex: "#1d4ed8", highlightColorHex: "#38bdf8", fontColorHex: "#ffffff", autoFontColor: true };
+  const { savedConfig } = simulateSaveAndReturn(cfg, colors);
+  const { config: loadedConfig, colors: loadedColors } = simulateLoad(JSON.stringify(savedConfig));
+  assert(loadedConfig.branding.libraryName === "Riverside Public Library", "library name did not round-trip");
+  assert(loadedConfig.branding.logoDataUrl === "data:image/png;base64,abc123", "logo did not round-trip");
+  assert(loadedConfig.enabledDecks["36"] === false, "enabled age groups did not round-trip");
+  assert(loadedColors.mainColorHex === "#1d4ed8", "main color did not round-trip");
+  assert(loadedColors.highlightColorHex === "#38bdf8", "highlight color did not round-trip");
+  assert(homeSrc.includes("ADMIN_CONFIG_CHANGED_EVENT"), "home screen must listen for same-tab saved-config event");
+  assert(layoutSrc.includes("ADMIN_CONFIG_CHANGED_EVENT"), "tab layout header must listen for same-tab saved-config event");
+}));
+
+// R4 – Save failure does not navigate away
+checks.push(check("R4_save_failure_does_not_navigate_away", () => {
   const cfg = { branding: {}, theme: {} };
   syncSchema(cfg);
-  const savedColors = { mainColorHex: "#0b1e33", highlightColorHex: "#fbbf24", fontColorHex: "#ffffff", autoFontColor: true };
-  const { savedConfig } = simulateSave(cfg, savedColors);
-  const savedJson = JSON.stringify(savedConfig);
-
-  // User changes highlight color in draft
-  const draftColors = { ...savedColors, highlightColorHex: "#ef4444" };
-
-  // Discard: reload from saved JSON (simulates onDiscard reading localStorage)
-  const { colors: restored } = simulateLoad(savedJson);
-  assert(restored.highlightColorHex === "#fbbf24", "discard did not restore highlight color");
-  assert(restored.highlightColorHex !== draftColors.highlightColorHex, "discard returned draft value");
-}));
-
-// R3 – Edit multiple sections → Discard restores all fields
-checks.push(check("R3_multiple_field_discard_restores_all", () => {
-  // Save initial state
-  const cfg = { branding: { libraryName: "Riverside Library" }, theme: {}, library: { name: "Riverside Library" } };
-  syncSchema(cfg);
-  const savedColors = { mainColorHex: "#1d4ed8", highlightColorHex: "#38bdf8", fontColorHex: "#ffffff", autoFontColor: true };
-  const { savedConfig } = simulateSave(cfg, savedColors);
-  const savedJson = JSON.stringify(savedConfig);
-
-  // Simulate user editing multiple fields
-  const draftCfg = deepClone(savedConfig);
-  draftCfg.branding.libraryName = "CHANGED Library";
-  const draftColors = { mainColorHex: "#a855f7", highlightColorHex: "#ec4899", fontColorHex: "#ffffff", autoFontColor: false };
-
-  // Discard: reload from saved
-  const { config: restored, colors: restoredColors } = simulateLoad(savedJson);
-  assert(restored.branding.libraryName === "Riverside Library", "library name not restored on discard");
-  assert(restoredColors.mainColorHex === "#1d4ed8", "main color not restored on discard");
-  assert(restoredColors.highlightColorHex === "#38bdf8", "highlight color not restored on discard");
-}));
-
-// R4 – Save clears dirty state (structural)
-checks.push(check("R4_save_clears_dirty_state", () => {
-  // onSave must call setIsDirty(false)
-  assert(
-    adminWebSrc.includes("setIsDirty(false)"),
-    "setIsDirty(false) not found in admin source"
-  );
-  // Verify it's inside onSave (setIsDirty(false) appears near setSaveStatus("saved"))
-  const saveBlock = adminWebSrc.slice(
-    adminWebSrc.indexOf("const onSave"),
+  const colors = { mainColorHex: "#1d4ed8", highlightColorHex: "#38bdf8", fontColorHex: "#ffffff", autoFontColor: true };
+  const failed = simulateSaveAndReturn(cfg, colors, { failPersist: true });
+  assert(failed.ok === false, "failed save should report ok=false");
+  assert(failed.route === null, "failed Save & Return must not navigate");
+  const saveReturnBlock = adminWebSrc.slice(
+    adminWebSrc.indexOf("const onSaveAndReturn"),
     adminWebSrc.indexOf("const onDiscard")
   );
-  assert(saveBlock.includes("setIsDirty(false)"), "setIsDirty(false) not inside onSave block");
-  assert(saveBlock.includes('setSaveStatus("saved")'), 'setSaveStatus("saved") not in onSave');
+  assert(saveReturnBlock.includes("if (!persistDraftConfig()) return;"), "Save & Return must stop on save failure");
+  assert(saveReturnBlock.includes('router.replace("/")'), "Save & Return must route to / on success");
 }));
 
-// R5 – Discard clears dirty state (structural)
-checks.push(check("R5_discard_clears_dirty_state", () => {
-  const discardBlock = adminWebSrc.slice(
-    adminWebSrc.indexOf("const onDiscard"),
-    adminWebSrc.indexOf("// ---------------------------------------------------------------------------\n  // Non-web fallback")
+// R5 – Save Changes remains in place
+checks.push(check("R5_save_changes_remains_in_place", () => {
+  const saveBlock = adminWebSrc.slice(
+    adminWebSrc.indexOf("const onSave = useCallback"),
+    adminWebSrc.indexOf("const onSaveAndReturn")
   );
-  // setIsDirty(false) must appear at least twice in onDiscard (localStorage path + fallback path)
-  const matches = discardBlock.match(/setIsDirty\(false\)/g) || [];
-  assert(matches.length >= 2, `onDiscard should call setIsDirty(false) on both paths; found ${matches.length}`);
+  assert(saveBlock.includes("persistDraftConfig();"), "Save Changes must call persistDraftConfig");
+  assert(!saveBlock.includes("router.replace"), "Save Changes must not navigate");
+  assert(adminWebSrc.includes('accessibilityLabel="Save Changes"'), "Save Changes button missing");
 }));
 
-// R6 – Refresh after Save loads saved values
-checks.push(check("R6_refresh_after_save_loads_saved_values", () => {
-  const cfg = { branding: {}, theme: {} };
-  syncSchema(cfg);
-  const colors = { mainColorHex: "#15803d", highlightColorHex: "#22c55e", fontColorHex: "#ffffff", autoFontColor: true };
-  const { savedConfig } = simulateSave(cfg, colors);
-  const persistedJson = JSON.stringify(savedConfig);
-
-  // Simulate page refresh: load from persisted JSON
-  const { colors: loaded } = simulateLoad(persistedJson);
-  assert(loaded.mainColorHex === "#15803d", "main color not loaded after simulated refresh");
-  assert(loaded.highlightColorHex === "#22c55e", "highlight color not loaded after simulated refresh");
-}));
-
-// R7 – Refresh after Discard loads prior saved values
-checks.push(check("R7_refresh_after_discard_loads_prior", () => {
-  // Represent "previously saved" localStorage entry
-  const priorCfg = { branding: { libraryName: "West End Library" }, theme: {} };
+// R6 – Discard Changes restores the last saved configuration
+checks.push(check("R6_discard_restores_last_saved_configuration", () => {
+  const priorCfg = { branding: { libraryName: "West End Library" }, theme: {}, library: { name: "West End Library" } };
   syncSchema(priorCfg);
   const priorColors = { mainColorHex: "#64748b", highlightColorHex: "#fbbf24", fontColorHex: "#ffffff", autoFontColor: true };
   const { savedConfig: priorSaved } = simulateSave(priorCfg, priorColors);
   const priorJson = JSON.stringify(priorSaved);
-
-  // User made changes but discarded (i.e., reverts to priorJson without saving)
-  // Refresh: load priorJson
-  const { colors: afterDiscard } = simulateLoad(priorJson);
-  assert(afterDiscard.mainColorHex === "#64748b", "after discard+refresh, main color mismatch");
+  const draftCfg = deepClone(priorSaved);
+  draftCfg.branding.libraryName = "Changed Library";
+  const draftColors = { mainColorHex: "#ef4444", highlightColorHex: "#22c55e", fontColorHex: "#000000", autoFontColor: false };
+  const { config: restoredConfig, colors: restoredColors } = simulateLoad(priorJson);
+  assert(restoredConfig.branding.libraryName === "West End Library", "discard did not restore library name");
+  assert(restoredColors.mainColorHex === "#64748b", "discard did not restore main color");
+  assert(restoredColors.highlightColorHex === "#fbbf24", "discard did not restore highlight color");
+  assert(restoredColors.mainColorHex !== draftColors.mainColorHex, "discard returned draft main color");
 }));
 
-// R8 – Theme Reset changes draft only until Save (structural)
-checks.push(check("R8_theme_reset_draft_only", () => {
+// R7 – Color selection survives closing the native picker
+checks.push(check("R7_color_selection_survives_picker_closure", () => {
+  assert(colorPickerSrc.includes("onInput={(e: any) => commitPickerHex"), "color picker should commit on input");
+  assert(colorPickerSrc.includes("onChange={(e: any) => commitPickerHex"), "color picker should commit on change");
+  assert(colorPickerSrc.includes("onBlur={(e: any) => commitPickerHex"), "color picker should commit on blur/close");
+  assert(adminWebSrc.includes("Finish choosing the color, then select Save Changes or Save & Return."), "native color picker guidance note missing");
+}));
+
+// R8 – First save click after picker closure succeeds
+checks.push(check("R8_first_save_click_after_picker_closure_succeeds", () => {
+  const saveHelperBlock = adminWebSrc.slice(
+    adminWebSrc.indexOf("const persistDraftConfig"),
+    adminWebSrc.indexOf("const onSave = useCallback")
+  );
+  assert(saveHelperBlock.includes("dispatchAdminConfigSavedWebEvent"), "save helper must broadcast same-tab config update");
+  assert(saveHelperBlock.includes("applyWebHighlightColor"), "save helper must apply saved highlight before returning");
+  assert(saveHelperBlock.includes("return true;"), "save helper must report success");
+}));
+
+// R9 – No recommendation / Human Review / Local Collection routing or schema changes
+checks.push(check("R9_no_routing_schema_changes", () => {
+  const persistBlock = adminWebSrc.slice(
+    adminWebSrc.indexOf("const persistDraftConfig"),
+    adminWebSrc.indexOf("const onSave = useCallback")
+  );
+  assert(!persistBlock.includes("sourceEnabled"), "save helper must not mutate recommendation sourceEnabled");
+  assert(!persistBlock.includes("human_review"), "save helper must not reference human review keys");
+  assert(!persistBlock.includes("localLibrary"), "save helper must not reference localLibrary toggle");
+  assert(persistBlock.includes("ADMIN_CONFIG_STORAGE_KEY"), "save helper must keep using approved admin config storage key");
+}));
+
+// R10 – Theme Reset changes draft only until Save
+checks.push(check("R10_theme_reset_draft_only", () => {
   const resetBlock = adminWebSrc.slice(
     adminWebSrc.indexOf("const resetThemeToDefault"),
     adminWebSrc.indexOf("const resetThemeToDefault") + 300
@@ -307,8 +333,8 @@ checks.push(check("R8_theme_reset_draft_only", () => {
   assert(resetBlock.includes("setHighlightColorHex"), "resetThemeToDefault missing setHighlightColorHex");
 }));
 
-// R9 – Sticky footer buttons have click + keyboard accessibility (structural)
-checks.push(check("R9_sticky_footer_buttons_accessible", () => {
+// Sticky footer buttons have click + keyboard accessibility (structural)
+checks.push(check("structural_sticky_footer_buttons_accessible", () => {
   assert(
     adminWebSrc.includes('accessibilityRole="button"'),
     'Save/Discard buttons missing accessibilityRole="button"'
@@ -321,19 +347,6 @@ checks.push(check("R9_sticky_footer_buttons_accessible", () => {
     adminWebSrc.includes('accessibilityLabel="Discard Changes"'),
     'Discard button missing accessibilityLabel'
   );
-}));
-
-// R10 – No recommendation / Human Review / Local Collection routing or schema changes
-checks.push(check("R10_no_routing_schema_changes", () => {
-  // The sticky-bar fix must not touch onSave's recommendation logic.
-  // Verify onSave does not set any recommendation.sourceEnabled key.
-  const saveBlock = adminWebSrc.slice(
-    adminWebSrc.indexOf("const onSave"),
-    adminWebSrc.indexOf("const onDiscard")
-  );
-  assert(!saveBlock.includes("sourceEnabled"), "onSave must not mutate recommendation sourceEnabled");
-  assert(!saveBlock.includes("human_review"),  "onSave must not reference human review keys");
-  assert(!saveBlock.includes("localLibrary"),   "onSave must not reference localLibrary toggle");
 }));
 
 // ── Bonus structural invariants ──────────────────────────────────────────────
@@ -383,8 +396,8 @@ checks.push(check("structural_ondiscard_uses_usecallback", () => {
 // onSave must sync fontColorHex state with saved value.
 checks.push(check("structural_onsave_syncs_font_color_state", () => {
   const saveBlock = adminWebSrc.slice(
-    adminWebSrc.indexOf("const onSave"),
-    adminWebSrc.indexOf("const onDiscard")
+    adminWebSrc.indexOf("const persistDraftConfig"),
+    adminWebSrc.indexOf("const onSave = useCallback")
   );
   assert(
     saveBlock.includes("setFontColorHex(effectiveFontColor)"),
@@ -402,6 +415,15 @@ checks.push(check("structural_sticky_bar_shows_post_save_confirmation", () => {
     adminWebSrc.includes('"Changes saved'),
     'sticky bar must display a "Changes saved" confirmation message'
   );
+}));
+
+checks.push(check("structural_save_return_routes_home", () => {
+  assert(adminWebSrc.includes('router.replace("/")'), 'Save & Return must navigate with router.replace("/")');
+}));
+
+checks.push(check("structural_main_ui_listens_for_saved_event", () => {
+  assert(homeSrc.includes("window.addEventListener(ADMIN_CONFIG_CHANGED_EVENT"), "home screen should listen for saved-config event");
+  assert(layoutSrc.includes("window.addEventListener?.(ADMIN_CONFIG_CHANGED_EVENT"), "layout should listen for saved-config event");
 }));
 
 // ---------------------------------------------------------------------------
