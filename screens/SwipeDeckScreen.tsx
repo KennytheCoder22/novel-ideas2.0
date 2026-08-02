@@ -5332,7 +5332,7 @@ function handleLeft() {
                   <Text style={styles.smallNote}>
                     Search query: <Text style={{ fontWeight: "900" }}>{recQuery}</Text>
                   </Text>
-                ) : null}
+                ) : null
 
                 {lastRecommendationTimestamp ? (
                   <Text style={styles.smallNote}>Saved query time: {lastRecommendationTimestamp}</Text>
