@@ -4,8 +4,9 @@
  * Opens a mailto: link so users can email feedback directly.
  */
 
-import { router } from "expo-router";
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View, SafeAreaView } from "react-native";
+import BackToNovelIdeasHeader from "../components/BackToNovelIdeasHeader";
+import { returnToNovelIdeas } from "../lib/secondaryRouteNavigation";
 
 const FEEDBACK_EMAIL = "feedback@novelideas.app";
 const FEEDBACK_SUBJECT = "NovelIdeas Feedback";
@@ -20,12 +21,12 @@ function openMailto() {
 export default function FeedbackScreen() {
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
-          <Text style={styles.closeBtnText}>✕</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Send Feedback</Text>
-      </View>
+      <BackToNovelIdeasHeader
+        title="Send Feedback"
+        onPress={() => {
+          void returnToNovelIdeas();
+        }}
+      />
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
         <Text style={styles.intro}>
           We'd love to hear from you. Whether you found a bug, have a feature request, or want to
@@ -59,18 +60,6 @@ export default function FeedbackScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#071526" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1e3a5f",
-  },
-  closeBtn: { padding: 8, marginRight: 8 },
-  closeBtnText: { color: "#e5efff", fontSize: 16, fontWeight: "700" },
-  title: { color: "#e5efff", fontSize: 18, fontWeight: "900", flex: 1 },
   body: { flex: 1 },
   bodyContent: { padding: 20, paddingBottom: 40 },
   intro: { color: "#b0c4de", fontSize: 15, lineHeight: 23, marginBottom: 24 },

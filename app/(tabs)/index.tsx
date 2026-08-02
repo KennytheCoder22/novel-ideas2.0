@@ -26,6 +26,12 @@ import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
 import { applyWebHighlightColor, buildTheme, type ThemeKey, type HighlightKey, type TitleTextKey } from "../../constants/brandTheme";
+import {
+  consumePendingHomeRestore,
+  hasVerifiedAdminMenuUnlock,
+  queuePendingHomeRestore,
+  setVerifiedAdminMenuUnlock,
+} from "../../lib/secondaryRouteNavigation";
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
   String(
@@ -1424,7 +1430,9 @@ export default function HomeScreen() {
   const [adminPinEntry, setAdminPinEntry] = useState("");
   const [adminPinError, setAdminPinError] = useState<string | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
-  const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);
+  const [adminMenuAccess, setAdminMenuAccess] = useState<"public" | "temporary" | "verified">(() =>
+    hasVerifiedAdminMenuUnlock() ? "verified" : "public"
+  );
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
 
   const [config, setConfig] = useState<any>(() => {
@@ -1501,6 +1509,16 @@ export default function HomeScreen() {
   useEffect(() => {
     if (Platform.OS === "web") applyWebHighlightColor(theme.highlight);
   }, [theme.highlight]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const pendingHomeRestore = consumePendingHomeRestore();
+      if (!pendingHomeRestore) return undefined;
+      setShowHeaderMenu(pendingHomeRestore.reopenHeaderMenu);
+      setAdminMenuAccess(hasVerifiedAdminMenuUnlock() ? "verified" : "public");
+      return undefined;
+    }, [])
+  );
 
   const adminPinEnabled: boolean = !!config?.admin?.pinEnabled;
   const adminPin: string = typeof config?.admin?.pin === "string" ? config.admin.pin : "";
@@ -1668,8 +1686,10 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   setShowAdminPinPrompt(false);
                   setAdminPinEntry("");
                   setAdminPinError(null);
-                  setAdminMenuUnlocked(true);
+                  setAdminMenuAccess("verified");
+                  setVerifiedAdminMenuUnlock(true);
                   if (Platform.OS === "web") {
+                    queuePendingHomeRestore({ reopenHeaderMenu: true });
                     router.push("/app_admin-web");
                   } else {
                     setAdminUnlocked(true);
@@ -1697,10 +1717,11 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     }
 
     if (unlockMenu) {
-      setAdminMenuUnlocked(true);
+      setAdminMenuAccess("temporary");
     }
     if (Platform.OS === "web") {
       try {
+        queuePendingHomeRestore({ reopenHeaderMenu: true });
         router.push("/app_admin-web");
         return;
       } catch {}
@@ -1728,15 +1749,17 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   function openInfoScreen(path: string) {
     closeHeaderMenu();
+    queuePendingHomeRestore({ reopenHeaderMenu: true });
     router.push(path as any);
   }
 
   function openTestingInvite() {
     closeHeaderMenu();
+    queuePendingHomeRestore({ reopenHeaderMenu: true });
     router.replace("/testing");
   }
 
-  const showAdminMenuItems = adminMenuUnlocked || adminUnlocked;
+  const showAdminMenuItems = adminMenuAccess !== "public" || adminUnlocked;
 
   function renderHeaderMenu() {
     return (
@@ -2007,7 +2030,8 @@ logoDataUrl={logoDataUrl}
           setAdultKitsuOnlyForceQueryForValidation={setAdultKitsuOnlyForceQueryForValidationValue}
           onExit={() => {
             setAdminUnlocked(false);
-            setAdminMenuUnlocked(false);
+            setAdminMenuAccess("public");
+            setVerifiedAdminMenuUnlock(false);
           }}
           onSaveSettings={saveSettings}
           saveButtonLabel={saveButtonLabel}

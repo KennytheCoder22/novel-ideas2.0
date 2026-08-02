@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import {
   Alert,
   Platform,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,7 +15,9 @@ import {
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import configFile from "../NovelIdeas.json";
+import BackToNovelIdeasHeader from "../components/BackToNovelIdeasHeader";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
+import { returnToNovelIdeas } from "../lib/secondaryRouteNavigation";
 import { importLocalCollectionCsv } from "../lib/localCollection";
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
@@ -665,16 +668,37 @@ export default function AdminWebScreen() {
   };
 
   if (!isWeb) {
-    return <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}><Text>Desktop Admin (Web Only)</Text></View>;
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#071526" }}>
+        <BackToNovelIdeasHeader
+          title="Desktop Admin"
+          subtitle="Desktop web only."
+          onPress={() => {
+            void returnToNovelIdeas();
+          }}
+        />
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text>Desktop Admin (Web Only)</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   const adminPinEnabled = !!config?.admin?.pinEnabled;
   const adminPin = String(config?.admin?.pin || "");
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.appBg }} contentContainerStyle={{ paddingBottom: 56 }}>
-      <View style={[styles.wrap, { borderColor: theme.highlightBorder, backgroundColor: theme.cardBg }]}>
-        <View style={styles.headerRow}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.appBg }}>
+      <BackToNovelIdeasHeader
+        title="Desktop Admin"
+        subtitle="Customize settings, manage branding, and return to the public app."
+        onPress={() => {
+          void returnToNovelIdeas();
+        }}
+      />
+      <ScrollView style={{ flex: 1, backgroundColor: theme.appBg }} contentContainerStyle={{ paddingBottom: 56 }}>
+        <View style={[styles.wrap, { borderColor: theme.highlightBorder, backgroundColor: theme.cardBg }]}>
+          <View style={styles.headerRow}>
           <View>
             <Text style={[styles.h1, { color: theme.text }]}>Desktop Admin</Text>
             <Text style={[styles.sub, { color: theme.subtext }]}>
@@ -1073,8 +1097,9 @@ export default function AdminWebScreen() {
             </View>
           )
         ) : null}
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
