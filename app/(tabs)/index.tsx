@@ -1424,6 +1424,7 @@ export default function HomeScreen() {
   const [adminPinEntry, setAdminPinEntry] = useState("");
   const [adminPinError, setAdminPinError] = useState<string | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
 
   const [config, setConfig] = useState<any>(() => {
@@ -1667,6 +1668,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   setShowAdminPinPrompt(false);
                   setAdminPinEntry("");
                   setAdminPinError(null);
+                  setAdminMenuUnlocked(true);
                   if (Platform.OS === "web") {
                     router.push("/app_admin-web");
                   } else {
@@ -1695,11 +1697,13 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
     if (Platform.OS === "web") {
       try {
+        setAdminMenuUnlocked(true);
         router.push("/app_admin-web");
         return;
       } catch {}
     }
 
+    setAdminMenuUnlocked(true);
     setAdminUnlocked(true);
     setTapCount(0);
   }
@@ -1742,18 +1746,18 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     );
   }
 
-  const showAdminMenuItems = adminUnlocked || tapCount >= 7;
+  const showAdminMenuItems = adminMenuUnlocked || adminUnlocked;
 
   function renderHeaderMenu() {
     return (
       <View style={styles.menuAnchor}>
         <TouchableOpacity
           onPress={toggleHeaderMenu}
-          style={[styles.headerMenuButton, { borderColor: theme.lightBorder, backgroundColor: theme.inputBg }]}
+          style={styles.headerMenuButton}
           accessibilityRole="button"
           accessibilityLabel="Open main menu"
         >
-          <Text style={[styles.headerMenuButtonText, { color: theme.text }]}>⋮</Text>
+          <Text style={[styles.headerMenuButtonText, { color: theme.titleText || "#f8fafc" }]}>⋮</Text>
         </TouchableOpacity>
         {showHeaderMenu ? (
           <View style={[styles.headerMenuPopover, { borderColor: theme.lightBorder, backgroundColor: theme.inputBg }]}>
@@ -1778,9 +1782,14 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Privacy")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Privacy</Text>
             </TouchableOpacity>
+            <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("About")}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>About</Text>
+            </TouchableOpacity>
             {showAdminMenuItems ? (
               <>
-                <TouchableOpacity style={[styles.headerMenuItem, styles.headerMenuItemLast]} onPress={() => showMenuInfoStub("Diagnostics")}>
+                <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
+                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Diagnostics")}>
                   <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Diagnostics</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Human Review Dashboard")}>
@@ -2086,12 +2095,11 @@ logoDataUrl={logoDataUrl}
               <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
             </TouchableOpacity>
 
-            <View style={styles.headerRight} />
+            {renderHeaderMenu()}
           </View>
 </View>
 
         <View style={styles.swipeStage}>
-          <View style={styles.contentMenuRow}>{renderHeaderMenu()}</View>
           <SwipeDeckScreen
             swipeCategories={swipeCategories}
             enabledDecks={enabledDecks}
@@ -2139,7 +2147,7 @@ logoDataUrl={logoDataUrl}
             </View>
             <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
           </TouchableOpacity>
-          <View style={styles.headerRight} />
+          {renderHeaderMenu()}
         </View>
       </View>
 
@@ -2157,7 +2165,6 @@ logoDataUrl={logoDataUrl}
         >
           <Text style={[styles.smallBtnText, { color: theme.text }]}>Back to Swipe</Text>
         </TouchableOpacity>
-        {renderHeaderMenu()}
       </View>
 
       <StudentView
@@ -2209,7 +2216,7 @@ const styles = StyleSheet.create({
     position: "relative",
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    overflow: "hidden",
+    overflow: "visible",
   },
 
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
@@ -2218,19 +2225,19 @@ const styles = StyleSheet.create({
   headerRight: { width: 72 },
   menuAnchor: { alignItems: "flex-end", justifyContent: "center", position: "relative" },
   headerMenuButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    borderWidth: 1,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "transparent",
   },
-  headerMenuButtonText: { fontSize: 20, fontWeight: "900", lineHeight: 20 },
+  headerMenuButtonText: { fontSize: 26, fontWeight: "700", lineHeight: 26 },
   headerMenuPopover: {
     position: "absolute",
-    top: 40,
+    top: 44,
     right: 0,
-    minWidth: 180,
+    minWidth: 230,
     borderWidth: 1,
     borderRadius: 12,
     paddingVertical: 6,
@@ -2240,11 +2247,10 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 12,
   },
-  headerMenuItemLast: {
+  headerMenuDivider: {
     borderTopWidth: 1,
-    borderTopColor: "rgba(148,163,184,0.4)",
     marginTop: 4,
-    paddingTop: 10,
+    marginBottom: 4,
   },
   headerMenuItemText: { fontSize: 14, fontWeight: "700" },
 
@@ -2386,9 +2392,7 @@ const styles = StyleSheet.create({
 
   searchTopRow: {
     width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 10,
   },
 
@@ -2402,15 +2406,6 @@ const styles = StyleSheet.create({
   swipeStage: {
     flex: 1,
     position: "relative",
-  },
-  contentMenuRow: {
-    width: "100%",
-    maxWidth: 720,
-    alignSelf: "center",
-    alignItems: "flex-end",
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    zIndex: 30,
   },
 
 });
