@@ -5332,7 +5332,7 @@ function handleLeft() {
                   <Text style={styles.smallNote}>
                     Search query: <Text style={{ fontWeight: "900" }}>{recQuery}</Text>
                   </Text>
-                ) : null
+                ) : null}
 
                 {lastRecommendationTimestamp ? (
                   <Text style={styles.smallNote}>Saved query time: {lastRecommendationTimestamp}</Text>
@@ -5746,7 +5746,7 @@ function handleLeft() {
                                   <Text style={styles.humanReviewContextMore}>and {group.items.length - 8} more</Text>
                                 ) : null}
                               </View>
-                            ) : null}
+                            ) : null
                           )}
                           {humanReviewForm.sessionContext.engineSignals.length ? (
                             <View style={styles.humanReviewContextGroup}>
@@ -5964,7 +5964,7 @@ function handleLeft() {
                         onChangeText={(value) => setHumanReviewForm((prev) => (prev ? { ...prev, notes: value } : prev))}
                       />
                     </>
-                  ) : null
+                  ) : null}
 
                   {humanReviewStatus ? <Text style={styles.humanReviewStatus}>{humanReviewStatus}</Text> : null}
 
