@@ -4941,6 +4941,9 @@ function handleLeft() {
           ? { "1": nowIso }
           : {};
     const initialCompletedAtByRank = restoredDraft?.stepCompletedAtByRank || {};
+    const hasSwipeContextThumbnails = Boolean(
+      sessionContext && (sessionContext.likedItems.length > 0 || sessionContext.dislikedItems.length > 0)
+    );
     setHumanReviewSnapshot(snapshot);
     setHumanReviewForm(effectiveForm);
     setHumanReviewStepIndex(initialStepIndex);
@@ -4948,7 +4951,7 @@ function handleLeft() {
     setHumanReviewStepCompletedAtByRank(initialCompletedAtByRank);
     setHumanReviewStatus("");
     setShowHumanReviewCompletion(false);
-    setShowHumanReviewContext(false);
+    setShowHumanReviewContext(hasSwipeContextThumbnails);
     setShowHumanReviewPanel(true);
   }
 
@@ -5709,9 +5712,7 @@ function handleLeft() {
 
                   {humanReviewForm.sessionContext &&
                   (humanReviewForm.sessionContext.likedItems.length > 0 ||
-                    humanReviewForm.sessionContext.dislikedItems.length > 0 ||
-                    humanReviewForm.sessionContext.unsureItems.length > 0 ||
-                    humanReviewForm.sessionContext.engineSignals.length > 0) ? (
+                    humanReviewForm.sessionContext.dislikedItems.length > 0) ? (
                     <View style={styles.humanReviewContextSection}>
                       <TouchableOpacity
                         style={styles.humanReviewContextToggle}
@@ -5724,41 +5725,43 @@ function handleLeft() {
                       {showHumanReviewContext ? (
                         <View style={styles.humanReviewContextBody}>
                           {[
-                            { label: "Liked", items: humanReviewForm.sessionContext.likedItems },
-                            { label: "Disliked", items: humanReviewForm.sessionContext.dislikedItems },
-                            { label: "Unsure", items: humanReviewForm.sessionContext.unsureItems },
+                            {
+                              label: "Liked",
+                              items: humanReviewForm.sessionContext.likedItems,
+                              thumbStyle: styles.humanReviewContextThumbLiked,
+                            },
+                            {
+                              label: "Disliked",
+                              items: humanReviewForm.sessionContext.dislikedItems,
+                              thumbStyle: styles.humanReviewContextThumbDisliked,
+                            },
                           ].map((group) =>
                             group.items.length ? (
                               <View key={group.label} style={styles.humanReviewContextGroup}>
                                 <Text style={styles.humanReviewContextLabel}>
                                   {group.label} ({group.items.length})
                                 </Text>
-                                {group.items.slice(0, 8).map((entry, index) => (
-                                  <View key={`${group.label}-${index}-${entry.title}`} style={styles.humanReviewContextRow}>
-                                    {entry.coverUrl ? (
-                                      <Image source={{ uri: entry.coverUrl }} style={styles.humanReviewContextThumb} resizeMode="cover" />
-                                    ) : (
-                                      <View style={[styles.humanReviewContextThumb, styles.humanReviewCoverPlaceholder]} />
-                                    )}
-                                    <Text style={styles.humanReviewContextRowText} numberOfLines={1}>
-                                      {entry.title}
-                                    </Text>
-                                  </View>
-                                ))}
-                                {group.items.length > 8 ? (
-                                  <Text style={styles.humanReviewContextMore}>and {group.items.length - 8} more</Text>
+                                <View style={styles.humanReviewContextThumbGrid}>
+                                  {group.items.slice(0, 18).map((entry, index) => (
+                                    <View
+                                      key={`${group.label}-${index}-${entry.title}`}
+                                      style={[styles.humanReviewContextThumbFrame, group.thumbStyle]}
+                                      accessibilityLabel={`${group.label}: ${entry.title}`}
+                                    >
+                                      {entry.coverUrl ? (
+                                        <Image source={{ uri: entry.coverUrl }} style={styles.humanReviewContextThumb} resizeMode="cover" />
+                                      ) : (
+                                        <View style={[styles.humanReviewContextThumb, styles.humanReviewCoverPlaceholder]} />
+                                      )}
+                                    </View>
+                                  ))}
+                                </View>
+                                {group.items.length > 18 ? (
+                                  <Text style={styles.humanReviewContextMore}>and {group.items.length - 18} more</Text>
                                 ) : null}
                               </View>
                             ) : null
                           )}
-                          {humanReviewForm.sessionContext.engineSignals.length ? (
-                            <View style={styles.humanReviewContextGroup}>
-                              <Text style={styles.humanReviewContextLabel}>Engine Signals</Text>
-                              <Text style={styles.humanReviewContextSignals}>
-                                {humanReviewForm.sessionContext.engineSignals.join(" · ")}
-                              </Text>
-                            </View>
-                          ) : null}
                         </View>
                       ) : null}
                     </View>
@@ -6380,22 +6383,30 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
   },
-  humanReviewContextRow: {
+  humanReviewContextThumbGrid: {
     flexDirection: "row",
-    alignItems: "center",
+    flexWrap: "wrap",
     gap: 6,
   },
+  humanReviewContextThumbFrame: {
+    width: 38,
+    height: 52,
+    borderRadius: 6,
+    padding: 1,
+  },
+  humanReviewContextThumbLiked: {
+    borderWidth: 2,
+    borderColor: "#22c55e",
+  },
+  humanReviewContextThumbDisliked: {
+    borderWidth: 2,
+    borderColor: "#ef4444",
+  },
   humanReviewContextThumb: {
-    width: 32,
-    height: 40,
+    width: "100%",
+    height: "100%",
     borderRadius: 4,
     flexShrink: 0,
-  },
-  humanReviewContextRowText: {
-    color: "#dbeafe",
-    fontSize: 10,
-    fontWeight: "600",
-    flex: 1,
   },
   humanReviewContextMore: {
     color: "#93c5fd",
