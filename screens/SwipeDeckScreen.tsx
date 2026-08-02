@@ -318,6 +318,10 @@ type Props = {
   isAdminMode?: boolean;
 };
 
+export type SwipeDeckScreenHandle = {
+  prepareToLeaveTesting: () => Promise<boolean>;
+};
+
 
 function resolveDeckFromModule(mod: any, expectedKey: DeckKey, fallbackLabel: string): SwipeDeck {
   const candidates: any[] = [];
@@ -1246,7 +1250,7 @@ function shouldFinishTwentyQSession(args: {
   return false;
 }
 
-export default function SwipeDeckScreen(props: Props) {
+const SwipeDeckScreen = React.forwardRef<SwipeDeckScreenHandle, Props>(function SwipeDeckScreen(props: Props, ref) {
   const router = useRouter();
   const isTestingMode = props.isTestingMode === true;
   const isAdminMode = props.isAdminMode === true;
@@ -4988,8 +4992,8 @@ function handleLeft() {
     });
   }
 
-  useEffect(() => {
-    if (!showHumanReviewPanel || !humanReviewSnapshot || !humanReviewForm) return;
+  const persistCurrentHumanReviewDraft = React.useCallback(() => {
+    if (!showHumanReviewPanel || !humanReviewSnapshot || !humanReviewForm) return false;
     const draft = buildHumanReviewDraft({
       snapshotId: humanReviewSnapshot.snapshotId,
       form: humanReviewForm,
@@ -4999,6 +5003,7 @@ function handleLeft() {
       updatedAt: new Date().toISOString(),
     });
     safeStorageSet(humanReviewDraftStorageKey(humanReviewSnapshot.snapshotId), JSON.stringify(draft));
+    return true;
   }, [
     showHumanReviewPanel,
     humanReviewSnapshot,
@@ -5006,6 +5011,67 @@ function handleLeft() {
     humanReviewStepIndex,
     humanReviewStepStartedAtByRank,
     humanReviewStepCompletedAtByRank,
+  ]);
+
+  useEffect(() => {
+    persistCurrentHumanReviewDraft();
+  }, [
+    persistCurrentHumanReviewDraft,
+  ]);
+
+  const closeTestingTransientUi = React.useCallback(() => {
+    setShowHumanReviewContext(false);
+    setShowHumanReviewCompletion(false);
+    setShowHumanReviewPanel(false);
+    setHumanReviewStatus("");
+    setHumanReviewSynopsisExpanded(false);
+  }, []);
+
+  const prepareToLeaveTesting = React.useCallback(async () => {
+    if (!isTestingMode) {
+      closeTestingTransientUi();
+      return true;
+    }
+
+    const draftSaved = persistCurrentHumanReviewDraft();
+    if (!draftSaved) {
+      closeTestingTransientUi();
+      return true;
+    }
+
+    const title = "Leave testing?";
+    const message =
+      "Return to NovelIdeas? Your evaluation draft has been autosaved and will still be here when you reopen this slate.";
+
+    if (Platform.OS === "web" && typeof window !== "undefined" && typeof window.confirm === "function") {
+      const confirmed = window.confirm(`${title}\n\n${message}`);
+      if (confirmed) closeTestingTransientUi();
+      return confirmed;
+    }
+
+    return await new Promise<boolean>((resolve) => {
+      Alert.alert(title, message, [
+        { text: "Stay", style: "cancel", onPress: () => resolve(false) },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: () => {
+            closeTestingTransientUi();
+            resolve(true);
+          },
+        },
+      ]);
+    });
+  }, [
+    closeTestingTransientUi,
+    isTestingMode,
+    persistCurrentHumanReviewDraft,
+  ]);
+
+  React.useImperativeHandle(ref, () => ({
+    prepareToLeaveTesting,
+  }), [
+    prepareToLeaveTesting,
   ]);
 
   function goToPreviousHumanReviewStep() {
@@ -6105,7 +6171,9 @@ function handleLeft() {
 
     </SafeAreaView>
   );
-}
+});
+
+export default SwipeDeckScreen;
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#071526" },

@@ -10,6 +10,10 @@
       "destination": "/"
     },
     {
+      "source": "/app_admin-web",
+      "destination": "/"
+    },
+    {
       "source": "/how-it-works",
       "destination": "/"
     },

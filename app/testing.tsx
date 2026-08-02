@@ -16,18 +16,20 @@
  *   - "Fresh User" (below)
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Animated,
   Platform,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import BackToNovelIdeasHeader from "../components/BackToNovelIdeasHeader";
+import { returnToNovelIdeas } from "../lib/secondaryRouteNavigation";
 import SwipeDeckScreen from "../screens/SwipeDeckScreen";
+import type { SwipeDeckScreenHandle } from "../screens/SwipeDeckScreen";
 
 const INTRO_DISMISSED_KEY = "novelideas_testing_intro_dismissed";
 const INTRO_TEXT =
@@ -77,6 +79,7 @@ function IntroBanner({ onDismiss }: { onDismiss: () => void }) {
 }
 
 export default function TestingRoute() {
+  const swipeDeckRef = useRef<SwipeDeckScreenHandle | null>(null);
   const [introDismissed, setIntroDismissed] = useState<boolean>(() => {
     if (Platform.OS !== "web") return true; // intro is web-only
     return safeGetStorage(INTRO_DISMISSED_KEY) === "1";
@@ -85,6 +88,15 @@ export default function TestingRoute() {
   const handleDismiss = useCallback(() => {
     safeSetStorage(INTRO_DISMISSED_KEY, "1");
     setIntroDismissed(true);
+  }, []);
+
+  const handleReturnToNovelIdeas = useCallback(async () => {
+    await returnToNovelIdeas({
+      beforeNavigate: async () => {
+        const guard = swipeDeckRef.current?.prepareToLeaveTesting;
+        return guard ? await guard() : true;
+      },
+    });
   }, []);
 
   // Default testing config: all age bands enabled, all standard sources on.
@@ -109,23 +121,24 @@ export default function TestingRoute() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>NovelIdeas</Text>
-        <Text style={styles.headerSubtitle}>Reader Experience Testing</Text>
-      </View>
+      <BackToNovelIdeasHeader
+        title="NovelIdeas"
+        subtitle="Reader Experience Testing"
+        onPress={handleReturnToNovelIdeas}
+      />
 
       <View style={styles.swipeStage}>
         <SwipeDeckScreen
+          ref={swipeDeckRef}
           isTestingMode={true}
           enabledDecks={enabledDecks}
           swipeCategories={swipeCategories}
           recommendationSourceEnabled={recommendationSourceEnabled as any}
         />
+        {Platform.OS === "web" && !introDismissed ? (
+          <IntroBanner onDismiss={handleDismiss} />
+        ) : null}
       </View>
-
-      {Platform.OS === "web" && !introDismissed ? (
-        <IntroBanner onDismiss={handleDismiss} />
-      ) : null}
     </SafeAreaView>
   );
 }
@@ -135,29 +148,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#071526",
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "web" ? 16 : 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1a3355",
-    alignItems: "center",
-  },
-  headerTitle: {
-    color: "#e5efff",
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    color: "#6b8cb8",
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 2,
-    letterSpacing: 0.3,
-  },
   swipeStage: {
     flex: 1,
+    position: "relative",
   },
 
   // Intro banner — positioned as an overlay at the top of the swipe stage

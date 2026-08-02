@@ -5,18 +5,19 @@
  * and what is / isn't collected.
  */
 
-import { router } from "expo-router";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, SafeAreaView } from "react-native";
+import { ScrollView, StyleSheet, Text, View, SafeAreaView } from "react-native";
+import BackToNovelIdeasHeader from "../components/BackToNovelIdeasHeader";
+import { returnToNovelIdeas } from "../lib/secondaryRouteNavigation";
 
 export default function PrivacyScreen() {
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
-          <Text style={styles.closeBtnText}>✕</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Privacy</Text>
-      </View>
+      <BackToNovelIdeasHeader
+        title="Privacy"
+        onPress={() => {
+          void returnToNovelIdeas();
+        }}
+      />
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
 
         <Section heading="What NovelIdeas Does Not Collect">
@@ -83,18 +84,6 @@ function Section({ heading, children }: { heading: string; children: React.React
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#071526" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1e3a5f",
-  },
-  closeBtn: { padding: 8, marginRight: 8 },
-  closeBtnText: { color: "#e5efff", fontSize: 16, fontWeight: "700" },
-  title: { color: "#e5efff", fontSize: 18, fontWeight: "900", flex: 1 },
   body: { flex: 1 },
   bodyContent: { padding: 20, paddingBottom: 40 },
   section: { marginBottom: 24 },
