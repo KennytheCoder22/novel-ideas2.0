@@ -8,6 +8,22 @@
     {
       "source": "/testing/:path*",
       "destination": "/"
+    },
+    {
+      "source": "/how-it-works",
+      "destination": "/"
+    },
+    {
+      "source": "/feedback",
+      "destination": "/"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/"
+    },
+    {
+      "source": "/about",
+      "destination": "/"
     }
   ]
 }

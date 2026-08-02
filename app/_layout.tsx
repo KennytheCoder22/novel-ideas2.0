@@ -20,6 +20,10 @@ export default function RootLayout() {
         <Stack.Screen name="app_admin-web" options={{ headerShown: false }} />
         <Stack.Screen name="testing" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
+        <Stack.Screen name="how-it-works" options={{ presentation: "modal", headerShown: false }} />
+        <Stack.Screen name="feedback" options={{ presentation: "modal", headerShown: false }} />
+        <Stack.Screen name="privacy" options={{ presentation: "modal", headerShown: false }} />
+        <Stack.Screen name="about" options={{ presentation: "modal", headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

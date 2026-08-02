@@ -1726,9 +1726,9 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     setShowHeaderMenu(false);
   }
 
-  function showMenuInfoStub(title: string) {
+  function openInfoScreen(path: string) {
     closeHeaderMenu();
-    Alert.alert(title, "Coming soon.");
+    router.push(path as any);
   }
 
   function openTestingInvite() {
@@ -1763,40 +1763,29 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             <TouchableOpacity style={styles.headerMenuItem} onPress={openTestingInvite}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Help Improve NovelIdeas</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("How NovelIdeas Works")}>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/how-it-works")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How NovelIdeas Works</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Send Feedback")}>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/feedback")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Send Feedback</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Privacy")}>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/privacy")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Privacy</Text>
             </TouchableOpacity>
             <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
-            <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("About")}>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/about")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>About</Text>
             </TouchableOpacity>
             {showAdminMenuItems ? (
               <>
                 <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
-                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Diagnostics")}>
-                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Diagnostics</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Human Review Dashboard")}>
-                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Human Review Dashboard</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Recommendation tuning")}>
-                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Recommendation tuning</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Library management")}>
-                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Library management</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Import / Export")}>
-                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Import / Export</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.headerMenuItem} onPress={() => showMenuInfoStub("Developer tools")}>
-                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Developer tools</Text>
-                </TouchableOpacity>
+                {/* Admin items below are hidden until they have real destinations. */}
+                {/* Diagnostics — hidden until implemented */}
+                {/* Human Review Dashboard — hidden until implemented */}
+                {/* Recommendation tuning — hidden until implemented */}
+                {/* Library management — hidden until implemented */}
+                {/* Import / Export — hidden until implemented */}
+                {/* Developer tools — hidden until implemented */}
               </>
             ) : null}
           </View>
