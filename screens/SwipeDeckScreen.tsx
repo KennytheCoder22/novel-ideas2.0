@@ -6384,7 +6384,7 @@ const styles = StyleSheet.create({
   },
   humanReviewContextToggleText: {
     color: "#bfdbfe",
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "800",
   },
   humanReviewContextBody: {
@@ -6395,7 +6395,7 @@ const styles = StyleSheet.create({
   },
   humanReviewContextLabel: {
     color: "#cbd5f5",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
   },
   humanReviewContextThumbGrid: {
@@ -6425,7 +6425,7 @@ const styles = StyleSheet.create({
   },
   humanReviewContextMore: {
     color: "#93c5fd",
-    fontSize: 13,
+    fontSize: 12,
     fontStyle: "italic",
   },
   humanReviewContextSignals: {
@@ -6455,8 +6455,8 @@ const styles = StyleSheet.create({
     padding: 8,
     gap: 6,
   },
-  humanReviewItemTitle: { color: "#e5efff", fontWeight: "800", fontSize: 16 },
-  humanReviewItemAuthor: { color: "#cbd5f5", fontWeight: "700", fontSize: 14 },
+  humanReviewItemTitle: { color: "#e5efff", fontWeight: "800", fontSize: 14 },
+  humanReviewItemAuthor: { color: "#cbd5f5", fontWeight: "700", fontSize: 12 },
   humanReviewGenreTagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   humanReviewGenreTagPill: {
     borderRadius: 999,
@@ -6466,16 +6466,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  humanReviewGenreTagText: { color: "#dbeafe", fontWeight: "700", fontSize: 13 },
+  humanReviewGenreTagText: { color: "#dbeafe", fontWeight: "700", fontSize: 12 },
   humanReviewSynopsis: {
     color: "#cbd5f5",
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 17,
   },
   humanReviewMatchedSignals: {
     color: "#bae6fd",
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 17,
   },
   humanReviewMatchedLabel: {
     fontWeight: "800",
@@ -6486,7 +6486,7 @@ const styles = StyleSheet.create({
   },
   humanReviewWhyHeading: {
     color: "#dbeafe",
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "800",
   },
   humanReviewItemHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
@@ -6508,10 +6508,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#0369a1",
     borderColor: "#7dd3fc",
   },
-  humanReviewExpectedEnjoymentValue: { color: "#fff", fontSize: 14, fontWeight: "900" },
-  humanReviewExpectedEnjoymentText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  humanReviewExpectedEnjoymentValue: { color: "#fff", fontSize: 12, fontWeight: "900" },
+  humanReviewExpectedEnjoymentText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   humanReviewScaleRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
-  humanReviewScaleLabel: { color: "#cbd5f5", fontSize: 14, width: 108, fontWeight: "700" },
+  humanReviewScaleLabel: { color: "#cbd5f5", fontSize: 12, width: 96, fontWeight: "700" },
   humanReviewScalePill: {
     minWidth: 44,
     alignItems: "center",
@@ -6526,7 +6526,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2563eb",
     borderColor: "#93c5fd",
   },
-  humanReviewScalePillText: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  humanReviewScalePillText: { color: "#fff", fontWeight: "800", fontSize: 12 },
   humanReviewFamiliarityRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
   humanReviewFamiliarityPill: {
     borderRadius: 999,
@@ -6540,7 +6540,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1d4ed8",
     borderColor: "#93c5fd",
   },
-  humanReviewFamiliarityText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  humanReviewFamiliarityText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   humanReviewDecisionRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   humanReviewDecisionPill: {
     borderRadius: 999,
@@ -6554,7 +6554,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f766e",
     borderColor: "#5eead4",
   },
-  humanReviewDecisionText: { color: "#fff", fontSize: 13, fontWeight: "800" },
+  humanReviewDecisionText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   humanReviewConcernWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   humanReviewConcernPill: {
     borderRadius: 999,
@@ -6568,7 +6568,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#7c3aed",
     borderColor: "#d8b4fe",
   },
-  humanReviewConcernText: { color: "#e5efff", fontSize: 13, fontWeight: "700" },
+  humanReviewConcernText: { color: "#e5efff", fontSize: 12, fontWeight: "700" },
   humanReviewInput: {
     borderRadius: 8,
     borderWidth: 1,
@@ -6577,7 +6577,7 @@ const styles = StyleSheet.create({
     color: "#f8fafc",
     paddingHorizontal: 10,
     paddingVertical: 8,
-    fontSize: 16,
+    fontSize: 14,
   },
   humanReviewInputCompact: {
     minHeight: 48,
@@ -6589,19 +6589,19 @@ const styles = StyleSheet.create({
   },
   humanReviewStatus: {
     color: "#bfdbfe",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
-    lineHeight: 19,
+    lineHeight: 17,
   },
   humanReviewProgressText: {
     color: "#dbeafe",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "900",
     marginTop: 4,
   },
   humanReviewTimeRemainingText: {
     color: "#93c5fd",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     marginBottom: 4,
   },
@@ -6624,7 +6624,7 @@ const styles = StyleSheet.create({
   humanReviewActionButtonText: {
     color: "#fff",
     fontWeight: "900",
-    fontSize: 13,
+    fontSize: 12,
   },
   humanReviewCompletionCard: {
     alignSelf: "center",
