@@ -15,6 +15,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import configFile from "../NovelIdeas.json";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
+import { importLocalCollectionCsv } from "../lib/localCollection";
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
   String(
@@ -437,6 +438,12 @@ export default function AdminWebScreen() {
   const [uploadedCollectionCount, setUploadedCollectionCount] = useState<number>(() => {
     try {
       if (!isWeb || typeof localStorage === "undefined") return 0;
+      const artifact = localStorage.getItem("novelideas_local_collection_artifact_v1");
+      if (artifact) {
+        const parsed = JSON.parse(artifact);
+        const accepted = Array.isArray(parsed?.acceptedRecords) ? parsed.acceptedRecords.length : 0;
+        if (accepted > 0) return accepted;
+      }
       const saved = localStorage.getItem("novelideas_local_collection");
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -618,7 +625,7 @@ export default function AdminWebScreen() {
     }
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".json,.csv";
+    input.accept = ".csv,text/csv,.txt";
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return;
@@ -626,23 +633,32 @@ export default function AdminWebScreen() {
       reader.onload = () => {
         try {
           const raw = String(reader.result || "");
-          let count = 0;
-          if (file.name.toLowerCase().endsWith(".json")) {
-            const parsed = JSON.parse(raw);
-            const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
-            count = items.length;
-            localStorage.setItem("novelideas_local_collection", JSON.stringify(items));
-          } else {
-            const rows = raw.split(/\r?\n/).filter((r) => r.trim().length > 0);
-            count = Math.max(0, rows.length - 1);
-            localStorage.setItem("novelideas_local_collection_csv", raw);
-          }
-          setUploadedCollectionCount(count);
+          const artifact = importLocalCollectionCsv({
+            csvText: raw,
+            sourceFilename: file.name || "collection.csv",
+            collectionName: String(config?.branding?.libraryName || "").trim() || undefined,
+            libraryId: "local-library",
+          });
+          localStorage.setItem("novelideas_local_collection_csv", raw);
+          localStorage.setItem("novelideas_local_collection_artifact_v1", JSON.stringify(artifact));
+          localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
+          localStorage.setItem("novelideas_local_collection", JSON.stringify(artifact.acceptedRecords));
+
+          setUploadedCollectionCount(artifact.summary.acceptedTitles);
           setPath(["recommendations", "localLibrarySupported"], true);
           setPath(["recommendations", "sourceEnabled", "localLibrary"], true);
-          Alert.alert("Collection uploaded", `${count} items imported.`);
+          Alert.alert(
+            "Collection imported",
+            [
+              `Rows: ${artifact.summary.totalRows}`,
+              `Accepted: ${artifact.summary.acceptedTitles}`,
+              `Merged duplicates/copies: ${artifact.summary.mergedDuplicatesOrCopies}`,
+              `Rejected: ${artifact.summary.rejectedRows}`,
+              `Warnings: ${artifact.summary.warnings}`,
+            ].join("\n")
+          );
         } catch {
-          Alert.alert("Upload failed", "Could not parse this file. Please upload valid JSON or CSV.");
+          Alert.alert("Upload failed", "Could not parse this file. Please upload a valid CSV export.");
         }
       };
       reader.readAsText(file);
@@ -949,7 +965,7 @@ export default function AdminWebScreen() {
             style={[styles.btn, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
             onPress={onUploadCollectionWeb}
           >
-            <Text style={[styles.btnText, { color: theme.text }]}>Upload Collection (CSV/JSON)</Text>
+            <Text style={[styles.btnText, { color: theme.text }]}>Upload Collection (CSV)</Text>
           </TouchableOpacity>
           <Text style={{ color: theme.subtext, fontSize: 12 }}>Items: {uploadedCollectionCount}</Text>
         </View>
