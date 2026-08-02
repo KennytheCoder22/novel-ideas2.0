@@ -59,7 +59,6 @@ const {
 const {
   allHumanReviewItemStepsComplete,
   buildHumanReviewDraft,
-  canRevealRecommendationDetails,
   estimateRemainingReviewSeconds,
   formatRemainingReviewTime,
   getHumanReviewProgressLabel,
@@ -129,11 +128,16 @@ async function run() {
   const form = createDefaultHumanReviewForm(snapshot);
   form.reviewerId = "ux-reviewer";
 
-  // 3) expected enjoyment is collected before synopsis/rationale exposure.
-  assert(canRevealRecommendationDetails(form.itemReviews[0]) === false, "details_visible_before_expected_enjoyment");
-  form.itemReviews[0].expectedEnjoyment = 4;
-  assert(canRevealRecommendationDetails(form.itemReviews[0]) === true, "details_not_visible_after_expected_enjoyment");
-  checks.push({ id: 3, name: "expected_enjoyment_gates_details", pass: true });
+  // 3) all item fields are visible immediately on step open (no expected-enjoyment reveal gate).
+  assert(
+    !swipeScreenSource.includes("visibleHumanReviewDetailsUnlocked ? ("),
+    "details_visibility_is_still_gated"
+  );
+  assert(
+    !swipeScreenSource.includes("Select expected enjoyment to reveal synopsis and recommendation rationale for this step."),
+    "gate_hint_copy_still_present"
+  );
+  checks.push({ id: 3, name: "all_fields_visible_without_reveal_gate", pass: true });
 
   // 4) Previous/Next preserves entered values.
   form.itemReviews[0].notes = "first-step-notes";

@@ -40,10 +40,6 @@ export function getHumanReviewProgressLabel(stepIndex: number, totalRecommendati
   return `Recommendation ${recommendationIndex} of ${safeTotal}`;
 }
 
-export function canRevealRecommendationDetails(item: HumanReviewItemFormEntry): boolean {
-  return isHumanReviewItemStepComplete(item);
-}
-
 export function buildHumanReviewDraft(args: {
   snapshotId: string;
   form: HumanReviewSlateForm;

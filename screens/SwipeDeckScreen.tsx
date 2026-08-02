@@ -65,7 +65,6 @@ import {
 import {
   allHumanReviewItemStepsComplete,
   buildHumanReviewDraft,
-  canRevealRecommendationDetails,
   clampHumanReviewStepIndex,
   estimateRemainingReviewSeconds,
   formatRemainingReviewTime,
@@ -5172,7 +5171,6 @@ function handleLeft() {
     : Math.max(1, Math.min(humanReviewCurrentStepIndex + 1, Math.max(1, humanReviewTotalRecommendations)));
   const visibleHumanReviewItem = humanReviewForm?.itemReviews.find((item) => item.rank === humanReviewVisibleRank) || null;
   const visibleHumanReviewItemStepComplete = visibleHumanReviewItem ? isHumanReviewItemStepComplete(visibleHumanReviewItem) : false;
-  const visibleHumanReviewDetailsUnlocked = visibleHumanReviewItem ? canRevealRecommendationDetails(visibleHumanReviewItem) : false;
   const allHumanReviewStepsComplete = humanReviewForm ? allHumanReviewItemStepsComplete(humanReviewForm) : false;
   const humanReviewProgressLabel = getHumanReviewProgressLabel(humanReviewCurrentStepIndex, humanReviewTotalRecommendations);
   const humanReviewTimeRemainingText = formatRemainingReviewTime(
@@ -5810,8 +5808,7 @@ function handleLeft() {
                           ))}
                         </View>
 
-                        {visibleHumanReviewDetailsUnlocked ? (
-                          <View style={isWebTestingMode ? styles.humanReviewDesktopGrid : undefined}>
+                        <View style={isWebTestingMode ? styles.humanReviewDesktopGrid : undefined}>
                             <View style={isWebTestingMode ? styles.humanReviewDesktopColumn : undefined}>
                               {Array.isArray(visibleHumanReviewItem.genreTags) && visibleHumanReviewItem.genreTags.length ? (
                                 <View style={styles.humanReviewGenreTagsRow}>
@@ -5936,12 +5933,7 @@ function handleLeft() {
                                 onChangeText={(value) => updateHumanReviewItem(visibleHumanReviewItem.rank, (prev) => ({ ...prev, notes: value }))}
                               />
                             </View>
-                          </View>
-                        ) : (
-                          <Text style={styles.humanReviewGateHint}>
-                            Select expected enjoyment to reveal synopsis and recommendation rationale for this step.
-                          </Text>
-                        )}
+                        </View>
                       </View>
                     </View>
                   ) : null}
@@ -6586,18 +6578,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     marginBottom: 4,
-  },
-  humanReviewGateHint: {
-    color: "#bfdbfe",
-    fontSize: 10,
-    fontWeight: "700",
-    lineHeight: 14,
-    backgroundColor: "rgba(30, 58, 95, 0.45)",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "rgba(147, 197, 253, 0.35)",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
   },
   humanReviewPublicIntro: {
     marginBottom: 6,
