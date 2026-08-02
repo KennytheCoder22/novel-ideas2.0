@@ -547,7 +547,7 @@ export default function AdminWebScreen() {
   // Save / Discard
   // ---------------------------------------------------------------------------
 
-  const onSave = () => {
+  const onSave = useCallback(() => {
     try {
       const next = deepClone(config);
       const effectiveFontColor = autoFontColor ? autoChooseFontColor(mainColorHex) : fontColorHex;
@@ -559,17 +559,21 @@ export default function AdminWebScreen() {
       }
 
       setConfig(next);
+      // Sync fontColorHex state with the effective value that was saved so dirty
+      // tracking doesn't re-trigger immediately after save when autoFontColor is on.
+      setFontColorHex(effectiveFontColor);
       savedConfigRef.current = JSON.stringify(next);
       savedColorsRef.current = { mainColorHex, highlightColorHex, fontColorHex: effectiveFontColor, autoFontColor };
       setIsDirty(false);
       setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 3000);
+      // Only clear "saved" status; don't overwrite an "error" that arrives from a concurrent call.
+      setTimeout(() => setSaveStatus((s) => (s === "saved" ? "idle" : s)), 3000);
     } catch {
       setSaveStatus("error");
     }
-  };
+  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb]);
 
-  const onDiscard = () => {
+  const onDiscard = useCallback(() => {
     try {
       if (isWeb && typeof localStorage !== "undefined") {
         const saved = localStorage.getItem("novelideas_admin_config");
@@ -600,7 +604,7 @@ export default function AdminWebScreen() {
     savedConfigRef.current = JSON.stringify(base);
     savedColorsRef.current = colors;
     setIsDirty(false);
-  };
+  }, [isWeb]);
 
   // ---------------------------------------------------------------------------
   // Non-web fallback
@@ -650,8 +654,11 @@ export default function AdminWebScreen() {
   // Render
   // ---------------------------------------------------------------------------
 
+  const showStickyBar = isDirty || saveStatus !== "idle";
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: t.appBg }} contentContainerStyle={{ paddingBottom: 100 }}>
+    <View style={{ flex: 1, backgroundColor: t.appBg }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
       <View style={[styles.wrap, { borderColor: t.cardBorder, backgroundColor: t.cardBg }]}>
 
         {/* Page header */}
@@ -1034,32 +1041,44 @@ export default function AdminWebScreen() {
 
       </View>
 
-      {/* ── Sticky Save / Discard bar ── */}
-      {isDirty ? (
-        <View
-          style={[styles.stickyBar, { backgroundColor: t.cardBg, borderTopColor: t.cardBorder }]}
-          accessibilityLabel="Unsaved changes action bar"
-        >
-          <TouchableOpacity
-            style={[styles.btnPrimary, { borderColor: t.accentBorder, backgroundColor: t.accent }]}
-            onPress={onSave}
-            accessibilityLabel="Save Changes"
-          >
-            <Text style={[styles.btnText, { color: t.accentTextOn }]}>Save Changes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
-            onPress={onDiscard}
-            accessibilityLabel="Discard Changes"
-          >
-            <Text style={[styles.btnText, { color: t.text }]}>Discard Changes</Text>
-          </TouchableOpacity>
-          <Text style={{ color: t.subtext, fontSize: 11, marginLeft: 4 }}>
-            You have unsaved changes.
-          </Text>
-        </View>
-      ) : null}
     </ScrollView>
+
+    {/* ── Sticky Save / Discard bar ── */}
+    {showStickyBar ? (
+      <View
+        style={[styles.stickyBar, { backgroundColor: t.cardBg, borderTopColor: t.cardBorder }]}
+        accessibilityLabel="Unsaved changes action bar"
+      >
+        {isDirty ? (
+          <>
+            <TouchableOpacity
+              style={[styles.btnPrimary, { borderColor: t.accentBorder, backgroundColor: t.accent }]}
+              onPress={onSave}
+              accessibilityRole="button"
+              accessibilityLabel="Save Changes"
+            >
+              <Text style={[styles.btnText, { color: t.accentTextOn }]}>Save Changes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+              onPress={onDiscard}
+              accessibilityRole="button"
+              accessibilityLabel="Discard Changes"
+            >
+              <Text style={[styles.btnText, { color: t.text }]}>Discard Changes</Text>
+            </TouchableOpacity>
+            <Text style={{ color: t.subtext, fontSize: 11, marginLeft: 4 }}>
+              You have unsaved changes.
+            </Text>
+          </>
+        ) : saveStatus === "saved" ? (
+          <Text style={{ color: t.success, fontSize: 13, fontWeight: "800" }}>{"Changes saved \u2713"}</Text>
+        ) : saveStatus === "error" ? (
+          <Text style={{ color: t.danger, fontSize: 13, fontWeight: "800" }}>Save failed. Please try again.</Text>
+        ) : null}
+      </View>
+    ) : null}
+    </View>
   );
 }
 
@@ -1125,10 +1144,6 @@ const styles = StyleSheet.create({
   infoCard: { borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 10 },
   badge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   stickyBar: {
-    position: "fixed" as any,
-    bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
