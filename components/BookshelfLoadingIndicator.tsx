@@ -1,9 +1,9 @@
 // components/BookshelfLoadingIndicator.tsx
 import React, { useEffect, useRef, useState } from "react";
 import {
-  AccessibilityInfo,
   Animated,
   Easing,
+  AccessibilityInfo,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -75,25 +75,65 @@ interface Props {
   loading: boolean;
 }
 
+function useReducedMotionPreference(): boolean {
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let removeAccessibilityListener: (() => void) | null = null;
+    let mediaQuery: any = null;
+    let removeMediaListener: (() => void) | null = null;
+
+    const runtime = globalThis as any;
+    if (runtime?.window?.matchMedia) {
+      mediaQuery = runtime.window.matchMedia("(prefers-reduced-motion: reduce)");
+      setReducedMotion(Boolean(mediaQuery.matches));
+      const onMediaChange = (event: any) => setReducedMotion(Boolean(event?.matches));
+      if (typeof mediaQuery.addEventListener === "function") {
+        mediaQuery.addEventListener("change", onMediaChange);
+        removeMediaListener = () => mediaQuery?.removeEventListener("change", onMediaChange);
+      } else if (typeof (mediaQuery as any).addListener === "function") {
+        (mediaQuery as any).addListener(onMediaChange);
+        removeMediaListener = () => (mediaQuery as any).removeListener(onMediaChange);
+      }
+    }
+
+    const maybeIsReducedMotionEnabled = (AccessibilityInfo as any)?.isReducedMotionEnabled;
+    if (typeof maybeIsReducedMotionEnabled === "function") {
+      maybeIsReducedMotionEnabled()
+        .then((enabled: boolean) => {
+          if (!cancelled) setReducedMotion(Boolean(enabled));
+        })
+        .catch(() => {
+          // Keep existing preference if platform API fails.
+        });
+    }
+
+    const maybeAddEventListener = (AccessibilityInfo as any)?.addEventListener;
+    if (typeof maybeAddEventListener === "function") {
+      const sub = maybeAddEventListener("reduceMotionChanged", (enabled: boolean) => {
+        setReducedMotion(Boolean(enabled));
+      });
+      if (sub && typeof sub.remove === "function") {
+        removeAccessibilityListener = () => sub.remove();
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      if (removeAccessibilityListener) removeAccessibilityListener();
+      if (removeMediaListener) removeMediaListener();
+    };
+  }, []);
+
+  return reducedMotion;
+}
+
 export function BookshelfLoadingIndicator({ loading }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const diameter = screenWidth < 430 ? 150 : 200;
 
-  // reduced-motion detection
-  const [reducedMotion, setReducedMotion] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    AccessibilityInfo.isReducedMotionEnabled().then((enabled) => {
-      if (!cancelled) setReducedMotion(enabled);
-    });
-    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", (enabled) => {
-      setReducedMotion(enabled);
-    });
-    return () => {
-      cancelled = true;
-      sub.remove();
-    };
-  }, []);
+  const reducedMotion = useReducedMotionPreference();
 
   // fade-out when loading flips false
   const mountOpacity = useRef(new Animated.Value(loading ? 1 : 0)).current;
