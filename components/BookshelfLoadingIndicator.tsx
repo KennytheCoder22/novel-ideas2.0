@@ -392,18 +392,26 @@ function BookView({
   };
 
   if (tiltAnim) {
-    // Pull straight up off the shelf (like the image), then slide back - no rotation.
-    // pullY: 0 = resting on shelf; 1 = lifted ~45% of book height above shelf.
-    const pullY = tiltAnim.interpolate({
+    // Tilt top of spine toward viewer (rotateX around bottom edge), like pressing
+    // a finger on the top of a book spine and rolling it out ~30 degrees.
+    // Reveals the book thickness and page-edge color from a spine-on viewpoint.
+    const tiltDeg = tiltAnim.interpolate({
       inputRange: [0, 1],
-      outputRange: [0, -(book.height * 0.45)],
+      outputRange: ['0deg', '-30deg'],
     });
+    // Pivot from the bottom edge: shift origin down, rotate, shift back.
+    // perspective gives the 3-D depth cue.
     return (
       <Animated.View
         style={[
           baseStyle,
           {
-            transform: [{ translateY: pullY }],
+            transform: [
+              { perspective: 300 },
+              { translateY: book.height / 2 },
+              { rotateX: tiltDeg },
+              { translateY: -(book.height / 2) },
+            ],
           },
         ]}
       />
