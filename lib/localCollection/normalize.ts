@@ -17,6 +17,7 @@ const HEADER_ALIASES: Record<string, string[]> = {
   audience: ["audience", "age band", "age", "target audience"],
   readingLevel: ["reading level", "grade level", "lexile"],
   shelvingLocation: ["shelving location", "shelf", "location", "collection"],
+  localPlacement: ["local placement", "placement", "local location", "room", "classroom"],
   callNumber: ["call number", "callno", "call #"],
   copies: ["copies", "copy count", "holdings", "quantity", "available copies"],
   availability: ["availability", "status"],
@@ -183,6 +184,7 @@ export function normalizeRow(
   const audience = clean(read("audience")) || undefined;
   const readingLevel = clean(read("readingLevel")) || undefined;
   const shelvingLocation = clean(read("shelvingLocation")) || undefined;
+  const localPlacement = clean(read("localPlacement")) || undefined;
   const callNumber = clean(read("callNumber")) || undefined;
   const availability = clean(read("availability")) || undefined;
   const coverUrl = clean(read("coverUrl")) || undefined;
@@ -201,7 +203,7 @@ export function normalizeRow(
     warningCodes.push("missing_isbn");
     warnings.push({ code: "missing_isbn", detail: "ISBN missing", rowNumber, localId });
   }
-  if (!audience && !readingLevel && !shelvingLocation) {
+  if (!audience && !readingLevel && !shelvingLocation && !localPlacement) {
     warningCodes.push("missing_audience_or_shelf_metadata");
     warnings.push({
       code: "missing_audience_or_shelf_metadata",
@@ -227,6 +229,7 @@ export function normalizeRow(
       audience,
       readingLevel,
       shelvingLocation,
+      localPlacement,
       callNumber,
       copies: parseCopies(read("copies")),
       availability,

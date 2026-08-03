@@ -21,7 +21,7 @@ require.extensions[".ts"] = (module, filename) => {
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
-const { importLocalCollectionCsv } = require(resolve(repoRoot, "lib", "localCollection", "index.ts"));
+const { importLocalCollectionCsv, importLocalCollectionMarc } = require(resolve(repoRoot, "lib", "localCollection", "index.ts"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -30,6 +30,101 @@ function assert(condition, message) {
 function runImport(csvText, sourceFilename = "fixture.csv", importTimestamp = "2026-08-02T00:00:00.000Z") {
   return importLocalCollectionCsv({
     csvText,
+    sourceFilename,
+    importTimestamp,
+    collectionName: "YVHS",
+    libraryId: "yvhs",
+  });
+}
+
+function buildMarcRecord({ control001, title, author, isbn13, pubYear, audience, readingLevel, holdings = [], localPlacement }) {
+  const fieldTerm = "\x1e";
+  const recordTerm = "\x1d";
+  const sub = "\x1f";
+  const fields = [];
+  const encoder = new TextEncoder();
+
+  const pushControl = (tag, value) => {
+    fields.push({ tag, data: `${value}${fieldTerm}` });
+  };
+  const pushData = (tag, ind1 = " ", ind2 = " ", subfields = []) => {
+    const payload = subfields.map(([code, value]) => `${sub}${code}${value}`).join("");
+    fields.push({ tag, data: `${ind1}${ind2}${payload}${fieldTerm}` });
+  };
+
+  pushControl("001", control001);
+  pushControl("003", "MDUSD");
+  pushControl("005", "20260802120000.0");
+  pushControl("008", "260802s2026    cau           000 1 eng d");
+  pushData("020", " ", " ", [["a", isbn13]]);
+  pushData("100", "1", " ", [["a", author]]);
+  pushData("245", "1", "0", [["a", title]]);
+  pushData("260", " ", " ", [["c", pubYear]]);
+  if (readingLevel) {
+    pushData("521", "0", " ", [["a", readingLevel], ["b", "Follett Library Resources"]]);
+  }
+  if (audience) {
+    pushData("521", "2", " ", [["a", audience], ["b", "Follett Library Resources"]]);
+  }
+  for (const holding of holdings) {
+    const holdingSubfields = [];
+    if (holding.copyId) holdingSubfields.push(["p", holding.copyId]);
+    if (holding.locationCode) holdingSubfields.push(["a", holding.locationCode]);
+    if (holding.collection) holdingSubfields.push(["b", holding.collection]);
+    if (holding.callNumber) holdingSubfields.push(["h", holding.callNumber]);
+    if (holding.packed) holdingSubfields.push(["x", holding.packed]);
+    pushData("852", " ", " ", holdingSubfields);
+  }
+  if (localPlacement) {
+    pushData("900", " ", " ", [["a", localPlacement]]);
+  }
+
+  const directoryEntries = [];
+  let dataOffset = 0;
+  const fieldBytes = [];
+  for (const field of fields) {
+    const bytes = encoder.encode(field.data);
+    fieldBytes.push(bytes);
+    const length = String(bytes.length).padStart(4, "0");
+    const start = String(dataOffset).padStart(5, "0");
+    directoryEntries.push(`${field.tag}${length}${start}`);
+    dataOffset += bytes.length;
+  }
+
+  const directory = `${directoryEntries.join("")}${fieldTerm}`;
+  const leader = Array.from("00000nam a2200000 a 4500");
+  const baseAddress = 24 + directory.length;
+  const recordLength = baseAddress + dataOffset + 1;
+  leader.splice(0, 5, ...String(recordLength).padStart(5, "0"));
+  leader.splice(12, 5, ...String(baseAddress).padStart(5, "0"));
+  const leaderText = leader.join("");
+
+  const recordBytes = new Uint8Array(recordLength);
+  let cursor = 0;
+  recordBytes.set(encoder.encode(leaderText), cursor); cursor += 24;
+  recordBytes.set(encoder.encode(directory), cursor); cursor += directory.length;
+  for (const bytes of fieldBytes) {
+    recordBytes.set(bytes, cursor);
+    cursor += bytes.length;
+  }
+  recordBytes[cursor] = recordTerm.charCodeAt(0);
+  return recordBytes;
+}
+
+function concatUint8(chunks) {
+  const total = chunks.reduce((sum, part) => sum + part.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const part of chunks) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}
+
+function runMarcImport(marcBinary, sourceFilename = "fixture.001", importTimestamp = "2026-08-02T00:00:00.000Z") {
+  return importLocalCollectionMarc({
+    marcBinary,
     sourceFilename,
     importTimestamp,
     collectionName: "YVHS",
@@ -208,6 +303,67 @@ checks.push(check("import_does_not_overwrite_legacy_local_collection_key", () =>
     !adminWebText.includes("localStorage.setItem(\"novelideas_local_collection\","),
     "legacy_local_collection_key_overwritten"
   );
+}));
+
+checks.push(check("marc_import_maps_852_collection_and_multi_copy_counts", () => {
+  const record = buildMarcRecord({
+    control001: "fol00118715",
+    title: "Number the stars",
+    author: "Lowry, Lois.",
+    isbn13: "9780395510605",
+    pubYear: "1989",
+    audience: "5-8",
+    readingLevel: "4.5",
+    holdings: [
+      {
+        copyId: "379467",
+        locationCode: "YVHS",
+        collection: "Historical Fiction",
+        callNumber: "FIC Low",
+        packed: "FSC@aAll Regular@c20000330",
+      },
+      {
+        copyId: "384313",
+        locationCode: "YVHS",
+        collection: "Historical Fiction",
+        callNumber: "FIC Low",
+        packed: "FSC@aAll Regular@c20020411",
+      },
+    ],
+    localPlacement: "CLASSROOM",
+  });
+  const result = runMarcImport(record);
+  assert(result.summary.totalRows === 1, "marc_total_rows");
+  assert(result.summary.acceptedTitles === 1, "marc_accepted_titles");
+  const accepted = result.acceptedRecords[0];
+  assert(accepted.copies === 2, "marc_copies_from_852_count");
+  assert(accepted.shelvingLocation === "Historical Fiction", "marc_collection_from_852b");
+  assert(accepted.localPlacement === "CLASSROOM", "marc_local_placement_from_900a");
+  assert(accepted.marcRecordControlNumber === "fol00118715", "marc_001_not_preserved");
+  assert(Array.isArray(accepted.marcHoldings) && accepted.marcHoldings.length === 2, "marc_holdings_not_preserved");
+  assert(accepted.marcHoldings[0].rawPacked === "FSC@aAll Regular@c20000330", "marc_852x_not_preserved");
+}));
+
+checks.push(check("marc_import_missing_852b_keeps_record_with_warning_path", () => {
+  const record = buildMarcRecord({
+    control001: "fol00999999",
+    title: "Collection Unknown",
+    author: "Writer, Alex.",
+    isbn13: "9780439708180",
+    pubYear: "2001",
+    holdings: [
+      {
+        copyId: "C1",
+        locationCode: "YVHS",
+        callNumber: "FIC Wri",
+        packed: "FSC@aAll Regular@c20010101",
+      },
+    ],
+  });
+  const result = runMarcImport(record);
+  assert(result.summary.acceptedTitles === 1, "marc_missing_852b_should_not_reject");
+  const accepted = result.acceptedRecords[0];
+  assert(!accepted.shelvingLocation, "marc_missing_852b_should_leave_shelving_empty");
 }));
 
 globalThis.fetch = originalFetch;

@@ -15,7 +15,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import configFile from "../NovelIdeas.json";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
-import { importLocalCollectionCsv } from "../lib/localCollection";
+import { importLocalCollectionCsv, importLocalCollectionMarc } from "../lib/localCollection";
 import {
   autoChooseFontColor,
   highlightKeyToHex,
@@ -504,41 +504,52 @@ export default function AdminWebScreen() {
     }
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".csv,text/csv,.txt";
-    input.onchange = () => {
+    input.accept = ".csv,text/csv,.txt,.mrc,.marc,.001,application/octet-stream";
+    input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const raw = String(reader.result || "");
-          const artifact = importLocalCollectionCsv({
-            csvText: raw,
-            sourceFilename: file.name || "collection.csv",
-            collectionName: String(config?.branding?.libraryName || "").trim() || undefined,
-            libraryId: "local-library",
-          });
-          localStorage.setItem("novelideas_local_collection_csv", raw);
-          localStorage.setItem("novelideas_local_collection_artifact_v1", JSON.stringify(artifact));
-          localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
-          setUploadedCollectionCount(artifact.summary.acceptedTitles);
-          // Mark collection as available (supported) but do NOT auto-enable the source toggle.
-          setPath(["recommendations", "localLibrarySupported"], true);
-          Alert.alert(
-            "Collection imported",
-            [
-              `Rows: ${artifact.summary.totalRows}`,
-              `Accepted: ${artifact.summary.acceptedTitles}`,
-              `Merged duplicates/copies: ${artifact.summary.mergedDuplicatesOrCopies}`,
-              `Rejected: ${artifact.summary.rejectedRows}`,
-              `Warnings: ${artifact.summary.warnings}`,
-            ].join("\n")
-          );
-        } catch {
-          Alert.alert("Upload failed", "Could not parse this file. Please upload a valid CSV export.");
+      try {
+        const sourceFilename = file.name || "collection.csv";
+        const collectionName = String(config?.branding?.libraryName || "").trim() || undefined;
+        const isMarcUpload = /\.(mrc|marc|001)$/i.test(sourceFilename);
+        const rawCsvText = isMarcUpload ? undefined : await file.text();
+        const artifact = isMarcUpload
+          ? importLocalCollectionMarc({
+              marcBinary: new Uint8Array(await file.arrayBuffer()),
+              sourceFilename,
+              collectionName,
+              libraryId: "local-library",
+            })
+          : importLocalCollectionCsv({
+              csvText: String(rawCsvText || ""),
+              sourceFilename,
+              collectionName,
+              libraryId: "local-library",
+            });
+
+        if (!isMarcUpload) {
+          localStorage.setItem("novelideas_local_collection_csv", String(rawCsvText || ""));
+        } else {
+          localStorage.removeItem("novelideas_local_collection_csv");
         }
-      };
-      reader.readAsText(file);
+        localStorage.setItem("novelideas_local_collection_artifact_v1", JSON.stringify(artifact));
+        localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
+        setUploadedCollectionCount(artifact.summary.acceptedTitles);
+        // Mark collection as available (supported) but do NOT auto-enable the source toggle.
+        setPath(["recommendations", "localLibrarySupported"], true);
+        Alert.alert(
+          "Collection imported",
+          [
+            `Rows: ${artifact.summary.totalRows}`,
+            `Accepted: ${artifact.summary.acceptedTitles}`,
+            `Merged duplicates/copies: ${artifact.summary.mergedDuplicatesOrCopies}`,
+            `Rejected: ${artifact.summary.rejectedRows}`,
+            `Warnings: ${artifact.summary.warnings}`,
+          ].join("\n")
+        );
+      } catch {
+        Alert.alert("Upload failed", "Could not parse this file. Please upload a valid CSV or MARC export.");
+      }
     };
     input.click();
   };
@@ -901,8 +912,8 @@ export default function AdminWebScreen() {
               : "No collection imported"}
           </Text>
           <Note>
-            Upload a CSV export of your library's holdings. Local Collection recommends only from this
-            library's imported titles and cannot run alongside external sources.
+            Upload a CSV or MARC export of your library's holdings. Local Collection recommends only
+            from this library's imported titles and cannot run alongside external sources.
           </Note>
         </View>
 
@@ -911,7 +922,7 @@ export default function AdminWebScreen() {
             style={[styles.btn, { borderColor: t.accentBorder, backgroundColor: t.inputBg }]}
             onPress={onUploadCollectionWeb}
           >
-            <Text style={[styles.btnText, { color: t.text }]}>Upload Collection (CSV)</Text>
+            <Text style={[styles.btnText, { color: t.text }]}>Upload Collection (CSV or MARC)</Text>
           </TouchableOpacity>
         </View>
 

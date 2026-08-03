@@ -43,10 +43,20 @@ export function dedupeAcceptedRecords(records: LocalCollectionNormalizedRecord[]
     existing.audience = mergeText(existing.audience, record.audience);
     existing.readingLevel = mergeText(existing.readingLevel, record.readingLevel);
     existing.shelvingLocation = mergeText(existing.shelvingLocation, record.shelvingLocation);
+    existing.localPlacement = mergeText(existing.localPlacement, record.localPlacement);
     existing.callNumber = mergeText(existing.callNumber, record.callNumber);
     existing.availability = mergeText(existing.availability, record.availability);
     existing.publicationDate = mergeText(existing.publicationDate, record.publicationDate);
     existing.publicationYear = existing.publicationYear || record.publicationYear;
+    if (record.marcRecordControlNumber && !existing.marcRecordControlNumber) {
+      existing.marcRecordControlNumber = record.marcRecordControlNumber;
+    }
+    if (record.sourceFormat && !existing.sourceFormat) {
+      existing.sourceFormat = record.sourceFormat;
+    }
+    if (record.marcHoldings?.length) {
+      existing.marcHoldings = [...(existing.marcHoldings || []), ...record.marcHoldings];
+    }
 
     duplicateRejects.push({
       rowNumber: record.sourceRowNumbers[0],
