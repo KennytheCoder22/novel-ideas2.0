@@ -52,6 +52,16 @@ export function ColorPickerField({ label, value, onChange, theme, hint, testID }
     [onChange, value]
   );
 
+  const commitPickerHex = useCallback(
+    (raw: string) => {
+      if (!isValidHex(raw)) return;
+      const normalized = raw.toLowerCase();
+      onChange(normalized);
+      setHexDraft(normalized);
+    },
+    [onChange]
+  );
+
   const swatchStyle = {
     width: 36,
     height: 36,
@@ -74,13 +84,9 @@ export function ColorPickerField({ label, value, onChange, theme, hint, testID }
             <input
               type="color"
               value={isValidHex(value) ? value : "#888888"}
-              onChange={(e: any) => {
-                const hex = e?.target?.value as string;
-                if (isValidHex(hex)) {
-                  onChange(hex.toLowerCase());
-                  setHexDraft(hex.toLowerCase());
-                }
-              }}
+              onInput={(e: any) => commitPickerHex(String(e?.target?.value || ""))}
+              onChange={(e: any) => commitPickerHex(String(e?.target?.value || ""))}
+              onBlur={(e: any) => commitPickerHex(String(e?.target?.value || ""))}
               style={{
                 position: "absolute",
                 inset: 0,
@@ -92,6 +98,7 @@ export function ColorPickerField({ label, value, onChange, theme, hint, testID }
                 padding: 0,
               }}
               title={`Pick ${label}`}
+              aria-label={`Pick ${label}`}
             />
           </View>
         ) : (

@@ -3,7 +3,14 @@ import { Stack, useRouter } from "expo-router";
 import { Platform, Text, TouchableOpacity, View } from "react-native";
 
 import { getRuntimeLibraryName, subscribeRuntimeLibraryName } from "@/constants/runtimeConfig";
-import { buildTheme, initWebHighlightColorFromStorage, type ThemeKey, type HighlightKey } from "../../constants/brandTheme";
+import {
+  ADMIN_CONFIG_CHANGED_EVENT,
+  ADMIN_CONFIG_STORAGE_KEY,
+  buildTheme,
+  initWebHighlightColorFromStorage,
+  type ThemeKey,
+  type HighlightKey
+} from "../../constants/brandTheme";
 
 if (Platform.OS === "web") initWebHighlightColorFromStorage();
 
@@ -37,16 +44,13 @@ function HeaderTitle(props: { onPress: () => void }) {
  * (even though "tabs" are being removed).
  */
 
-// Keep in sync with index.tsx, which reads/writes this key on web.
-const ADMIN_DRAFT_STORAGE_KEY = "novelideas_admin_config";
-
 function safeReadWebAdminDraft(): any | null {
   try {
     if (Platform.OS !== "web") return null;
     // @ts-ignore
     if (typeof localStorage === "undefined") return null;
     // @ts-ignore
-    const raw = localStorage.getItem(ADMIN_DRAFT_STORAGE_KEY);
+    const raw = localStorage.getItem(ADMIN_CONFIG_STORAGE_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -85,14 +89,19 @@ export default function TabLayout() {
     if (Platform.OS !== "web") return;
 
     const onStorage = (e: any) => {
-      if (e?.key === ADMIN_DRAFT_STORAGE_KEY) setWebDraftTick((n) => n + 1);
+      if (e?.key === ADMIN_CONFIG_STORAGE_KEY) setWebDraftTick((n) => n + 1);
     };
+    const onAdminConfigSaved = () => setWebDraftTick((n) => n + 1);
 
     // @ts-ignore
     window.addEventListener?.("storage", onStorage);
+    // @ts-ignore
+    window.addEventListener?.(ADMIN_CONFIG_CHANGED_EVENT, onAdminConfigSaved);
     return () => {
       // @ts-ignore
       window.removeEventListener?.("storage", onStorage);
+      // @ts-ignore
+      window.removeEventListener?.(ADMIN_CONFIG_CHANGED_EVENT, onAdminConfigSaved);
     };
   }, []);
 

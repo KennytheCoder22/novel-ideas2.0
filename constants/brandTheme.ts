@@ -17,7 +17,8 @@ export type HighlightKey = ThemeKey | "white" | "black" | "silver";
 export type TitleTextKey = "white" | "black";
 export const WEB_HIGHLIGHT_CSS_VAR = "--highlight-color";
 export const DEFAULT_HIGHLIGHT_COLOR = "#fbbf24";
-const ADMIN_CONFIG_STORAGE_KEY = "novelideas_admin_config";
+export const ADMIN_CONFIG_STORAGE_KEY = "novelideas_admin_config";
+export const ADMIN_CONFIG_CHANGED_EVENT = "novelideas:admin-config-saved";
 
 type HighlightPreset = { highlight: string; lightBorder: string; highlightTextOn: string };
 

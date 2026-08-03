@@ -25,7 +25,15 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
-import { applyWebHighlightColor, buildTheme, type ThemeKey, type HighlightKey, type TitleTextKey } from "../../constants/brandTheme";
+import {
+  ADMIN_CONFIG_CHANGED_EVENT,
+  ADMIN_CONFIG_STORAGE_KEY,
+  applyWebHighlightColor,
+  buildTheme,
+  type ThemeKey,
+  type HighlightKey,
+  type TitleTextKey
+} from "../../constants/brandTheme";
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
   String(
@@ -97,7 +105,7 @@ function tryLoadDesktopAdminDraft(): any | null {
     // @ts-ignore
     if (typeof localStorage === "undefined") return null;
     // @ts-ignore
-    const saved = localStorage.getItem("novelideas_admin_config");
+    const saved = localStorage.getItem(ADMIN_CONFIG_STORAGE_KEY);
     if (!saved) return null;
     const parsed = JSON.parse(saved);
     return syncSchema(parsed);
@@ -1540,15 +1548,18 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
       }
     };
     const onStorage = (event: StorageEvent) => {
-      if (event.key === "novelideas_admin_config") refreshConfigFromDesktopAdminDraft();
+      if (event.key === ADMIN_CONFIG_STORAGE_KEY) refreshConfigFromDesktopAdminDraft();
     };
+    const onAdminConfigSaved = () => refreshConfigFromDesktopAdminDraft();
 
     window.addEventListener("focus", onFocus);
     window.addEventListener("storage", onStorage);
+    window.addEventListener(ADMIN_CONFIG_CHANGED_EVENT, onAdminConfigSaved);
     document?.addEventListener?.("visibilitychange", onVisibilityChange);
     return () => {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener(ADMIN_CONFIG_CHANGED_EVENT, onAdminConfigSaved);
       document?.removeEventListener?.("visibilitychange", onVisibilityChange);
     };
   }, [refreshConfigFromDesktopAdminDraft]);
