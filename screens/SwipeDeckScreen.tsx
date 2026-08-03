@@ -1800,6 +1800,8 @@ export default function SwipeDeckScreen(props: Props) {
               return;
             }
           } catch {
+          }
+        }
 
         const localFallbackImage = getSwipeCardFallbackImage(deckKey, title);
         const localFallbackUri = localFallbackImage ? Image.resolveAssetSource(localFallbackImage)?.uri : undefined;
