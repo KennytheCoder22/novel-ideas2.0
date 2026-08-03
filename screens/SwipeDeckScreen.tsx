@@ -1157,21 +1157,31 @@ function cardSignalForAxis(card: SwipeDeckCard, axis: TwentyQAxis): number {
   return score;
 }
 
+function cardRecencyKey(card: SwipeDeckCard): string {
+  const title = String((card as any)?.title || "").trim().toLowerCase();
+  const author = String((card as any)?.author || "").trim().toLowerCase();
+  const prompt = String((card as any)?.prompt || "").trim().toLowerCase();
+  if (title || author) return `${title}::${author}`;
+  if (prompt) return prompt;
+  return cardIdentityKey(card);
+}
+
 function selectTwentyQCard(args: {
   deckKey: DeckKey;
   cards: SwipeDeckCard[];
   tagCounts: TagCounts;
   recentCardKeys: string[];
+  recentCards: SwipeDeckCard[];
   objective: TwentyQObjective | null;
 }): SwipeDeckCard | null {
-  const { deckKey, cards, tagCounts, recentCardKeys, objective } = args;
+  const { deckKey, cards, tagCounts, recentCardKeys, recentCards, objective } = args;
   if (!cards.length) return null;
 
   const hasSessionEvidence =
     recentCardKeys.length > 0 ||
     Object.values(tagCounts || {}).some((value) => Number(value || 0) !== 0);
 
-  const fallback = selectAdaptiveCard({ deckKey, cards, tagCounts, recentCardKeys, recentCards: cards.filter((card) => recentCardKeys.includes(cardIdentityKey(card))) });
+  const fallback = selectAdaptiveCard({ deckKey, cards, tagCounts, recentCardKeys, recentCards });
 
   // First card of a fresh session should not be locked to the strongest
   // diagnostic/20Q card. Use the already shuffled session deck plus the
@@ -1181,11 +1191,13 @@ function selectTwentyQCard(args: {
   if (!objective) return fallback;
 
   const recent = new Set(recentCardKeys);
+  const recentRecencyKeys = new Set(recentCards.map((card) => cardRecencyKey(card)).filter(Boolean));
   const scored = cards
     .map((card, index) => {
       const key = cardIdentityKey(card);
       const baseSignal = cardSignalForAxis(card, objective.axis);
       const noveltyBonus = recent.has(key) ? -2.0 : 0.45;
+      const recencyPenalty = recentRecencyKeys.has(cardRecencyKey(card)) ? 1.35 : 0;
       const mediaBonus = objective.axis === "realism" && cardCategoryFromTags(card as any) !== "books" ? 0.2 : 0;
       const directSignal = cardDirectAxisSignal(card, objective.axis);
 
@@ -1194,7 +1206,7 @@ function selectTwentyQCard(args: {
       // Treat strong cards as qualified rather than automatically next.
       const directMagnitude = Math.abs(directSignal);
       const directBonus = directMagnitude > 0 ? Math.min(3.2, directMagnitude * 3.2) : 0;
-      const score = directBonus + baseSignal * 1.9 + noveltyBonus + mediaBonus;
+      const score = directBonus + baseSignal * 1.9 + noveltyBonus + mediaBonus - recencyPenalty;
 
       return { card, index, score };
     })
@@ -1206,8 +1218,10 @@ function selectTwentyQCard(args: {
   // Use a broader, flatter qualified pool so every age band keeps feeling fresh
   // after the first card while still asking useful 20Q questions.
   const candidatePool = viable.slice(0, Math.min(18, viable.length));
-  const minScore = Math.min(...candidatePool.map((entry) => entry.score));
-  const weightedPool = candidatePool.map((entry, index) => {
+  const freshPool = candidatePool.filter((entry) => !recentRecencyKeys.has(cardRecencyKey(entry.card)));
+  const weightedCandidates = freshPool.length ? freshPool : candidatePool;
+  const minScore = Math.min(...weightedCandidates.map((entry) => entry.score));
+  const weightedPool = weightedCandidates.map((entry, index) => {
     const normalizedScore = Math.max(0, entry.score - minScore);
     return {
       ...entry,
@@ -1714,6 +1728,10 @@ export default function SwipeDeckScreen(props: Props) {
     totalCards: cards.length,
   });
   const showRecommendationsView = isDone || forceRecommendationsView;
+  const recentCards = useMemo(
+    () => swipeHistory.slice(-8).map((entry) => entry.card).filter(Boolean),
+    [swipeHistory]
+  );
   const currentCard: SwipeDeckCard | null = useMemo(() => {
     if (isDone) return null;
     return selectTwentyQCard({
@@ -1721,9 +1739,10 @@ export default function SwipeDeckScreen(props: Props) {
       cards: remainingCards,
       tagCounts,
       recentCardKeys,
+      recentCards,
       objective: activeTwentyQObjective,
     });
-  }, [isDone, deckKey, remainingCards, tagCounts, recentCardKeys, activeTwentyQObjective]);
+  }, [isDone, deckKey, remainingCards, tagCounts, recentCardKeys, recentCards, activeTwentyQObjective]);
 
   const [swipeCoverCache, setSwipeCoverCache] = useState<Record<string, string>>({});
   const [swipeCoverFailures, setSwipeCoverFailures] = useState<Record<string, string[]>>({});
