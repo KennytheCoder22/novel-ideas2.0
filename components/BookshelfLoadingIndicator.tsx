@@ -392,21 +392,18 @@ function BookView({
   };
 
   if (tiltAnim) {
-    const tiltDeg = tiltAnim.interpolate({
+    // Pull straight up off the shelf (like the image), then slide back - no rotation.
+    // pullY: 0 = resting on shelf; 1 = lifted ~45% of book height above shelf.
+    const pullY = tiltAnim.interpolate({
       inputRange: [0, 1],
-      outputRange: ["0deg", "-30deg"],
+      outputRange: [0, -(book.height * 0.45)],
     });
-    // Pivot from book base: translate up by height, rotate, translate back down
     return (
       <Animated.View
         style={[
           baseStyle,
           {
-            transform: [
-              { translateY: book.height },
-              { rotate: tiltDeg },
-              { translateY: -book.height },
-            ],
+            transform: [{ translateY: pullY }],
           },
         ]}
       />
