@@ -1725,6 +1725,7 @@ export default function SwipeDeckScreen(props: Props) {
 
   const [swipeCoverCache, setSwipeCoverCache] = useState<Record<string, string>>({});
   const [swipeCoverFailures, setSwipeCoverFailures] = useState<Record<string, string[]>>({});
+  const [swipeCoverLoading, setSwipeCoverLoading] = useState<Record<string, boolean>>({});
 
   const currentCardKey = useMemo(() => {
     const t = (currentCard as any)?.title ?? "";
@@ -1752,11 +1753,13 @@ export default function SwipeDeckScreen(props: Props) {
       const tags = Array.isArray((currentCard as any)?.tags) ? (currentCard as any).tags.map((t: any) => String(t).toLowerCase()) : [];
       const nonBookMediaCard = tags.some((t: string) => t === "media:tv" || t === "media:movie" || t === "media:game");
       if (!title || title.trim().length === 0) return;
+      if (swipeCoverCache[currentCardKey]) return;
 
-      const wikiTitle = (currentCard as any)?.wikiTitle as string | undefined;
-      const explicitImage = (currentCard as any)?.imageUri as string | undefined;
-      if (!normalizeImageUrl(explicitImage) && wikiTitle && wikiTitle.trim().length > 0) {
-        if (!swipeCoverCache[currentCardKey]) {
+      setSwipeCoverLoading((prev) => ({ ...prev, [currentCardKey]: true }));
+      try {
+        const wikiTitle = (currentCard as any)?.wikiTitle as string | undefined;
+        const explicitImage = (currentCard as any)?.imageUri as string | undefined;
+        if (!normalizeImageUrl(explicitImage) && wikiTitle && wikiTitle.trim().length > 0) {
           try {
             const foundWiki = await lookupWikipediaThumbnail(wikiTitle);
             if (cancelled) return;
@@ -1767,30 +1770,32 @@ export default function SwipeDeckScreen(props: Props) {
             }
           } catch {
           }
-        } else {
-          return;
         }
-      }
 
-      if (swipeCoverCache[currentCardKey]) return;
+        if (swipeCoverCache[currentCardKey]) return;
 
-      if (!nonBookMediaCard) {
-        try {
-          const found = await lookupOpenLibraryCover(title, author);
-          if (cancelled) return;
-          const coverUrl = normalizeImageUrl(found?.coverUrl);
-          if (coverUrl) {
-            setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: coverUrl }));
-            return;
+        if (!nonBookMediaCard) {
+          try {
+            const found = await lookupOpenLibraryCover(title, author);
+            if (cancelled) return;
+            const coverUrl = normalizeImageUrl(found?.coverUrl);
+            if (coverUrl) {
+              setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: coverUrl }));
+              return;
+            }
+          } catch {
           }
-        } catch {
         }
-      }
 
-      const localFallbackImage = getSwipeCardFallbackImage(deckKey, title);
-      const localFallbackUri = localFallbackImage ? Image.resolveAssetSource(localFallbackImage)?.uri : undefined;
-      if (typeof localFallbackUri === "string" && localFallbackUri.length > 0) {
-        setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: localFallbackUri }));
+        const localFallbackImage = getSwipeCardFallbackImage(deckKey, title);
+        const localFallbackUri = localFallbackImage ? Image.resolveAssetSource(localFallbackImage)?.uri : undefined;
+        if (typeof localFallbackUri === "string" && localFallbackUri.length > 0) {
+          setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: localFallbackUri }));
+        }
+      } finally {
+        if (!cancelled) {
+          setSwipeCoverLoading((prev) => ({ ...prev, [currentCardKey]: false }));
+        }
       }
     }
     run();
@@ -5529,6 +5534,10 @@ function handleLeft() {
                           });
                         }}
                       />
+                    ) : swipeCoverLoading[currentCardKey] ? (
+                      <View style={styles.swipeCoverPlaceholder}>
+                        <ActivityIndicator size="large" color={highlightColor} />
+                      </View>
                     ) : (
                       <View style={styles.swipeCoverPlaceholder}>
                         <Text style={styles.swipeCoverPlaceholderTitle} numberOfLines={2}>
