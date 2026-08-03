@@ -5398,6 +5398,15 @@ function handleLeft() {
                   </View>
                 ) : null}
 
+                {!recLoading && !recError && recItems.length === 0 ? (
+                  <View style={{ marginTop: 12, alignItems: "center" }}>
+                    <Text style={styles.smallNote}>Preparing your recommendations...</Text>
+                    <TouchableOpacity style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 10 }]} onPress={tryAgain}>
+                      <Text style={styles.btnText}>Try again</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+
                 {recItems.length > 0 && !recLoading && currentRec ? (
                   <View style={styles.recCard}>
                     <View style={styles.bigCoverWrap}>
