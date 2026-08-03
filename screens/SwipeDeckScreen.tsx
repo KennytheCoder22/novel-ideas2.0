@@ -28,6 +28,7 @@ import * as deck36Mod from "../data/swipeDecks/36";
 import msHsDeck from "../data/swipeDecks/ms_hs";
 import adultDeck from "../data/swipeDecks/adult";
 import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
+import coverUrlsMap from '../assets/coverUrls.json';
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { runRecommenderV2 } from "../app/recommender-v2";
 import { applyGoogleBooksRenderingStageLineage, computeGoogleBooksDropDiagnostics, computeGoogleBooksDropDiagnosticsByTitle, harmonizeGoogleBooksStageLineage } from "../app/recommender-v2/googleBooksLineageDiagnostics";
@@ -1775,6 +1776,20 @@ export default function SwipeDeckScreen(props: Props) {
 
         if (swipeCoverCache[currentCardKey]) return;
 
+        // Check static pre-resolved cover URL map first (instant, no API call)
+        {
+          const normalizedKey = [
+            String(title || '').toLowerCase().trim().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' '),
+            String(author || '').toLowerCase().trim().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' '),
+          ].filter(Boolean).join('|');
+          const staticUrl = (coverUrlsMap as Record<string, string>)[normalizedKey] ||
+            (coverUrlsMap as Record<string, string>)[String(title || '').toLowerCase().trim().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ')];
+          if (staticUrl) {
+            setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: staticUrl }));
+            return;
+          }
+        }
+
         if (!nonBookMediaCard) {
           try {
             const found = await lookupOpenLibraryCover(title, author);
@@ -1785,8 +1800,6 @@ export default function SwipeDeckScreen(props: Props) {
               return;
             }
           } catch {
-          }
-        }
 
         const localFallbackImage = getSwipeCardFallbackImage(deckKey, title);
         const localFallbackUri = localFallbackImage ? Image.resolveAssetSource(localFallbackImage)?.uri : undefined;
