@@ -52,6 +52,7 @@ import type { RecommenderInput } from "./recommenders/types";
 import { estimateReaderSophisticationFromTaste } from "./recommenders/taste/sophisticationModel";
 import { cardIdentityKey, selectAdaptiveCard } from "./swipe/adaptiveCardQueue";
 import { getSwipeCardFallbackImage } from "../assets/swipeCardFallback";
+import { BookshelfLoadingIndicator } from "../components/BookshelfLoadingIndicator";
 import {
   HUMAN_REVIEW_CONCERN_OPTIONS,
   createDefaultHumanReviewForm,
@@ -5370,10 +5371,7 @@ function handleLeft() {
                 ) : null}
 
                 {recLoading ? (
-                  <View style={{ marginTop: 14, alignItems: "center" }}>
-                    <ActivityIndicator />
-                    <Text style={styles.smallNote}>Finding books you'll love</Text>
-                  </View>
+                  <BookshelfLoadingIndicator loading={recLoading} />
                 ) : null}
 
                 {!!recError && !recLoading ? (
