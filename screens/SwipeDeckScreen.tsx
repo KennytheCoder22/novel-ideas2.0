@@ -5572,9 +5572,9 @@ function handleLeft() {
                   <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
                     <View style={[styles.divider, isSmallScreen && styles.dividerTight]} />
                     <View style={styles.clueRow}>
-                      <Text style={styles.clueText}>â† Dislike</Text>
-                      <Text style={styles.clueText}>â†“ Skip</Text>
-                      <Text style={styles.clueText}>Like â†’</Text>
+                      <Text style={styles.clueText}>← Dislike</Text>
+                      <Text style={styles.clueText}>↓ Skip</Text>
+                      <Text style={styles.clueText}>Like →</Text>
                     </View>
                     <Pressable
                       style={({ pressed }) => [
