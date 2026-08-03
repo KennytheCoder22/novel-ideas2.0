@@ -1,11 +1,13 @@
 import { deterministicHash } from "./hash";
 import { parseCsv } from "./importCsv";
+import { importLocalCollectionMarc } from "./importMarc";
 import { dedupeAcceptedRecords } from "./dedupe";
 import { buildSummary } from "./report";
 import { mapHeaderIndices, normalizeRow } from "./normalize";
 import type {
   LocalCollectionArtifact,
   LocalCollectionImportInput,
+  LocalCollectionMarcImportInput,
   LocalCollectionNormalizedRecord,
   LocalCollectionRejectedRecord,
   LocalCollectionWarningCode,
@@ -58,6 +60,7 @@ export function importLocalCollectionCsv(input: LocalCollectionImportInput): Loc
   const artifactBase: Omit<LocalCollectionArtifact, "deterministicContentHash"> = {
     metadata: {
       schemaVersion: "local_collection_import_v1",
+      sourceFormat: "csv",
       importTimestamp,
       sourceFilename,
       collectionName: input.collectionName,
@@ -92,9 +95,13 @@ export function importLocalCollectionCsv(input: LocalCollectionImportInput): Loc
 export type {
   LocalCollectionArtifact,
   LocalCollectionImportInput,
+  LocalCollectionMarcImportInput,
   LocalCollectionImportSummary,
   LocalCollectionNormalizedRecord,
   LocalCollectionRejectedRecord,
   LocalCollectionRejectReason,
+  LocalCollectionSourceFormat,
   LocalCollectionWarningCode,
 } from "./types";
+
+export { importLocalCollectionMarc };

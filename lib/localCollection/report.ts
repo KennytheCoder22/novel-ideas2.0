@@ -14,7 +14,9 @@ export function buildSummary(
   for (const record of acceptedRecords) {
     if (!record.coverUrl) titlesMissingCovers += 1;
     if (!record.isbn10 && !record.isbn13) titlesMissingIsbns += 1;
-    if (!record.audience && !record.readingLevel && !record.shelvingLocation) titlesMissingAudienceOrShelfMetadata += 1;
+    if (!record.audience && !record.readingLevel && !record.shelvingLocation && !record.localPlacement) {
+      titlesMissingAudienceOrShelfMetadata += 1;
+    }
   }
 
   return {

@@ -14,6 +14,8 @@ export type LocalCollectionWarningCode =
   | "missing_isbn"
   | "missing_audience_or_shelf_metadata";
 
+export type LocalCollectionSourceFormat = "csv" | "marc21";
+
 export interface LocalCollectionRawRow {
   rowNumber: number;
   sourceRowId?: string;
@@ -24,6 +26,8 @@ export interface LocalCollectionNormalizedRecord {
   localId: string;
   workKey: string;
   editionKey: string;
+  sourceFormat?: LocalCollectionSourceFormat;
+  marcRecordControlNumber?: string;
   title: string;
   titleNormalized: string;
   author: string;
@@ -35,10 +39,18 @@ export interface LocalCollectionNormalizedRecord {
   audience?: string;
   readingLevel?: string;
   shelvingLocation?: string;
+  localPlacement?: string;
   callNumber?: string;
   copies: number;
   availability?: string;
   coverUrl?: string;
+  marcHoldings?: Array<{
+    locationCode?: string;
+    collection?: string;
+    callNumber?: string;
+    copyId?: string;
+    rawPacked?: string;
+  }>;
   sourceRowId?: string;
   sourceRowNumbers: number[];
   sourceRows: LocalCollectionRawRow[];
@@ -68,6 +80,7 @@ export interface LocalCollectionArtifactMetadata {
   schemaVersion: "local_collection_import_v1";
   importTimestamp: string;
   sourceFilename: string;
+  sourceFormat?: LocalCollectionSourceFormat;
   collectionName?: string;
   libraryId?: string;
 }
@@ -83,6 +96,14 @@ export interface LocalCollectionArtifact {
 
 export interface LocalCollectionImportInput {
   csvText: string;
+  sourceFilename: string;
+  importTimestamp?: string;
+  collectionName?: string;
+  libraryId?: string;
+}
+
+export interface LocalCollectionMarcImportInput {
+  marcBinary: Uint8Array | ArrayBuffer;
   sourceFilename: string;
   importTimestamp?: string;
   collectionName?: string;
