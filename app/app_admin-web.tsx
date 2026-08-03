@@ -379,6 +379,11 @@ export default function AdminWebScreen() {
     if (configChanged || colorsChanged) setSaveStatus("idle");
   }, [config, mainColorHex, highlightColorHex, fontColorHex, autoFontColor]);
 
+  type ImportPhase = 'idle' | 'reading' | 'parsing' | 'saving' | 'done' | 'error';
+  const [importStatus, setImportStatus] = useState<{ phase: ImportPhase; pct: number; label: string }>(
+    { phase: 'idle', pct: 0, label: '' }
+  );
+
   const [uploadedCollectionCount, setUploadedCollectionCount] = useState<number>(() => {
     try {
       if (!isWeb || typeof localStorage === "undefined") return 0;
@@ -520,50 +525,80 @@ export default function AdminWebScreen() {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".csv,text/csv,.txt,.mrc,.marc,.001,application/octet-stream";
-    input.onchange = async () => {
+    input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return;
-      try {
-        const sourceFilename = file.name || "collection.csv";
-        const collectionName = String(config?.branding?.libraryName || "").trim() || undefined;
-        const isMarcUpload = /\.(mrc|marc|001)$/i.test(sourceFilename);
-        const rawCsvText = isMarcUpload ? undefined : await file.text();
-        const artifact = isMarcUpload
-          ? importLocalCollectionMarc({
-              marcBinary: new Uint8Array(await file.arrayBuffer()),
-              sourceFilename,
-              collectionName,
-              libraryId: "local-library",
-            })
-          : importLocalCollectionCsv({
-              csvText: String(rawCsvText || ""),
-              sourceFilename,
-              collectionName,
-              libraryId: "local-library",
-            });
-
-        if (!isMarcUpload) {
-          localStorage.setItem("novelideas_local_collection_csv", String(rawCsvText || ""));
-        } else {
-          localStorage.removeItem("novelideas_local_collection_csv");
+      const sourceFilename = file.name || "collection.csv";
+      const isMarcUpload = /\.(mrc|marc|001)$/i.test(sourceFilename);
+      setImportStatus({ phase: 'reading', pct: 5, label: 'Reading file…' });
+      const reader = new FileReader();
+      reader.onprogress = (e) => {
+        if (e.lengthComputable) {
+          // File-read phase = 0-40% of total
+          const readPct = Math.max(5, Math.round((e.loaded / e.total) * 40));
+          setImportStatus({ phase: 'reading', pct: readPct, label: 'Reading file…' });
         }
-        localStorage.setItem("novelideas_local_collection_artifact_v1", JSON.stringify(artifact));
-        localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
-        setUploadedCollectionCount(artifact.summary.acceptedTitles);
-        // Mark collection as available (supported) but do NOT auto-enable the source toggle.
-        setPath(["recommendations", "localLibrarySupported"], true);
-        Alert.alert(
-          "Collection imported",
-          [
-            `Rows: ${artifact.summary.totalRows}`,
-            `Accepted: ${artifact.summary.acceptedTitles}`,
-            `Merged duplicates/copies: ${artifact.summary.mergedDuplicatesOrCopies}`,
-            `Rejected: ${artifact.summary.rejectedRows}`,
-            `Warnings: ${artifact.summary.warnings}`,
-          ].join("\n")
-        );
-      } catch {
-        Alert.alert("Upload failed", "Could not parse this file. Please upload a valid CSV or MARC export.");
+      };
+      reader.onload = () => {
+        // Flush the reading→parsing UI update before the synchronous parse blocks the thread
+        setImportStatus({ phase: 'parsing', pct: 45, label: 'Parsing records…' });
+        setTimeout(() => {
+          try {
+            const collectionName = String(config?.branding?.libraryName || "").trim() || undefined;
+            let artifact;
+            if (isMarcUpload) {
+              artifact = importLocalCollectionMarc({
+                marcBinary: new Uint8Array(reader.result as ArrayBuffer),
+                sourceFilename,
+                collectionName,
+                libraryId: "local-library",
+              });
+              localStorage.removeItem("novelideas_local_collection_csv");
+            } else {
+              artifact = importLocalCollectionCsv({
+                csvText: String(reader.result || ""),
+                sourceFilename,
+                collectionName,
+                libraryId: "local-library",
+              });
+              localStorage.setItem("novelideas_local_collection_csv", String(reader.result || ""));
+            }
+            setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
+            // Strip bulky audit fields before writing to localStorage (sourceRows alone is ~7 MB for an 8,710-record MARC file).
+            const storableArtifact = {
+              ...artifact,
+              acceptedRecords: artifact.acceptedRecords.map(({ sourceRows: _sr, ...rest }: any) => rest),
+              rejectedRecords: artifact.rejectedRecords.map(({ raw: _raw, ...rest }: any) => rest),
+            };
+            localStorage.setItem("novelideas_local_collection_artifact_v1", JSON.stringify(storableArtifact));
+            localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
+            setUploadedCollectionCount(artifact.summary.acceptedTitles);
+            // Mark collection as available (supported) but do NOT auto-enable the source toggle.
+            setPath(["recommendations", "localLibrarySupported"], true);
+            const accepted = artifact.summary.acceptedTitles;
+            const warnings = artifact.summary.warnings;
+            setImportStatus({
+              phase: 'done',
+              pct: 100,
+              label: `${accepted.toLocaleString()} titles imported${
+                warnings > 0 ? ` (${warnings} warning${warnings === 1 ? '' : 's'})` : ''
+              }`,
+            });
+            setTimeout(() => setImportStatus({ phase: 'idle', pct: 0, label: '' }), 5000);
+          } catch {
+            setImportStatus({ phase: 'error', pct: 0, label: 'Import failed. Check the file and try again.' });
+            setTimeout(() => setImportStatus({ phase: 'idle', pct: 0, label: '' }), 6000);
+          }
+        }, 0);
+      };
+      reader.onerror = () => {
+        setImportStatus({ phase: 'error', pct: 0, label: 'Could not read file.' });
+        setTimeout(() => setImportStatus({ phase: 'idle', pct: 0, label: '' }), 6000);
+      };
+      if (isMarcUpload) {
+        reader.readAsArrayBuffer(file);
+      } else {
+        reader.readAsText(file);
       }
     };
     input.click();
@@ -983,12 +1018,60 @@ export default function AdminWebScreen() {
 
         <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <TouchableOpacity
-            style={[styles.btn, { borderColor: t.accentBorder, backgroundColor: t.inputBg }]}
+            style={[
+              styles.btn,
+              { borderColor: t.accentBorder, backgroundColor: t.inputBg },
+              importStatus.phase !== 'idle' && importStatus.phase !== 'done' && importStatus.phase !== 'error'
+                ? { opacity: 0.5 }
+                : undefined,
+            ]}
             onPress={onUploadCollectionWeb}
+            disabled={importStatus.phase !== 'idle' && importStatus.phase !== 'done' && importStatus.phase !== 'error'}
           >
             <Text style={[styles.btnText, { color: t.text }]}>Upload Collection (CSV or MARC)</Text>
           </TouchableOpacity>
         </View>
+
+        {importStatus.phase !== 'idle' && (
+          <View style={{ marginTop: 10 }}>
+            <View
+              style={{
+                height: 6,
+                backgroundColor: t.cardBorder,
+                borderRadius: 3,
+                overflow: 'hidden',
+              }}
+            >
+              <View
+                style={{
+                  height: 6,
+                  width: `${importStatus.pct}%` as any,
+                  backgroundColor:
+                    importStatus.phase === 'error'
+                      ? t.danger
+                      : importStatus.phase === 'done'
+                      ? t.accent
+                      : t.accentBorder,
+                  borderRadius: 3,
+                }}
+              />
+            </View>
+            <Text
+              style={{
+                color:
+                  importStatus.phase === 'error'
+                    ? t.danger
+                    : importStatus.phase === 'done'
+                    ? t.accent
+                    : t.subtext,
+                fontSize: 12,
+                marginTop: 4,
+              }}
+            >
+              {importStatus.label}
+            </Text>
+          </View>
+        )}
 
         {localLibrarySupported ? (
           <View style={[styles.rowBetween, { marginTop: 16 }]}>
