@@ -284,9 +284,9 @@ checks.push(check("artifact_is_self_contained_for_export_or_inspection", () => {
   assert(typeof exported.deterministicContentHash === "string" && exported.deterministicContentHash.length > 0, "hash_missing");
 }));
 
-checks.push(check("no_recommender_local_adapter_activation", () => {
+checks.push(check("recommender_local_adapter_is_activated", () => {
   const sourceIndexText = readFileSync(resolve(repoRoot, "app", "recommender-v2", "sources", "index.ts"), "utf8");
-  assert(/localLibrary:\s*null/.test(sourceIndexText), "local_library_adapter_was_activated");
+  assert(!/localLibrary:\s*null/.test(sourceIndexText), "local_library_adapter_not_activated");
 }));
 
 checks.push(check("import_does_not_auto_enable_local_collection_source", () => {

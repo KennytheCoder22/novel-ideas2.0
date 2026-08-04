@@ -133,6 +133,19 @@ const DEFAULT_RECOMMENDATION_SOURCE_ENABLED: RecommendationSourceEnabled = {
   nyt: false,
 };
 
+function applyLocalCollectionOnlySourceRouting(sourceEnabled: RecommendationSourceEnabled): RecommendationSourceEnabled {
+  if (!sourceEnabled.localLibrary) return sourceEnabled;
+  return {
+    ...sourceEnabled,
+    googleBooks: false,
+    openLibrary: false,
+    kitsu: false,
+    gcd: false,
+    nyt: false,
+    localLibrary: true,
+  };
+}
+
 function resolveRecommendationSourceSettings(cfg: any): {
   sourceEnabled: RecommendationSourceEnabled;
   deckSourceEnabled: Record<DeckKey, RecommendationSourceEnabled>;
@@ -163,7 +176,12 @@ function resolveRecommendationSourceSettings(cfg: any): {
     }
   }
 
-  return { sourceEnabled, deckSourceEnabled: { k2: sourceEnabled, "36": sourceEnabled, ms_hs: sourceEnabled, adult: sourceEnabled }, localLibrarySupported };
+  const routedSourceEnabled = applyLocalCollectionOnlySourceRouting(sourceEnabled);
+  return {
+    sourceEnabled: routedSourceEnabled,
+    deckSourceEnabled: { k2: routedSourceEnabled, "36": routedSourceEnabled, ms_hs: routedSourceEnabled, adult: routedSourceEnabled },
+    localLibrarySupported,
+  };
 }
 
 const DEFAULT_SWIPE_CATEGORIES: SwipeCategories = {
@@ -1855,7 +1873,25 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   function setSourceEnabledValue(key: RecommendationSourceToggleKey, enabled: boolean) {
     if (key === "localLibrary" && !localLibrarySupported) return;
-    setInConfig(["recommendations", "sourceEnabled", key], enabled);
+    setHasUnsavedChanges(true);
+    setConfig((prev: any) => {
+      const next = deepClone(prev);
+      next.recommendations = (next.recommendations && typeof next.recommendations === "object") ? next.recommendations : {};
+      next.recommendations.sourceEnabled = (next.recommendations.sourceEnabled && typeof next.recommendations.sourceEnabled === "object")
+        ? next.recommendations.sourceEnabled
+        : {};
+      next.recommendations.sourceEnabled[key] = enabled;
+      if (key === "localLibrary" && enabled) {
+        next.recommendations.sourceEnabled.googleBooks = false;
+        next.recommendations.sourceEnabled.openLibrary = false;
+        next.recommendations.sourceEnabled.kitsu = false;
+        next.recommendations.sourceEnabled.gcd = false;
+        next.recommendations.sourceEnabled.nyt = false;
+      } else if (enabled) {
+        next.recommendations.sourceEnabled.localLibrary = false;
+      }
+      return next;
+    });
   }
   function setSourceEnabledForDeckValue(deckKey: DeckKey, key: RecommendationSourceToggleKey, enabled: boolean) {
     if (key === "localLibrary" && !localLibrarySupported) return;
