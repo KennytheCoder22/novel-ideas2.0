@@ -17,6 +17,10 @@ import configFile from "../NovelIdeas.json";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
 import { importLocalCollectionCsv, importLocalCollectionMarc } from "../lib/localCollection";
 import {
+  persistLocalCollectionRecommendationArtifact,
+  readLocalCollectionAcceptedCountFromLocalStorage,
+} from "../lib/localCollection/storage";
+import {
   ADMIN_CONFIG_CHANGED_EVENT,
   ADMIN_CONFIG_STORAGE_KEY,
   applyWebHighlightColor,
@@ -118,6 +122,27 @@ function slugifyLibraryId(name: string) {
   return slug || "default-library";
 }
 
+function applyLocalCollectionOnlySourceRouting(sourceEnabled: RecommendationSourceEnabled): RecommendationSourceEnabled {
+  if (!sourceEnabled.localLibrary) return sourceEnabled;
+  return {
+    ...sourceEnabled,
+    googleBooks: false,
+    openLibrary: false,
+    kitsu: false,
+    gcd: false,
+    nyt: false,
+    localLibrary: true,
+  };
+}
+
+function localCollectionImportErrorMessage(error: unknown): string {
+  const message = String((error as { message?: unknown } | null)?.message || "").toLowerCase();
+  if (message.includes("collection_storage_quota_exceeded")) {
+    return "Import succeeded, but browser storage is full. Clear site storage and import again.";
+  }
+  return "Import failed. Check the file and try again.";
+}
+
 function deckLabel(k: DeckKey) {
   if (k === "k2") return "Kids (K\u20132)";
   if (k === "36") return "Pre-Teens (3\u20136)";
@@ -206,7 +231,7 @@ function syncSchema(cfg: any) {
     }
   }
 
-  cfg.recommendations.sourceEnabled = sourceEnabled;
+  cfg.recommendations.sourceEnabled = applyLocalCollectionOnlySourceRouting(sourceEnabled);
 
   const adultKitsuForceQuery = String(cfg.recommendations.adultKitsuOnlyForceQueryForValidation || "").trim().toLowerCase();
   if (SHOW_ADULT_KITSU_DEBUG_CONTROLS && adultKitsuForceQuery === "dystopian")
@@ -411,12 +436,8 @@ export default function AdminWebScreen() {
   const [uploadedCollectionCount, setUploadedCollectionCount] = useState<number>(() => {
     try {
       if (!isWeb || typeof localStorage === "undefined") return 0;
-      const artifact = localStorage.getItem("novelideas_local_collection_artifact_v1");
-      if (artifact) {
-        const parsed = JSON.parse(artifact);
-        const accepted = Array.isArray(parsed?.acceptedRecords) ? parsed.acceptedRecords.length : 0;
-        if (accepted > 0) return accepted;
-      }
+      const persistedCount = readLocalCollectionAcceptedCountFromLocalStorage();
+      if (persistedCount > 0) return persistedCount;
       const saved = localStorage.getItem("novelideas_local_collection");
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -566,7 +587,7 @@ export default function AdminWebScreen() {
       reader.onload = () => {
         // Flush the reading→parsing UI update before the synchronous parse blocks the thread
         setImportStatus({ phase: 'parsing', pct: 45, label: 'Parsing records…' });
-        setTimeout(() => {
+        setTimeout(async () => {
           try {
             const collectionName = String(config?.branding?.libraryName || "").trim() || undefined;
             let artifact;
@@ -588,13 +609,7 @@ export default function AdminWebScreen() {
               localStorage.setItem("novelideas_local_collection_csv", String(reader.result || ""));
             }
             setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
-            // Strip bulky audit fields before writing to localStorage (sourceRows alone is ~7 MB for an 8,710-record MARC file).
-            const storableArtifact = {
-              ...artifact,
-              acceptedRecords: artifact.acceptedRecords.map(({ sourceRows: _sr, ...rest }: any) => rest),
-              rejectedRecords: artifact.rejectedRecords.map(({ raw: _raw, ...rest }: any) => rest),
-            };
-            localStorage.setItem("novelideas_local_collection_artifact_v1", JSON.stringify(storableArtifact));
+            await persistLocalCollectionRecommendationArtifact(artifact);
             localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
             setUploadedCollectionCount(artifact.summary.acceptedTitles);
             // Mark collection as available (supported) but do NOT auto-enable the source toggle.
@@ -609,8 +624,8 @@ export default function AdminWebScreen() {
               }`,
             });
             setTimeout(() => setImportStatus({ phase: 'idle', pct: 0, label: '' }), 5000);
-          } catch {
-            setImportStatus({ phase: 'error', pct: 0, label: 'Import failed. Check the file and try again.' });
+          } catch (error) {
+            setImportStatus({ phase: 'error', pct: 0, label: localCollectionImportErrorMessage(error) });
             setTimeout(() => setImportStatus({ phase: 'idle', pct: 0, label: '' }), 6000);
           }
         }, 0);
@@ -1062,9 +1077,15 @@ export default function AdminWebScreen() {
                   <Text style={{ color: t.text, fontWeight: "700" }}>{sourceLabel(sourceKey)}</Text>
                   <Switch
                     value={enabled}
-                    onValueChange={(next) =>
-                      setPath(["recommendations", "sourceEnabled", sourceKey], next)
-                    }
+                    onValueChange={(next) => {
+                      setConfig((prev: any) => {
+                        const n = deepClone(prev);
+                        syncSchema(n);
+                        n.recommendations.sourceEnabled[sourceKey] = next;
+                        if (next) n.recommendations.sourceEnabled.localLibrary = false;
+                        return n;
+                      });
+                    }}
                   />
                 </View>
               );

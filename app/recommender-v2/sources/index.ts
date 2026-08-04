@@ -4,6 +4,7 @@ import { googleBooksSourceAdapter } from "./googleBooksSource";
 import { openLibrarySourceAdapter } from "./openLibrarySource";
 import { kitsuSourceAdapter } from "./kitsuSource";
 import { comicVineSourceAdapter } from "./comicVineSource";
+import { localLibrarySourceAdapter } from "./localLibrarySource";
 import { nytSourceAdapter } from "./nytSource";
 
 export const sourceAdapters: Record<SourceIdV2, SourceAdapterV2 | null> = {
@@ -12,8 +13,8 @@ export const sourceAdapters: Record<SourceIdV2, SourceAdapterV2 | null> = {
   openLibrary: openLibrarySourceAdapter,
   kitsu: kitsuSourceAdapter,
   comicVine: comicVineSourceAdapter,
-  localLibrary: null,
+  localLibrary: localLibrarySourceAdapter,
   nyt: nytSourceAdapter,
 };
 
-export { mockSourceAdapter, googleBooksSourceAdapter, openLibrarySourceAdapter, kitsuSourceAdapter, comicVineSourceAdapter, nytSourceAdapter };
+export { mockSourceAdapter, googleBooksSourceAdapter, openLibrarySourceAdapter, kitsuSourceAdapter, comicVineSourceAdapter, localLibrarySourceAdapter, nytSourceAdapter };
