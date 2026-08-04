@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   Alert,
   Platform,
@@ -34,6 +34,15 @@ import { ColorPickerField } from "../components/admin/ColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
 import { activateAdminSession, setPendingAdminRoute } from "../lib/adminSession";
+import {
+  isPreviewAcceptanceHarnessEnabled,
+  PREVIEW_ACCEPTANCE_PIN,
+  PREVIEW_ACCEPTANCE_QUERY_PARAM,
+  readPreviewAcceptanceDashboardModeFromDocument,
+  setPreviewAcceptanceHarnessEnabled,
+  type PreviewAcceptanceDashboardMode,
+  writePreviewAcceptanceDashboardModeCookie,
+} from "../lib/previewAcceptanceHarness";
 
 // ---------------------------------------------------------------------------
 // Constants & flags
@@ -332,6 +341,17 @@ const ADMIN_THEME = {
 
 export default function AdminWebScreen() {
   const isWeb = Platform.OS === "web";
+  const params = useLocalSearchParams();
+  const previewAcceptanceFlag = Array.isArray(params[PREVIEW_ACCEPTANCE_QUERY_PARAM])
+    ? params[PREVIEW_ACCEPTANCE_QUERY_PARAM][0]
+    : params[PREVIEW_ACCEPTANCE_QUERY_PARAM];
+  const previewAcceptanceHarnessVisible = useMemo(
+    () => isPreviewAcceptanceHarnessEnabled(previewAcceptanceFlag),
+    [previewAcceptanceFlag]
+  );
+  const dashboardRoute = previewAcceptanceHarnessVisible
+    ? "/admin/human-review?acceptanceHarness=1"
+    : "/admin/human-review";
 
   const [config, setConfig] = useState<any>(() => {
     const base = deepClone(configFile);
@@ -368,6 +388,9 @@ export default function AdminWebScreen() {
   const savedColorsRef = useRef({ mainColorHex, highlightColorHex, fontColorHex, autoFontColor });
   const [isDirty, setIsDirty] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [previewAcceptanceMode, setPreviewAcceptanceMode] = useState<PreviewAcceptanceDashboardMode>(() =>
+    readPreviewAcceptanceDashboardModeFromDocument()
+  );
 
   useEffect(() => {
     const configChanged = JSON.stringify(config) !== savedConfigRef.current;
@@ -649,6 +672,24 @@ export default function AdminWebScreen() {
     router.replace("/");
   }, [persistDraftConfig]);
 
+  const preparePreviewAcceptancePin = useCallback(() => {
+    setPreviewAcceptanceHarnessEnabled(true);
+    setConfig((prev: any) => {
+      const next = deepClone(prev);
+      next.admin = typeof next.admin === "object" && next.admin ? next.admin : {};
+      next.admin.pinEnabled = true;
+      next.admin.pin = PREVIEW_ACCEPTANCE_PIN;
+      syncSchema(next);
+      return next;
+    });
+  }, []);
+
+  const applyPreviewAcceptanceMode = useCallback((mode: PreviewAcceptanceDashboardMode) => {
+    setPreviewAcceptanceHarnessEnabled(true);
+    writePreviewAcceptanceDashboardModeCookie(mode);
+    setPreviewAcceptanceMode(mode);
+  }, []);
+
   const onDiscard = useCallback(() => {
     try {
       if (isWeb && typeof localStorage !== "undefined") {
@@ -763,7 +804,7 @@ export default function AdminWebScreen() {
               onPress={() => {
                 activateAdminSession("admin_web");
                 setPendingAdminRoute("/admin/human-review");
-                router.push("/admin/human-review" as any);
+                router.push(dashboardRoute as any);
               }}
               accessibilityRole="button"
               accessibilityLabel="Open Human Review Dashboard"
@@ -796,6 +837,49 @@ export default function AdminWebScreen() {
         </View>
 
         <Divider />
+
+        {previewAcceptanceHarnessVisible ? (
+          <>
+            <SectionTitle>Preview Acceptance Harness</SectionTitle>
+            <Note>
+              Preview-only setup for manual acceptance on Vercel preview URLs. This never changes
+              production defaults.
+            </Note>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
+              <TouchableOpacity
+                style={[styles.btnPrimary, { borderColor: t.accentBorder, backgroundColor: t.accent }]}
+                onPress={preparePreviewAcceptancePin}
+              >
+                <Text style={[styles.btnText, { color: t.accentTextOn }]}>
+                  Prepare Admin PIN challenge ({PREVIEW_ACCEPTANCE_PIN})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+                onPress={() => applyPreviewAcceptanceMode("fixtures")}
+              >
+                <Text style={[styles.btnText, { color: t.text }]}>Use dashboard fixtures</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+                onPress={() => applyPreviewAcceptanceMode("live")}
+              >
+                <Text style={[styles.btnText, { color: t.text }]}>Use live dashboard data</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+                onPress={() => applyPreviewAcceptanceMode("failure")}
+              >
+                <Text style={[styles.btnText, { color: t.text }]}>Force dashboard unavailable</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.note, styles.previewAcceptanceNote, { color: t.success }]}>
+              Current dashboard mode: {previewAcceptanceMode}. Use the normal Save controls after
+              preparing the PIN challenge so the unlock flow is persisted in browser storage.
+            </Text>
+            <Divider />
+          </>
+        ) : null}
 
         {/* ── A. Library Identity ── */}
         <SectionTitle>A. Library Identity</SectionTitle>
@@ -1283,6 +1367,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: "900", marginBottom: 12 },
   label: { fontSize: 12, fontWeight: "800", marginBottom: 6 },
   note: { fontSize: 12, lineHeight: 18 },
+  previewAcceptanceNote: { marginTop: 10 },
   input: {
     borderWidth: 1,
     borderRadius: 12,
