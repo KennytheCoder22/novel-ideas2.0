@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import type {
   AppendReviewResult,
   HumanReviewRepository,
@@ -31,8 +31,7 @@ let cachedCore: CoreModule | null = null;
 
 async function loadCore(): Promise<CoreModule> {
   if (cachedCore) return cachedCore;
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-  const corePath = resolve(currentDir, "..", "..", "scripts", "human-review", "lib", "human-review-core.mjs");
+  const corePath = resolve(process.cwd(), "scripts", "human-review", "lib", "human-review-core.mjs");
   cachedCore = (await import(pathToFileURL(corePath).toString())) as unknown as CoreModule;
   return cachedCore;
 }

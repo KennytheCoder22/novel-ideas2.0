@@ -34,6 +34,7 @@ import {
   type HighlightKey,
   type TitleTextKey
 } from "../../constants/brandTheme";
+import { activateAdminSession, setPendingAdminRoute } from "../../lib/adminSession";
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
   String(
@@ -1792,7 +1793,17 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                 <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
                 {/* Admin items below are hidden until they have real destinations. */}
                 {/* Diagnostics — hidden until implemented */}
-                {/* Human Review Dashboard — hidden until implemented */}
+                <TouchableOpacity
+                  style={styles.headerMenuItem}
+                  onPress={() => {
+                    closeHeaderMenu();
+                    activateAdminSession("menu");
+                    setPendingAdminRoute("/admin/human-review");
+                    router.push("/admin/human-review" as any);
+                  }}
+                >
+                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Human Review Dashboard</Text>
+                </TouchableOpacity>
                 {/* Recommendation tuning — hidden until implemented */}
                 {/* Library management — hidden until implemented */}
                 {/* Import / Export — hidden until implemented */}

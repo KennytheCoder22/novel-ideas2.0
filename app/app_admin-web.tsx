@@ -33,6 +33,7 @@ import {
 import { ColorPickerField } from "../components/admin/ColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
+import { activateAdminSession, setPendingAdminRoute } from "../lib/adminSession";
 
 // ---------------------------------------------------------------------------
 // Constants & flags
@@ -757,6 +758,18 @@ export default function AdminWebScreen() {
             </Text>
           </View>
           <View style={styles.pageHeaderActions}>
+            <TouchableOpacity
+              style={[styles.btn, styles.headerActionButton, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+              onPress={() => {
+                activateAdminSession("admin_web");
+                setPendingAdminRoute("/admin/human-review");
+                router.push("/admin/human-review" as any);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Open Human Review Dashboard"
+            >
+              <Text style={[styles.btnText, { color: t.text }]}>Human Review Dashboard</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.btnPrimary, styles.headerActionButton, { borderColor: t.accentBorder, backgroundColor: t.accent }]}
               onPress={onSaveAndReturn}

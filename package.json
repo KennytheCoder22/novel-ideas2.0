@@ -51,6 +51,7 @@
     "test:v2:human-review-infrastructure": "node scripts/run-v2-human-review-regressions.mjs",
     "test:v2:human-review-admin-form": "node scripts/run-v2-human-review-admin-form-regressions.mjs",
     "test:v2:human-review-durable-storage": "node scripts/run-v2-human-review-durable-regressions.mjs",
+    "test:v2:human-review-dashboard": "node scripts/run-v2-human-review-dashboard-regressions.mjs",
     "test:v2:human-review-paginated-ux": "node scripts/run-v2-human-review-paginated-ux-regressions.mjs",
     "test:v2:testing-route": "node scripts/run-v2-testing-route-regressions.mjs",
     "test:v2:local-collection-import-foundation": "node scripts/run-v2-local-collection-import-foundation-regressions.mjs",
@@ -119,6 +120,7 @@
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
+    "@vercel/node": "^5.3.24",
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
