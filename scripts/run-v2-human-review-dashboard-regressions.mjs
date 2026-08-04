@@ -16,7 +16,9 @@ function assertIncludes(content, fragment, message) {
 const dashboardRoutePath = resolve(ROOT, "app", "admin", "human-review.tsx");
 const dashboardApiPath = resolve(ROOT, "api", "human-review-dashboard.ts");
 const dashboardLibPath = resolve(ROOT, "lib", "humanReview", "dashboard.ts");
+const dashboardPreviewFixturePath = resolve(ROOT, "lib", "humanReview", "dashboardPreviewAcceptanceFixture.ts");
 const adminSessionPath = resolve(ROOT, "lib", "adminSession.ts");
+const previewAcceptanceHarnessPath = resolve(ROOT, "lib", "previewAcceptanceHarness.ts");
 const layoutPath = resolve(ROOT, "app", "_layout.tsx");
 const homePath = resolve(ROOT, "app", "(tabs)", "index.tsx");
 const adminWebPath = resolve(ROOT, "app", "app_admin-web.tsx");
@@ -24,7 +26,9 @@ const adminWebPath = resolve(ROOT, "app", "app_admin-web.tsx");
 const dashboardRoute = existsSync(dashboardRoutePath) ? readFileSync(dashboardRoutePath, "utf8") : "";
 const dashboardApi = existsSync(dashboardApiPath) ? readFileSync(dashboardApiPath, "utf8") : "";
 const dashboardLib = existsSync(dashboardLibPath) ? readFileSync(dashboardLibPath, "utf8") : "";
+const dashboardPreviewFixture = existsSync(dashboardPreviewFixturePath) ? readFileSync(dashboardPreviewFixturePath, "utf8") : "";
 const adminSession = existsSync(adminSessionPath) ? readFileSync(adminSessionPath, "utf8") : "";
+const previewAcceptanceHarness = existsSync(previewAcceptanceHarnessPath) ? readFileSync(previewAcceptanceHarnessPath, "utf8") : "";
 const layoutSource = readFileSync(layoutPath, "utf8");
 const homeSource = readFileSync(homePath, "utf8");
 const adminWebSource = readFileSync(adminWebPath, "utf8");
@@ -65,7 +69,8 @@ assertIncludes(homeSource, "setPendingAdminRoute(\"/admin/human-review\")", "D7:
 console.log("PASS D7: main menu exposes dashboard and sets authenticated dashboard navigation intent");
 
 assertIncludes(adminWebSource, "Human Review Dashboard", "D8: desktop admin page links to Human Review Dashboard");
-assertIncludes(adminWebSource, 'router.push("/admin/human-review"', "D8: desktop admin link routes to dashboard");
+assertIncludes(adminWebSource, 'const dashboardRoute = previewAcceptanceHarnessVisible', "D8: desktop admin computes the dashboard destination");
+assertIncludes(adminWebSource, "router.push(dashboardRoute as any)", "D8: desktop admin link routes to dashboard");
 assertIncludes(adminWebSource, "activateAdminSession(\"admin_web\")", "D8: desktop admin link activates admin session");
 assertIncludes(adminWebSource, "setPendingAdminRoute(\"/admin/human-review\")", "D8: desktop admin link records pending dashboard route");
 console.log("PASS D8: desktop admin links to dashboard with authenticated navigation intent");
@@ -88,3 +93,18 @@ console.log("PASS D10: dashboard state handling distinguishes loading/empty/succ
 assertIncludes(dashboardRoute, "const paramsKey = JSON.stringify(params);", "D11: route derives a stable params key for dashboard filter parsing");
 assertIncludes(dashboardRoute, "[paramsKey]", "D11: filter parsing is memoized on the stable params key");
 console.log("PASS D11: dashboard filter parsing avoids unstable re-fetch loops");
+
+assertIncludes(previewAcceptanceHarness, "PREVIEW_ACCEPTANCE_PIN", "D12: preview acceptance harness defines a stable preview PIN");
+assertIncludes(adminWebSource, "Prepare Admin PIN challenge", "D12: admin web exposes preview-only PIN seeding controls");
+assertIncludes(dashboardApi, "preview_acceptance_forced_dashboard_failure", "D12: dashboard API can force preview-only unavailable state");
+assertIncludes(dashboardPreviewFixture, "PREVIEW_ACCEPTANCE_FIXTURE_STORAGE_MODE", "D12: preview fixture dataset is available to the dashboard API");
+assertIncludes(dashboardRoute, "Preview Acceptance Harness", "D12: dashboard route exposes preview-only mode controls");
+console.log("PASS D12: preview-only acceptance harness is wired for PIN, fixtures, and forced failure");
+
+assertIncludes(previewAcceptanceHarness, "PREVIEW_ACCEPTANCE_ENV_GATE", "D13: preview acceptance harness declares a single explicit environment gate");
+assertIncludes(previewAcceptanceHarness, 'EXPO_PUBLIC_PREVIEW_ACCEPTANCE_HARNESS', "D13: preview acceptance harness uses the explicit environment gate");
+assertIncludes(previewAcceptanceHarness, "process.env.EXPO_PUBLIC_PREVIEW_ACCEPTANCE_HARNESS", "D13: preview acceptance harness reads the explicit gate through a direct Expo public env access");
+assertIncludes(previewAcceptanceHarness, "if (!isPreviewAcceptanceEnvironmentEnabled()) return false;", "D13: browser harness activation fails closed without the environment gate");
+assertIncludes(dashboardApi, "isPreviewAcceptanceEnvironmentEnabled()", "D13: API fixture/failure modes are blocked without the environment gate");
+assert(!previewAcceptanceHarness.includes(".vercel.app"), "D13: hostname heuristics are not used as the production-isolation gate");
+console.log("PASS D13: preview-only harness is isolated behind the explicit environment gate");

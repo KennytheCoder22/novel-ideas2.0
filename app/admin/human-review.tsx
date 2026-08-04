@@ -22,6 +22,13 @@ import {
   serializeHumanReviewDashboardFilters,
   type HumanReviewDashboardFilters,
 } from "../../lib/humanReview/dashboard";
+import {
+  isPreviewAcceptanceHarnessEnabled,
+  PREVIEW_ACCEPTANCE_QUERY_PARAM,
+  readPreviewAcceptanceDashboardModeFromDocument,
+  type PreviewAcceptanceDashboardMode,
+  writePreviewAcceptanceDashboardModeCookie,
+} from "../../lib/previewAcceptanceHarness";
 
 const DASHBOARD_PATH = "/admin/human-review";
 
@@ -155,9 +162,16 @@ function updateArrayFilter(filters: HumanReviewDashboardFilters, key: keyof Huma
 export default function HumanReviewDashboardRoute() {
   const params = useLocalSearchParams();
   const paramsKey = JSON.stringify(params);
+  const previewAcceptanceFlag = Array.isArray(params[PREVIEW_ACCEPTANCE_QUERY_PARAM])
+    ? params[PREVIEW_ACCEPTANCE_QUERY_PARAM][0]
+    : params[PREVIEW_ACCEPTANCE_QUERY_PARAM];
   const queryFilters = useMemo(
     () => parseHumanReviewDashboardFilters(params as Record<string, unknown>),
     [paramsKey]
+  );
+  const previewAcceptanceHarnessVisible = useMemo(
+    () => isPreviewAcceptanceHarnessEnabled(previewAcceptanceFlag),
+    [previewAcceptanceFlag]
   );
   const [draftFilters, setDraftFilters] = useState<HumanReviewDashboardFilters>(queryFilters);
   const [authorized, setAuthorized] = useState(Platform.OS !== "web");
@@ -166,6 +180,9 @@ export default function HumanReviewDashboardRoute() {
   const [error, setError] = useState("");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showInternalIds, setShowInternalIds] = useState(false);
+  const [previewAcceptanceMode, setPreviewAcceptanceMode] = useState<PreviewAcceptanceDashboardMode>(() =>
+    readPreviewAcceptanceDashboardModeFromDocument()
+  );
 
   useEffect(() => {
     setDraftFilters(queryFilters);
@@ -227,19 +244,33 @@ export default function HumanReviewDashboardRoute() {
     return () => {
       cancelled = true;
     };
-  }, [authorized, queryFilters]);
+  }, [authorized, queryFilters, previewAcceptanceMode]);
 
   function applyFilters() {
+    const nextParams = serializeHumanReviewDashboardFilters(draftFilters);
+    if (previewAcceptanceHarnessVisible) nextParams[PREVIEW_ACCEPTANCE_QUERY_PARAM] = "1";
     router.replace({
       pathname: DASHBOARD_PATH,
-      params: serializeHumanReviewDashboardFilters(draftFilters),
+      params: nextParams,
     } as any);
   }
 
   function clearFilters() {
     const cleared = { ...DEFAULT_HUMAN_REVIEW_DASHBOARD_FILTERS };
     setDraftFilters(cleared);
+    if (previewAcceptanceHarnessVisible) {
+      router.replace({
+        pathname: DASHBOARD_PATH,
+        params: { [PREVIEW_ACCEPTANCE_QUERY_PARAM]: "1" },
+      } as any);
+      return;
+    }
     router.replace(DASHBOARD_PATH as any);
+  }
+
+  function setPreviewAcceptanceModeValue(mode: PreviewAcceptanceDashboardMode) {
+    writePreviewAcceptanceDashboardModeCookie(mode);
+    setPreviewAcceptanceMode(mode);
   }
 
   if (!authorized) {
@@ -297,6 +328,36 @@ export default function HumanReviewDashboardRoute() {
             </>
           )}
         </View>
+
+        {previewAcceptanceHarnessVisible ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Preview Acceptance Harness</Text>
+            <Text style={styles.sectionSubtitle}>
+              Preview-only controls for manual dashboard acceptance. Production defaults remain unchanged.
+            </Text>
+            <View style={styles.filterActions}>
+              <TouchableOpacity
+                style={[styles.secondaryButton, previewAcceptanceMode === "live" && styles.previewModeActive]}
+                onPress={() => setPreviewAcceptanceModeValue("live")}
+              >
+                <Text style={styles.secondaryButtonText}>Use live evidence</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.secondaryButton, previewAcceptanceMode === "fixtures" && styles.previewModeActive]}
+                onPress={() => setPreviewAcceptanceModeValue("fixtures")}
+              >
+                <Text style={styles.secondaryButtonText}>Load acceptance fixtures</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.secondaryButton, previewAcceptanceMode === "failure" && styles.previewModeActive]}
+                onPress={() => setPreviewAcceptanceModeValue("failure")}
+              >
+                <Text style={styles.secondaryButtonText}>Force unavailable state</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.inlineNote}>Current preview mode: {previewAcceptanceMode}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -920,6 +981,10 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: "#d9e7fa",
     fontWeight: "800",
+  },
+  previewModeActive: {
+    borderColor: "#fbbf24",
+    backgroundColor: "#3a2c08",
   },
   toggleButton: {
     alignSelf: "flex-start",
