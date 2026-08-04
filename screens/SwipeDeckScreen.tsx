@@ -117,6 +117,9 @@ type OLDoc = {
   author_name?: string[];
   first_publish_year?: number;
   cover_i?: number | string;
+  isbn?: string;
+  isbn10?: string;
+  isbn13?: string;
 };
 
 type FallbackBook = {
@@ -403,8 +406,35 @@ function attachGraphicNovelKeywords(cards: any[]): any[] {
 
 async function lookupOpenLibraryCover(
   title: string,
-  author?: string
+  author?: string,
+  isbn?: string
 ): Promise<{ coverUrl?: string; olWorkId?: string }> {
+  const safeIsbn = String(isbn || "").replace(/[^0-9Xx]/g, "").toUpperCase();
+  if (/^\d{13}$/.test(safeIsbn) || /^\d{9}[\dX]$/.test(safeIsbn)) {
+    const isbnParams = new URLSearchParams();
+    isbnParams.set("q", `isbn:${safeIsbn}`);
+    isbnParams.set("printType", "books");
+    isbnParams.set("orderBy", "relevance");
+    isbnParams.set("maxResults", "1");
+    const apiKey = (process as any)?.env?.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
+    if (typeof apiKey === "string" && apiKey.trim()) isbnParams.set("key", apiKey.trim());
+    try {
+      const isbnRes = await fetch(`https://www.googleapis.com/books/v1/volumes?${isbnParams.toString()}`);
+      if (isbnRes.ok) {
+        const isbnJson = await isbnRes.json();
+        const isbnItem = isbnJson?.items?.[0];
+        const isbnVi = isbnItem?.volumeInfo || {};
+        const isbnImageLinks = isbnVi?.imageLinks || {};
+        const isbnThumb: string | undefined =
+          (typeof isbnImageLinks?.thumbnail === "string" ? isbnImageLinks.thumbnail : undefined) ||
+          (typeof isbnImageLinks?.smallThumbnail === "string" ? isbnImageLinks.smallThumbnail : undefined);
+        if (isbnThumb) return { coverUrl: isbnThumb.replace(/^http:\/\//, "https://") };
+      }
+    } catch {
+      // fall through to title/author lookup
+    }
+  }
+
   const qParts: string[] = [];
   const safeTitle = String(title || "").trim();
   if (safeTitle) qParts.push(`intitle:${safeTitle}`);
@@ -862,6 +892,54 @@ function uniqueCoverCandidates(values: unknown[]): string[] {
   return out;
 }
 
+function normalizeIsbn(value: unknown): string | null {
+  const normalized = String(value || "").replace(/[^0-9Xx]/g, "").toUpperCase();
+  if (!normalized) return null;
+  if (/^\d{13}$/.test(normalized)) return normalized;
+  if (/^\d{9}[\dX]$/.test(normalized)) return normalized;
+  return null;
+}
+
+function uniqueIsbnCandidates(values: unknown[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const normalized = normalizeIsbn(value);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function coverUrlFromIsbn(isbn: unknown): string | null {
+  const normalized = normalizeIsbn(isbn);
+  if (!normalized) return null;
+  return `https://covers.openlibrary.org/b/isbn/${normalized}-L.jpg`;
+}
+
+function recommendationIsbnCandidates(doc: any): string[] {
+  const raw = doc?.raw && typeof doc.raw === "object" ? doc.raw : {};
+  const volumeInfo = doc?.volumeInfo && typeof doc.volumeInfo === "object" ? doc.volumeInfo : {};
+  const rawVolumeInfo = raw?.volumeInfo && typeof raw.volumeInfo === "object" ? raw.volumeInfo : {};
+  const volumeIndustryIdentifiers = Array.isArray(volumeInfo?.industryIdentifiers) ? volumeInfo.industryIdentifiers : [];
+  const rawVolumeIndustryIdentifiers = Array.isArray(rawVolumeInfo?.industryIdentifiers) ? rawVolumeInfo.industryIdentifiers : [];
+  const identifierValues = [...volumeIndustryIdentifiers, ...rawVolumeIndustryIdentifiers]
+    .map((entry: any) => (entry && typeof entry === "object" ? entry.identifier : ""))
+    .filter(Boolean);
+  return uniqueIsbnCandidates([
+    doc?.isbn13,
+    doc?.isbn10,
+    doc?.isbn,
+    raw?.isbn13,
+    raw?.isbn10,
+    raw?.isbn,
+    ...identifierValues,
+  ]);
+}
+
 function recommendationCoverCandidates(doc: any, cachedCover?: string): string[] {
   const raw = doc?.raw && typeof doc.raw === "object" ? doc.raw : {};
   const docImageLinks = doc?.imageLinks && typeof doc.imageLinks === "object" ? doc.imageLinks : {};
@@ -870,6 +948,7 @@ function recommendationCoverCandidates(doc: any, cachedCover?: string): string[]
   const rawVolumeInfo = raw?.volumeInfo && typeof raw.volumeInfo === "object" ? raw.volumeInfo : {};
   const rawVolumeImageLinks = rawVolumeInfo?.imageLinks && typeof rawVolumeInfo.imageLinks === "object" ? rawVolumeInfo.imageLinks : {};
   const primary = recommendationCoverUrl(doc);
+  const isbnCoverCandidates = recommendationIsbnCandidates(doc).map((isbn) => coverUrlFromIsbn(isbn));
   return uniqueCoverCandidates([
     primary,
     doc?.thumbnail,
@@ -884,8 +963,42 @@ function recommendationCoverCandidates(doc: any, cachedCover?: string): string[]
     raw?.imageUrl,
     rawVolumeImageLinks?.thumbnail,
     rawVolumeImageLinks?.smallThumbnail,
+    ...isbnCoverCandidates,
     cachedCover,
   ]);
+}
+
+function recommendationCallNumber(doc: any): string {
+  const raw = doc?.raw && typeof doc.raw === "object" ? doc.raw : {};
+  const holdings = Array.isArray(raw?.marcHoldings) ? raw.marcHoldings : [];
+  const fromHolding = holdings.find((holding: any) => String(holding?.callNumber || "").trim())?.callNumber;
+  return String(
+    doc?.callNumber ||
+      raw?.callNumber ||
+      raw?.call_number ||
+      fromHolding ||
+      ""
+  ).trim();
+}
+
+function recommendationSubLocation(doc: any): string {
+  const raw = doc?.raw && typeof doc.raw === "object" ? doc.raw : {};
+  const holdings = Array.isArray(raw?.marcHoldings) ? raw.marcHoldings : [];
+  const firstHolding = holdings[0] || {};
+  return String(
+    doc?.subLocation ||
+      doc?.localPlacement ||
+      doc?.shelvingLocation ||
+      raw?.subLocation ||
+      raw?.sub_location ||
+      raw?.localPlacement ||
+      raw?.local_placement ||
+      raw?.shelvingLocation ||
+      raw?.shelving_location ||
+      firstHolding?.collection ||
+      firstHolding?.locationCode ||
+      ""
+  ).trim();
 }
 
 function safeStorageGet(key: string): string {
@@ -2005,6 +2118,19 @@ function handleLeft() {
           (candidate.raw as any)?.thumbnail ??
           (candidate.raw as any)?.imageLinks?.thumbnail ??
           (candidate.raw as any)?.volumeInfo?.imageLinks?.thumbnail,
+        isbn13:
+          (candidate.raw as any)?.isbn13 ??
+          (candidate.raw as any)?.isbn ??
+          (candidate.raw as any)?.industryIdentifiers?.isbn13 ??
+          (Array.isArray((candidate.raw as any)?.volumeInfo?.industryIdentifiers)
+            ? (candidate.raw as any).volumeInfo.industryIdentifiers.find((row: any) => String(row?.type || "").toUpperCase() === "ISBN_13")?.identifier
+            : undefined),
+        isbn10:
+          (candidate.raw as any)?.isbn10 ??
+          (candidate.raw as any)?.industryIdentifiers?.isbn10 ??
+          (Array.isArray((candidate.raw as any)?.volumeInfo?.industryIdentifiers)
+            ? (candidate.raw as any).volumeInfo.industryIdentifiers.find((row: any) => String(row?.type || "").toUpperCase() === "ISBN_10")?.identifier
+            : undefined),
         imageLinks:
           (candidate.raw as any)?.imageLinks ??
           (candidate.raw as any)?.volumeInfo?.imageLinks,
@@ -5222,6 +5348,16 @@ function handleLeft() {
     return currentRec.kind === "open_library" ? String(currentRec.doc?.title || "Untitled") : String(currentRec.book?.title || "Untitled");
   }, [currentRec]);
 
+  const currentRecLocationLine = useMemo(() => {
+    if (!currentRec || currentRec.kind !== "open_library") return "";
+    const callNumber = recommendationCallNumber(currentRec.doc);
+    const subLocation = recommendationSubLocation(currentRec.doc);
+    if (callNumber && subLocation) return `Call #: ${callNumber} • Sub-location: ${subLocation}`;
+    if (callNumber) return `Call #: ${callNumber}`;
+    if (subLocation) return `Sub-location: ${subLocation}`;
+    return "";
+  }, [currentRec]);
+
   const humanReviewTotalRecommendations = humanReviewForm?.itemReviews.length || 0;
   const humanReviewCurrentStepIndex = clampHumanReviewStepIndex(humanReviewStepIndex, humanReviewTotalRecommendations);
   const humanReviewSlateStepVisible = humanReviewTotalRecommendations > 0 && humanReviewCurrentStepIndex >= humanReviewTotalRecommendations;
@@ -5252,13 +5388,14 @@ function handleLeft() {
       if (cachedCover && blocked.has(cachedCover.toLowerCase())) return;
       const title = currentRec.kind === "open_library" ? currentRec.doc?.title : currentRec.book?.title;
       const author = currentRec.kind === "open_library" ? recommendationAuthor(currentRec.doc) : currentRec.book?.author;
+      const isbn = currentRec.kind === "open_library" ? recommendationIsbnCandidates(currentRec.doc)[0] : undefined;
       if (!title) return;
       if (currentRec.kind === "open_library") {
         const sourceCover = recommendationCoverCandidates(currentRec.doc).find((candidate) => !blocked.has(candidate.toLowerCase()));
         if (sourceCover) return;
       }
       try {
-        const found = await lookupOpenLibraryCover(title, author);
+        const found = await lookupOpenLibraryCover(title, author, isbn);
         if (cancelled) return;
         const normalizedCover = normalizeImageUrl(found?.coverUrl);
         if (normalizedCover) setRecCoverCache((prev) => ({ ...prev, [key]: normalizedCover }));
@@ -5463,6 +5600,11 @@ function handleLeft() {
                             ? recommendationAuthor(currentRec.doc)
                             : currentRec.book.author ?? "Unknown author"}
                       </Text>
+                      {currentRecLocationLine ? (
+                        <Text style={styles.recBookLocation} numberOfLines={2}>
+                          {currentRecLocationLine}
+                        </Text>
+                      ) : null}
                       <Text style={styles.recCounter}>
                         {recItems.length > 0 ? `${recIndex + 1} of ${recItems.length}` : "0 of 0"}
                       </Text>
@@ -6309,6 +6451,7 @@ const styles = StyleSheet.create({
 
   recBookTitle: { color: "#fff" },
   recBookAuthor: { color: "#fff" },
+  recBookLocation: { color: "#cbd5f5", fontSize: 12, marginTop: 2, textAlign: "center" },
   recCounter: { color: "#cbd5f5", fontWeight: "800", fontSize: 12, marginTop: 6 },
 
   recMeta: { marginTop: 10, alignItems: "center" },
