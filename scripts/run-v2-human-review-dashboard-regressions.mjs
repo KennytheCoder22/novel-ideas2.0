@@ -103,6 +103,7 @@ console.log("PASS D12: preview-only acceptance harness is wired for PIN, fixture
 
 assertIncludes(previewAcceptanceHarness, "PREVIEW_ACCEPTANCE_ENV_GATE", "D13: preview acceptance harness declares a single explicit environment gate");
 assertIncludes(previewAcceptanceHarness, 'EXPO_PUBLIC_PREVIEW_ACCEPTANCE_HARNESS', "D13: preview acceptance harness uses the explicit environment gate");
+assertIncludes(previewAcceptanceHarness, "process.env.EXPO_PUBLIC_PREVIEW_ACCEPTANCE_HARNESS", "D13: preview acceptance harness reads the explicit gate through a direct Expo public env access");
 assertIncludes(previewAcceptanceHarness, "if (!isPreviewAcceptanceEnvironmentEnabled()) return false;", "D13: browser harness activation fails closed without the environment gate");
 assertIncludes(dashboardApi, "isPreviewAcceptanceEnvironmentEnabled()", "D13: API fixture/failure modes are blocked without the environment gate");
 assert(!previewAcceptanceHarness.includes(".vercel.app"), "D13: hostname heuristics are not used as the production-isolation gate");

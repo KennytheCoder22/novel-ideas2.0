@@ -14,7 +14,7 @@ function normalizeScalar(value: unknown): string {
 function readPreviewAcceptanceEnvGate(): string {
   try {
     if (typeof process === "undefined") return "";
-    return String((process as any)?.env?.[PREVIEW_ACCEPTANCE_ENV_GATE] || "").trim().toLowerCase();
+    return String(process.env.EXPO_PUBLIC_PREVIEW_ACCEPTANCE_HARNESS || "").trim().toLowerCase();
   } catch {
     return "";
   }
