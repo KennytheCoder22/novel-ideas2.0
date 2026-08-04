@@ -238,10 +238,10 @@ function ScrollingBooks({ shelfY, diameter }: { shelfY: number; diameter: number
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollXValue = useRef(0);
 
-  // One tilt value per pullable book
+  // One tilt value per book so any book can be the center book on pause
   const tiltAnims = useRef<Record<number, Animated.Value>>(
     BOOKS.reduce<Record<number, Animated.Value>>((acc, book) => {
-      if (book.pullable) acc[book.index] = new Animated.Value(0);
+      acc[book.index] = new Animated.Value(0);
       return acc;
     }, {})
   ).current;
@@ -278,22 +278,28 @@ function ScrollingBooks({ shelfY, diameter }: { shelfY: number; diameter: number
 
     startScroll(0);
 
-    // Pull-and-inspect trigger: fires every ~1.5 s offset from initial mount
+    // Pull-and-inspect trigger: pauses every ~2.5 s and tilts whichever book
+    // is currently at the center of the circular viewport.
     let stopped = false;
-    const pullables = BOOKS.filter((b) => b.pullable);
-    let pullIdx = 0;
 
     const timerRefs: ReturnType<typeof setTimeout>[] = [];
 
+    // Returns the BOOKS index of the book whose center is closest to the
+    // horizontal midpoint of the viewport at the given scroll offset.
+    function centerBookIndex(scrollVal: number): number {
+      const BOOK_STEP = BOOK_WIDTH + BOOK_GAP;
+      const effective = ((scrollVal % SEGMENT_WIDTH) + SEGMENT_WIDTH) % SEGMENT_WIDTH;
+      const raw = (diameter / 2 - BOOK_WIDTH / 2 + effective) / BOOK_STEP;
+      return ((Math.round(raw) % BOOK_COUNT) + BOOK_COUNT) % BOOK_COUNT;
+    }
+
     function schedulePull() {
       if (stopped) return;
-      const delay = 1800 + pullIdx * 2200;
       const t = setTimeout(() => {
         if (stopped) return;
-        const book = pullables[pullIdx % pullables.length];
-        const tilt = tiltAnims[book.index];
+        const idx = centerBookIndex(scrollXValue.current);
+        const tilt = tiltAnims[idx];
         if (!tilt) { schedulePull(); return; }
-        pullIdx++;
 
         // pause scroll
         scrollAnim.current?.stop();
@@ -317,7 +323,7 @@ function ScrollingBooks({ shelfY, diameter }: { shelfY: number; diameter: number
         }, 100);
 
         timerRefs.push(pauseDelay);
-      }, delay);
+      }, 2500);
       timerRefs.push(t);
     }
 
