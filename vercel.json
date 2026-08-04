@@ -24,6 +24,18 @@
     {
       "source": "/about",
       "destination": "/"
+    },
+    {
+      "source": "/app_admin-web",
+      "destination": "/"
+    },
+    {
+      "source": "/app_admin-web/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/"
     }
   ]
 }
