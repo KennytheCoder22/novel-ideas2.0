@@ -10,7 +10,7 @@ import {
   PREVIEW_ACCEPTANCE_FIXTURE_STORAGE_MODE,
 } from "../lib/humanReview/dashboardPreviewAcceptanceFixture";
 import {
-  isPreviewAcceptanceHost,
+  isPreviewAcceptanceEnvironmentEnabled,
   readPreviewAcceptanceDashboardModeFromCookie,
 } from "../lib/previewAcceptanceHarness";
 
@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const filters = parseHumanReviewDashboardFilters(req.query as Record<string, unknown>);
     const previewAcceptanceMode =
-      isPreviewAcceptanceHost(req.headers.host || "") && hasAdminSessionCookie(req)
+      isPreviewAcceptanceEnvironmentEnabled() && hasAdminSessionCookie(req)
         ? readPreviewAcceptanceDashboardModeFromCookie(req.headers.cookie || "")
         : "live";
 

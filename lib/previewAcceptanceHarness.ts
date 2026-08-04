@@ -2,6 +2,7 @@ export const PREVIEW_ACCEPTANCE_QUERY_PARAM = "acceptanceHarness";
 export const PREVIEW_ACCEPTANCE_STORAGE_KEY = "novelideas_preview_acceptance_harness_v1";
 export const PREVIEW_ACCEPTANCE_MODE_COOKIE_NAME = "novelideas_dashboard_preview_mode_v1";
 export const PREVIEW_ACCEPTANCE_PIN = "123456";
+export const PREVIEW_ACCEPTANCE_ENV_GATE = "EXPO_PUBLIC_PREVIEW_ACCEPTANCE_HARNESS";
 
 export type PreviewAcceptanceDashboardMode = "live" | "fixtures" | "failure";
 
@@ -10,15 +11,23 @@ function normalizeScalar(value: unknown): string {
   return String(value || "").trim();
 }
 
-export function isPreviewAcceptanceHost(hostname: unknown): boolean {
-  const host = normalizeScalar(hostname).toLowerCase();
-  return host.endsWith(".vercel.app") && host !== "vercel.app";
+function readPreviewAcceptanceEnvGate(): string {
+  try {
+    if (typeof process === "undefined") return "";
+    return String((process as any)?.env?.[PREVIEW_ACCEPTANCE_ENV_GATE] || "").trim().toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+export function isPreviewAcceptanceEnvironmentEnabled(): boolean {
+  return readPreviewAcceptanceEnvGate() === "true";
 }
 
 export function isPreviewAcceptanceHarnessEnabled(flagValue?: unknown): boolean {
   try {
+    if (!isPreviewAcceptanceEnvironmentEnabled()) return false;
     if (typeof window === "undefined") return false;
-    if (!isPreviewAcceptanceHost(window.location.hostname)) return false;
     const explicitFlag = normalizeScalar(flagValue) === "1";
     const storedFlag = window.localStorage?.getItem(PREVIEW_ACCEPTANCE_STORAGE_KEY) === "1";
     return explicitFlag || storedFlag;
@@ -29,6 +38,7 @@ export function isPreviewAcceptanceHarnessEnabled(flagValue?: unknown): boolean 
 
 export function setPreviewAcceptanceHarnessEnabled(enabled: boolean): void {
   try {
+    if (!isPreviewAcceptanceEnvironmentEnabled()) return;
     if (typeof window === "undefined") return;
     if (enabled) {
       window.localStorage?.setItem(PREVIEW_ACCEPTANCE_STORAGE_KEY, "1");
@@ -70,6 +80,7 @@ export function readPreviewAcceptanceDashboardModeFromDocument(): PreviewAccepta
 
 export function writePreviewAcceptanceDashboardModeCookie(mode: PreviewAcceptanceDashboardMode): void {
   try {
+    if (!isPreviewAcceptanceEnvironmentEnabled()) return;
     if (typeof document === "undefined") return;
     document.cookie = `${PREVIEW_ACCEPTANCE_MODE_COOKIE_NAME}=${normalizePreviewAcceptanceDashboardMode(mode)}; path=/; SameSite=Lax`;
   } catch {
@@ -79,6 +90,7 @@ export function writePreviewAcceptanceDashboardModeCookie(mode: PreviewAcceptanc
 
 export function clearPreviewAcceptanceDashboardModeCookie(): void {
   try {
+    if (!isPreviewAcceptanceEnvironmentEnabled()) return;
     if (typeof document === "undefined") return;
     document.cookie = `${PREVIEW_ACCEPTANCE_MODE_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
   } catch {
