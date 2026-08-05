@@ -47,6 +47,8 @@ function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
+export default HomeScreen;
+
 // Keep Home compatible with both older schema and the current canonical schema.
 // Canonical:
 //   - branding.libraryName
@@ -1299,7 +1301,7 @@ setMainThemeKey: (t: ThemeKey) => void;
                 }}
               >
                 <QRCode
-                  value={`https://novelideas.com/c/${encodeURIComponent(props.libraryId)}`}
+                  value={`https://novelideas.app/${encodeURIComponent(props.libraryId)}`}
                   size={220}
                 />
               </View>
@@ -1308,7 +1310,7 @@ setMainThemeKey: (t: ThemeKey) => void;
                 Encoded link:
               </Text>
               <Text selectable style={[styles.jsonText, { color: props.theme.subtext, textAlign: "center" }]}>
-                {`https://novelideas.com/c/${props.libraryId}`}
+                {`https://novelideas.app/${props.libraryId}`}
               </Text>
 
               <Text style={[styles.noteSmall, { color: props.theme.subtext, marginTop: 10, textAlign: "center" }]}>
@@ -1443,7 +1445,7 @@ setMainThemeKey: (t: ThemeKey) => void;
   );
 }
 
-export default function HomeScreen() {
+export function HomeScreen() {
   const [mode, setMode] = useState<"swipe" | "search">("swipe");
 
   const [tapCount, setTapCount] = useState(0);
