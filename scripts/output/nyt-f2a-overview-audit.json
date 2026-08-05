@@ -1,0 +1,975 @@
+{
+  "auditTimestamp": "2026-07-23T01:22:31.749Z",
+  "overviewHttpStatus": 200,
+  "overviewListCount": 19,
+  "overviewElapsedMs": 559,
+  "adultListSlugs": [
+    "combined-print-and-e-book-fiction",
+    "hardcover-fiction",
+    "trade-fiction-paperback"
+  ],
+  "comparisons": [
+    {
+      "slug": "combined-print-and-e-book-fiction",
+      "perList": {
+        "httpStatus": 200,
+        "elapsedMs": 491,
+        "listName": "Combined Print & E-Book Fiction",
+        "listNameEncoded": "combined-print-and-e-book-fiction",
+        "listId": 704,
+        "bestsellersDate": "2026-07-18",
+        "publishedDate": "2026-08-02",
+        "nextPublishedDate": null,
+        "previousPublishedDate": "2026-07-26",
+        "numResults": null,
+        "bookCount": 15,
+        "fieldCoverage": {
+          "title": "15/15 (100%)",
+          "author": "15/15 (100%)",
+          "description": "15/15 (100%)",
+          "publisher": "15/15 (100%)",
+          "isbn10": "0/15 (0%)",
+          "isbn13": "15/15 (100%)",
+          "rank": "15/15 (100%)",
+          "weeks_on_list": "15/15 (100%)",
+          "amazon_product_url": "15/15 (100%)",
+          "book_image": "15/15 (100%)",
+          "age_group": "0/15 (0%)",
+          "buy_links": "15/15 (100%)",
+          "book_review_link": "0/15 (0%)",
+          "first_chapter_link": "0/15 (0%)",
+          "article_chapter_link": "0/15 (0%)",
+          "sunday_review_uuid": "0/15 (0%)"
+        },
+        "titlesWithRank": [
+          {
+            "rank": 1,
+            "title": "RANSOM",
+            "author": "Daniel Silva",
+            "weeks": 1,
+            "isbn13": "9780063384262",
+            "isbn10": null
+          },
+          {
+            "rank": 2,
+            "title": "THEO OF GOLDEN",
+            "author": "Allen Levi",
+            "weeks": 33,
+            "isbn13": "9781668236512",
+            "isbn10": null
+          },
+          {
+            "rank": 3,
+            "title": "YESTERYEAR",
+            "author": "Caro Claire Burke",
+            "weeks": 15,
+            "isbn13": "9780593804216",
+            "isbn10": null
+          },
+          {
+            "rank": 4,
+            "title": "THE CALAMITY CLUB",
+            "author": "Kathryn Stockett",
+            "weeks": 11,
+            "isbn13": "9781954118829",
+            "isbn10": null
+          },
+          {
+            "rank": 5,
+            "title": "PROJECT HAIL MARY",
+            "author": "Andy Weir",
+            "weeks": 58,
+            "isbn13": "9780593135228",
+            "isbn10": null
+          },
+          {
+            "rank": 6,
+            "title": "WHISTLER",
+            "author": "Ann Patchett",
+            "weeks": 7,
+            "isbn13": "9780063511637",
+            "isbn10": null
+          },
+          {
+            "rank": 7,
+            "title": "THE COUNTRY ROAD MURDERS",
+            "author": "James Patterson and Mike Lupica",
+            "weeks": 1,
+            "isbn13": "9780316599870",
+            "isbn10": null
+          },
+          {
+            "rank": 8,
+            "title": "DUNGEON CRAWLER CARL",
+            "author": "Matt Dinniman",
+            "weeks": 28,
+            "isbn13": "9780593820254",
+            "isbn10": null
+          },
+          {
+            "rank": 9,
+            "title": "THE LEGACY",
+            "author": "Elle Kennedy",
+            "weeks": 1,
+            "isbn13": "9781990101069",
+            "isbn10": null
+          },
+          {
+            "rank": 10,
+            "title": "THE ROMANCE REVIVAL",
+            "author": "Christina Lauren",
+            "weeks": 1,
+            "isbn13": "9781668017753",
+            "isbn10": null
+          },
+          {
+            "rank": 11,
+            "title": "THE CORRESPONDENT",
+            "author": "Virginia Evans",
+            "weeks": 36,
+            "isbn13": "9780593798430",
+            "isbn10": null
+          },
+          {
+            "rank": 12,
+            "title": "THE GOAL",
+            "author": "Elle Kennedy",
+            "weeks": 3,
+            "isbn13": "9781464244810",
+            "isbn10": null
+          },
+          {
+            "rank": 13,
+            "title": "THE FIVE-STAR WEEKEND",
+            "author": "Elin Hilderbrand",
+            "weeks": 7,
+            "isbn13": "9780316259187",
+            "isbn10": null
+          },
+          {
+            "rank": 14,
+            "title": "THE DEAL",
+            "author": "Elle Kennedy",
+            "weeks": 10,
+            "isbn13": "9781775293934",
+            "isbn10": null
+          },
+          {
+            "rank": 15,
+            "title": "THE DIVORCE",
+            "author": "Freida McFadden",
+            "weeks": 8,
+            "isbn13": "9781464249631",
+            "isbn10": null
+          }
+        ]
+      },
+      "overview": {
+        "found": true,
+        "listName": "Combined Print & E-Book Fiction",
+        "listNameEncoded": "combined-print-and-e-book-fiction",
+        "listId": 704,
+        "bestsellersDate": null,
+        "publishedDate": null,
+        "updatedAt": "WEEKLY",
+        "bookCount": 15,
+        "fieldCoverage": {
+          "title": "15/15 (100%)",
+          "author": "15/15 (100%)",
+          "description": "15/15 (100%)",
+          "publisher": "15/15 (100%)",
+          "isbn10": "0/15 (0%)",
+          "isbn13": "15/15 (100%)",
+          "rank": "15/15 (100%)",
+          "weeks_on_list": "15/15 (100%)",
+          "amazon_product_url": "15/15 (100%)",
+          "book_image": "15/15 (100%)",
+          "age_group": "0/15 (0%)",
+          "buy_links": "15/15 (100%)",
+          "book_review_link": "0/15 (0%)",
+          "first_chapter_link": "0/15 (0%)",
+          "article_chapter_link": "0/15 (0%)",
+          "sunday_review_uuid": "0/15 (0%)"
+        },
+        "titlesWithRank": [
+          {
+            "rank": 1,
+            "title": "RANSOM",
+            "author": "Daniel Silva",
+            "weeks": 1,
+            "isbn13": "9780063384262",
+            "isbn10": null
+          },
+          {
+            "rank": 2,
+            "title": "THEO OF GOLDEN",
+            "author": "Allen Levi",
+            "weeks": 33,
+            "isbn13": "9781668236512",
+            "isbn10": null
+          },
+          {
+            "rank": 3,
+            "title": "YESTERYEAR",
+            "author": "Caro Claire Burke",
+            "weeks": 15,
+            "isbn13": "9780593804216",
+            "isbn10": null
+          },
+          {
+            "rank": 4,
+            "title": "THE CALAMITY CLUB",
+            "author": "Kathryn Stockett",
+            "weeks": 11,
+            "isbn13": "9781954118829",
+            "isbn10": null
+          },
+          {
+            "rank": 5,
+            "title": "PROJECT HAIL MARY",
+            "author": "Andy Weir",
+            "weeks": 58,
+            "isbn13": "9780593135228",
+            "isbn10": null
+          },
+          {
+            "rank": 6,
+            "title": "WHISTLER",
+            "author": "Ann Patchett",
+            "weeks": 7,
+            "isbn13": "9780063511637",
+            "isbn10": null
+          },
+          {
+            "rank": 7,
+            "title": "THE COUNTRY ROAD MURDERS",
+            "author": "James Patterson and Mike Lupica",
+            "weeks": 1,
+            "isbn13": "9780316599870",
+            "isbn10": null
+          },
+          {
+            "rank": 8,
+            "title": "DUNGEON CRAWLER CARL",
+            "author": "Matt Dinniman",
+            "weeks": 28,
+            "isbn13": "9780593820254",
+            "isbn10": null
+          },
+          {
+            "rank": 9,
+            "title": "THE LEGACY",
+            "author": "Elle Kennedy",
+            "weeks": 1,
+            "isbn13": "9781990101069",
+            "isbn10": null
+          },
+          {
+            "rank": 10,
+            "title": "THE ROMANCE REVIVAL",
+            "author": "Christina Lauren",
+            "weeks": 1,
+            "isbn13": "9781668017753",
+            "isbn10": null
+          },
+          {
+            "rank": 11,
+            "title": "THE CORRESPONDENT",
+            "author": "Virginia Evans",
+            "weeks": 36,
+            "isbn13": "9780593798430",
+            "isbn10": null
+          },
+          {
+            "rank": 12,
+            "title": "THE GOAL",
+            "author": "Elle Kennedy",
+            "weeks": 3,
+            "isbn13": "9781464244810",
+            "isbn10": null
+          },
+          {
+            "rank": 13,
+            "title": "THE FIVE-STAR WEEKEND",
+            "author": "Elin Hilderbrand",
+            "weeks": 7,
+            "isbn13": "9780316259187",
+            "isbn10": null
+          },
+          {
+            "rank": 14,
+            "title": "THE DEAL",
+            "author": "Elle Kennedy",
+            "weeks": 10,
+            "isbn13": "9781775293934",
+            "isbn10": null
+          },
+          {
+            "rank": 15,
+            "title": "THE DIVORCE",
+            "author": "Freida McFadden",
+            "weeks": 8,
+            "isbn13": "9781464249631",
+            "isbn10": null
+          }
+        ]
+      },
+      "verdict": {
+        "countMatch": true,
+        "perListCount": 15,
+        "overviewCount": 15,
+        "countDiff": 0,
+        "isbnCoverageMatch": true,
+        "titleOrderMatch": true,
+        "titlesOnlyInPerList": [],
+        "titlesOnlyInOverview": [],
+        "fieldsOnlyInPerList": [],
+        "fieldsOnlyInOverview": [],
+        "overviewIsViableSubstitute": true
+      }
+    },
+    {
+      "slug": "hardcover-fiction",
+      "perList": {
+        "httpStatus": 200,
+        "elapsedMs": 264,
+        "listName": "Hardcover Fiction",
+        "listNameEncoded": "hardcover-fiction",
+        "listId": 1,
+        "bestsellersDate": "2026-07-18",
+        "publishedDate": "2026-08-02",
+        "nextPublishedDate": null,
+        "previousPublishedDate": "2026-07-26",
+        "numResults": null,
+        "bookCount": 15,
+        "fieldCoverage": {
+          "title": "15/15 (100%)",
+          "author": "15/15 (100%)",
+          "description": "15/15 (100%)",
+          "publisher": "15/15 (100%)",
+          "isbn10": "0/15 (0%)",
+          "isbn13": "15/15 (100%)",
+          "rank": "15/15 (100%)",
+          "weeks_on_list": "15/15 (100%)",
+          "amazon_product_url": "15/15 (100%)",
+          "book_image": "15/15 (100%)",
+          "age_group": "0/15 (0%)",
+          "buy_links": "15/15 (100%)",
+          "book_review_link": "0/15 (0%)",
+          "first_chapter_link": "0/15 (0%)",
+          "article_chapter_link": "0/15 (0%)",
+          "sunday_review_uuid": "0/15 (0%)"
+        },
+        "titlesWithRank": [
+          {
+            "rank": 1,
+            "title": "RANSOM",
+            "author": "Daniel Silva",
+            "weeks": 1,
+            "isbn13": "9780063384224",
+            "isbn10": null
+          },
+          {
+            "rank": 2,
+            "title": "YESTERYEAR",
+            "author": "Caro Claire Burke",
+            "weeks": 15,
+            "isbn13": "9780593804216",
+            "isbn10": null
+          },
+          {
+            "rank": 3,
+            "title": "WHISTLER",
+            "author": "Ann Patchett",
+            "weeks": 7,
+            "isbn13": "9780063511637",
+            "isbn10": null
+          },
+          {
+            "rank": 4,
+            "title": "THE CALAMITY CLUB",
+            "author": "Kathryn Stockett",
+            "weeks": 11,
+            "isbn13": "9781954118812",
+            "isbn10": null
+          },
+          {
+            "rank": 5,
+            "title": "THE COUNTRY ROAD MURDERS",
+            "author": "James Patterson and Mike Lupica",
+            "weeks": 1,
+            "isbn13": "9780316599870",
+            "isbn10": null
+          },
+          {
+            "rank": 6,
+            "title": "THE CORRESPONDENT",
+            "author": "Virginia Evans",
+            "weeks": 38,
+            "isbn13": "9780593798430",
+            "isbn10": null
+          },
+          {
+            "rank": 7,
+            "title": "THE ROMANCE REVIVAL",
+            "author": "Christina Lauren",
+            "weeks": 1,
+            "isbn13": "9781668017753",
+            "isbn10": null
+          },
+          {
+            "rank": 8,
+            "title": "CARL'S DOOMSDAY SCENARIO",
+            "author": "Matt Dinniman",
+            "weeks": 27,
+            "isbn13": "9780593820261",
+            "isbn10": null
+          },
+          {
+            "rank": 9,
+            "title": "THE DUNGEON ANARCHIST'S COOKBOOK",
+            "author": "Matt Dinniman",
+            "weeks": 20,
+            "isbn13": "9780593820285",
+            "isbn10": null
+          },
+          {
+            "rank": 10,
+            "title": "THE GOAL",
+            "author": "Elle Kennedy",
+            "weeks": 1,
+            "isbn13": "9781464244810",
+            "isbn10": null
+          },
+          {
+            "rank": 11,
+            "title": "THE LEGACY",
+            "author": "Elle Kennedy",
+            "weeks": 1,
+            "isbn13": "9781464244827",
+            "isbn10": null
+          },
+          {
+            "rank": 12,
+            "title": "THE SHAMPOO EFFECT",
+            "author": "Jenny Jackson",
+            "weeks": 3,
+            "isbn13": "9798217059959",
+            "isbn10": null
+          },
+          {
+            "rank": 13,
+            "title": "LOVE YOU MORE",
+            "author": "Emily Giffin",
+            "weeks": 2,
+            "isbn13": "9780593600320",
+            "isbn10": null
+          },
+          {
+            "rank": 14,
+            "title": "DUNGEON CRAWLER CARL",
+            "author": "Matt Dinniman",
+            "weeks": 17,
+            "isbn13": "9780593820247",
+            "isbn10": null
+          },
+          {
+            "rank": 15,
+            "title": "THE GATE OF THE FERAL GODS",
+            "author": "Matt Dinniman",
+            "weeks": 11,
+            "isbn13": "9780593955970",
+            "isbn10": null
+          }
+        ]
+      },
+      "overview": {
+        "found": true,
+        "listName": "Hardcover Fiction",
+        "listNameEncoded": "hardcover-fiction",
+        "listId": 1,
+        "bestsellersDate": null,
+        "publishedDate": null,
+        "updatedAt": "WEEKLY",
+        "bookCount": 15,
+        "fieldCoverage": {
+          "title": "15/15 (100%)",
+          "author": "15/15 (100%)",
+          "description": "15/15 (100%)",
+          "publisher": "15/15 (100%)",
+          "isbn10": "0/15 (0%)",
+          "isbn13": "15/15 (100%)",
+          "rank": "15/15 (100%)",
+          "weeks_on_list": "15/15 (100%)",
+          "amazon_product_url": "15/15 (100%)",
+          "book_image": "15/15 (100%)",
+          "age_group": "0/15 (0%)",
+          "buy_links": "15/15 (100%)",
+          "book_review_link": "0/15 (0%)",
+          "first_chapter_link": "0/15 (0%)",
+          "article_chapter_link": "0/15 (0%)",
+          "sunday_review_uuid": "0/15 (0%)"
+        },
+        "titlesWithRank": [
+          {
+            "rank": 1,
+            "title": "RANSOM",
+            "author": "Daniel Silva",
+            "weeks": 1,
+            "isbn13": "9780063384224",
+            "isbn10": null
+          },
+          {
+            "rank": 2,
+            "title": "YESTERYEAR",
+            "author": "Caro Claire Burke",
+            "weeks": 15,
+            "isbn13": "9780593804216",
+            "isbn10": null
+          },
+          {
+            "rank": 3,
+            "title": "WHISTLER",
+            "author": "Ann Patchett",
+            "weeks": 7,
+            "isbn13": "9780063511637",
+            "isbn10": null
+          },
+          {
+            "rank": 4,
+            "title": "THE CALAMITY CLUB",
+            "author": "Kathryn Stockett",
+            "weeks": 11,
+            "isbn13": "9781954118812",
+            "isbn10": null
+          },
+          {
+            "rank": 5,
+            "title": "THE COUNTRY ROAD MURDERS",
+            "author": "James Patterson and Mike Lupica",
+            "weeks": 1,
+            "isbn13": "9780316599870",
+            "isbn10": null
+          },
+          {
+            "rank": 6,
+            "title": "THE CORRESPONDENT",
+            "author": "Virginia Evans",
+            "weeks": 38,
+            "isbn13": "9780593798430",
+            "isbn10": null
+          },
+          {
+            "rank": 7,
+            "title": "THE ROMANCE REVIVAL",
+            "author": "Christina Lauren",
+            "weeks": 1,
+            "isbn13": "9781668017753",
+            "isbn10": null
+          },
+          {
+            "rank": 8,
+            "title": "CARL'S DOOMSDAY SCENARIO",
+            "author": "Matt Dinniman",
+            "weeks": 27,
+            "isbn13": "9780593820261",
+            "isbn10": null
+          },
+          {
+            "rank": 9,
+            "title": "THE DUNGEON ANARCHIST'S COOKBOOK",
+            "author": "Matt Dinniman",
+            "weeks": 20,
+            "isbn13": "9780593820285",
+            "isbn10": null
+          },
+          {
+            "rank": 10,
+            "title": "THE GOAL",
+            "author": "Elle Kennedy",
+            "weeks": 1,
+            "isbn13": "9781464244810",
+            "isbn10": null
+          },
+          {
+            "rank": 11,
+            "title": "THE LEGACY",
+            "author": "Elle Kennedy",
+            "weeks": 1,
+            "isbn13": "9781464244827",
+            "isbn10": null
+          },
+          {
+            "rank": 12,
+            "title": "THE SHAMPOO EFFECT",
+            "author": "Jenny Jackson",
+            "weeks": 3,
+            "isbn13": "9798217059959",
+            "isbn10": null
+          },
+          {
+            "rank": 13,
+            "title": "LOVE YOU MORE",
+            "author": "Emily Giffin",
+            "weeks": 2,
+            "isbn13": "9780593600320",
+            "isbn10": null
+          },
+          {
+            "rank": 14,
+            "title": "DUNGEON CRAWLER CARL",
+            "author": "Matt Dinniman",
+            "weeks": 17,
+            "isbn13": "9780593820247",
+            "isbn10": null
+          },
+          {
+            "rank": 15,
+            "title": "THE GATE OF THE FERAL GODS",
+            "author": "Matt Dinniman",
+            "weeks": 11,
+            "isbn13": "9780593955970",
+            "isbn10": null
+          }
+        ]
+      },
+      "verdict": {
+        "countMatch": true,
+        "perListCount": 15,
+        "overviewCount": 15,
+        "countDiff": 0,
+        "isbnCoverageMatch": true,
+        "titleOrderMatch": true,
+        "titlesOnlyInPerList": [],
+        "titlesOnlyInOverview": [],
+        "fieldsOnlyInPerList": [],
+        "fieldsOnlyInOverview": [],
+        "overviewIsViableSubstitute": true
+      }
+    },
+    {
+      "slug": "trade-fiction-paperback",
+      "perList": {
+        "httpStatus": 200,
+        "elapsedMs": 514,
+        "listName": "Paperback Trade Fiction",
+        "listNameEncoded": "trade-fiction-paperback",
+        "listId": 17,
+        "bestsellersDate": "2026-07-18",
+        "publishedDate": "2026-08-02",
+        "nextPublishedDate": null,
+        "previousPublishedDate": "2026-07-26",
+        "numResults": null,
+        "bookCount": 15,
+        "fieldCoverage": {
+          "title": "15/15 (100%)",
+          "author": "15/15 (100%)",
+          "description": "15/15 (100%)",
+          "publisher": "15/15 (100%)",
+          "isbn10": "0/15 (0%)",
+          "isbn13": "15/15 (100%)",
+          "rank": "15/15 (100%)",
+          "weeks_on_list": "15/15 (100%)",
+          "amazon_product_url": "15/15 (100%)",
+          "book_image": "15/15 (100%)",
+          "age_group": "0/15 (0%)",
+          "buy_links": "15/15 (100%)",
+          "book_review_link": "0/15 (0%)",
+          "first_chapter_link": "0/15 (0%)",
+          "article_chapter_link": "0/15 (0%)",
+          "sunday_review_uuid": "0/15 (0%)"
+        },
+        "titlesWithRank": [
+          {
+            "rank": 1,
+            "title": "THEO OF GOLDEN",
+            "author": "Allen Levi",
+            "weeks": 34,
+            "isbn13": "9781668236512",
+            "isbn10": null
+          },
+          {
+            "rank": 2,
+            "title": "PROJECT HAIL MARY",
+            "author": "Andy Weir",
+            "weeks": 56,
+            "isbn13": "9780593135228",
+            "isbn10": null
+          },
+          {
+            "rank": 3,
+            "title": "DUNGEON CRAWLER CARL",
+            "author": "Matt Dinniman",
+            "weeks": 29,
+            "isbn13": "9780593820254",
+            "isbn10": null
+          },
+          {
+            "rank": 4,
+            "title": "THE FIVE-STAR WEEKEND",
+            "author": "Elin Hilderbrand",
+            "weeks": 3,
+            "isbn13": "9780316259187",
+            "isbn10": null
+          },
+          {
+            "rank": 5,
+            "title": "THE DEAL",
+            "author": "Elle Kennedy",
+            "weeks": 10,
+            "isbn13": "9781775293934",
+            "isbn10": null
+          },
+          {
+            "rank": 6,
+            "title": "THE DIVORCE",
+            "author": "Freida McFadden",
+            "weeks": 8,
+            "isbn13": "9781464249631",
+            "isbn10": null
+          },
+          {
+            "rank": 7,
+            "title": "FORSAKING MIDNIGHT",
+            "author": "Emily McIntire",
+            "weeks": 1,
+            "isbn13": "9781464221736",
+            "isbn10": null
+          },
+          {
+            "rank": 8,
+            "title": "THE LEGACY",
+            "author": "Elle Kennedy",
+            "weeks": 1,
+            "isbn13": "9781990101069",
+            "isbn10": null
+          },
+          {
+            "rank": 9,
+            "title": "THE MISTAKE",
+            "author": "Elle Kennedy",
+            "weeks": 9,
+            "isbn13": "9781775293941",
+            "isbn10": null
+          },
+          {
+            "rank": 10,
+            "title": "REMARKABLY BRIGHT CREATURES",
+            "author": "Shelby Van Pelt",
+            "weeks": 43,
+            "isbn13": "9780063204164",
+            "isbn10": null
+          },
+          {
+            "rank": 11,
+            "title": "THE SCORE",
+            "author": "Elle Kennedy",
+            "weeks": 9,
+            "isbn13": "9781775293958",
+            "isbn10": null
+          },
+          {
+            "rank": 12,
+            "title": "IN STORMY WEATHER",
+            "author": "Chelsea Curto",
+            "weeks": 1,
+            "isbn13": "9781668217436",
+            "isbn10": null
+          },
+          {
+            "rank": 13,
+            "title": "RED RISING",
+            "author": "Pierce Brown",
+            "weeks": 5,
+            "isbn13": "9780345539809",
+            "isbn10": null
+          },
+          {
+            "rank": 14,
+            "title": "DOLLY ALL THE TIME",
+            "author": "Annabel Monaghan",
+            "weeks": 7,
+            "isbn13": "9780593853979",
+            "isbn10": null
+          },
+          {
+            "rank": 15,
+            "title": "THE HOUSEMAID'S WEDDING",
+            "author": "Freida McFadden",
+            "weeks": 4,
+            "isbn13": "9781628860016",
+            "isbn10": null
+          }
+        ]
+      },
+      "overview": {
+        "found": true,
+        "listName": "Paperback Trade Fiction",
+        "listNameEncoded": "trade-fiction-paperback",
+        "listId": 17,
+        "bestsellersDate": null,
+        "publishedDate": null,
+        "updatedAt": "WEEKLY",
+        "bookCount": 15,
+        "fieldCoverage": {
+          "title": "15/15 (100%)",
+          "author": "15/15 (100%)",
+          "description": "15/15 (100%)",
+          "publisher": "15/15 (100%)",
+          "isbn10": "0/15 (0%)",
+          "isbn13": "15/15 (100%)",
+          "rank": "15/15 (100%)",
+          "weeks_on_list": "15/15 (100%)",
+          "amazon_product_url": "15/15 (100%)",
+          "book_image": "15/15 (100%)",
+          "age_group": "0/15 (0%)",
+          "buy_links": "15/15 (100%)",
+          "book_review_link": "0/15 (0%)",
+          "first_chapter_link": "0/15 (0%)",
+          "article_chapter_link": "0/15 (0%)",
+          "sunday_review_uuid": "0/15 (0%)"
+        },
+        "titlesWithRank": [
+          {
+            "rank": 1,
+            "title": "THEO OF GOLDEN",
+            "author": "Allen Levi",
+            "weeks": 34,
+            "isbn13": "9781668236512",
+            "isbn10": null
+          },
+          {
+            "rank": 2,
+            "title": "PROJECT HAIL MARY",
+            "author": "Andy Weir",
+            "weeks": 56,
+            "isbn13": "9780593135228",
+            "isbn10": null
+          },
+          {
+            "rank": 3,
+            "title": "DUNGEON CRAWLER CARL",
+            "author": "Matt Dinniman",
+            "weeks": 29,
+            "isbn13": "9780593820254",
+            "isbn10": null
+          },
+          {
+            "rank": 4,
+            "title": "THE FIVE-STAR WEEKEND",
+            "author": "Elin Hilderbrand",
+            "weeks": 3,
+            "isbn13": "9780316259187",
+            "isbn10": null
+          },
+          {
+            "rank": 5,
+            "title": "THE DEAL",
+            "author": "Elle Kennedy",
+            "weeks": 10,
+            "isbn13": "9781775293934",
+            "isbn10": null
+          },
+          {
+            "rank": 6,
+            "title": "THE DIVORCE",
+            "author": "Freida McFadden",
+            "weeks": 8,
+            "isbn13": "9781464249631",
+            "isbn10": null
+          },
+          {
+            "rank": 7,
+            "title": "FORSAKING MIDNIGHT",
+            "author": "Emily McIntire",
+            "weeks": 1,
+            "isbn13": "9781464221736",
+            "isbn10": null
+          },
+          {
+            "rank": 8,
+            "title": "THE LEGACY",
+            "author": "Elle Kennedy",
+            "weeks": 1,
+            "isbn13": "9781990101069",
+            "isbn10": null
+          },
+          {
+            "rank": 9,
+            "title": "THE MISTAKE",
+            "author": "Elle Kennedy",
+            "weeks": 9,
+            "isbn13": "9781775293941",
+            "isbn10": null
+          },
+          {
+            "rank": 10,
+            "title": "REMARKABLY BRIGHT CREATURES",
+            "author": "Shelby Van Pelt",
+            "weeks": 43,
+            "isbn13": "9780063204164",
+            "isbn10": null
+          },
+          {
+            "rank": 11,
+            "title": "THE SCORE",
+            "author": "Elle Kennedy",
+            "weeks": 9,
+            "isbn13": "9781775293958",
+            "isbn10": null
+          },
+          {
+            "rank": 12,
+            "title": "IN STORMY WEATHER",
+            "author": "Chelsea Curto",
+            "weeks": 1,
+            "isbn13": "9781668217436",
+            "isbn10": null
+          },
+          {
+            "rank": 13,
+            "title": "RED RISING",
+            "author": "Pierce Brown",
+            "weeks": 5,
+            "isbn13": "9780345539809",
+            "isbn10": null
+          },
+          {
+            "rank": 14,
+            "title": "DOLLY ALL THE TIME",
+            "author": "Annabel Monaghan",
+            "weeks": 7,
+            "isbn13": "9780593853979",
+            "isbn10": null
+          },
+          {
+            "rank": 15,
+            "title": "THE HOUSEMAID'S WEDDING",
+            "author": "Freida McFadden",
+            "weeks": 4,
+            "isbn13": "9781628860016",
+            "isbn10": null
+          }
+        ]
+      },
+      "verdict": {
+        "countMatch": true,
+        "perListCount": 15,
+        "overviewCount": 15,
+        "countDiff": 0,
+        "isbnCoverageMatch": true,
+        "titleOrderMatch": true,
+        "titlesOnlyInPerList": [],
+        "titlesOnlyInOverview": [],
+        "fieldsOnlyInPerList": [],
+        "fieldsOnlyInOverview": [],
+        "overviewIsViableSubstitute": true
+      }
+    }
+  ],
+  "conclusion": {
+    "allListsViable": true,
+    "anyOverviewShallower": false,
+    "recommendation": "switch_to_overview"
+  }
+}

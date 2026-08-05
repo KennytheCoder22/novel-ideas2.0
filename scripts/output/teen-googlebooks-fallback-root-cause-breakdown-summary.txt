@@ -1,0 +1,14 @@
+3 Teen sessions
+
+Primary sufficient ............ 0
+Recall shortage ............... 0
+Publication filtering ......... 1
+Taste filtering ............... 0
+Diversity filtering ........... 1
+Ranking/selection ............. 0
+Query mismatch ................ 1
+
+Per-run bucket assignments:
+- pasted-text-dc02506e-9ee9-47dc-a7d5-d6b2759ae2ff.txt (Test A): E_diversity_filtering | primaryAccepted=3 secondaryAccepted=1 primarySelected=2 secondarySelected=1 finalSelected=3
+- pasted-text-8b7bcef5-45db-4402-a0ce-7a21a5756b7a.txt (Test B): C_publication_filtering | primaryAccepted=6 secondaryAccepted=3 primarySelected=6 secondarySelected=2 finalSelected=8
+- pasted-text-6c545f71-1ada-4376-b082-0753c38f245e.txt (Test C): G_query_mismatch | primaryAccepted=3 secondaryAccepted=5 primarySelected=3 secondarySelected=2 finalSelected=5

@@ -1,0 +1,647 @@
+{
+  "auditTimestamp": "2026-07-23T18:31:45.868Z",
+  "design": "A (GB+OL+NYT) vs B (GB+OL only) — single variable: NYT enabled/disabled",
+  "profiles": [
+    {
+      "profileId": "mystery-thriller",
+      "profileLabel": "Mystery / Thriller",
+      "candidateFlow": {
+        "nytRetrievedFromApi": 30,
+        "nytConverted": 24,
+        "nytDroppedInConversion": 6,
+        "totalNormalizedA": 51,
+        "totalScoredA": 51,
+        "nytInFinalSlate": 0,
+        "nytInFinalSlateTitles": [],
+        "nytUsedOverview": false,
+        "nytQuotaBlocked": false
+      },
+      "uniqueContribution": {
+        "nytRawCount": 20,
+        "uniqueToNytCount": 20,
+        "uniqueToNytTitles": [
+          "RANSOM",
+          "THEO OF GOLDEN",
+          "YESTERYEAR",
+          "THE CALAMITY CLUB",
+          "PROJECT HAIL MARY",
+          "WHISTLER",
+          "THE COUNTRY ROAD MURDERS",
+          "DUNGEON CRAWLER CARL",
+          "THE LEGACY",
+          "THE ROMANCE REVIVAL",
+          "THE CORRESPONDENT",
+          "THE GOAL",
+          "THE FIVE-STAR WEEKEND",
+          "THE DEAL",
+          "THE DIVORCE",
+          "CARL'S DOOMSDAY SCENARIO",
+          "THE DUNGEON ANARCHIST'S COOKBOOK",
+          "THE SHAMPOO EFFECT",
+          "LOVE YOU MORE",
+          "THE GATE OF THE FERAL GODS"
+        ]
+      },
+      "replacementAnalysis": {
+        "nytAdditions": [],
+        "nytRemovals": [],
+        "pairs": []
+      },
+      "agreementMatrix": [
+        {
+          "title": "Do Not Disturb",
+          "inSlateSource": "openLibrary",
+          "gb": false,
+          "ol": true,
+          "nyt": false,
+          "agreementCount": 1
+        },
+        {
+          "title": "Behind her eyes",
+          "inSlateSource": "openLibrary",
+          "gb": false,
+          "ol": true,
+          "nyt": false,
+          "agreementCount": 1
+        },
+        {
+          "title": "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+          "inSlateSource": "googleBooks",
+          "gb": true,
+          "ol": false,
+          "nyt": false,
+          "agreementCount": 1
+        },
+        {
+          "title": "Blindsighted",
+          "inSlateSource": "openLibrary",
+          "gb": false,
+          "ol": true,
+          "nyt": false,
+          "agreementCount": 1
+        },
+        {
+          "title": "Worst Case",
+          "inSlateSource": "openLibrary",
+          "gb": false,
+          "ol": true,
+          "nyt": false,
+          "agreementCount": 1
+        }
+      ],
+      "diversity": {
+        "uniqueAuthorsA": 5,
+        "uniqueAuthorsB": 5,
+        "slateSizeA": 5,
+        "slateSizeB": 5,
+        "authorDiversityRatioA": 1,
+        "authorDiversityRatioB": 1
+      },
+      "recency": {
+        "medianPubYearBaseline": 2017,
+        "medianPubYearNytOnly": null,
+        "medianPubYearSlateA": 2017,
+        "medianPubYearSlateB": 2017
+      },
+      "poolSizes": {
+        "gbRawCountA": 12,
+        "olRawCountA": 15,
+        "nytRawCountA": 24,
+        "gbStatusA": "succeeded",
+        "olStatusA": "succeeded",
+        "nytStatusA": "succeeded",
+        "gbRawCountB": 12,
+        "olRawCountB": 15
+      },
+      "slateTitlesA": [
+        "Do Not Disturb",
+        "Behind her eyes",
+        "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+        "Blindsighted",
+        "Worst Case"
+      ],
+      "slateTitlesB": [
+        "Do Not Disturb",
+        "Behind her eyes",
+        "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+        "Blindsighted",
+        "Worst Case"
+      ]
+    },
+    {
+      "profileId": "scifi-fantasy",
+      "profileLabel": "Science Fiction / Fantasy",
+      "candidateFlow": {
+        "nytRetrievedFromApi": 45,
+        "nytConverted": 32,
+        "nytDroppedInConversion": 13,
+        "totalNormalizedA": 72,
+        "totalScoredA": 72,
+        "nytInFinalSlate": 2,
+        "nytInFinalSlateTitles": [
+          "DUNGEON CRAWLER CARL",
+          "REMARKABLY BRIGHT CREATURES"
+        ],
+        "nytUsedOverview": false,
+        "nytQuotaBlocked": false
+      },
+      "uniqueContribution": {
+        "nytRawCount": 28,
+        "uniqueToNytCount": 28,
+        "uniqueToNytTitles": [
+          "RANSOM",
+          "THEO OF GOLDEN",
+          "YESTERYEAR",
+          "THE CALAMITY CLUB",
+          "PROJECT HAIL MARY",
+          "WHISTLER",
+          "THE COUNTRY ROAD MURDERS",
+          "DUNGEON CRAWLER CARL",
+          "THE LEGACY",
+          "THE ROMANCE REVIVAL",
+          "THE CORRESPONDENT",
+          "THE GOAL",
+          "THE FIVE-STAR WEEKEND",
+          "THE DEAL",
+          "THE DIVORCE",
+          "CARL'S DOOMSDAY SCENARIO",
+          "THE DUNGEON ANARCHIST'S COOKBOOK",
+          "THE SHAMPOO EFFECT",
+          "LOVE YOU MORE",
+          "THE GATE OF THE FERAL GODS",
+          "FORSAKING MIDNIGHT",
+          "THE MISTAKE",
+          "REMARKABLY BRIGHT CREATURES",
+          "THE SCORE",
+          "IN STORMY WEATHER",
+          "RED RISING",
+          "DOLLY ALL THE TIME",
+          "THE HOUSEMAID'S WEDDING"
+        ]
+      },
+      "replacementAnalysis": {
+        "nytAdditions": [
+          "DUNGEON CRAWLER CARL",
+          "REMARKABLY BRIGHT CREATURES",
+          "Fang"
+        ],
+        "nytRemovals": [
+          "Five Minds",
+          "Sentinel",
+          "Sweetpea"
+        ],
+        "pairs": [
+          {
+            "removed": "Five Minds",
+            "replacedBy": "DUNGEON CRAWLER CARL",
+            "replacedBySource": "nyt"
+          },
+          {
+            "removed": "Sentinel",
+            "replacedBy": "REMARKABLY BRIGHT CREATURES",
+            "replacedBySource": "nyt"
+          },
+          {
+            "removed": "Sweetpea",
+            "replacedBy": "Fang",
+            "replacedBySource": "openLibrary"
+          }
+        ]
+      },
+      "agreementMatrix": [
+        {
+          "title": "Cryptonomicon",
+          "inSlateSource": "openLibrary",
+          "gb": false,
+          "ol": true,
+          "nyt": false,
+          "agreementCount": 1
+        },
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        },
+        {
+          "title": "World Without Chance: Classic Pulp Science Fiction Stories in the Vein of Stanley G. Weinbaum",
+          "inSlateSource": "googleBooks",
+          "gb": true,
+          "ol": false,
+          "nyt": false,
+          "agreementCount": 1
+        },
+        {
+          "title": "REMARKABLY BRIGHT CREATURES",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        },
+        {
+          "title": "Fang",
+          "inSlateSource": "openLibrary",
+          "gb": false,
+          "ol": true,
+          "nyt": false,
+          "agreementCount": 1
+        }
+      ],
+      "diversity": {
+        "uniqueAuthorsA": 4,
+        "uniqueAuthorsB": 4,
+        "slateSizeA": 5,
+        "slateSizeB": 5,
+        "authorDiversityRatioA": 0.8,
+        "authorDiversityRatioB": 0.8
+      },
+      "recency": {
+        "medianPubYearBaseline": 2006,
+        "medianPubYearNytOnly": 2026,
+        "medianPubYearSlateA": 2013,
+        "medianPubYearSlateB": 2021
+      },
+      "poolSizes": {
+        "gbRawCountA": 19,
+        "olRawCountA": 21,
+        "nytRawCountA": 32,
+        "gbStatusA": "succeeded",
+        "olStatusA": "succeeded",
+        "nytStatusA": "succeeded",
+        "gbRawCountB": 19,
+        "olRawCountB": 12
+      },
+      "slateTitlesA": [
+        "Cryptonomicon",
+        "DUNGEON CRAWLER CARL",
+        "World Without Chance: Classic Pulp Science Fiction Stories in the Vein of Stanley G. Weinbaum",
+        "REMARKABLY BRIGHT CREATURES",
+        "Fang"
+      ],
+      "slateTitlesB": [
+        "Cryptonomicon",
+        "Five Minds",
+        "Sentinel",
+        "Sweetpea",
+        "World Without Chance: Classic Pulp Science Fiction Stories in the Vein of Stanley G. Weinbaum"
+      ]
+    },
+    {
+      "profileId": "historical-literary",
+      "profileLabel": "Historical / Literary",
+      "candidateFlow": {
+        "nytRetrievedFromApi": 45,
+        "nytConverted": 32,
+        "nytDroppedInConversion": 13,
+        "totalNormalizedA": 51,
+        "totalScoredA": 51,
+        "nytInFinalSlate": 5,
+        "nytInFinalSlateTitles": [
+          "DUNGEON CRAWLER CARL",
+          "REMARKABLY BRIGHT CREATURES",
+          "RANSOM",
+          "THE DEAL",
+          "THE DIVORCE"
+        ],
+        "nytUsedOverview": false,
+        "nytQuotaBlocked": false
+      },
+      "uniqueContribution": {
+        "nytRawCount": 28,
+        "uniqueToNytCount": 28,
+        "uniqueToNytTitles": [
+          "RANSOM",
+          "THEO OF GOLDEN",
+          "YESTERYEAR",
+          "THE CALAMITY CLUB",
+          "PROJECT HAIL MARY",
+          "WHISTLER",
+          "THE COUNTRY ROAD MURDERS",
+          "DUNGEON CRAWLER CARL",
+          "THE LEGACY",
+          "THE ROMANCE REVIVAL",
+          "THE CORRESPONDENT",
+          "THE GOAL",
+          "THE FIVE-STAR WEEKEND",
+          "THE DEAL",
+          "THE DIVORCE",
+          "CARL'S DOOMSDAY SCENARIO",
+          "THE DUNGEON ANARCHIST'S COOKBOOK",
+          "THE SHAMPOO EFFECT",
+          "LOVE YOU MORE",
+          "THE GATE OF THE FERAL GODS",
+          "FORSAKING MIDNIGHT",
+          "THE MISTAKE",
+          "REMARKABLY BRIGHT CREATURES",
+          "THE SCORE",
+          "IN STORMY WEATHER",
+          "RED RISING",
+          "DOLLY ALL THE TIME",
+          "THE HOUSEMAID'S WEDDING"
+        ]
+      },
+      "replacementAnalysis": {
+        "nytAdditions": [
+          "DUNGEON CRAWLER CARL",
+          "REMARKABLY BRIGHT CREATURES",
+          "RANSOM",
+          "THE DEAL",
+          "THE DIVORCE"
+        ],
+        "nytRemovals": [
+          "His bloody project",
+          "Stardust",
+          "Authority",
+          "Daemon",
+          "Utopia"
+        ],
+        "pairs": [
+          {
+            "removed": "His bloody project",
+            "replacedBy": "DUNGEON CRAWLER CARL",
+            "replacedBySource": "nyt"
+          },
+          {
+            "removed": "Stardust",
+            "replacedBy": "REMARKABLY BRIGHT CREATURES",
+            "replacedBySource": "nyt"
+          },
+          {
+            "removed": "Authority",
+            "replacedBy": "RANSOM",
+            "replacedBySource": "nyt"
+          },
+          {
+            "removed": "Daemon",
+            "replacedBy": "THE DEAL",
+            "replacedBySource": "nyt"
+          },
+          {
+            "removed": "Utopia",
+            "replacedBy": "THE DIVORCE",
+            "replacedBySource": "nyt"
+          }
+        ]
+      },
+      "agreementMatrix": [
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        },
+        {
+          "title": "REMARKABLY BRIGHT CREATURES",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        },
+        {
+          "title": "RANSOM",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        },
+        {
+          "title": "THE DEAL",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        },
+        {
+          "title": "THE DIVORCE",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        }
+      ],
+      "diversity": {
+        "uniqueAuthorsA": 5,
+        "uniqueAuthorsB": 5,
+        "slateSizeA": 5,
+        "slateSizeB": 5,
+        "authorDiversityRatioA": 1,
+        "authorDiversityRatioB": 1
+      },
+      "recency": {
+        "medianPubYearBaseline": null,
+        "medianPubYearNytOnly": 2026,
+        "medianPubYearSlateA": 2026,
+        "medianPubYearSlateB": 2009
+      },
+      "poolSizes": {
+        "gbRawCountA": 0,
+        "olRawCountA": 19,
+        "nytRawCountA": 32,
+        "gbStatusA": "empty",
+        "olStatusA": "succeeded",
+        "nytStatusA": "succeeded",
+        "gbRawCountB": 5,
+        "olRawCountB": 17
+      },
+      "slateTitlesA": [
+        "DUNGEON CRAWLER CARL",
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE DEAL",
+        "THE DIVORCE"
+      ],
+      "slateTitlesB": [
+        "His bloody project",
+        "Stardust",
+        "Authority",
+        "Daemon",
+        "Utopia"
+      ]
+    },
+    {
+      "profileId": "general-contemporary",
+      "profileLabel": "General / Contemporary Fiction",
+      "candidateFlow": {
+        "nytRetrievedFromApi": 30,
+        "nytConverted": 24,
+        "nytDroppedInConversion": 6,
+        "totalNormalizedA": 36,
+        "totalScoredA": 36,
+        "nytInFinalSlate": 5,
+        "nytInFinalSlateTitles": [
+          "RANSOM",
+          "DUNGEON CRAWLER CARL",
+          "THE SHAMPOO EFFECT",
+          "THE DEAL",
+          "THE DIVORCE"
+        ],
+        "nytUsedOverview": false,
+        "nytQuotaBlocked": false
+      },
+      "uniqueContribution": {
+        "nytRawCount": 20,
+        "uniqueToNytCount": 20,
+        "uniqueToNytTitles": [
+          "RANSOM",
+          "THEO OF GOLDEN",
+          "YESTERYEAR",
+          "THE CALAMITY CLUB",
+          "PROJECT HAIL MARY",
+          "WHISTLER",
+          "THE COUNTRY ROAD MURDERS",
+          "DUNGEON CRAWLER CARL",
+          "THE LEGACY",
+          "THE ROMANCE REVIVAL",
+          "THE CORRESPONDENT",
+          "THE GOAL",
+          "THE FIVE-STAR WEEKEND",
+          "THE DEAL",
+          "THE DIVORCE",
+          "CARL'S DOOMSDAY SCENARIO",
+          "THE DUNGEON ANARCHIST'S COOKBOOK",
+          "THE SHAMPOO EFFECT",
+          "LOVE YOU MORE",
+          "THE GATE OF THE FERAL GODS"
+        ]
+      },
+      "replacementAnalysis": {
+        "nytAdditions": [
+          "RANSOM",
+          "DUNGEON CRAWLER CARL",
+          "THE SHAMPOO EFFECT",
+          "THE DEAL",
+          "THE DIVORCE"
+        ],
+        "nytRemovals": [],
+        "pairs": [
+          {
+            "removed": null,
+            "replacedBy": "RANSOM",
+            "replacedBySource": "nyt"
+          },
+          {
+            "removed": null,
+            "replacedBy": "DUNGEON CRAWLER CARL",
+            "replacedBySource": "nyt"
+          },
+          {
+            "removed": null,
+            "replacedBy": "THE SHAMPOO EFFECT",
+            "replacedBySource": "nyt"
+          },
+          {
+            "removed": null,
+            "replacedBy": "THE DEAL",
+            "replacedBySource": "nyt"
+          },
+          {
+            "removed": null,
+            "replacedBy": "THE DIVORCE",
+            "replacedBySource": "nyt"
+          }
+        ]
+      },
+      "agreementMatrix": [
+        {
+          "title": "RANSOM",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        },
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        },
+        {
+          "title": "THE SHAMPOO EFFECT",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        },
+        {
+          "title": "THE DEAL",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        },
+        {
+          "title": "THE DIVORCE",
+          "inSlateSource": "nyt",
+          "gb": false,
+          "ol": false,
+          "nyt": true,
+          "agreementCount": 1
+        }
+      ],
+      "diversity": {
+        "uniqueAuthorsA": 5,
+        "uniqueAuthorsB": 0,
+        "slateSizeA": 5,
+        "slateSizeB": 0,
+        "authorDiversityRatioA": 1,
+        "authorDiversityRatioB": 0
+      },
+      "recency": {
+        "medianPubYearBaseline": null,
+        "medianPubYearNytOnly": 2026,
+        "medianPubYearSlateA": 2026,
+        "medianPubYearSlateB": null
+      },
+      "poolSizes": {
+        "gbRawCountA": 1,
+        "olRawCountA": 11,
+        "nytRawCountA": 24,
+        "gbStatusA": "succeeded",
+        "olStatusA": "succeeded",
+        "nytStatusA": "succeeded",
+        "gbRawCountB": 1,
+        "olRawCountB": 15
+      },
+      "slateTitlesA": [
+        "RANSOM",
+        "DUNGEON CRAWLER CARL",
+        "THE SHAMPOO EFFECT",
+        "THE DEAL",
+        "THE DIVORCE"
+      ],
+      "slateTitlesB": []
+    }
+  ],
+  "successCriteria": {
+    "totalProfiles": 4,
+    "profilesWithUniqueContrib": 4,
+    "profilesWithSlateContrib": 3,
+    "avgUniquePerProfile": 24,
+    "totalNytSlateAdditions": 13,
+    "diversityPreserved": true,
+    "criteria": {
+      "nytAddsUniquesCandidates": true,
+      "nytReachesSlate": true,
+      "nytPreservesDiversity": true
+    },
+    "verdict": "NYT_ADDS_MEANINGFUL_VALUE"
+  },
+  "hypothesis": {
+    "predicted": "GB=semantic leader; OL=long-tail; NYT=few unique but recognizable/contemporary",
+    "verdictMatches": true
+  }
+}

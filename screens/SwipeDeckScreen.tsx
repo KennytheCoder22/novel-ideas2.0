@@ -1412,7 +1412,20 @@ export default function SwipeDeckScreen(props: Props) {
   const [sessionNonce, setSessionNonce] = useState(0);
 
   const deck = useMemo(
-    () => filterDeckCardsByCategory(getDeckByKey(deckKey), props.swipeCategories),
+    () => {
+      const filtered = filterDeckCardsByCategory(getDeckByKey(deckKey), props.swipeCategories);
+      // Deduplicate cards by identity key to prevent showing the same card twice
+      const seen = new Set<string>();
+      const unique: SwipeDeckCard[] = [];
+      for (const card of (filtered.cards || [])) {
+        const key = cardIdentityKey(card);
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(card);
+        }
+      }
+      return { ...filtered, cards: unique };
+    },
     [deckKey, props.swipeCategories]
   );
 

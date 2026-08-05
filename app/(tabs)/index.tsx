@@ -7,6 +7,7 @@ import {
 } from "react";
 import { router } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import { getRuntimeLibraryName } from "../../constants/runtimeConfig";
 import {
   Alert,
   Platform,
@@ -1445,7 +1446,7 @@ setMainThemeKey: (t: ThemeKey) => void;
   );
 }
 
-export function HomeScreen() {
+export function HomeScreen(props: { libraryId?: string } = {}) {
   const [mode, setMode] = useState<"swipe" | "search">("swipe");
 
   const [tapCount, setTapCount] = useState(0);
@@ -1457,6 +1458,20 @@ export function HomeScreen() {
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
 
   const [config, setConfig] = useState<any>(() => {
+    // Check if a library-specific config is saved in localStorage
+    if (props.libraryId) {
+      try {
+        const saved = localStorage.getItem(`lib_config_${props.libraryId}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          syncSchema(parsed);
+          return parsed;
+        }
+      } catch (e) {
+        console.error(`Failed to load config for library ${props.libraryId}:`, e);
+      }
+    }
+
     // Desktop web: if the admin-web page saved a draft into localStorage,
     // use that as the starting point for the Home screen.
     const fromDraft = tryLoadDesktopAdminDraft();
@@ -1489,7 +1504,8 @@ export function HomeScreen() {
     ...DEFAULT_SWIPE_CATEGORIES,
     ...(config?.swipe?.categories ?? {}),
   };
-  const libraryName = useMemo(() => (config?.branding?.libraryName ?? config?.library?.name ?? ""), [config]);
+  const runtimeLibraryName = useMemo(() => getRuntimeLibraryName(), []);
+  const libraryName = useMemo(() => runtimeLibraryName || (config?.branding?.libraryName ?? config?.library?.name ?? ""), [runtimeLibraryName, config]);
 
   
   const libraryId = useMemo(() => config?.library?.id ?? "", [config]);
@@ -1968,6 +1984,15 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   function saveSettings() {
     const json = JSON.stringify(config, null, 2);
+
+    // If a library ID is set, also save this config to localStorage for personalized access
+    if (props.libraryId) {
+      try {
+        localStorage.setItem(`lib_config_${props.libraryId}`, json);
+      } catch (e) {
+        console.error(`Failed to save config for library ${props.libraryId}:`, e);
+      }
+    }
 
     if (Platform.OS === "web") {
       const blob = new Blob([json], { type: "application/json" });

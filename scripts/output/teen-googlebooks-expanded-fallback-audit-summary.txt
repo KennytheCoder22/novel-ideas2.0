@@ -1,0 +1,91 @@
+═══════════════════════════════════════════════════════════════════
+ Teen Google Books — expanded fallback root-cause audit
+═══════════════════════════════════════════════════════════════════
+
+Total profiles run .............. 26
+Skipped ......................... 0
+Eligible runs ................... 26
+Classifiable runs ............... 25
+Ambiguous / low-confidence ...... 1
+
+── Bucket counts (all runs) ─────────────────────────────────────
+  Primary sufficient (A) .......... 9
+  Recall shortage (B) ............. 0
+  Publication filtering (C) ....... 1
+  Taste filtering (D) ............. 0
+  Diversity filtering (E) ......... 3
+  Ranking/selection (F) ........... 2
+  Query mismatch (G) .............. 11
+
+── Fallback state counts ────────────────────────────────────────
+  fallback_not_activated ......... 6
+  fallback_activated_not_selected  3
+  fallback_selected .............. 0
+  fallback_required_for_slate .... 17
+
+── Bucket counts — fallback_selected runs only ──────────────────
+  Primary sufficient (A) .......... 0
+  Recall shortage (B) ............. 0
+  Publication filtering (C) ....... 1
+  Taste filtering (D) ............. 0
+  Diversity filtering (E) ......... 3
+  Ranking/selection (F) ........... 2
+  Query mismatch (G) .............. 11
+
+── Bucket counts — high-confidence runs only ────────────────────
+  Primary sufficient (A) .......... 5
+  Recall shortage (B) ............. 0
+  Publication filtering (C) ....... 1
+  Taste filtering (D) ............. 0
+  Diversity filtering (E) ......... 1
+  Ranking/selection (F) ........... 0
+  Query mismatch (G) .............. 6
+
+── Query-family breakdown ───────────────────────────────────────
+  fantasy                  n=7  leading=A_primary_query_succeeded
+  mystery                  n=4  leading=G_query_mismatch
+  horror                   n=3  leading=A_primary_query_succeeded
+  science_fiction          n=3  leading=G_query_mismatch
+  general                  n=3  leading=G_query_mismatch
+  romance                  n=3  leading=E_diversity_filtering
+  historical               n=3  leading=G_query_mismatch
+
+── Dominance assessment ─────────────────────────────────────────
+  Lead bucket .................... G_query_mismatch
+  Lead count ..................... 6
+  Runner-up bucket ............... A_primary_query_succeeded
+  Runner-up count ................ 5
+  Count delta .................... 1
+  Pct delta ...................... 7.7%
+  Is dominant .................... false
+  Note ........................... G_query_mismatch has only 6 high-confidence examples (need ≥10)
+
+── Per-run assignments ──────────────────────────────────────────
+  mystery-classic-whodunit             G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | medium
+  mystery-psychological-thriller       G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | medium
+  mystery-detective-crime              E_diversity_filtering (+B_insufficient_recall_underlying) | fallback_required_for_minimum_slate | medium
+  mystery-cozy-amateur                 G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | medium
+  fantasy-high-epic                    A_primary_query_succeeded | fallback_not_activated | medium
+  fantasy-urban-paranormal             A_primary_query_succeeded | fallback_not_activated | high
+  fantasy-dark-court                   A_primary_query_succeeded | fallback_activated_not_selected | high
+  fantasy-fairy-tale-retelling         A_primary_query_succeeded | fallback_not_activated | high
+  horror-supernatural-ghost            G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | medium
+  horror-gothic-dark                   A_primary_query_succeeded | fallback_not_activated | medium
+  horror-psychological-thriller        A_primary_query_succeeded | fallback_not_activated | medium
+  scifi-space-opera                    G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | high
+  scifi-dystopian                      G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | high
+  scifi-speculative-mixed              A_primary_query_succeeded | fallback_not_activated | low
+  contemporary-coming-of-age           G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | high
+  contemporary-issues-social           G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | high
+  contemporary-friendship-family       E_diversity_filtering | fallback_required_for_minimum_slate | high
+  historical-war-era                   G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | high
+  historical-adventure-exploration     C_publication_filtering | fallback_required_for_minimum_slate | high
+  historical-drama-social              G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | high
+  romance-contemporary-sweet           F_ranking_selection | fallback_required_for_minimum_slate | medium
+  romance-fantasy-slow-burn            A_primary_query_succeeded | fallback_activated_not_selected | high
+  romance-royals-enemies               E_diversity_filtering | fallback_required_for_minimum_slate | medium
+  general-adventure-action             G_query_mismatch (+C_publication_filtering_contributing) | fallback_required_for_minimum_slate | medium
+  general-mixed-broad                  A_primary_query_succeeded | fallback_activated_not_selected | high
+  general-weak-minimal                 F_ranking_selection | fallback_required_for_minimum_slate | medium
+
+═══════════════════════════════════════════════════════════════════
