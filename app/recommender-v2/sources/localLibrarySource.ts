@@ -1,0 +1,211 @@
+import { loadLocalCollectionRecommendationArtifact, type LocalCollectionRecommendationRecord } from "../../../lib/localCollection/storage";
+import type { AgeBandV2, SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
+
+const MAX_LOCAL_LIBRARY_CANDIDATES = 200;
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function tokenize(value: string): string[] {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3);
+}
+
+function inferAudienceBand(record: LocalCollectionRecommendationRecord): AgeBandV2 | undefined {
+  const audience = String(record.audience || "").toLowerCase();
+  const readingLevel = String(record.readingLevel || "").toLowerCase();
+  const shelf = String(record.shelvingLocation || "").toLowerCase();
+  const haystack = `${audience} ${readingLevel} ${shelf}`;
+  if (/\b(adult|college|new adult)\b/.test(haystack)) return "adult";
+  if (/\b(teen|ya|young adult|high school|grades?\s*(9|10|11|12))\b/.test(haystack)) return "teens";
+  if (/\b(preteen|middle grade|middle school|grades?\s*(3|4|5|6|7|8))\b/.test(haystack)) return "preteens";
+  if (/\b(kids?|juvenile|children|childrens?|k-2|k2|kindergarten|preschool|elementary)\b/.test(haystack)) return "kids";
+  return undefined;
+}
+
+function rankByIntentMatches(records: LocalCollectionRecommendationRecord[], plan: SourcePlan): Array<{
+  record: LocalCollectionRecommendationRecord;
+  score: number;
+  queryText: string;
+  facets: string[];
+}> {
+  const intentTerms = plan.intents.map((intent) => ({
+    query: intent.query,
+    facets: intent.facets,
+    priority: Number(intent.priority || 0),
+    terms: Array.from(new Set(tokenize(intent.query))),
+  }));
+
+  return records.map((record) => {
+    const haystack = [
+      record.title,
+      record.author,
+      record.audience,
+      record.readingLevel,
+      record.shelvingLocation,
+      record.localPlacement,
+      record.callNumber,
+    ].join(" ").toLowerCase();
+
+    let bestScore = 0;
+    let bestQuery = "";
+    let bestFacets: string[] = [];
+
+    for (const intent of intentTerms) {
+      if (!intent.terms.length) continue;
+      const matched = intent.terms.filter((term) => haystack.includes(term));
+      if (!matched.length) continue;
+      const weighted = matched.length * Math.max(0.1, intent.priority);
+      if (weighted > bestScore) {
+        bestScore = weighted;
+        bestQuery = intent.query;
+        bestFacets = intent.facets;
+      }
+    }
+
+    return { record, score: bestScore, queryText: bestQuery, facets: bestFacets };
+  });
+}
+
+function diagnosticResult(
+  plan: SourcePlan,
+  status: SourceResult["status"],
+  rawItems: SourceResult["rawItems"],
+  fetches: SourceFetchDiagnosticV2[],
+  details: Partial<SourceDiagnosticV2> = {},
+): SourceResult {
+  const finishedAt = nowIso();
+  const diagnostics: SourceDiagnosticV2 = {
+    source: "localLibrary",
+    status,
+    planned: true,
+    attempted: true,
+    timedOut: false,
+    startedAt: details.startedAt || finishedAt,
+    finishedAt,
+    elapsedMs: Number(details.elapsedMs || 0),
+    rawCount: rawItems.length,
+    convertedCount: rawItems.length,
+    queryAttemptCount: plan.intents.length,
+    queryAttemptedCount: plan.intents.length,
+    validEmptyResponseCount: status === "empty" ? 1 : 0,
+    sourceStageEmptyReason: details.sourceStageEmptyReason,
+    emptyReason: details.emptyReason,
+    fetches,
+    queries: plan.intents.map((intent) => intent.query),
+  };
+
+  return {
+    source: "localLibrary",
+    status,
+    rawItems,
+    diagnostics: {
+      ...diagnostics,
+      ...details,
+      fetches,
+      queries: plan.intents.map((intent) => intent.query),
+    },
+  };
+}
+
+export const localLibrarySourceAdapter: SourceAdapterV2 = {
+  source: "localLibrary",
+  async search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal }): Promise<SourceResult> {
+    const startedAt = nowIso();
+    if (context.signal?.aborted) {
+      return diagnosticResult(
+        plan,
+        "failed",
+        [],
+        [{ query: "", timedOut: false, status: "aborted", aborted: true, failedReason: "source_aborted_before_local_collection_load" }],
+        { startedAt, emptyReason: "source_aborted_before_local_collection_load", sourceStageEmptyReason: "source_aborted_before_local_collection_load" }
+      );
+    }
+
+    const artifact = await loadLocalCollectionRecommendationArtifact();
+    const records = Array.isArray(artifact?.records) ? artifact.records : [];
+    if (!records.length) {
+      return diagnosticResult(
+        plan,
+        "empty",
+        [],
+        [{ query: "", timedOut: false, status: "empty", emptyResultReason: "local_collection_not_imported" }],
+        { startedAt, emptyReason: "local_collection_not_imported", sourceStageEmptyReason: "local_collection_not_imported" }
+      );
+    }
+
+    const ranked = rankByIntentMatches(records, plan)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.record.title.localeCompare(b.record.title);
+      });
+
+    const withMatches = ranked.filter((row) => row.score > 0);
+    const selectedRows = (withMatches.length ? withMatches : ranked).slice(0, MAX_LOCAL_LIBRARY_CANDIDATES);
+    const fallbackQuery = plan.intents[0]?.query || "local collection";
+    const fallbackFacets = plan.intents[0]?.facets || [];
+
+    const rawItems = selectedRows.map((row) => {
+      const record = row.record;
+      const audienceBand = inferAudienceBand(record);
+      return {
+        id: `localLibrary:${record.localId}`,
+        sourceId: record.localId,
+        title: record.title,
+        authors: [record.author],
+        publicationYear: record.publicationYear,
+        formats: ["book"],
+        genres: [record.shelvingLocation, record.audience].filter(Boolean),
+        themes: [record.localPlacement].filter(Boolean),
+        maturityBand: audienceBand,
+        audienceBand,
+        coverUrl: record.coverUrl,
+        sourceUrl: undefined,
+        queryText: row.queryText || fallbackQuery,
+        originalPlannedQuery: row.queryText || fallbackQuery,
+        queryFamily: "local_collection_text_match",
+        queryCascadeIndex: 0,
+        facets: row.facets.length ? row.facets : fallbackFacets,
+        localCollectionCallNumber: record.callNumber,
+        localCollectionPlacement: record.localPlacement,
+        localCollectionAvailability: record.availability,
+        localCollectionCopies: record.copies,
+        localCollectionIsbn10: record.isbn10,
+        localCollectionIsbn13: record.isbn13,
+      };
+    });
+
+    const fetches: SourceFetchDiagnosticV2[] = [{
+      query: fallbackQuery,
+      timedOut: false,
+      status: rawItems.length ? "succeeded" : "empty",
+      docsReturned: records.length,
+      rawRetrieved: records.length,
+      rawApiCount: records.length,
+      convertedCount: rawItems.length,
+      queryFamily: "local_collection_text_match",
+      facets: fallbackFacets,
+      emptyResultReason: rawItems.length ? undefined : "local_collection_no_matching_titles",
+      firstReturnedTitles: rawItems.slice(0, 12).map((item) => String(item.title || "")).filter(Boolean),
+    }];
+
+    return diagnosticResult(
+      plan,
+      rawItems.length ? "succeeded" : "empty",
+      rawItems,
+      fetches,
+      {
+        startedAt,
+        emptyReason: rawItems.length ? undefined : "local_collection_no_matching_titles",
+        sourceStageEmptyReason: rawItems.length ? undefined : "local_collection_no_matching_titles",
+        localCollectionRecordCount: records.length,
+        localCollectionRecordHash: artifact?.deterministicContentHash || "",
+      } as Partial<SourceDiagnosticV2>,
+    );
+  },
+};

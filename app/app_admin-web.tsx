@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   Alert,
   Platform,
@@ -17,6 +17,10 @@ import configFile from "../NovelIdeas.json";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
 import { importLocalCollectionCsv, importLocalCollectionMarc } from "../lib/localCollection";
 import {
+  persistLocalCollectionRecommendationArtifact,
+  readLocalCollectionAcceptedCountFromLocalStorage,
+} from "../lib/localCollection/storage";
+import {
   ADMIN_CONFIG_CHANGED_EVENT,
   ADMIN_CONFIG_STORAGE_KEY,
   applyWebHighlightColor,
@@ -33,6 +37,16 @@ import {
 import { ColorPickerField } from "../components/admin/ColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
+import { activateAdminSession, setPendingAdminRoute } from "../lib/adminSession";
+import {
+  isPreviewAcceptanceHarnessEnabled,
+  PREVIEW_ACCEPTANCE_PIN,
+  PREVIEW_ACCEPTANCE_QUERY_PARAM,
+  readPreviewAcceptanceDashboardModeFromDocument,
+  setPreviewAcceptanceHarnessEnabled,
+  type PreviewAcceptanceDashboardMode,
+  writePreviewAcceptanceDashboardModeCookie,
+} from "../lib/previewAcceptanceHarness";
 
 // ---------------------------------------------------------------------------
 // Constants & flags
@@ -106,6 +120,27 @@ function slugifyLibraryId(name: string) {
   const raw = String(name || "").trim().toLowerCase();
   const slug = raw.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
   return slug || "default-library";
+}
+
+function applyLocalCollectionOnlySourceRouting(sourceEnabled: RecommendationSourceEnabled): RecommendationSourceEnabled {
+  if (!sourceEnabled.localLibrary) return sourceEnabled;
+  return {
+    ...sourceEnabled,
+    googleBooks: false,
+    openLibrary: false,
+    kitsu: false,
+    gcd: false,
+    nyt: false,
+    localLibrary: true,
+  };
+}
+
+function localCollectionImportErrorMessage(error: unknown): string {
+  const message = String((error as { message?: unknown } | null)?.message || "").toLowerCase();
+  if (message.includes("collection_storage_quota_exceeded")) {
+    return "Import succeeded, but browser storage is full. Clear site storage and import again.";
+  }
+  return "Import failed. Check the file and try again.";
 }
 
 function deckLabel(k: DeckKey) {
@@ -196,7 +231,7 @@ function syncSchema(cfg: any) {
     }
   }
 
-  cfg.recommendations.sourceEnabled = sourceEnabled;
+  cfg.recommendations.sourceEnabled = applyLocalCollectionOnlySourceRouting(sourceEnabled);
 
   const adultKitsuForceQuery = String(cfg.recommendations.adultKitsuOnlyForceQueryForValidation || "").trim().toLowerCase();
   if (SHOW_ADULT_KITSU_DEBUG_CONTROLS && adultKitsuForceQuery === "dystopian")
@@ -331,6 +366,17 @@ const ADMIN_THEME = {
 
 export default function AdminWebScreen() {
   const isWeb = Platform.OS === "web";
+  const params = useLocalSearchParams();
+  const previewAcceptanceFlag = Array.isArray(params[PREVIEW_ACCEPTANCE_QUERY_PARAM])
+    ? params[PREVIEW_ACCEPTANCE_QUERY_PARAM][0]
+    : params[PREVIEW_ACCEPTANCE_QUERY_PARAM];
+  const previewAcceptanceHarnessVisible = useMemo(
+    () => isPreviewAcceptanceHarnessEnabled(previewAcceptanceFlag),
+    [previewAcceptanceFlag]
+  );
+  const dashboardRoute = previewAcceptanceHarnessVisible
+    ? "/admin/human-review?acceptanceHarness=1"
+    : "/admin/human-review";
 
   const [config, setConfig] = useState<any>(() => {
     const base = deepClone(configFile);
@@ -367,6 +413,9 @@ export default function AdminWebScreen() {
   const savedColorsRef = useRef({ mainColorHex, highlightColorHex, fontColorHex, autoFontColor });
   const [isDirty, setIsDirty] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [previewAcceptanceMode, setPreviewAcceptanceMode] = useState<PreviewAcceptanceDashboardMode>(() =>
+    readPreviewAcceptanceDashboardModeFromDocument()
+  );
 
   useEffect(() => {
     const configChanged = JSON.stringify(config) !== savedConfigRef.current;
@@ -387,12 +436,8 @@ export default function AdminWebScreen() {
   const [uploadedCollectionCount, setUploadedCollectionCount] = useState<number>(() => {
     try {
       if (!isWeb || typeof localStorage === "undefined") return 0;
-      const artifact = localStorage.getItem("novelideas_local_collection_artifact_v1");
-      if (artifact) {
-        const parsed = JSON.parse(artifact);
-        const accepted = Array.isArray(parsed?.acceptedRecords) ? parsed.acceptedRecords.length : 0;
-        if (accepted > 0) return accepted;
-      }
+      const persistedCount = readLocalCollectionAcceptedCountFromLocalStorage();
+      if (persistedCount > 0) return persistedCount;
       const saved = localStorage.getItem("novelideas_local_collection");
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -542,7 +587,7 @@ export default function AdminWebScreen() {
       reader.onload = () => {
         // Flush the reading→parsing UI update before the synchronous parse blocks the thread
         setImportStatus({ phase: 'parsing', pct: 45, label: 'Parsing records…' });
-        setTimeout(() => {
+        setTimeout(async () => {
           try {
             const collectionName = String(config?.branding?.libraryName || "").trim() || undefined;
             let artifact;
@@ -564,13 +609,7 @@ export default function AdminWebScreen() {
               localStorage.setItem("novelideas_local_collection_csv", String(reader.result || ""));
             }
             setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
-            // Strip bulky audit fields before writing to localStorage (sourceRows alone is ~7 MB for an 8,710-record MARC file).
-            const storableArtifact = {
-              ...artifact,
-              acceptedRecords: artifact.acceptedRecords.map(({ sourceRows: _sr, ...rest }: any) => rest),
-              rejectedRecords: artifact.rejectedRecords.map(({ raw: _raw, ...rest }: any) => rest),
-            };
-            localStorage.setItem("novelideas_local_collection_artifact_v1", JSON.stringify(storableArtifact));
+            await persistLocalCollectionRecommendationArtifact(artifact);
             localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
             setUploadedCollectionCount(artifact.summary.acceptedTitles);
             // Mark collection as available (supported) but do NOT auto-enable the source toggle.
@@ -585,8 +624,8 @@ export default function AdminWebScreen() {
               }`,
             });
             setTimeout(() => setImportStatus({ phase: 'idle', pct: 0, label: '' }), 5000);
-          } catch {
-            setImportStatus({ phase: 'error', pct: 0, label: 'Import failed. Check the file and try again.' });
+          } catch (error) {
+            setImportStatus({ phase: 'error', pct: 0, label: localCollectionImportErrorMessage(error) });
             setTimeout(() => setImportStatus({ phase: 'idle', pct: 0, label: '' }), 6000);
           }
         }, 0);
@@ -647,6 +686,24 @@ export default function AdminWebScreen() {
     if (!persistDraftConfig()) return;
     router.replace("/");
   }, [persistDraftConfig]);
+
+  const preparePreviewAcceptancePin = useCallback(() => {
+    setPreviewAcceptanceHarnessEnabled(true);
+    setConfig((prev: any) => {
+      const next = deepClone(prev);
+      next.admin = typeof next.admin === "object" && next.admin ? next.admin : {};
+      next.admin.pinEnabled = true;
+      next.admin.pin = PREVIEW_ACCEPTANCE_PIN;
+      syncSchema(next);
+      return next;
+    });
+  }, []);
+
+  const applyPreviewAcceptanceMode = useCallback((mode: PreviewAcceptanceDashboardMode) => {
+    setPreviewAcceptanceHarnessEnabled(true);
+    writePreviewAcceptanceDashboardModeCookie(mode);
+    setPreviewAcceptanceMode(mode);
+  }, []);
 
   const onDiscard = useCallback(() => {
     try {
@@ -758,6 +815,18 @@ export default function AdminWebScreen() {
           </View>
           <View style={styles.pageHeaderActions}>
             <TouchableOpacity
+              style={[styles.btn, styles.headerActionButton, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+              onPress={() => {
+                activateAdminSession("admin_web");
+                setPendingAdminRoute("/admin/human-review");
+                router.push(dashboardRoute as any);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Open Human Review Dashboard"
+            >
+              <Text style={[styles.btnText, { color: t.text }]}>Human Review Dashboard</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.btnPrimary, styles.headerActionButton, { borderColor: t.accentBorder, backgroundColor: t.accent }]}
               onPress={onSaveAndReturn}
               accessibilityRole="button"
@@ -783,6 +852,49 @@ export default function AdminWebScreen() {
         </View>
 
         <Divider />
+
+        {previewAcceptanceHarnessVisible ? (
+          <>
+            <SectionTitle>Preview Acceptance Harness</SectionTitle>
+            <Note>
+              Preview-only setup for manual acceptance on Vercel preview URLs. This never changes
+              production defaults.
+            </Note>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
+              <TouchableOpacity
+                style={[styles.btnPrimary, { borderColor: t.accentBorder, backgroundColor: t.accent }]}
+                onPress={preparePreviewAcceptancePin}
+              >
+                <Text style={[styles.btnText, { color: t.accentTextOn }]}>
+                  Prepare Admin PIN challenge ({PREVIEW_ACCEPTANCE_PIN})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+                onPress={() => applyPreviewAcceptanceMode("fixtures")}
+              >
+                <Text style={[styles.btnText, { color: t.text }]}>Use dashboard fixtures</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+                onPress={() => applyPreviewAcceptanceMode("live")}
+              >
+                <Text style={[styles.btnText, { color: t.text }]}>Use live dashboard data</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+                onPress={() => applyPreviewAcceptanceMode("failure")}
+              >
+                <Text style={[styles.btnText, { color: t.text }]}>Force dashboard unavailable</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.note, styles.previewAcceptanceNote, { color: t.success }]}>
+              Current dashboard mode: {previewAcceptanceMode}. Use the normal Save controls after
+              preparing the PIN challenge so the unlock flow is persisted in browser storage.
+            </Text>
+            <Divider />
+          </>
+        ) : null}
 
         {/* ── A. Library Identity ── */}
         <SectionTitle>A. Library Identity</SectionTitle>
@@ -965,9 +1077,15 @@ export default function AdminWebScreen() {
                   <Text style={{ color: t.text, fontWeight: "700" }}>{sourceLabel(sourceKey)}</Text>
                   <Switch
                     value={enabled}
-                    onValueChange={(next) =>
-                      setPath(["recommendations", "sourceEnabled", sourceKey], next)
-                    }
+                    onValueChange={(next) => {
+                      setConfig((prev: any) => {
+                        const n = deepClone(prev);
+                        syncSchema(n);
+                        n.recommendations.sourceEnabled[sourceKey] = next;
+                        if (next) n.recommendations.sourceEnabled.localLibrary = false;
+                        return n;
+                      });
+                    }}
                   />
                 </View>
               );
@@ -1270,6 +1388,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: "900", marginBottom: 12 },
   label: { fontSize: 12, fontWeight: "800", marginBottom: 6 },
   note: { fontSize: 12, lineHeight: 18 },
+  previewAcceptanceNote: { marginTop: 10 },
   input: {
     borderWidth: 1,
     borderRadius: 12,

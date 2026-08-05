@@ -10,22 +10,6 @@
       "destination": "/"
     },
     {
-      "source": "/app_admin-web",
-      "destination": "/"
-    },
-    {
-      "source": "/c/:path*",
-      "destination": "/"
-    },
-    {
-      "source": "/admin/:path*",
-      "destination": "/"
-    },
-    {
-      "source": "/admin-collection",
-      "destination": "/"
-    },
-    {
       "source": "/how-it-works",
       "destination": "/"
     },
@@ -39,6 +23,26 @@
     },
     {
       "source": "/about",
+      "destination": "/"
+    },
+    {
+      "source": "/app_admin-web",
+      "destination": "/"
+    },
+    {
+      "source": "/app_admin-web/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/c/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/admin-collection",
       "destination": "/"
     },
     {
