@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { View, Text } from "react-native";
 import { HomeScreen } from "./index";
-import { setRuntimeLibraryName } from "../../constants/runtimeConfig";
+import { setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
 
 function humanizeLibraryId(raw: string): string {
   const slug = String(raw || "").trim().replace(/[_]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
@@ -28,6 +28,7 @@ export default function PersonalizedLibraryRoute() {
   useEffect(() => {
     const raw = Array.isArray(params.libraryId) ? params.libraryId[0] : params.libraryId;
     const humanized = humanizeLibraryId(raw || "");
+    setRuntimeLibraryId(raw || "");
     setRuntimeLibraryName(humanized);
     setLibraryId(raw || "");
     setReady(true);

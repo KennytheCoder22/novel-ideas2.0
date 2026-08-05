@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { View, Text } from "react-native";
-import { setRuntimeLibraryName } from "../../constants/runtimeConfig";
+import { setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
 
 function humanizeLibraryId(raw: string): string {
   const slug = String(raw || "").trim().replace(/[_]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
@@ -25,6 +25,7 @@ export default function LibraryLandingRoute() {
   useEffect(() => {
     const raw = Array.isArray(params.libraryId) ? params.libraryId[0] : params.libraryId;
     const slug = String(raw || "").trim().replace(/[_]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+    setRuntimeLibraryId(slug || "");
     setRuntimeLibraryName(humanizeLibraryId(slug || ""));
     router.replace((slug ? `/${encodeURIComponent(slug)}` : "/") as any);
   }, [params.libraryId]);

@@ -1,4 +1,5 @@
 import type { LocalCollectionArtifact } from "./types";
+import { loadSharedLibraryCollection, saveSharedLibraryCollection } from "../librarySharing/client";
 
 const LOCAL_COLLECTION_DB_NAME = "novelideas_local_collection";
 const LOCAL_COLLECTION_DB_STORE = "artifacts";
@@ -272,7 +273,14 @@ export async function persistLocalCollectionRecommendationArtifact(artifact: Loc
   }
 }
 
-export async function loadLocalCollectionRecommendationArtifact(): Promise<LocalCollectionRecommendationArtifact | null> {
+export async function publishSharedLocalCollectionRecommendationArtifact(libraryId: string, artifact: LocalCollectionArtifact): Promise<boolean> {
+  const id = String(libraryId || "").trim();
+  if (!id) return false;
+  const recommendationArtifact = buildRecommendationArtifact(artifact);
+  return saveSharedLibraryCollection(id, recommendationArtifact as Record<string, unknown>);
+}
+
+export async function loadLocalCollectionRecommendationArtifact(libraryId?: string): Promise<LocalCollectionRecommendationArtifact | null> {
   const indexed = await readIndexedDbValue<LocalCollectionRecommendationArtifact>(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY);
   if (indexed && indexed.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(indexed.records)) {
     return indexed;
@@ -285,7 +293,17 @@ export async function loadLocalCollectionRecommendationArtifact(): Promise<Local
 
   const legacy = localStorageGetJson<any>(LOCAL_COLLECTION_SUMMARY_STORAGE_KEY);
   const convertedLegacy = fromLegacyArtifact(legacy);
-  return convertedLegacy;
+  if (convertedLegacy) return convertedLegacy;
+
+  const sharedLibraryId = String(libraryId || "").trim();
+  if (sharedLibraryId) {
+    const shared = await loadSharedLibraryCollection(sharedLibraryId);
+    if (shared && shared.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(shared.records)) {
+      return shared as LocalCollectionRecommendationArtifact;
+    }
+  }
+
+  return null;
 }
 
 export function readLocalCollectionAcceptedCountFromLocalStorage(): number {

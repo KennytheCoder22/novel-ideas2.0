@@ -7,7 +7,7 @@ import {
 } from "react";
 import { router } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { getRuntimeLibraryName } from "../../constants/runtimeConfig";
+import { getRuntimeLibraryName, setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
 import {
   Alert,
   Platform,
@@ -36,6 +36,7 @@ import {
   type TitleTextKey
 } from "../../constants/brandTheme";
 import { activateAdminSession, setPendingAdminRoute } from "../../lib/adminSession";
+import { loadSharedLibraryConfig, saveSharedLibraryConfig } from "../../lib/librarySharing/client";
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
   String(
@@ -1487,6 +1488,7 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
 
     return init;
   });
+  const [personalizedConfigLoading, setPersonalizedConfigLoading] = useState(Boolean(props.libraryId));
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [deck, setDeck] = useState<DeckKey>("ms_hs");
@@ -1496,6 +1498,38 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   const [results, setResults] = useState<OLDoc[]>([]);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
 
+  useEffect(() => {
+    if (!props.libraryId) {
+      setRuntimeLibraryId("");
+      setRuntimeLibraryName("");
+      setPersonalizedConfigLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPersonalizedConfigLoading(true);
+
+    async function loadSharedConfig() {
+      try {
+        const shared = await loadSharedLibraryConfig(props.libraryId as string);
+        if (!cancelled && shared) {
+          const next = deepClone(shared);
+          syncSchema(next);
+          setConfig(next);
+        }
+      } catch {
+        // Ignore shared-config load failures and fall back to local data.
+      } finally {
+        if (!cancelled) setPersonalizedConfigLoading(false);
+      }
+    }
+
+    void loadSharedConfig();
+    return () => {
+      cancelled = true;
+    };
+  }, [props.libraryId]);
+
   // Keep a stable ref to avoid weird focus behavior from accidental remounts.
   const queryInputRef = useRef<TextInput | null>(null);
 
@@ -1504,7 +1538,7 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
     ...DEFAULT_SWIPE_CATEGORIES,
     ...(config?.swipe?.categories ?? {}),
   };
-  const runtimeLibraryName = useMemo(() => getRuntimeLibraryName(), []);
+  const runtimeLibraryName = props.libraryId ? getRuntimeLibraryName() : "";
   const libraryName = useMemo(() => runtimeLibraryName || (config?.branding?.libraryName ?? config?.library?.name ?? ""), [runtimeLibraryName, config]);
 
   
@@ -1601,6 +1635,15 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     };
   }, [refreshConfigFromDesktopAdminDraft]);
 
+
+  if (props.libraryId && personalizedConfigLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.appBg, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={theme.highlight} />
+        <Text style={{ color: theme.text, fontWeight: "900", marginTop: 12 }}>Loading your library…</Text>
+      </SafeAreaView>
+    );
+  }
 
   if (!adminUnlocked && showAdminPinPrompt) {
     return (
@@ -1982,16 +2025,18 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     }
   }
 
-  function saveSettings() {
+  async function saveSettings() {
     const json = JSON.stringify(config, null, 2);
 
     // If a library ID is set, also save this config to localStorage for personalized access
-    if (props.libraryId) {
+    const sharedId = String(props.libraryId || libraryId || "").trim();
+    if (sharedId) {
       try {
-        localStorage.setItem(`lib_config_${props.libraryId}`, json);
+        localStorage.setItem(`lib_config_${sharedId}`, json);
       } catch (e) {
-        console.error(`Failed to save config for library ${props.libraryId}:`, e);
+        console.error(`Failed to save config for library ${sharedId}:`, e);
       }
+      await saveSharedLibraryConfig(sharedId, config as Record<string, unknown>);
     }
 
     if (Platform.OS === "web") {

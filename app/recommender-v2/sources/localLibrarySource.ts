@@ -1,5 +1,6 @@
 import { loadLocalCollectionRecommendationArtifact, type LocalCollectionRecommendationRecord } from "../../../lib/localCollection/storage";
 import type { AgeBandV2, SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
+import { getRuntimeLibraryId } from "../../../constants/runtimeConfig";
 
 const MAX_LOCAL_LIBRARY_CANDIDATES = 200;
 
@@ -127,7 +128,7 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
       );
     }
 
-    const artifact = await loadLocalCollectionRecommendationArtifact();
+    const artifact = await loadLocalCollectionRecommendationArtifact(getRuntimeLibraryId());
     const records = Array.isArray(artifact?.records) ? artifact.records : [];
     if (!records.length) {
       return diagnosticResult(

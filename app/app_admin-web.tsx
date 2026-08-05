@@ -18,10 +18,12 @@ import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCap
 import { importLocalCollectionCsv, importLocalCollectionMarc } from "../lib/localCollection";
 import {
   persistLocalCollectionRecommendationArtifact,
+  publishSharedLocalCollectionRecommendationArtifact,
   readLocalCollectionAcceptedCountFromLocalStorage,
   LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY,
   LOCAL_COLLECTION_SUMMARY_STORAGE_KEY,
 } from "../lib/localCollection/storage";
+import { saveSharedLibraryConfig } from "../lib/librarySharing/client";
 import {
   ADMIN_CONFIG_CHANGED_EVENT,
   ADMIN_CONFIG_STORAGE_KEY,
@@ -126,6 +128,23 @@ function slugifyLibraryId(name: string) {
   return slug || "default-library";
 }
 
+function normalizeLibraryId(raw: string) {
+  return String(raw || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 40);
+}
+
+function resolveLibraryId(cfg: any) {
+  const explicitId = normalizeLibraryId(cfg?.library?.id || cfg?.branding?.libraryId || "");
+  if (explicitId && explicitId !== "demo") return explicitId;
+
+  const libraryName = String(cfg?.branding?.libraryName || cfg?.library?.name || "").trim();
+  if (libraryName) return slugifyLibraryId(libraryName);
+
+  return explicitId || "demo";
+}
+
 function applyLocalCollectionOnlySourceRouting(sourceEnabled: RecommendationSourceEnabled): RecommendationSourceEnabled {
   if (!sourceEnabled.localLibrary) return sourceEnabled;
   return {
@@ -209,6 +228,9 @@ function syncSchema(cfg: any) {
   const chosenName = (hasCanonName ? cfg.branding.libraryName : (hasLegacyName ? cfg.library.name : "")).toString();
   cfg.branding.libraryName = chosenName;
   cfg.library.name = chosenName;
+  const chosenId = resolveLibraryId(cfg);
+  cfg.library.id = chosenId;
+  cfg.branding.libraryId = chosenId;
 
   cfg.enabledDecks = (cfg.enabledDecks && typeof cfg.enabledDecks === "object") ? cfg.enabledDecks : {};
   cfg.decks = (cfg.decks && typeof cfg.decks === "object") ? cfg.decks : {};
@@ -476,7 +498,7 @@ export default function AdminWebScreen() {
 
   // Derived
   const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
-  const libraryId = useMemo(() => slugifyLibraryId(libraryName), [libraryName]);
+  const libraryId = useMemo(() => resolveLibraryId(config), [config]);
   const hostedConfigUrl = useMemo(() => `https://novelideas.app/${libraryId}`, [libraryId]);
   const configText = useMemo(() => JSON.stringify(config, null, 2), [config]);
   const adultKitsuOnlyForceQueryForValidation =
@@ -550,6 +572,7 @@ export default function AdminWebScreen() {
     syncSchema(base);
     const colors = loadColorHex(base);
     const serialized = JSON.stringify(base);
+    const resetLibraryId = resolveLibraryId(base);
 
     if (isWeb && typeof localStorage !== "undefined") {
       clearLocalCollectionStorageArtifacts();
@@ -557,6 +580,7 @@ export default function AdminWebScreen() {
       applyWebHighlightColor(colors.highlightColorHex);
       dispatchAdminConfigSavedWebEvent(serialized);
     }
+    void saveSharedLibraryConfig(resetLibraryId, base as Record<string, unknown>);
 
     setConfig(base);
     setMainColorHex(colors.mainColorHex);
@@ -668,6 +692,10 @@ export default function AdminWebScreen() {
             }
             setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
             await persistLocalCollectionRecommendationArtifact(artifact);
+            const sharedLibraryId = resolveLibraryId(config);
+            if (sharedLibraryId) {
+              await publishSharedLocalCollectionRecommendationArtifact(sharedLibraryId, artifact);
+            }
             localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
             setUploadedCollectionCount(artifact.summary.acceptedTitles);
             // Mark collection as available (supported) but do NOT auto-enable the source toggle.
@@ -705,18 +733,22 @@ export default function AdminWebScreen() {
   // Save / Discard
   // ---------------------------------------------------------------------------
 
-  const persistDraftConfig = useCallback(() => {
+  const persistDraftConfig = useCallback(async () => {
     try {
       const next = deepClone(config);
       const effectiveFontColor = autoFontColor ? autoChooseFontColor(mainColorHex) : fontColorHex;
       applyColorHex(next, mainColorHex, highlightColorHex, effectiveFontColor, autoFontColor);
       syncSchema(next);
       const serializedNext = JSON.stringify(next);
+      const nextLibraryId = resolveLibraryId(next);
 
       if (isWeb && typeof localStorage !== "undefined") {
         localStorage.setItem(ADMIN_CONFIG_STORAGE_KEY, serializedNext);
         applyWebHighlightColor(next?.branding?.highlightColorHex || highlightColorHex);
         dispatchAdminConfigSavedWebEvent(serializedNext);
+      }
+      if (nextLibraryId) {
+        await saveSharedLibraryConfig(nextLibraryId, next as Record<string, unknown>);
       }
 
       setConfig(next);
@@ -734,15 +766,17 @@ export default function AdminWebScreen() {
       setSaveStatus("error");
       return false;
     }
-  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb]);
+  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb, libraryId]);
 
   const onSave = useCallback(() => {
-    persistDraftConfig();
+    void persistDraftConfig();
   }, [persistDraftConfig]);
 
   const onSaveAndReturn = useCallback(() => {
-    if (!persistDraftConfig()) return;
-    router.replace("/");
+    void (async () => {
+      if (!(await persistDraftConfig())) return;
+      router.replace("/");
+    })();
   }, [persistDraftConfig]);
 
   const preparePreviewAcceptancePin = useCallback(() => {
@@ -981,6 +1015,21 @@ export default function AdminWebScreen() {
           onChangeText={(v) => setPath(["branding", "libraryName"], v)}
           placeholder="Your library's name"
           placeholderTextColor="#7a8aa0"
+        />
+
+        <Text style={[styles.label, { color: t.muted, marginTop: 14 }]}>Library ID</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.text }]}
+          value={String(config?.library?.id || config?.branding?.libraryId || "")}
+          onChangeText={(v) => {
+            const nextId = normalizeLibraryId(v);
+            setPath(["library", "id"], nextId);
+            setPath(["branding", "libraryId"], nextId);
+          }}
+          placeholder="e.g. yvhs"
+          placeholderTextColor="#7a8aa0"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <Text style={[styles.label, { color: t.muted, marginTop: 14 }]}>Library logo</Text>
@@ -1343,8 +1392,7 @@ export default function AdminWebScreen() {
         <CollapsibleSection title="G. Advanced" defaultOpen={false} theme={t}>
           <View style={{ paddingTop: 8, gap: 4 }}>
             <Note>
-              Library ID and hosted URL are derived from your library name and identify your
-              configuration in the NovelIdeas network.
+              Library ID and hosted URL identify your configuration in the NovelIdeas network.
             </Note>
             <Text style={[styles.note, { color: t.subtext, marginTop: 8 }]}>
               {"Library ID: "}
