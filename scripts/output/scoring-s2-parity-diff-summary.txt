@@ -1,0 +1,63 @@
+SCORING-S2 pre/post diff summary
+
+Stable profiles: (none)
+Changed profiles: historical, mystery, scifi, contemporary, fantasy, thriller
+
+historical / gb_only: unchanged
+  composition pre={"googleBooks":3} post={"googleBooks":3}
+historical / gb_nyt: CHANGED
+  added: Beautiful Death | THE ROMANCE REVIVAL | The Ides of March | The Good Inn
+  removed: REMARKABLY BRIGHT CREATURES | RANSOM | THE DEAL | THE DIVORCE
+  composition pre={"nyt":5} post={"googleBooks":3,"nyt":2}
+historical / gb_nyt_ol: CHANGED
+  added: His bloody project | Stardust | The Woodlanders | Beautiful Death | THE ROMANCE REVIVAL
+  removed: DUNGEON CRAWLER CARL | REMARKABLY BRIGHT CREATURES | RANSOM | THE DEAL | THE DIVORCE
+  composition pre={"nyt":5} post={"openLibrary":3,"googleBooks":1,"nyt":1}
+mystery / gb_only: unchanged
+  composition pre={"googleBooks":5} post={"googleBooks":5}
+mystery / gb_nyt: CHANGED
+  added: In Dark Waters
+  removed: RANSOM
+  composition pre={"googleBooks":4,"nyt":1} post={"googleBooks":5}
+mystery / gb_nyt_ol: unchanged
+  composition pre={"googleBooks":1,"openLibrary":4} post={"googleBooks":1,"openLibrary":4}
+scifi / gb_only: unchanged
+  composition pre={"googleBooks":3} post={"googleBooks":3}
+scifi / gb_nyt: CHANGED
+  added: Climbing the Ranks 1 | Ilium | THE ROMANCE REVIVAL
+  removed: REMARKABLY BRIGHT CREATURES | RANSOM | THE DEAL
+  composition pre={"googleBooks":1,"nyt":4} post={"googleBooks":3,"nyt":2}
+scifi / gb_nyt_ol: CHANGED
+  added: Five Minds | Sentinel | Sweetpea
+  removed: Fang | Daemon | DUNGEON CRAWLER CARL
+  composition pre={"openLibrary":3,"googleBooks":1,"nyt":1} post={"googleBooks":1,"openLibrary":4}
+contemporary / gb_only: unchanged
+  composition pre={} post={}
+contemporary / gb_nyt: CHANGED
+  added: THE CALAMITY CLUB
+  removed: THE DIVORCE
+  composition pre={"nyt":5} post={"nyt":5}
+contemporary / gb_nyt_ol: CHANGED
+  added: THE CALAMITY CLUB
+  removed: THE DIVORCE
+  composition pre={"nyt":5} post={"nyt":5}
+fantasy / gb_only: unchanged
+  composition pre={"googleBooks":5} post={"googleBooks":5}
+fantasy / gb_nyt: CHANGED
+  added: The Shattered Sun | Tuya of the Hollows (DARK FANTASY) [Book 1 Complete] | Three Days to Never | Our Party Nearly Wiped and Then Everything Went Downhill, Vol. 1
+  removed: REMARKABLY BRIGHT CREATURES | RANSOM | THE DEAL | THE DIVORCE
+  composition pre={"nyt":5} post={"googleBooks":4,"nyt":1}
+fantasy / gb_nyt_ol: CHANGED
+  added: The Shattered Sun | Tuya of the Hollows (DARK FANTASY) [Book 1 Complete] | Curious Fragments | No hero
+  removed: DUNGEON CRAWLER CARL | REMARKABLY BRIGHT CREATURES | RANSOM | THE DEAL
+  composition pre={"nyt":4,"openLibrary":1} post={"openLibrary":3,"googleBooks":2}
+thriller / gb_only: unchanged
+  composition pre={"googleBooks":5} post={"googleBooks":5}
+thriller / gb_nyt: CHANGED
+  added: Just Forget (A Cami Lark FBI Suspense Thriller—Book 4) | The Way the Crow Flies | In Darkness Visible | Three Days to Never
+  removed: DUNGEON CRAWLER CARL | REMARKABLY BRIGHT CREATURES | RANSOM | THE SHAMPOO EFFECT
+  composition pre={"googleBooks":1,"nyt":4} post={"googleBooks":5}
+thriller / gb_nyt_ol: CHANGED
+  added: The Woods | Just Forget (A Cami Lark FBI Suspense Thriller—Book 4)
+  removed: DUNGEON CRAWLER CARL | REMARKABLY BRIGHT CREATURES
+  composition pre={"openLibrary":2,"googleBooks":1,"nyt":2} post={"openLibrary":3,"googleBooks":2}

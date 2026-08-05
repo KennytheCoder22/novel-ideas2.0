@@ -23,10 +23,13 @@ function humanizeLibraryId(raw: string): string {
 export default function PersonalizedLibraryRoute() {
   const params = useLocalSearchParams<{ libraryId?: string | string[] }>();
   const [ready, setReady] = useState(false);
+  const [libraryId, setLibraryId] = useState<string>("");
 
   useEffect(() => {
     const raw = Array.isArray(params.libraryId) ? params.libraryId[0] : params.libraryId;
-    setRuntimeLibraryName(humanizeLibraryId(raw || ""));
+    const humanized = humanizeLibraryId(raw || "");
+    setRuntimeLibraryName(humanized);
+    setLibraryId(raw || "");
     setReady(true);
   }, [params.libraryId]);
 
@@ -38,5 +41,5 @@ export default function PersonalizedLibraryRoute() {
     );
   }
 
-  return <HomeScreen />;
+  return <HomeScreen libraryId={libraryId} />;
 }

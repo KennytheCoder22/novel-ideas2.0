@@ -1,0 +1,25 @@
+SCORING-S1 ? Historical Popularity Dominance
+
+Root cause statement:
+Adult Historical over-selects NYT bestsellers because NYT candidates receive full-text taste matching that includes retrieval/query context while Adult GB/OL are metadata-only; this inflates NYT semantic/taste terms and, combined with sourceQualityRelevance, lets broad-popularity NYT titles outrank route-faithful historical candidates.
+
+Per-source semantic/taste averages (historical run):
+- googleBooks: genre=0.6, taste=3.08, n=5
+- openLibrary: genre=3, taste=4.44, n=10
+- nyt: genre=12, taste=7.5, n=32
+
+Replay comparison table:
+| Replay | What changed | Final slate |
+|---|---|---|
+| Current | none | DUNGEON CRAWLER CARL ; REMARKABLY BRIGHT CREATURES ; RANSOM ; THE DEAL ; THE DIVORCE |
+| A | sourceQualityRelevance = 0 | CARL'S DOOMSDAY SCENARIO ; DOLLY ALL THE TIME ; FORSAKING MIDNIGHT ; IN STORMY WEATHER ; LOVE YOU MORE |
+| B | sourceQualityRelevance *= 0.5 | DUNGEON CRAWLER CARL ; REMARKABLY BRIGHT CREATURES ; RANSOM ; THE DEAL ; THE DIVORCE |
+| C | remove +0.25 publicationYear bonus from sourceQualityRelevance | DUNGEON CRAWLER CARL ; REMARKABLY BRIGHT CREATURES ; RANSOM ; THE DEAL ; THE DIVORCE |
+| D | sourceQualityRelevance = 0 (recency contribution removed with it) | CARL'S DOOMSDAY SCENARIO ; DOLLY ALL THE TIME ; FORSAKING MIDNIGHT ; IN STORMY WEATHER ; LOVE YOU MORE |
+| E | score = genreFacetMatch + positiveTasteMatch + avoid penalties | CARL'S DOOMSDAY SCENARIO ; DOLLY ALL THE TIME ; FORSAKING MIDNIGHT ; IN STORMY WEATHER ; LOVE YOU MORE |
+
+Scope classification:
+COMBINATION ? Dominance is route-concentrated in Adult Historical and source-concentrated in NYT; Mystery/Sci-Fi show partial correction when OL participates.
+
+Artifacts:
+- C:\Users\KenBR\.copilot\repos\copilot-worktrees\novel-ideas2.0\kennythecoder22-super-waddle\scripts\output\scoring-s1-historical-popularity-dominance-audit.json

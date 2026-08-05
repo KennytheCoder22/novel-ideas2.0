@@ -1,0 +1,605 @@
+{
+  "generatedAt": "2026-07-23T18:48:11.744Z",
+  "mission": "SCORING-S1 Historical Popularity Dominance",
+  "runConfig": {
+    "ageBand": "adult",
+    "limit": 5,
+    "candidatePoolSize": 47,
+    "selectedSize": 5
+  },
+  "phaseS1A": {
+    "selectedAudit": [
+      {
+        "title": "DUNGEON CRAWLER CARL",
+        "source": "nyt",
+        "publicationYear": null,
+        "semanticFit": 12,
+        "tasteAlignment": 7.5,
+        "historicalAlignmentSignals": [
+          "historical fiction",
+          "alternate history"
+        ],
+        "popularityOrSourceQuality": 1.69,
+        "recency": null,
+        "routeBonus": 0.2,
+        "ageSuitability": 0.5,
+        "finalScore": 22.89,
+        "selectedBecause": "selected_after_ranking_and_diversity"
+      },
+      {
+        "title": "REMARKABLY BRIGHT CREATURES",
+        "source": "nyt",
+        "publicationYear": null,
+        "semanticFit": 12,
+        "tasteAlignment": 7.5,
+        "historicalAlignmentSignals": [
+          "historical fiction",
+          "alternate history"
+        ],
+        "popularityOrSourceQuality": 1.44,
+        "recency": null,
+        "routeBonus": 0.2,
+        "ageSuitability": 0.5,
+        "finalScore": 22.64,
+        "selectedBecause": "selected_after_ranking_and_diversity"
+      },
+      {
+        "title": "RANSOM",
+        "source": "nyt",
+        "publicationYear": null,
+        "semanticFit": 12,
+        "tasteAlignment": 7.5,
+        "historicalAlignmentSignals": [
+          "historical fiction",
+          "alternate history"
+        ],
+        "popularityOrSourceQuality": -0.5100000000000001,
+        "recency": null,
+        "routeBonus": 0.2,
+        "ageSuitability": 0.5,
+        "finalScore": 20.69,
+        "selectedBecause": "selected_after_ranking_and_diversity"
+      },
+      {
+        "title": "THE DEAL",
+        "source": "nyt",
+        "publicationYear": null,
+        "semanticFit": 12,
+        "tasteAlignment": 7.5,
+        "historicalAlignmentSignals": [
+          "historical fiction",
+          "alternate history"
+        ],
+        "popularityOrSourceQuality": -0.5100000000000001,
+        "recency": null,
+        "routeBonus": 0.2,
+        "ageSuitability": 0.5,
+        "finalScore": 20.69,
+        "selectedBecause": "selected_after_ranking_and_diversity"
+      },
+      {
+        "title": "THE DIVORCE",
+        "source": "nyt",
+        "publicationYear": null,
+        "semanticFit": 12,
+        "tasteAlignment": 7.5,
+        "historicalAlignmentSignals": [
+          "historical fiction",
+          "alternate history"
+        ],
+        "popularityOrSourceQuality": -0.5100000000000001,
+        "recency": null,
+        "routeBonus": 0.2,
+        "ageSuitability": 0.5,
+        "finalScore": 20.69,
+        "selectedBecause": "selected_after_ranking_and_diversity"
+      }
+    ],
+    "strongestRejectedBySource": {
+      "googleBooks": {
+        "title": "Beautiful Death",
+        "source": "googleBooks",
+        "publicationYear": 2019,
+        "semanticFit": 3,
+        "tasteAlignment": 2.4000000000000004,
+        "historicalAlignmentSignals": [],
+        "popularityOrSourceQuality": -0.9099999999999999,
+        "routeBonus": 0.55,
+        "ageSuitability": 0.5,
+        "finalScore": 8.89,
+        "rejectedBecause": "not_selected_after_ranking_and_diversity"
+      },
+      "openLibrary": {
+        "title": "His bloody project",
+        "source": "openLibrary",
+        "publicationYear": 2015,
+        "semanticFit": 9,
+        "tasteAlignment": 4.1000000000000005,
+        "historicalAlignmentSignals": [
+          "historical fiction"
+        ],
+        "popularityOrSourceQuality": 4.73,
+        "routeBonus": 0.55,
+        "ageSuitability": 0.5,
+        "finalScore": 19.88,
+        "rejectedBecause": "ranked_below_final_selection"
+      },
+      "nyt": {
+        "title": "THE GOAL",
+        "source": "nyt",
+        "publicationYear": null,
+        "semanticFit": 12,
+        "tasteAlignment": 7.5,
+        "historicalAlignmentSignals": [
+          "historical fiction",
+          "alternate history"
+        ],
+        "popularityOrSourceQuality": -0.5100000000000001,
+        "routeBonus": 0.2,
+        "ageSuitability": 0.5,
+        "finalScore": 20.69,
+        "rejectedBecause": "not_selected_after_ranking_and_diversity"
+      }
+    },
+    "sourceSemanticAverages": {
+      "googleBooks": {
+        "count": 5,
+        "avgGenreFacetMatch": 0.6,
+        "avgPositiveTasteMatch": 3.08
+      },
+      "openLibrary": {
+        "count": 10,
+        "avgGenreFacetMatch": 3,
+        "avgPositiveTasteMatch": 4.44
+      },
+      "nyt": {
+        "count": 32,
+        "avgGenreFacetMatch": 12,
+        "avgPositiveTasteMatch": 7.5
+      }
+    }
+  },
+  "phaseS1B": {
+    "replayComparison": [
+      {
+        "replay": "Current",
+        "whatChanged": "none",
+        "finalTop5": [
+          {
+            "title": "DUNGEON CRAWLER CARL",
+            "source": "nyt",
+            "score": 22.89,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "REMARKABLY BRIGHT CREATURES",
+            "source": "nyt",
+            "score": 22.64,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "RANSOM",
+            "source": "nyt",
+            "score": 20.69,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "THE DEAL",
+            "source": "nyt",
+            "score": 20.69,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "THE DIVORCE",
+            "source": "nyt",
+            "score": 20.69,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          }
+        ],
+        "sourceComposition": {
+          "nyt": 5
+        },
+        "historicalAlignmentCount": 5
+      },
+      {
+        "replay": "A",
+        "whatChanged": "sourceQualityRelevance = 0",
+        "finalTop5": [
+          {
+            "title": "CARL'S DOOMSDAY SCENARIO",
+            "source": "nyt",
+            "score": 21.2,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "DOLLY ALL THE TIME",
+            "source": "nyt",
+            "score": 21.2,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "FORSAKING MIDNIGHT",
+            "source": "nyt",
+            "score": 21.2,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "IN STORMY WEATHER",
+            "source": "nyt",
+            "score": 21.2,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "LOVE YOU MORE",
+            "source": "nyt",
+            "score": 21.2,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          }
+        ],
+        "sourceComposition": {
+          "nyt": 5
+        },
+        "historicalAlignmentCount": 5
+      },
+      {
+        "replay": "B",
+        "whatChanged": "sourceQualityRelevance *= 0.5",
+        "finalTop5": [
+          {
+            "title": "DUNGEON CRAWLER CARL",
+            "source": "nyt",
+            "score": 22.045,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "REMARKABLY BRIGHT CREATURES",
+            "source": "nyt",
+            "score": 21.92,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "RANSOM",
+            "source": "nyt",
+            "score": 20.945,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "THE DEAL",
+            "source": "nyt",
+            "score": 20.945,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "THE DIVORCE",
+            "source": "nyt",
+            "score": 20.945,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          }
+        ],
+        "sourceComposition": {
+          "nyt": 5
+        },
+        "historicalAlignmentCount": 5
+      },
+      {
+        "replay": "C",
+        "whatChanged": "remove +0.25 publicationYear bonus from sourceQualityRelevance",
+        "finalTop5": [
+          {
+            "title": "DUNGEON CRAWLER CARL",
+            "source": "nyt",
+            "score": 22.89,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "REMARKABLY BRIGHT CREATURES",
+            "source": "nyt",
+            "score": 22.64,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "RANSOM",
+            "source": "nyt",
+            "score": 20.69,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "THE DEAL",
+            "source": "nyt",
+            "score": 20.69,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "THE DIVORCE",
+            "source": "nyt",
+            "score": 20.69,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          }
+        ],
+        "sourceComposition": {
+          "nyt": 5
+        },
+        "historicalAlignmentCount": 5
+      },
+      {
+        "replay": "D",
+        "whatChanged": "sourceQualityRelevance = 0 (recency contribution removed with it)",
+        "finalTop5": [
+          {
+            "title": "CARL'S DOOMSDAY SCENARIO",
+            "source": "nyt",
+            "score": 21.2,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "DOLLY ALL THE TIME",
+            "source": "nyt",
+            "score": 21.2,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "FORSAKING MIDNIGHT",
+            "source": "nyt",
+            "score": 21.2,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "IN STORMY WEATHER",
+            "source": "nyt",
+            "score": 21.2,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "LOVE YOU MORE",
+            "source": "nyt",
+            "score": 21.2,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          }
+        ],
+        "sourceComposition": {
+          "nyt": 5
+        },
+        "historicalAlignmentCount": 5
+      },
+      {
+        "replay": "E",
+        "whatChanged": "score = genreFacetMatch + positiveTasteMatch + avoid penalties",
+        "finalTop5": [
+          {
+            "title": "CARL'S DOOMSDAY SCENARIO",
+            "source": "nyt",
+            "score": 19.5,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "DOLLY ALL THE TIME",
+            "source": "nyt",
+            "score": 19.5,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "FORSAKING MIDNIGHT",
+            "source": "nyt",
+            "score": 19.5,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "IN STORMY WEATHER",
+            "source": "nyt",
+            "score": 19.5,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          },
+          {
+            "title": "LOVE YOU MORE",
+            "source": "nyt",
+            "score": 19.5,
+            "historicalSignals": [
+              "historical fiction",
+              "alternate history"
+            ]
+          }
+        ],
+        "sourceComposition": {
+          "nyt": 5
+        },
+        "historicalAlignmentCount": 5
+      }
+    ],
+    "comparisonTable": [
+      {
+        "replay": "Current",
+        "whatChanged": "none",
+        "finalSlate": [
+          "DUNGEON CRAWLER CARL",
+          "REMARKABLY BRIGHT CREATURES",
+          "RANSOM",
+          "THE DEAL",
+          "THE DIVORCE"
+        ]
+      },
+      {
+        "replay": "A",
+        "whatChanged": "sourceQualityRelevance = 0",
+        "finalSlate": [
+          "CARL'S DOOMSDAY SCENARIO",
+          "DOLLY ALL THE TIME",
+          "FORSAKING MIDNIGHT",
+          "IN STORMY WEATHER",
+          "LOVE YOU MORE"
+        ]
+      },
+      {
+        "replay": "B",
+        "whatChanged": "sourceQualityRelevance *= 0.5",
+        "finalSlate": [
+          "DUNGEON CRAWLER CARL",
+          "REMARKABLY BRIGHT CREATURES",
+          "RANSOM",
+          "THE DEAL",
+          "THE DIVORCE"
+        ]
+      },
+      {
+        "replay": "C",
+        "whatChanged": "remove +0.25 publicationYear bonus from sourceQualityRelevance",
+        "finalSlate": [
+          "DUNGEON CRAWLER CARL",
+          "REMARKABLY BRIGHT CREATURES",
+          "RANSOM",
+          "THE DEAL",
+          "THE DIVORCE"
+        ]
+      },
+      {
+        "replay": "D",
+        "whatChanged": "sourceQualityRelevance = 0 (recency contribution removed with it)",
+        "finalSlate": [
+          "CARL'S DOOMSDAY SCENARIO",
+          "DOLLY ALL THE TIME",
+          "FORSAKING MIDNIGHT",
+          "IN STORMY WEATHER",
+          "LOVE YOU MORE"
+        ]
+      },
+      {
+        "replay": "E",
+        "whatChanged": "score = genreFacetMatch + positiveTasteMatch + avoid penalties",
+        "finalSlate": [
+          "CARL'S DOOMSDAY SCENARIO",
+          "DOLLY ALL THE TIME",
+          "FORSAKING MIDNIGHT",
+          "IN STORMY WEATHER",
+          "LOVE YOU MORE"
+        ]
+      }
+    ]
+  },
+  "phaseS1C": {
+    "scopeSignals": [
+      {
+        "profileId": "mystery-thriller",
+        "profileLabel": "Mystery / Thriller",
+        "nytPersistedWhenOlAddedCount": 0,
+        "nytDroppedWhenOlAddedCount": 1
+      },
+      {
+        "profileId": "scifi-fantasy",
+        "profileLabel": "Science Fiction / Fantasy",
+        "nytPersistedWhenOlAddedCount": 2,
+        "nytDroppedWhenOlAddedCount": 1
+      },
+      {
+        "profileId": "historical-literary",
+        "profileLabel": "Historical / Literary",
+        "nytPersistedWhenOlAddedCount": 5,
+        "nytDroppedWhenOlAddedCount": 0
+      },
+      {
+        "profileId": "general-contemporary",
+        "profileLabel": "General / Contemporary Fiction",
+        "nytPersistedWhenOlAddedCount": 5,
+        "nytDroppedWhenOlAddedCount": 0
+      }
+    ],
+    "classification": "COMBINATION",
+    "classificationRationale": "Dominance is route-concentrated in Adult Historical and source-concentrated in NYT; Mystery/Sci-Fi show partial correction when OL participates.",
+    "teenInspectionNote": "No teen historical evidence in this pass; no indication of global age-band failure."
+  },
+  "phaseS1D": {
+    "rootCauseStatement": "Adult Historical over-selects NYT bestsellers because NYT candidates receive full-text taste matching that includes retrieval/query context while Adult GB/OL are metadata-only; this inflates NYT semantic/taste terms and, combined with sourceQualityRelevance, lets broad-popularity NYT titles outrank route-faithful historical candidates."
+  },
+  "phaseS1E": {
+    "designOptions": [
+      "Harmonize evidence policy for adult NYT with adult GB/OL (metadata-only taste matching, exclude query/retrieval context from NYT scoring text).",
+      "Route-conditional damping: reduce sourceQualityRelevance influence for adult historical when historical-alignment cues are weak.",
+      "Add a historical-alignment component (period-specific cues) that can outvote popularity-like source quality in historical routes."
+    ]
+  }
+}

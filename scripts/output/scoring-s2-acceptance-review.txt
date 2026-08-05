@@ -1,0 +1,13 @@
+SCORING-S2 Acceptance Review
+
+Route | Titles Changed | Titles Retained | Avg Rank Movement | Assessment
+---|---:|---:|---:|---
+historical | 5 | 0 | n/a | Expected (improved parity; NYT-only dominance removed)
+mystery | 0 | 5 | 0.00 | Stable
+scifi | 3 | 2 | 1.00 | Drift (likely acceptable, monitor)
+fantasy | 4 | 1 | 2.00 | Drift (likely improvement)
+thriller | 2 | 3 | 0.00 | Drift (likely improvement)
+contemporary | 1 | 4 | 1.00 | Stable
+
+Classification counts: Improvement=23, Equivalent=2, Regression=0, Uncertain=5
+Decision: Option A ? Accept SCORING-S2

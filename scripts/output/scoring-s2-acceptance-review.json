@@ -1,0 +1,351 @@
+{
+  "generatedAt": "2026-07-23T19:28:07.836Z",
+  "scope": "SCORING-S2 acceptance review (primary config gb_nyt_ol)",
+  "routeRows": [
+    {
+      "route": "historical",
+      "titlesChanged": 5,
+      "titlesRetained": 0,
+      "avgRankMovement": null,
+      "sourceCompositionBefore": {
+        "nyt": 5
+      },
+      "sourceCompositionAfter": {
+        "openLibrary": 3,
+        "googleBooks": 1,
+        "nyt": 1
+      },
+      "assessment": "Expected (improved parity; NYT-only dominance removed)",
+      "added": [
+        "His bloody project",
+        "Stardust",
+        "The Woodlanders",
+        "Beautiful Death",
+        "THE ROMANCE REVIVAL"
+      ],
+      "removed": [
+        "DUNGEON CRAWLER CARL",
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE DEAL",
+        "THE DIVORCE"
+      ]
+    },
+    {
+      "route": "mystery",
+      "titlesChanged": 0,
+      "titlesRetained": 5,
+      "avgRankMovement": 0,
+      "sourceCompositionBefore": {
+        "googleBooks": 1,
+        "openLibrary": 4
+      },
+      "sourceCompositionAfter": {
+        "googleBooks": 1,
+        "openLibrary": 4
+      },
+      "assessment": "Stable",
+      "added": [],
+      "removed": []
+    },
+    {
+      "route": "scifi",
+      "titlesChanged": 3,
+      "titlesRetained": 2,
+      "avgRankMovement": 1,
+      "sourceCompositionBefore": {
+        "openLibrary": 3,
+        "googleBooks": 1,
+        "nyt": 1
+      },
+      "sourceCompositionAfter": {
+        "googleBooks": 1,
+        "openLibrary": 4
+      },
+      "assessment": "Drift (likely acceptable, monitor)",
+      "added": [
+        "Five Minds",
+        "Sentinel",
+        "Sweetpea"
+      ],
+      "removed": [
+        "Fang",
+        "Daemon",
+        "DUNGEON CRAWLER CARL"
+      ]
+    },
+    {
+      "route": "fantasy",
+      "titlesChanged": 4,
+      "titlesRetained": 1,
+      "avgRankMovement": 2,
+      "sourceCompositionBefore": {
+        "nyt": 4,
+        "openLibrary": 1
+      },
+      "sourceCompositionAfter": {
+        "openLibrary": 3,
+        "googleBooks": 2
+      },
+      "assessment": "Drift (likely improvement)",
+      "added": [
+        "The Shattered Sun",
+        "Tuya of the Hollows (DARK FANTASY) [Book 1 Complete]",
+        "Curious Fragments",
+        "No hero"
+      ],
+      "removed": [
+        "DUNGEON CRAWLER CARL",
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE DEAL"
+      ]
+    },
+    {
+      "route": "thriller",
+      "titlesChanged": 2,
+      "titlesRetained": 3,
+      "avgRankMovement": 0,
+      "sourceCompositionBefore": {
+        "openLibrary": 2,
+        "googleBooks": 1,
+        "nyt": 2
+      },
+      "sourceCompositionAfter": {
+        "openLibrary": 3,
+        "googleBooks": 2
+      },
+      "assessment": "Drift (likely improvement)",
+      "added": [
+        "The Woods",
+        "Just Forget (A Cami Lark FBI Suspense Thriller—Book 4)"
+      ],
+      "removed": [
+        "DUNGEON CRAWLER CARL",
+        "REMARKABLY BRIGHT CREATURES"
+      ]
+    },
+    {
+      "route": "contemporary",
+      "titlesChanged": 1,
+      "titlesRetained": 4,
+      "avgRankMovement": 1,
+      "sourceCompositionBefore": {
+        "nyt": 5
+      },
+      "sourceCompositionAfter": {
+        "nyt": 5
+      },
+      "assessment": "Stable",
+      "added": [
+        "THE CALAMITY CLUB"
+      ],
+      "removed": [
+        "THE DIVORCE"
+      ]
+    }
+  ],
+  "changedTitleClassifications": [
+    {
+      "route": "historical",
+      "changeType": "added",
+      "title": "His bloody project",
+      "classification": "Improvement"
+    },
+    {
+      "route": "historical",
+      "changeType": "added",
+      "title": "Stardust",
+      "classification": "Improvement"
+    },
+    {
+      "route": "historical",
+      "changeType": "added",
+      "title": "The Woodlanders",
+      "classification": "Improvement"
+    },
+    {
+      "route": "historical",
+      "changeType": "added",
+      "title": "Beautiful Death",
+      "classification": "Improvement"
+    },
+    {
+      "route": "historical",
+      "changeType": "added",
+      "title": "THE ROMANCE REVIVAL",
+      "classification": "Equivalent"
+    },
+    {
+      "route": "historical",
+      "changeType": "removed",
+      "title": "DUNGEON CRAWLER CARL",
+      "classification": "Improvement"
+    },
+    {
+      "route": "historical",
+      "changeType": "removed",
+      "title": "REMARKABLY BRIGHT CREATURES",
+      "classification": "Improvement"
+    },
+    {
+      "route": "historical",
+      "changeType": "removed",
+      "title": "RANSOM",
+      "classification": "Improvement"
+    },
+    {
+      "route": "historical",
+      "changeType": "removed",
+      "title": "THE DEAL",
+      "classification": "Improvement"
+    },
+    {
+      "route": "historical",
+      "changeType": "removed",
+      "title": "THE DIVORCE",
+      "classification": "Improvement"
+    },
+    {
+      "route": "scifi",
+      "changeType": "added",
+      "title": "Five Minds",
+      "classification": "Uncertain"
+    },
+    {
+      "route": "scifi",
+      "changeType": "added",
+      "title": "Sentinel",
+      "classification": "Uncertain"
+    },
+    {
+      "route": "scifi",
+      "changeType": "added",
+      "title": "Sweetpea",
+      "classification": "Uncertain"
+    },
+    {
+      "route": "scifi",
+      "changeType": "removed",
+      "title": "Fang",
+      "classification": "Uncertain"
+    },
+    {
+      "route": "scifi",
+      "changeType": "removed",
+      "title": "Daemon",
+      "classification": "Uncertain"
+    },
+    {
+      "route": "scifi",
+      "changeType": "removed",
+      "title": "DUNGEON CRAWLER CARL",
+      "classification": "Improvement"
+    },
+    {
+      "route": "fantasy",
+      "changeType": "added",
+      "title": "The Shattered Sun",
+      "classification": "Improvement"
+    },
+    {
+      "route": "fantasy",
+      "changeType": "added",
+      "title": "Tuya of the Hollows (DARK FANTASY) [Book 1 Complete]",
+      "classification": "Improvement"
+    },
+    {
+      "route": "fantasy",
+      "changeType": "added",
+      "title": "Curious Fragments",
+      "classification": "Improvement"
+    },
+    {
+      "route": "fantasy",
+      "changeType": "added",
+      "title": "No hero",
+      "classification": "Improvement"
+    },
+    {
+      "route": "fantasy",
+      "changeType": "removed",
+      "title": "DUNGEON CRAWLER CARL",
+      "classification": "Improvement"
+    },
+    {
+      "route": "fantasy",
+      "changeType": "removed",
+      "title": "REMARKABLY BRIGHT CREATURES",
+      "classification": "Improvement"
+    },
+    {
+      "route": "fantasy",
+      "changeType": "removed",
+      "title": "RANSOM",
+      "classification": "Improvement"
+    },
+    {
+      "route": "fantasy",
+      "changeType": "removed",
+      "title": "THE DEAL",
+      "classification": "Improvement"
+    },
+    {
+      "route": "thriller",
+      "changeType": "added",
+      "title": "The Woods",
+      "classification": "Improvement"
+    },
+    {
+      "route": "thriller",
+      "changeType": "added",
+      "title": "Just Forget (A Cami Lark FBI Suspense Thriller—Book 4)",
+      "classification": "Improvement"
+    },
+    {
+      "route": "thriller",
+      "changeType": "removed",
+      "title": "DUNGEON CRAWLER CARL",
+      "classification": "Improvement"
+    },
+    {
+      "route": "thriller",
+      "changeType": "removed",
+      "title": "REMARKABLY BRIGHT CREATURES",
+      "classification": "Improvement"
+    },
+    {
+      "route": "contemporary",
+      "changeType": "added",
+      "title": "THE CALAMITY CLUB",
+      "classification": "Equivalent"
+    },
+    {
+      "route": "contemporary",
+      "changeType": "removed",
+      "title": "THE DIVORCE",
+      "classification": "Improvement"
+    }
+  ],
+  "classificationCounts": {
+    "Improvement": 23,
+    "Equivalent": 2,
+    "Regression": 0,
+    "Uncertain": 5
+  },
+  "patternSummary": {
+    "nytShift": "decreased",
+    "sourceTotalsBefore": {
+      "nyt": 17,
+      "googleBooks": 3,
+      "openLibrary": 10
+    },
+    "sourceTotalsAfter": {
+      "openLibrary": 17,
+      "googleBooks": 7,
+      "nyt": 6
+    }
+  },
+  "explainability": "Spot-check retained: final score components and ranking reason remain present.",
+  "decision": "Option A ? Accept SCORING-S2"
+}

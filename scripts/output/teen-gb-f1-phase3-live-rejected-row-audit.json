@@ -1,0 +1,1931 @@
+{
+  "generatedAt": "2026-07-22T22:23:02.999Z",
+  "rounds": 4,
+  "profileIds": [
+    "scifi-space-opera",
+    "scifi-dystopian",
+    "scifi-speculative-mixed"
+  ],
+  "aggregate": {
+    "totalRuns": 12,
+    "profiles": [
+      "scifi-space-opera",
+      "scifi-dystopian",
+      "scifi-speculative-mixed"
+    ],
+    "telemetryCompletePrimaryRuns": 12,
+    "telemetryCompleteAllRuns": 12,
+    "totalPrimaryRejectRows": 240,
+    "totalPrimaryAuditRows": 240,
+    "totalAllRejectRows": 400,
+    "totalAllAuditRows": 400
+  },
+  "missingAuthorAggregate": {
+    "trulyNoContributorMetadata": 48,
+    "contributorPresentAlternateField": 0,
+    "malformedPayload": 0,
+    "duplicateOrArtifact": 0,
+    "plausibleNarrativeRecoverableContributor": 0
+  },
+  "unknownShapeAggregate": {
+    "totalUnknownRows": 60,
+    "likelyParserMissRows": 0,
+    "unknownByReason": {
+      "publication_shape_unknown_insufficient_story_evidence": 12,
+      "publication_shape_unknown_insufficient_narrative_identity": 48
+    },
+    "unknownByThreshold": {
+      "rejected_single_story_evidence_without_corroboration": 12,
+      "rejected_without_story_level_evidence": 48
+    }
+  },
+  "verdicts": [
+    "NO_ACTION_CORRECT_REJECTIONS"
+  ],
+  "runs": [
+    {
+      "round": 1,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 33,
+      "preNormRejectedCountAllQueries": 33,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 34,
+      "preNormRejectedCountAllQueries": 34,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 1,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 33,
+      "preNormRejectedCountAllQueries": 33,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 33,
+      "preNormRejectedCountAllQueries": 33,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 34,
+      "preNormRejectedCountAllQueries": 34,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 2,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 33,
+      "preNormRejectedCountAllQueries": 33,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 33,
+      "preNormRejectedCountAllQueries": 33,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 34,
+      "preNormRejectedCountAllQueries": 34,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 3,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 33,
+      "preNormRejectedCountAllQueries": 33,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-space-opera",
+      "profileLabel": "Space opera science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 33,
+      "preNormRejectedCountAllQueries": 33,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-dystopian",
+      "profileLabel": "Dystopian science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 34,
+      "preNormRejectedCountAllQueries": 34,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    },
+    {
+      "round": 4,
+      "profileId": "scifi-speculative-mixed",
+      "profileLabel": "Speculative and tech science fiction",
+      "primaryQuery": "young adult science fiction novel",
+      "rawRowCount": 20,
+      "rejectionHistogram": {
+        "publication_shape_critical_study": 2,
+        "publication_shape_reference": 1,
+        "publication_shape_writing_guide": 4,
+        "publication_shape_nonfiction": 2,
+        "publication_shape_anthology": 2,
+        "missing_author": 4,
+        "publication_shape_unknown_insufficient_story_evidence": 1,
+        "publication_shape_unknown_insufficient_narrative_identity": 4
+      },
+      "preNormRejectedCount": 20,
+      "auditRowCountPrimaryQuery": 20,
+      "auditRowCountAllQueries": 33,
+      "preNormRejectedCountAllQueries": 33,
+      "telemetryCompletePrimary": true,
+      "telemetryCompleteAllQueries": true,
+      "namedRejects": 20,
+      "unnamedRejects": 0,
+      "missingAuthorRows": [
+        {
+          "sourceId": "25qIDQAAQBAJ",
+          "title": "Scott Westerfield's Novel \"So Yesterday\". Literary and Didactic Aspects",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "MBc3OerDhuoC",
+          "title": "The Author & Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "HcJ0_OSFyfIC",
+          "title": "Author and Journalist",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "oOkXAAAAMAAJ",
+          "title": "The Publishers Weekly",
+          "thresholdFailed": "missing_author_primary_field",
+          "allContributorFields": {},
+          "recommendedDisposition": "metadata_insufficient",
+          "likelyRealNarrativeFiction": "ambiguous"
+        }
+      ],
+      "missingAuthorClassification": {
+        "trulyNoContributorMetadata": 4,
+        "contributorPresentAlternateField": 0,
+        "malformedPayload": 0,
+        "duplicateOrArtifact": 0,
+        "plausibleNarrativeRecoverableContributor": 0
+      },
+      "unknownShapeRows": [
+        {
+          "sourceId": "bdmxAAAAIAAJ",
+          "title": "Frontiers Past and Future",
+          "rejectionReason": "publication_shape_unknown_insufficient_story_evidence",
+          "thresholdFailed": "rejected_single_story_evidence_without_corroboration",
+          "narrativeCuesDetected": [
+            "plot_setup_description"
+          ],
+          "corroboratingCuesDetected": [],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_independent_narrative_corroboration_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "4or7r1Y3rwIC",
+          "title": "Dreaming Again",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "GHGFW90PMZ8C",
+          "title": "The New Space Opera",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "ambiguous"
+        },
+        {
+          "sourceId": "dH6EfMHVMyYC",
+          "title": "The Cardboard Universe",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "explicit_novel_identity",
+            "strong_fiction_category_distinctive_title_fiction_publisher"
+          ],
+          "humanIdentifiedCues": [
+            "novel",
+            "world"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        },
+        {
+          "sourceId": "tcYlAAAAQBAJ",
+          "title": "Entwined (A Conyza Bennett story, Book 1)",
+          "rejectionReason": "publication_shape_unknown_insufficient_narrative_identity",
+          "thresholdFailed": "rejected_without_story_level_evidence",
+          "narrativeCuesDetected": [],
+          "corroboratingCuesDetected": [
+            "series_installment_identity"
+          ],
+          "humanIdentifiedCues": [
+            "book_one"
+          ],
+          "likelyParserMiss": false,
+          "smallestAdditionalEvidenceForAdmission": "add_one_story_level_narrative_cue",
+          "recommendedDisposition": "parser_improvement",
+          "likelyRealNarrativeFiction": "yes"
+        }
+      ],
+      "likelyFalseRejectCount": 0,
+      "dispositions": {
+        "correct_reject": 11,
+        "metadata_insufficient": 4,
+        "parser_improvement": 5
+      }
+    }
+  ]
+}

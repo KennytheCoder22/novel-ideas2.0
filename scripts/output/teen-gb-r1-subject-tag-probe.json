@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-07-23T00:25:05.400Z",
+  "configs": {
+    "promotedComposite": {
+      "runs": 9,
+      "selectedMean": 0,
+      "acceptedUniqueMean": 0,
+      "sampleQueries": [
+        [
+          "young adult sci fi",
+          "YA dystopian",
+          "YA speculative fiction"
+        ],
+        [
+          "young adult sci fi",
+          "YA dystopian",
+          "YA speculative fiction"
+        ],
+        [
+          "young adult sci fi",
+          "YA dystopian",
+          "YA speculative fiction"
+        ]
+      ],
+      "zeroSelected": 9,
+      "zeroAccepted": 9
+    },
+    "proposedSubjectTags": {
+      "runs": 9,
+      "selectedMean": 0,
+      "acceptedUniqueMean": 0,
+      "sampleQueries": [
+        [
+          "subject:\"Juvenile Fiction / Science Fiction\"",
+          "subject:\"Young Adult Fiction / Science Fiction\"",
+          "subject:\"Young Adult Fiction / Science Fiction\" dystopian"
+        ],
+        [
+          "subject:\"Juvenile Fiction / Science Fiction\"",
+          "subject:\"Young Adult Fiction / Science Fiction\"",
+          "subject:\"Young Adult Fiction / Science Fiction\" dystopian"
+        ],
+        [
+          "subject:\"Juvenile Fiction / Science Fiction\"",
+          "subject:\"Young Adult Fiction / Science Fiction\"",
+          "subject:\"Young Adult Fiction / Science Fiction\" dystopian"
+        ]
+      ],
+      "zeroSelected": 9,
+      "zeroAccepted": 9
+    }
+  },
+  "delta": {
+    "selectedMean": 0,
+    "acceptedUniqueMean": 0
+  }
+}

@@ -1,0 +1,48 @@
+
+historical
+ pre: DUNGEON CRAWLER CARL | REMARKABLY BRIGHT CREATURES | RANSOM | THE DEAL | THE DIVORCE
+post: His bloody project | Stardust | The Woodlanders | Beautiful Death | THE ROMANCE REVIVAL
+ changed=5, retained=0, avg_rank_movement=n/a
+ source pre={"nyt":5} post={"openLibrary":3,"googleBooks":1,"nyt":1}
+ removed=DUNGEON CRAWLER CARL | REMARKABLY BRIGHT CREATURES | RANSOM | THE DEAL | THE DIVORCE
+ added=His bloody project | Stardust | The Woodlanders | Beautiful Death | THE ROMANCE REVIVAL
+
+mystery
+ pre: The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS | Do Not Disturb | Blindsighted | Worst Case | Behind her eyes
+post: The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS | Do Not Disturb | Blindsighted | Worst Case | Behind her eyes
+ changed=0, retained=5, avg_rank_movement=0.00
+ source pre={"googleBooks":1,"openLibrary":4} post={"googleBooks":1,"openLibrary":4}
+ removed=(none)
+ added=(none)
+
+thriller
+ pre: The Perfect Son | Behind her eyes | Gone Hollow (A Becca Thorn FBI Suspense Thriller—Book 4) | DUNGEON CRAWLER CARL | REMARKABLY BRIGHT CREATURES
+post: The Perfect Son | Behind her eyes | Gone Hollow (A Becca Thorn FBI Suspense Thriller—Book 4) | The Woods | Just Forget (A Cami Lark FBI Suspense Thriller—Book 4)
+ changed=2, retained=3, avg_rank_movement=0.00
+ source pre={"openLibrary":2,"googleBooks":1,"nyt":2} post={"openLibrary":3,"googleBooks":2}
+ removed=DUNGEON CRAWLER CARL | REMARKABLY BRIGHT CREATURES
+ added=The Woods | Just Forget (A Cami Lark FBI Suspense Thriller—Book 4)
+
+scifi
+ pre: Fang | The Massacre of Mankind | Cryptonomicon | Daemon | DUNGEON CRAWLER CARL
+post: The Massacre of Mankind | Cryptonomicon | Five Minds | Sentinel | Sweetpea
+ changed=3, retained=2, avg_rank_movement=1.00
+ source pre={"openLibrary":3,"googleBooks":1,"nyt":1} post={"googleBooks":1,"openLibrary":4}
+ removed=Fang | Daemon | DUNGEON CRAWLER CARL
+ added=Five Minds | Sentinel | Sweetpea
+
+fantasy
+ pre: DUNGEON CRAWLER CARL | REMARKABLY BRIGHT CREATURES | The Skies of Pern | RANSOM | THE DEAL
+post: The Skies of Pern | The Shattered Sun | Tuya of the Hollows (DARK FANTASY) [Book 1 Complete] | Curious Fragments | No hero
+ changed=4, retained=1, avg_rank_movement=2.00
+ source pre={"nyt":4,"openLibrary":1} post={"openLibrary":3,"googleBooks":2}
+ removed=DUNGEON CRAWLER CARL | REMARKABLY BRIGHT CREATURES | RANSOM | THE DEAL
+ added=The Shattered Sun | Tuya of the Hollows (DARK FANTASY) [Book 1 Complete] | Curious Fragments | No hero
+
+contemporary
+ pre: RANSOM | DUNGEON CRAWLER CARL | THE SHAMPOO EFFECT | THE DEAL | THE DIVORCE
+post: THE SHAMPOO EFFECT | RANSOM | DUNGEON CRAWLER CARL | THE DEAL | THE CALAMITY CLUB
+ changed=1, retained=4, avg_rank_movement=1.00
+ source pre={"nyt":5} post={"nyt":5}
+ removed=THE DIVORCE
+ added=THE CALAMITY CLUB

@@ -1,0 +1,348 @@
+{
+  "generatedAt": "2026-07-23T19:10:01.188Z",
+  "stableProfiles": [],
+  "changedProfiles": [
+    "historical",
+    "mystery",
+    "scifi",
+    "contemporary",
+    "fantasy",
+    "thriller"
+  ],
+  "rows": [
+    {
+      "profileId": "historical",
+      "configId": "gb_only",
+      "changed": false,
+      "added": [],
+      "removed": [],
+      "beforeComposition": {
+        "googleBooks": 3
+      },
+      "afterComposition": {
+        "googleBooks": 3
+      }
+    },
+    {
+      "profileId": "historical",
+      "configId": "gb_nyt",
+      "changed": true,
+      "added": [
+        "Beautiful Death",
+        "THE ROMANCE REVIVAL",
+        "The Ides of March",
+        "The Good Inn"
+      ],
+      "removed": [
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE DEAL",
+        "THE DIVORCE"
+      ],
+      "beforeComposition": {
+        "nyt": 5
+      },
+      "afterComposition": {
+        "googleBooks": 3,
+        "nyt": 2
+      }
+    },
+    {
+      "profileId": "historical",
+      "configId": "gb_nyt_ol",
+      "changed": true,
+      "added": [
+        "His bloody project",
+        "Stardust",
+        "The Woodlanders",
+        "Beautiful Death",
+        "THE ROMANCE REVIVAL"
+      ],
+      "removed": [
+        "DUNGEON CRAWLER CARL",
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE DEAL",
+        "THE DIVORCE"
+      ],
+      "beforeComposition": {
+        "nyt": 5
+      },
+      "afterComposition": {
+        "openLibrary": 3,
+        "googleBooks": 1,
+        "nyt": 1
+      }
+    },
+    {
+      "profileId": "mystery",
+      "configId": "gb_only",
+      "changed": false,
+      "added": [],
+      "removed": [],
+      "beforeComposition": {
+        "googleBooks": 5
+      },
+      "afterComposition": {
+        "googleBooks": 5
+      }
+    },
+    {
+      "profileId": "mystery",
+      "configId": "gb_nyt",
+      "changed": true,
+      "added": [
+        "In Dark Waters"
+      ],
+      "removed": [
+        "RANSOM"
+      ],
+      "beforeComposition": {
+        "googleBooks": 4,
+        "nyt": 1
+      },
+      "afterComposition": {
+        "googleBooks": 5
+      }
+    },
+    {
+      "profileId": "mystery",
+      "configId": "gb_nyt_ol",
+      "changed": false,
+      "added": [],
+      "removed": [],
+      "beforeComposition": {
+        "googleBooks": 1,
+        "openLibrary": 4
+      },
+      "afterComposition": {
+        "googleBooks": 1,
+        "openLibrary": 4
+      }
+    },
+    {
+      "profileId": "scifi",
+      "configId": "gb_only",
+      "changed": false,
+      "added": [],
+      "removed": [],
+      "beforeComposition": {
+        "googleBooks": 3
+      },
+      "afterComposition": {
+        "googleBooks": 3
+      }
+    },
+    {
+      "profileId": "scifi",
+      "configId": "gb_nyt",
+      "changed": true,
+      "added": [
+        "Climbing the Ranks 1",
+        "Ilium",
+        "THE ROMANCE REVIVAL"
+      ],
+      "removed": [
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE DEAL"
+      ],
+      "beforeComposition": {
+        "googleBooks": 1,
+        "nyt": 4
+      },
+      "afterComposition": {
+        "googleBooks": 3,
+        "nyt": 2
+      }
+    },
+    {
+      "profileId": "scifi",
+      "configId": "gb_nyt_ol",
+      "changed": true,
+      "added": [
+        "Five Minds",
+        "Sentinel",
+        "Sweetpea"
+      ],
+      "removed": [
+        "Fang",
+        "Daemon",
+        "DUNGEON CRAWLER CARL"
+      ],
+      "beforeComposition": {
+        "openLibrary": 3,
+        "googleBooks": 1,
+        "nyt": 1
+      },
+      "afterComposition": {
+        "googleBooks": 1,
+        "openLibrary": 4
+      }
+    },
+    {
+      "profileId": "contemporary",
+      "configId": "gb_only",
+      "changed": false,
+      "added": [],
+      "removed": [],
+      "beforeComposition": {},
+      "afterComposition": {}
+    },
+    {
+      "profileId": "contemporary",
+      "configId": "gb_nyt",
+      "changed": true,
+      "added": [
+        "THE CALAMITY CLUB"
+      ],
+      "removed": [
+        "THE DIVORCE"
+      ],
+      "beforeComposition": {
+        "nyt": 5
+      },
+      "afterComposition": {
+        "nyt": 5
+      }
+    },
+    {
+      "profileId": "contemporary",
+      "configId": "gb_nyt_ol",
+      "changed": true,
+      "added": [
+        "THE CALAMITY CLUB"
+      ],
+      "removed": [
+        "THE DIVORCE"
+      ],
+      "beforeComposition": {
+        "nyt": 5
+      },
+      "afterComposition": {
+        "nyt": 5
+      }
+    },
+    {
+      "profileId": "fantasy",
+      "configId": "gb_only",
+      "changed": false,
+      "added": [],
+      "removed": [],
+      "beforeComposition": {
+        "googleBooks": 5
+      },
+      "afterComposition": {
+        "googleBooks": 5
+      }
+    },
+    {
+      "profileId": "fantasy",
+      "configId": "gb_nyt",
+      "changed": true,
+      "added": [
+        "The Shattered Sun",
+        "Tuya of the Hollows (DARK FANTASY) [Book 1 Complete]",
+        "Three Days to Never",
+        "Our Party Nearly Wiped and Then Everything Went Downhill, Vol. 1"
+      ],
+      "removed": [
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE DEAL",
+        "THE DIVORCE"
+      ],
+      "beforeComposition": {
+        "nyt": 5
+      },
+      "afterComposition": {
+        "googleBooks": 4,
+        "nyt": 1
+      }
+    },
+    {
+      "profileId": "fantasy",
+      "configId": "gb_nyt_ol",
+      "changed": true,
+      "added": [
+        "The Shattered Sun",
+        "Tuya of the Hollows (DARK FANTASY) [Book 1 Complete]",
+        "Curious Fragments",
+        "No hero"
+      ],
+      "removed": [
+        "DUNGEON CRAWLER CARL",
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE DEAL"
+      ],
+      "beforeComposition": {
+        "nyt": 4,
+        "openLibrary": 1
+      },
+      "afterComposition": {
+        "openLibrary": 3,
+        "googleBooks": 2
+      }
+    },
+    {
+      "profileId": "thriller",
+      "configId": "gb_only",
+      "changed": false,
+      "added": [],
+      "removed": [],
+      "beforeComposition": {
+        "googleBooks": 5
+      },
+      "afterComposition": {
+        "googleBooks": 5
+      }
+    },
+    {
+      "profileId": "thriller",
+      "configId": "gb_nyt",
+      "changed": true,
+      "added": [
+        "Just Forget (A Cami Lark FBI Suspense Thriller—Book 4)",
+        "The Way the Crow Flies",
+        "In Darkness Visible",
+        "Three Days to Never"
+      ],
+      "removed": [
+        "DUNGEON CRAWLER CARL",
+        "REMARKABLY BRIGHT CREATURES",
+        "RANSOM",
+        "THE SHAMPOO EFFECT"
+      ],
+      "beforeComposition": {
+        "googleBooks": 1,
+        "nyt": 4
+      },
+      "afterComposition": {
+        "googleBooks": 5
+      }
+    },
+    {
+      "profileId": "thriller",
+      "configId": "gb_nyt_ol",
+      "changed": true,
+      "added": [
+        "The Woods",
+        "Just Forget (A Cami Lark FBI Suspense Thriller—Book 4)"
+      ],
+      "removed": [
+        "DUNGEON CRAWLER CARL",
+        "REMARKABLY BRIGHT CREATURES"
+      ],
+      "beforeComposition": {
+        "openLibrary": 2,
+        "googleBooks": 1,
+        "nyt": 2
+      },
+      "afterComposition": {
+        "openLibrary": 3,
+        "googleBooks": 2
+      }
+    }
+  ]
+}

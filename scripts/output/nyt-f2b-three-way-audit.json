@@ -1,0 +1,700 @@
+{
+  "generatedAt": "2026-07-23T18:36:29.092Z",
+  "design": "Three-way comparison: GB only vs GB+NYT vs GB+NYT+OL",
+  "profiles": [
+    {
+      "profileId": "mystery-thriller",
+      "profileLabel": "Mystery / Thriller",
+      "runs": [
+        {
+          "configId": "gb_only",
+          "configLabel": "GB only",
+          "gbStatus": "succeeded",
+          "gbRawCount": 12,
+          "nytStatus": "skipped",
+          "nytRawCount": 0,
+          "nytUsedOverview": false,
+          "olStatus": "skipped",
+          "olRawCount": 0,
+          "slate": [
+            {
+              "title": "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+              "source": "googleBooks",
+              "publicationYear": 2024
+            },
+            {
+              "title": "Shock Waves",
+              "source": "googleBooks",
+              "publicationYear": 2024
+            },
+            {
+              "title": "Edge of Dark Water",
+              "source": "googleBooks",
+              "publicationYear": 2012
+            },
+            {
+              "title": "The Burning Girl",
+              "source": "googleBooks",
+              "publicationYear": 2009
+            },
+            {
+              "title": "In Dark Waters",
+              "source": "googleBooks",
+              "publicationYear": 2010
+            }
+          ],
+          "slateTitles": [
+            "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+            "Shock Waves",
+            "Edge of Dark Water",
+            "The Burning Girl",
+            "In Dark Waters"
+          ]
+        },
+        {
+          "configId": "gb_nyt",
+          "configLabel": "GB + NYT",
+          "gbStatus": "succeeded",
+          "gbRawCount": 12,
+          "nytStatus": "succeeded",
+          "nytRawCount": 24,
+          "nytUsedOverview": false,
+          "olStatus": "skipped",
+          "olRawCount": 0,
+          "slate": [
+            {
+              "title": "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+              "source": "googleBooks",
+              "publicationYear": 2024
+            },
+            {
+              "title": "Shock Waves",
+              "source": "googleBooks",
+              "publicationYear": 2024
+            },
+            {
+              "title": "Edge of Dark Water",
+              "source": "googleBooks",
+              "publicationYear": 2012
+            },
+            {
+              "title": "The Burning Girl",
+              "source": "googleBooks",
+              "publicationYear": 2009
+            },
+            {
+              "title": "RANSOM",
+              "source": "nyt",
+              "publicationYear": 2026
+            }
+          ],
+          "slateTitles": [
+            "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+            "Shock Waves",
+            "Edge of Dark Water",
+            "The Burning Girl",
+            "RANSOM"
+          ]
+        },
+        {
+          "configId": "gb_nyt_ol",
+          "configLabel": "GB + NYT + OL",
+          "gbStatus": "succeeded",
+          "gbRawCount": 12,
+          "nytStatus": "succeeded",
+          "nytRawCount": 24,
+          "nytUsedOverview": false,
+          "olStatus": "succeeded",
+          "olRawCount": 15,
+          "slate": [
+            {
+              "title": "Do Not Disturb",
+              "source": "openLibrary",
+              "publicationYear": 2021
+            },
+            {
+              "title": "Behind her eyes",
+              "source": "openLibrary",
+              "publicationYear": 2017
+            },
+            {
+              "title": "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+              "source": "googleBooks",
+              "publicationYear": 2024
+            },
+            {
+              "title": "Blindsighted",
+              "source": "openLibrary",
+              "publicationYear": 1975
+            },
+            {
+              "title": "Worst Case",
+              "source": "openLibrary",
+              "publicationYear": 2008
+            }
+          ],
+          "slateTitles": [
+            "Do Not Disturb",
+            "Behind her eyes",
+            "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+            "Blindsighted",
+            "Worst Case"
+          ]
+        }
+      ],
+      "observations": {
+        "didNytIntroduceTitles": true,
+        "nytIntroducedVsGbOnly": [
+          {
+            "title": "RANSOM",
+            "source": "nyt"
+          }
+        ],
+        "displacedByNytVsGbOnly": [
+          {
+            "title": "In Dark Waters",
+            "source": "googleBooks"
+          }
+        ],
+        "didNytReplaceBooks": true,
+        "didNytIntroducePopularityBias": true,
+        "didNytDisappearWhenOlAdded": true,
+        "nytPersistedWhenOlAdded": [],
+        "nytDroppedWhenOlAdded": [
+          "RANSOM"
+        ],
+        "recency": {
+          "medianGbOnly": 2012,
+          "medianGbNyt": 2024,
+          "medianGbNytOl": 2017,
+          "medianNytOnlyInGbNyt": 2026
+        },
+        "gbHealthAllSucceeded": true
+      }
+    },
+    {
+      "profileId": "scifi-fantasy",
+      "profileLabel": "Science Fiction / Fantasy",
+      "runs": [
+        {
+          "configId": "gb_only",
+          "configLabel": "GB only",
+          "gbStatus": "succeeded",
+          "gbRawCount": 19,
+          "nytStatus": "skipped",
+          "nytRawCount": 0,
+          "nytUsedOverview": false,
+          "olStatus": "skipped",
+          "olRawCount": 0,
+          "slate": [
+            {
+              "title": "World Without Chance: Classic Pulp Science Fiction Stories in the Vein of Stanley G. Weinbaum",
+              "source": "googleBooks",
+              "publicationYear": 2013
+            },
+            {
+              "title": "The Long Mars",
+              "source": "googleBooks",
+              "publicationYear": 2014
+            },
+            {
+              "title": "The Last Man",
+              "source": "googleBooks",
+              "publicationYear": 2024
+            },
+            {
+              "title": "The Valis Trilogy",
+              "source": "googleBooks",
+              "publicationYear": 2011
+            }
+          ],
+          "slateTitles": [
+            "World Without Chance: Classic Pulp Science Fiction Stories in the Vein of Stanley G. Weinbaum",
+            "The Long Mars",
+            "The Last Man",
+            "The Valis Trilogy"
+          ]
+        },
+        {
+          "configId": "gb_nyt",
+          "configLabel": "GB + NYT",
+          "gbStatus": "succeeded",
+          "gbRawCount": 19,
+          "nytStatus": "succeeded",
+          "nytRawCount": 32,
+          "nytUsedOverview": false,
+          "olStatus": "skipped",
+          "olRawCount": 0,
+          "slate": [
+            {
+              "title": "DUNGEON CRAWLER CARL",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "World Without Chance: Classic Pulp Science Fiction Stories in the Vein of Stanley G. Weinbaum",
+              "source": "googleBooks",
+              "publicationYear": 2013
+            },
+            {
+              "title": "REMARKABLY BRIGHT CREATURES",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "The Long Mars",
+              "source": "googleBooks",
+              "publicationYear": 2014
+            },
+            {
+              "title": "RANSOM",
+              "source": "nyt",
+              "publicationYear": 2026
+            }
+          ],
+          "slateTitles": [
+            "DUNGEON CRAWLER CARL",
+            "World Without Chance: Classic Pulp Science Fiction Stories in the Vein of Stanley G. Weinbaum",
+            "REMARKABLY BRIGHT CREATURES",
+            "The Long Mars",
+            "RANSOM"
+          ]
+        },
+        {
+          "configId": "gb_nyt_ol",
+          "configLabel": "GB + NYT + OL",
+          "gbStatus": "succeeded",
+          "gbRawCount": 19,
+          "nytStatus": "succeeded",
+          "nytRawCount": 32,
+          "nytUsedOverview": false,
+          "olStatus": "succeeded",
+          "olRawCount": 21,
+          "slate": [
+            {
+              "title": "Cryptonomicon",
+              "source": "openLibrary",
+              "publicationYear": 1999
+            },
+            {
+              "title": "DUNGEON CRAWLER CARL",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "World Without Chance: Classic Pulp Science Fiction Stories in the Vein of Stanley G. Weinbaum",
+              "source": "googleBooks",
+              "publicationYear": 2013
+            },
+            {
+              "title": "REMARKABLY BRIGHT CREATURES",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "Fang",
+              "source": "openLibrary",
+              "publicationYear": 1998
+            }
+          ],
+          "slateTitles": [
+            "Cryptonomicon",
+            "DUNGEON CRAWLER CARL",
+            "World Without Chance: Classic Pulp Science Fiction Stories in the Vein of Stanley G. Weinbaum",
+            "REMARKABLY BRIGHT CREATURES",
+            "Fang"
+          ]
+        }
+      ],
+      "observations": {
+        "didNytIntroduceTitles": true,
+        "nytIntroducedVsGbOnly": [
+          {
+            "title": "DUNGEON CRAWLER CARL",
+            "source": "nyt"
+          },
+          {
+            "title": "REMARKABLY BRIGHT CREATURES",
+            "source": "nyt"
+          },
+          {
+            "title": "RANSOM",
+            "source": "nyt"
+          }
+        ],
+        "displacedByNytVsGbOnly": [
+          {
+            "title": "The Last Man",
+            "source": "googleBooks"
+          },
+          {
+            "title": "The Valis Trilogy",
+            "source": "googleBooks"
+          }
+        ],
+        "didNytReplaceBooks": true,
+        "didNytIntroducePopularityBias": true,
+        "didNytDisappearWhenOlAdded": true,
+        "nytPersistedWhenOlAdded": [
+          "DUNGEON CRAWLER CARL",
+          "REMARKABLY BRIGHT CREATURES"
+        ],
+        "nytDroppedWhenOlAdded": [
+          "RANSOM"
+        ],
+        "recency": {
+          "medianGbOnly": 2014,
+          "medianGbNyt": 2026,
+          "medianGbNytOl": 2013,
+          "medianNytOnlyInGbNyt": 2026
+        },
+        "gbHealthAllSucceeded": true
+      }
+    },
+    {
+      "profileId": "historical-literary",
+      "profileLabel": "Historical / Literary",
+      "runs": [
+        {
+          "configId": "gb_only",
+          "configLabel": "GB only",
+          "gbStatus": "succeeded",
+          "gbRawCount": 5,
+          "nytStatus": "skipped",
+          "nytRawCount": 0,
+          "nytUsedOverview": false,
+          "olStatus": "skipped",
+          "olRawCount": 0,
+          "slate": [
+            {
+              "title": "Beautiful Death",
+              "source": "googleBooks",
+              "publicationYear": 2019
+            },
+            {
+              "title": "The Ides of March",
+              "source": "googleBooks",
+              "publicationYear": 2014
+            },
+            {
+              "title": "The Good Inn",
+              "source": "googleBooks",
+              "publicationYear": 2014
+            }
+          ],
+          "slateTitles": [
+            "Beautiful Death",
+            "The Ides of March",
+            "The Good Inn"
+          ]
+        },
+        {
+          "configId": "gb_nyt",
+          "configLabel": "GB + NYT",
+          "gbStatus": "succeeded",
+          "gbRawCount": 5,
+          "nytStatus": "succeeded",
+          "nytRawCount": 32,
+          "nytUsedOverview": false,
+          "olStatus": "skipped",
+          "olRawCount": 0,
+          "slate": [
+            {
+              "title": "DUNGEON CRAWLER CARL",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "REMARKABLY BRIGHT CREATURES",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "RANSOM",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "THE DEAL",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "THE DIVORCE",
+              "source": "nyt",
+              "publicationYear": 2026
+            }
+          ],
+          "slateTitles": [
+            "DUNGEON CRAWLER CARL",
+            "REMARKABLY BRIGHT CREATURES",
+            "RANSOM",
+            "THE DEAL",
+            "THE DIVORCE"
+          ]
+        },
+        {
+          "configId": "gb_nyt_ol",
+          "configLabel": "GB + NYT + OL",
+          "gbStatus": "succeeded",
+          "gbRawCount": 5,
+          "nytStatus": "succeeded",
+          "nytRawCount": 32,
+          "nytUsedOverview": false,
+          "olStatus": "succeeded",
+          "olRawCount": 19,
+          "slate": [
+            {
+              "title": "DUNGEON CRAWLER CARL",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "REMARKABLY BRIGHT CREATURES",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "RANSOM",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "THE DEAL",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "THE DIVORCE",
+              "source": "nyt",
+              "publicationYear": 2026
+            }
+          ],
+          "slateTitles": [
+            "DUNGEON CRAWLER CARL",
+            "REMARKABLY BRIGHT CREATURES",
+            "RANSOM",
+            "THE DEAL",
+            "THE DIVORCE"
+          ]
+        }
+      ],
+      "observations": {
+        "didNytIntroduceTitles": true,
+        "nytIntroducedVsGbOnly": [
+          {
+            "title": "DUNGEON CRAWLER CARL",
+            "source": "nyt"
+          },
+          {
+            "title": "REMARKABLY BRIGHT CREATURES",
+            "source": "nyt"
+          },
+          {
+            "title": "RANSOM",
+            "source": "nyt"
+          },
+          {
+            "title": "THE DEAL",
+            "source": "nyt"
+          },
+          {
+            "title": "THE DIVORCE",
+            "source": "nyt"
+          }
+        ],
+        "displacedByNytVsGbOnly": [
+          {
+            "title": "Beautiful Death",
+            "source": "googleBooks"
+          },
+          {
+            "title": "The Ides of March",
+            "source": "googleBooks"
+          },
+          {
+            "title": "The Good Inn",
+            "source": "googleBooks"
+          }
+        ],
+        "didNytReplaceBooks": true,
+        "didNytIntroducePopularityBias": true,
+        "didNytDisappearWhenOlAdded": false,
+        "nytPersistedWhenOlAdded": [
+          "DUNGEON CRAWLER CARL",
+          "REMARKABLY BRIGHT CREATURES",
+          "RANSOM",
+          "THE DEAL",
+          "THE DIVORCE"
+        ],
+        "nytDroppedWhenOlAdded": [],
+        "recency": {
+          "medianGbOnly": 2014,
+          "medianGbNyt": 2026,
+          "medianGbNytOl": 2026,
+          "medianNytOnlyInGbNyt": 2026
+        },
+        "gbHealthAllSucceeded": true
+      }
+    },
+    {
+      "profileId": "general-contemporary",
+      "profileLabel": "General / Contemporary Fiction",
+      "runs": [
+        {
+          "configId": "gb_only",
+          "configLabel": "GB only",
+          "gbStatus": "succeeded",
+          "gbRawCount": 1,
+          "nytStatus": "skipped",
+          "nytRawCount": 0,
+          "nytUsedOverview": false,
+          "olStatus": "skipped",
+          "olRawCount": 0,
+          "slate": [],
+          "slateTitles": []
+        },
+        {
+          "configId": "gb_nyt",
+          "configLabel": "GB + NYT",
+          "gbStatus": "succeeded",
+          "gbRawCount": 1,
+          "nytStatus": "succeeded",
+          "nytRawCount": 24,
+          "nytUsedOverview": false,
+          "olStatus": "skipped",
+          "olRawCount": 0,
+          "slate": [
+            {
+              "title": "RANSOM",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "DUNGEON CRAWLER CARL",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "THE SHAMPOO EFFECT",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "THE DEAL",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "THE DIVORCE",
+              "source": "nyt",
+              "publicationYear": 2026
+            }
+          ],
+          "slateTitles": [
+            "RANSOM",
+            "DUNGEON CRAWLER CARL",
+            "THE SHAMPOO EFFECT",
+            "THE DEAL",
+            "THE DIVORCE"
+          ]
+        },
+        {
+          "configId": "gb_nyt_ol",
+          "configLabel": "GB + NYT + OL",
+          "gbStatus": "succeeded",
+          "gbRawCount": 1,
+          "nytStatus": "succeeded",
+          "nytRawCount": 24,
+          "nytUsedOverview": false,
+          "olStatus": "succeeded",
+          "olRawCount": 11,
+          "slate": [
+            {
+              "title": "RANSOM",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "DUNGEON CRAWLER CARL",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "THE SHAMPOO EFFECT",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "THE DEAL",
+              "source": "nyt",
+              "publicationYear": 2026
+            },
+            {
+              "title": "THE DIVORCE",
+              "source": "nyt",
+              "publicationYear": 2026
+            }
+          ],
+          "slateTitles": [
+            "RANSOM",
+            "DUNGEON CRAWLER CARL",
+            "THE SHAMPOO EFFECT",
+            "THE DEAL",
+            "THE DIVORCE"
+          ]
+        }
+      ],
+      "observations": {
+        "didNytIntroduceTitles": true,
+        "nytIntroducedVsGbOnly": [
+          {
+            "title": "RANSOM",
+            "source": "nyt"
+          },
+          {
+            "title": "DUNGEON CRAWLER CARL",
+            "source": "nyt"
+          },
+          {
+            "title": "THE SHAMPOO EFFECT",
+            "source": "nyt"
+          },
+          {
+            "title": "THE DEAL",
+            "source": "nyt"
+          },
+          {
+            "title": "THE DIVORCE",
+            "source": "nyt"
+          }
+        ],
+        "displacedByNytVsGbOnly": [],
+        "didNytReplaceBooks": false,
+        "didNytIntroducePopularityBias": true,
+        "didNytDisappearWhenOlAdded": false,
+        "nytPersistedWhenOlAdded": [
+          "RANSOM",
+          "DUNGEON CRAWLER CARL",
+          "THE SHAMPOO EFFECT",
+          "THE DEAL",
+          "THE DIVORCE"
+        ],
+        "nytDroppedWhenOlAdded": [],
+        "recency": {
+          "medianGbOnly": null,
+          "medianGbNyt": 2026,
+          "medianGbNytOl": 2026,
+          "medianNytOnlyInGbNyt": 2026
+        },
+        "gbHealthAllSucceeded": true
+      }
+    }
+  ],
+  "phase1GbF1": {
+    "status": "CLOSED",
+    "reason": "All comparison runs had GB status=succeeded with nonzero raw counts in most profiles.",
+    "gbRunsSucceeded": 12,
+    "gbRunsTotal": 12
+  }
+}

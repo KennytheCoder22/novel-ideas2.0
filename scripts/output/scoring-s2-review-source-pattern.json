@@ -1,0 +1,18 @@
+{
+  "primaryConfig": "gb_nyt_ol",
+  "preComp": {
+    "googleBooks": 3,
+    "openLibrary": 10,
+    "nyt": 17
+  },
+  "postComp": {
+    "googleBooks": 7,
+    "openLibrary": 17,
+    "nyt": 6
+  },
+  "delta": {
+    "googleBooks": 4,
+    "openLibrary": 7,
+    "nyt": -11
+  }
+}

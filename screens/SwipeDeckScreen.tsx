@@ -848,6 +848,7 @@ function recommendationCoverUrl(doc: any): string | null {
   const directImage =
     (typeof doc?.imageUrl === "string" && doc.imageUrl) ||
     (typeof doc?.coverImageUrl === "string" && doc.coverImageUrl) ||
+    (typeof doc?.coverUrl === "string" && doc.coverUrl) ||
     "";
   if (directImage) return directImage.replace(/^http:\/\//, "https://");
   const fromCoverId = coverUrlFromCoverId(doc.cover_i || doc.coverId, "L");
@@ -859,6 +860,7 @@ function recommendationCoverUrl(doc: any): string | null {
     (typeof doc?.volumeInfo?.imageLinks?.smallThumbnail === "string" && doc.volumeInfo.imageLinks.smallThumbnail) ||
     (typeof doc?.thumbnail === "string" && doc.thumbnail) ||
     (typeof doc?.coverImageUrl === "string" && doc.coverImageUrl) ||
+    (typeof doc?.coverUrl === "string" && doc.coverUrl) ||
     (typeof doc?.imageUrl === "string" && doc.imageUrl) ||
     "";
   return thumbnail ? thumbnail.replace(/^http:\/\//, "https://") : null;
@@ -974,8 +976,10 @@ function recommendationCallNumber(doc: any): string {
   const fromHolding = holdings.find((holding: any) => String(holding?.callNumber || "").trim())?.callNumber;
   return String(
     doc?.callNumber ||
+      doc?.localCollectionCallNumber ||
       raw?.callNumber ||
       raw?.call_number ||
+      raw?.localCollectionCallNumber ||
       fromHolding ||
       ""
   ).trim();
@@ -988,10 +992,12 @@ function recommendationSubLocation(doc: any): string {
   return String(
     doc?.subLocation ||
       doc?.localPlacement ||
+      doc?.localCollectionPlacement ||
       doc?.shelvingLocation ||
       raw?.subLocation ||
       raw?.sub_location ||
       raw?.localPlacement ||
+      raw?.localCollectionPlacement ||
       raw?.local_placement ||
       raw?.shelvingLocation ||
       raw?.shelving_location ||
@@ -1412,7 +1418,20 @@ export default function SwipeDeckScreen(props: Props) {
   const [sessionNonce, setSessionNonce] = useState(0);
 
   const deck = useMemo(
-    () => filterDeckCardsByCategory(getDeckByKey(deckKey), props.swipeCategories),
+    () => {
+      const filtered = filterDeckCardsByCategory(getDeckByKey(deckKey), props.swipeCategories);
+      // Deduplicate cards by identity key to prevent showing the same card twice
+      const seen = new Set<string>();
+      const unique: SwipeDeckCard[] = [];
+      for (const card of (filtered.cards || [])) {
+        const key = cardIdentityKey(card);
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(card);
+        }
+      }
+      return { ...filtered, cards: unique };
+    },
     [deckKey, props.swipeCategories]
   );
 

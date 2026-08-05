@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-07-21T20:27:53.775Z",
+  "inputs": [
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-dc02506e-9ee9-47dc-a7d5-d6b2759ae2ff.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-8b7bcef5-45db-4402-a0ce-7a21a5756b7a.txt",
+    "C:\\Users\\KenBR\\.copilot\\workspaces\\0906c17d-4364-489d-9f22-3dff96843bf7\\attachments\\pasted-text-6c545f71-1ada-4376-b082-0753c38f245e.txt"
+  ],
+  "totalRuns": 3,
+  "bucketCounts": {
+    "A_primary_query_succeeded": 0,
+    "B_insufficient_recall": 0,
+    "C_publication_filtering": 1,
+    "D_taste_filtering": 0,
+    "E_diversity_filtering": 1,
+    "F_ranking_selection": 0,
+    "G_query_mismatch": 1
+  },
+  "runs": [
+    {
+      "report": "pasted-text-dc02506e-9ee9-47dc-a7d5-d6b2759ae2ff.txt",
+      "presetTestName": "Test A",
+      "deck": "Teens School",
+      "primaryQuery": "young adult mystery fiction novel",
+      "primaryAccepted": 3,
+      "primarySelected": 2,
+      "secondaryAccepted": 1,
+      "secondarySelected": 1,
+      "finalSelectedCount": 3,
+      "primaryPublicationRejectShare": 0.6470588235294118,
+      "primaryWeakShare": 0,
+      "diversityExclusionCount": 1,
+      "primaryRawApiCount": 20,
+      "primaryNarrativeCandidates": 2,
+      "secondaryQueryCount": 1,
+      "bucket": "E_diversity_filtering"
+    },
+    {
+      "report": "pasted-text-8b7bcef5-45db-4402-a0ce-7a21a5756b7a.txt",
+      "presetTestName": "Test B",
+      "deck": "Teens School",
+      "primaryQuery": "young adult fantasy fiction novel",
+      "primaryAccepted": 6,
+      "primarySelected": 6,
+      "secondaryAccepted": 3,
+      "secondarySelected": 2,
+      "finalSelectedCount": 8,
+      "primaryPublicationRejectShare": 0.8571428571428571,
+      "primaryWeakShare": 0.3333333333333333,
+      "diversityExclusionCount": 1,
+      "primaryRawApiCount": 20,
+      "primaryNarrativeCandidates": 6,
+      "secondaryQueryCount": 1,
+      "bucket": "C_publication_filtering"
+    },
+    {
+      "report": "pasted-text-6c545f71-1ada-4376-b082-0753c38f245e.txt",
+      "presetTestName": "Test C",
+      "deck": "Teens School",
+      "primaryQuery": "young adult humorous fiction novel",
+      "primaryAccepted": 3,
+      "primarySelected": 3,
+      "secondaryAccepted": 5,
+      "secondarySelected": 2,
+      "finalSelectedCount": 5,
+      "primaryPublicationRejectShare": 0.7647058823529411,
+      "primaryWeakShare": 0.6666666666666666,
+      "diversityExclusionCount": 2,
+      "primaryRawApiCount": 20,
+      "primaryNarrativeCandidates": 3,
+      "secondaryQueryCount": 1,
+      "bucket": "G_query_mismatch"
+    }
+  ]
+}

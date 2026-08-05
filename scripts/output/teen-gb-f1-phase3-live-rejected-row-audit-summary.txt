@@ -1,0 +1,9 @@
+Teen GB-F1 Phase 3 ? live rejected-row audit
+runs=12 profiles=scifi-space-opera, scifi-dystopian, scifi-speculative-mixed
+telemetry primary complete=12/12
+telemetry all-queries complete=12/12
+primary rejects vs audit rows=240/240
+all-query rejects vs audit rows=400/400
+missing-author: no-contrib=48 alt-contrib=0 malformed=0 plausible-recoverable=0
+unknown-shape rows=60 likely-parser-miss=0
+verdicts=NO_ACTION_CORRECT_REJECTIONS

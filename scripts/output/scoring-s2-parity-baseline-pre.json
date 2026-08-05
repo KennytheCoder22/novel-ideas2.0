@@ -1,0 +1,741 @@
+{
+  "generatedAt": "2026-07-23T19:08:15.927Z",
+  "phase": "baseline_pre_s2",
+  "rows": [
+    {
+      "profileId": "historical",
+      "profileLabel": "Historical",
+      "configId": "gb_only",
+      "configLabel": "GB only",
+      "gbStatus": "succeeded",
+      "gbRawCount": 5,
+      "nytStatus": "skipped",
+      "nytRawCount": 0,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "Beautiful Death",
+          "source": "googleBooks",
+          "publicationYear": 2019
+        },
+        {
+          "title": "The Ides of March",
+          "source": "googleBooks",
+          "publicationYear": 2014
+        },
+        {
+          "title": "The Good Inn",
+          "source": "googleBooks",
+          "publicationYear": 2014
+        }
+      ],
+      "sourceComposition": {
+        "googleBooks": 3
+      }
+    },
+    {
+      "profileId": "historical",
+      "profileLabel": "Historical",
+      "configId": "gb_nyt",
+      "configLabel": "GB + NYT",
+      "gbStatus": "succeeded",
+      "gbRawCount": 5,
+      "nytStatus": "succeeded",
+      "nytRawCount": 32,
+      "nytUsedOverview": true,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "REMARKABLY BRIGHT CREATURES",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "RANSOM",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DEAL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DIVORCE",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "nyt": 5
+      }
+    },
+    {
+      "profileId": "historical",
+      "profileLabel": "Historical",
+      "configId": "gb_nyt_ol",
+      "configLabel": "GB + NYT + OL",
+      "gbStatus": "succeeded",
+      "gbRawCount": 5,
+      "nytStatus": "succeeded",
+      "nytRawCount": 32,
+      "nytUsedOverview": false,
+      "olStatus": "succeeded",
+      "olRawCount": 19,
+      "finalSlate": [
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "REMARKABLY BRIGHT CREATURES",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "RANSOM",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DEAL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DIVORCE",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "nyt": 5
+      }
+    },
+    {
+      "profileId": "mystery",
+      "profileLabel": "Mystery",
+      "configId": "gb_only",
+      "configLabel": "GB only",
+      "gbStatus": "succeeded",
+      "gbRawCount": 12,
+      "nytStatus": "skipped",
+      "nytRawCount": 0,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+          "source": "googleBooks",
+          "publicationYear": 2024
+        },
+        {
+          "title": "Shock Waves",
+          "source": "googleBooks",
+          "publicationYear": 2024
+        },
+        {
+          "title": "Edge of Dark Water",
+          "source": "googleBooks",
+          "publicationYear": 2012
+        },
+        {
+          "title": "The Burning Girl",
+          "source": "googleBooks",
+          "publicationYear": 2009
+        },
+        {
+          "title": "In Dark Waters",
+          "source": "googleBooks",
+          "publicationYear": 2010
+        }
+      ],
+      "sourceComposition": {
+        "googleBooks": 5
+      }
+    },
+    {
+      "profileId": "mystery",
+      "profileLabel": "Mystery",
+      "configId": "gb_nyt",
+      "configLabel": "GB + NYT",
+      "gbStatus": "succeeded",
+      "gbRawCount": 12,
+      "nytStatus": "succeeded",
+      "nytRawCount": 24,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+          "source": "googleBooks",
+          "publicationYear": 2024
+        },
+        {
+          "title": "Shock Waves",
+          "source": "googleBooks",
+          "publicationYear": 2024
+        },
+        {
+          "title": "Edge of Dark Water",
+          "source": "googleBooks",
+          "publicationYear": 2012
+        },
+        {
+          "title": "The Burning Girl",
+          "source": "googleBooks",
+          "publicationYear": 2009
+        },
+        {
+          "title": "RANSOM",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "googleBooks": 4,
+        "nyt": 1
+      }
+    },
+    {
+      "profileId": "mystery",
+      "profileLabel": "Mystery",
+      "configId": "gb_nyt_ol",
+      "configLabel": "GB + NYT + OL",
+      "gbStatus": "succeeded",
+      "gbRawCount": 12,
+      "nytStatus": "succeeded",
+      "nytRawCount": 24,
+      "nytUsedOverview": false,
+      "olStatus": "succeeded",
+      "olRawCount": 15,
+      "finalSlate": [
+        {
+          "title": "The Eleventh Floor: a darkly compelling and twisty psychological drama from a talented new Australian author. Perfect for readers who love SALLY HEPWORTH, PIP DRYSDALE and ADELE PARKS",
+          "source": "googleBooks",
+          "publicationYear": 2024
+        },
+        {
+          "title": "Do Not Disturb",
+          "source": "openLibrary",
+          "publicationYear": 2021
+        },
+        {
+          "title": "Blindsighted",
+          "source": "openLibrary",
+          "publicationYear": 1975
+        },
+        {
+          "title": "Worst Case",
+          "source": "openLibrary",
+          "publicationYear": 2008
+        },
+        {
+          "title": "Behind her eyes",
+          "source": "openLibrary",
+          "publicationYear": 2017
+        }
+      ],
+      "sourceComposition": {
+        "googleBooks": 1,
+        "openLibrary": 4
+      }
+    },
+    {
+      "profileId": "scifi",
+      "profileLabel": "Sci-Fi",
+      "configId": "gb_only",
+      "configLabel": "GB only",
+      "gbStatus": "succeeded",
+      "gbRawCount": 17,
+      "nytStatus": "skipped",
+      "nytRawCount": 0,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "The Massacre of Mankind",
+          "source": "googleBooks",
+          "publicationYear": 2017
+        },
+        {
+          "title": "Climbing the Ranks 1",
+          "source": "googleBooks",
+          "publicationYear": 2023
+        },
+        {
+          "title": "Ilium",
+          "source": "googleBooks",
+          "publicationYear": 2009
+        }
+      ],
+      "sourceComposition": {
+        "googleBooks": 3
+      }
+    },
+    {
+      "profileId": "scifi",
+      "profileLabel": "Sci-Fi",
+      "configId": "gb_nyt",
+      "configLabel": "GB + NYT",
+      "gbStatus": "succeeded",
+      "gbRawCount": 17,
+      "nytStatus": "succeeded",
+      "nytRawCount": 32,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "The Massacre of Mankind",
+          "source": "googleBooks",
+          "publicationYear": 2017
+        },
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "REMARKABLY BRIGHT CREATURES",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "RANSOM",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DEAL",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "googleBooks": 1,
+        "nyt": 4
+      }
+    },
+    {
+      "profileId": "scifi",
+      "profileLabel": "Sci-Fi",
+      "configId": "gb_nyt_ol",
+      "configLabel": "GB + NYT + OL",
+      "gbStatus": "succeeded",
+      "gbRawCount": 17,
+      "nytStatus": "succeeded",
+      "nytRawCount": 32,
+      "nytUsedOverview": false,
+      "olStatus": "succeeded",
+      "olRawCount": 21,
+      "finalSlate": [
+        {
+          "title": "Fang",
+          "source": "openLibrary",
+          "publicationYear": 1998
+        },
+        {
+          "title": "The Massacre of Mankind",
+          "source": "googleBooks",
+          "publicationYear": 2017
+        },
+        {
+          "title": "Cryptonomicon",
+          "source": "openLibrary",
+          "publicationYear": 1999
+        },
+        {
+          "title": "Daemon",
+          "source": "openLibrary",
+          "publicationYear": 2009
+        },
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "openLibrary": 3,
+        "googleBooks": 1,
+        "nyt": 1
+      }
+    },
+    {
+      "profileId": "contemporary",
+      "profileLabel": "Contemporary",
+      "configId": "gb_only",
+      "configLabel": "GB only",
+      "gbStatus": "succeeded",
+      "gbRawCount": 1,
+      "nytStatus": "skipped",
+      "nytRawCount": 0,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [],
+      "sourceComposition": {}
+    },
+    {
+      "profileId": "contemporary",
+      "profileLabel": "Contemporary",
+      "configId": "gb_nyt",
+      "configLabel": "GB + NYT",
+      "gbStatus": "succeeded",
+      "gbRawCount": 1,
+      "nytStatus": "succeeded",
+      "nytRawCount": 24,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "RANSOM",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE SHAMPOO EFFECT",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DEAL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DIVORCE",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "nyt": 5
+      }
+    },
+    {
+      "profileId": "contemporary",
+      "profileLabel": "Contemporary",
+      "configId": "gb_nyt_ol",
+      "configLabel": "GB + NYT + OL",
+      "gbStatus": "succeeded",
+      "gbRawCount": 1,
+      "nytStatus": "succeeded",
+      "nytRawCount": 24,
+      "nytUsedOverview": false,
+      "olStatus": "succeeded",
+      "olRawCount": 16,
+      "finalSlate": [
+        {
+          "title": "RANSOM",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE SHAMPOO EFFECT",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DEAL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DIVORCE",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "nyt": 5
+      }
+    },
+    {
+      "profileId": "fantasy",
+      "profileLabel": "Fantasy",
+      "configId": "gb_only",
+      "configLabel": "GB only",
+      "gbStatus": "succeeded",
+      "gbRawCount": 23,
+      "nytStatus": "skipped",
+      "nytRawCount": 0,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "The Shattered Sun",
+          "source": "googleBooks",
+          "publicationYear": 2018
+        },
+        {
+          "title": "Tuya of the Hollows (DARK FANTASY) [Book 1 Complete]",
+          "source": "googleBooks",
+          "publicationYear": 2025
+        },
+        {
+          "title": "Three Days to Never",
+          "source": "googleBooks",
+          "publicationYear": 2007
+        },
+        {
+          "title": "Our Party Nearly Wiped and Then Everything Went Downhill, Vol. 1",
+          "source": "googleBooks",
+          "publicationYear": 2026
+        },
+        {
+          "title": "Merchant of Alyss (Legends of the Realm Book #2)",
+          "source": "googleBooks",
+          "publicationYear": 2015
+        }
+      ],
+      "sourceComposition": {
+        "googleBooks": 5
+      }
+    },
+    {
+      "profileId": "fantasy",
+      "profileLabel": "Fantasy",
+      "configId": "gb_nyt",
+      "configLabel": "GB + NYT",
+      "gbStatus": "succeeded",
+      "gbRawCount": 23,
+      "nytStatus": "succeeded",
+      "nytRawCount": 32,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "REMARKABLY BRIGHT CREATURES",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "RANSOM",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DEAL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DIVORCE",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "nyt": 5
+      }
+    },
+    {
+      "profileId": "fantasy",
+      "profileLabel": "Fantasy",
+      "configId": "gb_nyt_ol",
+      "configLabel": "GB + NYT + OL",
+      "gbStatus": "succeeded",
+      "gbRawCount": 23,
+      "nytStatus": "succeeded",
+      "nytRawCount": 32,
+      "nytUsedOverview": false,
+      "olStatus": "succeeded",
+      "olRawCount": 22,
+      "finalSlate": [
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "REMARKABLY BRIGHT CREATURES",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "The Skies of Pern",
+          "source": "openLibrary",
+          "publicationYear": 2001
+        },
+        {
+          "title": "RANSOM",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE DEAL",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "nyt": 4,
+        "openLibrary": 1
+      }
+    },
+    {
+      "profileId": "thriller",
+      "profileLabel": "Thriller",
+      "configId": "gb_only",
+      "configLabel": "GB only",
+      "gbStatus": "succeeded",
+      "gbRawCount": 23,
+      "nytStatus": "skipped",
+      "nytRawCount": 0,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "Gone Hollow (A Becca Thorn FBI Suspense Thriller—Book 4)",
+          "source": "googleBooks",
+          "publicationYear": 2024
+        },
+        {
+          "title": "Just Forget (A Cami Lark FBI Suspense Thriller—Book 4)",
+          "source": "googleBooks",
+          "publicationYear": 2023
+        },
+        {
+          "title": "The Way the Crow Flies",
+          "source": "googleBooks",
+          "publicationYear": 2009
+        },
+        {
+          "title": "In Darkness Visible",
+          "source": "googleBooks",
+          "publicationYear": 2019
+        },
+        {
+          "title": "Three Days to Never",
+          "source": "googleBooks",
+          "publicationYear": 2007
+        }
+      ],
+      "sourceComposition": {
+        "googleBooks": 5
+      }
+    },
+    {
+      "profileId": "thriller",
+      "profileLabel": "Thriller",
+      "configId": "gb_nyt",
+      "configLabel": "GB + NYT",
+      "gbStatus": "succeeded",
+      "gbRawCount": 23,
+      "nytStatus": "succeeded",
+      "nytRawCount": 32,
+      "nytUsedOverview": false,
+      "olStatus": "skipped",
+      "olRawCount": 0,
+      "finalSlate": [
+        {
+          "title": "Gone Hollow (A Becca Thorn FBI Suspense Thriller—Book 4)",
+          "source": "googleBooks",
+          "publicationYear": 2024
+        },
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "REMARKABLY BRIGHT CREATURES",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "RANSOM",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "THE SHAMPOO EFFECT",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "googleBooks": 1,
+        "nyt": 4
+      }
+    },
+    {
+      "profileId": "thriller",
+      "profileLabel": "Thriller",
+      "configId": "gb_nyt_ol",
+      "configLabel": "GB + NYT + OL",
+      "gbStatus": "succeeded",
+      "gbRawCount": 23,
+      "nytStatus": "succeeded",
+      "nytRawCount": 32,
+      "nytUsedOverview": false,
+      "olStatus": "succeeded",
+      "olRawCount": 14,
+      "finalSlate": [
+        {
+          "title": "The Perfect Son",
+          "source": "openLibrary",
+          "publicationYear": 2020
+        },
+        {
+          "title": "Behind her eyes",
+          "source": "openLibrary",
+          "publicationYear": 2017
+        },
+        {
+          "title": "Gone Hollow (A Becca Thorn FBI Suspense Thriller—Book 4)",
+          "source": "googleBooks",
+          "publicationYear": 2024
+        },
+        {
+          "title": "DUNGEON CRAWLER CARL",
+          "source": "nyt",
+          "publicationYear": null
+        },
+        {
+          "title": "REMARKABLY BRIGHT CREATURES",
+          "source": "nyt",
+          "publicationYear": null
+        }
+      ],
+      "sourceComposition": {
+        "openLibrary": 2,
+        "googleBooks": 1,
+        "nyt": 2
+      }
+    }
+  ]
+}
