@@ -34,7 +34,19 @@
       "destination": "/"
     },
     {
+      "source": "/c/:path*",
+      "destination": "/"
+    },
+    {
       "source": "/admin/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/admin-collection",
+      "destination": "/"
+    },
+    {
+      "source": "/swipe",
       "destination": "/"
     }
   ]
