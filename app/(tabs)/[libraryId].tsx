@@ -1,6 +1,7 @@
-import { useEffect } from "react";
-import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
 import { View, Text } from "react-native";
+import { HomeScreen } from "./index";
 import { setRuntimeLibraryName } from "../../constants/runtimeConfig";
 
 function humanizeLibraryId(raw: string): string {
@@ -19,19 +20,23 @@ function humanizeLibraryId(raw: string): string {
     .join(" ");
 }
 
-export default function LibraryLandingRoute() {
+export default function PersonalizedLibraryRoute() {
   const params = useLocalSearchParams<{ libraryId?: string | string[] }>();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const raw = Array.isArray(params.libraryId) ? params.libraryId[0] : params.libraryId;
-    const slug = String(raw || "").trim().replace(/[_]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
-    setRuntimeLibraryName(humanizeLibraryId(slug || ""));
-    router.replace((slug ? `/${encodeURIComponent(slug)}` : "/") as any);
+    setRuntimeLibraryName(humanizeLibraryId(raw || ""));
+    setReady(true);
   }, [params.libraryId]);
 
-  return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#07182b" }}>
-      <Text style={{ color: "#e5efff", fontWeight: "900" }}>Opening your library…</Text>
-    </View>
-  );
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#07182b" }}>
+        <Text style={{ color: "#e5efff", fontWeight: "900" }}>Opening your library…</Text>
+      </View>
+    );
+  }
+
+  return <HomeScreen />;
 }

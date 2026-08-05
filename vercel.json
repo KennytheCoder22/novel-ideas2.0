@@ -48,6 +48,10 @@
     {
       "source": "/swipe",
       "destination": "/"
+    },
+    {
+      "source": "/:libraryId([A-Za-z0-9_-]+)",
+      "destination": "/"
     }
   ]
 }

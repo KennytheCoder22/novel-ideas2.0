@@ -19,6 +19,8 @@ import { importLocalCollectionCsv, importLocalCollectionMarc } from "../lib/loca
 import {
   persistLocalCollectionRecommendationArtifact,
   readLocalCollectionAcceptedCountFromLocalStorage,
+  LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY,
+  LOCAL_COLLECTION_SUMMARY_STORAGE_KEY,
 } from "../lib/localCollection/storage";
 import {
   ADMIN_CONFIG_CHANGED_EVENT,
@@ -38,6 +40,7 @@ import { ColorPickerField } from "../components/admin/ColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
 import { activateAdminSession, setPendingAdminRoute } from "../lib/adminSession";
+import { setRuntimeLibraryName } from "../constants/runtimeConfig";
 import {
   isPreviewAcceptanceHarnessEnabled,
   PREVIEW_ACCEPTANCE_PIN,
@@ -62,6 +65,7 @@ const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
 const DEFAULT_MAIN_COLOR = "#0b1e33";
 const DEFAULT_HIGHLIGHT_COLOR = "#fbbf24";
 const DEFAULT_FONT_COLOR = "#ffffff";
+const LOCAL_COLLECTION_DB_NAME = "novelideas_local_collection";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -141,6 +145,27 @@ function localCollectionImportErrorMessage(error: unknown): string {
     return "Import succeeded, but browser storage is full. Clear site storage and import again.";
   }
   return "Import failed. Check the file and try again.";
+}
+
+function clearLocalCollectionStorageArtifacts(): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem("novelideas_local_collection");
+      localStorage.removeItem("novelideas_local_collection_csv");
+      localStorage.removeItem("novelideas_local_collection_import_report_v1");
+      localStorage.removeItem(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY);
+      localStorage.removeItem(LOCAL_COLLECTION_SUMMARY_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage cleanup failures and continue resetting the rest.
+  }
+
+  try {
+    const indexedDb = (globalThis as any)?.indexedDB;
+    if (indexedDb?.deleteDatabase) indexedDb.deleteDatabase(LOCAL_COLLECTION_DB_NAME);
+  } catch {
+    // Ignore IndexedDB cleanup failures and continue resetting the rest.
+  }
 }
 
 function deckLabel(k: DeckKey) {
@@ -452,7 +477,7 @@ export default function AdminWebScreen() {
   // Derived
   const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
   const libraryId = useMemo(() => slugifyLibraryId(libraryName), [libraryName]);
-  const hostedConfigUrl = useMemo(() => `https://novelideas.app/c/${libraryId}`, [libraryId]);
+  const hostedConfigUrl = useMemo(() => `https://novelideas.app/${libraryId}`, [libraryId]);
   const configText = useMemo(() => JSON.stringify(config, null, 2), [config]);
   const adultKitsuOnlyForceQueryForValidation =
     config?.recommendations?.adultKitsuOnlyForceQueryForValidation === "dystopian" ? "dystopian" : "";
@@ -519,6 +544,39 @@ export default function AdminWebScreen() {
     setAutoFontColor(true);
     setFontColorHex(autoChooseFontColor(DEFAULT_MAIN_COLOR));
   }, []);
+
+  const resetAllToDefaults = useCallback(() => {
+    const base = deepClone(configFile);
+    syncSchema(base);
+    const colors = loadColorHex(base);
+    const serialized = JSON.stringify(base);
+
+    if (isWeb && typeof localStorage !== "undefined") {
+      clearLocalCollectionStorageArtifacts();
+      localStorage.setItem(ADMIN_CONFIG_STORAGE_KEY, serialized);
+      applyWebHighlightColor(colors.highlightColorHex);
+      dispatchAdminConfigSavedWebEvent(serialized);
+    }
+
+    setConfig(base);
+    setMainColorHex(colors.mainColorHex);
+    setHighlightColorHex(colors.highlightColorHex);
+    setFontColorHex(colors.fontColorHex);
+    setAutoFontColor(colors.autoFontColorEnabled);
+    setUploadedCollectionCount(0);
+    setImportStatus({ phase: "idle", pct: 0, label: "" });
+    setSaveStatus("saved");
+    savedConfigRef.current = serialized;
+    savedColorsRef.current = {
+      mainColorHex: colors.mainColorHex,
+      highlightColorHex: colors.highlightColorHex,
+      fontColorHex: colors.fontColorHex,
+      autoFontColor: colors.autoFontColorEnabled,
+    };
+    setIsDirty(false);
+    setRuntimeLibraryName("");
+    setTimeout(() => setSaveStatus((s) => (s === "saved" ? "idle" : s)), 3000);
+  }, [isWeb]);
 
   const copyMainToHighlight = useCallback(() => setHighlightColorHex(mainColorHex), [mainColorHex]);
   const copyHighlightToMain = useCallback(() => {
@@ -825,6 +883,23 @@ export default function AdminWebScreen() {
               accessibilityLabel="Open Human Review Dashboard"
             >
               <Text style={[styles.btnText, { color: t.text }]}>Human Review Dashboard</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.btn, styles.headerActionButton, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+              onPress={() => {
+                Alert.alert(
+                  "Reset all settings?",
+                  "This will restore the default library, theme, and recommendation settings, and clear imported collection data on this device.",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Reset", style: "destructive", onPress: resetAllToDefaults },
+                  ]
+                );
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Reset all settings to defaults"
+            >
+              <Text style={[styles.btnText, { color: t.text }]}>Reset to Defaults</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.btnPrimary, styles.headerActionButton, { borderColor: t.accentBorder, backgroundColor: t.accent }]}
