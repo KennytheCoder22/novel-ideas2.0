@@ -7,6 +7,7 @@ const LOCAL_COLLECTION_DB_VERSION = 1;
 
 export const LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY = "novelideas_local_collection_recommendation_v1";
 export const LOCAL_COLLECTION_SUMMARY_STORAGE_KEY = "novelideas_local_collection_artifact_v1";
+export const SHARED_COLLECTION_POST_MAX_BYTES = 4 * 1024 * 1024;
 
 export type LocalCollectionRecommendationRecord = {
   localId: string;
@@ -71,6 +72,25 @@ function isQuotaExceededError(error: unknown): boolean {
   );
 }
 
+function utf8ByteLength(value: string): number {
+  if (typeof TextEncoder !== "undefined") {
+    return new TextEncoder().encode(value).byteLength;
+  }
+  try {
+    return new Blob([value]).size;
+  } catch {
+    return value.length;
+  }
+}
+
+function sanitizeSharedCoverUrl(input: unknown): string | undefined {
+  const raw = String(input || "").trim();
+  if (!raw) return undefined;
+  if (/^data:/i.test(raw)) return undefined;
+  if (raw.length > 2048) return undefined;
+  return raw;
+}
+
 function toRecommendationRecord(record: LocalCollectionArtifact["acceptedRecords"][number]): LocalCollectionRecommendationRecord {
   return {
     localId: String(record.localId || ""),
@@ -83,7 +103,7 @@ function toRecommendationRecord(record: LocalCollectionArtifact["acceptedRecords
     localPlacement: String(record.localPlacement || "").trim() || undefined,
     callNumber: String(record.callNumber || "").trim() || undefined,
     availability: String(record.availability || "").trim() || undefined,
-    coverUrl: String(record.coverUrl || "").trim() || undefined,
+    coverUrl: sanitizeSharedCoverUrl(record.coverUrl),
     copies: Math.max(1, Number(record.copies || 1) || 1),
     isbn10: String(record.isbn10 || "").trim() || undefined,
     isbn13: String(record.isbn13 || "").trim() || undefined,
@@ -100,6 +120,27 @@ export function buildRecommendationArtifact(artifact: LocalCollectionArtifact): 
     records: (artifact.acceptedRecords || [])
       .map(toRecommendationRecord)
       .filter((record) => record.localId && record.title && record.author),
+  };
+}
+
+export function measureSharedLocalCollectionPublishBytes(
+  libraryId: string,
+  artifact: LocalCollectionArtifact
+): {
+  artifactUtf8Bytes: number;
+  requestUtf8Bytes: number;
+  exceedsFunctionLimit: boolean;
+} {
+  const id = String(libraryId || "").trim();
+  const recommendationArtifact = buildRecommendationArtifact(artifact);
+  const artifactJson = JSON.stringify(recommendationArtifact);
+  const requestJson = JSON.stringify({ libraryId: id, artifact: recommendationArtifact });
+  const artifactUtf8Bytes = utf8ByteLength(artifactJson);
+  const requestUtf8Bytes = utf8ByteLength(requestJson);
+  return {
+    artifactUtf8Bytes,
+    requestUtf8Bytes,
+    exceedsFunctionLimit: requestUtf8Bytes >= SHARED_COLLECTION_POST_MAX_BYTES,
   };
 }
 
@@ -213,7 +254,7 @@ function fromLegacyArtifact(raw: any): LocalCollectionRecommendationArtifact | n
       localPlacement: String(record?.localPlacement || "").trim() || undefined,
       callNumber: String(record?.callNumber || "").trim() || undefined,
       availability: String(record?.availability || "").trim() || undefined,
-      coverUrl: String(record?.coverUrl || "").trim() || undefined,
+      coverUrl: sanitizeSharedCoverUrl(record?.coverUrl),
       copies: Math.max(1, Number(record?.copies || 1) || 1),
       isbn10: String(record?.isbn10 || "").trim() || undefined,
       isbn13: String(record?.isbn13 || "").trim() || undefined,

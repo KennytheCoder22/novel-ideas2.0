@@ -17,9 +17,11 @@ import configFile from "../NovelIdeas.json";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
 import { importLocalCollectionCsv, importLocalCollectionMarc } from "../lib/localCollection";
 import {
+  measureSharedLocalCollectionPublishBytes,
   persistLocalCollectionRecommendationArtifact,
   publishSharedLocalCollectionRecommendationArtifact,
   readLocalCollectionAcceptedCountFromLocalStorage,
+  SHARED_COLLECTION_POST_MAX_BYTES,
   LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY,
   LOCAL_COLLECTION_SUMMARY_STORAGE_KEY,
 } from "../lib/localCollection/storage";
@@ -164,6 +166,10 @@ function localCollectionImportErrorMessage(error: unknown): string {
     return "Import succeeded, but browser storage is full. Clear site storage and import again.";
   }
   return "Import failed. Check the file and try again.";
+}
+
+function formatByteCount(bytes: number): string {
+  return `${Math.max(0, Math.floor(bytes)).toLocaleString()} bytes`;
 }
 
 function clearLocalCollectionStorageArtifacts(): void {
@@ -693,8 +699,28 @@ export default function AdminWebScreen() {
             setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
             await persistLocalCollectionRecommendationArtifact(artifact);
             const sharedLibraryId = resolveLibraryId(config);
+            let sharedPublishNote = "";
             if (sharedLibraryId) {
-              await publishSharedLocalCollectionRecommendationArtifact(sharedLibraryId, artifact);
+              const size = measureSharedLocalCollectionPublishBytes(sharedLibraryId, artifact);
+              console.info("[local-collection] shared publish bytes", {
+                libraryId: sharedLibraryId,
+                artifactUtf8Bytes: size.artifactUtf8Bytes,
+                requestUtf8Bytes: size.requestUtf8Bytes,
+              });
+              if (size.requestUtf8Bytes >= SHARED_COLLECTION_POST_MAX_BYTES) {
+                sharedPublishNote =
+                  ` Shared publish blocked: request payload is ${formatByteCount(size.requestUtf8Bytes)} `
+                  + `(limit ${formatByteCount(SHARED_COLLECTION_POST_MAX_BYTES)}).`;
+              } else {
+                const published = await publishSharedLocalCollectionRecommendationArtifact(sharedLibraryId, artifact);
+                if (published) {
+                  sharedPublishNote =
+                    ` Shared publish payload: artifact ${formatByteCount(size.artifactUtf8Bytes)}, `
+                    + `request ${formatByteCount(size.requestUtf8Bytes)}.`;
+                } else {
+                  sharedPublishNote = " Shared publish failed. Re-save after checking deployment logs.";
+                }
+              }
             }
             localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
             setUploadedCollectionCount(artifact.summary.acceptedTitles);
@@ -707,7 +733,7 @@ export default function AdminWebScreen() {
               pct: 100,
               label: `${accepted.toLocaleString()} titles imported${
                 warnings > 0 ? ` (${warnings} warning${warnings === 1 ? '' : 's'})` : ''
-              }`,
+              }${sharedPublishNote}`,
             });
             setTimeout(() => setImportStatus({ phase: 'idle', pct: 0, label: '' }), 5000);
           } catch (error) {
