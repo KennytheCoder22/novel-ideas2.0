@@ -405,10 +405,11 @@ export default function AdminWebScreen() {
   const explicitLibraryIdParam = Array.isArray((params as any)?.libraryId)
     ? (params as any).libraryId[0]
     : (params as any)?.libraryId;
+  const explicitLibraryIdFromRoute = String(explicitLibraryIdParam || "");
   const runtimeLibraryId = getRuntimeLibraryId();
   const adminDraftScopeId = useMemo(
-    () => resolveAdminDraftScopeId(String(explicitLibraryIdParam || runtimeLibraryId || "")),
-    [explicitLibraryIdParam, runtimeLibraryId]
+    () => resolveAdminDraftScopeId(explicitLibraryIdFromRoute),
+    [explicitLibraryIdFromRoute]
   );
   const adminDraftStorageKey = useMemo(
     () => adminConfigStorageKeyForScope(adminDraftScopeId),
@@ -480,11 +481,22 @@ export default function AdminWebScreen() {
     if (!isWeb || typeof localStorage === "undefined") return;
     const base = deepClone(configFile);
     let next = base;
+    let draftLibraryId = "";
+    let hadDraft = false;
+    let draftParseFailed = false;
     try {
       const raw = localStorage.getItem(adminDraftStorageKey);
-      next = raw ? JSON.parse(raw) : base;
+      hadDraft = Boolean(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        draftLibraryId = normalizeLibraryId(parsed?.library?.id || parsed?.branding?.libraryId || "");
+        next = parsed;
+      } else {
+        next = base;
+      }
     } catch {
       next = base;
+      draftParseFailed = true;
     }
     if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
       next.library = (next.library && typeof next.library === "object") ? next.library : {};
@@ -508,7 +520,21 @@ export default function AdminWebScreen() {
     };
     setSaveStatus("idle");
     setIsDirty(false);
-  }, [isWeb, adminDraftScopeId, adminDraftStorageKey]);
+    try {
+      console.info("[admin][init_context]", {
+        pathname: typeof window !== "undefined" ? window.location.pathname : "",
+        search: typeof window !== "undefined" ? window.location.search : "",
+        libraryIdFromRouteParam: String(explicitLibraryIdParam || ""),
+        runtimeLibraryId,
+        adminDraftStorageKey,
+        hadDraft,
+        draftParseFailed,
+        draftLibraryId,
+        normalizedScopeLibraryId: adminDraftScopeId,
+        finalStateLibraryId: resolveLibraryId(next),
+      });
+    } catch {}
+  }, [isWeb, adminDraftScopeId, adminDraftStorageKey, explicitLibraryIdParam, runtimeLibraryId]);
 
   useEffect(() => {
     const configChanged = JSON.stringify(config) !== savedConfigRef.current;

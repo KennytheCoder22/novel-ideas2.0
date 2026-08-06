@@ -454,6 +454,14 @@ checks.push(check("R11_scoped_admin_draft_storage_keys", () => {
     adminWebSrc.includes("resolveAdminDraftScopeId"),
     "admin web must derive scope from library context"
   );
+  assert(
+    adminWebSrc.includes("resolveAdminDraftScopeId(explicitLibraryIdFromRoute)"),
+    "admin scope must derive from explicit route libraryId only"
+  );
+  assert(
+    !adminWebSrc.includes("explicitLibraryIdParam || runtimeLibraryId"),
+    "admin scope must not fall back to persisted runtimeLibraryId on generic /app_admin-web"
+  );
 }));
 
 // R12 – Reset to defaults is draft-only and leaves persistence for explicit Save
