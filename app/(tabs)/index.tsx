@@ -6,7 +6,6 @@ import {
   useState
 } from "react";
 import { router } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
 import { getRuntimeLibraryName, setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
 import {
   Alert,
@@ -27,8 +26,6 @@ import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
 import {
-  ADMIN_CONFIG_CHANGED_EVENT,
-  ADMIN_CONFIG_STORAGE_KEY,
   applyWebHighlightColor,
   buildTheme,
   type ThemeKey,
@@ -100,23 +97,6 @@ function syncSchema(cfg: any) {
   }
 
   return cfg;
-}
-
-function tryLoadDesktopAdminDraft(): any | null {
-  try {
-    if (Platform.OS !== "web") return null;
-    // Guard for environments where localStorage isn't available.
-    // (Expo web should have it.)
-    // @ts-ignore
-    if (typeof localStorage === "undefined") return null;
-    // @ts-ignore
-    const saved = localStorage.getItem(ADMIN_CONFIG_STORAGE_KEY);
-    if (!saved) return null;
-    const parsed = JSON.parse(saved);
-    return syncSchema(parsed);
-  } catch {
-    return null;
-  }
 }
 
 
@@ -1473,11 +1453,8 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
       }
     }
 
-    // Desktop web: if the admin-web page saved a draft into localStorage,
-    // use that as the starting point for the Home screen.
-    const fromDraft = tryLoadDesktopAdminDraft();
-    if (fromDraft) return fromDraft;
-
+    // Root route always starts from the default config file.
+    // Admin draft state never determines the public root configuration.
     const init = deepClone(configFile);
     syncSchema(init);
 
@@ -1532,7 +1509,6 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
 
   // Keep a stable ref to avoid weird focus behavior from accidental remounts.
   const queryInputRef = useRef<TextInput | null>(null);
-
   const enabledDecks = (config?.enabledDecks ?? config?.decks?.enabled ?? {});
   const swipeCategories: SwipeCategories = {
     ...DEFAULT_SWIPE_CATEGORIES,
@@ -1587,54 +1563,6 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
 
   
 const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
-
-  const refreshConfigFromDesktopAdminDraft = useCallback(() => {
-    const draft = tryLoadDesktopAdminDraft();
-    if (!draft) return;
-
-    setConfig((prev: any) => {
-      try {
-        // Avoid re-render loops if nothing changed.
-        const a = JSON.stringify(prev);
-        const b = JSON.stringify(draft);
-        return a === b ? prev : draft;
-      } catch {
-        return draft;
-      }
-    });
-  }, []);
-
-  // Desktop web: keep the main swipe screen aligned with the standalone
-  // /app_admin-web draft. Browser tabs do not remount when the admin tab changes
-  // localStorage, so refresh on navigation focus, browser focus/visibility, and
-  // cross-tab storage events before the next recommendation run reads sources.
-  useFocusEffect(refreshConfigFromDesktopAdminDraft);
-
-  useEffect(() => {
-    if (Platform.OS !== "web" || typeof window === "undefined") return;
-    const onFocus = () => refreshConfigFromDesktopAdminDraft();
-    const onVisibilityChange = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        refreshConfigFromDesktopAdminDraft();
-      }
-    };
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === ADMIN_CONFIG_STORAGE_KEY) refreshConfigFromDesktopAdminDraft();
-    };
-    const onAdminConfigSaved = () => refreshConfigFromDesktopAdminDraft();
-
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("storage", onStorage);
-    window.addEventListener(ADMIN_CONFIG_CHANGED_EVENT, onAdminConfigSaved);
-    document?.addEventListener?.("visibilitychange", onVisibilityChange);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener(ADMIN_CONFIG_CHANGED_EVENT, onAdminConfigSaved);
-      document?.removeEventListener?.("visibilitychange", onVisibilityChange);
-    };
-  }, [refreshConfigFromDesktopAdminDraft]);
-
 
   if (props.libraryId && personalizedConfigLoading) {
     return (

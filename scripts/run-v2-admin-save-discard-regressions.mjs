@@ -240,8 +240,10 @@ checks.push(check("R3_main_ui_reflects_saved_configuration_immediately", () => {
   assert(loadedConfig.enabledDecks["36"] === false, "enabled age groups did not round-trip");
   assert(loadedColors.mainColorHex === "#1d4ed8", "main color did not round-trip");
   assert(loadedColors.highlightColorHex === "#38bdf8", "highlight color did not round-trip");
-  assert(homeSrc.includes("ADMIN_CONFIG_CHANGED_EVENT"), "home screen must listen for same-tab saved-config event");
-  assert(layoutSrc.includes("ADMIN_CONFIG_CHANGED_EVENT"), "tab layout header must listen for same-tab saved-config event");
+  // HomeScreen no longer syncs admin draft (preventing hosted-library context leakage).
+  // The layout header still listens for color/theme updates.
+  assert(!homeSrc.includes("tryLoadDesktopAdminDraft"), "home screen must not sync admin draft (hosted-library context leakage regression)");
+  assert(layoutSrc.includes("ADMIN_CONFIG_CHANGED_EVENT"), "tab layout header must still listen for same-tab saved-config event");
 }));
 
 // R4 – Save failure does not navigate away
@@ -256,7 +258,7 @@ checks.push(check("R4_save_failure_does_not_navigate_away", () => {
     adminWebSrc.indexOf("const onSaveAndReturn"),
     adminWebSrc.indexOf("const onDiscard")
   );
-  assert(saveReturnBlock.includes("if (!persistDraftConfig()) return;"), "Save & Return must stop on save failure");
+  assert(saveReturnBlock.includes("await persistDraftConfig()") && saveReturnBlock.includes("return;"), "Save & Return must stop on save failure");
   assert(saveReturnBlock.includes('router.replace("/")'), "Save & Return must route to / on success");
 }));
 
@@ -421,9 +423,14 @@ checks.push(check("structural_save_return_routes_home", () => {
   assert(adminWebSrc.includes('router.replace("/")'), 'Save & Return must navigate with router.replace("/")');
 }));
 
-checks.push(check("structural_main_ui_listens_for_saved_event", () => {
-  assert(homeSrc.includes("window.addEventListener(ADMIN_CONFIG_CHANGED_EVENT"), "home screen should listen for saved-config event");
-  assert(layoutSrc.includes("window.addEventListener?.(ADMIN_CONFIG_CHANGED_EVENT"), "layout should listen for saved-config event");
+checks.push(check("structural_main_ui_no_admin_draft_sync", () => {
+  // HomeScreen must not read from admin draft — prevents hosted-library context leakage.
+  assert(!homeSrc.includes("tryLoadDesktopAdminDraft"), "home screen must not define or call tryLoadDesktopAdminDraft");
+  assert(!homeSrc.includes("refreshConfigFromDesktopAdminDraft"), "home screen must not define or call refreshConfigFromDesktopAdminDraft");
+  assert(!homeSrc.includes("ADMIN_CONFIG_CHANGED_EVENT"), "home screen must not listen for ADMIN_CONFIG_CHANGED_EVENT");
+  assert(!homeSrc.includes("ADMIN_CONFIG_STORAGE_KEY"), "home screen must not read ADMIN_CONFIG_STORAGE_KEY");
+  // Layout is allowed to read admin draft for header theme only (cosmetic).
+  assert(layoutSrc.includes("window.addEventListener?.(ADMIN_CONFIG_CHANGED_EVENT"), "layout should still listen for saved-config event for header theme");
 }));
 
 // ---------------------------------------------------------------------------
