@@ -70,8 +70,8 @@ checks.push(check("L1_personalized_route_passes_libraryId_to_HomeScreen", () => 
   );
   // Personalized route must load from shared API when libraryId is set
   assert(
-    homeSrc.includes("loadSharedLibraryConfig(props.libraryId"),
-    "HomeScreen must call loadSharedLibraryConfig with props.libraryId"
+    homeSrc.includes("loadSharedLibraryConfigWithDiagnostics(props.libraryId"),
+    "HomeScreen must call loadSharedLibraryConfigWithDiagnostics with props.libraryId"
   );
 }));
 
@@ -158,8 +158,8 @@ checks.push(check("L6_navigating_to_personalized_route_restores_config", () => {
     homeSrc.indexOf("async function loadSharedConfig") + 500
   );
   assert(
-    sharedConfigEffect.includes("loadSharedLibraryConfig"),
-    "loadSharedConfig must call loadSharedLibraryConfig"
+    sharedConfigEffect.includes("loadSharedLibraryConfigWithDiagnostics"),
+    "loadSharedConfig must call loadSharedLibraryConfigWithDiagnostics"
   );
   // The effect dep array must include props.libraryId so it re-runs on navigation
   const effectBlock = homeSrc.slice(
@@ -177,7 +177,7 @@ checks.push(check("L7_unknown_slug_does_not_reuse_last_valid_library", () => {
   // When shared config fetch returns null for an unknown slug, HomeScreen must not apply stale config
   const loadSharedConfigBlock = homeSrc.slice(
     homeSrc.indexOf("async function loadSharedConfig"),
-    homeSrc.indexOf("async function loadSharedConfig") + 600
+    homeSrc.indexOf("async function loadSharedConfig") + 1500
   );
   // The config is only set when shared config is non-null
   assert(
@@ -192,6 +192,7 @@ checks.push(check("L7_unknown_slug_does_not_reuse_last_valid_library", () => {
   );
   // personalizedConfigLoading must clear even on failed fetch
   assert(
+    loadSharedConfigBlock.includes("finally") &&
     loadSharedConfigBlock.includes("setPersonalizedConfigLoading(false)"),
     "personalizedConfigLoading must be cleared even when shared config returns null"
   );
@@ -313,6 +314,14 @@ checks.push(check("structural_personalized_route_sets_runtime_identity", () => {
   assert(
     libraryIdSrc.includes("setRuntimeLibraryName("),
     "[libraryId].tsx must call setRuntimeLibraryName"
+  );
+  assert(
+    libraryIdSrc.includes("setLibraryId(raw || \"\")"),
+    "[libraryId].tsx must preserve full slug string (no truncation)"
+  );
+  assert(
+    !libraryIdSrc.includes("slice(0, 1)") && !libraryIdSrc.includes("charAt(0)"),
+    "[libraryId].tsx must not truncate libraryId to one character"
   );
 }));
 

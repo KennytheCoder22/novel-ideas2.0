@@ -11,6 +11,55 @@ function sharedApiUrl(path: string, libraryId: string): string | null {
   }
 }
 
+function normalizeLibraryId(libraryId: string): string {
+  return String(libraryId || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 64);
+}
+
+function newCorrelationId(): string {
+  return `cfg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function fetchJsonWithMeta(
+  url: string,
+  context: string,
+  headers?: Record<string, string>
+): Promise<{
+  payload: Record<string, unknown> | null;
+  status: number | null;
+  contentType: string | null;
+  routeReached: boolean;
+}> {
+  try {
+    const response = await fetch(url, {
+      credentials: "same-origin",
+      cache: "no-store",
+      headers,
+    });
+    const status = response.status;
+    const contentType = response.headers.get("content-type");
+    const routeReached = response.headers.get("x-library-config-route") === "reached";
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      console.warn(`[library-sharing][client][${context}] request_failed`, {
+        url,
+        status,
+        contentType,
+      });
+    }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return { payload: null, status, contentType, routeReached };
+    }
+    return { payload: payload as Record<string, unknown>, status, contentType, routeReached };
+  } catch {
+    console.warn(`[library-sharing][client][${context}] request_error`, { url });
+    return { payload: null, status: null, contentType: null, routeReached: false };
+  }
+}
+
 async function readJson(url: string, context: string): Promise<Record<string, unknown> | null> {
   try {
     const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
@@ -64,12 +113,113 @@ async function postJson(url: string, body: Record<string, unknown>, context: str
 }
 
 export async function loadSharedLibraryConfig(libraryId: string): Promise<Record<string, unknown> | null> {
+  const result = await loadSharedLibraryConfigWithDiagnostics(libraryId, false);
+  return result.config;
+}
+
+export type SharedLibraryConfigLoadDiagnostics = {
+  timestamp: string;
+  pathname: string;
+  libraryId: string;
+  normalizedLibraryId: string;
+  requestUrl: string;
+  correlationId: string;
+  httpStatus: number | null;
+  responseContentType: string | null;
+  requestReachedApiRoute: boolean;
+  appErrorCode: string | null;
+  routeReachable: boolean | null;
+  backend: "vercel_blob" | "local_filesystem" | null;
+  configPath: string | null;
+  exists: boolean | null;
+  readable: boolean | null;
+  validJson: boolean | null;
+  validConfig: boolean | null;
+  blobReadStatus: string | null;
+  defaultsConsidered: boolean;
+  defaultsRejected: boolean;
+};
+
+export async function loadSharedLibraryConfigWithDiagnostics(
+  libraryId: string,
+  includeServerDiagnostics: boolean
+): Promise<{
+  config: Record<string, unknown> | null;
+  diagnostics: SharedLibraryConfigLoadDiagnostics;
+}> {
   const url = sharedApiUrl("/api/library-config", libraryId);
-  if (!url) return null;
-  const payload = await readJson(url, "loadSharedLibraryConfig");
-  return payload && payload.config && typeof payload.config === "object" && !Array.isArray(payload.config)
-    ? (payload.config as Record<string, unknown>)
-    : null;
+  const correlationId = newCorrelationId();
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  const baseDiagnostics: SharedLibraryConfigLoadDiagnostics = {
+    timestamp: new Date().toISOString(),
+    pathname,
+    libraryId: String(libraryId || ""),
+    normalizedLibraryId: normalizeLibraryId(libraryId),
+    requestUrl: url || "",
+    correlationId,
+    httpStatus: null,
+    responseContentType: null,
+    requestReachedApiRoute: false,
+    appErrorCode: null,
+    routeReachable: null,
+    backend: null,
+    configPath: null,
+    exists: null,
+    readable: null,
+    validJson: null,
+    validConfig: null,
+    blobReadStatus: null,
+    defaultsConsidered: true,
+    defaultsRejected: true,
+  };
+  if (!url) {
+    return { config: null, diagnostics: { ...baseDiagnostics, appErrorCode: "invalid_request_url" } };
+  }
+  const response = await fetchJsonWithMeta(url, "loadSharedLibraryConfigWithDiagnostics", {
+    "x-correlation-id": correlationId,
+  });
+  const payload = response.payload;
+  const diagnostics: SharedLibraryConfigLoadDiagnostics = {
+    ...baseDiagnostics,
+    httpStatus: response.status,
+    responseContentType: response.contentType,
+    requestReachedApiRoute: response.routeReached,
+    appErrorCode: typeof payload?.error === "string" ? payload.error : null,
+  };
+  const config =
+    payload && payload.config && typeof payload.config === "object" && !Array.isArray(payload.config)
+      ? (payload.config as Record<string, unknown>)
+      : null;
+
+  if (!includeServerDiagnostics) {
+    return { config, diagnostics };
+  }
+
+  const diagUrl = sharedApiUrl("/api/library-config-diagnostics", libraryId);
+  if (!diagUrl) return { config, diagnostics };
+  const diagResp = await fetchJsonWithMeta(diagUrl, "loadSharedLibraryConfigDiagnostics", {
+    "x-correlation-id": correlationId,
+  });
+  const d = diagResp.payload;
+  if (!d) return { config, diagnostics };
+  return {
+    config,
+    diagnostics: {
+      ...diagnostics,
+      routeReachable: typeof d.routeReachable === "boolean" ? d.routeReachable : null,
+      backend: d.backend === "vercel_blob" || d.backend === "local_filesystem" ? d.backend : null,
+      configPath: typeof d.configPath === "string" ? d.configPath : null,
+      exists: typeof d.exists === "boolean" ? d.exists : null,
+      readable: typeof d.readable === "boolean" ? d.readable : null,
+      validJson: typeof d.validJson === "boolean" ? d.validJson : null,
+      validConfig: typeof d.validConfig === "boolean" ? d.validConfig : null,
+      blobReadStatus: typeof d.blobReadStatus === "string" ? d.blobReadStatus : null,
+      appErrorCode:
+        typeof d.errorCode === "string"
+          ? d.errorCode
+          : diagnostics.appErrorCode,
+    },
+  };
 }
 
 export async function saveSharedLibraryConfig(libraryId: string, config: Record<string, unknown>): Promise<boolean> {

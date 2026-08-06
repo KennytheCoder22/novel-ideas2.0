@@ -32,8 +32,13 @@ import {
   type HighlightKey,
   type TitleTextKey
 } from "../../constants/brandTheme";
-import { activateAdminSession, setPendingAdminRoute } from "../../lib/adminSession";
-import { loadSharedLibraryConfig, saveSharedLibraryConfig } from "../../lib/librarySharing/client";
+import { activateAdminSession, isAdminSessionActive, setPendingAdminRoute } from "../../lib/adminSession";
+import {
+  loadSharedLibraryConfigWithDiagnostics,
+  saveSharedLibraryConfig,
+  type SharedLibraryConfigLoadDiagnostics,
+} from "../../lib/librarySharing/client";
+import { isPreviewAcceptanceEnvironmentEnabled } from "../../lib/previewAcceptanceHarness";
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
   String(
@@ -1467,6 +1472,8 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   });
   const [personalizedConfigLoading, setPersonalizedConfigLoading] = useState(Boolean(props.libraryId));
   const [personalizedConfigError, setPersonalizedConfigError] = useState(false);
+  const [personalizedConfigDiagnostics, setPersonalizedConfigDiagnostics] = useState<SharedLibraryConfigLoadDiagnostics | null>(null);
+  const [showPersonalizedConfigDiagnostics, setShowPersonalizedConfigDiagnostics] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [deck, setDeck] = useState<DeckKey>("ms_hs");
@@ -1482,17 +1489,23 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
       setRuntimeLibraryName("");
       setPersonalizedConfigLoading(false);
       setPersonalizedConfigError(false);
+      setPersonalizedConfigDiagnostics(null);
+      setShowPersonalizedConfigDiagnostics(false);
       return;
     }
 
     let cancelled = false;
     setPersonalizedConfigLoading(true);
     setPersonalizedConfigError(false);
+    setShowPersonalizedConfigDiagnostics(false);
 
     async function loadSharedConfig() {
       try {
-        const shared = await loadSharedLibraryConfig(props.libraryId as string);
+        const diagnosticsEnabled = isAdminSessionActive() || isPreviewAcceptanceEnvironmentEnabled();
+        const result = await loadSharedLibraryConfigWithDiagnostics(props.libraryId as string, diagnosticsEnabled);
+        const shared = result.config;
         if (cancelled) return;
+        setPersonalizedConfigDiagnostics(result.diagnostics);
         if (shared) {
           const next = deepClone(shared);
           syncSchema(next);
@@ -1569,6 +1582,7 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
 
   
 const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
+  const diagnosticsVisibleForUser = isAdminSessionActive() || isPreviewAcceptanceEnvironmentEnabled();
 
   if (props.libraryId && personalizedConfigLoading) {
     return (
@@ -1588,11 +1602,66 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
         <Text style={{ color: theme.subtext ?? theme.muted, fontSize: 14, textAlign: "center", marginBottom: 24 }}>
           Library: {props.libraryId}
         </Text>
+        {diagnosticsVisibleForUser ? (
+          <TouchableOpacity
+            onPress={() => setShowPersonalizedConfigDiagnostics((v) => !v)}
+            style={{
+              borderColor: theme.lightBorder,
+              borderWidth: 1,
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: 8,
+              marginBottom: 12,
+            }}
+          >
+            <Text style={{ color: theme.text, fontWeight: "800" }}>
+              {showPersonalizedConfigDiagnostics ? "Hide Diagnostics" : "Diagnostics"}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {diagnosticsVisibleForUser && showPersonalizedConfigDiagnostics && personalizedConfigDiagnostics ? (
+          <View
+            style={{
+              width: "100%",
+              borderColor: theme.cardBorder,
+              borderWidth: 1,
+              borderRadius: 10,
+              padding: 12,
+              marginBottom: 12,
+              backgroundColor: theme.cardBg,
+            }}
+          >
+            <Text style={{ color: theme.subtext, fontSize: 12 }}>Path: {personalizedConfigDiagnostics.pathname || "n/a"}</Text>
+            <Text style={{ color: theme.subtext, fontSize: 12 }}>Library ID: {personalizedConfigDiagnostics.libraryId || "n/a"}</Text>
+            <Text style={{ color: theme.subtext, fontSize: 12 }}>Status: {String(personalizedConfigDiagnostics.httpStatus ?? "n/a")}</Text>
+            <Text style={{ color: theme.subtext, fontSize: 12 }}>Error: {personalizedConfigDiagnostics.appErrorCode || "n/a"}</Text>
+            <Text style={{ color: theme.subtext, fontSize: 12 }}>Correlation: {personalizedConfigDiagnostics.correlationId}</Text>
+            <Text style={{ color: theme.subtext, fontSize: 12 }}>Time: {personalizedConfigDiagnostics.timestamp}</Text>
+            {personalizedConfigDiagnostics.backend ? (
+              <Text style={{ color: theme.subtext, fontSize: 12 }}>Backend: {personalizedConfigDiagnostics.backend}</Text>
+            ) : null}
+            {personalizedConfigDiagnostics.configPath ? (
+              <Text style={{ color: theme.subtext, fontSize: 12 }}>Config path: {personalizedConfigDiagnostics.configPath}</Text>
+            ) : null}
+            {personalizedConfigDiagnostics.exists !== null ? (
+              <Text style={{ color: theme.subtext, fontSize: 12 }}>
+                Exists: {personalizedConfigDiagnostics.exists ? "true" : "false"} | Readable:{" "}
+                {personalizedConfigDiagnostics.readable ? "true" : "false"} | Valid JSON:{" "}
+                {personalizedConfigDiagnostics.validJson ? "true" : "false"} | Valid config:{" "}
+                {personalizedConfigDiagnostics.validConfig ? "true" : "false"}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
         <TouchableOpacity
           onPress={() => {
             setPersonalizedConfigError(false);
             setPersonalizedConfigLoading(true);
-            loadSharedLibraryConfig(props.libraryId as string).then((shared) => {
+            setShowPersonalizedConfigDiagnostics(false);
+            const diagnosticsEnabled = isAdminSessionActive() || isPreviewAcceptanceEnvironmentEnabled();
+            loadSharedLibraryConfigWithDiagnostics(props.libraryId as string, diagnosticsEnabled).then((result) => {
+              const shared = result.config;
+              setPersonalizedConfigDiagnostics(result.diagnostics);
               if (shared) {
                 const next = deepClone(shared);
                 syncSchema(next);

@@ -20,6 +20,13 @@ import { dirname, resolve } from "node:path";
 // ── Storage mode ──────────────────────────────────────────────────────────────
 
 type StorageMode = "vercel_blob" | "local_filesystem";
+type BlobReadStatus = "ok" | "not_found" | "non_ok_http" | "network_error" | "json_parse_failed" | "list_failed";
+type SharedConfigErrorCode =
+  | null
+  | "config_not_found"
+  | "blob_read_failed"
+  | "malformed_json"
+  | "invalid_config_schema";
 
 function storageMode(): StorageMode {
   if (process.env.BLOB_READ_WRITE_TOKEN) return "vercel_blob";
@@ -28,6 +35,15 @@ function storageMode(): StorageMode {
 
 function normalizeLibraryId(libraryId: string): string {
   return String(libraryId || "").trim();
+}
+
+function logConfigEvent(
+  event: string,
+  payload: Record<string, unknown>,
+  correlationId?: string
+): void {
+  const base = correlationId ? { correlationId, ...payload } : payload;
+  console.info(`[library-sharing][config][${event}]`, base);
 }
 
 export function getSharedLibraryConfigStorageTrace(libraryId: string): {
@@ -46,6 +62,20 @@ export function getSharedLibraryConfigStorageTrace(libraryId: string): {
     configFilePath: filePath("config", id || "unknown"),
   };
 }
+
+export type SharedLibraryConfigDiagnostics = {
+  backend: StorageMode;
+  libraryId: string;
+  normalizedLibraryId: string;
+  configPath: string;
+  exists: boolean;
+  readable: boolean;
+  validJson: boolean;
+  validConfig: boolean;
+  updatedAt: string | null;
+  blobReadStatus: BlobReadStatus | "n/a";
+  errorCode: SharedConfigErrorCode;
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -130,21 +160,39 @@ function blobStoreBaseUrl(): string | null {
  * Uses the deterministically derived public URL when possible (1 network call).
  * Falls back to list() if the token format is unexpected (2 network calls).
  */
-async function loadBlobJson(pathname: string): Promise<unknown | null> {
+async function readBlobJsonDetailed(pathname: string): Promise<{
+  status: BlobReadStatus;
+  exists: boolean;
+  readable: boolean;
+  validJson: boolean;
+  data: unknown | null;
+}> {
   // Fast path: derive URL from token
   const base = blobStoreBaseUrl();
   if (base) {
     const url = `${base}/${pathname}`;
     try {
       const resp = await fetch(url, { cache: "no-store" });
-      if (resp.status === 404) return null;
-      if (resp.ok) return resp.json().catch(() => null);
+      if (resp.status === 404) {
+        return { status: "not_found", exists: false, readable: false, validJson: false, data: null };
+      }
+      if (resp.ok) {
+        const text = await resp.text();
+        try {
+          const parsed = JSON.parse(text);
+          return { status: "ok", exists: true, readable: true, validJson: true, data: parsed };
+        } catch {
+          return { status: "json_parse_failed", exists: true, readable: true, validJson: false, data: null };
+        }
+      }
       console.warn("[library-sharing][blob] direct_fetch_non_ok", {
         pathname,
         status: resp.status,
       });
+      return { status: "non_ok_http", exists: false, readable: false, validJson: false, data: null };
     } catch {
       console.warn("[library-sharing][blob] direct_fetch_failed", { pathname });
+      // fall through to list fallback
     }
   }
 
@@ -157,14 +205,29 @@ async function loadBlobJson(pathname: string): Promise<unknown | null> {
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
     const found = blobs.find((b) => b.pathname === pathname);
-    if (!found) return null;
+    if (!found) {
+      return { status: "not_found", exists: false, readable: false, validJson: false, data: null };
+    }
     const resp = await fetch(found.url, { cache: "no-store" });
-    if (!resp.ok) return null;
-    return resp.json().catch(() => null);
+    if (!resp.ok) {
+      return { status: "non_ok_http", exists: true, readable: false, validJson: false, data: null };
+    }
+    const text = await resp.text();
+    try {
+      const parsed = JSON.parse(text);
+      return { status: "ok", exists: true, readable: true, validJson: true, data: parsed };
+    } catch {
+      return { status: "json_parse_failed", exists: true, readable: true, validJson: false, data: null };
+    }
   } catch {
     console.warn("[library-sharing][blob] list_fallback_failed", { pathname });
-    return null;
+    return { status: "list_failed", exists: false, readable: false, validJson: false, data: null };
   }
+}
+
+async function loadBlobJson(pathname: string): Promise<unknown | null> {
+  const result = await readBlobJsonDetailed(pathname);
+  return result.validJson ? result.data : null;
 }
 
 /** Write a JSON value to a Vercel Blob pathname (server-side, overwrites). */
@@ -198,6 +261,28 @@ async function loadBlobConfig(libraryId: string): Promise<Record<string, unknown
   const wrapper = data as Record<string, unknown>;
   if (!wrapper.config || typeof wrapper.config !== "object" || Array.isArray(wrapper.config)) return null;
   return wrapper.config as Record<string, unknown>;
+}
+
+function validateConfigEnvelope(data: unknown): {
+  validConfig: boolean;
+  config: Record<string, unknown> | null;
+  updatedAt: string | null;
+  errorCode: SharedConfigErrorCode;
+} {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return { validConfig: false, config: null, updatedAt: null, errorCode: "invalid_config_schema" };
+  }
+  const wrapper = data as Record<string, unknown>;
+  const updatedAt = typeof wrapper.updatedAt === "string" ? wrapper.updatedAt : null;
+  if (!wrapper.config || typeof wrapper.config !== "object" || Array.isArray(wrapper.config)) {
+    return { validConfig: false, config: null, updatedAt, errorCode: "invalid_config_schema" };
+  }
+  return {
+    validConfig: true,
+    config: wrapper.config as Record<string, unknown>,
+    updatedAt,
+    errorCode: null,
+  };
 }
 
 // ── Vercel Blob: collection pointer ──────────────────────────────────────────
@@ -274,45 +359,246 @@ function loadFileAsset(kind: "config" | "collection", libraryId: string): Record
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
+export async function diagnoseSharedLibraryConfig(
+  libraryId: string,
+  correlationId?: string
+): Promise<SharedLibraryConfigDiagnostics> {
+  const trace = getSharedLibraryConfigStorageTrace(libraryId);
+  const id = trace.normalizedLibraryId;
+  if (!id) {
+    return {
+      backend: trace.backend,
+      libraryId,
+      normalizedLibraryId: "",
+      configPath: trace.backend === "vercel_blob" ? trace.configBlobPath : trace.configFilePath,
+      exists: false,
+      readable: false,
+      validJson: false,
+      validConfig: false,
+      updatedAt: null,
+      blobReadStatus: trace.backend === "vercel_blob" ? "not_found" : "n/a",
+      errorCode: "config_not_found",
+    };
+  }
+
+  if (trace.backend === "vercel_blob") {
+    const configPath = configBlobPathname(id);
+    logConfigEvent("lookup_started", { backend: trace.backend, normalizedLibraryId: id, configPath }, correlationId);
+    const blob = await readBlobJsonDetailed(configPath);
+    if (!blob.exists) {
+      logConfigEvent("not_found", { backend: trace.backend, normalizedLibraryId: id, configPath, blobReadStatus: blob.status }, correlationId);
+      return {
+        backend: trace.backend,
+        libraryId,
+        normalizedLibraryId: id,
+        configPath,
+        exists: false,
+        readable: false,
+        validJson: false,
+        validConfig: false,
+        updatedAt: null,
+        blobReadStatus: blob.status,
+        errorCode: "config_not_found",
+      };
+    }
+    if (!blob.readable) {
+      logConfigEvent("read_failed", { backend: trace.backend, normalizedLibraryId: id, configPath, blobReadStatus: blob.status }, correlationId);
+      return {
+        backend: trace.backend,
+        libraryId,
+        normalizedLibraryId: id,
+        configPath,
+        exists: true,
+        readable: false,
+        validJson: false,
+        validConfig: false,
+        updatedAt: null,
+        blobReadStatus: blob.status,
+        errorCode: "blob_read_failed",
+      };
+    }
+    if (!blob.validJson) {
+      logConfigEvent("json_parse_failed", { backend: trace.backend, normalizedLibraryId: id, configPath, blobReadStatus: blob.status }, correlationId);
+      return {
+        backend: trace.backend,
+        libraryId,
+        normalizedLibraryId: id,
+        configPath,
+        exists: true,
+        readable: true,
+        validJson: false,
+        validConfig: false,
+        updatedAt: null,
+        blobReadStatus: blob.status,
+        errorCode: "malformed_json",
+      };
+    }
+    const envelope = validateConfigEnvelope(blob.data);
+    if (!envelope.validConfig) {
+      logConfigEvent("validation_failed", { backend: trace.backend, normalizedLibraryId: id, configPath }, correlationId);
+      return {
+        backend: trace.backend,
+        libraryId,
+        normalizedLibraryId: id,
+        configPath,
+        exists: true,
+        readable: true,
+        validJson: true,
+        validConfig: false,
+        updatedAt: envelope.updatedAt,
+        blobReadStatus: blob.status,
+        errorCode: envelope.errorCode,
+      };
+    }
+    logConfigEvent("lookup_succeeded", { backend: trace.backend, normalizedLibraryId: id, configPath }, correlationId);
+    return {
+      backend: trace.backend,
+      libraryId,
+      normalizedLibraryId: id,
+      configPath,
+      exists: true,
+      readable: true,
+      validJson: true,
+      validConfig: true,
+      updatedAt: envelope.updatedAt,
+      blobReadStatus: blob.status,
+      errorCode: null,
+    };
+  }
+
+  const configPath = filePath("config", id);
+  logConfigEvent("lookup_started", { backend: trace.backend, normalizedLibraryId: id, configPath }, correlationId);
+  if (!existsSync(configPath)) {
+    logConfigEvent("not_found", { backend: trace.backend, normalizedLibraryId: id, configPath }, correlationId);
+    return {
+      backend: trace.backend,
+      libraryId,
+      normalizedLibraryId: id,
+      configPath,
+      exists: false,
+      readable: false,
+      validJson: false,
+      validConfig: false,
+      updatedAt: null,
+      blobReadStatus: "n/a",
+      errorCode: "config_not_found",
+    };
+  }
+  try {
+    const raw = readFileSync(configPath, "utf8");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      logConfigEvent("json_parse_failed", { backend: trace.backend, normalizedLibraryId: id, configPath }, correlationId);
+      return {
+        backend: trace.backend,
+        libraryId,
+        normalizedLibraryId: id,
+        configPath,
+        exists: true,
+        readable: true,
+        validJson: false,
+        validConfig: false,
+        updatedAt: null,
+        blobReadStatus: "n/a",
+        errorCode: "malformed_json",
+      };
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {
+        backend: trace.backend,
+        libraryId,
+        normalizedLibraryId: id,
+        configPath,
+        exists: true,
+        readable: true,
+        validJson: true,
+        validConfig: false,
+        updatedAt: null,
+        blobReadStatus: "n/a",
+        errorCode: "invalid_config_schema",
+      };
+    }
+    const payload = parsed as Record<string, unknown>;
+    const config = payload.payload;
+    const validConfig = !!config && typeof config === "object" && !Array.isArray(config);
+    if (!validConfig) {
+      logConfigEvent("validation_failed", { backend: trace.backend, normalizedLibraryId: id, configPath }, correlationId);
+    } else {
+      logConfigEvent("lookup_succeeded", { backend: trace.backend, normalizedLibraryId: id, configPath }, correlationId);
+    }
+    return {
+      backend: trace.backend,
+      libraryId,
+      normalizedLibraryId: id,
+      configPath,
+      exists: true,
+      readable: true,
+      validJson: true,
+      validConfig,
+      updatedAt: typeof payload.updatedAt === "string" ? payload.updatedAt : null,
+      blobReadStatus: "n/a",
+      errorCode: validConfig ? null : "invalid_config_schema",
+    };
+  } catch {
+    logConfigEvent("read_failed", { backend: trace.backend, normalizedLibraryId: id, configPath }, correlationId);
+    return {
+      backend: trace.backend,
+      libraryId,
+      normalizedLibraryId: id,
+      configPath,
+      exists: true,
+      readable: false,
+      validJson: false,
+      validConfig: false,
+      updatedAt: null,
+      blobReadStatus: "n/a",
+      errorCode: "blob_read_failed",
+    };
+  }
+}
+
 export async function saveSharedLibraryConfig(
   libraryId: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  options?: { correlationId?: string }
 ): Promise<void> {
   const id = normalizeLibraryId(libraryId);
   if (!id) throw new Error("missing_library_id");
   const trace = getSharedLibraryConfigStorageTrace(id);
-  console.info("[library-sharing][config][save] start", trace);
+  const correlationId = options?.correlationId;
+  logConfigEvent("save_started", trace, correlationId);
   try {
     if (trace.backend === "vercel_blob") {
       await saveBlobConfig(id, payload);
     } else {
       await saveFileAsset("config", id, payload);
     }
-    console.info("[library-sharing][config][save] success", trace);
+    logConfigEvent("save_succeeded", trace, correlationId);
   } catch (error) {
-    console.error("[library-sharing][config][save] failed", trace, error);
+    console.error("[library-sharing][config][save_failed]", { correlationId, ...trace }, error);
     throw error;
   }
 }
 
 export async function loadSharedLibraryConfigPayload(
-  libraryId: string
+  libraryId: string,
+  options?: { correlationId?: string }
 ): Promise<Record<string, unknown> | null> {
   const id = normalizeLibraryId(libraryId);
   if (!id) return null;
-  const trace = getSharedLibraryConfigStorageTrace(id);
-  console.info("[library-sharing][config][load] start", trace);
+  const correlationId = options?.correlationId;
   try {
-    const config = trace.backend === "vercel_blob"
-      ? await loadBlobConfig(id)
-      : loadFileAsset("config", id);
-    console.info("[library-sharing][config][load] result", {
-      ...trace,
-      found: !!config,
-    });
-    return config;
+    const diagnostics = await diagnoseSharedLibraryConfig(id, correlationId);
+    if (!diagnostics.validConfig || diagnostics.errorCode) return null;
+    if (diagnostics.backend === "vercel_blob") {
+      return loadBlobConfig(id);
+    }
+    return loadFileAsset("config", id);
   } catch (error) {
-    console.error("[library-sharing][config][load] failed", trace, error);
+    const trace = getSharedLibraryConfigStorageTrace(id);
+    console.error("[library-sharing][config][load_failed]", { correlationId, ...trace }, error);
     throw error;
   }
 }

@@ -177,15 +177,16 @@ console.log("\n3. Config save/load (Vercel Blob)");
   );
   check(
     "saveSharedLibraryConfig logs backend, libraryId, and storage key details",
-    contains(storage, "[library-sharing][config][save] start")
+    contains(storage, "logConfigEvent(\"save_started\"")
   );
   check(
     "loadSharedLibraryConfigPayload logs backend, libraryId, and found/missing result",
-    contains(storage, "[library-sharing][config][load] result")
+    contains(storage, "logConfigEvent(\"lookup_succeeded\"") &&
+    contains(storage, "logConfigEvent(\"not_found\"")
   );
   check(
     "library-config API logs backend/library/key on GET and POST",
-    contains(configApi, "[api/library-config][GET] load_start") &&
+    contains(configApi, "[api/library-config][GET] route_entered") &&
     contains(configApi, "[api/library-config][POST] save_start")
   );
   check(
@@ -316,7 +317,8 @@ console.log("\n7. Missing blob and malformed JSON handling");
   );
   check(
     "loadBlobJson returns null when JSON parse fails (.catch(() => null))",
-    contains(storage, ".catch(() => null)")
+    contains(storage, "json_parse_failed") &&
+    contains(storage, "return result.validJson ? result.data : null")
   );
   check(
     "loadBlobConfig returns null when wrapper is not an object",
@@ -458,6 +460,89 @@ console.log("\n10. Blob URL derivation from token");
   check(
     "URL derivation: returns null for malformed token",
     blobStoreBaseUrl("not_a_real_token") === null
+  );
+}
+
+// ── 11. Hosted-library diagnostics and correlation IDs ────────────────────────
+console.log("\n11. Hosted-library diagnostics and correlation IDs");
+{
+  const storage = readSrc("lib/librarySharing/storage.ts");
+  const client = readSrc("lib/librarySharing/client.ts");
+  const configApi = readSrc("app/api/library-config/+api.ts");
+  const diagnosticsApi = readSrc("app/api/library-config-diagnostics/+api.ts");
+  const homeScreen = readSrc("app/(tabs)/index.tsx");
+  const adminSession = readSrc("lib/adminSession.ts");
+
+  check(
+    "storage exports diagnoseSharedLibraryConfig",
+    contains(storage, "export async function diagnoseSharedLibraryConfig")
+  );
+  check(
+    "storage diagnostics includes backend, configPath, exists/readable/valid fields",
+    contains(storage, "backend: StorageMode") &&
+    contains(storage, "configPath: string") &&
+    contains(storage, "exists: boolean") &&
+    contains(storage, "validConfig: boolean")
+  );
+  check(
+    "library-config API sets correlation and route-reached headers",
+    contains(configApi, "\"x-correlation-id\"") &&
+    contains(configApi, "\"x-library-config-route\"")
+  );
+  check(
+    "library-config API emits config_not_found error code",
+    contains(configApi, "config_not_found")
+  );
+  check(
+    "library-config API reads x-correlation-id from request",
+    contains(configApi, "x-correlation-id")
+  );
+  check(
+    "client exports loadSharedLibraryConfigWithDiagnostics",
+    contains(client, "export async function loadSharedLibraryConfigWithDiagnostics")
+  );
+  check(
+    "client diagnostics capture status/content-type/requestReachedApiRoute",
+    contains(client, "httpStatus") &&
+    contains(client, "responseContentType") &&
+    contains(client, "requestReachedApiRoute")
+  );
+  check(
+    "client sends x-correlation-id header for hosted config load",
+    contains(client, "\"x-correlation-id\"")
+  );
+  check(
+    "diagnostics endpoint file exists",
+    diagnosticsApi !== null
+  );
+  check(
+    "diagnostics endpoint is admin-gated or preview-gated",
+    contains(diagnosticsApi, "isAdminSession") &&
+    contains(diagnosticsApi, "isPreviewAcceptanceEnvironmentEnabled")
+  );
+  check(
+    "diagnostics endpoint returns safe operational fields",
+    contains(diagnosticsApi, "routeReachable") &&
+    contains(diagnosticsApi, "backend") &&
+    contains(diagnosticsApi, "configPath") &&
+    contains(diagnosticsApi, "validConfig")
+  );
+  check(
+    "diagnostics endpoint does not return secrets",
+    !contains(diagnosticsApi, "BLOB_READ_WRITE_TOKEN") &&
+    !contains(diagnosticsApi, "blobUrl") &&
+    !contains(diagnosticsApi, "admin.pin")
+  );
+  check(
+    "error UI keeps patron-safe message but has diagnostics toggle for debug users",
+    contains(homeScreen, "This library's configuration could not be loaded.") &&
+    contains(homeScreen, "Diagnostics") &&
+    contains(homeScreen, "isAdminSessionActive") &&
+    contains(homeScreen, "isPreviewAcceptanceEnvironmentEnabled")
+  );
+  check(
+    "admin session helper exports cookie name for server gating",
+    contains(adminSession, "ADMIN_SESSION_COOKIE_NAME")
   );
 }
 
