@@ -100,46 +100,11 @@ export async function loadSharedLibraryCollection(libraryId: string): Promise<Re
  * Server-side fallback: POST the full collection artifact as a request body.
  * Works only in local_filesystem mode (local dev). In vercel_blob mode the
  * server will reject this with use_client_upload; callers should use
- * uploadSharedLibraryCollectionClientSide instead.
+ * uploadCollectionToBlob (lib/librarySharing/blobUpload) instead.
  */
 export async function saveSharedLibraryCollection(libraryId: string, artifact: Record<string, unknown>): Promise<boolean> {
   const url = sharedApiUrl("/api/local-collection", libraryId);
   if (!url) return false;
   return postJson(url, { libraryId, artifact });
-}
-
-/**
- * Upload a collection directly to Vercel Blob from the browser, bypassing the
- * Vercel Function body limit. The browser SDK calls /api/local-collection/upload-url
- * twice: once to get a client token and once to confirm completion.
- *
- * Falls back to saveSharedLibraryCollection (server-side POST) if:
- *   - not running in a browser context
- *   - @vercel/blob/client is unavailable
- *   - the upload-url endpoint is unavailable (e.g., BLOB_READ_WRITE_TOKEN not set)
- *
- * Returns true on success, false on failure.
- */
-export async function uploadSharedLibraryCollectionClientSide(
-  libraryId: string,
-  artifact: Record<string, unknown>
-): Promise<boolean> {
-  if (typeof window === "undefined") return false;
-  const id = String(libraryId || "").trim();
-  if (!id) return false;
-
-  try {
-    const { upload } = await import("@vercel/blob/client");
-    const json = JSON.stringify(artifact);
-    const blob = new Blob([json], { type: "application/json" });
-    const handleUploadUrl = new URL("/api/local-collection/upload-url", window.location.origin).toString();
-    await upload(`libraries/${id}/collection.json`, blob, {
-      access: "public",
-      handleUploadUrl,
-    });
-    return true;
-  } catch {
-    return false;
-  }
 }
 

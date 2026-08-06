@@ -90,7 +90,7 @@ function toRecommendationRecord(record: LocalCollectionArtifact["acceptedRecords
   };
 }
 
-function buildRecommendationArtifact(artifact: LocalCollectionArtifact): LocalCollectionRecommendationArtifact {
+export function buildRecommendationArtifact(artifact: LocalCollectionArtifact): LocalCollectionRecommendationArtifact {
   return {
     schemaVersion: "local_collection_recommendation_v1",
     createdAt: new Date().toISOString(),
@@ -277,13 +277,9 @@ export async function publishSharedLocalCollectionRecommendationArtifact(library
   const id = String(libraryId || "").trim();
   if (!id) return false;
   const recommendationArtifact = buildRecommendationArtifact(artifact);
-
-  // Primary: client-side upload directly to Vercel Blob (handles any size)
-  const { uploadSharedLibraryCollectionClientSide } = await import("../librarySharing/client");
-  const uploaded = await uploadSharedLibraryCollectionClientSide(id, recommendationArtifact as Record<string, unknown>);
-  if (uploaded) return true;
-
-  // Fallback: server-side POST body (local dev / filesystem mode, small collections only)
+  // Server-side POST fallback (works in local_filesystem mode / local dev).
+  // In vercel_blob mode (production) the server rejects this; the caller
+  // is expected to also call uploadCollectionToBlob from blobUpload.web.ts.
   return saveSharedLibraryCollection(id, recommendationArtifact as Record<string, unknown>);
 }
 

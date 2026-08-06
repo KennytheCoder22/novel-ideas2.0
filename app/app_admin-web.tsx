@@ -24,6 +24,7 @@ import {
   LOCAL_COLLECTION_SUMMARY_STORAGE_KEY,
 } from "../lib/localCollection/storage";
 import { saveSharedLibraryConfig } from "../lib/librarySharing/client";
+import { uploadCollectionToBlob } from "../lib/librarySharing/blobUpload";
 import {
   ADMIN_CONFIG_CHANGED_EVENT,
   ADMIN_CONFIG_STORAGE_KEY,
@@ -695,6 +696,7 @@ export default function AdminWebScreen() {
             const sharedLibraryId = resolveLibraryId(config);
             if (sharedLibraryId) {
               await publishSharedLocalCollectionRecommendationArtifact(sharedLibraryId, artifact);
+              await uploadCollectionToBlob(sharedLibraryId, artifact);
             }
             localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
             setUploadedCollectionCount(artifact.summary.acceptedTitles);
