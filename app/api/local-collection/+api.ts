@@ -1,7 +1,6 @@
 import { ADMIN_SESSION_COOKIE_NAME } from "../../../lib/adminSession";
 import {
   loadSharedLibraryCollectionResult,
-  recordSharedLibraryCollectionUrl,
   saveSharedLibraryCollection,
 } from "../../../lib/librarySharing/storage";
 
@@ -21,7 +20,7 @@ function isAdminSession(request: Request): boolean {
  *   { artifact: null, artifactUrl: "https://..." }
  * where artifactUrl is the direct CDN URL for the client to fetch.
  * This avoids proxying potentially large collection payloads through the
- * Vercel Function (4.5 MB response body limit).
+ * API response path.
  *
  * In local_filesystem mode returns:
  *   { artifact: {...} }
@@ -51,16 +50,11 @@ export async function GET(request: Request): Promise<Response> {
 /**
  * POST /api/local-collection
  *
- * Two accepted request shapes (admin-only):
- *
- *   1. { libraryId, blobUrl }
- *      Records the Vercel Blob URL of a collection uploaded by the browser client.
- *      Used after a client-side upload via /api/local-collection/upload-url.
- *
- *   2. { libraryId, artifact }
- *      Stores the full artifact server-side. Only works in local_filesystem
- *      mode (local dev); in vercel_blob mode this is rejected because the
- *      payload may exceed the 4.5 MB request body limit.
+ * Accepted request shape (admin-only):
+ *   { libraryId, artifact }
+ * Stores the full artifact server-side. In vercel_blob mode this writes to
+ * Vercel Blob and updates a pointer blob; in local_filesystem mode this writes
+ * to disk for local development.
  */
 export async function POST(request: Request): Promise<Response> {
   try {
@@ -78,24 +72,13 @@ export async function POST(request: Request): Promise<Response> {
     }
     const libId = String(libraryId).trim();
 
-    // Shape 1: blobUrl from client upload
-    if (typeof b.blobUrl === "string" && b.blobUrl) {
-      await recordSharedLibraryCollectionUrl(libId, b.blobUrl);
-      return Response.json({ success: true });
-    }
-
-    // Shape 2: inline artifact (local dev / filesystem mode)
     if (b.artifact && typeof b.artifact === "object" && !Array.isArray(b.artifact)) {
       await saveSharedLibraryCollection(libId, b.artifact as Record<string, unknown>);
       return Response.json({ success: true });
     }
 
-    return Response.json({ error: "missing_blob_url_or_artifact" }, { status: 400 });
+    return Response.json({ error: "missing_artifact" }, { status: 400 });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    if (msg.startsWith("vercel_blob_mode:")) {
-      return Response.json({ error: "use_client_upload", detail: msg }, { status: 400 });
-    }
     console.error("local-collection POST error:", error);
     return Response.json({ error: "internal_server_error" }, { status: 500 });
   }

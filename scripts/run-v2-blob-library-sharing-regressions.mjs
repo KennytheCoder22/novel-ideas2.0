@@ -169,65 +169,44 @@ console.log("\n3. Config save/load (Vercel Blob)");
   );
 }
 
-// ── 4. Collection client upload ───────────────────────────────────────────────
-console.log("\n4. Collection client-side upload");
+// ── 4. Collection upload (server-side API) ───────────────────────────────────
+console.log("\n4. Collection upload via server API");
 {
   const storage = readSrc("lib/librarySharing/storage.ts");
   const client = readSrc("lib/librarySharing/client.ts");
-  const uploadUrl = readSrc("app/api/local-collection/upload-url/+api.ts");
+  const adminWeb = readSrc("app/app_admin-web.tsx");
 
   check(
     "collectionBlobPathname is exported from storage.ts",
     contains(storage, "export function collectionBlobPathname")
   );
   check(
-    "saveSharedLibraryCollection throws in vercel_blob mode",
-    contains(storage, "vercel_blob_mode: collections are uploaded client-side")
+    "saveSharedLibraryCollection writes collection.json in vercel_blob mode",
+    contains(storage, "putBlobJson(collectionBlobPathname(id), payload)")
+  );
+  check(
+    "saveSharedLibraryCollection updates collection pointer in vercel_blob mode",
+    contains(storage, "saveBlobCollectionPtr(id, url)")
   );
   check(
     "recordSharedLibraryCollectionUrl is exported",
     contains(storage, "export async function recordSharedLibraryCollectionUrl")
   );
   check(
-    "upload-url endpoint file exists",
-    uploadUrl !== null
+    "upload-url endpoint removed (no client Blob SDK flow)",
+    readSrc("app/api/local-collection/upload-url/+api.ts") === null
   );
   check(
-    "upload-url uses handleUpload from @vercel/blob/client",
-    contains(uploadUrl, "handleUpload") && contains(uploadUrl, "@vercel/blob/client")
+    "client.ts no longer imports @vercel/blob/client",
+    !contains(client, "@vercel/blob/client")
   );
   check(
-    "upload-url validates admin session before issuing token",
-    contains(uploadUrl, "isAdminSession") && contains(uploadUrl, "unauthorized")
+    "client.ts no longer exports uploadSharedLibraryCollectionClientSide",
+    !contains(client, "uploadSharedLibraryCollectionClientSide")
   );
   check(
-    "upload-url constrains pathname to collection pattern",
-    contains(uploadUrl, "COLLECTION_PATHNAME_RE") && contains(uploadUrl, "collection\\.json")
-  );
-  check(
-    "upload-url sets 25 MB ceiling on collection uploads",
-    contains(uploadUrl, "25 * 1024 * 1024") || contains(uploadUrl, "25_000_000")
-  );
-  check(
-    "onUploadCompleted calls recordSharedLibraryCollectionUrl",
-    contains(uploadUrl, "recordSharedLibraryCollectionUrl")
-  );
-  check(
-    "onUploadCompleted verifies pathname matches libraryId from tokenPayload",
-    contains(uploadUrl, "pathname mismatch") || contains(uploadUrl, "expectedPathname")
-  );
-  check(
-    "client.ts exports uploadSharedLibraryCollectionClientSide",
-    contains(client, "export async function uploadSharedLibraryCollectionClientSide")
-  );
-  check(
-    "uploadSharedLibraryCollectionClientSide uses @vercel/blob/client upload()",
-    contains(client, "@vercel/blob/client") && contains(client, "upload(")
-  );
-  check(
-    "uploadSharedLibraryCollectionClientSide falls back to saveSharedLibraryCollection on failure",
-    contains(client, "saveSharedLibraryCollection") &&
-    contains(client, "return false") // catches upload failure
+    "admin web no longer imports blobUpload helper",
+    !contains(adminWeb, "lib/librarySharing/blobUpload")
   );
 }
 
@@ -249,15 +228,15 @@ console.log("\n5. Collection GET endpoint response shape");
     contains(collectionApi, "artifact: result.artifact ?? null")
   );
   check(
-    "GET accepts blobUrl in POST body (shape 1)",
-    contains(collectionApi, "blobUrl")
+    "POST expects artifact in request body",
+    contains(collectionApi, "missing_artifact") || contains(collectionApi, "b.artifact")
   );
   check(
-    "POST blobUrl shape calls recordSharedLibraryCollectionUrl",
-    contains(collectionApi, "recordSharedLibraryCollectionUrl")
+    "POST does not accept blobUrl shape anymore",
+    !contains(collectionApi, "blobUrl")
   );
   check(
-    "POST artifact shape calls saveSharedLibraryCollection (local dev fallback)",
+    "POST artifact shape calls saveSharedLibraryCollection",
     contains(collectionApi, "saveSharedLibraryCollection")
   );
 }
@@ -386,8 +365,9 @@ console.log("\n9. Cross-device hydration path");
     contains(localCollectionStorage, "loadSharedLibraryCollection")
   );
   check(
-    "publishSharedLocalCollectionRecommendationArtifact tries client upload first",
-    contains(localCollectionStorage, "uploadSharedLibraryCollectionClientSide")
+    "publishSharedLocalCollectionRecommendationArtifact no longer uses client Blob SDK path",
+    !contains(localCollectionStorage, "uploadSharedLibraryCollectionClientSide") &&
+    !contains(localCollectionStorage, "blobUpload")
   );
   check(
     "publishSharedLocalCollectionRecommendationArtifact falls back to server-side POST",

@@ -277,9 +277,8 @@ export async function publishSharedLocalCollectionRecommendationArtifact(library
   const id = String(libraryId || "").trim();
   if (!id) return false;
   const recommendationArtifact = buildRecommendationArtifact(artifact);
-  // Server-side POST fallback (works in local_filesystem mode / local dev).
-  // In vercel_blob mode (production) the server rejects this; the caller
-  // is expected to also call uploadCollectionToBlob from blobUpload.web.ts.
+  // Persist through the shared API. In vercel_blob mode the API writes to
+  // Vercel Blob server-side; in local_filesystem mode it writes to disk.
   return saveSharedLibraryCollection(id, recommendationArtifact as Record<string, unknown>);
 }
 

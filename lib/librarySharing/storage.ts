@@ -3,10 +3,7 @@
  *
  * Storage modes:
  *   vercel_blob       — Primary: Vercel Blob (requires BLOB_READ_WRITE_TOKEN).
- *                       Config is PUT by the server. Collections are uploaded
- *                       directly by the browser client to bypass the 4.5 MB
- *                       Vercel Function body limit; this module stores a tiny
- *                       pointer blob after each client upload completes.
+ *                       Config and collection are PUT by the server.
  *   local_filesystem  — Local development only. Both config and collection are
  *                       written to disk under scripts/output/library-sharing/.
  *                       This mode is NOT suitable for Vercel serverless (read-
@@ -89,7 +86,7 @@ function collectionPtrBlobPathname(libraryId: string): string {
   return `libraries/${safePathSegment(libraryId)}/collection-ptr.json`;
 }
 
-/** Vercel Blob pathname for the collection artifact (uploaded by browser client). */
+/** Vercel Blob pathname for the collection artifact. */
 export function collectionBlobPathname(libraryId: string): string {
   return `libraries/${safePathSegment(libraryId)}/collection.json`;
 }
@@ -179,10 +176,7 @@ async function loadBlobConfig(libraryId: string): Promise<Record<string, unknown
 
 // ── Vercel Blob: collection pointer ──────────────────────────────────────────
 
-/**
- * Store a pointer to the collection blob URL after a client upload completes.
- * Called by the upload-url API endpoint's onUploadCompleted callback.
- */
+/** Store a pointer to the collection blob URL. */
 async function saveBlobCollectionPtr(libraryId: string, blobUrl: string): Promise<void> {
   await putBlobJson(collectionPtrBlobPathname(libraryId), {
     schemaVersion: "collection_ptr_v1",
@@ -281,9 +275,9 @@ export async function loadSharedLibraryConfigPayload(
 // ── Collection ────────────────────────────────────────────────────────────────
 
 /**
- * Record the Vercel Blob URL of a collection uploaded by the browser client.
- * Called by /api/local-collection/upload-url after upload completes.
- * No-op in local_filesystem mode (collection is written directly by saveSharedLibraryCollection).
+ * Record the Vercel Blob URL of a collection blob.
+ * No-op in local_filesystem mode (collection is written directly by
+ * saveSharedLibraryCollection).
  */
 export async function recordSharedLibraryCollectionUrl(
   libraryId: string,
@@ -304,9 +298,7 @@ export async function recordSharedLibraryCollectionUrl(
  *   - vercel_blob mode: artifact=null, artifactUrl=<CDN URL for client to fetch>
  *   - local_filesystem mode: artifact=<inline data>, artifactUrl=null
  *
- * The split is intentional: the collection can exceed Vercel Function's 4.5 MB
- * response limit, so in blob mode we return the URL and let the client fetch
- * directly from the CDN.
+ * In blob mode we return the URL and let the client fetch directly from the CDN.
  */
 export async function loadSharedLibraryCollectionResult(libraryId: string): Promise<{
   artifact: Record<string, unknown> | null;
@@ -347,9 +339,9 @@ export async function loadSharedLibraryCollectionPayload(
 }
 
 /**
- * Server-side collection save — LOCAL DEVELOPMENT only.
- * In vercel_blob mode, throws: collections are uploaded directly by the browser
- * client via /api/local-collection/upload-url to avoid the 4.5 MB body limit.
+ * Server-side collection save.
+ * In vercel_blob mode, writes the collection artifact to a deterministic blob
+ * path and updates the collection pointer.
  */
 export async function saveSharedLibraryCollection(
   libraryId: string,
@@ -358,10 +350,9 @@ export async function saveSharedLibraryCollection(
   const id = String(libraryId || "").trim();
   if (!id) throw new Error("missing_library_id");
   if (storageMode() === "vercel_blob") {
-    throw new Error(
-      "vercel_blob_mode: collections are uploaded client-side. " +
-      "Use /api/local-collection/upload-url instead of posting the artifact body."
-    );
+    const url = await putBlobJson(collectionBlobPathname(id), payload);
+    await saveBlobCollectionPtr(id, url);
+    return;
   }
   await saveFileAsset("collection", id, payload);
 }

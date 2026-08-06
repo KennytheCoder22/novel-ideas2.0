@@ -97,14 +97,12 @@ export async function loadSharedLibraryCollection(libraryId: string): Promise<Re
 }
 
 /**
- * Server-side fallback: POST the full collection artifact as a request body.
- * Works only in local_filesystem mode (local dev). In vercel_blob mode the
- * server will reject this with use_client_upload; callers should use
- * uploadCollectionToBlob (lib/librarySharing/blobUpload) instead.
+ * POST the full collection artifact as a request body. The API persists it
+ * according to active storage mode (Vercel Blob in production, filesystem in
+ * local development).
  */
 export async function saveSharedLibraryCollection(libraryId: string, artifact: Record<string, unknown>): Promise<boolean> {
   const url = sharedApiUrl("/api/local-collection", libraryId);
   if (!url) return false;
   return postJson(url, { libraryId, artifact });
 }
-
