@@ -26,6 +26,27 @@ function storageMode(): StorageMode {
   return "local_filesystem";
 }
 
+function normalizeLibraryId(libraryId: string): string {
+  return String(libraryId || "").trim();
+}
+
+export function getSharedLibraryConfigStorageTrace(libraryId: string): {
+  backend: StorageMode;
+  libraryId: string;
+  normalizedLibraryId: string;
+  configBlobPath: string;
+  configFilePath: string;
+} {
+  const id = normalizeLibraryId(libraryId);
+  return {
+    backend: storageMode(),
+    libraryId,
+    normalizedLibraryId: id,
+    configBlobPath: configBlobPathname(id || "unknown"),
+    configFilePath: filePath("config", id || "unknown"),
+  };
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Deterministic JSON serialization: object keys sorted recursively. */
@@ -118,8 +139,12 @@ async function loadBlobJson(pathname: string): Promise<unknown | null> {
       const resp = await fetch(url, { cache: "no-store" });
       if (resp.status === 404) return null;
       if (resp.ok) return resp.json().catch(() => null);
+      console.warn("[library-sharing][blob] direct_fetch_non_ok", {
+        pathname,
+        status: resp.status,
+      });
     } catch {
-      // network error — fall through to list()
+      console.warn("[library-sharing][blob] direct_fetch_failed", { pathname });
     }
   }
 
@@ -137,6 +162,7 @@ async function loadBlobJson(pathname: string): Promise<unknown | null> {
     if (!resp.ok) return null;
     return resp.json().catch(() => null);
   } catch {
+    console.warn("[library-sharing][blob] list_fallback_failed", { pathname });
     return null;
   }
 }
@@ -252,24 +278,43 @@ export async function saveSharedLibraryConfig(
   libraryId: string,
   payload: Record<string, unknown>
 ): Promise<void> {
-  const id = String(libraryId || "").trim();
+  const id = normalizeLibraryId(libraryId);
   if (!id) throw new Error("missing_library_id");
-  if (storageMode() === "vercel_blob") {
-    await saveBlobConfig(id, payload);
-  } else {
-    await saveFileAsset("config", id, payload);
+  const trace = getSharedLibraryConfigStorageTrace(id);
+  console.info("[library-sharing][config][save] start", trace);
+  try {
+    if (trace.backend === "vercel_blob") {
+      await saveBlobConfig(id, payload);
+    } else {
+      await saveFileAsset("config", id, payload);
+    }
+    console.info("[library-sharing][config][save] success", trace);
+  } catch (error) {
+    console.error("[library-sharing][config][save] failed", trace, error);
+    throw error;
   }
 }
 
 export async function loadSharedLibraryConfigPayload(
   libraryId: string
 ): Promise<Record<string, unknown> | null> {
-  const id = String(libraryId || "").trim();
+  const id = normalizeLibraryId(libraryId);
   if (!id) return null;
-  if (storageMode() === "vercel_blob") {
-    return loadBlobConfig(id);
+  const trace = getSharedLibraryConfigStorageTrace(id);
+  console.info("[library-sharing][config][load] start", trace);
+  try {
+    const config = trace.backend === "vercel_blob"
+      ? await loadBlobConfig(id)
+      : loadFileAsset("config", id);
+    console.info("[library-sharing][config][load] result", {
+      ...trace,
+      found: !!config,
+    });
+    return config;
+  } catch (error) {
+    console.error("[library-sharing][config][load] failed", trace, error);
+    throw error;
   }
-  return loadFileAsset("config", id);
 }
 
 // ── Collection ────────────────────────────────────────────────────────────────

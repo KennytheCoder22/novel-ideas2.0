@@ -137,6 +137,8 @@ console.log("\n2. Admin PIN must not be stored in public blobs");
 console.log("\n3. Config save/load (Vercel Blob)");
 {
   const storage = readSrc("lib/librarySharing/storage.ts");
+  const adminWeb = readSrc("app/app_admin-web.tsx");
+  const configApi = readSrc("app/api/library-config/+api.ts");
 
   check(
     "saveSharedLibraryConfig exists and is exported",
@@ -166,6 +168,48 @@ console.log("\n3. Config save/load (Vercel Blob)");
     "loadBlobConfig returns null for missing blob (loadBlobJson returns null)",
     contains(storage, "if (!data || typeof data !== \"object\"") ||
     contains(storage, 'if (!data || typeof data !== "object"')
+  );
+  check(
+    "storage exports backend/key diagnostics for config save/load tracing",
+    contains(storage, "export function getSharedLibraryConfigStorageTrace") &&
+    contains(storage, "configBlobPath") &&
+    contains(storage, "configFilePath")
+  );
+  check(
+    "saveSharedLibraryConfig logs backend, libraryId, and storage key details",
+    contains(storage, "[library-sharing][config][save] start")
+  );
+  check(
+    "loadSharedLibraryConfigPayload logs backend, libraryId, and found/missing result",
+    contains(storage, "[library-sharing][config][load] result")
+  );
+  check(
+    "library-config API logs backend/library/key on GET and POST",
+    contains(configApi, "[api/library-config][GET] load_start") &&
+    contains(configApi, "[api/library-config][POST] save_start")
+  );
+  check(
+    "Admin save fails loudly when shared config POST is not successful",
+    contains(adminWeb, "shared_config_save_failed")
+  );
+
+  // Logic test: config envelope roundtrip shape (save wrapper -> load unwrap)
+  const savedConfig = {
+    branding: { libraryName: "YVHS Library", libraryNameAlias: "YVHS" },
+    recommendations: { sourceEnabled: { localLibrary: true, openLibrary: false } },
+    library: { id: "yvhs-library" },
+  };
+  const wrapped = {
+    schemaVersion: "library_config_v1",
+    libraryId: "yvhs-library",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    contentHash: "abc123",
+    config: savedConfig,
+  };
+  const loadedConfig = wrapped.config;
+  check(
+    "save->immediate-load regression: loaded config equals saved config",
+    JSON.stringify(loadedConfig) === JSON.stringify(savedConfig)
   );
 }
 

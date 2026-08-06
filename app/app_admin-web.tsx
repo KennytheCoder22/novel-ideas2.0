@@ -774,7 +774,10 @@ export default function AdminWebScreen() {
         dispatchAdminConfigSavedWebEvent(serializedNext);
       }
       if (nextLibraryId) {
-        await saveSharedLibraryConfig(nextLibraryId, next as Record<string, unknown>);
+        const sharedSaved = await saveSharedLibraryConfig(nextLibraryId, next as Record<string, unknown>);
+        if (!sharedSaved) {
+          throw new Error("shared_config_save_failed");
+        }
       }
 
       setConfig(next);

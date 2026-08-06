@@ -11,14 +11,21 @@ function sharedApiUrl(path: string, libraryId: string): string | null {
   }
 }
 
-async function readJson(url: string): Promise<Record<string, unknown> | null> {
+async function readJson(url: string, context: string): Promise<Record<string, unknown> | null> {
   try {
     const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn(`[library-sharing][client][${context}] request_failed`, {
+        url,
+        status: response.status,
+      });
+      return null;
+    }
     const payload = await response.json().catch(() => null);
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
     return payload as Record<string, unknown>;
   } catch {
+    console.warn(`[library-sharing][client][${context}] request_error`, { url });
     return null;
   }
 }
@@ -35,7 +42,7 @@ async function readJsonAny(url: string): Promise<Record<string, unknown> | null>
   }
 }
 
-async function postJson(url: string, body: Record<string, unknown>): Promise<boolean> {
+async function postJson(url: string, body: Record<string, unknown>, context: string): Promise<boolean> {
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -43,8 +50,15 @@ async function postJson(url: string, body: Record<string, unknown>): Promise<boo
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (!response.ok) {
+      console.warn(`[library-sharing][client][${context}] request_failed`, {
+        url,
+        status: response.status,
+      });
+    }
     return response.ok;
   } catch {
+    console.warn(`[library-sharing][client][${context}] request_error`, { url });
     return false;
   }
 }
@@ -52,7 +66,7 @@ async function postJson(url: string, body: Record<string, unknown>): Promise<boo
 export async function loadSharedLibraryConfig(libraryId: string): Promise<Record<string, unknown> | null> {
   const url = sharedApiUrl("/api/library-config", libraryId);
   if (!url) return null;
-  const payload = await readJson(url);
+  const payload = await readJson(url, "loadSharedLibraryConfig");
   return payload && payload.config && typeof payload.config === "object" && !Array.isArray(payload.config)
     ? (payload.config as Record<string, unknown>)
     : null;
@@ -61,7 +75,7 @@ export async function loadSharedLibraryConfig(libraryId: string): Promise<Record
 export async function saveSharedLibraryConfig(libraryId: string, config: Record<string, unknown>): Promise<boolean> {
   const url = sharedApiUrl("/api/library-config", libraryId);
   if (!url) return false;
-  return postJson(url, { libraryId, config });
+  return postJson(url, { libraryId, config }, "saveSharedLibraryConfig");
 }
 
 /**
@@ -77,7 +91,7 @@ export async function saveSharedLibraryConfig(libraryId: string, config: Record<
 export async function loadSharedLibraryCollection(libraryId: string): Promise<Record<string, unknown> | null> {
   const url = sharedApiUrl("/api/local-collection", libraryId);
   if (!url) return null;
-  const payload = await readJson(url);
+  const payload = await readJson(url, "loadSharedLibraryCollection");
   if (!payload) return null;
 
   // Inline artifact (local dev / filesystem mode)
@@ -104,5 +118,5 @@ export async function loadSharedLibraryCollection(libraryId: string): Promise<Re
 export async function saveSharedLibraryCollection(libraryId: string, artifact: Record<string, unknown>): Promise<boolean> {
   const url = sharedApiUrl("/api/local-collection", libraryId);
   if (!url) return false;
-  return postJson(url, { libraryId, artifact });
+  return postJson(url, { libraryId, artifact }, "saveSharedLibraryCollection");
 }

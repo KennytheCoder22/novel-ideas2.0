@@ -1,5 +1,6 @@
 import { ADMIN_SESSION_COOKIE_NAME } from "../../../lib/adminSession";
 import {
+  getSharedLibraryConfigStorageTrace,
   loadSharedLibraryConfigPayload,
   saveSharedLibraryConfig,
 } from "../../../lib/librarySharing/storage";
@@ -22,7 +23,13 @@ export async function GET(request: Request): Promise<Response> {
       return Response.json({ error: "missing_library_id" }, { status: 400 });
     }
 
+    const trace = getSharedLibraryConfigStorageTrace(String(libraryId));
+    console.info("[api/library-config][GET] load_start", trace);
     const config = await loadSharedLibraryConfigPayload(libraryId);
+    console.info("[api/library-config][GET] load_result", {
+      ...trace,
+      found: !!config,
+    });
     return Response.json({ config: config ?? null });
   } catch (error) {
     console.error("library-config GET error:", error);
@@ -51,7 +58,10 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: "missing_or_invalid_config" }, { status: 400 });
     }
 
+    const trace = getSharedLibraryConfigStorageTrace(String(libraryId));
+    console.info("[api/library-config][POST] save_start", trace);
     await saveSharedLibraryConfig(String(libraryId), config as Record<string, unknown>);
+    console.info("[api/library-config][POST] save_success", trace);
     return Response.json({ success: true });
   } catch (error) {
     console.error("library-config POST error:", error);
