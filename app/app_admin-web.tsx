@@ -1398,10 +1398,33 @@ export default function AdminWebScreen() {
               {"Library ID: "}
               <Text style={{ fontWeight: "900", color: t.text }}>{libraryId}</Text>
             </Text>
-            <Text style={[styles.note, { color: t.subtext, marginTop: 4 }]}>
-              {"Hosted URL: "}
-              <Text style={{ fontWeight: "900", color: t.text }}>{hostedConfigUrl}</Text>
-            </Text>
+
+            <Text style={[styles.label, { color: t.muted, marginTop: 14, marginBottom: 4 }]}>Hosted Library URL</Text>
+            <View style={[styles.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, flexDirection: "row", alignItems: "center", paddingVertical: 10 }]}>
+              <Text style={{ flex: 1, color: t.text, fontSize: 13, fontFamily: "monospace" }} selectable>{hostedConfigUrl}</Text>
+            </View>
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
+              <TouchableOpacity
+                style={[styles.btn, { borderColor: t.accentBorder, backgroundColor: t.inputBg }]}
+                onPress={() => {
+                  if (typeof navigator !== "undefined" && navigator.clipboard) {
+                    navigator.clipboard.writeText(hostedConfigUrl).catch(() => {});
+                  }
+                }}
+              >
+                <Text style={[styles.btnText, { color: t.text }]}>Copy URL</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { borderColor: t.accentBorder, backgroundColor: t.inputBg }]}
+                onPress={() => {
+                  if (typeof window !== "undefined") {
+                    window.open(hostedConfigUrl, "_blank", "noopener,noreferrer");
+                  }
+                }}
+              >
+                <Text style={[styles.btnText, { color: t.text }]}>Open Library</Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={[styles.divider, { backgroundColor: t.cardBorder }]} />
 

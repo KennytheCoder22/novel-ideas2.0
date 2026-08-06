@@ -1466,6 +1466,7 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
     return init;
   });
   const [personalizedConfigLoading, setPersonalizedConfigLoading] = useState(Boolean(props.libraryId));
+  const [personalizedConfigError, setPersonalizedConfigError] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [deck, setDeck] = useState<DeckKey>("ms_hs");
@@ -1480,22 +1481,27 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
       setRuntimeLibraryId("");
       setRuntimeLibraryName("");
       setPersonalizedConfigLoading(false);
+      setPersonalizedConfigError(false);
       return;
     }
 
     let cancelled = false;
     setPersonalizedConfigLoading(true);
+    setPersonalizedConfigError(false);
 
     async function loadSharedConfig() {
       try {
         const shared = await loadSharedLibraryConfig(props.libraryId as string);
-        if (!cancelled && shared) {
+        if (cancelled) return;
+        if (shared) {
           const next = deepClone(shared);
           syncSchema(next);
           setConfig(next);
+        } else {
+          setPersonalizedConfigError(true);
         }
       } catch {
-        // Ignore shared-config load failures and fall back to local data.
+        if (!cancelled) setPersonalizedConfigError(true);
       } finally {
         if (!cancelled) setPersonalizedConfigLoading(false);
       }
@@ -1569,6 +1575,41 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.appBg, alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color={theme.highlight} />
         <Text style={{ color: theme.text, fontWeight: "900", marginTop: 12 }}>Loading your library…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (props.libraryId && personalizedConfigError) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.appBg, alignItems: "center", justifyContent: "center", paddingHorizontal: 28 }}>
+        <Text style={{ color: theme.text, fontWeight: "900", fontSize: 18, textAlign: "center", marginBottom: 10 }}>
+          This library's configuration could not be loaded.
+        </Text>
+        <Text style={{ color: theme.subtext ?? theme.muted, fontSize: 14, textAlign: "center", marginBottom: 24 }}>
+          Library: {props.libraryId}
+        </Text>
+        <TouchableOpacity
+          onPress={() => {
+            setPersonalizedConfigError(false);
+            setPersonalizedConfigLoading(true);
+            loadSharedLibraryConfig(props.libraryId as string).then((shared) => {
+              if (shared) {
+                const next = deepClone(shared);
+                syncSchema(next);
+                setConfig(next);
+              } else {
+                setPersonalizedConfigError(true);
+              }
+            }).catch(() => {
+              setPersonalizedConfigError(true);
+            }).finally(() => {
+              setPersonalizedConfigLoading(false);
+            });
+          }}
+          style={{ backgroundColor: theme.highlight, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 8 }}
+        >
+          <Text style={{ color: "#fff", fontWeight: "900", fontSize: 16 }}>Retry</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }

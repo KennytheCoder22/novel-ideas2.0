@@ -1,21 +1,23 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 type LibrarySharingStorageMode = "durable_postgres" | "local_filesystem";
 
-type CoreModule = {
-  stableStringify: (value: unknown) => string;
-};
-
-let cachedCore: CoreModule | null = null;
 let ensureTablesPromise: Promise<void> | null = null;
 
-async function loadCore(): Promise<CoreModule> {
-  if (cachedCore) return cachedCore;
-  const corePath = resolve(process.cwd(), "scripts", "human-review", "lib", "human-review-core.mjs");
-  cachedCore = (await import(pathToFileURL(corePath).toString())) as unknown as CoreModule;
-  return cachedCore;
+/** Deterministic JSON serialization: object keys are sorted recursively. */
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_key, val) => {
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      return Object.keys(val as object)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, k) => {
+          acc[k] = (val as Record<string, unknown>)[k];
+          return acc;
+        }, {});
+    }
+    return val as unknown;
+  });
 }
 
 function storageMode(): LibrarySharingStorageMode {
@@ -85,8 +87,7 @@ function sha256(value: string): string {
 async function savePostgresConfig(libraryId: string, payload: Record<string, unknown>): Promise<void> {
   await ensurePostgresTables();
   const { sql } = await import("@vercel/postgres");
-  const core = await loadCore();
-  const stableJson = core.stableStringify(payload);
+  const stableJson = stableStringify(payload);
   const contentSha256 = sha256(stableJson);
   await sql`
     INSERT INTO library_configs (library_id, content_sha256, payload_json, updated_at)
@@ -114,8 +115,7 @@ async function loadPostgresConfig(libraryId: string): Promise<Record<string, unk
 async function savePostgresCollection(libraryId: string, payload: Record<string, unknown>): Promise<void> {
   await ensurePostgresTables();
   const { sql } = await import("@vercel/postgres");
-  const core = await loadCore();
-  const stableJson = core.stableStringify(payload);
+  const stableJson = stableStringify(payload);
   const contentSha256 = sha256(stableJson);
   await sql`
     INSERT INTO library_collections (library_id, content_sha256, payload_json, updated_at)
