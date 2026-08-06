@@ -18,7 +18,23 @@ export type TitleTextKey = "white" | "black";
 export const WEB_HIGHLIGHT_CSS_VAR = "--highlight-color";
 export const DEFAULT_HIGHLIGHT_COLOR = "#fbbf24";
 export const ADMIN_CONFIG_STORAGE_KEY = "novelideas_admin_config";
+export const ADMIN_CONFIG_STORAGE_KEY_PREFIX = "novelideas_admin_config_v2";
+export const ADMIN_CONFIG_DEFAULT_SCOPE = "default";
 export const ADMIN_CONFIG_CHANGED_EVENT = "novelideas:admin-config-saved";
+
+export function normalizeAdminDraftScopeId(raw: string): string {
+  const normalized = String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 64);
+  return normalized || ADMIN_CONFIG_DEFAULT_SCOPE;
+}
+
+export function adminConfigStorageKeyForScope(scopeId: string): string {
+  const normalized = normalizeAdminDraftScopeId(scopeId);
+  return `${ADMIN_CONFIG_STORAGE_KEY_PREFIX}:${normalized}`;
+}
 
 type HighlightPreset = { highlight: string; lightBorder: string; highlightTextOn: string };
 
@@ -100,7 +116,8 @@ export function applyWebHighlightColor(highlightColor: string) {
 
 export function initWebHighlightColorFromStorage() {
   if (typeof document === "undefined" || typeof window === "undefined") return;
-  const raw = window.localStorage.getItem(ADMIN_CONFIG_STORAGE_KEY);
+  const defaultKey = adminConfigStorageKeyForScope(ADMIN_CONFIG_DEFAULT_SCOPE);
+  const raw = window.localStorage.getItem(defaultKey);
   if (!raw) {
     applyWebHighlightColor(DEFAULT_HIGHLIGHT_COLOR);
     return;

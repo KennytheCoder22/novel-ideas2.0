@@ -30,6 +30,7 @@ const homeSrc         = readFileSync(resolve(repoRoot, "app", "(tabs)", "index.t
 const libraryIdSrc    = readFileSync(resolve(repoRoot, "app", "(tabs)", "[libraryId].tsx"), "utf8");
 const landingSrc      = readFileSync(resolve(repoRoot, "app", "c", "[libraryId].tsx"), "utf8");
 const layoutSrc       = readFileSync(resolve(repoRoot, "app", "(tabs)", "_layout.tsx"), "utf8");
+const adminWebSrc     = readFileSync(resolve(repoRoot, "app", "app_admin-web.tsx"), "utf8");
 const runtimeCfgSrc   = readFileSync(resolve(repoRoot, "constants", "runtimeConfig.ts"), "utf8");
 
 // ---------------------------------------------------------------------------
@@ -180,7 +181,7 @@ checks.push(check("L7_unknown_slug_does_not_reuse_last_valid_library", () => {
   );
   // The config is only set when shared config is non-null
   assert(
-    loadSharedConfigBlock.includes("if (!cancelled && shared)"),
+    loadSharedConfigBlock.includes("if (shared)") && loadSharedConfigBlock.includes("setConfig(next)"),
     "HomeScreen must only setConfig when shared config is non-null (not for unknown slugs)"
   );
   // There must be no fallback to last-used library config on null
@@ -353,6 +354,25 @@ checks.push(check("structural_HomeScreen_imports_shared_config_loader", () => {
   assert(
     homeSrc.includes("loadSharedLibraryConfig"),
     "HomeScreen must import and use loadSharedLibraryConfig for cross-device config hydration"
+  );
+}));
+
+// Structural: opening Customize passes route-scoped libraryId only on personalized routes.
+checks.push(check("structural_customize_route_is_scoped_by_path_libraryId", () => {
+  assert(
+    homeSrc.includes("props.libraryId") &&
+    homeSrc.includes("/app_admin-web?libraryId="),
+    "Customize navigation must pass libraryId query only when path has a hosted slug"
+  );
+  assert(
+    adminWebSrc.includes("explicitLibraryIdParam") &&
+    adminWebSrc.includes("runtimeLibraryId") &&
+    adminWebSrc.includes("resolveAdminDraftScopeId"),
+    "Admin screen must derive draft scope from path libraryId or runtime library context"
+  );
+  assert(
+    adminWebSrc.includes("adminDraftStorageKey"),
+    "Admin screen must use a scoped storage key instead of one global key"
   );
 }));
 

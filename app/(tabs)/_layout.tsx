@@ -2,10 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Stack, useRouter } from "expo-router";
 import { Platform, Text, TouchableOpacity, View } from "react-native";
 
-import { getRuntimeLibraryName, subscribeRuntimeLibraryName } from "@/constants/runtimeConfig";
+import { getRuntimeLibraryId, getRuntimeLibraryName, subscribeRuntimeLibraryName } from "@/constants/runtimeConfig";
 import {
+  adminConfigStorageKeyForScope,
+  ADMIN_CONFIG_DEFAULT_SCOPE,
   ADMIN_CONFIG_CHANGED_EVENT,
-  ADMIN_CONFIG_STORAGE_KEY,
+  ADMIN_CONFIG_STORAGE_KEY_PREFIX,
   buildTheme,
   initWebHighlightColorFromStorage,
   type ThemeKey,
@@ -49,8 +51,11 @@ function safeReadWebAdminDraft(): any | null {
     if (Platform.OS !== "web") return null;
     // @ts-ignore
     if (typeof localStorage === "undefined") return null;
+    const runtimeLibraryId = String(getRuntimeLibraryId() || "").trim().toLowerCase();
+    const scopeId = runtimeLibraryId || ADMIN_CONFIG_DEFAULT_SCOPE;
+    const scopedKey = adminConfigStorageKeyForScope(scopeId);
     // @ts-ignore
-    const raw = localStorage.getItem(ADMIN_CONFIG_STORAGE_KEY);
+    const raw = localStorage.getItem(scopedKey);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -89,15 +94,19 @@ export default function TabLayout() {
     if (Platform.OS !== "web") return;
 
     const onStorage = (e: any) => {
-      if (e?.key === ADMIN_CONFIG_STORAGE_KEY) setWebDraftTick((n) => n + 1);
+      if (typeof e?.key === "string" && e.key.startsWith(`${ADMIN_CONFIG_STORAGE_KEY_PREFIX}:`)) {
+        setWebDraftTick((n) => n + 1);
+      }
     };
     const onAdminConfigSaved = () => setWebDraftTick((n) => n + 1);
+    const unsubscribeRuntime = subscribeRuntimeLibraryName(() => setWebDraftTick((n) => n + 1));
 
     // @ts-ignore
     window.addEventListener?.("storage", onStorage);
     // @ts-ignore
     window.addEventListener?.(ADMIN_CONFIG_CHANGED_EVENT, onAdminConfigSaved);
     return () => {
+      unsubscribeRuntime();
       // @ts-ignore
       window.removeEventListener?.("storage", onStorage);
       // @ts-ignore

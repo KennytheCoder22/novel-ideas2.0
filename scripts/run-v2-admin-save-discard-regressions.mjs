@@ -45,7 +45,9 @@ const repoRoot = resolve(scriptDir, "..");
 
 const {
   ADMIN_CONFIG_CHANGED_EVENT,
-  ADMIN_CONFIG_STORAGE_KEY,
+  ADMIN_CONFIG_STORAGE_KEY_PREFIX,
+  ADMIN_CONFIG_DEFAULT_SCOPE,
+  adminConfigStorageKeyForScope,
   autoChooseFontColor,
   isValidHex,
   mainKeyToHex,
@@ -318,7 +320,7 @@ checks.push(check("R9_no_routing_schema_changes", () => {
   assert(!persistBlock.includes("sourceEnabled"), "save helper must not mutate recommendation sourceEnabled");
   assert(!persistBlock.includes("human_review"), "save helper must not reference human review keys");
   assert(!persistBlock.includes("localLibrary"), "save helper must not reference localLibrary toggle");
-  assert(persistBlock.includes("ADMIN_CONFIG_STORAGE_KEY"), "save helper must keep using approved admin config storage key");
+  assert(persistBlock.includes("adminDraftStorageKey"), "save helper must persist scoped admin draft key");
 }));
 
 // R10 – Theme Reset changes draft only until Save
@@ -431,6 +433,58 @@ checks.push(check("structural_main_ui_no_admin_draft_sync", () => {
   assert(!homeSrc.includes("ADMIN_CONFIG_STORAGE_KEY"), "home screen must not read ADMIN_CONFIG_STORAGE_KEY");
   // Layout is allowed to read admin draft for header theme only (cosmetic).
   assert(layoutSrc.includes("window.addEventListener?.(ADMIN_CONFIG_CHANGED_EVENT"), "layout should still listen for saved-config event for header theme");
+}));
+
+// R11 – Scoped admin draft storage keys (default and hosted library drafts are isolated)
+checks.push(check("R11_scoped_admin_draft_storage_keys", () => {
+  const expectedDefaultKey = `${ADMIN_CONFIG_STORAGE_KEY_PREFIX}:${ADMIN_CONFIG_DEFAULT_SCOPE}`;
+  assert(
+    adminConfigStorageKeyForScope("default") === expectedDefaultKey,
+    "default scoped storage key mismatch"
+  );
+  assert(
+    adminConfigStorageKeyForScope("YVHS-Library") === `${ADMIN_CONFIG_STORAGE_KEY_PREFIX}:yvhs-library`,
+    "hosted scope storage key should normalize to lowercase slug"
+  );
+  assert(
+    adminWebSrc.includes("adminDraftStorageKey"),
+    "admin web must compute and use scoped adminDraftStorageKey"
+  );
+  assert(
+    adminWebSrc.includes("resolveAdminDraftScopeId"),
+    "admin web must derive scope from library context"
+  );
+}));
+
+// R12 – Reset to defaults is draft-only and leaves persistence for explicit Save
+checks.push(check("R12_reset_to_defaults_is_draft_only", () => {
+  const resetBlock = adminWebSrc.slice(
+    adminWebSrc.indexOf("const resetAllToDefaults"),
+    adminWebSrc.indexOf("const copyMainToHighlight")
+  );
+  assert(resetBlock.includes("setConfig(base)"), "reset must update draft config state");
+  assert(resetBlock.includes("setSaveStatus(\"idle\")"), "reset must not report saved state");
+  assert(!resetBlock.includes("saveSharedLibraryConfig("), "reset must not publish config");
+  assert(!resetBlock.includes("localStorage.setItem("), "reset must not persist draft automatically");
+  assert(!resetBlock.includes("savedConfigRef.current"), "reset must not rewrite saved baseline");
+  assert(!resetBlock.includes("setIsDirty(false)"), "reset must remain dirty until explicit save/discard");
+}));
+
+// R13 – Reset preserves hosted library ID scope while restoring defaults
+checks.push(check("R13_reset_preserves_hosted_library_scope_id", () => {
+  const resetBlock = adminWebSrc.slice(
+    adminWebSrc.indexOf("const resetAllToDefaults"),
+    adminWebSrc.indexOf("const copyMainToHighlight")
+  );
+  assert(
+    resetBlock.includes("if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE)"),
+    "reset must branch on hosted-vs-default admin scope"
+  );
+  assert(
+    resetBlock.includes("base.library.id = adminDraftScopeId") &&
+    resetBlock.includes("base.branding.libraryId = adminDraftScopeId"),
+    "hosted reset must preserve scope library ID in draft"
+  );
 }));
 
 // ---------------------------------------------------------------------------

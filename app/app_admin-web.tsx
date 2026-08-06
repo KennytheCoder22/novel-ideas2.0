@@ -22,13 +22,12 @@ import {
   publishSharedLocalCollectionRecommendationArtifact,
   readLocalCollectionAcceptedCountFromLocalStorage,
   SHARED_COLLECTION_POST_MAX_BYTES,
-  LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY,
-  LOCAL_COLLECTION_SUMMARY_STORAGE_KEY,
 } from "../lib/localCollection/storage";
 import { saveSharedLibraryConfig } from "../lib/librarySharing/client";
 import {
+  adminConfigStorageKeyForScope,
+  ADMIN_CONFIG_DEFAULT_SCOPE,
   ADMIN_CONFIG_CHANGED_EVENT,
-  ADMIN_CONFIG_STORAGE_KEY,
   applyWebHighlightColor,
   autoChooseFontColor,
   highlightKeyToHex,
@@ -44,7 +43,7 @@ import { ColorPickerField } from "../components/admin/ColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
 import { activateAdminSession, setPendingAdminRoute } from "../lib/adminSession";
-import { setRuntimeLibraryName } from "../constants/runtimeConfig";
+import { getRuntimeLibraryId } from "../constants/runtimeConfig";
 import {
   isPreviewAcceptanceHarnessEnabled,
   PREVIEW_ACCEPTANCE_PIN,
@@ -69,7 +68,6 @@ const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
 const DEFAULT_MAIN_COLOR = "#0b1e33";
 const DEFAULT_HIGHLIGHT_COLOR = "#fbbf24";
 const DEFAULT_FONT_COLOR = "#ffffff";
-const LOCAL_COLLECTION_DB_NAME = "novelideas_local_collection";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -147,6 +145,11 @@ function resolveLibraryId(cfg: any) {
   return explicitId || "demo";
 }
 
+function resolveAdminDraftScopeId(rawLibraryId?: string): string {
+  const normalized = normalizeLibraryId(String(rawLibraryId || "")).toLowerCase();
+  return normalized || ADMIN_CONFIG_DEFAULT_SCOPE;
+}
+
 function applyLocalCollectionOnlySourceRouting(sourceEnabled: RecommendationSourceEnabled): RecommendationSourceEnabled {
   if (!sourceEnabled.localLibrary) return sourceEnabled;
   return {
@@ -170,27 +173,6 @@ function localCollectionImportErrorMessage(error: unknown): string {
 
 function formatByteCount(bytes: number): string {
   return `${Math.max(0, Math.floor(bytes)).toLocaleString()} bytes`;
-}
-
-function clearLocalCollectionStorageArtifacts(): void {
-  try {
-    if (typeof localStorage !== "undefined") {
-      localStorage.removeItem("novelideas_local_collection");
-      localStorage.removeItem("novelideas_local_collection_csv");
-      localStorage.removeItem("novelideas_local_collection_import_report_v1");
-      localStorage.removeItem(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY);
-      localStorage.removeItem(LOCAL_COLLECTION_SUMMARY_STORAGE_KEY);
-    }
-  } catch {
-    // Ignore storage cleanup failures and continue resetting the rest.
-  }
-
-  try {
-    const indexedDb = (globalThis as any)?.indexedDB;
-    if (indexedDb?.deleteDatabase) indexedDb.deleteDatabase(LOCAL_COLLECTION_DB_NAME);
-  } catch {
-    // Ignore IndexedDB cleanup failures and continue resetting the rest.
-  }
 }
 
 function deckLabel(k: DeckKey) {
@@ -334,12 +316,12 @@ function loadColorHex(cfg: any): {
   };
 }
 
-function dispatchAdminConfigSavedWebEvent(serializedConfig: string) {
+function dispatchAdminConfigSavedWebEvent(storageKey: string, serializedConfig: string) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
     new CustomEvent(ADMIN_CONFIG_CHANGED_EVENT, {
       detail: {
-        key: ADMIN_CONFIG_STORAGE_KEY,
+        key: storageKey,
         value: serializedConfig,
       },
     })
@@ -420,6 +402,18 @@ const ADMIN_THEME = {
 export default function AdminWebScreen() {
   const isWeb = Platform.OS === "web";
   const params = useLocalSearchParams();
+  const explicitLibraryIdParam = Array.isArray((params as any)?.libraryId)
+    ? (params as any).libraryId[0]
+    : (params as any)?.libraryId;
+  const runtimeLibraryId = getRuntimeLibraryId();
+  const adminDraftScopeId = useMemo(
+    () => resolveAdminDraftScopeId(String(explicitLibraryIdParam || runtimeLibraryId || "")),
+    [explicitLibraryIdParam, runtimeLibraryId]
+  );
+  const adminDraftStorageKey = useMemo(
+    () => adminConfigStorageKeyForScope(adminDraftScopeId),
+    [adminDraftScopeId]
+  );
   const previewAcceptanceFlag = Array.isArray(params[PREVIEW_ACCEPTANCE_QUERY_PARAM])
     ? params[PREVIEW_ACCEPTANCE_QUERY_PARAM][0]
     : params[PREVIEW_ACCEPTANCE_QUERY_PARAM];
@@ -435,14 +429,26 @@ export default function AdminWebScreen() {
     const base = deepClone(configFile);
     try {
       if (isWeb && typeof localStorage !== "undefined") {
-        const saved = localStorage.getItem(ADMIN_CONFIG_STORAGE_KEY);
+        const saved = localStorage.getItem(adminDraftStorageKey);
         if (saved) {
           const parsed = JSON.parse(saved);
+          if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
+            parsed.library = (parsed.library && typeof parsed.library === "object") ? parsed.library : {};
+            parsed.branding = (parsed.branding && typeof parsed.branding === "object") ? parsed.branding : {};
+            parsed.library.id = resolveAdminDraftScopeId(parsed.library.id || adminDraftScopeId);
+            parsed.branding.libraryId = resolveAdminDraftScopeId(parsed.branding.libraryId || adminDraftScopeId);
+          }
           syncSchema(parsed);
           return parsed;
         }
       }
     } catch {}
+    if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
+      base.library = (base.library && typeof base.library === "object") ? base.library : {};
+      base.branding = (base.branding && typeof base.branding === "object") ? base.branding : {};
+      base.library.id = adminDraftScopeId;
+      base.branding.libraryId = adminDraftScopeId;
+    }
     syncSchema(base);
     return base;
   });
@@ -469,6 +475,40 @@ export default function AdminWebScreen() {
   const [previewAcceptanceMode, setPreviewAcceptanceMode] = useState<PreviewAcceptanceDashboardMode>(() =>
     readPreviewAcceptanceDashboardModeFromDocument()
   );
+
+  useEffect(() => {
+    if (!isWeb || typeof localStorage === "undefined") return;
+    const base = deepClone(configFile);
+    let next = base;
+    try {
+      const raw = localStorage.getItem(adminDraftStorageKey);
+      next = raw ? JSON.parse(raw) : base;
+    } catch {
+      next = base;
+    }
+    if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
+      next.library = (next.library && typeof next.library === "object") ? next.library : {};
+      next.branding = (next.branding && typeof next.branding === "object") ? next.branding : {};
+      next.library.id = resolveAdminDraftScopeId(next.library.id || adminDraftScopeId);
+      next.branding.libraryId = resolveAdminDraftScopeId(next.branding.libraryId || adminDraftScopeId);
+    }
+    syncSchema(next);
+    const colors = loadColorHex(next);
+    setConfig(next);
+    setMainColorHex(colors.mainColorHex);
+    setHighlightColorHex(colors.highlightColorHex);
+    setFontColorHex(colors.fontColorHex);
+    setAutoFontColor(colors.autoFontColorEnabled);
+    savedConfigRef.current = JSON.stringify(next);
+    savedColorsRef.current = {
+      mainColorHex: colors.mainColorHex,
+      highlightColorHex: colors.highlightColorHex,
+      fontColorHex: colors.fontColorHex,
+      autoFontColor: colors.autoFontColorEnabled,
+    };
+    setSaveStatus("idle");
+    setIsDirty(false);
+  }, [isWeb, adminDraftScopeId, adminDraftStorageKey]);
 
   useEffect(() => {
     const configChanged = JSON.stringify(config) !== savedConfigRef.current;
@@ -575,18 +615,18 @@ export default function AdminWebScreen() {
 
   const resetAllToDefaults = useCallback(() => {
     const base = deepClone(configFile);
+    if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
+      base.library = (base.library && typeof base.library === "object") ? base.library : {};
+      base.branding = (base.branding && typeof base.branding === "object") ? base.branding : {};
+      base.library.id = adminDraftScopeId;
+      base.branding.libraryId = adminDraftScopeId;
+    }
     syncSchema(base);
     const colors = loadColorHex(base);
-    const serialized = JSON.stringify(base);
-    const resetLibraryId = resolveLibraryId(base);
 
     if (isWeb && typeof localStorage !== "undefined") {
-      clearLocalCollectionStorageArtifacts();
-      localStorage.setItem(ADMIN_CONFIG_STORAGE_KEY, serialized);
       applyWebHighlightColor(colors.highlightColorHex);
-      dispatchAdminConfigSavedWebEvent(serialized);
     }
-    void saveSharedLibraryConfig(resetLibraryId, base as Record<string, unknown>);
 
     setConfig(base);
     setMainColorHex(colors.mainColorHex);
@@ -595,18 +635,8 @@ export default function AdminWebScreen() {
     setAutoFontColor(colors.autoFontColorEnabled);
     setUploadedCollectionCount(0);
     setImportStatus({ phase: "idle", pct: 0, label: "" });
-    setSaveStatus("saved");
-    savedConfigRef.current = serialized;
-    savedColorsRef.current = {
-      mainColorHex: colors.mainColorHex,
-      highlightColorHex: colors.highlightColorHex,
-      fontColorHex: colors.fontColorHex,
-      autoFontColor: colors.autoFontColorEnabled,
-    };
-    setIsDirty(false);
-    setRuntimeLibraryName("");
-    setTimeout(() => setSaveStatus((s) => (s === "saved" ? "idle" : s)), 3000);
-  }, [isWeb]);
+    setSaveStatus("idle");
+  }, [adminDraftScopeId, isWeb]);
 
   const copyMainToHighlight = useCallback(() => setHighlightColorHex(mainColorHex), [mainColorHex]);
   const copyHighlightToMain = useCallback(() => {
@@ -769,9 +799,9 @@ export default function AdminWebScreen() {
       const nextLibraryId = resolveLibraryId(next);
 
       if (isWeb && typeof localStorage !== "undefined") {
-        localStorage.setItem(ADMIN_CONFIG_STORAGE_KEY, serializedNext);
+        localStorage.setItem(adminDraftStorageKey, serializedNext);
         applyWebHighlightColor(next?.branding?.highlightColorHex || highlightColorHex);
-        dispatchAdminConfigSavedWebEvent(serializedNext);
+        dispatchAdminConfigSavedWebEvent(adminDraftStorageKey, serializedNext);
       }
       if (nextLibraryId) {
         const sharedSaved = await saveSharedLibraryConfig(nextLibraryId, next as Record<string, unknown>);
@@ -795,7 +825,7 @@ export default function AdminWebScreen() {
       setSaveStatus("error");
       return false;
     }
-  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb, libraryId]);
+  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb, libraryId, adminDraftStorageKey]);
 
   const onSave = useCallback(() => {
     void persistDraftConfig();
@@ -829,7 +859,7 @@ export default function AdminWebScreen() {
   const onDiscard = useCallback(() => {
     try {
       if (isWeb && typeof localStorage !== "undefined") {
-        const saved = localStorage.getItem(ADMIN_CONFIG_STORAGE_KEY);
+        const saved = localStorage.getItem(adminDraftStorageKey);
         if (saved) {
           const parsed = JSON.parse(saved);
           syncSchema(parsed);
@@ -869,7 +899,7 @@ export default function AdminWebScreen() {
     };
     setIsDirty(false);
     setSaveStatus("idle");
-  }, [isWeb]);
+  }, [isWeb, adminDraftStorageKey]);
 
   // ---------------------------------------------------------------------------
   // Non-web fallback

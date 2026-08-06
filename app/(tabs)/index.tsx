@@ -1730,7 +1730,10 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   setAdminPinError(null);
                   setAdminMenuUnlocked(true);
                   if (Platform.OS === "web") {
-                    router.push("/app_admin-web");
+                    const adminRoute = props.libraryId
+                      ? `/app_admin-web?libraryId=${encodeURIComponent(String(props.libraryId))}`
+                      : "/app_admin-web";
+                    router.push(adminRoute as any);
                   } else {
                     setAdminUnlocked(true);
                   }
@@ -1761,7 +1764,10 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     }
     if (Platform.OS === "web") {
       try {
-        router.push("/app_admin-web");
+        const adminRoute = props.libraryId
+          ? `/app_admin-web?libraryId=${encodeURIComponent(String(props.libraryId))}`
+          : "/app_admin-web";
+        router.push(adminRoute as any);
         return;
       } catch {}
     }
