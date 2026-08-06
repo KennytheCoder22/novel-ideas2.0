@@ -277,6 +277,13 @@ export async function publishSharedLocalCollectionRecommendationArtifact(library
   const id = String(libraryId || "").trim();
   if (!id) return false;
   const recommendationArtifact = buildRecommendationArtifact(artifact);
+
+  // Primary: client-side upload directly to Vercel Blob (handles any size)
+  const { uploadSharedLibraryCollectionClientSide } = await import("../librarySharing/client");
+  const uploaded = await uploadSharedLibraryCollectionClientSide(id, recommendationArtifact as Record<string, unknown>);
+  if (uploaded) return true;
+
+  // Fallback: server-side POST body (local dev / filesystem mode, small collections only)
   return saveSharedLibraryCollection(id, recommendationArtifact as Record<string, unknown>);
 }
 

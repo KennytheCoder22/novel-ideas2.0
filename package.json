@@ -57,6 +57,7 @@
     "test:v2:local-collection-import-foundation": "node scripts/run-v2-local-collection-import-foundation-regressions.mjs",
     "test:v2:admin-save-discard": "node scripts/run-v2-admin-save-discard-regressions.mjs",
     "test:v2:hosted-library-context-leakage": "node scripts/run-v2-hosted-library-context-leakage-regressions.mjs",
+    "test:v2:blob-library-sharing": "node scripts/run-v2-blob-library-sharing-regressions.mjs",
     "human-review:capture-snapshots": "node scripts/run-v2-human-review-capture-snapshot.mjs",
     "human-review:append-review": "node scripts/run-v2-human-review-append-review.mjs",
     "human-review:export-records": "node scripts/run-v2-human-review-export-records.mjs",
@@ -88,13 +89,14 @@
     "delta:live-evidence": "node scripts/live-evidence/run-frozen-live-delta.mjs"
   },
   "dependencies": {
-    "@vercel/postgres": "^0.10.0",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.0.1",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
+    "@vercel/blob": "^2.6.1",
+    "@vercel/postgres": "^0.10.0",
     "expo": "~54.0.31",
     "expo-camera": "~17.0.10",
     "expo-clipboard": "~8.0.8",
@@ -121,8 +123,8 @@
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
-    "@vercel/node": "^5.3.24",
     "@types/react": "~19.1.0",
+    "@vercel/node": "^5.3.24",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"

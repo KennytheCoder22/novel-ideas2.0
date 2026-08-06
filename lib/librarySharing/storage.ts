@@ -1,11 +1,37 @@
+/**
+ * lib/librarySharing/storage.ts — Server-side shared library storage.
+ *
+ * Storage modes:
+ *   vercel_blob       — Primary: Vercel Blob (requires BLOB_READ_WRITE_TOKEN).
+ *                       Config is PUT by the server. Collections are uploaded
+ *                       directly by the browser client to bypass the 4.5 MB
+ *                       Vercel Function body limit; this module stores a tiny
+ *                       pointer blob after each client upload completes.
+ *   local_filesystem  — Local development only. Both config and collection are
+ *                       written to disk under scripts/output/library-sharing/.
+ *                       This mode is NOT suitable for Vercel serverless (read-
+ *                       only filesystem after deployment).
+ *
+ * Admin PIN policy: admin.pin is stripped from every config before it is
+ * written to any public storage backend.
+ */
+
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-type LibrarySharingStorageMode = "durable_postgres" | "local_filesystem";
 
-let ensureTablesPromise: Promise<void> | null = null;
+// ── Storage mode ──────────────────────────────────────────────────────────────
 
-/** Deterministic JSON serialization: object keys are sorted recursively. */
+type StorageMode = "vercel_blob" | "local_filesystem";
+
+function storageMode(): StorageMode {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return "vercel_blob";
+  return "local_filesystem";
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Deterministic JSON serialization: object keys sorted recursively. */
 function stableStringify(value: unknown): string {
   return JSON.stringify(value, (_key, val) => {
     if (val && typeof val === "object" && !Array.isArray(val)) {
@@ -20,11 +46,160 @@ function stableStringify(value: unknown): string {
   });
 }
 
-function storageMode(): LibrarySharingStorageMode {
-  if (process.env.LIBRARY_SHARING_STORAGE_MODE === "local_filesystem") return "local_filesystem";
-  if (process.env.POSTGRES_URL) return "durable_postgres";
-  return "local_filesystem";
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
 }
+
+/**
+ * Strip admin.pin from a config before writing to any public storage.
+ * pinEnabled flag is preserved so the feature state is visible to the admin
+ * but the actual PIN is never in a public blob.
+ */
+export function sanitizeConfigForPublicStorage(config: Record<string, unknown>): Record<string, unknown> {
+  const clone = JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
+  if (clone.admin && typeof clone.admin === "object" && !Array.isArray(clone.admin)) {
+    delete (clone.admin as Record<string, unknown>).pin;
+  }
+  return clone;
+}
+
+// ── Vercel Blob helpers ───────────────────────────────────────────────────────
+
+/**
+ * Sanitize a library ID into a safe URL path segment.
+ * Keeps only [a-z0-9-_] and truncates to 128 chars to avoid excessively long paths.
+ */
+function safePathSegment(id: string): string {
+  return String(id || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 128) || "unknown";
+}
+
+/** Vercel Blob pathname for library config. */
+function configBlobPathname(libraryId: string): string {
+  return `libraries/${safePathSegment(libraryId)}/config.json`;
+}
+
+/** Vercel Blob pathname for the collection pointer (small pointer to the actual collection blob). */
+function collectionPtrBlobPathname(libraryId: string): string {
+  return `libraries/${safePathSegment(libraryId)}/collection-ptr.json`;
+}
+
+/** Vercel Blob pathname for the collection artifact (uploaded by browser client). */
+export function collectionBlobPathname(libraryId: string): string {
+  return `libraries/${safePathSegment(libraryId)}/collection.json`;
+}
+
+/**
+ * Derive the public Vercel Blob base URL from the BLOB_READ_WRITE_TOKEN.
+ * Token format: vercel_blob_rw_{storeId}_{randomSuffix}
+ * This is documented at https://vercel.com/docs/storage/vercel-blob/using-blob-sdk
+ */
+function blobStoreBaseUrl(): string | null {
+  const token = process.env.BLOB_READ_WRITE_TOKEN || "";
+  // Expected format: vercel_blob_rw_{storeId}_{rest}
+  const parts = token.split("_");
+  if (parts[0] !== "vercel" || parts[1] !== "blob" || parts[2] !== "rw" || !parts[3]) return null;
+  return `https://${parts[3]}.public.blob.vercel-storage.com`;
+}
+
+/**
+ * Fetch a blob by pathname and return parsed JSON, or null if absent/malformed.
+ * Uses the deterministically derived public URL when possible (1 network call).
+ * Falls back to list() if the token format is unexpected (2 network calls).
+ */
+async function loadBlobJson(pathname: string): Promise<unknown | null> {
+  // Fast path: derive URL from token
+  const base = blobStoreBaseUrl();
+  if (base) {
+    const url = `${base}/${pathname}`;
+    try {
+      const resp = await fetch(url, { cache: "no-store" });
+      if (resp.status === 404) return null;
+      if (resp.ok) return resp.json().catch(() => null);
+    } catch {
+      // network error — fall through to list()
+    }
+  }
+
+  // Fallback: list() to resolve URL
+  try {
+    const { list } = await import("@vercel/blob");
+    const { blobs } = await list({
+      prefix: pathname,
+      limit: 1,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+    const found = blobs.find((b) => b.pathname === pathname);
+    if (!found) return null;
+    const resp = await fetch(found.url, { cache: "no-store" });
+    if (!resp.ok) return null;
+    return resp.json().catch(() => null);
+  } catch {
+    return null;
+  }
+}
+
+/** Write a JSON value to a Vercel Blob pathname (server-side, overwrites). */
+async function putBlobJson(pathname: string, value: unknown): Promise<string> {
+  const { put } = await import("@vercel/blob");
+  const blob = await put(pathname, JSON.stringify(value), {
+    access: "public",
+    addRandomSuffix: false,
+    contentType: "application/json",
+    token: process.env.BLOB_READ_WRITE_TOKEN,
+  });
+  return blob.url;
+}
+
+// ── Vercel Blob: config ───────────────────────────────────────────────────────
+
+async function saveBlobConfig(libraryId: string, payload: Record<string, unknown>): Promise<void> {
+  const sanitized = sanitizeConfigForPublicStorage(payload);
+  await putBlobJson(configBlobPathname(libraryId), {
+    schemaVersion: "library_config_v1",
+    libraryId,
+    updatedAt: new Date().toISOString(),
+    contentHash: sha256(stableStringify(sanitized)),
+    config: sanitized,
+  });
+}
+
+async function loadBlobConfig(libraryId: string): Promise<Record<string, unknown> | null> {
+  const data = await loadBlobJson(configBlobPathname(libraryId));
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const wrapper = data as Record<string, unknown>;
+  if (!wrapper.config || typeof wrapper.config !== "object" || Array.isArray(wrapper.config)) return null;
+  return wrapper.config as Record<string, unknown>;
+}
+
+// ── Vercel Blob: collection pointer ──────────────────────────────────────────
+
+/**
+ * Store a pointer to the collection blob URL after a client upload completes.
+ * Called by the upload-url API endpoint's onUploadCompleted callback.
+ */
+async function saveBlobCollectionPtr(libraryId: string, blobUrl: string): Promise<void> {
+  await putBlobJson(collectionPtrBlobPathname(libraryId), {
+    schemaVersion: "collection_ptr_v1",
+    libraryId,
+    blobUrl,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+async function loadBlobCollectionUrl(libraryId: string): Promise<string | null> {
+  const data = await loadBlobJson(collectionPtrBlobPathname(libraryId));
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const ptr = data as Record<string, unknown>;
+  return typeof ptr.blobUrl === "string" ? ptr.blobUrl : null;
+}
+
+// ── Local filesystem fallback (local dev only) ────────────────────────────────
 
 function fileRoot(): string {
   return resolve(process.cwd(), "scripts", "output", "library-sharing");
@@ -44,105 +219,29 @@ function writeJson(path: string, value: unknown): void {
 }
 
 function readJson<T>(path: string): T | null {
-  if (!existsSync(path)) return null;
-  return JSON.parse(readFileSync(path, "utf8")) as T;
+  try {
+    if (!existsSync(path)) return null;
+    return JSON.parse(readFileSync(path, "utf8")) as T;
+  } catch {
+    return null;
+  }
 }
 
 function filePath(kind: "config" | "collection", libraryId: string): string {
-  return resolve(fileRoot(), kind === "config" ? "configs" : "collections", `${safeLibraryFileName(libraryId)}.json`);
+  return resolve(
+    fileRoot(),
+    kind === "config" ? "configs" : "collections",
+    `${safeLibraryFileName(libraryId)}.json`
+  );
 }
 
-async function ensurePostgresTables(): Promise<void> {
-  if (!process.env.POSTGRES_URL) return;
-  if (!ensureTablesPromise) {
-    ensureTablesPromise = (async () => {
-      const { sql } = await import("@vercel/postgres");
-      await sql`
-        CREATE TABLE IF NOT EXISTS library_configs (
-          library_id TEXT NOT NULL PRIMARY KEY,
-          content_sha256 TEXT NOT NULL,
-          payload_json JSONB NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `;
-      await sql`
-        CREATE TABLE IF NOT EXISTS library_collections (
-          library_id TEXT NOT NULL PRIMARY KEY,
-          content_sha256 TEXT NOT NULL,
-          payload_json JSONB NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `;
-    })();
-  }
-  await ensureTablesPromise;
-}
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-async function savePostgresConfig(libraryId: string, payload: Record<string, unknown>): Promise<void> {
-  await ensurePostgresTables();
-  const { sql } = await import("@vercel/postgres");
-  const stableJson = stableStringify(payload);
-  const contentSha256 = sha256(stableJson);
-  await sql`
-    INSERT INTO library_configs (library_id, content_sha256, payload_json, updated_at)
-    VALUES (${libraryId}, ${contentSha256}, ${JSON.stringify(payload)}::jsonb, NOW())
-    ON CONFLICT (library_id) DO UPDATE
-      SET content_sha256 = EXCLUDED.content_sha256,
-          payload_json = EXCLUDED.payload_json,
-          updated_at = NOW()
-  `;
-}
-
-async function loadPostgresConfig(libraryId: string): Promise<Record<string, unknown> | null> {
-  await ensurePostgresTables();
-  const { sql } = await import("@vercel/postgres");
-  const result = await sql`
-    SELECT payload_json FROM library_configs WHERE library_id = ${libraryId}
-  `;
-  const payload = result.rows[0]?.payload_json;
-  if (!payload) return null;
-  if (typeof payload === "string") return JSON.parse(payload) as Record<string, unknown>;
-  if (payload && typeof payload === "object" && !Array.isArray(payload)) return payload as Record<string, unknown>;
-  return null;
-}
-
-async function savePostgresCollection(libraryId: string, payload: Record<string, unknown>): Promise<void> {
-  await ensurePostgresTables();
-  const { sql } = await import("@vercel/postgres");
-  const stableJson = stableStringify(payload);
-  const contentSha256 = sha256(stableJson);
-  await sql`
-    INSERT INTO library_collections (library_id, content_sha256, payload_json, updated_at)
-    VALUES (${libraryId}, ${contentSha256}, ${JSON.stringify(payload)}::jsonb, NOW())
-    ON CONFLICT (library_id) DO UPDATE
-      SET content_sha256 = EXCLUDED.content_sha256,
-          payload_json = EXCLUDED.payload_json,
-          updated_at = NOW()
-  `;
-}
-
-async function loadPostgresCollection(libraryId: string): Promise<Record<string, unknown> | null> {
-  await ensurePostgresTables();
-  const { sql } = await import("@vercel/postgres");
-  const result = await sql`
-    SELECT payload_json FROM library_collections WHERE library_id = ${libraryId}
-  `;
-  const payload = result.rows[0]?.payload_json;
-  if (!payload) return null;
-  if (typeof payload === "string") return JSON.parse(payload) as Record<string, unknown>;
-  if (payload && typeof payload === "object" && !Array.isArray(payload)) return payload as Record<string, unknown>;
-  return null;
-}
-
-async function saveFileAsset(kind: "config" | "collection", libraryId: string, payload: Record<string, unknown>): Promise<void> {
-  const now = new Date().toISOString();
-  writeJson(filePath(kind, libraryId), { libraryId, updatedAt: now, payload });
+async function saveFileAsset(
+  kind: "config" | "collection",
+  libraryId: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  const stored = kind === "config" ? sanitizeConfigForPublicStorage(payload) : payload;
+  writeJson(filePath(kind, libraryId), { libraryId, updatedAt: new Date().toISOString(), payload: stored });
 }
 
 function loadFileAsset(kind: "config" | "collection", libraryId: string): Record<string, unknown> | null {
@@ -151,40 +250,118 @@ function loadFileAsset(kind: "config" | "collection", libraryId: string): Record
   return value.payload;
 }
 
-export async function saveSharedLibraryConfig(libraryId: string, payload: Record<string, unknown>): Promise<void> {
+// ── Public API ────────────────────────────────────────────────────────────────
+
+// ── Config ────────────────────────────────────────────────────────────────────
+
+export async function saveSharedLibraryConfig(
+  libraryId: string,
+  payload: Record<string, unknown>
+): Promise<void> {
   const id = String(libraryId || "").trim();
   if (!id) throw new Error("missing_library_id");
-  if (storageMode() === "durable_postgres") {
-    await savePostgresConfig(id, payload);
-    return;
+  if (storageMode() === "vercel_blob") {
+    await saveBlobConfig(id, payload);
+  } else {
+    await saveFileAsset("config", id, payload);
   }
-  await saveFileAsset("config", id, payload);
 }
 
-export async function loadSharedLibraryConfigPayload(libraryId: string): Promise<Record<string, unknown> | null> {
+export async function loadSharedLibraryConfigPayload(
+  libraryId: string
+): Promise<Record<string, unknown> | null> {
   const id = String(libraryId || "").trim();
   if (!id) return null;
-  const payload = storageMode() === "durable_postgres"
-    ? await loadPostgresConfig(id)
-    : loadFileAsset("config", id);
-  return payload || null;
+  if (storageMode() === "vercel_blob") {
+    return loadBlobConfig(id);
+  }
+  return loadFileAsset("config", id);
 }
 
-export async function saveSharedLibraryCollection(libraryId: string, payload: Record<string, unknown>): Promise<void> {
+// ── Collection ────────────────────────────────────────────────────────────────
+
+/**
+ * Record the Vercel Blob URL of a collection uploaded by the browser client.
+ * Called by /api/local-collection/upload-url after upload completes.
+ * No-op in local_filesystem mode (collection is written directly by saveSharedLibraryCollection).
+ */
+export async function recordSharedLibraryCollectionUrl(
+  libraryId: string,
+  blobUrl: string
+): Promise<void> {
   const id = String(libraryId || "").trim();
   if (!id) throw new Error("missing_library_id");
-  if (storageMode() === "durable_postgres") {
-    await savePostgresCollection(id, payload);
-    return;
+  if (!blobUrl || typeof blobUrl !== "string") throw new Error("missing_blob_url");
+  if (storageMode() === "vercel_blob") {
+    await saveBlobCollectionPtr(id, blobUrl);
+  }
+  // local_filesystem: collection is stored inline; no pointer needed
+}
+
+/**
+ * Load the collection for a library.
+ * Returns { artifact, artifactUrl } — exactly one will be non-null:
+ *   - vercel_blob mode: artifact=null, artifactUrl=<CDN URL for client to fetch>
+ *   - local_filesystem mode: artifact=<inline data>, artifactUrl=null
+ *
+ * The split is intentional: the collection can exceed Vercel Function's 4.5 MB
+ * response limit, so in blob mode we return the URL and let the client fetch
+ * directly from the CDN.
+ */
+export async function loadSharedLibraryCollectionResult(libraryId: string): Promise<{
+  artifact: Record<string, unknown> | null;
+  artifactUrl: string | null;
+}> {
+  const id = String(libraryId || "").trim();
+  if (!id) return { artifact: null, artifactUrl: null };
+
+  if (storageMode() === "vercel_blob") {
+    const artifactUrl = await loadBlobCollectionUrl(id);
+    return { artifact: null, artifactUrl: artifactUrl ?? null };
+  }
+
+  const artifact = loadFileAsset("collection", id);
+  return { artifact, artifactUrl: null };
+}
+
+/**
+ * Convenience wrapper: returns inline artifact data, or fetches from blob URL
+ * if the artifact is stored as a blob. May return null for very large blobs
+ * that time out or if the blob is absent.
+ *
+ * Prefer loadSharedLibraryCollectionResult when you need the URL directly
+ * (e.g. in the GET API endpoint to avoid proxying large payloads).
+ */
+export async function loadSharedLibraryCollectionPayload(
+  libraryId: string
+): Promise<Record<string, unknown> | null> {
+  const result = await loadSharedLibraryCollectionResult(libraryId);
+  if (result.artifact) return result.artifact;
+  if (result.artifactUrl) {
+    const data = await loadBlobJson(result.artifactUrl);
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      return data as Record<string, unknown>;
+    }
+  }
+  return null;
+}
+
+/**
+ * Server-side collection save — LOCAL DEVELOPMENT only.
+ * In vercel_blob mode, throws: collections are uploaded directly by the browser
+ * client via /api/local-collection/upload-url to avoid the 4.5 MB body limit.
+ */
+export async function saveSharedLibraryCollection(
+  libraryId: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  const id = String(libraryId || "").trim();
+  if (!id) throw new Error("missing_library_id");
+  if (storageMode() === "vercel_blob") {
+    throw new Error(
+      "vercel_blob_mode: collections are uploaded client-side. " +
+      "Use /api/local-collection/upload-url instead of posting the artifact body."
+    );
   }
   await saveFileAsset("collection", id, payload);
-}
-
-export async function loadSharedLibraryCollectionPayload(libraryId: string): Promise<Record<string, unknown> | null> {
-  const id = String(libraryId || "").trim();
-  if (!id) return null;
-  const payload = storageMode() === "durable_postgres"
-    ? await loadPostgresCollection(id)
-    : loadFileAsset("collection", id);
-  return payload || null;
 }
