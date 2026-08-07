@@ -23,6 +23,13 @@ function newCorrelationId(): string {
   return `cfg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function utf8ByteLength(value: string): number {
+  try {
+    if (typeof TextEncoder !== "undefined") return new TextEncoder().encode(value).length;
+  } catch {}
+  return value.length;
+}
+
 async function fetchJsonWithMeta(
   url: string,
   context: string,
@@ -117,6 +124,8 @@ export type SharedLibraryConfigSaveDiagnostics = {
   requestUrl: string;
   libraryId: string;
   correlationId: string;
+  payloadUtf8Bytes: number;
+  requestUtf8Bytes: number;
   httpStatus: number | null;
   responseContentType: string | null;
   requestReachedApiRoute: boolean;
@@ -131,11 +140,16 @@ export async function saveSharedLibraryConfigWithDiagnostics(
 ): Promise<SharedLibraryConfigSaveDiagnostics> {
   const requestUrl = sharedApiUrl("/api/library-config", libraryId) || "";
   const correlationId = newCorrelationId();
+  const requestBody = JSON.stringify({ libraryId, config });
+  const payloadUtf8Bytes = utf8ByteLength(JSON.stringify(config));
+  const requestUtf8Bytes = utf8ByteLength(requestBody);
   const diagnostics: SharedLibraryConfigSaveDiagnostics = {
     timestamp: new Date().toISOString(),
     requestUrl,
     libraryId: String(libraryId || ""),
     correlationId,
+    payloadUtf8Bytes,
+    requestUtf8Bytes,
     httpStatus: null,
     responseContentType: null,
     requestReachedApiRoute: false,
@@ -148,6 +162,13 @@ export async function saveSharedLibraryConfigWithDiagnostics(
   }
 
   try {
+    console.info("[library-sharing][client][saveSharedLibraryConfigWithDiagnostics] request_start", {
+      correlationId,
+      libraryId: String(libraryId || ""),
+      requestUrl,
+      payloadUtf8Bytes,
+      requestUtf8Bytes,
+    });
     const response = await fetch(requestUrl, {
       method: "POST",
       credentials: "same-origin",
@@ -155,7 +176,7 @@ export async function saveSharedLibraryConfigWithDiagnostics(
         "Content-Type": "application/json",
         "x-correlation-id": correlationId,
       },
-      body: JSON.stringify({ libraryId, config }),
+      body: requestBody,
     });
     const responseText = await response.text().catch(() => "");
     let payload: Record<string, unknown> | null = null;
@@ -182,9 +203,18 @@ export async function saveSharedLibraryConfigWithDiagnostics(
     };
     if (!response.ok) {
       console.warn("[library-sharing][client][saveSharedLibraryConfigWithDiagnostics] request_failed", result);
+    } else {
+      console.info("[library-sharing][client][saveSharedLibraryConfigWithDiagnostics] request_succeeded", result);
     }
     return result;
   } catch {
+    console.error("[library-sharing][client][saveSharedLibraryConfigWithDiagnostics] request_error", {
+      correlationId,
+      libraryId: String(libraryId || ""),
+      requestUrl,
+      payloadUtf8Bytes,
+      requestUtf8Bytes,
+    });
     return { ...diagnostics, appErrorCode: "request_failed" };
   }
 }

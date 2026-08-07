@@ -17,6 +17,15 @@ function readLibraryId(req: VercelRequest): string {
   return String(body.libraryId || req.query.libraryId || "").trim();
 }
 
+function estimateUtf8Bytes(value: unknown): number | null {
+  try {
+    if (value === undefined) return null;
+    return Buffer.byteLength(JSON.stringify(value), "utf8");
+  } catch {
+    return null;
+  }
+}
+
 function correlationIdFromRequest(req: VercelRequest): string {
   const fromHeader = String(req.headers["x-correlation-id"] || "").trim();
   if (fromHeader) return fromHeader.slice(0, 96);
@@ -40,24 +49,38 @@ function sendJson(
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const correlationId = correlationIdFromRequest(req);
+  const libraryId = readLibraryId(req);
+  const trace = libraryId ? getSharedLibraryConfigStorageTrace(libraryId) : null;
+  console.info("[api/library-config] route_entered", {
+    correlationId,
+    method: req.method || "",
+    requestUrl: req.url || "",
+    libraryId,
+    requestBodyUtf8Bytes: estimateUtf8Bytes(req.body),
+    ...(trace || {}),
+  });
+
   if (req.method !== "GET" && req.method !== "POST") {
     res.setHeader("Allow", "GET, POST");
     return sendJson(res, 405, { error: "method_not_allowed", correlationId }, correlationId);
   }
 
-  const libraryId = readLibraryId(req);
   if (!libraryId) {
+    console.warn("[api/library-config] missing_library_id", {
+      correlationId,
+      method: req.method || "",
+      requestUrl: req.url || "",
+    });
     return sendJson(res, 400, { error: "missing_library_id", correlationId }, correlationId);
   }
 
   if (req.method === "GET") {
     try {
-      const trace = getSharedLibraryConfigStorageTrace(libraryId);
       console.info("[api/library-config][GET] route_entered", {
         correlationId,
         pathname: req.url || "",
         requestedLibraryId: libraryId,
-        ...trace,
+        ...(trace || {}),
       });
       const diagnostics = await diagnoseSharedLibraryConfig(libraryId, correlationId);
       if (!diagnostics.validConfig || diagnostics.errorCode) {
@@ -76,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const config = await loadSharedLibraryConfigPayload(libraryId, { correlationId });
       console.info("[api/library-config][GET] load_succeeded", {
         correlationId,
-        ...trace,
+        ...(trace || {}),
         found: !!config,
       });
       if (!config) {
@@ -90,18 +113,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    if (!hasAdminSessionCookie(req)) {
+    const hasAdminSession = hasAdminSessionCookie(req);
+    if (!hasAdminSession) {
+      console.warn("[api/library-config][POST] unauthorized", {
+        correlationId,
+        libraryId,
+        requestUrl: req.url || "",
+        hasAdminSession,
+      });
       return sendJson(res, 403, { error: "unauthorized", correlationId }, correlationId);
     }
     const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
     const config = body.config;
     if (!config || typeof config !== "object" || Array.isArray(config)) {
+      console.warn("[api/library-config][POST] missing_or_invalid_config", {
+        correlationId,
+        libraryId,
+        requestUrl: req.url || "",
+        requestBodyUtf8Bytes: estimateUtf8Bytes(req.body),
+      });
       return sendJson(res, 400, { error: "missing_or_invalid_config", correlationId }, correlationId);
     }
-    const trace = getSharedLibraryConfigStorageTrace(libraryId);
-    console.info("[api/library-config][POST] save_start", { correlationId, ...trace });
+    const payloadUtf8Bytes = estimateUtf8Bytes(config);
+    console.info("[api/library-config][POST] save_start", {
+      correlationId,
+      libraryId,
+      requestUrl: req.url || "",
+      requestBodyUtf8Bytes: estimateUtf8Bytes(req.body),
+      payloadUtf8Bytes,
+      ...(trace || getSharedLibraryConfigStorageTrace(libraryId)),
+    });
     await saveSharedLibraryConfig(libraryId, config as Record<string, unknown>, { correlationId });
-    console.info("[api/library-config][POST] save_success", { correlationId, ...trace });
+    console.info("[api/library-config][POST] save_success", {
+      correlationId,
+      libraryId,
+      requestUrl: req.url || "",
+      payloadUtf8Bytes,
+      ...(trace || getSharedLibraryConfigStorageTrace(libraryId)),
+    });
     return sendJson(res, 200, { success: true, correlationId }, correlationId);
   } catch (error) {
     console.error("[api/library-config][POST] internal_error", { correlationId }, error);

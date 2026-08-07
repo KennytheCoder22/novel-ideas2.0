@@ -46,6 +46,14 @@ function logConfigEvent(
   console.info(`[library-sharing][config][${event}]`, base);
 }
 
+function utf8ByteLength(value: string): number {
+  try {
+    return Buffer.byteLength(value, "utf8");
+  } catch {
+    return value.length;
+  }
+}
+
 export function getSharedLibraryConfigStorageTrace(libraryId: string): {
   backend: StorageMode;
   libraryId: string;
@@ -244,15 +252,26 @@ async function putBlobJson(pathname: string, value: unknown): Promise<string> {
 
 // ── Vercel Blob: config ───────────────────────────────────────────────────────
 
-async function saveBlobConfig(libraryId: string, payload: Record<string, unknown>): Promise<void> {
+async function saveBlobConfig(libraryId: string, payload: Record<string, unknown>): Promise<{
+  blobUrl: string;
+  blobPath: string;
+  wrappedPayloadUtf8Bytes: number;
+}> {
   const sanitized = sanitizeConfigForPublicStorage(payload);
-  await putBlobJson(configBlobPathname(libraryId), {
+  const blobPath = configBlobPathname(libraryId);
+  const wrappedPayload = {
     schemaVersion: "library_config_v1",
     libraryId,
     updatedAt: new Date().toISOString(),
     contentHash: sha256(stableStringify(sanitized)),
     config: sanitized,
-  });
+  };
+  const blobUrl = await putBlobJson(blobPath, wrappedPayload);
+  return {
+    blobUrl,
+    blobPath,
+    wrappedPayloadUtf8Bytes: utf8ByteLength(JSON.stringify(wrappedPayload)),
+  };
 }
 
 async function loadBlobConfig(libraryId: string): Promise<Record<string, unknown> | null> {
@@ -568,14 +587,45 @@ export async function saveSharedLibraryConfig(
   if (!id) throw new Error("missing_library_id");
   const trace = getSharedLibraryConfigStorageTrace(id);
   const correlationId = options?.correlationId;
-  logConfigEvent("save_started", trace, correlationId);
+  const payloadUtf8Bytes = utf8ByteLength(JSON.stringify(payload));
+  logConfigEvent("save_started", { ...trace, payloadUtf8Bytes }, correlationId);
   try {
     if (trace.backend === "vercel_blob") {
-      await saveBlobConfig(id, payload);
+      const write = await saveBlobConfig(id, payload);
+      logConfigEvent(
+        "blob_write_succeeded",
+        {
+          ...trace,
+          payloadUtf8Bytes,
+          wrappedPayloadUtf8Bytes: write.wrappedPayloadUtf8Bytes,
+          blobPath: write.blobPath,
+          blobUrl: write.blobUrl,
+        },
+        correlationId
+      );
     } else {
       await saveFileAsset("config", id, payload);
+      logConfigEvent("filesystem_write_succeeded", { ...trace, payloadUtf8Bytes }, correlationId);
     }
-    logConfigEvent("save_succeeded", trace, correlationId);
+    const verification = await diagnoseSharedLibraryConfig(id, correlationId);
+    logConfigEvent(
+      "save_verification",
+      {
+        ...trace,
+        payloadUtf8Bytes,
+        exists: verification.exists,
+        readable: verification.readable,
+        validJson: verification.validJson,
+        validConfig: verification.validConfig,
+        errorCode: verification.errorCode,
+      },
+      correlationId
+    );
+    if (!verification.exists || !verification.readable || !verification.validJson || !verification.validConfig) {
+      throw new Error("config_write_verification_failed");
+    } else {
+      logConfigEvent("save_succeeded", trace, correlationId);
+    }
   } catch (error) {
     console.error("[library-sharing][config][save_failed]", { correlationId, ...trace }, error);
     throw error;

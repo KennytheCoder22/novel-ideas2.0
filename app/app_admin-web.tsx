@@ -924,6 +924,8 @@ export default function AdminWebScreen() {
       syncSchema(next);
       const serializedNext = JSON.stringify(next);
       const nextLibraryId = resolveLibraryId(next);
+      const payloadUtf8Bytes =
+        typeof TextEncoder !== "undefined" ? new TextEncoder().encode(serializedNext).length : serializedNext.length;
 
       if (isWeb && typeof localStorage !== "undefined") {
         localStorage.setItem(adminDraftStorageKey, serializedNext);
@@ -931,6 +933,12 @@ export default function AdminWebScreen() {
         dispatchAdminConfigSavedWebEvent(adminDraftStorageKey, serializedNext);
       }
       if (nextLibraryId) {
+        activateAdminSession("admin_web_save");
+        console.info("[app_admin-web] save_click", {
+          libraryId: nextLibraryId,
+          payloadUtf8Bytes,
+          adminDraftStorageKey,
+        });
         const sharedSave = await saveSharedLibraryConfigWithDiagnostics(nextLibraryId, next as Record<string, unknown>);
         if (!sharedSave.success) {
           setSaveErrorDetails(sharedSave);
@@ -957,6 +965,8 @@ export default function AdminWebScreen() {
         requestUrl: "/api/library-config",
         libraryId: libraryId || "",
         correlationId: "unavailable",
+        payloadUtf8Bytes: 0,
+        requestUtf8Bytes: 0,
         httpStatus: null,
         responseContentType: null,
         requestReachedApiRoute: false,
