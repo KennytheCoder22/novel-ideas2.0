@@ -13,6 +13,7 @@ import {
   isPreviewAcceptanceEnvironmentEnabled,
   readPreviewAcceptanceDashboardModeFromCookie,
 } from "../lib/previewAcceptanceHarness";
+import { listSwipeCardPerformance } from "../lib/swipeCardPerformance";
 
 function hasAdminSessionCookie(req: VercelRequest): boolean {
   const cookie = String(req.headers.cookie || "");
@@ -44,16 +45,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({
         status: "ok",
         storageMode: PREVIEW_ACCEPTANCE_FIXTURE_STORAGE_MODE,
+        swipeCardPerformanceStorageMode: "unavailable",
+        swipeCardPerformanceError: null,
+        swipeCardPerformance: [],
         ...buildPreviewAcceptanceDashboardFixture(filters),
       });
     }
 
     const repo = createRepository();
-    const [snapshots, reviews] = await Promise.all([repo.listSnapshots(), repo.listReviews()]);
+    const swipeCardPerformanceStorageAvailable = Boolean(process.env.POSTGRES_URL);
+    const swipeCardPerformanceResult = swipeCardPerformanceStorageAvailable
+      ? listSwipeCardPerformance()
+          .then((rows) => ({ rows, storageMode: "durable_postgres", error: null }))
+          .catch((error: any) => ({
+            rows: [],
+            storageMode: "error",
+            error: typeof error?.message === "string" ? error.message : "swipe_card_performance_unavailable",
+          }))
+      : Promise.resolve({ rows: [], storageMode: "unavailable", error: null });
+    const [snapshots, reviews, swipeCardPerformance] = await Promise.all([
+      repo.listSnapshots(),
+      repo.listReviews(),
+      swipeCardPerformanceResult,
+    ]);
     const dashboard = buildHumanReviewDashboardData({ filters, snapshots, reviews });
     return res.status(200).json({
       status: "ok",
       storageMode: repo.storageMode,
+      swipeCardPerformanceStorageMode: swipeCardPerformance.storageMode,
+      swipeCardPerformanceError: swipeCardPerformance.error,
+      swipeCardPerformance: swipeCardPerformance.rows,
       ...dashboard,
     });
   } catch (error: any) {

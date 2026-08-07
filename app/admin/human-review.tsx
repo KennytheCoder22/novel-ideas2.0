@@ -43,7 +43,25 @@ type DashboardPayload = {
     completedReviewSubmissions: number;
     [key: string]: any;
   };
+  swipeCardPerformanceStorageMode: "durable_postgres" | "unavailable" | "error";
+  swipeCardPerformanceError: string | null;
+  swipeCardPerformance: SwipeCardPerformanceRow[];
   [key: string]: any;
+};
+
+type SwipeCardPerformanceSort = "highest_skip_rate" | "lowest_recognition_rate" | "most_shown" | "highest_recognition_rate";
+
+type SwipeCardPerformanceRow = {
+  cardId: string;
+  cardType: string;
+  title: string;
+  ageBand: string;
+  timesShown: number;
+  likes: number;
+  dislikes: number;
+  skips: number;
+  recognitionRate: number;
+  utilityMetric: number;
 };
 
 function isRecord(value: unknown): value is Record<string, any> {
@@ -58,6 +76,7 @@ function isValidDashboardPayload(payload: unknown): payload is DashboardPayload 
   if (!Number.isFinite(payload.datasetInventory.syntheticReviews)) return false;
   if (!isRecord(payload.summary)) return false;
   if (!Number.isFinite(payload.summary.completedReviewSubmissions)) return false;
+  if (!Array.isArray(payload.swipeCardPerformance)) return false;
   return true;
 }
 
@@ -180,6 +199,7 @@ export default function HumanReviewDashboardRoute() {
   const [error, setError] = useState("");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showInternalIds, setShowInternalIds] = useState(false);
+  const [swipeCardSort, setSwipeCardSort] = useState<SwipeCardPerformanceSort>("most_shown");
   const [previewAcceptanceMode, setPreviewAcceptanceMode] = useState<PreviewAcceptanceDashboardMode>(() =>
     readPreviewAcceptanceDashboardModeFromDocument()
   );
@@ -287,12 +307,20 @@ export default function HumanReviewDashboardRoute() {
     if (error) return "failure";
     if (!data) return "failure";
     const totalEvidence = data.datasetInventory.realReviews + data.datasetInventory.syntheticReviews;
-    return totalEvidence > 0 ? "success" : "empty";
+    return totalEvidence > 0 || (data.swipeCardPerformance || []).length > 0 ? "success" : "empty";
   })();
 
   const summary = data?.summary;
   const filterOptions = data?.filterOptions || {};
   const activeFilters = data?.appliedFilters || queryFilters;
+  const swipeCardRows = [...(data?.swipeCardPerformance || [])].sort((a, b) => {
+    if (swipeCardSort === "highest_skip_rate") {
+      return (b.timesShown ? b.skips / b.timesShown : 0) - (a.timesShown ? a.skips / a.timesShown : 0);
+    }
+    if (swipeCardSort === "lowest_recognition_rate") return a.recognitionRate - b.recognitionRate;
+    if (swipeCardSort === "highest_recognition_rate") return b.recognitionRate - a.recognitionRate;
+    return b.timesShown - a.timesShown;
+  });
 
   return (
     <SafeAreaView style={styles.root}>
@@ -609,6 +637,64 @@ export default function HumanReviewDashboardRoute() {
 
         {dashboardState === "success" && data ? (
           <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Swipe Card Performance</Text>
+              <Text style={styles.sectionSubtitle}>
+                Aggregate card recognition evidence only. Skip means the card was not recognized.
+              </Text>
+              {data.swipeCardPerformanceStorageMode === "error" ? (
+                <Text style={styles.inlineNote}>
+                  Swipe Card Performance storage is unavailable: {data.swipeCardPerformanceError || "unknown error"}
+                </Text>
+              ) : null}
+              <View style={styles.chipWrap}>
+                {([
+                  ["highest_skip_rate", "Highest skip rate"],
+                  ["lowest_recognition_rate", "Lowest recognition rate"],
+                  ["most_shown", "Most shown"],
+                  ["highest_recognition_rate", "Highest recognition rate"],
+                ] as Array<[SwipeCardPerformanceSort, string]>).map(([key, label]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.chip, swipeCardSort === key && styles.chipActive]}
+                    onPress={() => setSwipeCardSort(key)}
+                  >
+                    <Text style={[styles.chipText, swipeCardSort === key && styles.chipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {(["kids", "preteens", "teens", "adult"] as const).map((ageBand) => {
+                const rows = swipeCardRows.filter((row) => row.ageBand === ageBand);
+                if (!rows.length) return null;
+                return (
+                  <View key={ageBand} style={styles.performanceGroup}>
+                    <Text style={styles.tableTitle}>{labelAgeBand(ageBand)}</Text>
+                    <ScrollView horizontal>
+                      <View style={styles.performanceTable}>
+                        <View style={[styles.performanceRow, styles.performanceHeader]}>
+                          {["Card", "Type", "Shown", "Likes", "Dislikes", "Skips", "Recognition %"].map((label) => (
+                            <Text key={label} style={[styles.performanceCell, label === "Card" && styles.performanceCardCell]}>{label}</Text>
+                          ))}
+                        </View>
+                        {rows.map((row) => (
+                          <View key={`${row.ageBand}:${row.cardId}`} style={styles.performanceRow}>
+                            <Text style={[styles.performanceCell, styles.performanceCardCell]} numberOfLines={2}>{row.title}</Text>
+                            <Text style={styles.performanceCell}>{labelTag(row.cardType)}</Text>
+                            <Text style={styles.performanceCell}>{row.timesShown}</Text>
+                            <Text style={styles.performanceCell}>{row.likes}</Text>
+                            <Text style={styles.performanceCell}>{row.dislikes}</Text>
+                            <Text style={styles.performanceCell}>{row.skips}</Text>
+                            <Text style={styles.performanceCell}>{Math.round(row.recognitionRate * 100)}%</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                );
+              })}
+              {!swipeCardRows.length ? <Text style={styles.inlineNote}>No swipe card performance data collected yet.</Text> : null}
+            </View>
+
             {Array.isArray(data.evidenceNotes) && data.evidenceNotes.length ? (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Evidence notes</Text>
@@ -1062,6 +1148,35 @@ const styles = StyleSheet.create({
     color: "#d9e7fa",
     fontWeight: "700",
     minWidth: 86,
+  },
+  performanceGroup: {
+    gap: 8,
+    marginTop: 8,
+  },
+  performanceTable: {
+    minWidth: 850,
+    borderWidth: 1,
+    borderColor: "#183455",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  performanceRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#183455",
+  },
+  performanceHeader: {
+    backgroundColor: "#173354",
+  },
+  performanceCell: {
+    width: 100,
+    color: "#d9e7fa",
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    fontSize: 12,
+  },
+  performanceCardCell: {
+    width: 240,
   },
   storyCard: {
     borderWidth: 1,

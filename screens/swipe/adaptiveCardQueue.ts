@@ -1,4 +1,6 @@
 import type { SwipeDeckCard } from '../../data/swipeDecks/types';
+import { cardIdentityKey } from '../../data/swipeDecks/cardMetadata';
+export { cardIdentityKey } from '../../data/swipeDecks/cardMetadata';
 
 type DeckKey = 'k2' | '36' | 'ms_hs' | 'adult';
 
@@ -12,15 +14,6 @@ type CardSelectionContext = {
 
 function normalizeKey(value: unknown): string {
   return String(value || '').trim().toLowerCase();
-}
-
-export function cardIdentityKey(card: SwipeDeckCard): string {
-  return (
-    normalizeKey((card as any).id) ||
-    normalizeKey((card as any).title) ||
-    normalizeKey((card as any).prompt) ||
-    JSON.stringify(card)
-  );
 }
 
 function cardTags(card: SwipeDeckCard): string[] {

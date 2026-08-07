@@ -23,6 +23,7 @@ import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { getDeckLabel } from "../constants/deckLabels";
 import type { SwipeDeck, SwipeDeckCard } from "../data/swipeDecks/types";
+import { cardCategoryFromTags, swipeCardPerformanceIdentity } from "../data/swipeDecks/cardMetadata";
 import * as k2DeckMod from "../data/swipeDecks/k2";
 import * as deck36Mod from "../data/swipeDecks/36";
 import msHsDeck from "../data/swipeDecks/ms_hs";
@@ -40,6 +41,9 @@ const KITSU_API_BASE = String(
   (process as any)?.env?.KITSU_API_BASE_URL ||
   "https://kitsu.app/api/edge"
 ).replace(/\/+$/, "");
+const SWIPE_CARD_PERFORMANCE_API_URL = Platform.OS === "web"
+  ? "/api/swipe-card-performance"
+  : `${String((process as any)?.env?.EXPO_PUBLIC_NOVELIDEAS_API_ORIGIN || "https://novelideas.app").replace(/\/+$/, "")}/api/swipe-card-performance`;
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -582,21 +586,6 @@ function shuffleArray<T>(arr: T[]) {
     a[j] = tmp;
   }
   return a;
-}
-
-function cardCategoryFromTags(card: any): "books" | "movies" | "tv" | "games" | "albums" | "youtube" | "anime" | "podcasts" {
-  const tags = Array.isArray(card?.tags) ? card.tags : [];
-  const mediaTag = tags.find((t: any) => typeof t === "string" && t.startsWith("media:"));
-  if (!mediaTag) return "books";
-  const v = String(mediaTag).slice("media:".length).toLowerCase();
-  if (v === "tv" || v === "show" || v === "shows") return "tv";
-  if (v === "movie" || v === "movies") return "movies";
-  if (v === "game" || v === "games") return "games";
-  if (v === "album" || v === "albums") return "albums";
-  if (v === "youtube" || v === "video") return "youtube";
-  if (v === "anime") return "anime";
-  if (v === "podcast" || v === "podcasts") return "podcasts";
-  return "books";
 }
 
 function filterDeckCardsByCategory(deck: SwipeDeck, enabled?: any): SwipeDeck {
@@ -1592,6 +1581,7 @@ export default function SwipeDeckScreen(props: Props) {
 
   const pipelineUserId = useMemo(() => `novelideas:${deckKey}`, [deckKey]);
   const pipelineSessionId = useMemo(() => `swipe-session:${deckKey}:${sessionNonce}`, [deckKey, sessionNonce]);
+  const recordedCardPerformanceRef = useRef<Set<string>>(new Set());
 
   // Mobile-visible session diagnostics: tap the ⓘ button to see this without clipboard.
   const [showSessionInfo, setShowSessionInfo] = useState(false);
@@ -1900,6 +1890,7 @@ export default function SwipeDeckScreen(props: Props) {
   }
 
   React.useEffect(() => {
+    recordedCardPerformanceRef.current.clear();
     setSeenCardKeys([]);
     setRecentCardKeys([]);
     setRightSwipes(0);
@@ -2091,6 +2082,28 @@ export default function SwipeDeckScreen(props: Props) {
     setSeenCardKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
     setRecentCardKeys((prev) => [...prev, key].slice(-4));
   }
+  function recordCardPerformance(card: SwipeDeckCard, action: "like" | "dislike" | "skip") {
+    const cardId = swipeCardPerformanceIdentity(card);
+    const presentationKey = `${deckKey}:${sessionNonce}:${cardId}`;
+    if (recordedCardPerformanceRef.current.has(presentationKey)) return;
+    recordedCardPerformanceRef.current.add(presentationKey);
+    void fetch(SWIPE_CARD_PERFORMANCE_API_URL, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cardId,
+        cardType: cardCategoryFromTags(card),
+        title: String((card as any)?.title || (card as any)?.prompt || cardId),
+        ageBand: deckKeyToAgeBandV2(deckKey),
+        action,
+      }),
+    }).then((response) => {
+      if (!response.ok) console.warn("[swipe-card-performance] record_failed", { status: response.status });
+    }).catch((error) => {
+      console.warn("[swipe-card-performance] request_failed", String(error instanceof Error ? error.message : error));
+    });
+  }
 function handleRight(card: SwipeDeckCard) {
   setRightSwipes((n) => n + 1);
   setSwipeHistory((prev) => [...prev, { direction: "like", card }]);
@@ -2102,6 +2115,7 @@ function handleRight(card: SwipeDeckCard) {
     setTagCounts((prev) => addTags(prev, [`genre:${anyCard.genre.trim()}`], +1));
   }
   void recordPipelineSwipe(card, "like");
+  recordCardPerformance(card, "like");
   nextCard(card);
 }
 function handleLeft() {
@@ -2118,6 +2132,7 @@ function handleLeft() {
     setTagCounts((prev) => addTags(prev, [`genre:${anyCard.genre.trim()}`], -1));
   }
   void recordPipelineSwipe(card, "dislike");
+  if (card) recordCardPerformance(card, "dislike");
   nextCard(card);
 }
 
@@ -2127,6 +2142,7 @@ function handleLeft() {
       setSwipeHistory((prev) => [...prev, { direction: "skip", card: currentCard }]);
     }
     void recordPipelineSwipe(currentCard, "skip");
+    if (currentCard) recordCardPerformance(currentCard, "skip");
     nextCard(currentCard);
   }
 
