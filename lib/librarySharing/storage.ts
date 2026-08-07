@@ -310,16 +310,42 @@ async function loadBlobJson(pathname: string): Promise<unknown | null> {
 }
 
 /** Write a JSON value to a Vercel Blob pathname (server-side, overwrites). */
-async function putBlobJson(pathname: string, value: unknown): Promise<string> {
+async function putBlobJson(pathname: string, value: unknown): Promise<{ url: string; authMode: string }> {
   const { put } = await import("@vercel/blob");
+  const payload = JSON.stringify(value);
   const token = readBlobReadWriteToken();
-  const blob = await put(pathname, JSON.stringify(value), {
-    access: "public",
-    addRandomSuffix: false,
-    contentType: "application/json",
-    token,
-  });
-  return blob.url;
+  const explicitTokenAttempt = async (): Promise<{ url: string; authMode: string }> => {
+    const blob = await put(pathname, payload, {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: "application/json",
+      token,
+    });
+    return { url: blob.url, authMode: "explicit_blob_read_write_token" };
+  };
+  const defaultTokenAttempt = async (): Promise<{ url: string; authMode: string }> => {
+    const blob = await put(pathname, payload, {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: "application/json",
+    });
+    return { url: blob.url, authMode: "sdk_default_token_resolution" };
+  };
+
+  if (token) {
+    try {
+      return await explicitTokenAttempt();
+    } catch (firstError) {
+      console.warn("[library-sharing][blob][put] explicit_token_failed", {
+        pathname,
+        authMode: "explicit_blob_read_write_token",
+        ...safeBlobExceptionDetails(firstError),
+      });
+      return defaultTokenAttempt();
+    }
+  }
+
+  return defaultTokenAttempt();
 }
 
 // ── Vercel Blob: config ───────────────────────────────────────────────────────
@@ -328,6 +354,7 @@ async function saveBlobConfig(libraryId: string, payload: Record<string, unknown
   blobUrl: string;
   blobPath: string;
   wrappedPayloadUtf8Bytes: number;
+  authMode: string;
 }> {
   const sanitized = sanitizeConfigForPublicStorage(payload);
   const blobPath = configBlobPathname(libraryId);
@@ -338,11 +365,12 @@ async function saveBlobConfig(libraryId: string, payload: Record<string, unknown
     contentHash: sha256(stableStringify(sanitized)),
     config: sanitized,
   };
-  const blobUrl = await putBlobJson(blobPath, wrappedPayload);
+  const write = await putBlobJson(blobPath, wrappedPayload);
   return {
-    blobUrl,
+    blobUrl: write.url,
     blobPath,
     wrappedPayloadUtf8Bytes: utf8ByteLength(JSON.stringify(wrappedPayload)),
+    authMode: write.authMode,
   };
 }
 
@@ -674,7 +702,7 @@ export async function saveSharedLibraryConfig(
   );
   try {
     if (trace.backend === "vercel_blob") {
-      let write: { blobUrl: string; blobPath: string; wrappedPayloadUtf8Bytes: number };
+      let write: { blobUrl: string; blobPath: string; wrappedPayloadUtf8Bytes: number; authMode: string };
       try {
         write = await saveBlobConfig(id, payload);
       } catch (error) {
@@ -694,6 +722,7 @@ export async function saveSharedLibraryConfig(
           wrappedPayloadUtf8Bytes: write.wrappedPayloadUtf8Bytes,
           blobPath: write.blobPath,
           blobUrl: write.blobUrl,
+          authMode: write.authMode,
         },
         correlationId
       );
