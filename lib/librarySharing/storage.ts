@@ -28,8 +28,70 @@ type SharedConfigErrorCode =
   | "malformed_json"
   | "invalid_config_schema";
 
+type SafeBlobExceptionDetails = {
+  exceptionName: string;
+  exceptionCode: string;
+  exceptionMessage: string;
+};
+
+class ConfigWriteStageError extends Error {
+  readonly stage: "blob_write_failed" | "config_write_verification_probe_failed" | "config_write_verification_failed";
+  readonly details: SafeBlobExceptionDetails | null;
+
+  constructor(
+    stage: "blob_write_failed" | "config_write_verification_probe_failed" | "config_write_verification_failed",
+    details: SafeBlobExceptionDetails | null = null
+  ) {
+    super(stage);
+    this.stage = stage;
+    this.details = details;
+  }
+}
+
+function readBlobReadWriteToken(): string {
+  const raw = String(process.env.BLOB_READ_WRITE_TOKEN || "").replace(/\r?\n/g, "").trim();
+  if (!raw) return "";
+  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+    return raw.slice(1, -1).trim();
+  }
+  return raw;
+}
+
+function blobTokenMetadata(token: string): { tokenPresent: boolean; tokenFormatValid: boolean; tokenStoreId: string | null } {
+  if (!token) return { tokenPresent: false, tokenFormatValid: false, tokenStoreId: null };
+  const parts = token.split("_");
+  if (parts[0] !== "vercel" || parts[1] !== "blob" || parts[2] !== "rw" || !parts[3]) {
+    return { tokenPresent: true, tokenFormatValid: false, tokenStoreId: null };
+  }
+  return { tokenPresent: true, tokenFormatValid: true, tokenStoreId: parts[3] };
+}
+
+function safeBlobExceptionDetails(error: unknown): SafeBlobExceptionDetails {
+  const err = error instanceof Error ? error : new Error(String(error || "unknown_blob_error"));
+  const name = String((err as { name?: unknown }).name || "Error");
+  const codeRaw = (err as { code?: unknown }).code;
+  const code = typeof codeRaw === "string" && codeRaw ? codeRaw : "blob_unknown_error";
+  const lower = String(err.message || "").toLowerCase();
+  if (lower.includes("no token")) {
+    return { exceptionName: name, exceptionCode: "blob_token_missing", exceptionMessage: "Blob token missing." };
+  }
+  if (lower.includes("invalid token") || lower.includes("token is malformed")) {
+    return { exceptionName: name, exceptionCode: "blob_token_invalid", exceptionMessage: "Blob token invalid." };
+  }
+  if (lower.includes("unauthorized") || lower.includes("not authorized")) {
+    return { exceptionName: name, exceptionCode: "blob_unauthorized", exceptionMessage: "Blob token unauthorized." };
+  }
+  if (lower.includes("forbidden")) {
+    return { exceptionName: name, exceptionCode: "blob_forbidden", exceptionMessage: "Blob access forbidden." };
+  }
+  if (lower.includes("network") || lower.includes("fetch")) {
+    return { exceptionName: name, exceptionCode: "blob_network_error", exceptionMessage: "Blob network error." };
+  }
+  return { exceptionName: name, exceptionCode: code, exceptionMessage: "Blob write failed." };
+}
+
 function storageMode(): StorageMode {
-  if (process.env.BLOB_READ_WRITE_TOKEN) return "vercel_blob";
+  if (readBlobReadWriteToken()) return "vercel_blob";
   return "local_filesystem";
 }
 
@@ -156,7 +218,7 @@ export function collectionBlobPathname(libraryId: string): string {
  * This is documented at https://vercel.com/docs/storage/vercel-blob/using-blob-sdk
  */
 function blobStoreBaseUrl(): string | null {
-  const token = process.env.BLOB_READ_WRITE_TOKEN || "";
+  const token = readBlobReadWriteToken();
   // Expected format: vercel_blob_rw_{storeId}_{rest}
   const parts = token.split("_");
   if (parts[0] !== "vercel" || parts[1] !== "blob" || parts[2] !== "rw" || !parts[3]) return null;
@@ -207,10 +269,11 @@ async function readBlobJsonDetailed(pathname: string): Promise<{
   // Fallback: list() to resolve URL
   try {
     const { list } = await import("@vercel/blob");
+    const token = readBlobReadWriteToken();
     const { blobs } = await list({
       prefix: pathname,
       limit: 1,
-      token: process.env.BLOB_READ_WRITE_TOKEN,
+      token,
     });
     const found = blobs.find((b) => b.pathname === pathname);
     if (!found) {
@@ -241,11 +304,12 @@ async function loadBlobJson(pathname: string): Promise<unknown | null> {
 /** Write a JSON value to a Vercel Blob pathname (server-side, overwrites). */
 async function putBlobJson(pathname: string, value: unknown): Promise<string> {
   const { put } = await import("@vercel/blob");
+  const token = readBlobReadWriteToken();
   const blob = await put(pathname, JSON.stringify(value), {
     access: "public",
     addRandomSuffix: false,
     contentType: "application/json",
-    token: process.env.BLOB_READ_WRITE_TOKEN,
+    token,
   });
   return blob.url;
 }
@@ -588,15 +652,31 @@ export async function saveSharedLibraryConfig(
   const trace = getSharedLibraryConfigStorageTrace(id);
   const correlationId = options?.correlationId;
   const payloadUtf8Bytes = utf8ByteLength(JSON.stringify(payload));
-  logConfigEvent("save_started", { ...trace, payloadUtf8Bytes }, correlationId);
+  const token = readBlobReadWriteToken();
+  const tokenMeta = blobTokenMetadata(token);
+  logConfigEvent(
+    "save_started",
+    {
+      ...trace,
+      payloadUtf8Bytes,
+      blobTokenSource: "BLOB_READ_WRITE_TOKEN",
+      ...tokenMeta,
+    },
+    correlationId
+  );
   try {
     if (trace.backend === "vercel_blob") {
       let write: { blobUrl: string; blobPath: string; wrappedPayloadUtf8Bytes: number };
       try {
         write = await saveBlobConfig(id, payload);
       } catch (error) {
-        console.error("[library-sharing][config][blob_write_failed]", { correlationId, ...trace }, error);
-        throw new Error("blob_write_failed");
+        const safe = safeBlobExceptionDetails(error);
+        console.error(
+          "[library-sharing][config][blob_write_failed]",
+          { correlationId, ...trace, payloadUtf8Bytes, ...tokenMeta, ...safe },
+          error
+        );
+        throw new ConfigWriteStageError("blob_write_failed", safe);
       }
       logConfigEvent(
         "blob_write_succeeded",
@@ -617,8 +697,12 @@ export async function saveSharedLibraryConfig(
     try {
       verification = await diagnoseSharedLibraryConfig(id, correlationId);
     } catch (error) {
-      console.error("[library-sharing][config][save_verification_probe_failed]", { correlationId, ...trace }, error);
-      throw new Error("config_write_verification_probe_failed");
+      console.error(
+        "[library-sharing][config][save_verification_probe_failed]",
+        { correlationId, ...trace, payloadUtf8Bytes },
+        error
+      );
+      throw new ConfigWriteStageError("config_write_verification_probe_failed");
     }
     logConfigEvent(
       "save_verification",
@@ -634,7 +718,7 @@ export async function saveSharedLibraryConfig(
       correlationId
     );
     if (!verification.exists || !verification.readable || !verification.validJson || !verification.validConfig) {
-      throw new Error("config_write_verification_failed");
+      throw new ConfigWriteStageError("config_write_verification_failed");
     } else {
       logConfigEvent("save_succeeded", trace, correlationId);
     }

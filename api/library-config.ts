@@ -160,7 +160,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stage === "config_write_verification_failed"
         ? stage
         : "internal_server_error";
-    console.error("[api/library-config][POST] internal_error", { correlationId, stage: safeStageError }, error);
-    return sendJson(res, 500, { error: safeStageError, correlationId }, correlationId);
+    const errObj = error && typeof error === "object" ? (error as Record<string, unknown>) : null;
+    const details = errObj && errObj.details && typeof errObj.details === "object"
+      ? (errObj.details as Record<string, unknown>)
+      : null;
+    const exceptionName = typeof details?.exceptionName === "string" ? details.exceptionName : null;
+    const exceptionCode = typeof details?.exceptionCode === "string" ? details.exceptionCode : null;
+    const exceptionMessage = typeof details?.exceptionMessage === "string" ? details.exceptionMessage : null;
+    console.error(
+      "[api/library-config][POST] internal_error",
+      { correlationId, stage: safeStageError, exceptionName, exceptionCode, exceptionMessage },
+      error
+    );
+    return sendJson(
+      res,
+      500,
+      {
+        error: safeStageError,
+        correlationId,
+        exceptionName,
+        exceptionCode,
+        exceptionMessage,
+      },
+      correlationId
+    );
   }
 }
