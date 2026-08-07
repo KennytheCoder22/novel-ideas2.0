@@ -117,6 +117,18 @@ type OLDoc = {
   author_name?: string[];
   first_publish_year?: number;
   cover_i?: number | string;
+  coverUrl?: string;
+  coverImageUrl?: string;
+  imageUrl?: string;
+  source?: string;
+  callNumber?: string;
+  subLocation?: string;
+  localPlacement?: string;
+  localCollectionCallNumber?: string;
+  localCollectionPlacement?: string;
+  shelvingLocation?: string;
+  raw?: Record<string, unknown>;
+  diagnostics?: Record<string, unknown>;
   isbn?: string;
   isbn10?: string;
   isbn13?: string;
@@ -2124,14 +2136,26 @@ function handleLeft() {
           (candidate.raw as any)?.cover_i ??
           (candidate.raw as any)?.rawOpenLibraryDoc?.cover_i,
         imageUrl:
+          candidate.coverUrl ??
           (candidate.raw as any)?.imageUrl ??
+          (candidate.raw as any)?.coverUrl ??
           (candidate.raw as any)?.coverImageUrl ??
           (candidate.raw as any)?.thumbnail ??
           (candidate.raw as any)?.imageLinks?.thumbnail ??
           (candidate.raw as any)?.imageLinks?.smallThumbnail ??
           (candidate.raw as any)?.volumeInfo?.imageLinks?.thumbnail ??
           (candidate.raw as any)?.volumeInfo?.imageLinks?.smallThumbnail,
+        coverUrl:
+          candidate.coverUrl ??
+          (candidate.raw as any)?.coverUrl ??
+          (candidate.raw as any)?.imageUrl ??
+          (candidate.raw as any)?.coverImageUrl ??
+          (candidate.raw as any)?.thumbnail ??
+          (candidate.raw as any)?.imageLinks?.thumbnail ??
+          (candidate.raw as any)?.volumeInfo?.imageLinks?.thumbnail,
         coverImageUrl:
+          candidate.coverUrl ??
+          (candidate.raw as any)?.coverUrl ??
           (candidate.raw as any)?.coverImageUrl ??
           (candidate.raw as any)?.imageUrl ??
           (candidate.raw as any)?.thumbnail ??
@@ -2153,6 +2177,46 @@ function handleLeft() {
         imageLinks:
           (candidate.raw as any)?.imageLinks ??
           (candidate.raw as any)?.volumeInfo?.imageLinks,
+        callNumber:
+          candidate.callNumber ??
+          candidate.localCollectionCallNumber ??
+          (candidate.raw as any)?.callNumber ??
+          (candidate.raw as any)?.call_number ??
+          (candidate.raw as any)?.localCollectionCallNumber,
+        localCollectionCallNumber:
+          candidate.localCollectionCallNumber ??
+          candidate.callNumber ??
+          (candidate.raw as any)?.localCollectionCallNumber ??
+          (candidate.raw as any)?.callNumber ??
+          (candidate.raw as any)?.call_number,
+        subLocation:
+          candidate.subLocation ??
+          candidate.localCollectionPlacement ??
+          candidate.shelvingLocation ??
+          (candidate.raw as any)?.subLocation ??
+          (candidate.raw as any)?.sub_location ??
+          (candidate.raw as any)?.localCollectionPlacement ??
+          (candidate.raw as any)?.localPlacement ??
+          (candidate.raw as any)?.local_placement ??
+          (candidate.raw as any)?.shelvingLocation ??
+          (candidate.raw as any)?.shelving_location,
+        localPlacement:
+          candidate.localCollectionPlacement ??
+          candidate.subLocation ??
+          (candidate.raw as any)?.localPlacement ??
+          (candidate.raw as any)?.localCollectionPlacement ??
+          (candidate.raw as any)?.local_placement,
+        localCollectionPlacement:
+          candidate.localCollectionPlacement ??
+          candidate.subLocation ??
+          (candidate.raw as any)?.localCollectionPlacement ??
+          (candidate.raw as any)?.localPlacement ??
+          (candidate.raw as any)?.local_placement,
+        shelvingLocation:
+          candidate.shelvingLocation ??
+          (candidate.raw as any)?.shelvingLocation ??
+          (candidate.raw as any)?.shelving_location,
+        raw: candidate.raw as any,
         diagnostics: {
           engine: "v2",
           source: candidate.source,
@@ -5374,9 +5438,9 @@ function handleLeft() {
     if (!currentRec || currentRec.kind !== "open_library") return "";
     const callNumber = recommendationCallNumber(currentRec.doc);
     const subLocation = recommendationSubLocation(currentRec.doc);
-    if (callNumber && subLocation) return `Call #: ${callNumber} • Sub-location: ${subLocation}`;
-    if (callNumber) return `Call #: ${callNumber}`;
-    if (subLocation) return `Sub-location: ${subLocation}`;
+    if (subLocation && callNumber) return `${subLocation} • ${callNumber}`;
+    if (subLocation) return subLocation;
+    if (callNumber) return callNumber;
     return "";
   }, [currentRec]);
 

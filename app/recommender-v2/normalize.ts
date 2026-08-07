@@ -185,6 +185,12 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
         maturityBand: normalizeMaturityBand(source, row),
         publicationYear: Number.isFinite(Number(row.publicationYear || row.first_publish_year)) ? Number(row.publicationYear || row.first_publish_year) : undefined,
         sourceUrl: String(row.sourceUrl || row.url || "").trim() || undefined,
+        coverUrl: String(row.coverUrl || row.cover_url || row.imageUrl || row.image_url || "").trim() || undefined,
+        callNumber: String(row.callNumber || row.call_number || row.localCollectionCallNumber || "").trim() || undefined,
+        subLocation: String(row.subLocation || row.sub_location || row.localPlacement || row.localCollectionPlacement || row.shelvingLocation || row.shelving_location || "").trim() || undefined,
+        localCollectionCallNumber: String(row.localCollectionCallNumber || row.callNumber || row.call_number || "").trim() || undefined,
+        localCollectionPlacement: String(row.localCollectionPlacement || row.localPlacement || row.subLocation || row.sub_location || "").trim() || undefined,
+        shelvingLocation: String(row.shelvingLocation || row.shelving_location || "").trim() || undefined,
         raw,
         comicVine: comicVineEntity || undefined,
         diagnostics: {

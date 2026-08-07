@@ -773,6 +773,12 @@ export interface NormalizedCandidate {
   maturityBand?: AgeBandV2 | string;
   publicationYear?: number;
   sourceUrl?: string;
+  coverUrl?: string;
+  callNumber?: string;
+  subLocation?: string;
+  localCollectionCallNumber?: string;
+  localCollectionPlacement?: string;
+  shelvingLocation?: string;
   raw: unknown;
   comicVine?: ComicVineEntityMetadata;
   diagnostics: Record<string, unknown>;

@@ -263,7 +263,7 @@ function deckLabel(k: DeckKey) {
 
 function sourceLabel(s: RecommendationSourceToggleKey) {
   if (s === "googleBooks") return "Google Books";
-  if (s === "openLibrary") return "Open Library";
+  if (s === "openLibrary") return "Go To Library";
   if (s === "localLibrary") return "This library's collection";
   if (s === "kitsu") return "Kitsu (Manga)";
   if (s === "gcd") return "ComicVine (Comics)";
@@ -1737,7 +1737,7 @@ export default function AdminWebScreen() {
                   }
                 }}
               >
-                <Text style={[styles.btnText, { color: t.text }]}>Open Library</Text>
+                <Text style={[styles.btnText, { color: t.text }]}>Go To Library</Text>
               </TouchableOpacity>
             </View>
 
