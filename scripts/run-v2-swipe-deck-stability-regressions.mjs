@@ -14,9 +14,16 @@
  *   S5 – Two different swipeCategories with identical values produce identical card counts.
  *   S6 – Turning off the books category removes book cards from the deck.
  *   S7 – Default swipeCategories (all true) returns full deck; no cards are dropped.
+ *   S8 – Session diagnostics never reference component bindings declared after the hook.
  */
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SWIPE_DECK_SCREEN_PATH = path.resolve(SCRIPT_DIR, "../screens/SwipeDeckScreen.tsx");
 
 // ---------------------------------------------------------------------------
 // Inline stubs (no build step; mirrors the real implementations)
@@ -57,6 +64,7 @@ function filterDeckCardsByCategory(deck, enabled) {
     if (cat === "podcasts") return !!cats.podcasts;
     return true;
   });
+
   return { ...deck, cards: filtered };
 }
 
@@ -275,6 +283,33 @@ test("S7: all-true swipeCategories returns all cards (no cards dropped for categ
   // All categories are enabled so nothing is filtered out; the duplicate IS still present
   assert.equal(result.cards.length, SAMPLE_DECK.cards.length,
     "all-true categories must return the full unfiltered card list");
+});
+
+// ---------------------------------------------------------------------------
+// S8 – Session diagnostics cannot reference later component bindings
+// ---------------------------------------------------------------------------
+
+test("S8: session diagnostics only reference component bindings initialized before the hook", () => {
+  const source = fs.readFileSync(SWIPE_DECK_SCREEN_PATH, "utf8");
+  const hookStart = source.indexOf("  const sessionInfoText = useMemo");
+  const hookEnd = source.indexOf("\n  const personalityStoreRef", hookStart);
+
+  assert.ok(hookStart >= 0, "sessionInfoText hook must exist");
+  assert.ok(hookEnd > hookStart, "sessionInfoText hook boundary must be detectable");
+
+  const hookSource = source.slice(hookStart, hookEnd);
+  const laterComponentSource = source.slice(hookEnd);
+  const laterBindings = [...laterComponentSource.matchAll(/^  const (?:\[)?([A-Za-z_$][\w$]*)/gm)]
+    .map((match) => match[1]);
+  const unsafeBindings = laterBindings.filter((binding) =>
+    new RegExp(`(?<![.\\w$])${binding}\\b`).test(hookSource)
+  );
+
+  assert.deepEqual(
+    unsafeBindings,
+    [],
+    `sessionInfoText references component bindings declared later: ${unsafeBindings.join(", ")}`
+  );
 });
 
 // ---------------------------------------------------------------------------

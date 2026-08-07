@@ -1492,6 +1492,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [rightSwipes, setRightSwipes] = useState(0);
   const [leftSwipes, setLeftSwipes] = useState(0);
   const [downSwipes, setDownSwipes] = useState(0);
+  const decisionSwipes = rightSwipes + leftSwipes;
 
   const [tagCounts, setTagCounts] = useState<TagCounts>({});
   const [swipeHistory, setSwipeHistory] = useState<SwipeHistoryEntry[]>([]);
@@ -1929,7 +1930,6 @@ export default function SwipeDeckScreen(props: Props) {
     position.setValue({ x: 0, y: 0 });
   }, [deckKey, sessionNonce, pipelineSessionId, pipelineUserId]);
 
-  const decisionSwipes = rightSwipes + leftSwipes;
   const totalSeenCards = seenCardKeys.length;
   const remainingCards = useMemo(() => cards.filter((card) => !seenCardKeys.includes(cardIdentityKey(card))), [cards, seenCardKeys]);
   const isDone = shouldFinishTwentyQSession({
