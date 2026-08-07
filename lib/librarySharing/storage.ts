@@ -79,6 +79,23 @@ function safeBlobExceptionDetails(error: unknown): SafeBlobExceptionDetails {
   if (lower.includes("no token")) {
     return { exceptionName: name, exceptionCode: "blob_token_missing", exceptionMessage: "Blob token missing." };
   }
+
+  function isPrivateStoreAccessError(error: unknown): boolean {
+    const message = String(error instanceof Error ? error.message : error || "").toLowerCase();
+    return message.includes("cannot use public access on a private store");
+  }
+
+  async function readBlobTextFromSdkGetResult(result: unknown): Promise<string | null> {
+    if (!result || typeof result !== "object") return null;
+    const candidate = result as Record<string, unknown>;
+    const stream = candidate.stream ?? candidate.body;
+    if (!stream) return null;
+    try {
+      return await new Response(stream as BodyInit).text();
+    } catch {
+      return null;
+    }
+  }
   if (lower.includes("invalid token") || lower.includes("token is malformed")) {
     return { exceptionName: name, exceptionCode: "blob_token_invalid", exceptionMessage: "Blob token invalid." };
   }
@@ -245,63 +262,59 @@ async function readBlobJsonDetailed(pathname: string): Promise<{
   validJson: boolean;
   data: unknown | null;
 }> {
-  // Fast path: derive URL from token
-  const base = blobStoreBaseUrl();
-  if (base) {
-    const url = `${base}/${pathname}`;
+  const { get } = await import("@vercel/blob");
+  const token = readBlobReadWriteToken();
+  const attempts: Array<{ access: "public" | "private"; authMode: string; token?: string }> = [];
+  if (token) {
+    attempts.push({ access: "public", authMode: "explicit_blob_read_write_token", token });
+    attempts.push({ access: "private", authMode: "explicit_blob_read_write_token", token });
+  }
+  attempts.push({ access: "public", authMode: "sdk_default_token_resolution" });
+  attempts.push({ access: "private", authMode: "sdk_default_token_resolution" });
+
+  let sawPrivateAccessError = false;
+  let sawFailure = false;
+  for (const attempt of attempts) {
     try {
-      const resp = await fetch(url, { cache: "no-store" });
-      if (resp.status === 404) {
+      const result = await get(pathname, {
+        access: attempt.access,
+        ...(attempt.token ? { token: attempt.token } : {}),
+      });
+      if (!result) {
         return { status: "not_found", exists: false, readable: false, validJson: false, data: null };
       }
-      if (resp.ok) {
-        const text = await resp.text();
-        try {
-          const parsed = JSON.parse(text);
-          return { status: "ok", exists: true, readable: true, validJson: true, data: parsed };
-        } catch {
-          return { status: "json_parse_failed", exists: true, readable: true, validJson: false, data: null };
-        }
+      const text = await readBlobTextFromSdkGetResult(result);
+      if (text == null) {
+        return { status: "non_ok_http", exists: true, readable: false, validJson: false, data: null };
       }
-      console.warn("[library-sharing][blob] direct_fetch_non_ok", {
+      try {
+        const parsed = JSON.parse(text);
+        return { status: "ok", exists: true, readable: true, validJson: true, data: parsed };
+      } catch {
+        return { status: "json_parse_failed", exists: true, readable: true, validJson: false, data: null };
+      }
+    } catch (error) {
+      sawFailure = true;
+      if (isPrivateStoreAccessError(error)) {
+        sawPrivateAccessError = true;
+      }
+      console.warn("[library-sharing][blob][get] attempt_failed", {
         pathname,
-        status: resp.status,
+        authMode: attempt.authMode,
+        access: attempt.access,
+        ...safeBlobExceptionDetails(error),
       });
-      return { status: "non_ok_http", exists: false, readable: false, validJson: false, data: null };
-    } catch {
-      console.warn("[library-sharing][blob] direct_fetch_failed", { pathname });
-      // fall through to list fallback
+      continue;
     }
   }
 
-  // Fallback: list() to resolve URL
-  try {
-    const { list } = await import("@vercel/blob");
-    const token = readBlobReadWriteToken();
-    const { blobs } = await list({
-      prefix: pathname,
-      limit: 1,
-      token,
-    });
-    const found = blobs.find((b) => b.pathname === pathname);
-    if (!found) {
-      return { status: "not_found", exists: false, readable: false, validJson: false, data: null };
-    }
-    const resp = await fetch(found.url, { cache: "no-store" });
-    if (!resp.ok) {
-      return { status: "non_ok_http", exists: true, readable: false, validJson: false, data: null };
-    }
-    const text = await resp.text();
-    try {
-      const parsed = JSON.parse(text);
-      return { status: "ok", exists: true, readable: true, validJson: true, data: parsed };
-    } catch {
-      return { status: "json_parse_failed", exists: true, readable: true, validJson: false, data: null };
-    }
-  } catch {
-    console.warn("[library-sharing][blob] list_fallback_failed", { pathname });
+  if (sawPrivateAccessError) {
+    return { status: "non_ok_http", exists: false, readable: false, validJson: false, data: null };
+  }
+  if (sawFailure) {
     return { status: "list_failed", exists: false, readable: false, validJson: false, data: null };
   }
+  return { status: "not_found", exists: false, readable: false, validJson: false, data: null };
 }
 
 async function loadBlobJson(pathname: string): Promise<unknown | null> {
@@ -314,38 +327,50 @@ async function putBlobJson(pathname: string, value: unknown): Promise<{ url: str
   const { put } = await import("@vercel/blob");
   const payload = JSON.stringify(value);
   const token = readBlobReadWriteToken();
-  const explicitTokenAttempt = async (): Promise<{ url: string; authMode: string }> => {
+  const runAttempt = async (
+    authMode: string,
+    access: "public" | "private",
+    opts?: { token?: string }
+  ): Promise<{ url: string; authMode: string }> => {
     const blob = await put(pathname, payload, {
-      access: "public",
+      access,
       addRandomSuffix: false,
       contentType: "application/json",
-      token,
+      ...(opts?.token ? { token: opts.token } : {}),
     });
-    return { url: blob.url, authMode: "explicit_blob_read_write_token" };
-  };
-  const defaultTokenAttempt = async (): Promise<{ url: string; authMode: string }> => {
-    const blob = await put(pathname, payload, {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: "application/json",
-    });
-    return { url: blob.url, authMode: "sdk_default_token_resolution" };
+    return { url: blob.url, authMode: `${authMode}:${access}` };
   };
 
   if (token) {
     try {
-      return await explicitTokenAttempt();
+      return await runAttempt("explicit_blob_read_write_token", "public", { token });
     } catch (firstError) {
       console.warn("[library-sharing][blob][put] explicit_token_failed", {
         pathname,
         authMode: "explicit_blob_read_write_token",
+        access: "public",
         ...safeBlobExceptionDetails(firstError),
       });
-      return defaultTokenAttempt();
+      if (isPrivateStoreAccessError(firstError)) {
+        return runAttempt("explicit_blob_read_write_token", "private", { token });
+      }
     }
   }
 
-  return defaultTokenAttempt();
+  try {
+    return await runAttempt("sdk_default_token_resolution", "public");
+  } catch (error) {
+    console.warn("[library-sharing][blob][put] default_auth_failed", {
+      pathname,
+      authMode: "sdk_default_token_resolution",
+      access: "public",
+      ...safeBlobExceptionDetails(error),
+    });
+    if (isPrivateStoreAccessError(error)) {
+      return runAttempt("sdk_default_token_resolution", "private");
+    }
+    throw error;
+  }
 }
 
 // ── Vercel Blob: config ───────────────────────────────────────────────────────
