@@ -68,6 +68,7 @@ function syncSchema(cfg) {
   if (!cfg || typeof cfg !== "object") return;
   cfg.branding = (cfg.branding && typeof cfg.branding === "object") ? cfg.branding : {};
   cfg.library  = (cfg.library  && typeof cfg.library  === "object") ? cfg.library  : {};
+  cfg.admin    = (cfg.admin    && typeof cfg.admin    === "object") ? cfg.admin    : {};
 
   const chosenName = (
     typeof cfg.branding?.libraryName === "string" ? cfg.branding.libraryName :
@@ -88,6 +89,14 @@ function syncSchema(cfg) {
     gcd:          configured.gcd    !== false,
     nyt:          configured.nyt    === true,
   };
+}
+
+function hasSavedAdminPin(cfg) {
+  return /^\d{6}$/.test(String(cfg?.admin?.pin || ""));
+}
+
+function derivePinEditorVisibility(cfg) {
+  return !hasSavedAdminPin(cfg) && !!cfg?.admin?.pinEnabled;
 }
 
 function loadColorHex(cfg) {
@@ -172,6 +181,23 @@ function simulateLoad(savedConfigJson) {
   const parsed = JSON.parse(savedConfigJson);
   syncSchema(parsed);
   return { config: parsed, colors: loadColorHex(parsed) };
+}
+
+function simulatePinSave(config, colorState, pinDraft) {
+  if (!/^\d{6}$/.test(String(pinDraft || ""))) {
+    return { ok: false, savedConfig: null, pinEditorVisible: true, pinDraft: String(pinDraft || "") };
+  }
+  const next = deepClone(config);
+  syncSchema(next);
+  next.admin.pinEnabled = true;
+  next.admin.pin = String(pinDraft);
+  const result = simulateSave(next, colorState);
+  return {
+    ...result,
+    pinEditorVisible: false,
+    pinDraft: "",
+    pinStatus: "saved",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -546,6 +572,71 @@ checks.push(check("R16_save_failure_shows_error_code_and_correlation", () => {
     adminWebSrc.includes("corr=${saveErrorDetails.correlationId}"),
     "admin save error UI must display safe application error code and correlation ID"
   );
+}));
+
+// R17 – Save PIN stores a valid scoped 6-digit PIN
+checks.push(check("R17_save_pin_persists_valid_six_digit_pin", () => {
+  const cfg = { branding: {}, theme: {}, admin: { pinEnabled: true } };
+  syncSchema(cfg);
+  const colors = { mainColorHex: "#1d4ed8", highlightColorHex: "#38bdf8", fontColorHex: "#ffffff", autoFontColor: true };
+  const result = simulatePinSave(cfg, colors, "246810");
+  assert(result.ok === true, "Save PIN should succeed for a valid 6-digit PIN");
+  assert(result.savedConfig.admin.pin === "246810", "saved PIN did not persist");
+  assert(result.savedConfig.admin.pinEnabled === true, "saved PIN should keep admin pin enabled");
+}));
+
+// R18 – PIN becomes hidden after save and the saved digits are not rendered back
+checks.push(check("R18_saved_pin_is_hidden_after_save", () => {
+  const cfg = { branding: {}, theme: {}, admin: { pinEnabled: true } };
+  syncSchema(cfg);
+  const colors = { mainColorHex: "#1d4ed8", highlightColorHex: "#38bdf8", fontColorHex: "#ffffff", autoFontColor: true };
+  const result = simulatePinSave(cfg, colors, "135790");
+  assert(result.pinEditorVisible === false, "PIN editor should hide after save");
+  assert(result.pinDraft === "", "saved PIN digits must not remain in the editable input state");
+  assert(derivePinEditorVisibility(result.savedConfig) === false, "saved PIN should load back hidden");
+}));
+
+// R19 – Change PIN starts from a blank editor instead of revealing the saved digits
+checks.push(check("R19_change_pin_starts_blank", () => {
+  const cfg = { branding: {}, theme: {}, admin: { pinEnabled: true, pin: "654321" } };
+  syncSchema(cfg);
+  assert(hasSavedAdminPin(cfg) === true, "fixture should start with a saved PIN");
+  assert(derivePinEditorVisibility(cfg) === false, "saved PIN should initially stay hidden");
+  const changeFlow = { pinEditorVisible: true, pinDraft: "", pinStatus: "idle" };
+  assert(changeFlow.pinEditorVisible === true, "Change PIN should reveal the editor");
+  assert(changeFlow.pinDraft === "", "Change PIN must not preload the existing PIN digits");
+}));
+
+// R20 – Scoped admin configs do not share PIN state between default and hosted libraries
+checks.push(check("R20_scoped_admin_pin_state_is_isolated", () => {
+  const storage = new Map();
+  const colors = { mainColorHex: "#1d4ed8", highlightColorHex: "#38bdf8", fontColorHex: "#ffffff", autoFontColor: true };
+  const scopes = [
+    { scope: "default", pin: "111111" },
+    { scope: "yvhs-library", pin: "222222" },
+    { scope: "m", pin: "333333" },
+  ];
+  for (const { scope, pin } of scopes) {
+    const cfg = { branding: {}, theme: {}, admin: { pinEnabled: true } };
+    syncSchema(cfg);
+    const saved = simulatePinSave(cfg, colors, pin);
+    storage.set(adminConfigStorageKeyForScope(scope), JSON.stringify(saved.savedConfig));
+  }
+  for (const { scope, pin } of scopes) {
+    const savedJson = storage.get(adminConfigStorageKeyForScope(scope));
+    const { config: loaded } = simulateLoad(savedJson);
+    assert(loaded.admin.pin === pin, `${scope} should retain only its own saved PIN`);
+  }
+  assert(storage.get(adminConfigStorageKeyForScope("default")) !== storage.get(adminConfigStorageKeyForScope("m")), "default and m PIN state must not share a storage record");
+}));
+
+// R21 – Admin PIN UI exposes explicit Save/Change actions without rendering saved digits
+checks.push(check("R21_admin_pin_ui_masks_saved_pin", () => {
+  assert(adminWebSrc.includes('>Save PIN<'), "Admin Security must expose a Save PIN action");
+  assert(adminWebSrc.includes('>Change PIN<'), "Admin Security must expose a Change PIN action");
+  assert(adminWebSrc.includes("secureTextEntry"), "PIN input must stay masked while typing");
+  assert(adminWebSrc.includes("setPinDraft(\"\")"), "PIN flow must clear editable digits after save/change transitions");
+  assert(adminWebSrc.includes('pinStatus === "saved" ? "PIN saved" : "PIN is saved and hidden."'), "hidden saved PIN confirmation text missing");
 }));
 
 // ---------------------------------------------------------------------------

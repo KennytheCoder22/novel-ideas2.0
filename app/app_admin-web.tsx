@@ -249,6 +249,10 @@ function formatByteCount(bytes: number): string {
   return `${Math.max(0, Math.floor(bytes)).toLocaleString()} bytes`;
 }
 
+function hasSavedAdminPin(cfg: any): boolean {
+  return /^\d{6}$/.test(String(cfg?.admin?.pin || ""));
+}
+
 function deckLabel(k: DeckKey) {
   if (k === "k2") return "Kids (K\u20132)";
   if (k === "36") return "Pre-Teens (3\u20136)";
@@ -590,6 +594,9 @@ export default function AdminWebScreen() {
   const [isDirty, setIsDirty] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
   const [saveErrorDetails, setSaveErrorDetails] = useState<SharedLibraryConfigSaveDiagnostics | null>(null);
+  const [pinDraft, setPinDraft] = useState("");
+  const [pinEditorVisible, setPinEditorVisible] = useState(() => !hasSavedAdminPin(config) && !!config?.admin?.pinEnabled);
+  const [pinStatus, setPinStatus] = useState<"idle" | "saved">("idle");
   const [previewAcceptanceMode, setPreviewAcceptanceMode] = useState<PreviewAcceptanceDashboardMode>(() =>
     readPreviewAcceptanceDashboardModeFromDocument()
   );
@@ -622,6 +629,9 @@ export default function AdminWebScreen() {
     }
     setSaveStatus("idle");
     setSaveErrorDetails(null);
+    setPinDraft("");
+    setPinEditorVisible(!hasSavedAdminPin(next) && !!next?.admin?.pinEnabled);
+    setPinStatus("idle");
     setIsDirty(false);
     try {
       if (migratedPoisonedDefaultDraft) {
@@ -751,6 +761,13 @@ export default function AdminWebScreen() {
       return next;
     });
   }, []);
+
+  const setAdminPinEnabled = useCallback((enabled: boolean) => {
+    setPath(["admin", "pinEnabled"], enabled);
+    setPinStatus("idle");
+    setPinDraft("");
+    setPinEditorVisible(enabled && !hasSavedAdminPin(config));
+  }, [config, setPath]);
 
   const toggleSwipeCategory = useCallback((k: SwipeCategoryKey) => {
     setConfig((prev: any) => {
@@ -961,10 +978,10 @@ export default function AdminWebScreen() {
   // Save / Discard
   // ---------------------------------------------------------------------------
 
-  const persistDraftConfig = useCallback(async () => {
+  const persistDraftConfig = useCallback(async (configOverride?: any) => {
     try {
       setSaveErrorDetails(null);
-      const next = deepClone(config);
+      const next = deepClone(configOverride ?? config);
       const effectiveFontColor = autoFontColor ? autoChooseFontColor(mainColorHex) : fontColorHex;
       applyColorHex(next, mainColorHex, highlightColorHex, effectiveFontColor, autoFontColor);
       syncSchema(next);
@@ -1073,6 +1090,9 @@ export default function AdminWebScreen() {
     setIsDirty(false);
     setSaveStatus("idle");
     setSaveErrorDetails(null);
+    setPinDraft("");
+    setPinEditorVisible(!hasSavedAdminPin(next) && !!next?.admin?.pinEnabled);
+    setPinStatus("idle");
   }, [loadConfigForScope]);
 
   // ---------------------------------------------------------------------------
@@ -1103,7 +1123,30 @@ export default function AdminWebScreen() {
     !config?.recommendations?.sourceEnabled?.nyt;
 
   const adminPinEnabled = !!config?.admin?.pinEnabled;
-  const adminPin = String(config?.admin?.pin || "");
+  const adminPinSaved = hasSavedAdminPin(config);
+  const pinSaveDisabled = !adminPinEnabled || pinDraft.length !== 6;
+
+  const onSavePin = useCallback(() => {
+    if (!adminPinEnabled || pinDraft.length !== 6) return;
+    void (async () => {
+      const next = deepClone(config);
+      next.admin = typeof next.admin === "object" && next.admin ? next.admin : {};
+      next.admin.pinEnabled = true;
+      next.admin.pin = pinDraft;
+      const saved = await persistDraftConfig(next);
+      if (!saved) return;
+      setPinDraft("");
+      setPinEditorVisible(false);
+      setPinStatus("saved");
+      setTimeout(() => setPinStatus((current) => (current === "saved" ? "idle" : current)), 3000);
+    })();
+  }, [adminPinEnabled, config, persistDraftConfig, pinDraft]);
+
+  const onChangePin = useCallback(() => {
+    setPinDraft("");
+    setPinEditorVisible(true);
+    setPinStatus("idle");
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Render helpers
@@ -1599,28 +1642,62 @@ export default function AdminWebScreen() {
 
         <View style={[styles.rowBetween, { marginTop: 12 }]}>
           <Text style={{ color: t.text, fontWeight: "700" }}>Enable Admin PIN</Text>
-          <Switch value={adminPinEnabled} onValueChange={() => togglePathBool(["admin", "pinEnabled"])} />
+          <Switch value={adminPinEnabled} onValueChange={setAdminPinEnabled} />
         </View>
 
         {adminPinEnabled ? (
           <>
             <Text style={[styles.label, { color: t.muted, marginTop: 14 }]}>6-digit PIN</Text>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.text, maxWidth: 260 },
-              ]}
-              value={adminPin}
-              onChangeText={(text) =>
-                setPath(["admin", "pin"], text.replace(/\D/g, "").slice(0, 6))
-              }
-              placeholder="123456"
-              placeholderTextColor="#7a8aa0"
-              keyboardType="number-pad"
-            />
-            {adminPin.length > 0 && adminPin.length !== 6 ? (
-              <Note color={t.danger}>PIN must be exactly 6 digits.</Note>
-            ) : null}
+            {pinEditorVisible ? (
+              <>
+                <TextInput
+                  style={[
+                    styles.input,
+                    { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.text, maxWidth: 260 },
+                  ]}
+                  value={pinDraft}
+                  onChangeText={(text) => {
+                    setPinDraft(text.replace(/\D/g, "").slice(0, 6));
+                    setPinStatus("idle");
+                  }}
+                  placeholder={adminPinSaved ? "Enter new PIN" : "123456"}
+                  placeholderTextColor="#7a8aa0"
+                  keyboardType="number-pad"
+                  secureTextEntry
+                  testID="admin-pin-input"
+                />
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.btn,
+                      { borderColor: t.accentBorder, backgroundColor: t.inputBg },
+                      pinSaveDisabled ? { opacity: 0.5 } : undefined,
+                    ]}
+                    onPress={onSavePin}
+                    disabled={pinSaveDisabled}
+                    accessibilityLabel="Save PIN"
+                  >
+                    <Text style={[styles.btnText, { color: t.text }]}>Save PIN</Text>
+                  </TouchableOpacity>
+                  {pinDraft.length > 0 && pinDraft.length !== 6 ? (
+                    <Note color={t.danger}>PIN must be exactly 6 digits.</Note>
+                  ) : adminPinSaved ? (
+                    <Note>Previously saved PIN stays hidden. Enter a new 6-digit PIN to replace it.</Note>
+                  ) : null}
+                </View>
+              </>
+            ) : (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <Note color={t.success}>{pinStatus === "saved" ? "PIN saved" : "PIN is saved and hidden."}</Note>
+                <TouchableOpacity
+                  style={[styles.btn, { borderColor: t.lightBorder, backgroundColor: t.inputBg }]}
+                  onPress={onChangePin}
+                  accessibilityLabel="Change PIN"
+                >
+                  <Text style={[styles.btnText, { color: t.text }]}>Change PIN</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </>
         ) : null}
 
