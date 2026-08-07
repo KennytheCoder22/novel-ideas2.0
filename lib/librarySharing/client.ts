@@ -105,6 +105,83 @@ async function postJson(url: string, body: Record<string, unknown>, context: str
         status: response.status,
       });
     }
+
+    export type SharedLibraryConfigSaveDiagnostics = {
+      timestamp: string;
+      requestUrl: string;
+      libraryId: string;
+      correlationId: string;
+      httpStatus: number | null;
+      responseContentType: string | null;
+      requestReachedApiRoute: boolean;
+      appErrorCode: string | null;
+      responseBodySnippet: string | null;
+      success: boolean;
+    };
+
+    export async function saveSharedLibraryConfigWithDiagnostics(
+      libraryId: string,
+      config: Record<string, unknown>
+    ): Promise<SharedLibraryConfigSaveDiagnostics> {
+      const requestUrl = sharedApiUrl("/api/library-config", libraryId) || "";
+      const correlationId = newCorrelationId();
+      const diagnostics: SharedLibraryConfigSaveDiagnostics = {
+        timestamp: new Date().toISOString(),
+        requestUrl,
+        libraryId: String(libraryId || ""),
+        correlationId,
+        httpStatus: null,
+        responseContentType: null,
+        requestReachedApiRoute: false,
+        appErrorCode: null,
+        responseBodySnippet: null,
+        success: false,
+      };
+      if (!requestUrl) {
+        return { ...diagnostics, appErrorCode: "invalid_request_url" };
+      }
+
+      try {
+        const response = await fetch(requestUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "x-correlation-id": correlationId,
+          },
+          body: JSON.stringify({ libraryId, config }),
+        });
+        const responseText = await response.text().catch(() => "");
+        let payload: Record<string, unknown> | null = null;
+        try {
+          const parsed = JSON.parse(responseText);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            payload = parsed as Record<string, unknown>;
+          }
+        } catch {}
+        const responseCorrelation = String(response.headers.get("x-correlation-id") || correlationId);
+        const responseContentType = response.headers.get("content-type");
+        const routeReached = response.headers.get("x-library-config-route") === "reached";
+        const appErrorCode = typeof payload?.error === "string" ? payload.error : null;
+        const snippet = responseText ? responseText.slice(0, 240) : null;
+        const result: SharedLibraryConfigSaveDiagnostics = {
+          ...diagnostics,
+          correlationId: responseCorrelation,
+          httpStatus: response.status,
+          responseContentType,
+          requestReachedApiRoute: routeReached,
+          appErrorCode,
+          responseBodySnippet: snippet,
+          success: response.ok,
+        };
+        if (!response.ok) {
+          console.warn("[library-sharing][client][saveSharedLibraryConfigWithDiagnostics] request_failed", result);
+        }
+        return result;
+      } catch {
+        return { ...diagnostics, appErrorCode: "request_failed" };
+      }
+    }
     return response.ok;
   } catch {
     console.warn(`[library-sharing][client][${context}] request_error`, { url });
@@ -223,9 +300,8 @@ export async function loadSharedLibraryConfigWithDiagnostics(
 }
 
 export async function saveSharedLibraryConfig(libraryId: string, config: Record<string, unknown>): Promise<boolean> {
-  const url = sharedApiUrl("/api/library-config", libraryId);
-  if (!url) return false;
-  return postJson(url, { libraryId, config }, "saveSharedLibraryConfig");
+  const result = await saveSharedLibraryConfigWithDiagnostics(libraryId, config);
+  return result.success;
 }
 
 /**
