@@ -79,23 +79,6 @@ function safeBlobExceptionDetails(error: unknown): SafeBlobExceptionDetails {
   if (lower.includes("no token")) {
     return { exceptionName: name, exceptionCode: "blob_token_missing", exceptionMessage: "Blob token missing." };
   }
-
-  function isPrivateStoreAccessError(error: unknown): boolean {
-    const message = String(error instanceof Error ? error.message : error || "").toLowerCase();
-    return message.includes("cannot use public access on a private store");
-  }
-
-  async function readBlobTextFromSdkGetResult(result: unknown): Promise<string | null> {
-    if (!result || typeof result !== "object") return null;
-    const candidate = result as Record<string, unknown>;
-    const stream = candidate.stream ?? candidate.body;
-    if (!stream) return null;
-    try {
-      return await new Response(stream as BodyInit).text();
-    } catch {
-      return null;
-    }
-  }
   if (lower.includes("invalid token") || lower.includes("token is malformed")) {
     return { exceptionName: name, exceptionCode: "blob_token_invalid", exceptionMessage: "Blob token invalid." };
   }
@@ -113,6 +96,23 @@ function safeBlobExceptionDetails(error: unknown): SafeBlobExceptionDetails {
     exceptionCode: code,
     exceptionMessage: redactedMessage || "Blob write failed.",
   };
+}
+
+function isPrivateStoreAccessError(error: unknown): boolean {
+  const message = String(error instanceof Error ? error.message : error || "").toLowerCase();
+  return message.includes("cannot use public access on a private store");
+}
+
+async function readBlobTextFromSdkGetResult(result: unknown): Promise<string | null> {
+  if (!result || typeof result !== "object") return null;
+  const candidate = result as Record<string, unknown>;
+  const stream = candidate.stream ?? candidate.body;
+  if (!stream) return null;
+  try {
+    return await new Response(stream as BodyInit).text();
+  } catch {
+    return null;
+  }
 }
 
 function storageMode(): StorageMode {
