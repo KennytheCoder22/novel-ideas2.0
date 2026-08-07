@@ -17,6 +17,7 @@ import configFile from "../NovelIdeas.json";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
 import { importLocalCollectionCsv, importLocalCollectionMarc } from "../lib/localCollection";
 import {
+  loadLocalCollectionRecommendationArtifact,
   measureSharedLocalCollectionPublishBytes,
   persistLocalCollectionRecommendationArtifact,
   publishSharedLocalCollectionRecommendationArtifact,
@@ -71,9 +72,8 @@ const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
 const DEFAULT_MAIN_COLOR = "#0b1e33";
 const DEFAULT_HIGHLIGHT_COLOR = "#fbbf24";
 const DEFAULT_FONT_COLOR = "#ffffff";
-const LOCAL_COLLECTION_STORAGE_KEY = "novelideas_local_collection";
-const LOCAL_COLLECTION_CSV_STORAGE_KEY = "novelideas_local_collection_csv";
-const LOCAL_COLLECTION_IMPORT_REPORT_STORAGE_KEY = "novelideas_local_collection_import_report_v1";
+const LOCAL_COLLECTION_CSV_STORAGE_KEY_PREFIX = "novelideas_local_collection_csv_v2";
+const LOCAL_COLLECTION_IMPORT_REPORT_STORAGE_KEY_PREFIX = "novelideas_local_collection_import_report_v2";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -156,10 +156,32 @@ function resolveAdminDraftScopeId(rawLibraryId?: string): string {
   return normalized || ADMIN_CONFIG_DEFAULT_SCOPE;
 }
 
+function localCollectionCsvStorageKeyForScope(scopeId: string): string {
+  return `${LOCAL_COLLECTION_CSV_STORAGE_KEY_PREFIX}:${resolveAdminDraftScopeId(scopeId)}`;
+}
+
+function localCollectionImportReportStorageKeyForScope(scopeId: string): string {
+  return `${LOCAL_COLLECTION_IMPORT_REPORT_STORAGE_KEY_PREFIX}:${resolveAdminDraftScopeId(scopeId)}`;
+}
+
+function clearScopedCollectionArtifacts(storage: { removeItem: (key: string) => void }, scopeId: string): void {
+  storage.removeItem(localCollectionCsvStorageKeyForScope(scopeId));
+  storage.removeItem(localCollectionImportReportStorageKeyForScope(scopeId));
+}
+
 function clearDefaultScopeCollectionArtifacts(storage: { removeItem: (key: string) => void }): void {
-  storage.removeItem(LOCAL_COLLECTION_STORAGE_KEY);
-  storage.removeItem(LOCAL_COLLECTION_CSV_STORAGE_KEY);
-  storage.removeItem(LOCAL_COLLECTION_IMPORT_REPORT_STORAGE_KEY);
+  clearScopedCollectionArtifacts(storage, ADMIN_CONFIG_DEFAULT_SCOPE);
+}
+
+function readScopedUploadedCollectionCount(
+  storage: Pick<Storage, "getItem">,
+  scopeId: string
+): number {
+  const persistedCount = readLocalCollectionAcceptedCountFromLocalStorage(scopeId);
+  if (persistedCount > 0) return persistedCount;
+  const csv = storage.getItem(localCollectionCsvStorageKeyForScope(scopeId));
+  if (csv) return Math.max(0, csv.split(/\r?\n/).filter((r) => r.trim().length > 0).length - 1);
+  return 0;
 }
 
 function isPoisonedDefaultDraft(parsed: any): { poisoned: boolean; reasons: string[]; draftLibraryId: string } {
@@ -646,18 +668,39 @@ export default function AdminWebScreen() {
   const [uploadedCollectionCount, setUploadedCollectionCount] = useState<number>(() => {
     try {
       if (!isWeb || typeof localStorage === "undefined") return 0;
-      const persistedCount = readLocalCollectionAcceptedCountFromLocalStorage();
-      if (persistedCount > 0) return persistedCount;
-      const saved = localStorage.getItem(LOCAL_COLLECTION_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed.length;
-      }
-      const csv = localStorage.getItem(LOCAL_COLLECTION_CSV_STORAGE_KEY);
-      if (csv) return Math.max(0, csv.split(/\r?\n/).filter((r) => r.trim().length > 0).length - 1);
-      return 0;
+      return readScopedUploadedCollectionCount(localStorage, adminDraftScopeId);
     } catch { return 0; }
   });
+
+  useEffect(() => {
+    if (!isWeb || typeof localStorage === "undefined") {
+      setUploadedCollectionCount(0);
+      return;
+    }
+    let cancelled = false;
+    const initialCount = readScopedUploadedCollectionCount(localStorage, adminDraftScopeId);
+    setUploadedCollectionCount(initialCount);
+    void loadLocalCollectionRecommendationArtifact(
+      adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE ? undefined : adminDraftScopeId
+    ).then((artifact) => {
+      if (cancelled) return;
+      if (!artifact) {
+        setUploadedCollectionCount(initialCount);
+        return;
+      }
+      const acceptedCount = Number(artifact.summary?.acceptedTitles || 0);
+      if (Number.isFinite(acceptedCount) && acceptedCount >= 0) {
+        setUploadedCollectionCount(acceptedCount);
+        return;
+      }
+      if (Array.isArray((artifact as any).records)) {
+        setUploadedCollectionCount((artifact as any).records.length);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [adminDraftScopeId, isWeb]);
 
   // Derived
   const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
@@ -840,17 +883,17 @@ export default function AdminWebScreen() {
                 marcBinary: new Uint8Array(reader.result as ArrayBuffer),
                 sourceFilename,
                 collectionName,
-                libraryId: "local-library",
+                libraryId: adminDraftScopeId,
               });
-              localStorage.removeItem(LOCAL_COLLECTION_CSV_STORAGE_KEY);
+              localStorage.removeItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId));
             } else {
               artifact = importLocalCollectionCsv({
                 csvText: String(reader.result || ""),
                 sourceFilename,
                 collectionName,
-                libraryId: "local-library",
+                libraryId: adminDraftScopeId,
               });
-              localStorage.setItem(LOCAL_COLLECTION_CSV_STORAGE_KEY, String(reader.result || ""));
+              localStorage.setItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId), String(reader.result || ""));
             }
             setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
             await persistLocalCollectionRecommendationArtifact(artifact);
@@ -878,7 +921,10 @@ export default function AdminWebScreen() {
                 }
               }
             }
-            localStorage.setItem(LOCAL_COLLECTION_IMPORT_REPORT_STORAGE_KEY, JSON.stringify(artifact.summary));
+            localStorage.setItem(
+              localCollectionImportReportStorageKeyForScope(adminDraftScopeId),
+              JSON.stringify(artifact.summary)
+            );
             setUploadedCollectionCount(artifact.summary.acceptedTitles);
             // Mark collection as available (supported) but do NOT auto-enable the source toggle.
             setPath(["recommendations", "localLibrarySupported"], true);

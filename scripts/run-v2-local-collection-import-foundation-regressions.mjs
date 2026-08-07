@@ -22,18 +22,30 @@ require.extensions[".ts"] = (module, filename) => {
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
 const { importLocalCollectionCsv, importLocalCollectionMarc } = require(resolve(repoRoot, "lib", "localCollection", "index.ts"));
+const {
+  loadLocalCollectionRecommendationArtifact,
+  persistLocalCollectionRecommendationArtifact,
+  readLocalCollectionAcceptedCountFromLocalStorage,
+  LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY,
+  LOCAL_COLLECTION_SUMMARY_STORAGE_KEY,
+} = require(resolve(repoRoot, "lib", "localCollection", "storage.ts"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function runImport(csvText, sourceFilename = "fixture.csv", importTimestamp = "2026-08-02T00:00:00.000Z") {
+function runImport(
+  csvText,
+  sourceFilename = "fixture.csv",
+  importTimestamp = "2026-08-02T00:00:00.000Z",
+  libraryId = "yvhs-library"
+) {
   return importLocalCollectionCsv({
     csvText,
     sourceFilename,
     importTimestamp,
     collectionName: "YVHS",
-    libraryId: "yvhs",
+    libraryId,
   });
 }
 
@@ -137,7 +149,11 @@ function hasRejectReason(result, reason) {
 }
 
 function check(name, fn) {
-  fn();
+  return { name, fn };
+}
+
+async function runCheck(name, fn) {
+  await fn();
   return { name, pass: true };
 }
 
@@ -145,6 +161,38 @@ const originalFetch = globalThis.fetch;
 globalThis.fetch = () => {
   throw new Error("network_fetch_not_allowed");
 };
+const originalLocalStorage = globalThis.localStorage;
+const originalIndexedDb = globalThis.indexedDB;
+
+function makeMemoryStorage() {
+  const data = new Map();
+  return {
+    getItem(key) {
+      return data.has(key) ? data.get(key) : null;
+    },
+    setItem(key, value) {
+      data.set(String(key), String(value));
+    },
+    removeItem(key) {
+      data.delete(String(key));
+    },
+    clear() {
+      data.clear();
+    },
+  };
+}
+
+async function withFakeBrowserStorage(fn) {
+  const storage = makeMemoryStorage();
+  globalThis.localStorage = storage;
+  globalThis.indexedDB = undefined;
+  try {
+    return await fn(storage);
+  } finally {
+    globalThis.localStorage = originalLocalStorage;
+    globalThis.indexedDB = originalIndexedDb;
+  }
+}
 
 const checks = [];
 
@@ -305,6 +353,54 @@ checks.push(check("import_does_not_overwrite_legacy_local_collection_key", () =>
   );
 }));
 
+checks.push(check("default_scope_ignores_legacy_global_collection", async () => {
+  await withFakeBrowserStorage(async (storage) => {
+    const legacy = runImport("title,author,isbn\nLegacy YVHS,Author,9780439708180\n");
+    legacy.summary.acceptedTitles = 8402;
+    storage.setItem(LOCAL_COLLECTION_SUMMARY_STORAGE_KEY, JSON.stringify(legacy));
+    assert(readLocalCollectionAcceptedCountFromLocalStorage("default") === 0, "default_scope_should_ignore_legacy_global_count");
+    const artifact = await loadLocalCollectionRecommendationArtifact(undefined);
+    assert(artifact === null, "default_scope_should_not_load_legacy_global_artifact");
+  });
+}));
+
+checks.push(check("hosted_scope_reads_only_its_scoped_collection", async () => {
+  await withFakeBrowserStorage(async () => {
+    const yvhsArtifact = runImport("title,author,isbn\nYVHS Book,Author,9780439708180\n", "yvhs.csv", "2026-08-02T00:00:00.000Z", "yvhs-library");
+    yvhsArtifact.summary.acceptedTitles = 8402;
+    await persistLocalCollectionRecommendationArtifact(yvhsArtifact);
+
+    assert(readLocalCollectionAcceptedCountFromLocalStorage("default") === 0, "default_scope_count_should_stay_zero");
+    assert(readLocalCollectionAcceptedCountFromLocalStorage("yvhs-library") === 8402, "yvhs_scope_count_missing");
+    assert(readLocalCollectionAcceptedCountFromLocalStorage("m") === 0, "other_scope_should_not_see_yvhs_count");
+
+    const yvhsLoaded = await loadLocalCollectionRecommendationArtifact("yvhs-library");
+    const mLoaded = await loadLocalCollectionRecommendationArtifact("m");
+    assert(yvhsLoaded?.summary?.acceptedTitles === 8402, "yvhs_scope_artifact_missing");
+    assert(mLoaded === null, "other_scope_should_not_load_yvhs_artifact");
+  });
+}));
+
+checks.push(check("switching_scopes_does_not_leak_collection_state", async () => {
+  await withFakeBrowserStorage(async () => {
+    const yvhsArtifact = runImport("title,author,isbn\nYVHS Book,Author,9780439708180\n", "yvhs.csv", "2026-08-02T00:00:00.000Z", "yvhs-library");
+    yvhsArtifact.summary.acceptedTitles = 8402;
+    await persistLocalCollectionRecommendationArtifact(yvhsArtifact);
+
+    const mArtifact = runImport("title,author,isbn\nM Book,Author,9780439708180\n", "m.csv", "2026-08-02T00:00:00.000Z", "m");
+    mArtifact.summary.acceptedTitles = 12;
+    await persistLocalCollectionRecommendationArtifact(mArtifact);
+
+    const counts = [
+      readLocalCollectionAcceptedCountFromLocalStorage("default"),
+      readLocalCollectionAcceptedCountFromLocalStorage("yvhs-library"),
+      readLocalCollectionAcceptedCountFromLocalStorage("m"),
+      readLocalCollectionAcceptedCountFromLocalStorage("default"),
+    ];
+    assert(JSON.stringify(counts) === JSON.stringify([0, 8402, 12, 0]), "scope_switch_count_sequence_leaked");
+  });
+}));
+
 checks.push(check("marc_import_maps_852_collection_and_multi_copy_counts", () => {
   const record = buildMarcRecord({
     control001: "fol00118715",
@@ -366,10 +462,17 @@ checks.push(check("marc_import_missing_852b_keeps_record_with_warning_path", () 
   assert(!accepted.shelvingLocation, "marc_missing_852b_should_leave_shelving_empty");
 }));
 
+const results = [];
+for (const entry of checks) {
+  results.push(await runCheck(entry.name, entry.fn));
+}
+
 globalThis.fetch = originalFetch;
+globalThis.localStorage = originalLocalStorage;
+globalThis.indexedDB = originalIndexedDb;
 
 console.log(JSON.stringify({
   pass: true,
-  checkCount: checks.length,
-  checks,
+  checkCount: results.length,
+  checks: results,
 }, null, 2));

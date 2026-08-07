@@ -1,5 +1,6 @@
 import type { LocalCollectionArtifact } from "./types";
 import { loadSharedLibraryCollection, saveSharedLibraryCollection } from "../librarySharing/client";
+import { ADMIN_CONFIG_DEFAULT_SCOPE, normalizeAdminDraftScopeId } from "../../constants/brandTheme";
 
 const LOCAL_COLLECTION_DB_NAME = "novelideas_local_collection";
 const LOCAL_COLLECTION_DB_STORE = "artifacts";
@@ -8,6 +9,18 @@ const LOCAL_COLLECTION_DB_VERSION = 1;
 export const LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY = "novelideas_local_collection_recommendation_v1";
 export const LOCAL_COLLECTION_SUMMARY_STORAGE_KEY = "novelideas_local_collection_artifact_v1";
 export const SHARED_COLLECTION_POST_MAX_BYTES = 4 * 1024 * 1024;
+
+export function normalizeLocalCollectionScopeId(raw?: string): string {
+  return normalizeAdminDraftScopeId(String(raw || ""));
+}
+
+export function localCollectionRecommendationStorageKeyForScope(scopeId?: string): string {
+  return `${LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY}:${normalizeLocalCollectionScopeId(scopeId)}`;
+}
+
+export function localCollectionSummaryStorageKeyForScope(scopeId?: string): string {
+  return `${LOCAL_COLLECTION_SUMMARY_STORAGE_KEY}:${normalizeLocalCollectionScopeId(scopeId)}`;
+}
 
 export type LocalCollectionRecommendationRecord = {
   localId: string;
@@ -240,6 +253,76 @@ function localStorageSetJson(key: string, value: unknown): void {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function localCollectionScopeIdFromLibraryId(libraryId?: string): string {
+  return normalizeLocalCollectionScopeId(libraryId || ADMIN_CONFIG_DEFAULT_SCOPE);
+}
+
+function scopedLibraryIdForSharedFallback(scopeId: string): string {
+  return scopeId === ADMIN_CONFIG_DEFAULT_SCOPE ? "" : scopeId;
+}
+
+function artifactBelongsToScope(artifact: LocalCollectionRecommendationArtifact | null, scopeId: string): boolean {
+  if (!artifact) return false;
+  const artifactScope = normalizeLocalCollectionScopeId(artifact.metadata?.libraryId || "");
+  return artifactScope === scopeId;
+}
+
+async function persistRecommendationArtifactForScope(
+  recommendationArtifact: LocalCollectionRecommendationArtifact,
+  summarySnapshot: LocalCollectionSummarySnapshot,
+  scopeId: string
+): Promise<{
+  recordCount: number;
+  storage: "indexeddb" | "localstorage";
+}> {
+  const recommendationKey = localCollectionRecommendationStorageKeyForScope(scopeId);
+  const summaryKey = localCollectionSummaryStorageKeyForScope(scopeId);
+
+  let indexedDbStored = false;
+  if (canUseIndexedDb()) {
+    indexedDbStored = await writeIndexedDbValue(recommendationKey, recommendationArtifact);
+  }
+
+  if (indexedDbStored) {
+    try {
+      localStorageSetJson(summaryKey, summarySnapshot);
+      if (canUseLocalStorage()) localStorage.removeItem(recommendationKey);
+    } catch {
+      // Keep import successful even if summary snapshot cannot be written.
+    }
+    return { recordCount: recommendationArtifact.records.length, storage: "indexeddb" };
+  }
+
+  try {
+    localStorageSetJson(recommendationKey, recommendationArtifact);
+    localStorageSetJson(summaryKey, summarySnapshot);
+    return { recordCount: recommendationArtifact.records.length, storage: "localstorage" };
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      throw new Error("collection_storage_quota_exceeded");
+    }
+    throw error;
+  }
+}
+
+async function loadLegacyGlobalLocalCollectionRecommendationArtifact(): Promise<LocalCollectionRecommendationArtifact | null> {
+  const indexed = await readIndexedDbValue<LocalCollectionRecommendationArtifact>(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY);
+  if (indexed && indexed.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(indexed.records)) {
+    return indexed;
+  }
+
+  const recommended = localStorageGetJson<LocalCollectionRecommendationArtifact>(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY);
+  if (recommended && recommended.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(recommended.records)) {
+    return recommended;
+  }
+
+  const legacy = localStorageGetJson<any>(LOCAL_COLLECTION_SUMMARY_STORAGE_KEY);
+  const convertedLegacy = fromLegacyArtifact(legacy);
+  if (convertedLegacy) return convertedLegacy;
+
+  return null;
+}
+
 function fromLegacyArtifact(raw: any): LocalCollectionRecommendationArtifact | null {
   if (!raw || !Array.isArray(raw.acceptedRecords)) return null;
   const records = raw.acceptedRecords
@@ -286,32 +369,8 @@ export async function persistLocalCollectionRecommendationArtifact(artifact: Loc
 }> {
   const recommendationArtifact = buildRecommendationArtifact(artifact);
   const summarySnapshot = buildSummarySnapshot(artifact);
-
-  let indexedDbStored = false;
-  if (canUseIndexedDb()) {
-    indexedDbStored = await writeIndexedDbValue(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY, recommendationArtifact);
-  }
-
-  if (indexedDbStored) {
-    try {
-      localStorageSetJson(LOCAL_COLLECTION_SUMMARY_STORAGE_KEY, summarySnapshot);
-      if (canUseLocalStorage()) localStorage.removeItem(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY);
-    } catch {
-      // Keep import successful even if summary snapshot cannot be written.
-    }
-    return { recordCount: recommendationArtifact.records.length, storage: "indexeddb" };
-  }
-
-  try {
-    localStorageSetJson(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY, recommendationArtifact);
-    localStorageSetJson(LOCAL_COLLECTION_SUMMARY_STORAGE_KEY, summarySnapshot);
-    return { recordCount: recommendationArtifact.records.length, storage: "localstorage" };
-  } catch (error) {
-    if (isQuotaExceededError(error)) {
-      throw new Error("collection_storage_quota_exceeded");
-    }
-    throw error;
-  }
+  const scopeId = localCollectionScopeIdFromLibraryId(artifact.metadata?.libraryId || "");
+  return persistRecommendationArtifactForScope(recommendationArtifact, summarySnapshot, scopeId);
 }
 
 export async function publishSharedLocalCollectionRecommendationArtifact(libraryId: string, artifact: LocalCollectionArtifact): Promise<boolean> {
@@ -324,21 +383,36 @@ export async function publishSharedLocalCollectionRecommendationArtifact(library
 }
 
 export async function loadLocalCollectionRecommendationArtifact(libraryId?: string): Promise<LocalCollectionRecommendationArtifact | null> {
-  const indexed = await readIndexedDbValue<LocalCollectionRecommendationArtifact>(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY);
+  const scopeId = localCollectionScopeIdFromLibraryId(libraryId);
+  const recommendationKey = localCollectionRecommendationStorageKeyForScope(scopeId);
+  const summaryKey = localCollectionSummaryStorageKeyForScope(scopeId);
+
+  const indexed = await readIndexedDbValue<LocalCollectionRecommendationArtifact>(recommendationKey);
   if (indexed && indexed.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(indexed.records)) {
     return indexed;
   }
 
-  const recommended = localStorageGetJson<LocalCollectionRecommendationArtifact>(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY);
+  const recommended = localStorageGetJson<LocalCollectionRecommendationArtifact>(recommendationKey);
   if (recommended && recommended.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(recommended.records)) {
     return recommended;
   }
 
-  const legacy = localStorageGetJson<any>(LOCAL_COLLECTION_SUMMARY_STORAGE_KEY);
-  const convertedLegacy = fromLegacyArtifact(legacy);
-  if (convertedLegacy) return convertedLegacy;
+  if (scopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
+    const legacy = await loadLegacyGlobalLocalCollectionRecommendationArtifact();
+    if (artifactBelongsToScope(legacy, scopeId)) {
+      const summarySnapshot: LocalCollectionSummarySnapshot = {
+        schemaVersion: "local_collection_summary_v1",
+        deterministicContentHash: legacy.deterministicContentHash,
+        metadata: legacy.metadata,
+        summary: legacy.summary,
+        acceptedRecordsCount: Array.isArray(legacy.records) ? legacy.records.length : 0,
+      };
+      await persistRecommendationArtifactForScope(legacy, summarySnapshot, scopeId);
+      return legacy;
+    }
+  }
 
-  const sharedLibraryId = String(libraryId || "").trim();
+  const sharedLibraryId = scopedLibraryIdForSharedFallback(scopeId);
   if (sharedLibraryId) {
     const shared = await loadSharedLibraryCollection(sharedLibraryId);
     if (shared && shared.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(shared.records)) {
@@ -349,8 +423,9 @@ export async function loadLocalCollectionRecommendationArtifact(libraryId?: stri
   return null;
 }
 
-export function readLocalCollectionAcceptedCountFromLocalStorage(): number {
-  const summary = localStorageGetJson<any>(LOCAL_COLLECTION_SUMMARY_STORAGE_KEY);
+export function readLocalCollectionAcceptedCountFromLocalStorage(libraryIdOrScopeId?: string): number {
+  const scopeId = localCollectionScopeIdFromLibraryId(libraryIdOrScopeId);
+  const summary = localStorageGetJson<any>(localCollectionSummaryStorageKeyForScope(scopeId));
   if (summary) {
     if (Number.isFinite(Number(summary.acceptedRecordsCount))) {
       return Math.max(0, Number(summary.acceptedRecordsCount));
@@ -363,7 +438,9 @@ export function readLocalCollectionAcceptedCountFromLocalStorage(): number {
     }
   }
 
-  const recommendation = localStorageGetJson<LocalCollectionRecommendationArtifact>(LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY);
+  const recommendation = localStorageGetJson<LocalCollectionRecommendationArtifact>(
+    localCollectionRecommendationStorageKeyForScope(scopeId)
+  );
   if (recommendation && Array.isArray(recommendation.records)) return recommendation.records.length;
   return 0;
 }
