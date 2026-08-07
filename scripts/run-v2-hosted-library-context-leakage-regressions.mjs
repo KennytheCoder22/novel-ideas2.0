@@ -14,6 +14,9 @@
  *   L10 HomeScreen has no admin-draft sync callbacks or event listeners
  *   L11 runtimeLibraryName is gated behind props.libraryId in HomeScreen
  *   L12 Runtime context cleared synchronously when libraryId is absent
+ *   L13 Hosted configured library name overrides slug-derived runtime fallback
+ *   L14 Hosted custom highlight/main/font colors are applied from saved config
+ *   L15 Hosted logo and age-band config fields remain mapped
  *
  * All tests are pure-logic or structural (source-text) checks.
  * No React rendering required.
@@ -48,6 +51,32 @@ function check(name, fn) {
   } catch (err) {
     return { name, pass: false, error: err.message };
   }
+}
+
+function isValidHex(hex) {
+  return /^#[0-9a-fA-F]{6}$/.test(String(hex || ""));
+}
+
+function resolveHostedLibraryName(runtimeLibraryName, cfg) {
+  const configured = String(cfg?.branding?.libraryName ?? cfg?.library?.name ?? "").trim();
+  return configured || runtimeLibraryName || "";
+}
+
+function resolveHostedTheme(cfg) {
+  const mainColorHex = isValidHex(cfg?.branding?.mainColorHex)
+    ? cfg.branding.mainColorHex
+    : "#0b1e33";
+  const highlightColorHex = isValidHex(cfg?.branding?.highlightColorHex)
+    ? cfg.branding.highlightColorHex
+    : "#fbbf24";
+  const fontColorHex = isValidHex(cfg?.branding?.fontColorHex)
+    ? cfg.branding.fontColorHex
+    : "#ffffff";
+  return {
+    accent: mainColorHex,
+    highlight: highlightColorHex,
+    titleText: fontColorHex,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -382,6 +411,53 @@ checks.push(check("structural_customize_route_is_scoped_by_path_libraryId", () =
   assert(
     adminWebSrc.includes("adminDraftStorageKey"),
     "Admin screen must use a scoped storage key instead of one global key"
+  );
+}));
+
+checks.push(check("L13_hosted_configured_library_name_beats_slug_runtime_name", () => {
+  const cfg = {
+    branding: { libraryName: "Mel's Books" },
+    library: { name: "Mel's Books" },
+  };
+  assert(
+    resolveHostedLibraryName("M", cfg) === "Mel's Books",
+    "hosted title must prefer configured libraryName over slug-derived runtime name"
+  );
+  assert(
+    homeSrc.includes("hostedBranding.libraryName || runtimeLibraryName || \"\""),
+    "HomeScreen must prefer hosted config libraryName before runtime slug fallback"
+  );
+}));
+
+checks.push(check("L14_hosted_custom_colors_survive_save_load_render", () => {
+  const cfg = {
+    branding: {
+      mainColorHex: "#224466",
+      highlightColorHex: "#12ab34",
+      fontColorHex: "#fefefe",
+      autoFontColor: false,
+    },
+  };
+  const theme = resolveHostedTheme(cfg);
+  assert(theme.accent === "#224466", "hosted main color hex must drive theme accent");
+  assert(theme.highlight === "#12ab34", "hosted highlight color hex must drive theme highlight");
+  assert(theme.titleText === "#fefefe", "hosted font color hex must drive title text");
+  assert(
+    homeSrc.includes("accent: mainColorHex") &&
+    homeSrc.includes("highlight: highlightColorHex") &&
+    homeSrc.includes("titleText: fontColorHex"),
+    "HomeScreen theme must apply saved hex colors directly"
+  );
+}));
+
+checks.push(check("L15_hosted_logo_and_age_band_fields_remain_mapped", () => {
+  assert(
+    homeSrc.includes("const logoDataUrl: string | null = config?.branding?.logoDataUrl ?? null;"),
+    "hosted logo must still come from branding.logoDataUrl"
+  );
+  assert(
+    homeSrc.includes("const enabledDecks = (config?.enabledDecks ?? config?.decks?.enabled ?? {});"),
+    "hosted age-band deck availability must still come from enabledDecks/decks.enabled"
   );
 }));
 

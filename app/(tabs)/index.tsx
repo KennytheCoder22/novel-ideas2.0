@@ -27,7 +27,11 @@ import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
 import {
   applyWebHighlightColor,
+  autoChooseFontColor,
   buildTheme,
+  highlightKeyToHex,
+  isValidHex,
+  mainKeyToHex,
   type ThemeKey,
   type HighlightKey,
   type TitleTextKey
@@ -102,6 +106,57 @@ function syncSchema(cfg: any) {
   }
 
   return cfg;
+}
+
+function resolveHostedBranding(cfg: any): {
+  libraryName: string;
+  mainThemeKey: ThemeKey;
+  highlightKey: HighlightKey;
+  titleTextKey: TitleTextKey;
+  mainColorHex: string;
+  highlightColorHex: string;
+  fontColorHex: string;
+} {
+  const libraryName = String(cfg?.branding?.libraryName ?? cfg?.library?.name ?? "").trim();
+  const mainThemeKey: ThemeKey =
+    (cfg?.branding?.mainTheme as ThemeKey) ||
+    (cfg?.branding?.theme as ThemeKey) ||
+    (cfg?.theme?.mainThemeKey as ThemeKey) ||
+    "dark_blue";
+  const highlightKey: HighlightKey =
+    (cfg?.branding?.highlight as HighlightKey) ||
+    (cfg?.theme?.highlightKey as HighlightKey) ||
+    "gold_accent";
+  const titleTextKey: TitleTextKey =
+    (cfg?.branding?.titleTextColor as TitleTextKey) ||
+    (cfg?.theme?.titleTextColor as TitleTextKey) ||
+    "white";
+
+  const mainColorHex = isValidHex(cfg?.branding?.mainColorHex)
+    ? cfg.branding.mainColorHex
+    : mainKeyToHex(mainThemeKey);
+  const highlightColorHex = isValidHex(cfg?.branding?.highlightColorHex)
+    ? cfg.branding.highlightColorHex
+    : highlightKeyToHex(highlightKey);
+  const autoFontColorEnabled =
+    typeof cfg?.branding?.autoFontColor === "boolean" ? cfg.branding.autoFontColor : true;
+
+  let fontColorHex = cfg?.branding?.fontColorHex;
+  if (!isValidHex(fontColorHex)) {
+    fontColorHex = autoFontColorEnabled
+      ? autoChooseFontColor(mainColorHex)
+      : (titleTextKey === "black" ? "#000000" : "#ffffff");
+  }
+
+  return {
+    libraryName,
+    mainThemeKey,
+    highlightKey,
+    titleTextKey,
+    mainColorHex,
+    highlightColorHex,
+    fontColorHex,
+  };
 }
 
 
@@ -1509,6 +1564,10 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
         if (shared) {
           const next = deepClone(shared);
           syncSchema(next);
+          const configuredLibraryName = String(next?.branding?.libraryName ?? next?.library?.name ?? "").trim();
+          if (configuredLibraryName) {
+            setRuntimeLibraryName(configuredLibraryName);
+          }
           setConfig(next);
         } else {
           setPersonalizedConfigError(true);
@@ -1534,7 +1593,11 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
     ...(config?.swipe?.categories ?? {}),
   };
   const runtimeLibraryName = props.libraryId ? getRuntimeLibraryName() : "";
-  const libraryName = useMemo(() => runtimeLibraryName || (config?.branding?.libraryName ?? config?.library?.name ?? ""), [runtimeLibraryName, config]);
+  const hostedBranding = useMemo(() => resolveHostedBranding(config), [config]);
+  const libraryName = useMemo(
+    () => hostedBranding.libraryName || runtimeLibraryName || "",
+    [hostedBranding.libraryName, runtimeLibraryName]
+  );
 
   
   const libraryId = useMemo(() => config?.library?.id ?? "", [config]);
@@ -1553,25 +1616,28 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   const adultKitsuOnlyForceQueryForValidation = config?.recommendations?.adultKitsuOnlyForceQueryForValidation === "dystopian" ? "dystopian" : "";
   const source: SourceKey = sourceEnabled.openLibrary ? "open_library" : "local_collection";
 
-  // Branding state from config (with safe defaults)
-  // Back-compat: if older config uses branding.theme, treat it as main color.
-  const mainThemeKey: ThemeKey =
-    (config?.branding?.mainTheme as ThemeKey) ||
-    (config?.branding?.theme as ThemeKey) ||
-    "dark_blue";
-
-  const highlightKey: HighlightKey =
-    (config?.branding?.highlight as HighlightKey) || "gold_accent";
-
-  const titleTextKey: TitleTextKey =
-    (config?.branding?.titleTextColor as TitleTextKey) || "white";
+  // Branding state from config (with safe defaults and support for saved hex colors).
+  const { mainThemeKey, highlightKey, titleTextKey, mainColorHex, highlightColorHex, fontColorHex } = hostedBranding;
 
   const logoDataUrl: string | null = config?.branding?.logoDataUrl ?? null;
 
-  const theme = useMemo(
-    () => buildTheme(mainThemeKey, highlightKey, titleTextKey),
-    [mainThemeKey, highlightKey, titleTextKey]
-  );
+  const theme = useMemo(() => {
+    const presetTheme = buildTheme(mainThemeKey, highlightKey, titleTextKey);
+    const accentTextOn = autoChooseFontColor(mainColorHex);
+    const highlightTextOn = autoChooseFontColor(highlightColorHex);
+    return {
+      ...presetTheme,
+      accent: mainColorHex,
+      accentBorder: mainColorHex,
+      accentTextOn,
+      highlight: highlightColorHex,
+      lightBorder: highlightColorHex,
+      highlightBg: highlightColorHex,
+      highlightTextOn,
+      highlightText: highlightTextOn,
+      titleText: fontColorHex,
+    };
+  }, [mainThemeKey, highlightKey, titleTextKey, mainColorHex, highlightColorHex, fontColorHex]);
   useEffect(() => {
     if (Platform.OS === "web") applyWebHighlightColor(theme.highlight);
   }, [theme.highlight]);
