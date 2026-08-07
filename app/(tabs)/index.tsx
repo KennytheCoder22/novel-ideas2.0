@@ -1587,11 +1587,16 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
 
   // Keep a stable ref to avoid weird focus behavior from accidental remounts.
   const queryInputRef = useRef<TextInput | null>(null);
-  const enabledDecks = (config?.enabledDecks ?? config?.decks?.enabled ?? {});
-  const swipeCategories: SwipeCategories = {
+  // Stable references: both objects are built from config so they must be memoized;
+  // otherwise a new object literal on every render causes the deck to reshuffle mid-session.
+  const enabledDecks = useMemo(
+    () => config?.enabledDecks ?? config?.decks?.enabled ?? {},
+    [config]
+  );
+  const swipeCategories: SwipeCategories = useMemo(() => ({
     ...DEFAULT_SWIPE_CATEGORIES,
     ...(config?.swipe?.categories ?? {}),
-  };
+  }), [config?.swipe?.categories]);
   const runtimeLibraryName = props.libraryId ? getRuntimeLibraryName() : "";
   const hostedBranding = useMemo(() => resolveHostedBranding(config), [config]);
   const libraryName = useMemo(

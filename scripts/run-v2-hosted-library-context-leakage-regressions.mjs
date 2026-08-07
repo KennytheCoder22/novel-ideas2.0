@@ -456,7 +456,7 @@ checks.push(check("L15_hosted_logo_and_age_band_fields_remain_mapped", () => {
     "hosted logo must still come from branding.logoDataUrl"
   );
   assert(
-    homeSrc.includes("const enabledDecks = (config?.enabledDecks ?? config?.decks?.enabled ?? {});"),
+    homeSrc.includes("config?.enabledDecks ?? config?.decks?.enabled ?? {}"),
     "hosted age-band deck availability must still come from enabledDecks/decks.enabled"
   );
 }));

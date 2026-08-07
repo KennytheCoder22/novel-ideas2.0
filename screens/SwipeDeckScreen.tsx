@@ -76,6 +76,7 @@ import {
   isHumanReviewItemStepComplete,
   prepareHumanReviewModalState,
 } from "./swipe/humanReviewPaginatedUx";
+import { getRuntimeLibraryId } from "../constants/runtimeConfig";
 
 const DEFAULT_SWIPE_CATEGORIES = {
   books: true,
@@ -1590,6 +1591,40 @@ export default function SwipeDeckScreen(props: Props) {
 
   const pipelineUserId = useMemo(() => `novelideas:${deckKey}`, [deckKey]);
   const pipelineSessionId = useMemo(() => `swipe-session:${deckKey}:${sessionNonce}`, [deckKey, sessionNonce]);
+
+  // Mobile-visible session diagnostics: tap the ⓘ button to see this without clipboard.
+  const [showSessionInfo, setShowSessionInfo] = useState(false);
+  const sessionInfoText = useMemo(() => {
+    const libId = getRuntimeLibraryId() || "(default)";
+    const localSrc = Array.isArray((v2DebugResult as any)?.diagnostics?.sources)
+      ? (v2DebugResult as any).diagnostics.sources.find((s: any) => s.source === "localLibrary")
+      : null;
+    const localCount = localSrc != null
+      ? String(localSrc.usableRowsAfterFiltering ?? localSrc.rawCount ?? "?")
+      : "not loaded";
+    const srcFlags = [
+      sourceEnabled.googleBooks ? "gb✓" : "gb✗",
+      sourceEnabled.openLibrary ? "ol✓" : "ol✗",
+      sourceEnabled.localLibrary ? "local✓" : "local✗",
+      sourceEnabled.nyt ? "nyt✓" : "nyt✗",
+      sourceEnabled.kitsu ? "kitsu✓" : "kitsu✗",
+      sourceEnabled.comicVine ? "cv✓" : "cv✗",
+    ].join(" ");
+    const recentTitles = swipeHistory.slice(-5).map((e: any) => String((e.card as any)?.title || "?")).join(" | ");
+    return [
+      `build:${DEPLOYED_COMMIT_MARKER}`,
+      `platform:${Platform.OS}`,
+      `library:${libId}`,
+      `session:${pipelineSessionId}`,
+      `deck:${deckKey}  nonce:${sessionNonce}`,
+      `seen:${seenCardKeys.length}/${cards.length}  decisions:${decisionSwipes}`,
+      `sources:${srcFlags}`,
+      `localCollection:${localCount}`,
+      `recs:${recItems.length}  marker:${lastDeploymentRuntimeMarker || "(none)"}`,
+      `recent5:${recentTitles || "(none)"}`,
+    ].join("\n");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [v2DebugResult, sourceEnabled, swipeHistory.length, pipelineSessionId, deckKey, sessionNonce, seenCardKeys.length, cards.length, decisionSwipes, recItems.length, lastDeploymentRuntimeMarker]);
 
   const personalityStoreRef = useRef<Record<string, PersonalityProfile>>({});
   const sessionSwipeStoreRef = useRef<Record<string, SwipeSignal[]>>({});
@@ -6404,6 +6439,39 @@ function handleLeft() {
         </Modal>
       ) : null}
 
+      {/* Mobile-visible session diagnostics overlay */}
+      <TouchableOpacity
+        onPress={() => setShowSessionInfo(true)}
+        style={styles.sessionInfoButton}
+        accessibilityRole="button"
+        accessibilityLabel="Session diagnostics"
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Text style={styles.sessionInfoButtonText}>ⓘ</Text>
+      </TouchableOpacity>
+      {showSessionInfo ? (
+        <Modal
+          visible={showSessionInfo}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowSessionInfo(false)}
+        >
+          <View style={styles.sessionInfoOverlay}>
+            <View style={styles.sessionInfoCard}>
+              <View style={styles.sessionInfoHeader}>
+                <Text style={styles.sessionInfoTitle}>Session Diagnostics</Text>
+                <TouchableOpacity onPress={() => setShowSessionInfo(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.sessionInfoClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.sessionInfoScroll}>
+                <Text style={styles.sessionInfoText} selectable>{sessionInfoText}</Text>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+
       <RecommenderEqualizerPanel
         deckKey={deckKey}
         visible={showEqualizer}
@@ -6422,6 +6490,50 @@ const styles = StyleSheet.create({
   container: { flex: 1, minHeight: "100%", position: "relative", padding: 16, gap: 12 },
   divider: { width: "100%", height: 1, backgroundColor: "#223b6b", opacity: 0.9 },
   dividerTight: { marginTop: 6 },
+
+  // Mobile session diagnostics button — always visible in bottom-left corner
+  sessionInfoButton: {
+    position: "absolute",
+    bottom: 70,
+    left: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(7,21,38,0.82)",
+    borderWidth: 1,
+    borderColor: "#334d6e",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 999,
+  },
+  sessionInfoButtonText: { color: "#9db3d9", fontSize: 16, lineHeight: 20 },
+  sessionInfoOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  sessionInfoCard: {
+    backgroundColor: "#0b1e33",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#223b6b",
+    width: "100%",
+    maxWidth: 560,
+    maxHeight: 500,
+    padding: 16,
+  },
+  sessionInfoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sessionInfoTitle: { color: "#e5efff", fontWeight: "800", fontSize: 14 },
+  sessionInfoClose: { color: "#9db3d9", fontSize: 18, lineHeight: 22, paddingHorizontal: 4 },
+  sessionInfoScroll: { maxHeight: 400 },
+  sessionInfoText: { color: "#c8daf5", fontFamily: Platform.OS === "web" ? "monospace" : undefined, fontSize: 12, lineHeight: 20 },
 
   cardArea: { flex: 1, width: "100%", alignItems: "center", justifyContent: "flex-start", minHeight: 0 },
   cardAreaTight: { paddingTop: 0, paddingBottom: 0 },
