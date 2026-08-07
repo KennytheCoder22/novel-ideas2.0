@@ -495,6 +495,59 @@ checks.push(check("R13_reset_preserves_hosted_library_scope_id", () => {
   );
 }));
 
+// R14 – Poisoned default scoped draft is automatically migrated to clean defaults
+checks.push(check("R14_poisoned_default_draft_auto_migrates", () => {
+  assert(
+    adminWebSrc.includes("isPoisonedDefaultDraft"),
+    "admin web must inspect default-scope draft for hosted identity leakage"
+  );
+  assert(
+    adminWebSrc.includes("sanitizeDefaultScopeConfig"),
+    "admin web must sanitize default scope to clean generic config"
+  );
+  assert(
+    adminWebSrc.includes("localStorage.removeItem(adminDraftStorageKey)"),
+    "poisoned default draft migration must remove corrupted default draft key"
+  );
+  assert(
+    adminWebSrc.includes("[admin][default_scope_draft_migrated]"),
+    "poisoned default draft migration must emit a safe migration log event"
+  );
+}));
+
+// R15 – Default-scope reset clears hosted identity and local-collection state
+checks.push(check("R15_default_scope_reset_clears_personalization", () => {
+  const resetBlock = adminWebSrc.slice(
+    adminWebSrc.indexOf("const resetAllToDefaults"),
+    adminWebSrc.indexOf("const copyMainToHighlight")
+  );
+  assert(
+    resetBlock.includes("sanitizeDefaultScopeConfig(base)"),
+    "default-scope reset must sanitize to generic config"
+  );
+  assert(
+    resetBlock.includes("clearDefaultScopeCollectionArtifacts(localStorage)"),
+    "default-scope reset must clear local collection artifacts from browser storage"
+  );
+  assert(
+    resetBlock.includes("setUploadedCollectionCount(0)"),
+    "default-scope reset must clear imported collection display count"
+  );
+}));
+
+// R16 – Save failure surfaces safe diagnostics for admins
+checks.push(check("R16_save_failure_shows_error_code_and_correlation", () => {
+  assert(
+    adminWebSrc.includes("saveSharedLibraryConfigWithDiagnostics"),
+    "admin save path must use save diagnostics helper"
+  );
+  assert(
+    adminWebSrc.includes("code=${saveErrorDetails.appErrorCode || \"unknown\"}") &&
+    adminWebSrc.includes("corr=${saveErrorDetails.correlationId}"),
+    "admin save error UI must display safe application error code and correlation ID"
+  );
+}));
+
 // ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------

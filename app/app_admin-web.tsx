@@ -23,7 +23,10 @@ import {
   readLocalCollectionAcceptedCountFromLocalStorage,
   SHARED_COLLECTION_POST_MAX_BYTES,
 } from "../lib/localCollection/storage";
-import { saveSharedLibraryConfig } from "../lib/librarySharing/client";
+import {
+  saveSharedLibraryConfigWithDiagnostics,
+  type SharedLibraryConfigSaveDiagnostics,
+} from "../lib/librarySharing/client";
 import {
   adminConfigStorageKeyForScope,
   ADMIN_CONFIG_DEFAULT_SCOPE,
@@ -68,6 +71,9 @@ const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
 const DEFAULT_MAIN_COLOR = "#0b1e33";
 const DEFAULT_HIGHLIGHT_COLOR = "#fbbf24";
 const DEFAULT_FONT_COLOR = "#ffffff";
+const LOCAL_COLLECTION_STORAGE_KEY = "novelideas_local_collection";
+const LOCAL_COLLECTION_CSV_STORAGE_KEY = "novelideas_local_collection_csv";
+const LOCAL_COLLECTION_IMPORT_REPORT_STORAGE_KEY = "novelideas_local_collection_import_report_v1";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -142,12 +148,58 @@ function resolveLibraryId(cfg: any) {
   const libraryName = String(cfg?.branding?.libraryName || cfg?.library?.name || "").trim();
   if (libraryName) return slugifyLibraryId(libraryName);
 
-  return explicitId || "demo";
+  return "";
 }
 
 function resolveAdminDraftScopeId(rawLibraryId?: string): string {
   const normalized = normalizeLibraryId(String(rawLibraryId || "")).toLowerCase();
   return normalized || ADMIN_CONFIG_DEFAULT_SCOPE;
+}
+
+function clearDefaultScopeCollectionArtifacts(storage: { removeItem: (key: string) => void }): void {
+  storage.removeItem(LOCAL_COLLECTION_STORAGE_KEY);
+  storage.removeItem(LOCAL_COLLECTION_CSV_STORAGE_KEY);
+  storage.removeItem(LOCAL_COLLECTION_IMPORT_REPORT_STORAGE_KEY);
+}
+
+function isPoisonedDefaultDraft(parsed: any): { poisoned: boolean; reasons: string[]; draftLibraryId: string } {
+  const reasons: string[] = [];
+  const draftLibraryId = resolveAdminDraftScopeId(parsed?.library?.id || parsed?.branding?.libraryId || "");
+  if (draftLibraryId !== ADMIN_CONFIG_DEFAULT_SCOPE) reasons.push(`library_id:${draftLibraryId}`);
+  const libraryName = String(parsed?.branding?.libraryName || parsed?.library?.name || "").trim();
+  if (libraryName) reasons.push("library_name_present");
+  if (parsed?.branding?.logoDataUrl || parsed?.branding?.logoTinyDataUrl) reasons.push("logo_present");
+  if (parsed?.recommendations?.localLibrarySupported || parsed?.recommendations?.sourceEnabled?.localLibrary) {
+    reasons.push("local_collection_enabled");
+  }
+  if (parsed?.admin?.pinEnabled || String(parsed?.admin?.pin || "").trim()) reasons.push("admin_pin_present");
+  return { poisoned: reasons.length > 0, reasons, draftLibraryId };
+}
+
+function sanitizeDefaultScopeConfig(base: any): any {
+  const next = deepClone(base);
+  next.library = (next.library && typeof next.library === "object") ? next.library : {};
+  next.branding = (next.branding && typeof next.branding === "object") ? next.branding : {};
+  next.recommendations = (next.recommendations && typeof next.recommendations === "object") ? next.recommendations : {};
+  next.recommendations.sourceEnabled =
+    (next.recommendations.sourceEnabled && typeof next.recommendations.sourceEnabled === "object")
+      ? next.recommendations.sourceEnabled
+      : {};
+  next.admin = (next.admin && typeof next.admin === "object") ? next.admin : {};
+  next.library.id = "";
+  next.branding.libraryId = "";
+  next.library.name = "";
+  next.branding.libraryName = "";
+  next.branding.logoDataUrl = null;
+  next.branding.logoTinyDataUrl = null;
+  next.recommendations.localLibrarySupported = false;
+  next.recommendations.sourceEnabled.localLibrary = false;
+  next.admin.pinEnabled = false;
+  next.admin.pin = "";
+  syncSchema(next);
+  next.library.id = "";
+  next.branding.libraryId = "";
+  return next;
 }
 
 function applyLocalCollectionOnlySourceRouting(sourceEnabled: RecommendationSourceEnabled): RecommendationSourceEnabled {
@@ -426,32 +478,74 @@ export default function AdminWebScreen() {
     ? "/admin/human-review?acceptanceHarness=1"
     : "/admin/human-review";
 
-  const [config, setConfig] = useState<any>(() => {
+  const loadConfigForScope = useCallback((): {
+    next: any;
+    hadDraft: boolean;
+    draftParseFailed: boolean;
+    draftLibraryId: string;
+    migratedPoisonedDefaultDraft: boolean;
+    migrationReasons: string[];
+  } => {
     const base = deepClone(configFile);
+    let next = deepClone(base);
+    let hadDraft = false;
+    let draftParseFailed = false;
+    let draftLibraryId = "";
+    let migratedPoisonedDefaultDraft = false;
+    let migrationReasons: string[] = [];
+    if (!isWeb || typeof localStorage === "undefined") {
+      if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
+        next.library = (next.library && typeof next.library === "object") ? next.library : {};
+        next.branding = (next.branding && typeof next.branding === "object") ? next.branding : {};
+        next.library.id = adminDraftScopeId;
+        next.branding.libraryId = adminDraftScopeId;
+      } else {
+        next = sanitizeDefaultScopeConfig(next);
+      }
+      syncSchema(next);
+      return { next, hadDraft, draftParseFailed, draftLibraryId, migratedPoisonedDefaultDraft, migrationReasons };
+    }
+
     try {
-      if (isWeb && typeof localStorage !== "undefined") {
-        const saved = localStorage.getItem(adminDraftStorageKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
-            parsed.library = (parsed.library && typeof parsed.library === "object") ? parsed.library : {};
-            parsed.branding = (parsed.branding && typeof parsed.branding === "object") ? parsed.branding : {};
-            parsed.library.id = resolveAdminDraftScopeId(parsed.library.id || adminDraftScopeId);
-            parsed.branding.libraryId = resolveAdminDraftScopeId(parsed.branding.libraryId || adminDraftScopeId);
-          }
-          syncSchema(parsed);
-          return parsed;
+      const raw = localStorage.getItem(adminDraftStorageKey);
+      hadDraft = Boolean(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const inspected = isPoisonedDefaultDraft(parsed);
+        draftLibraryId = inspected.draftLibraryId;
+        if (adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE && inspected.poisoned) {
+          migratedPoisonedDefaultDraft = true;
+          migrationReasons = inspected.reasons;
+          localStorage.removeItem(adminDraftStorageKey);
+          clearDefaultScopeCollectionArtifacts(localStorage);
+          next = sanitizeDefaultScopeConfig(base);
+        } else {
+          next = parsed;
         }
       }
-    } catch {}
-    if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
-      base.library = (base.library && typeof base.library === "object") ? base.library : {};
-      base.branding = (base.branding && typeof base.branding === "object") ? base.branding : {};
-      base.library.id = adminDraftScopeId;
-      base.branding.libraryId = adminDraftScopeId;
+    } catch {
+      draftParseFailed = true;
+      next = deepClone(base);
+      if (adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE) {
+        localStorage.removeItem(adminDraftStorageKey);
+      }
     }
-    syncSchema(base);
-    return base;
+
+    if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
+      next.library = (next.library && typeof next.library === "object") ? next.library : {};
+      next.branding = (next.branding && typeof next.branding === "object") ? next.branding : {};
+      next.library.id = resolveAdminDraftScopeId(next.library.id || adminDraftScopeId);
+      next.branding.libraryId = resolveAdminDraftScopeId(next.branding.libraryId || adminDraftScopeId);
+      syncSchema(next);
+    } else {
+      next = sanitizeDefaultScopeConfig(next);
+    }
+
+    return { next, hadDraft, draftParseFailed, draftLibraryId, migratedPoisonedDefaultDraft, migrationReasons };
+  }, [isWeb, adminDraftScopeId, adminDraftStorageKey]);
+
+  const [config, setConfig] = useState<any>(() => {
+    return loadConfigForScope().next;
   });
 
   // Derive initial hex colors from config once
@@ -473,38 +567,20 @@ export default function AdminWebScreen() {
   const savedColorsRef = useRef({ mainColorHex, highlightColorHex, fontColorHex, autoFontColor });
   const [isDirty, setIsDirty] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [saveErrorDetails, setSaveErrorDetails] = useState<SharedLibraryConfigSaveDiagnostics | null>(null);
   const [previewAcceptanceMode, setPreviewAcceptanceMode] = useState<PreviewAcceptanceDashboardMode>(() =>
     readPreviewAcceptanceDashboardModeFromDocument()
   );
 
   useEffect(() => {
-    if (!isWeb || typeof localStorage === "undefined") return;
-    const base = deepClone(configFile);
-    let next = base;
-    let draftLibraryId = "";
-    let hadDraft = false;
-    let draftParseFailed = false;
-    try {
-      const raw = localStorage.getItem(adminDraftStorageKey);
-      hadDraft = Boolean(raw);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        draftLibraryId = normalizeLibraryId(parsed?.library?.id || parsed?.branding?.libraryId || "");
-        next = parsed;
-      } else {
-        next = base;
-      }
-    } catch {
-      next = base;
-      draftParseFailed = true;
-    }
-    if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
-      next.library = (next.library && typeof next.library === "object") ? next.library : {};
-      next.branding = (next.branding && typeof next.branding === "object") ? next.branding : {};
-      next.library.id = resolveAdminDraftScopeId(next.library.id || adminDraftScopeId);
-      next.branding.libraryId = resolveAdminDraftScopeId(next.branding.libraryId || adminDraftScopeId);
-    }
-    syncSchema(next);
+    const {
+      next,
+      hadDraft,
+      draftParseFailed,
+      draftLibraryId,
+      migratedPoisonedDefaultDraft,
+      migrationReasons,
+    } = loadConfigForScope();
     const colors = loadColorHex(next);
     setConfig(next);
     setMainColorHex(colors.mainColorHex);
@@ -518,9 +594,21 @@ export default function AdminWebScreen() {
       fontColorHex: colors.fontColorHex,
       autoFontColor: colors.autoFontColorEnabled,
     };
+    if (migratedPoisonedDefaultDraft) {
+      setUploadedCollectionCount(0);
+      setImportStatus({ phase: "idle", pct: 0, label: "" });
+    }
     setSaveStatus("idle");
+    setSaveErrorDetails(null);
     setIsDirty(false);
     try {
+      if (migratedPoisonedDefaultDraft) {
+        console.info("[admin][default_scope_draft_migrated]", {
+          adminDraftStorageKey,
+          draftLibraryId,
+          reasons: migrationReasons,
+        });
+      }
       console.info("[admin][init_context]", {
         pathname: typeof window !== "undefined" ? window.location.pathname : "",
         search: typeof window !== "undefined" ? window.location.search : "",
@@ -534,7 +622,7 @@ export default function AdminWebScreen() {
         finalStateLibraryId: resolveLibraryId(next),
       });
     } catch {}
-  }, [isWeb, adminDraftScopeId, adminDraftStorageKey, explicitLibraryIdParam, runtimeLibraryId]);
+  }, [loadConfigForScope, adminDraftStorageKey, explicitLibraryIdParam, runtimeLibraryId, adminDraftScopeId]);
 
   useEffect(() => {
     const configChanged = JSON.stringify(config) !== savedConfigRef.current;
@@ -544,7 +632,10 @@ export default function AdminWebScreen() {
       fontColorHex !== savedColorsRef.current.fontColorHex ||
       autoFontColor !== savedColorsRef.current.autoFontColor;
     setIsDirty(configChanged || colorsChanged);
-    if (configChanged || colorsChanged) setSaveStatus("idle");
+    if (configChanged || colorsChanged) {
+      setSaveStatus("idle");
+      setSaveErrorDetails(null);
+    }
   }, [config, mainColorHex, highlightColorHex, fontColorHex, autoFontColor]);
 
   type ImportPhase = 'idle' | 'reading' | 'parsing' | 'saving' | 'done' | 'error';
@@ -557,12 +648,12 @@ export default function AdminWebScreen() {
       if (!isWeb || typeof localStorage === "undefined") return 0;
       const persistedCount = readLocalCollectionAcceptedCountFromLocalStorage();
       if (persistedCount > 0) return persistedCount;
-      const saved = localStorage.getItem("novelideas_local_collection");
+      const saved = localStorage.getItem(LOCAL_COLLECTION_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed.length;
       }
-      const csv = localStorage.getItem("novelideas_local_collection_csv");
+      const csv = localStorage.getItem(LOCAL_COLLECTION_CSV_STORAGE_KEY);
       if (csv) return Math.max(0, csv.split(/\r?\n/).filter((r) => r.trim().length > 0).length - 1);
       return 0;
     } catch { return 0; }
@@ -571,7 +662,10 @@ export default function AdminWebScreen() {
   // Derived
   const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
   const libraryId = useMemo(() => resolveLibraryId(config), [config]);
-  const hostedConfigUrl = useMemo(() => `https://novelideas.app/${libraryId}`, [libraryId]);
+  const hostedConfigUrl = useMemo(
+    () => (libraryId ? `https://novelideas.app/${libraryId}` : "https://novelideas.app/"),
+    [libraryId]
+  );
   const configText = useMemo(() => JSON.stringify(config, null, 2), [config]);
   const adultKitsuOnlyForceQueryForValidation =
     config?.recommendations?.adultKitsuOnlyForceQueryForValidation === "dystopian" ? "dystopian" : "";
@@ -640,14 +734,19 @@ export default function AdminWebScreen() {
   }, []);
 
   const resetAllToDefaults = useCallback(() => {
-    const base = deepClone(configFile);
+    let base = deepClone(configFile);
     if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
       base.library = (base.library && typeof base.library === "object") ? base.library : {};
       base.branding = (base.branding && typeof base.branding === "object") ? base.branding : {};
       base.library.id = adminDraftScopeId;
       base.branding.libraryId = adminDraftScopeId;
+      syncSchema(base);
+    } else {
+      base = sanitizeDefaultScopeConfig(base);
+      if (isWeb && typeof localStorage !== "undefined") {
+        clearDefaultScopeCollectionArtifacts(localStorage);
+      }
     }
-    syncSchema(base);
     const colors = loadColorHex(base);
 
     if (isWeb && typeof localStorage !== "undefined") {
@@ -662,6 +761,7 @@ export default function AdminWebScreen() {
     setUploadedCollectionCount(0);
     setImportStatus({ phase: "idle", pct: 0, label: "" });
     setSaveStatus("idle");
+    setSaveErrorDetails(null);
   }, [adminDraftScopeId, isWeb]);
 
   const copyMainToHighlight = useCallback(() => setHighlightColorHex(mainColorHex), [mainColorHex]);
@@ -742,7 +842,7 @@ export default function AdminWebScreen() {
                 collectionName,
                 libraryId: "local-library",
               });
-              localStorage.removeItem("novelideas_local_collection_csv");
+              localStorage.removeItem(LOCAL_COLLECTION_CSV_STORAGE_KEY);
             } else {
               artifact = importLocalCollectionCsv({
                 csvText: String(reader.result || ""),
@@ -750,7 +850,7 @@ export default function AdminWebScreen() {
                 collectionName,
                 libraryId: "local-library",
               });
-              localStorage.setItem("novelideas_local_collection_csv", String(reader.result || ""));
+              localStorage.setItem(LOCAL_COLLECTION_CSV_STORAGE_KEY, String(reader.result || ""));
             }
             setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
             await persistLocalCollectionRecommendationArtifact(artifact);
@@ -778,7 +878,7 @@ export default function AdminWebScreen() {
                 }
               }
             }
-            localStorage.setItem("novelideas_local_collection_import_report_v1", JSON.stringify(artifact.summary));
+            localStorage.setItem(LOCAL_COLLECTION_IMPORT_REPORT_STORAGE_KEY, JSON.stringify(artifact.summary));
             setUploadedCollectionCount(artifact.summary.acceptedTitles);
             // Mark collection as available (supported) but do NOT auto-enable the source toggle.
             setPath(["recommendations", "localLibrarySupported"], true);
@@ -817,6 +917,7 @@ export default function AdminWebScreen() {
 
   const persistDraftConfig = useCallback(async () => {
     try {
+      setSaveErrorDetails(null);
       const next = deepClone(config);
       const effectiveFontColor = autoFontColor ? autoChooseFontColor(mainColorHex) : fontColorHex;
       applyColorHex(next, mainColorHex, highlightColorHex, effectiveFontColor, autoFontColor);
@@ -830,8 +931,9 @@ export default function AdminWebScreen() {
         dispatchAdminConfigSavedWebEvent(adminDraftStorageKey, serializedNext);
       }
       if (nextLibraryId) {
-        const sharedSaved = await saveSharedLibraryConfig(nextLibraryId, next as Record<string, unknown>);
-        if (!sharedSaved) {
+        const sharedSave = await saveSharedLibraryConfigWithDiagnostics(nextLibraryId, next as Record<string, unknown>);
+        if (!sharedSave.success) {
+          setSaveErrorDetails(sharedSave);
           throw new Error("shared_config_save_failed");
         }
       }
@@ -844,11 +946,24 @@ export default function AdminWebScreen() {
       savedColorsRef.current = { mainColorHex, highlightColorHex, fontColorHex: effectiveFontColor, autoFontColor };
       setIsDirty(false);
       setSaveStatus("saved");
+      setSaveErrorDetails(null);
       // Only clear "saved" status; don't overwrite an "error" that arrives from a concurrent call.
       setTimeout(() => setSaveStatus((s) => (s === "saved" ? "idle" : s)), 3000);
       return true;
     } catch {
       setSaveStatus("error");
+      setSaveErrorDetails((prev) => prev ?? {
+        timestamp: new Date().toISOString(),
+        requestUrl: "/api/library-config",
+        libraryId: libraryId || "",
+        correlationId: "unavailable",
+        httpStatus: null,
+        responseContentType: null,
+        requestReachedApiRoute: false,
+        appErrorCode: "save_failed",
+        responseBodySnippet: null,
+        success: false,
+      });
       return false;
     }
   }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb, libraryId, adminDraftStorageKey]);
@@ -883,40 +998,14 @@ export default function AdminWebScreen() {
   }, []);
 
   const onDiscard = useCallback(() => {
-    try {
-      if (isWeb && typeof localStorage !== "undefined") {
-        const saved = localStorage.getItem(adminDraftStorageKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          syncSchema(parsed);
-          const colors = loadColorHex(parsed);
-          setMainColorHex(colors.mainColorHex);
-          setHighlightColorHex(colors.highlightColorHex);
-          setFontColorHex(colors.fontColorHex);
-          setAutoFontColor(colors.autoFontColorEnabled);
-          setConfig(parsed);
-          savedConfigRef.current = JSON.stringify(parsed);
-          savedColorsRef.current = {
-            mainColorHex: colors.mainColorHex,
-            highlightColorHex: colors.highlightColorHex,
-            fontColorHex: colors.fontColorHex,
-            autoFontColor: colors.autoFontColorEnabled,
-          };
-          setIsDirty(false);
-          setSaveStatus("idle");
-          return;
-        }
-      }
-    } catch {}
-    const base = deepClone(configFile);
-    syncSchema(base);
-    const colors = loadColorHex(base);
+    const { next } = loadConfigForScope();
+    const colors = loadColorHex(next);
     setMainColorHex(colors.mainColorHex);
     setHighlightColorHex(colors.highlightColorHex);
     setFontColorHex(colors.fontColorHex);
     setAutoFontColor(colors.autoFontColorEnabled);
-    setConfig(base);
-    savedConfigRef.current = JSON.stringify(base);
+    setConfig(next);
+    savedConfigRef.current = JSON.stringify(next);
     savedColorsRef.current = {
       mainColorHex: colors.mainColorHex,
       highlightColorHex: colors.highlightColorHex,
@@ -925,7 +1014,8 @@ export default function AdminWebScreen() {
     };
     setIsDirty(false);
     setSaveStatus("idle");
-  }, [isWeb, adminDraftStorageKey]);
+    setSaveErrorDetails(null);
+  }, [loadConfigForScope]);
 
   // ---------------------------------------------------------------------------
   // Non-web fallback
@@ -1040,6 +1130,11 @@ export default function AdminWebScreen() {
             ) : saveStatus === "error" ? (
               <View style={[styles.badge, { borderColor: t.danger }]}>
                 <Text style={{ color: t.danger, fontSize: 11, fontWeight: "900" }}>Save failed</Text>
+                {saveErrorDetails ? (
+                  <Text style={{ color: t.danger, fontSize: 10, marginTop: 4 }}>
+                    {`code=${saveErrorDetails.appErrorCode || "unknown"} corr=${saveErrorDetails.correlationId}`}
+                  </Text>
+                ) : null}
               </View>
             ) : null}
           </View>
@@ -1574,7 +1669,14 @@ export default function AdminWebScreen() {
         ) : saveStatus === "saved" ? (
           <Text style={{ color: t.success, fontSize: 13, fontWeight: "800" }}>{"Changes saved \u2713"}</Text>
         ) : saveStatus === "error" ? (
-          <Text style={{ color: t.danger, fontSize: 13, fontWeight: "800" }}>Save failed. Please try again.</Text>
+          <View style={{ gap: 4 }}>
+            <Text style={{ color: t.danger, fontSize: 13, fontWeight: "800" }}>Save failed. Please try again.</Text>
+            {saveErrorDetails ? (
+              <Text style={{ color: t.danger, fontSize: 11 }}>
+                {`code=${saveErrorDetails.appErrorCode || "unknown"} status=${saveErrorDetails.httpStatus ?? "n/a"} routeReached=${saveErrorDetails.requestReachedApiRoute ? "true" : "false"} corr=${saveErrorDetails.correlationId}`}
+              </Text>
+            ) : null}
+          </View>
         ) : null}
       </View>
     ) : null}

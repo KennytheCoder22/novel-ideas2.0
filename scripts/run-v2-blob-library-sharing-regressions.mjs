@@ -138,7 +138,7 @@ console.log("\n3. Config save/load (Vercel Blob)");
 {
   const storage = readSrc("lib/librarySharing/storage.ts");
   const adminWeb = readSrc("app/app_admin-web.tsx");
-  const configApi = readSrc("app/api/library-config/+api.ts");
+  const configApi = readSrc("api/library-config.ts");
 
   check(
     "saveSharedLibraryConfig exists and is exported",
@@ -258,7 +258,7 @@ console.log("\n4. Collection upload via server API");
 // ── 5. Collection GET — artifact vs artifactUrl ───────────────────────────────
 console.log("\n5. Collection GET endpoint response shape");
 {
-  const collectionApi = readSrc("app/api/local-collection/+api.ts");
+  const collectionApi = readSrc("api/local-collection.ts");
 
   check(
     "GET endpoint uses loadSharedLibraryCollectionResult",
@@ -380,23 +380,22 @@ console.log("\n8. Blob overwrite / versioning");
 // ── 9. Cross-device hydration ─────────────────────────────────────────────────
 console.log("\n9. Cross-device hydration path");
 {
-  const configApi = readSrc("app/api/library-config/+api.ts");
-  const collectionApi = readSrc("app/api/local-collection/+api.ts");
+  const configApi = readSrc("api/library-config.ts");
+  const collectionApi = readSrc("api/local-collection.ts");
   const homeScreen = readSrc("app/(tabs)/index.tsx");
   const localCollectionStorage = readSrc("lib/localCollection/storage.ts");
 
   check(
     "GET /api/library-config does NOT require admin cookie",
-    !contains(configApi, "isAdminSession") || // GET handler has no session check
-    (configApi !== null && configApi.includes("export async function GET") &&
-     !configApi.split("export async function GET")[1]?.split("export async function POST")[0]?.includes("isAdminSession"))
+    configApi !== null &&
+    contains(configApi, "if (req.method === \"GET\")") &&
+    !configApi.split("if (req.method === \"GET\")")[1]?.split("if (!hasAdminSessionCookie")[0]?.includes("hasAdminSessionCookie")
   );
   check(
     "GET /api/local-collection does NOT require admin cookie",
-    !contains(collectionApi, "isAdminSession(request)") ||
-    // Only POST checks admin session, not GET
-    (collectionApi !== null &&
-     !collectionApi.split("export async function GET")[1]?.split("export async function POST")[0]?.includes("isAdminSession"))
+    collectionApi !== null &&
+    contains(collectionApi, "if (req.method === \"GET\")") &&
+    !collectionApi.split("if (req.method === \"GET\")")[1]?.split("if (!hasAdminSessionCookie")[0]?.includes("hasAdminSessionCookie")
   );
   check(
     "HomeScreen loads shared config when libraryId prop is set",
@@ -468,8 +467,8 @@ console.log("\n11. Hosted-library diagnostics and correlation IDs");
 {
   const storage = readSrc("lib/librarySharing/storage.ts");
   const client = readSrc("lib/librarySharing/client.ts");
-  const configApi = readSrc("app/api/library-config/+api.ts");
-  const diagnosticsApi = readSrc("app/api/library-config-diagnostics/+api.ts");
+  const configApi = readSrc("api/library-config.ts");
+  const diagnosticsApi = readSrc("api/library-config-diagnostics.ts");
   const homeScreen = readSrc("app/(tabs)/index.tsx");
   const adminSession = readSrc("lib/adminSession.ts");
 
@@ -517,7 +516,7 @@ console.log("\n11. Hosted-library diagnostics and correlation IDs");
   );
   check(
     "diagnostics endpoint is admin-gated or preview-gated",
-    contains(diagnosticsApi, "isAdminSession") &&
+    contains(diagnosticsApi, "hasAdminSessionCookie") &&
     contains(diagnosticsApi, "isPreviewAcceptanceEnvironmentEnabled")
   );
   check(
@@ -532,6 +531,24 @@ console.log("\n11. Hosted-library diagnostics and correlation IDs");
     !contains(diagnosticsApi, "BLOB_READ_WRITE_TOKEN") &&
     !contains(diagnosticsApi, "blobUrl") &&
     !contains(diagnosticsApi, "admin.pin")
+  );
+  check(
+    "root Vercel handlers exist for hosted library APIs",
+    readSrc("api/library-config.ts") !== null &&
+    readSrc("api/library-config-diagnostics.ts") !== null &&
+    readSrc("api/local-collection.ts") !== null
+  );
+  check(
+    "root hosted API handlers export default Vercel handler",
+    contains(configApi, "export default async function handler(req: VercelRequest, res: VercelResponse)") &&
+    contains(diagnosticsApi, "export default async function handler(req: VercelRequest, res: VercelResponse)") &&
+    contains(readSrc("api/local-collection.ts"), "export default async function handler(req: VercelRequest, res: VercelResponse)")
+  );
+  check(
+    "legacy Expo API route files are retired",
+    readSrc("app/api/library-config/+api.ts") === null &&
+    readSrc("app/api/library-config-diagnostics/+api.ts") === null &&
+    readSrc("app/api/local-collection/+api.ts") === null
   );
   check(
     "error UI keeps patron-safe message but has diagnostics toggle for debug users",
