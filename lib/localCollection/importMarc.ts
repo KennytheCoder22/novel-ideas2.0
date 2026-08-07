@@ -286,6 +286,36 @@ function deriveFormatFromLeader(leader: string): string {
   return "";
 }
 
+function normalizeMarcUrlCandidate(value: string): string | undefined {
+  const normalized = clean(value).replace(/^http:\/\//i, "https://");
+  if (!normalized) return undefined;
+  try {
+    const parsed = new URL(normalized);
+    if (!/^https?:$/i.test(parsed.protocol)) return undefined;
+    if (!parsed.hostname || !parsed.pathname || parsed.pathname === "/") return undefined;
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function looksLikeCoverUrl(url: string): boolean {
+  return (
+    /perma-bound\.com\/ws\/image\/cover\//i.test(url) ||
+    /netread\.com\/.+\/image\/.+\.(?:jpe?g|png|gif)(?:$|\?)/i.test(url) ||
+    /\/image\/.+\.(?:jpe?g|png|gif)(?:$|\?)/i.test(url)
+  );
+}
+
+function pickCoverUrl(record: ParsedMarcRecord): string | undefined {
+  const urls = allSubfields(record.dataFields["856"], "u");
+  for (const value of urls) {
+    const normalized = normalizeMarcUrlCandidate(value);
+    if (normalized && looksLikeCoverUrl(normalized)) return normalized;
+  }
+  return undefined;
+}
+
 function toUint8Array(input: Uint8Array | ArrayBuffer): Uint8Array {
   if (input instanceof Uint8Array) return input;
   return new Uint8Array(input);
@@ -307,6 +337,7 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
     "readingLevel",
     "shelvingLocation",
     "localPlacement",
+    "coverUrl",
     "callNumber",
     "copies",
     "availability",
@@ -333,6 +364,7 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
     const packedValues = holdings.map((field) => firstSubfield(field, "x")).filter((v): v is string => Boolean(v));
     const availability = parseAvailabilityFromPacked(packedValues[0]) || packedValues[0] || "";
     const localPlacement = firstSubfield(record.dataFields["900"]?.[0], "a") || "";
+    const coverUrl = pickCoverUrl(record) || "";
     const publicationDate = firstSubfield(record.dataFields["264"]?.[0], "c") || firstSubfield(record.dataFields["260"]?.[0], "c") || "";
     const { audience, readingLevel } = deriveAudienceAndReadingLevel(record);
 
@@ -346,6 +378,7 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
       readingLevel || "",
       shelvingLocation,
       localPlacement,
+      coverUrl,
       callNumber,
       String(Math.max(1, holdings.length)),
       availability,
@@ -360,6 +393,7 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
     if (normalized.accepted) {
       normalized.accepted.sourceFormat = "marc21";
       normalized.accepted.marcRecordControlNumber = controlNumber;
+      normalized.accepted.coverUrl = coverUrl || normalized.accepted.coverUrl;
       normalized.accepted.localPlacement = localPlacement || normalized.accepted.localPlacement;
       normalized.accepted.marcHoldings = holdings.map((field) => ({
         locationCode: firstSubfield(field, "a"),

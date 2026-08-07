@@ -49,7 +49,7 @@ function runImport(
   });
 }
 
-function buildMarcRecord({ control001, title, author, isbn13, pubYear, audience, readingLevel, holdings = [], localPlacement }) {
+function buildMarcRecord({ control001, title, author, isbn13, pubYear, audience, readingLevel, holdings = [], localPlacement, urls = [] }) {
   const fieldTerm = "\x1e";
   const recordTerm = "\x1d";
   const sub = "\x1f";
@@ -89,6 +89,9 @@ function buildMarcRecord({ control001, title, author, isbn13, pubYear, audience,
   }
   if (localPlacement) {
     pushData("900", " ", " ", [["a", localPlacement]]);
+  }
+  for (const url of urls) {
+    pushData("856", "4", "0", [["u", url]]);
   }
 
   const directoryEntries = [];
@@ -460,6 +463,32 @@ checks.push(check("marc_import_missing_852b_keeps_record_with_warning_path", () 
   assert(result.summary.acceptedTitles === 1, "marc_missing_852b_should_not_reject");
   const accepted = result.acceptedRecords[0];
   assert(!accepted.shelvingLocation, "marc_missing_852b_should_leave_shelving_empty");
+}));
+
+checks.push(check("marc_import_extracts_cover_url_from_real_856_image_links", () => {
+  const record = buildMarcRecord({
+    control001: "fol00856001",
+    title: "Cover Record",
+    author: "Reader, Casey.",
+    isbn13: "9780439708180",
+    pubYear: "2001",
+    holdings: [
+      {
+        copyId: "C1",
+        locationCode: "YVHS",
+        collection: "Graphic Novels",
+        callNumber: "741.5 REA",
+        packed: "FSC@aAll Regular@c20010101",
+      },
+    ],
+    urls: [
+      "http://www.loc.gov/catdir/enhancements/fy1309/2012045835-s.html",
+      "http://www.perma-bound.com/ws/image/cover/000117893/m",
+    ],
+  });
+  const result = runMarcImport(record);
+  const accepted = result.acceptedRecords[0];
+  assert(accepted.coverUrl === "https://www.perma-bound.com/ws/image/cover/000117893/m", "marc_cover_url_not_extracted");
 }));
 
 const results = [];

@@ -947,9 +947,13 @@ function recommendationIsbnCandidates(doc: any): string[] {
     doc?.isbn13,
     doc?.isbn10,
     doc?.isbn,
+    doc?.localCollectionIsbn13,
+    doc?.localCollectionIsbn10,
     raw?.isbn13,
     raw?.isbn10,
     raw?.isbn,
+    raw?.localCollectionIsbn13,
+    raw?.localCollectionIsbn10,
     ...identifierValues,
   ]);
 }
@@ -997,26 +1001,57 @@ function recommendationCallNumber(doc: any): string {
   ).trim();
 }
 
-function recommendationSubLocation(doc: any): string {
+function canonicalLocalDisplayValue(value: unknown): string {
+  return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function recommendationSubLocationCandidates(doc: any): string[] {
   const raw = doc?.raw && typeof doc.raw === "object" ? doc.raw : {};
   const holdings = Array.isArray(raw?.marcHoldings) ? raw.marcHoldings : [];
-  const firstHolding = holdings[0] || {};
-  return String(
-    doc?.subLocation ||
-      doc?.localPlacement ||
-      doc?.localCollectionPlacement ||
-      doc?.shelvingLocation ||
-      raw?.subLocation ||
-      raw?.sub_location ||
-      raw?.localPlacement ||
-      raw?.localCollectionPlacement ||
-      raw?.local_placement ||
-      raw?.shelvingLocation ||
-      raw?.shelving_location ||
-      firstHolding?.collection ||
-      firstHolding?.locationCode ||
-      ""
-  ).trim();
+  const holdingCollections = holdings
+    .map((holding: any) => String(holding?.collection || "").trim())
+    .filter(Boolean);
+  return [
+    doc?.shelvingLocation,
+    raw?.shelvingLocation,
+    raw?.shelving_location,
+    ...holdingCollections,
+    doc?.subLocation,
+    raw?.subLocation,
+    raw?.sub_location,
+    doc?.localPlacement,
+    doc?.localCollectionPlacement,
+    raw?.localPlacement,
+    raw?.localCollectionPlacement,
+    raw?.local_placement,
+    holdings.find((holding: any) => String(holding?.locationCode || "").trim())?.locationCode,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+}
+
+function recommendationSubLocation(doc: any): string {
+  const callNumberKey = canonicalLocalDisplayValue(recommendationCallNumber(doc));
+  const seen = new Set<string>();
+  for (const candidate of recommendationSubLocationCandidates(doc)) {
+    const key = canonicalLocalDisplayValue(candidate);
+    if (!key || key === callNumberKey || seen.has(key)) continue;
+    seen.add(key);
+    return candidate;
+  }
+  return "";
+}
+
+function formatRecommendationLocationLine(doc: any): string {
+  const parts = [recommendationSubLocation(doc), recommendationCallNumber(doc)].filter(Boolean);
+  const seen = new Set<string>();
+  const uniqueParts = parts.filter((value) => {
+    const key = canonicalLocalDisplayValue(value);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return uniqueParts.join(" • ");
 }
 
 function safeStorageGet(key: string): string {
@@ -2164,12 +2199,14 @@ function handleLeft() {
         isbn13:
           (candidate.raw as any)?.isbn13 ??
           (candidate.raw as any)?.isbn ??
+          (candidate.raw as any)?.localCollectionIsbn13 ??
           (candidate.raw as any)?.industryIdentifiers?.isbn13 ??
           (Array.isArray((candidate.raw as any)?.volumeInfo?.industryIdentifiers)
             ? (candidate.raw as any).volumeInfo.industryIdentifiers.find((row: any) => String(row?.type || "").toUpperCase() === "ISBN_13")?.identifier
             : undefined),
         isbn10:
           (candidate.raw as any)?.isbn10 ??
+          (candidate.raw as any)?.localCollectionIsbn10 ??
           (candidate.raw as any)?.industryIdentifiers?.isbn10 ??
           (Array.isArray((candidate.raw as any)?.volumeInfo?.industryIdentifiers)
             ? (candidate.raw as any).volumeInfo.industryIdentifiers.find((row: any) => String(row?.type || "").toUpperCase() === "ISBN_10")?.identifier
@@ -2190,16 +2227,16 @@ function handleLeft() {
           (candidate.raw as any)?.callNumber ??
           (candidate.raw as any)?.call_number,
         subLocation:
+          candidate.shelvingLocation ??
           candidate.subLocation ??
           candidate.localCollectionPlacement ??
-          candidate.shelvingLocation ??
           (candidate.raw as any)?.subLocation ??
           (candidate.raw as any)?.sub_location ??
+          (candidate.raw as any)?.shelvingLocation ??
+          (candidate.raw as any)?.shelving_location ??
           (candidate.raw as any)?.localCollectionPlacement ??
           (candidate.raw as any)?.localPlacement ??
-          (candidate.raw as any)?.local_placement ??
-          (candidate.raw as any)?.shelvingLocation ??
-          (candidate.raw as any)?.shelving_location,
+          (candidate.raw as any)?.local_placement,
         localPlacement:
           candidate.localCollectionPlacement ??
           candidate.subLocation ??
@@ -5436,12 +5473,7 @@ function handleLeft() {
 
   const currentRecLocationLine = useMemo(() => {
     if (!currentRec || currentRec.kind !== "open_library") return "";
-    const callNumber = recommendationCallNumber(currentRec.doc);
-    const subLocation = recommendationSubLocation(currentRec.doc);
-    if (subLocation && callNumber) return `${subLocation} • ${callNumber}`;
-    if (subLocation) return subLocation;
-    if (callNumber) return callNumber;
-    return "";
+    return formatRecommendationLocationLine(currentRec.doc);
   }, [currentRec]);
 
   const humanReviewTotalRecommendations = humanReviewForm?.itemReviews.length || 0;

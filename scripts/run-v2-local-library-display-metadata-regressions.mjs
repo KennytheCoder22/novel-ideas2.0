@@ -89,6 +89,63 @@ Module._load = originalLoad;
 const swipeDeckSource = readFileSync(resolve(ROOT, "screens", "SwipeDeckScreen.tsx"), "utf8");
 const adminSource = readFileSync(resolve(ROOT, "app", "app_admin-web.tsx"), "utf8");
 const localSource = readFileSync(resolve(ROOT, "app", "recommender-v2", "sources", "localLibrarySource.ts"), "utf8");
+const swipeDeckFile = ts.createSourceFile("SwipeDeckScreen.tsx", swipeDeckSource, ts.ScriptTarget.ES2020, true, ts.ScriptKind.TSX);
+
+function extractFunctionText(sourceFile, name) {
+  let found = "";
+  function visit(node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === name) {
+      found = node.getFullText(sourceFile);
+      return;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  if (!found) throw new Error(`Missing function ${name}`);
+  return found;
+}
+
+const swipeDeckHelpersSource = [
+  "normalizeImageUrl",
+  "uniqueCoverCandidates",
+  "normalizeIsbn",
+  "uniqueIsbnCandidates",
+  "recommendationCoverUrl",
+  "coverUrlFromIsbn",
+  "recommendationIsbnCandidates",
+  "recommendationCoverCandidates",
+  "recommendationCallNumber",
+  "canonicalLocalDisplayValue",
+  "recommendationSubLocationCandidates",
+  "recommendationSubLocation",
+  "formatRecommendationLocationLine",
+].map((name) => extractFunctionText(swipeDeckFile, name)).join("\n\n");
+
+const swipeDeckHelperModule = { exports: {} };
+const swipeDeckHelperFactory = new Function("module", "exports", `${ts.transpileModule(`
+function coverUrlFromCoverId() { return null; }
+${swipeDeckHelpersSource}
+module.exports = {
+  recommendationIsbnCandidates,
+  recommendationCoverCandidates,
+  recommendationCallNumber,
+  recommendationSubLocation,
+  formatRecommendationLocationLine,
+};
+`, {
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2020,
+  },
+}).outputText}`);
+swipeDeckHelperFactory(swipeDeckHelperModule, swipeDeckHelperModule.exports);
+const {
+  recommendationIsbnCandidates,
+  recommendationCoverCandidates,
+  recommendationCallNumber,
+  recommendationSubLocation,
+  formatRecommendationLocationLine,
+} = swipeDeckHelperModule.exports;
 
 function makeProfile() {
   return {
@@ -151,8 +208,10 @@ console.log("\nS1: structural UI/admin checks");
 check("S1-a source adapter forwards shelving + call + sub-location aliases", () => {
   assert(localSource.includes("coverUrl: record.coverUrl"), "source must forward coverUrl");
   assert(localSource.includes("callNumber: record.callNumber"), "source must forward callNumber");
-  assert(localSource.includes("subLocation: record.localPlacement || record.shelvingLocation"), "source must forward subLocation alias");
+  assert(localSource.includes("subLocation: record.shelvingLocation || record.localPlacement"), "source must prefer shelvingLocation for student-facing shelf label");
   assert(localSource.includes("shelvingLocation: record.shelvingLocation"), "source must forward shelvingLocation");
+  assert(localSource.includes("isbn13: record.isbn13"), "source must forward isbn13 for presentation-only cover enrichment");
+  assert(localSource.includes("marcHoldings: record.marcHoldings"), "source must preserve MARC holdings metadata");
 });
 check("S1-b SwipeDeckScreen maps local metadata onto displayed doc", () => {
   assert(swipeDeckSource.includes("candidate.coverUrl ??"), "normalizeRecommenderV2Items must prefer candidate.coverUrl");
@@ -160,10 +219,9 @@ check("S1-b SwipeDeckScreen maps local metadata onto displayed doc", () => {
   assert(swipeDeckSource.includes("localCollectionPlacement"), "display doc must preserve localCollectionPlacement");
   assert(swipeDeckSource.includes("shelvingLocation"), "display doc must preserve shelvingLocation");
 });
-check("S1-c recommendation card chyron uses subLocation • callNumber order", () => {
-  assert(swipeDeckSource.includes("if (subLocation && callNumber) return `${subLocation} • ${callNumber}`;"), "chyron must show subLocation • callNumber");
-  assert(swipeDeckSource.includes("if (subLocation) return subLocation;"), "chyron must support only subLocation");
-  assert(swipeDeckSource.includes("if (callNumber) return callNumber;"), "chyron must support only callNumber");
+check("S1-c recommendation card chyron uses deduped location-line helper", () => {
+  assert(swipeDeckSource.includes("return formatRecommendationLocationLine(currentRec.doc);"), "card must use shared location-line formatter");
+  assert(swipeDeckSource.includes("function formatRecommendationLocationLine(doc: any): string"), "location-line formatter must exist");
 });
 check("S1-d cover fallback path remains intact", () => {
   assert(swipeDeckSource.includes("const fromCoverId = coverUrlFromCoverId(doc.cover_i || doc.coverId, \"L\");"), "cover fallback must still try coverId");
@@ -184,14 +242,15 @@ const fixtureRecords = [
     publicationYear: 2021,
     audience: "Adult",
     readingLevel: "Adult",
-    shelvingLocation: "Stacks West",
-    localPlacement: "Horror Alcove",
-    callNumber: "FIC GHO",
+    shelvingLocation: "Adventure, Mystery, & Suspense",
+    localPlacement: "FIC REI",
+    callNumber: "FIC REI",
     availability: "available",
     coverUrl: "https://cdn.example.test/ghost-shelf.jpg",
     copies: 2,
     isbn10: "0123456789",
     isbn13: "9780123456789",
+    marcHoldings: [{ collection: "Adventure, Mystery, & Suspense", callNumber: "FIC REI", locationCode: "YVHS" }],
   },
 ];
 
@@ -199,32 +258,84 @@ const sourceResult = await runAdapter(fixtureRecords);
 check("B1 source rows keep cover and local holdings metadata", () => {
   const row = sourceResult.rawItems[0] || {};
   assert(row.coverUrl === "https://cdn.example.test/ghost-shelf.jpg", `expected coverUrl, got ${row.coverUrl}`);
-  assert(row.callNumber === "FIC GHO", `expected callNumber, got ${row.callNumber}`);
-  assert(row.localCollectionCallNumber === "FIC GHO", `expected localCollectionCallNumber, got ${row.localCollectionCallNumber}`);
-  assert(row.localCollectionPlacement === "Horror Alcove", `expected localCollectionPlacement, got ${row.localCollectionPlacement}`);
-  assert(row.subLocation === "Horror Alcove", `expected subLocation alias, got ${row.subLocation}`);
-  assert(row.shelvingLocation === "Stacks West", `expected shelvingLocation, got ${row.shelvingLocation}`);
+  assert(row.callNumber === "FIC REI", `expected callNumber, got ${row.callNumber}`);
+  assert(row.localCollectionCallNumber === "FIC REI", `expected localCollectionCallNumber, got ${row.localCollectionCallNumber}`);
+  assert(row.localCollectionPlacement === "FIC REI", `expected localCollectionPlacement, got ${row.localCollectionPlacement}`);
+  assert(row.subLocation === "Adventure, Mystery, & Suspense", `expected shelvingLocation-backed subLocation, got ${row.subLocation}`);
+  assert(row.shelvingLocation === "Adventure, Mystery, & Suspense", `expected shelvingLocation, got ${row.shelvingLocation}`);
+  assert(row.isbn13 === "9780123456789", `expected isbn13 for cover lookup, got ${row.isbn13}`);
+  assert(Array.isArray(row.marcHoldings) && row.marcHoldings[0]?.collection === "Adventure, Mystery, & Suspense", "expected marcHoldings preservation");
 });
 
 const normalized = normalizeSourceResults([sourceResult]);
 check("B2 normalized candidate preserves cover/call/sub-location fields", () => {
   const candidate = normalized[0] || {};
   assert(candidate.coverUrl === "https://cdn.example.test/ghost-shelf.jpg", `normalized coverUrl missing: ${candidate.coverUrl}`);
-  assert(candidate.callNumber === "FIC GHO", `normalized callNumber missing: ${candidate.callNumber}`);
-  assert(candidate.localCollectionCallNumber === "FIC GHO", `normalized localCollectionCallNumber missing: ${candidate.localCollectionCallNumber}`);
-  assert(candidate.subLocation === "Horror Alcove", `normalized subLocation missing: ${candidate.subLocation}`);
-  assert(candidate.localCollectionPlacement === "Horror Alcove", `normalized localCollectionPlacement missing: ${candidate.localCollectionPlacement}`);
-  assert(candidate.shelvingLocation === "Stacks West", `normalized shelvingLocation missing: ${candidate.shelvingLocation}`);
+  assert(candidate.callNumber === "FIC REI", `normalized callNumber missing: ${candidate.callNumber}`);
+  assert(candidate.localCollectionCallNumber === "FIC REI", `normalized localCollectionCallNumber missing: ${candidate.localCollectionCallNumber}`);
+  assert(candidate.subLocation === "Adventure, Mystery, & Suspense", `normalized subLocation missing: ${candidate.subLocation}`);
+  assert(candidate.localCollectionPlacement === "FIC REI", `normalized localCollectionPlacement missing: ${candidate.localCollectionPlacement}`);
+  assert(candidate.shelvingLocation === "Adventure, Mystery, & Suspense", `normalized shelvingLocation missing: ${candidate.shelvingLocation}`);
 });
 
 const selected = selectRecommendations(scoreCandidates(normalized, makeProfile()), makeProfile(), 10).selected;
 check("B3 selected recommendation still preserves local display metadata", () => {
   const candidate = selected[0] || {};
   assert(candidate.coverUrl === "https://cdn.example.test/ghost-shelf.jpg", `selected coverUrl missing: ${candidate.coverUrl}`);
-  assert(candidate.callNumber === "FIC GHO", `selected callNumber missing: ${candidate.callNumber}`);
-  assert(candidate.subLocation === "Horror Alcove", `selected subLocation missing: ${candidate.subLocation}`);
-  assert(candidate.localCollectionPlacement === "Horror Alcove", `selected localCollectionPlacement missing: ${candidate.localCollectionPlacement}`);
-  assert(candidate.shelvingLocation === "Stacks West", `selected shelvingLocation missing: ${candidate.shelvingLocation}`);
+  assert(candidate.callNumber === "FIC REI", `selected callNumber missing: ${candidate.callNumber}`);
+  assert(candidate.subLocation === "Adventure, Mystery, & Suspense", `selected subLocation missing: ${candidate.subLocation}`);
+  assert(candidate.localCollectionPlacement === "FIC REI", `selected localCollectionPlacement missing: ${candidate.localCollectionPlacement}`);
+  assert(candidate.shelvingLocation === "Adventure, Mystery, & Suspense", `selected shelvingLocation missing: ${candidate.shelvingLocation}`);
+});
+
+console.log("\nB4-B8: UI helper behavior with real-shaped local records");
+const displayDoc = {
+  title: "Ghost Shelf",
+  coverUrl: "https://cdn.example.test/ghost-shelf.jpg",
+  callNumber: "FIC REI",
+  subLocation: "Adventure, Mystery, & Suspense",
+  shelvingLocation: "Adventure, Mystery, & Suspense",
+  localCollectionPlacement: "FIC REI",
+  isbn13: "9780123456789",
+  raw: {
+    callNumber: "FIC REI",
+    localPlacement: "FIC REI",
+    localCollectionPlacement: "FIC REI",
+    shelvingLocation: "Adventure, Mystery, & Suspense",
+    localCollectionIsbn13: "9780123456789",
+    marcHoldings: [{ collection: "Adventure, Mystery, & Suspense", callNumber: "FIC REI", locationCode: "YVHS" }],
+  },
+};
+check("B4 shelf-location helper prefers real 852$b collection over placement-like 900$a", () => {
+  assert(recommendationSubLocation(displayDoc) === "Adventure, Mystery, & Suspense", `unexpected subLocation: ${recommendationSubLocation(displayDoc)}`);
+});
+check("B5 location line renders genre shelf plus call number without duplication", () => {
+  assert(formatRecommendationLocationLine(displayDoc) === "Adventure, Mystery, & Suspense • FIC REI", `unexpected location line: ${formatRecommendationLocationLine(displayDoc)}`);
+});
+check("B6 placement-like local field does not render twice when it matches call number", () => {
+  const placementOnlyDoc = {
+    callNumber: "FIC REI",
+    localCollectionPlacement: "FIC REI",
+    raw: { callNumber: "FIC REI", localPlacement: "FIC REI" },
+  };
+  assert(recommendationSubLocation(placementOnlyDoc) === "", `expected empty duplicate location, got ${recommendationSubLocation(placementOnlyDoc)}`);
+  assert(formatRecommendationLocationLine(placementOnlyDoc) === "FIC REI", `expected single call number, got ${formatRecommendationLocationLine(placementOnlyDoc)}`);
+});
+check("B7 ISBN-first cover enrichment candidates survive when no local cover exists", () => {
+  const noLocalCoverDoc = {
+    title: "Ghost Shelf",
+    raw: {
+      localCollectionIsbn13: "9780123456789",
+    },
+  };
+  const candidates = recommendationCoverCandidates(noLocalCoverDoc);
+  assert(candidates.includes("https://covers.openlibrary.org/b/isbn/9780123456789-L.jpg"), `expected ISBN cover candidate, got ${JSON.stringify(candidates)}`);
+  assert(recommendationIsbnCandidates(noLocalCoverDoc)[0] === "9780123456789", `expected ISBN candidate, got ${JSON.stringify(recommendationIsbnCandidates(noLocalCoverDoc))}`);
+});
+check("B8 UI still renders safely when no cover and no shelf metadata exist", () => {
+  const bareDoc = { title: "Bare Record", raw: {} };
+  assert(formatRecommendationLocationLine(bareDoc) === "", `expected empty location line, got ${formatRecommendationLocationLine(bareDoc)}`);
+  assert(Array.isArray(recommendationCoverCandidates(bareDoc)) && recommendationCoverCandidates(bareDoc).length === 0, "expected no cover candidates");
 });
 
 console.log(`\nLocal library display metadata regressions: ${passed} passed, ${failed} failed`);
