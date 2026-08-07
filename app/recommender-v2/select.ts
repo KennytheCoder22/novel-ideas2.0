@@ -7626,6 +7626,16 @@ function recordRejected(candidate: ScoredCandidate, rejectedReasons: Record<stri
   rejectedReasons[reason] = Number(rejectedReasons[reason] || 0) + 1;
 }
 
+function isLocalLibraryBestFitHardEligible(candidate: ScoredCandidate, profile: TasteProfile): boolean {
+  const breakdown = candidate.scoreBreakdown || {};
+  const preciseAvoid = Number(breakdown.avoidSignalPenalty || 0);
+  const ageSuitability = Number(breakdown.ageTeenSuitability || breakdown.ageBandSuitability || 0);
+  const hasMaturityMismatch = candidate.maturityBand
+    && String(candidate.maturityBand) !== profile.maturityBand
+    && profile.ageBand !== "adult";
+  return preciseAvoid > -4 && ageSuitability > -3 && !hasMaturityMismatch;
+}
+
 function addAdultGoogleBooksSelectionObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
   const diagnostics = rejectedReasons as Record<string, unknown>;
   const eligibilityReasonByTitle: Record<string, string> = {};
@@ -8809,11 +8819,21 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     [...candidates].sort((a, b) => compareForInitialSelection(a, b, profile)),
     profile,
   );
+  const localLibraryRankedCount = rankedCandidates.filter((candidate) => candidate.source === "localLibrary").length;
+  rejectedReasons.local_library_candidates_after_ranking = localLibraryRankedCount;
+  rejectedReasons.local_library_candidates_entering_selection = localLibraryRankedCount;
+  rejectedReasons.local_library_hard_eligible_count = rankedCandidates.filter(
+    (candidate) => candidate.source === "localLibrary" && isLocalLibraryBestFitHardEligible(candidate, profile),
+  ).length;
 
   for (const candidate of rankedCandidates) {
     const reason = rejectReason(candidate, profile);
     if (reason) {
       recordRejected(candidate, rejectedReasons, reason);
+      if (candidate.source === "localLibrary") {
+        const localReason = `local_library_rejected_${reason}`;
+        rejectedReasons[localReason] = Number(rejectedReasons[localReason] || 0) + 1;
+      }
       if (reason === "non_positive_score") {
         candidate.rejectedReasons.push(nonPositiveScoreDetail(candidate));
         if (candidate.source === "localLibrary") {
@@ -8895,6 +8915,8 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     selected.push(candidate);
     if (selected.length >= limit) break;
   }
+  const localLibraryNormalSelectedCount = selected.filter((candidate) => candidate.source === "localLibrary").length;
+  rejectedReasons.local_library_selected_during_normal_selection = localLibraryNormalSelectedCount;
 
   if (selected.length === 0 && lowScoreRescue.length > 0) {
     rejectedReasons.low_score_rescue_candidates_available = lowScoreRescue.length;
@@ -9099,6 +9121,11 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       selected.push(candidate);
     }
   }
+  const localLibrarySelectedBeforeBestFit = selected.filter((candidate) => candidate.source === "localLibrary").length;
+  rejectedReasons.local_library_selected_during_underfill = Math.max(
+    0,
+    localLibrarySelectedBeforeBestFit - localLibraryNormalSelectedCount,
+  );
 
   // Local library best-fit rescue: for finite physical collections, return the best-available
   // eligible candidates rather than requiring the relevance threshold used for external sources
@@ -9106,14 +9133,9 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   // content markers in teen profiles, maturity mismatch) are preserved; sparse-metadata
   // eligibility failures are not.
   if (selected.length < limit && localLibraryBestFit.length > 0) {
+    rejectedReasons.local_library_best_fit_entering_count = localLibraryBestFit.length;
     const bestFitCandidates = localLibraryBestFit
-      .filter((candidate) => {
-        const breakdown = candidate.scoreBreakdown || {};
-        const preciseAvoid = Number(breakdown.avoidSignalPenalty || 0);
-        const ageSuitability = Number(breakdown.ageTeenSuitability || breakdown.ageBandSuitability || 0);
-        const hasMaturityMismatch = candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand && profile.ageBand !== "adult";
-        return preciseAvoid > -4 && ageSuitability > -3 && !hasMaturityMismatch;
-      })
+      .filter((candidate) => isLocalLibraryBestFitHardEligible(candidate, profile))
       .sort((a, b) => b.score - a.score);
     if (bestFitCandidates.length > 0) {
       rejectedReasons.local_library_best_fit_candidates_available = bestFitCandidates.length;
@@ -9131,6 +9153,8 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       selected.push(candidate);
     }
   }
+  rejectedReasons.local_library_best_fit_entering_count = Number(rejectedReasons.local_library_best_fit_entering_count || 0);
+  rejectedReasons.local_library_selected_during_best_fit = Number(rejectedReasons.accepted_local_library_best_fit || 0);
 
   applyMiddleGradesFranchiseRepresentativePreference(rankedCandidates, selected, deferred, rejectedReasons, profile);
   applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);
@@ -9183,6 +9207,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   addPreteenGoogleBooksPublicationIdentityObservability(rankedCandidates, selected, rejectedReasons, profile);
   addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
-
+  rejectedReasons.local_library_selection_output_count = selected.filter((candidate) => candidate.source === "localLibrary").length;
+  rejectedReasons.selection_output_count = selected.length;
   return { selected, rejectedReasons };
 }

@@ -232,8 +232,9 @@ console.log("\n4. Collection upload via server API");
     contains(storage, "putBlobJson(collectionBlobPathname(id), payload)")
   );
   check(
-    "saveSharedLibraryCollection updates collection pointer in vercel_blob mode",
-    contains(storage, "saveBlobCollectionPtr(id, url)")
+    "saveSharedLibraryCollection stores the returned URL string, not the full write result",
+    contains(storage, "saveBlobCollectionPtr(id, write.url)") &&
+    !contains(storage, "saveBlobCollectionPtr(id, write)")
   );
   check(
     "recordSharedLibraryCollectionUrl is exported",
@@ -332,8 +333,9 @@ console.log("\n7. Missing blob and malformed JSON handling");
     contains(storage, "wrapper.config")
   );
   check(
-    "loadBlobCollectionUrl returns null when pointer is missing",
-    contains(storage, "typeof ptr.blobUrl === \"string\"") || contains(storage, 'typeof ptr.blobUrl === "string"')
+    "loadBlobCollectionUrl recovers deterministic collection blob when pointer is missing",
+    contains(storage, "head(collectionBlobPathname(libraryId)") &&
+    contains(storage, "saveBlobCollectionPtr(libraryId, blob.url)")
   );
   check(
     "readJson in filesystem path is wrapped in try/catch",

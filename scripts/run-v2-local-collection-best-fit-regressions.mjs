@@ -8,6 +8,7 @@
  *   B3: explicit adult content still blocked in teen profile
  *   B4: localLibraryCurationTrusted suppresses maturityBand; single-age-band library works
  *   B5: external sources not affected by best-fit rescue
+ *   B6: production-shaped missing artifact reports the pre-selection zero stage
  */
 
 import { createRequire } from "node:module";
@@ -245,6 +246,13 @@ console.log("\nB1: Sparse-metadata collection → best-fit candidates returned")
   check("B1-a: at least 1 recommendation returned (not empty)", () => assert(result.selected.length >= 1, `Got ${result.selected.length}`));
   check("B1-b: accepted_local_library_best_fit rescue triggered", () => assert(bestFit >= 1, `bestFit=${bestFit}, selected=${result.selected.length}`));
   check("B1-c: fills up to limit of 10", () => assert(result.selected.length === 10, `Expected 10, got ${result.selected.length}`));
+  check("B1-d: selection-stage diagnostics account for best-fit rescue", () => {
+    assert(result.rejectedReasons.local_library_candidates_after_ranking === 15, JSON.stringify(result.rejectedReasons));
+    assert(result.rejectedReasons.local_library_best_fit_entering_count === 15, JSON.stringify(result.rejectedReasons));
+    assert(result.rejectedReasons.local_library_hard_eligible_count === 15, JSON.stringify(result.rejectedReasons));
+    assert(result.rejectedReasons.local_library_selected_during_best_fit === 10, JSON.stringify(result.rejectedReasons));
+    assert(result.rejectedReasons.local_library_selection_output_count === 10, JSON.stringify(result.rejectedReasons));
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -367,6 +375,27 @@ console.log("\nB5: External sources not affected by best-fit rescue");
     assert(bf === 0, `External candidate should not trigger best-fit rescue; bf=${bf}`);
   });
 }
+
+// ---------------------------------------------------------------------------
+// B6 — Production-shaped missing shared artifact fails before selection
+// ---------------------------------------------------------------------------
+console.log("\nB6: Missing shared artifact → explicit pre-selection diagnostics");
+(async () => {
+  const profile = makeTeenProfile(true);
+  const sourceResult = await runAdapterForRecords([], profile);
+  const scored = scoreCandidates(normalizeSourceResults([sourceResult]), profile);
+  const selection = selectRecommendations(scored, profile, 10);
+
+  check("B6-a: missing artifact is identified at the source stage", () => {
+    assert(sourceResult.diagnostics.emptyReason === "local_collection_not_imported", JSON.stringify(sourceResult.diagnostics));
+    assert(sourceResult.diagnostics.localCollectionRecordCount === 0, JSON.stringify(sourceResult.diagnostics));
+  });
+  check("B6-b: zero-result selection diagnostics show no candidates reached ranking or rescue", () => {
+    assert(selection.rejectedReasons.local_library_candidates_after_ranking === 0, JSON.stringify(selection.rejectedReasons));
+    assert(selection.rejectedReasons.local_library_best_fit_entering_count === 0, JSON.stringify(selection.rejectedReasons));
+    assert(selection.rejectedReasons.selection_output_count === 0, JSON.stringify(selection.rejectedReasons));
+  });
+})();
 
 // ---------------------------------------------------------------------------
 // Summary (allow async B4 to complete first)

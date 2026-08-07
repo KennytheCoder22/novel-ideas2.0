@@ -448,9 +448,34 @@ async function saveBlobCollectionPtr(libraryId: string, blobUrl: string): Promis
 
 async function loadBlobCollectionUrl(libraryId: string): Promise<string | null> {
   const data = await loadBlobJson(collectionPtrBlobPathname(libraryId));
-  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
-  const ptr = data as Record<string, unknown>;
-  return typeof ptr.blobUrl === "string" ? ptr.blobUrl : null;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const ptr = data as Record<string, unknown>;
+    if (typeof ptr.blobUrl === "string" && ptr.blobUrl) return ptr.blobUrl;
+  }
+
+  // A collection write can succeed before its small pointer write does. Recover the
+  // deterministic collection blob directly instead of reporting an empty collection.
+  try {
+    const { head } = await import("@vercel/blob");
+    const token = readBlobReadWriteToken();
+    const blob = await head(collectionBlobPathname(libraryId), token ? { token } : undefined);
+    if (!blob?.url) return null;
+    try {
+      await saveBlobCollectionPtr(libraryId, blob.url);
+    } catch (error) {
+      console.warn("[library-sharing][collection][pointer_repair_failed]", {
+        libraryId,
+        ...safeBlobExceptionDetails(error),
+      });
+    }
+    return blob.url;
+  } catch (error) {
+    console.warn("[library-sharing][collection][deterministic_blob_lookup_failed]", {
+      libraryId,
+      ...safeBlobExceptionDetails(error),
+    });
+    return null;
+  }
 }
 
 // ── Local filesystem fallback (local dev only) ────────────────────────────────
@@ -894,8 +919,8 @@ export async function saveSharedLibraryCollection(
   const id = String(libraryId || "").trim();
   if (!id) throw new Error("missing_library_id");
   if (storageMode() === "vercel_blob") {
-    const url = await putBlobJson(collectionBlobPathname(id), payload);
-    await saveBlobCollectionPtr(id, url);
+    const write = await putBlobJson(collectionBlobPathname(id), payload);
+    await saveBlobCollectionPtr(id, write.url);
     return;
   }
   await saveFileAsset("collection", id, payload);

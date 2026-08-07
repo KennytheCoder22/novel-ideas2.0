@@ -3877,6 +3877,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   if (tasteProfile.ageBand === "teens") {
     applyOpenLibraryPerQueryFinalLineage(sourceResults, selected);
   }
+  rejectedReasons.local_library_final_selected_count = selected.filter((candidate) => candidate.source === "localLibrary").length;
+  rejectedReasons.final_recommendation_count = selected.length;
   markPipelineObjects(selected, "selected", requestId);
   stages.push(stageDiagnostic("selected", { selected: selected.length }, { rejectedReasons }));
   if (middleGradesDeepDebugActive) {

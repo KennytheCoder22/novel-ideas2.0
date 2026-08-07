@@ -33,7 +33,7 @@ import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { runRecommenderV2 } from "../app/recommender-v2";
 import { applyGoogleBooksRenderingStageLineage, computeGoogleBooksDropDiagnostics, computeGoogleBooksDropDiagnosticsByTitle, harmonizeGoogleBooksStageLineage } from "../app/recommender-v2/googleBooksLineageDiagnostics";
 import type { AgeBandV2, RecommendationResultV2, SwipeSignalV2 } from "../app/recommender-v2";
-const DEPLOYED_COMMIT_MARKER = "17c4615";
+const DEPLOYED_COMMIT_MARKER = "local-collection-storage-recovery-v1";
 const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-17c4615";
 const KITSU_API_BASE = String(
   (process as any)?.env?.EXPO_PUBLIC_KITSU_API_BASE_URL ||
@@ -1601,8 +1601,18 @@ export default function SwipeDeckScreen(props: Props) {
       ? (v2DebugResult as any).diagnostics.sources.find((s: any) => s.source === "localLibrary")
       : null;
     const localCount = localSrc != null
-      ? String(localSrc.usableRowsAfterFiltering ?? localSrc.rawCount ?? "?")
+      ? String(localSrc.localCollectionRecordCount ?? localSrc.usableRowsAfterFiltering ?? localSrc.rawCount ?? "?")
       : "not loaded";
+    const diagnostics = (v2DebugResult as any)?.diagnostics || {};
+    const taste = diagnostics.tasteProfile || {};
+    const rejected = diagnostics.rejectedReasons || {};
+    const dominantSignals = ["genreFamily", "tone", "themes"]
+      .flatMap((key) => (Array.isArray(taste[key]) ? taste[key].slice(0, 2).map((signal: any) => String(signal?.value || "")).filter(Boolean) : []))
+      .join(",");
+    const localRejects = Object.entries(rejected)
+      .filter(([key, value]) => key.startsWith("local_library_rejected_") && Number(value) > 0)
+      .map(([key, value]) => `${key.replace("local_library_rejected_", "")}:${value}`)
+      .join(",");
     const srcFlags = [
       sourceEnabled.googleBooks ? "gb✓" : "gb✗",
       sourceEnabled.openLibrary ? "ol✓" : "ol✗",
@@ -1618,14 +1628,19 @@ export default function SwipeDeckScreen(props: Props) {
       `library:${libId}`,
       `session:${pipelineSessionId}`,
       `deck:${deckKey}  nonce:${sessionNonce}`,
-      `seen:${seenCardKeys.length}/${cards.length}  decisions:${decisionSwipes}`,
+      `ageBands:${enabledDeckList.join(",") || "(none)"}  curationTrusted:${enabledDeckList.length === 1}`,
+      `swipes:${swipeHistory.length}  likes:${rightSwipes}  dislikes:${leftSwipes}  decisions:${decisionSwipes}`,
+      `taste:${taste.ageBand || "(pending)"}  dominant:${dominantSignals || "(pending)"}`,
       `sources:${srcFlags}`,
-      `localCollection:${localCount}`,
+      `localArtifact:${localCount}  raw:${localSrc?.rawCount ?? 0}  ranked:${rejected.local_library_candidates_after_ranking ?? 0}`,
+      `localEligible:${rejected.local_library_hard_eligible_count ?? 0}  bestFitIn:${rejected.local_library_best_fit_entering_count ?? 0}`,
+      `localSelected:normal=${rejected.local_library_selected_during_normal_selection ?? 0} underfill=${rejected.local_library_selected_during_underfill ?? 0} rescue=${rejected.local_library_selected_during_best_fit ?? 0} final=${rejected.local_library_final_selected_count ?? 0}`,
+      `localRejects:${localRejects || "(none)"}`,
       `recs:${recItems.length}  marker:${lastDeploymentRuntimeMarker || "(none)"}`,
       `recent5:${recentTitles || "(none)"}`,
     ].join("\n");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [v2DebugResult, sourceEnabled, swipeHistory.length, pipelineSessionId, deckKey, sessionNonce, seenCardKeys.length, cards.length, decisionSwipes, recItems.length, lastDeploymentRuntimeMarker]);
+  }, [v2DebugResult, sourceEnabled, swipeHistory.length, pipelineSessionId, deckKey, sessionNonce, enabledDeckList, seenCardKeys.length, cards.length, rightSwipes, leftSwipes, decisionSwipes, recItems.length, lastDeploymentRuntimeMarker]);
 
   const personalityStoreRef = useRef<Record<string, PersonalityProfile>>({});
   const sessionSwipeStoreRef = useRef<Record<string, SwipeSignal[]>>({});

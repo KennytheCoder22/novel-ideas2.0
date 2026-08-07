@@ -190,6 +190,7 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
   source: "localLibrary",
   async search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal }): Promise<SourceResult> {
     const startedAt = nowIso();
+    const libraryId = getRuntimeLibraryId();
     if (context.signal?.aborted) {
       return diagnosticResult(
         plan,
@@ -200,7 +201,7 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
       );
     }
 
-    const artifact = await loadLocalCollectionRecommendationArtifact(getRuntimeLibraryId());
+    const artifact = await loadLocalCollectionRecommendationArtifact(libraryId);
     const records = Array.isArray(artifact?.records) ? artifact.records : [];
     if (!records.length) {
       return diagnosticResult(
@@ -208,7 +209,16 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
         "empty",
         [],
         [{ query: "", timedOut: false, status: "empty", emptyResultReason: "local_collection_not_imported" }],
-        { startedAt, emptyReason: "local_collection_not_imported", sourceStageEmptyReason: "local_collection_not_imported" }
+        {
+          startedAt,
+          emptyReason: "local_collection_not_imported",
+          sourceStageEmptyReason: "local_collection_not_imported",
+          localCollectionLibraryId: libraryId,
+          localCollectionCurationTrusted: Boolean(context.profile.localLibraryCurationTrusted),
+          localCollectionRecordCount: 0,
+          localCollectionRankedCount: 0,
+          localCollectionPositiveScoreCount: 0,
+        } as Partial<SourceDiagnosticV2>
       );
     }
 
@@ -292,7 +302,11 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
         startedAt,
         emptyReason: rawItems.length ? undefined : "local_collection_no_matching_titles",
         sourceStageEmptyReason: rawItems.length ? undefined : "local_collection_no_matching_titles",
+        localCollectionLibraryId: libraryId,
+        localCollectionCurationTrusted: Boolean(context.profile.localLibraryCurationTrusted),
         localCollectionRecordCount: records.length,
+        localCollectionRankedCount: ranked.length,
+        localCollectionPositiveScoreCount: withPositiveScore.length,
         localCollectionRecordHash: artifact?.deterministicContentHash || "",
       } as Partial<SourceDiagnosticV2>,
     );
