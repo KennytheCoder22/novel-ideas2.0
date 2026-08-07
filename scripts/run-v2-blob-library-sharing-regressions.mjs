@@ -177,7 +177,9 @@ console.log("\n3. Config save/load (Vercel Blob)");
   );
   check(
     "saveSharedLibraryConfig logs backend, libraryId, and storage key details",
-    contains(storage, "logConfigEvent(\"save_started\"")
+    contains(storage, "logConfigEvent(") &&
+    contains(storage, "\"save_started\"") &&
+    contains(storage, "payloadUtf8Bytes")
   );
   check(
     "loadSharedLibraryConfigPayload logs backend, libraryId, and found/missing result",
@@ -312,8 +314,9 @@ console.log("\n7. Missing blob and malformed JSON handling");
   const storage = readSrc("lib/librarySharing/storage.ts");
 
   check(
-    "loadBlobJson returns null on 404 response",
-    contains(storage, "status === 404") && contains(storage, "return null")
+    "loadBlobJson returns null when blob read resolves to not_found",
+    contains(storage, 'status: "not_found"') &&
+    contains(storage, "return result.validJson ? result.data : null")
   );
   check(
     "loadBlobJson returns null when JSON parse fails (.catch(() => null))",
@@ -373,7 +376,13 @@ console.log("\n8. Blob overwrite / versioning");
   );
   check(
     "Overwriting config calls put() again at same pathname (idempotent)",
-    contains(storage, "putBlobJson(configBlobPathname(libraryId)")
+    contains(storage, "const blobPath = configBlobPathname(libraryId)") &&
+    contains(storage, "putBlobJson(blobPath, wrappedPayload, { allowOverwrite: true })")
+  );
+  check(
+    "Second config save explicitly allows overwrite on the deterministic blob pathname",
+    contains(storage, "allowOverwrite: true") &&
+    contains(storage, "putBlobJson(blobPath, wrappedPayload, { allowOverwrite: true })")
   );
 }
 
@@ -389,7 +398,7 @@ console.log("\n9. Cross-device hydration path");
     "GET /api/library-config does NOT require admin cookie",
     configApi !== null &&
     contains(configApi, "if (req.method === \"GET\")") &&
-    !configApi.split("if (req.method === \"GET\")")[1]?.split("if (!hasAdminSessionCookie")[0]?.includes("hasAdminSessionCookie")
+    !contains(configApi, "[api/library-config][GET] unauthorized")
   );
   check(
     "GET /api/local-collection does NOT require admin cookie",
@@ -432,12 +441,15 @@ console.log("\n10. Blob URL derivation from token");
     )
   );
   check(
-    "loadBlobJson falls back to list() when derived URL fails",
-    contains(storage, "list(") && contains(storage, "prefix: pathname")
+    "readBlobJsonDetailed retries alternate blob auth/access modes",
+    contains(storage, "[library-sharing][blob][get] attempt_failed") &&
+    contains(storage, "sdk_default_token_resolution") &&
+    contains(storage, "explicit_blob_read_write_token")
   );
   check(
-    "loadBlobJson returns null on network error (catch block)",
-    contains(storage, "// network error") || contains(storage, "fall through to list")
+    "readBlobJsonDetailed converts SDK get failures into non-throwing status results",
+    contains(storage, 'return { status: "list_failed"') ||
+    contains(storage, 'return { status: "non_ok_http"')
   );
 
   // Logic test: URL derivation

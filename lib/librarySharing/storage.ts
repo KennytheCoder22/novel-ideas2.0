@@ -322,8 +322,12 @@ async function loadBlobJson(pathname: string): Promise<unknown | null> {
   return result.validJson ? result.data : null;
 }
 
-/** Write a JSON value to a Vercel Blob pathname (server-side, overwrites). */
-async function putBlobJson(pathname: string, value: unknown): Promise<{ url: string; authMode: string }> {
+/** Write a JSON value to a Vercel Blob pathname (server-side). */
+async function putBlobJson(
+  pathname: string,
+  value: unknown,
+  options?: { allowOverwrite?: boolean }
+): Promise<{ url: string; authMode: string }> {
   const { put } = await import("@vercel/blob");
   const payload = JSON.stringify(value);
   const token = readBlobReadWriteToken();
@@ -335,6 +339,7 @@ async function putBlobJson(pathname: string, value: unknown): Promise<{ url: str
     const blob = await put(pathname, payload, {
       access,
       addRandomSuffix: false,
+      ...(options?.allowOverwrite ? { allowOverwrite: true } : {}),
       contentType: "application/json",
       ...(opts?.token ? { token: opts.token } : {}),
     });
@@ -390,7 +395,7 @@ async function saveBlobConfig(libraryId: string, payload: Record<string, unknown
     contentHash: sha256(stableStringify(sanitized)),
     config: sanitized,
   };
-  const write = await putBlobJson(blobPath, wrappedPayload);
+  const write = await putBlobJson(blobPath, wrappedPayload, { allowOverwrite: true });
   return {
     blobUrl: write.url,
     blobPath,
