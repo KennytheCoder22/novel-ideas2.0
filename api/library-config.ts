@@ -153,7 +153,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     return sendJson(res, 200, { success: true, correlationId }, correlationId);
   } catch (error) {
-    console.error("[api/library-config][POST] internal_error", { correlationId }, error);
-    return sendJson(res, 500, { error: "internal_server_error", correlationId }, correlationId);
+    const stage = error instanceof Error ? error.message : "";
+    const safeStageError =
+      stage === "blob_write_failed" ||
+      stage === "config_write_verification_probe_failed" ||
+      stage === "config_write_verification_failed"
+        ? stage
+        : "internal_server_error";
+    console.error("[api/library-config][POST] internal_error", { correlationId, stage: safeStageError }, error);
+    return sendJson(res, 500, { error: safeStageError, correlationId }, correlationId);
   }
 }

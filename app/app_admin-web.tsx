@@ -45,7 +45,7 @@ import {
 import { ColorPickerField } from "../components/admin/ColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
-import { activateAdminSession, setPendingAdminRoute } from "../lib/adminSession";
+import { activateAdminSession, isAdminSessionActive, setPendingAdminRoute } from "../lib/adminSession";
 import { getRuntimeLibraryId } from "../constants/runtimeConfig";
 import {
   isPreviewAcceptanceHarnessEnabled,
@@ -934,10 +934,12 @@ export default function AdminWebScreen() {
       }
       if (nextLibraryId) {
         activateAdminSession("admin_web_save");
+        const adminSessionActiveAfterSaveActivation = isAdminSessionActive();
         console.info("[app_admin-web] save_click", {
           libraryId: nextLibraryId,
           payloadUtf8Bytes,
           adminDraftStorageKey,
+          adminSessionActiveAfterSaveActivation,
         });
         const sharedSave = await saveSharedLibraryConfigWithDiagnostics(nextLibraryId, next as Record<string, unknown>);
         if (!sharedSave.success) {
@@ -1129,15 +1131,7 @@ export default function AdminWebScreen() {
             >
               <Text style={[styles.btnText, { color: t.accentTextOn }]}>Save & Return</Text>
             </TouchableOpacity>
-            {isDirty ? (
-              <View style={[styles.badge, { borderColor: t.accent }]}>
-                <Text style={{ color: t.accent, fontSize: 11, fontWeight: "900" }}>Unsaved changes</Text>
-              </View>
-            ) : saveStatus === "saved" ? (
-              <View style={[styles.badge, { borderColor: t.success }]}>
-                <Text style={{ color: t.success, fontSize: 11, fontWeight: "900" }}>{"Saved \u2713"}</Text>
-              </View>
-            ) : saveStatus === "error" ? (
+            {saveStatus === "error" ? (
               <View style={[styles.badge, { borderColor: t.danger }]}>
                 <Text style={{ color: t.danger, fontSize: 11, fontWeight: "900" }}>Save failed</Text>
                 {saveErrorDetails ? (
@@ -1145,6 +1139,14 @@ export default function AdminWebScreen() {
                     {`code=${saveErrorDetails.appErrorCode || "unknown"} corr=${saveErrorDetails.correlationId}`}
                   </Text>
                 ) : null}
+              </View>
+            ) : isDirty ? (
+              <View style={[styles.badge, { borderColor: t.accent }]}>
+                <Text style={{ color: t.accent, fontSize: 11, fontWeight: "900" }}>Unsaved changes</Text>
+              </View>
+            ) : saveStatus === "saved" ? (
+              <View style={[styles.badge, { borderColor: t.success }]}>
+                <Text style={{ color: t.success, fontSize: 11, fontWeight: "900" }}>{"Saved \u2713"}</Text>
               </View>
             ) : null}
           </View>
@@ -1675,6 +1677,11 @@ export default function AdminWebScreen() {
             <Text style={{ color: t.subtext, fontSize: 11, marginLeft: 4 }}>
               You have unsaved changes.
             </Text>
+            {saveStatus === "error" && saveErrorDetails ? (
+              <Text style={{ color: t.danger, fontSize: 11, marginLeft: 4 }}>
+                {`Save failed: code=${saveErrorDetails.appErrorCode || "unknown"} status=${saveErrorDetails.httpStatus ?? "n/a"} routeReached=${saveErrorDetails.requestReachedApiRoute ? "true" : "false"} corr=${saveErrorDetails.correlationId}`}
+              </Text>
+            ) : null}
           </>
         ) : saveStatus === "saved" ? (
           <Text style={{ color: t.success, fontSize: 13, fontWeight: "800" }}>{"Changes saved \u2713"}</Text>

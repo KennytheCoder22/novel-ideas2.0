@@ -591,7 +591,13 @@ export async function saveSharedLibraryConfig(
   logConfigEvent("save_started", { ...trace, payloadUtf8Bytes }, correlationId);
   try {
     if (trace.backend === "vercel_blob") {
-      const write = await saveBlobConfig(id, payload);
+      let write: { blobUrl: string; blobPath: string; wrappedPayloadUtf8Bytes: number };
+      try {
+        write = await saveBlobConfig(id, payload);
+      } catch (error) {
+        console.error("[library-sharing][config][blob_write_failed]", { correlationId, ...trace }, error);
+        throw new Error("blob_write_failed");
+      }
       logConfigEvent(
         "blob_write_succeeded",
         {
@@ -607,7 +613,13 @@ export async function saveSharedLibraryConfig(
       await saveFileAsset("config", id, payload);
       logConfigEvent("filesystem_write_succeeded", { ...trace, payloadUtf8Bytes }, correlationId);
     }
-    const verification = await diagnoseSharedLibraryConfig(id, correlationId);
+    let verification: SharedLibraryConfigDiagnostics;
+    try {
+      verification = await diagnoseSharedLibraryConfig(id, correlationId);
+    } catch (error) {
+      console.error("[library-sharing][config][save_verification_probe_failed]", { correlationId, ...trace }, error);
+      throw new Error("config_write_verification_probe_failed");
+    }
     logConfigEvent(
       "save_verification",
       {
