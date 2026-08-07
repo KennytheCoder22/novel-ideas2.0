@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { ADMIN_SESSION_COOKIE_NAME } from "../lib/adminSession";
 import {
+  loadSharedLibraryCollectionPayload,
   loadSharedLibraryCollectionResult,
   saveSharedLibraryCollection,
 } from "../lib/librarySharing/storage";
@@ -28,6 +29,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === "GET") {
     try {
+      if (String(req.query.inline || "") === "1") {
+        const artifact = await loadSharedLibraryCollectionPayload(libraryId);
+        return res.status(200).json({ artifact: artifact ?? null, artifactUrl: null });
+      }
       const result = await loadSharedLibraryCollectionResult(libraryId);
       return res.status(200).json({
         artifact: result.artifact ?? null,

@@ -268,6 +268,11 @@ console.log("\n5. Collection GET endpoint response shape");
     contains(collectionApi, "loadSharedLibraryCollectionResult")
   );
   check(
+    "GET endpoint supports inline fallback for private blob stores",
+    contains(collectionApi, "loadSharedLibraryCollectionPayload") &&
+    contains(collectionApi, 'String(req.query.inline || "") === "1"')
+  );
+  check(
     "GET response includes both artifact and artifactUrl fields",
     contains(collectionApi, "artifactUrl")
   );
@@ -301,6 +306,11 @@ console.log("\n6. Client loadSharedLibraryCollection handles both response shape
   check(
     "loadSharedLibraryCollection handles artifactUrl shape (fetches from CDN)",
     contains(client, "payload.artifactUrl") && contains(client, "readJsonAny")
+  );
+  check(
+    "loadSharedLibraryCollection falls back to same-origin inline payload when CDN access is private",
+    contains(client, 'inlineUrl.searchParams.set("inline", "1")') &&
+    contains(client, "loadSharedLibraryCollectionInlineFallback")
   );
   check(
     "readJsonAny fetches without credentials (cross-origin CDN URL)",

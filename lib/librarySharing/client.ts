@@ -361,6 +361,15 @@ export async function loadSharedLibraryCollection(libraryId: string): Promise<Re
     if (artifact && typeof artifact === "object" && !Array.isArray(artifact)) {
       return artifact;
     }
+
+    // Private Blob stores reject browser requests to the CDN URL. The collection
+    // upload cap keeps the artifact small enough for this same-origin API fallback.
+    const inlineUrl = new URL(url);
+    inlineUrl.searchParams.set("inline", "1");
+    const inlinePayload = await readJson(inlineUrl.toString(), "loadSharedLibraryCollectionInlineFallback");
+    if (inlinePayload?.artifact && typeof inlinePayload.artifact === "object" && !Array.isArray(inlinePayload.artifact)) {
+      return inlinePayload.artifact as Record<string, unknown>;
+    }
   }
 
   return null;
