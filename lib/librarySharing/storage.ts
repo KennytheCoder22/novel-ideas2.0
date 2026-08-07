@@ -72,6 +72,10 @@ function safeBlobExceptionDetails(error: unknown): SafeBlobExceptionDetails {
   const codeRaw = (err as { code?: unknown }).code;
   const code = typeof codeRaw === "string" && codeRaw ? codeRaw : "blob_unknown_error";
   const lower = String(err.message || "").toLowerCase();
+  const redactedMessage = String(err.message || "")
+    .replace(/vercel_blob_rw_[A-Za-z0-9_]+/g, "vercel_blob_rw_[redacted]")
+    .replace(/https?:\/\/[^\s]+/g, "[url_redacted]")
+    .slice(0, 240);
   if (lower.includes("no token")) {
     return { exceptionName: name, exceptionCode: "blob_token_missing", exceptionMessage: "Blob token missing." };
   }
@@ -87,7 +91,11 @@ function safeBlobExceptionDetails(error: unknown): SafeBlobExceptionDetails {
   if (lower.includes("network") || lower.includes("fetch")) {
     return { exceptionName: name, exceptionCode: "blob_network_error", exceptionMessage: "Blob network error." };
   }
-  return { exceptionName: name, exceptionCode: code, exceptionMessage: "Blob write failed." };
+  return {
+    exceptionName: name,
+    exceptionCode: code,
+    exceptionMessage: redactedMessage || "Blob write failed.",
+  };
 }
 
 function storageMode(): StorageMode {
