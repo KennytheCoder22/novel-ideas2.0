@@ -29,7 +29,68 @@ function inferAudienceBand(record: LocalCollectionRecommendationRecord): AgeBand
   return undefined;
 }
 
-function rankByIntentMatches(records: LocalCollectionRecommendationRecord[], plan: SourcePlan): Array<{
+function recordHaystack(record: LocalCollectionRecommendationRecord): string {
+  return [
+    record.title,
+    record.author,
+    record.audience,
+    record.readingLevel,
+    record.shelvingLocation,
+    record.localPlacement,
+    record.callNumber,
+  ].join(" ").toLowerCase();
+}
+
+// Score a record against the taste profile's weighted signals (genreFamily, tone, themes,
+// avoidSignals). This runs even when intent query tokens don't match verbatim metadata text,
+// ensuring that different swipe sessions produce different candidate orderings from the same
+// collection rather than always falling back to alphabetical order.
+function scoreByTasteProfile(haystack: string, profile: TasteProfile): number {
+  let score = 0;
+
+  for (const signal of profile.genreFamily) {
+    if (signal.weight <= 0) continue;
+    const terms = tokenize(signal.value);
+    if (!terms.length) continue;
+    const matched = terms.filter((term) => haystack.includes(term));
+    if (!matched.length) continue;
+    score += signal.weight * (matched.length / terms.length);
+  }
+
+  for (const signal of profile.tone) {
+    if (signal.weight <= 0) continue;
+    const terms = tokenize(signal.value);
+    if (!terms.length) continue;
+    const matched = terms.filter((term) => haystack.includes(term));
+    if (!matched.length) continue;
+    score += signal.weight * 0.5 * (matched.length / terms.length);
+  }
+
+  for (const signal of profile.themes) {
+    if (signal.weight <= 0) continue;
+    const terms = tokenize(signal.value);
+    if (!terms.length) continue;
+    const matched = terms.filter((term) => haystack.includes(term));
+    if (!matched.length) continue;
+    score += signal.weight * 0.5 * (matched.length / terms.length);
+  }
+
+  for (const signal of profile.avoidSignals) {
+    const terms = tokenize(signal.value);
+    if (!terms.length) continue;
+    const matched = terms.filter((term) => haystack.includes(term));
+    if (!matched.length) continue;
+    score -= Math.abs(signal.weight) * (matched.length / terms.length);
+  }
+
+  return score;
+}
+
+function rankByProfile(
+  records: LocalCollectionRecommendationRecord[],
+  plan: SourcePlan,
+  profile: TasteProfile,
+): Array<{
   record: LocalCollectionRecommendationRecord;
   score: number;
   queryText: string;
@@ -42,18 +103,14 @@ function rankByIntentMatches(records: LocalCollectionRecommendationRecord[], pla
     terms: Array.from(new Set(tokenize(intent.query))),
   }));
 
-  return records.map((record) => {
-    const haystack = [
-      record.title,
-      record.author,
-      record.audience,
-      record.readingLevel,
-      record.shelvingLocation,
-      record.localPlacement,
-      record.callNumber,
-    ].join(" ").toLowerCase();
+  const fallbackQuery = plan.intents[0]?.query || "local collection";
+  const fallbackFacets = plan.intents[0]?.facets || [];
 
-    let bestScore = 0;
+  return records.map((record) => {
+    const haystack = recordHaystack(record);
+
+    // Intent-query text matching (exact token presence in metadata fields).
+    let intentScore = 0;
     let bestQuery = "";
     let bestFacets: string[] = [];
 
@@ -62,14 +119,29 @@ function rankByIntentMatches(records: LocalCollectionRecommendationRecord[], pla
       const matched = intent.terms.filter((term) => haystack.includes(term));
       if (!matched.length) continue;
       const weighted = matched.length * Math.max(0.1, intent.priority);
-      if (weighted > bestScore) {
-        bestScore = weighted;
+      if (weighted > intentScore) {
+        intentScore = weighted;
         bestQuery = intent.query;
         bestFacets = intent.facets;
       }
     }
 
-    return { record, score: bestScore, queryText: bestQuery, facets: bestFacets };
+    // Taste-profile scoring: uses the actual swipe-derived genreFamily / tone / themes /
+    // avoidSignals signals directly against record metadata. This ensures two different swipe
+    // sessions produce different candidate orderings even when the library uses broad
+    // (non-genre-subdivided) shelving and intent-query tokens never appear verbatim.
+    const profileScore = scoreByTasteProfile(haystack, profile);
+
+    // Combined score: intent matches win when they fire; profile score provides meaningful
+    // differentiation when intent tokens are absent from sparse metadata.
+    const combinedScore = intentScore + profileScore * 0.4;
+
+    return {
+      record,
+      score: combinedScore,
+      queryText: intentScore > 0 ? bestQuery : (profileScore > 0 ? fallbackQuery : ""),
+      facets: intentScore > 0 ? bestFacets : (profileScore > 0 ? fallbackFacets : []),
+    };
   });
 }
 
@@ -140,14 +212,17 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
       );
     }
 
-    const ranked = rankByIntentMatches(records, plan)
+    const ranked = rankByProfile(records, plan, context.profile)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         return a.record.title.localeCompare(b.record.title);
       });
 
-    const withMatches = ranked.filter((row) => row.score > 0);
-    const selectedRows = (withMatches.length ? withMatches : ranked).slice(0, MAX_LOCAL_LIBRARY_CANDIDATES);
+    // Include all positively-scored rows first; fall back to the full ranked list only if
+    // nothing scored at all (empty collection metadata). Never silently return an
+    // alphabetically-fixed pool — the profile score should always provide some signal.
+    const withPositiveScore = ranked.filter((row) => row.score > 0);
+    const selectedRows = (withPositiveScore.length ? withPositiveScore : ranked).slice(0, MAX_LOCAL_LIBRARY_CANDIDATES);
     const fallbackQuery = plan.intents[0]?.query || "local collection";
     const fallbackFacets = plan.intents[0]?.facets || [];
 

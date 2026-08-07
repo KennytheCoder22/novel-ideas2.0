@@ -55,6 +55,7 @@
     "test:v2:human-review-paginated-ux": "node scripts/run-v2-human-review-paginated-ux-regressions.mjs",
     "test:v2:testing-route": "node scripts/run-v2-testing-route-regressions.mjs",
     "test:v2:local-collection-import-foundation": "node scripts/run-v2-local-collection-import-foundation-regressions.mjs",
+    "test:v2:local-collection-source-taste": "node scripts/run-v2-local-collection-source-taste-regressions.mjs",
     "test:v2:admin-save-discard": "node scripts/run-v2-admin-save-discard-regressions.mjs",
     "test:v2:hosted-library-context-leakage": "node scripts/run-v2-hosted-library-context-leakage-regressions.mjs",
     "test:v2:blob-library-sharing": "node scripts/run-v2-blob-library-sharing-regressions.mjs",
