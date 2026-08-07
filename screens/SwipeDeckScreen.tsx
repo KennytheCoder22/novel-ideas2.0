@@ -3008,6 +3008,7 @@ function handleLeft() {
           signals: v2Signals,
           deckKey,
           diagnostics: middleGradesDeepDebugDiagnostics,
+          localLibraryCurationTrusted: enabledDeckList.length === 1,
         });
         markPhase("v2_after_engine_call", { selected: result.items.length });
         setV2DebugResult(result);
@@ -3176,6 +3177,7 @@ function handleLeft() {
         signals: swipeHistoryToV2Signals(swipeHistory),
         deckKey,
         diagnostics: middleGradesDeepDebugDiagnostics,
+        localLibraryCurationTrusted: enabledDeckList.length === 1,
       });
       setV2DebugResult(result);
       console.log("[NovelIdeas][V2] debug result", {
@@ -3761,6 +3763,7 @@ function handleLeft() {
         signals: swipeHistoryToV2Signals(swipeHistory),
         deckKey,
         diagnostics: middleGradesDeepDebugDiagnostics,
+        localLibraryCurationTrusted: enabledDeckList.length === 1,
       });
       setV2DebugResult(result);
       const report = buildCodexDiagnosticsUploadText(result);

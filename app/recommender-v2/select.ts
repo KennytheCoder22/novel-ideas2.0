@@ -8794,6 +8794,9 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   const deferred: DeferredCandidate[] = [];
   const lowScoreRescue: ScoredCandidate[] = [];
   const adultWeakOpenLibraryCandidates: ScoredCandidate[] = [];
+  // For finite physical collections: collect local library candidates that only failed
+  // the relevance threshold so we can return the best available fit rather than nothing.
+  const localLibraryBestFit: ScoredCandidate[] = [];
   const seenTitles = new Set<string>();
   const seenAuthors = new Set<string>();
   const seenSeries = new Set<string>();
@@ -8813,7 +8816,13 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       recordRejected(candidate, rejectedReasons, reason);
       if (reason === "non_positive_score") {
         candidate.rejectedReasons.push(nonPositiveScoreDetail(candidate));
-        if (isLowScoreRescueCandidate(candidate)) lowScoreRescue.push(candidate);
+        if (candidate.source === "localLibrary") {
+          // Local library candidates that only fail the relevance threshold are eligible
+          // for the best-fit rescue rather than the external-source low-score rescue.
+          localLibraryBestFit.push(candidate);
+        } else if (isLowScoreRescueCandidate(candidate)) {
+          lowScoreRescue.push(candidate);
+        }
       }
       continue;
     }
@@ -9087,6 +9096,38 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       rejectedReasons.middle_grades_openlibrary_underfill_safe_candidate_accepted = Number(rejectedReasons.middle_grades_openlibrary_underfill_safe_candidate_accepted || 0) + 1;
       seenTitles.add(titleKey);
       if (rootKey) seenSeries.add(rootKey);
+      selected.push(candidate);
+    }
+  }
+
+  // Local library best-fit rescue: for finite physical collections, return the best-available
+  // eligible candidates rather than requiring the relevance threshold used for external sources
+  // with effectively unlimited catalogs. Hard safety gates (strong avoid signals, explicit adult
+  // content markers in teen profiles, maturity mismatch) are preserved; sparse-metadata
+  // eligibility failures are not.
+  if (selected.length < limit && localLibraryBestFit.length > 0) {
+    const bestFitCandidates = localLibraryBestFit
+      .filter((candidate) => {
+        const breakdown = candidate.scoreBreakdown || {};
+        const preciseAvoid = Number(breakdown.avoidSignalPenalty || 0);
+        const ageSuitability = Number(breakdown.ageTeenSuitability || breakdown.ageBandSuitability || 0);
+        const hasMaturityMismatch = candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand && profile.ageBand !== "adult";
+        return preciseAvoid > -4 && ageSuitability > -3 && !hasMaturityMismatch;
+      })
+      .sort((a, b) => b.score - a.score);
+    if (bestFitCandidates.length > 0) {
+      rejectedReasons.local_library_best_fit_candidates_available = bestFitCandidates.length;
+    }
+    for (const candidate of bestFitCandidates) {
+      if (selected.length >= limit) break;
+      const titleKey = normalized(candidate.title);
+      if (seenTitles.has(titleKey)) continue;
+      const authorKey = primaryAuthor(candidate);
+      if (authorKey && seenAuthors.has(authorKey)) continue;
+      candidate.rejectedReasons.push("accepted_local_library_best_fit");
+      rejectedReasons.accepted_local_library_best_fit = Number(rejectedReasons.accepted_local_library_best_fit || 0) + 1;
+      seenTitles.add(titleKey);
+      if (authorKey) seenAuthors.add(authorKey);
       selected.push(candidate);
     }
   }

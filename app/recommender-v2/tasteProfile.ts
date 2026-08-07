@@ -626,6 +626,7 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
       ? middleGradesAvoidSignals(avoidSignals, [tone, pacing, genreFamily, themes, characterDynamics, formatPreference])
       : sortedSignals(avoidSignals, false),
     sourceHints: [...sourceHints],
+    localLibraryCurationTrusted: session.localLibraryCurationTrusted,
     diagnostics: {
       inputSignalCount: session.signals?.length || 0,
       likedCount: session.signals?.filter((s) => s.action === "like").length || 0,

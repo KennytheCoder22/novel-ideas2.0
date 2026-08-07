@@ -33,6 +33,10 @@ export interface SwipeSessionV2 {
   debugMiddleGradesDeepTrace?: boolean;
   debugMiddleGradesNoTimeouts?: boolean;
   diagnostics?: Record<string, unknown>;
+  // When true, the library has exactly one age group enabled — the librarian curated the
+  // entire imported collection for that one audience. Local library records should be
+  // treated as age-eligible regardless of inferred MARC audience metadata.
+  localLibraryCurationTrusted?: boolean;
 }
 
 export interface WeightedSignalV2 {
@@ -53,6 +57,8 @@ export interface TasteProfile {
   avoidSignals: WeightedSignalV2[];
   sourceHints: SourceIdV2[];
   diagnostics: Record<string, unknown>;
+  // Mirrors SwipeSessionV2.localLibraryCurationTrusted — see that field for semantics.
+  localLibraryCurationTrusted?: boolean;
 }
 
 export interface SearchIntentV2 {

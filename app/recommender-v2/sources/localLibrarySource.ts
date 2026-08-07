@@ -228,7 +228,12 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
 
     const rawItems = selectedRows.map((row) => {
       const record = row.record;
-      const audienceBand = inferAudienceBand(record);
+      // When the library is configured for exactly one age band, the librarian curated the
+      // entire collection for that audience. Do not infer a different maturityBand from MARC
+      // shelving labels — treat every valid record as eligible for the session's age band.
+      const audienceBand = context.profile.localLibraryCurationTrusted
+        ? undefined
+        : inferAudienceBand(record);
       return {
         id: `localLibrary:${record.localId}`,
         sourceId: record.localId,
