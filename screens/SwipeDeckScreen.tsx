@@ -1760,7 +1760,9 @@ export default function SwipeDeckScreen(props: Props) {
   const swipeAxisLock = useRef<"x" | "y" | null>(null);
   // Keep a ref so panResponder (which is memoized without currentCard in its deps)
   // always reads the live card rather than a stale closure value.
-  const currentCardRef = useRef<SwipeDeckCard | null>(null); {
+  const currentCardRef = useRef<SwipeDeckCard | null>(null);
+
+  async function refreshPipelinePreview() {
     const personality =
       personalityStoreRef.current[pipelineUserId] ?? initializePersonality(pipelineUserId);
     setPersonalityProfileState(personality);
