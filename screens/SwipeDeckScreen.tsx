@@ -1618,9 +1618,9 @@ export default function SwipeDeckScreen(props: Props) {
     const normalizedStage = stages.find((s: any) => s.stage === "normalized");
     const scoredStage = stages.find((s: any) => s.stage === "scored");
     const selectedStage = stages.find((s: any) => s.stage === "selected");
-    const normalizedCount = normalizedStage?.details?.normalized ?? "?";
-    const scoredCount = scoredStage?.details?.scored ?? "?";
-    const finalCount = selectedStage?.details?.selected ?? "?";
+    const normalizedCount = normalizedStage?.counts?.normalized ?? "?";
+    const scoredCount = scoredStage?.counts?.scored ?? "?";
+    const finalCount = selectedStage?.counts?.selected ?? "?";
     const rawBySource = allSources
       .filter((s: any) => s.source !== "localLibrary" && Number(s.rawCount ?? 0) > 0)
       .map((s: any) => `${s.source}:${s.rawCount}`)

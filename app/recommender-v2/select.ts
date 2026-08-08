@@ -9186,19 +9186,21 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   rejectedReasons.local_library_best_fit_entering_count = Number(rejectedReasons.local_library_best_fit_entering_count || 0);
   rejectedReasons.local_library_selected_during_best_fit = Number(rejectedReasons.accepted_local_library_best_fit || 0);
 
-  // Teen zero-result guard: when every other rescue path leaves zero selected items,
-  // accept the best-scored candidates that were rejected only by soft metadata-quality
-  // gates (not hard safety/age/explicit-avoid gates). This mirrors the Local Collection
-  // "best available fit" philosophy — "closest match in the catalog" rather than nothing.
-  // Hard gates (maturity_band_mismatch, missing_title, googlebooks_mature_content_not_allowed_*,
-  // strong avoid signals, strong age penalty) are preserved by isTeenSoftMetadataGateRejectReason.
-  if (profile.ageBand === "teens" && selected.length === 0 && teenSoftGateRejected.length > 0) {
+  // Teen underfill rescue: when fewer than 5 items were selected after all other rescue paths,
+  // fill toward 5 using candidates that were rejected only by soft metadata-quality gates
+  // (not hard safety/age/explicit-avoid gates). This handles:
+  //   - true zero-result (selected.length === 0)
+  //   - severe underfill (e.g. 1 survivor bypasses the old zero-result check)
+  // Hard gates (maturity_band_mismatch, strong avoid/age penalty) are preserved by
+  // isTeenBestFitHardEligible. Cap at 5 to avoid flooding the slate with soft-gate survivors.
+  const teenUnderfillTarget = Math.min(5, limit);
+  if (profile.ageBand === "teens" && selected.length < teenUnderfillTarget && teenSoftGateRejected.length > 0) {
     rejectedReasons.teen_soft_gate_rescue_candidates_available = teenSoftGateRejected.length;
     const rescueSorted = teenSoftGateRejected
       .filter((candidate) => isTeenBestFitHardEligible(candidate, profile))
       .sort((a, b) => b.score - a.score);
     for (const candidate of rescueSorted) {
-      if (selected.length >= Math.min(5, limit)) break;
+      if (selected.length >= teenUnderfillTarget) break;
       const titleKey = normalized(candidate.title);
       if (seenTitles.has(titleKey)) continue;
       const authorKey = primaryAuthor(candidate);
