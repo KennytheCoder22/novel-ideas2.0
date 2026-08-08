@@ -2247,8 +2247,6 @@ function handleLeft(card?: SwipeDeckCard | null) {
 
   function normalizeRecommenderV2Items(rawItems: RecommendationResultV2["items"]): RecItem[] {
     return rawItems
-      .filter((candidate) => isReliablePatronTitleIdentity(candidate.title))
-      .filter((candidate) => hasReliablePatronAuthorIdentity(candidate.creators))
       .map((candidate) => ({
       kind: "open_library",
       doc: {
