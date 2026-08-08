@@ -7621,6 +7621,27 @@ function isLowScoreRescueCandidate(candidate: ScoredCandidate): boolean {
   return candidate.score > -4 && ageSuitability > -3 && preciseAvoid > -3.5 && (sourceQuality >= 1.1 || genreMatch > 0 || positiveMatch > 0 || queryRung >= 0.55);
 }
 
+// Soft teen metadata-quality reject reasons: rejected because the candidate lacked sufficient
+// metadata corroboration (teen authority, non-title signals, etc.) — not because of a hard
+// safety/age gate. Candidates with these reasons are eligible for the zero-result rescue.
+// Hard reasons (maturity_band_mismatch, googlebooks_mature_content_*, missing_title,
+// non_positive_score with strong penalties) are intentionally excluded.
+function isTeenSoftMetadataGateRejectReason(reason: string): boolean {
+  return /^teen_openlibrary_|^teen_googlebooks_publication_identity_/.test(reason)
+    && reason !== "teen_openlibrary_disliked_metadata_outweighs_liked";
+}
+
+// Hard-eligibility guard for the teen zero-result rescue: preserve safety/age/avoid gates.
+function isTeenBestFitHardEligible(candidate: ScoredCandidate, profile: TasteProfile): boolean {
+  const breakdown = candidate.scoreBreakdown || {};
+  const preciseAvoid = Number(breakdown.avoidSignalPenalty || 0);
+  const ageSuitability = Number(breakdown.ageTeenSuitability || breakdown.ageBandSuitability || 0);
+  const hasMaturityMismatch = candidate.maturityBand
+    && String(candidate.maturityBand) !== profile.maturityBand;
+  // Score must not be catastrophically negative (strong avoid or age penalty).
+  return candidate.score > -6 && preciseAvoid > -4 && ageSuitability > -3 && !hasMaturityMismatch;
+}
+
 function recordRejected(candidate: ScoredCandidate, rejectedReasons: Record<string, number>, reason: string): void {
   candidate.rejectedReasons.push(reason);
   rejectedReasons[reason] = Number(rejectedReasons[reason] || 0) + 1;
@@ -8807,6 +8828,10 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   // For finite physical collections: collect local library candidates that only failed
   // the relevance threshold so we can return the best available fit rather than nothing.
   const localLibraryBestFit: ScoredCandidate[] = [];
+  // Teen zero-result guard: collect candidates that were rejected only by soft metadata-quality
+  // gates (not hard safety/age/score gates). If every other rescue path leaves selected empty,
+  // return the best-scored of these rather than nothing — "closest eligible match" philosophy.
+  const teenSoftGateRejected: ScoredCandidate[] = [];
   const seenTitles = new Set<string>();
   const seenAuthors = new Set<string>();
   const seenSeries = new Set<string>();
@@ -8843,6 +8868,11 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
         } else if (isLowScoreRescueCandidate(candidate)) {
           lowScoreRescue.push(candidate);
         }
+      }
+      // Collect teen candidates rejected by soft metadata-quality gates for the
+      // zero-result guard. Hard safety/age/score rejections are NOT collected here.
+      if (profile.ageBand === "teens" && isTeenSoftMetadataGateRejectReason(reason)) {
+        teenSoftGateRejected.push(candidate);
       }
       continue;
     }
@@ -9155,6 +9185,31 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   }
   rejectedReasons.local_library_best_fit_entering_count = Number(rejectedReasons.local_library_best_fit_entering_count || 0);
   rejectedReasons.local_library_selected_during_best_fit = Number(rejectedReasons.accepted_local_library_best_fit || 0);
+
+  // Teen zero-result guard: when every other rescue path leaves zero selected items,
+  // accept the best-scored candidates that were rejected only by soft metadata-quality
+  // gates (not hard safety/age/explicit-avoid gates). This mirrors the Local Collection
+  // "best available fit" philosophy — "closest match in the catalog" rather than nothing.
+  // Hard gates (maturity_band_mismatch, missing_title, googlebooks_mature_content_not_allowed_*,
+  // strong avoid signals, strong age penalty) are preserved by isTeenSoftMetadataGateRejectReason.
+  if (profile.ageBand === "teens" && selected.length === 0 && teenSoftGateRejected.length > 0) {
+    rejectedReasons.teen_soft_gate_rescue_candidates_available = teenSoftGateRejected.length;
+    const rescueSorted = teenSoftGateRejected
+      .filter((candidate) => isTeenBestFitHardEligible(candidate, profile))
+      .sort((a, b) => b.score - a.score);
+    for (const candidate of rescueSorted) {
+      if (selected.length >= Math.min(5, limit)) break;
+      const titleKey = normalized(candidate.title);
+      if (seenTitles.has(titleKey)) continue;
+      const authorKey = primaryAuthor(candidate);
+      if (authorKey && seenAuthors.has(authorKey)) continue;
+      candidate.rejectedReasons.push("accepted_teen_soft_gate_rescue");
+      rejectedReasons.accepted_teen_soft_gate_rescue = Number(rejectedReasons.accepted_teen_soft_gate_rescue || 0) + 1;
+      seenTitles.add(titleKey);
+      if (authorKey) seenAuthors.add(authorKey);
+      selected.push(candidate);
+    }
+  }
 
   applyMiddleGradesFranchiseRepresentativePreference(rankedCandidates, selected, deferred, rejectedReasons, profile);
   applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);

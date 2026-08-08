@@ -1587,9 +1587,10 @@ export default function SwipeDeckScreen(props: Props) {
   const [showSessionInfo, setShowSessionInfo] = useState(false);
   const sessionInfoText = useMemo(() => {
     const libId = getRuntimeLibraryId() || "(default)";
-    const localSrc = Array.isArray((v2DebugResult as any)?.diagnostics?.sources)
-      ? (v2DebugResult as any).diagnostics.sources.find((s: any) => s.source === "localLibrary")
-      : null;
+    const allSources: any[] = Array.isArray((v2DebugResult as any)?.diagnostics?.sources)
+      ? (v2DebugResult as any).diagnostics.sources
+      : [];
+    const localSrc = allSources.find((s: any) => s.source === "localLibrary") ?? null;
     const localCount = localSrc != null
       ? String(localSrc.localCollectionRecordCount ?? localSrc.usableRowsAfterFiltering ?? localSrc.rawCount ?? "?")
       : "not loaded";
@@ -1612,6 +1613,25 @@ export default function SwipeDeckScreen(props: Props) {
       sourceEnabled.comicVine ? "cv✓" : "cv✗",
     ].join(" ");
     const recentTitles = swipeHistory.slice(-5).map((e: any) => String((e.card as any)?.title || "?")).join(" | ");
+    // Pipeline stage counts — shown when recs:0 so we can see where the pool collapsed.
+    const stages: any[] = Array.isArray(diagnostics.stages) ? diagnostics.stages : [];
+    const normalizedStage = stages.find((s: any) => s.stage === "normalized");
+    const scoredStage = stages.find((s: any) => s.stage === "scored");
+    const selectedStage = stages.find((s: any) => s.stage === "selected");
+    const normalizedCount = normalizedStage?.details?.normalized ?? "?";
+    const scoredCount = scoredStage?.details?.scored ?? "?";
+    const finalCount = selectedStage?.details?.selected ?? "?";
+    const rawBySource = allSources
+      .filter((s: any) => s.source !== "localLibrary" && Number(s.rawCount ?? 0) > 0)
+      .map((s: any) => `${s.source}:${s.rawCount}`)
+      .join(",");
+    const topRejects = Object.entries(rejected as Record<string, number>)
+      .filter(([key, value]) => !key.startsWith("local_") && typeof value === "number" && value > 0
+        && /^(non_positive_score|teen_openlibrary|teen_googlebooks|maturity_band|missing_title|teen_soft_gate)/.test(key))
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([key, value]) => `${key.replace(/^teen_openlibrary_|^teen_googlebooks_publication_identity_/, "tol:").replace(/^non_positive_score$/, "non_pos").replace(/^maturity_band_mismatch$/, "maturity_mm").replace(/^teen_soft_gate_rescue_/, "softRescue:")}:${value}`)
+      .join(",");
     return [
       `build:${DEPLOYED_COMMIT_MARKER}`,
       `platform:${Platform.OS}`,
@@ -1622,6 +1642,8 @@ export default function SwipeDeckScreen(props: Props) {
       `swipes:${swipeHistory.length}  likes:${rightSwipes}  dislikes:${leftSwipes}  decisions:${decisionSwipes}`,
       `taste:${taste.ageBand || "(pending)"}  dominant:${dominantSignals || "(pending)"}`,
       `sources:${srcFlags}`,
+      `pipeline:raw={${rawBySource || "none"}}  norm:${normalizedCount}  scored:${scoredCount}  final:${finalCount}`,
+      `topRejects:${topRejects || "(none)"}  softRescue:${rejected.accepted_teen_soft_gate_rescue ?? 0}`,
       `localArtifact:${localCount}  raw:${localSrc?.rawCount ?? 0}  ranked:${rejected.local_library_candidates_after_ranking ?? 0}`,
       `localEligible:${rejected.local_library_hard_eligible_count ?? 0}  bestFitIn:${rejected.local_library_best_fit_entering_count ?? 0}`,
       `localSelected:normal=${rejected.local_library_selected_during_normal_selection ?? 0} underfill=${rejected.local_library_selected_during_underfill ?? 0} rescue=${rejected.local_library_selected_during_best_fit ?? 0} final=${rejected.local_library_final_selected_count ?? 0}`,
