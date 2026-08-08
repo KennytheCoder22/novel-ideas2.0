@@ -283,6 +283,39 @@ function admissionEvidenceFromCandidate(candidate: NormalizedCandidate | ScoredC
   ], 30);
 }
 
+function comicVineClearlyUnusableRecord(candidate: NormalizedCandidate, metadata: ComicVineEntityMetadata): { unusable: boolean; reasons: string[]; evidence: string[] } {
+  const raw = asRecord(candidate.raw);
+  const normalizedTitle = safeString(candidate.title).toLowerCase().replace(/[^a-z0-9\s#]/g, " ").replace(/\s+/g, " ").trim();
+  const titleWordCount = normalizedTitle.split(" ").filter(Boolean).length;
+  const hasCreators = Array.isArray(candidate.creators) && candidate.creators.some((value) => safeString(value));
+  const hasCover = Boolean(candidate.coverUrl || raw.cover_i || raw.imageUrl || raw.image_url);
+  const hasDescription = safeString(candidate.description).length >= 40;
+  const weakTitle = /^(hc|tpb|gn|sc|ogn|mgn)$/.test(normalizedTitle)
+    || /^(volume|vol|book)\s+\d+\b/.test(normalizedTitle)
+    || /\b(volume|vol|book)\s+\d+\b/.test(normalizedTitle)
+    || /#\s*\d+\b/.test(candidate.title)
+    || /\bcomics?\s*#\s*\d+\b/i.test(candidate.title)
+    || titleWordCount <= 2;
+  const reasons: string[] = [];
+  if (weakTitle) reasons.push("low_information_title");
+  if (!hasCreators) reasons.push("missing_creator");
+  if (!hasCover) reasons.push("missing_cover");
+  if (!hasDescription) reasons.push("missing_description");
+  const evidence = uniqueStrings([
+    `title:${candidate.title}`,
+    `identity:${metadata.identity}`,
+    weakTitle ? "weak_generic_or_issue_like_title" : "",
+    hasCreators ? "creator_present" : "creator_missing",
+    hasCover ? "cover_present" : "cover_missing",
+    hasDescription ? "description_present" : "description_missing",
+  ], 20);
+  return {
+    unusable: weakTitle && !hasCreators && !hasCover,
+    reasons,
+    evidence,
+  };
+}
+
 function evaluateComicVineCandidate(candidate: NormalizedCandidate): EvaluatedComicVineCandidate {
   const metadata = ensureComicVineMetadata(candidate);
   const diagnostics = asRecord(candidate.diagnostics);
@@ -293,6 +326,7 @@ function evaluateComicVineCandidate(candidate: NormalizedCandidate): EvaluatedCo
   const sourceQuery = safeString(diagnostics.queryText || sourceProvenance.sourceQuery);
   const queryFamily = safeString(diagnostics.queryFamily);
   const title = safeString(candidate.title);
+  const unusable = comicVineClearlyUnusableRecord(candidate, metadata);
   const admissionReasons = policyBucket === "excluded"
     ? [`excluded_identity_${metadata.identity}`, `policy_bucket_${policyBucket}`]
     : policyBucket === "preferred"
@@ -302,11 +336,19 @@ function evaluateComicVineCandidate(candidate: NormalizedCandidate): EvaluatedCo
         : policyBucket === "fallback_only"
           ? [`fallback_only_identity_${metadata.identity}`, `policy_bucket_${policyBucket}`]
           : [`restricted_identity_${metadata.identity}`, `policy_bucket_${policyBucket}`];
+  const effectivePolicyBucket = unusable.unusable ? "excluded" : policyBucket;
+  const effectiveDecision = unusable.unusable ? "hard_reject" : decision;
+  const effectiveAdmissionReasons = unusable.unusable
+    ? ["excluded_low_information_comicvine_record", ...unusable.reasons, `policy_bucket_${effectivePolicyBucket}`]
+    : admissionReasons;
+  const effectiveAdmissionEvidence = unusable.unusable
+    ? uniqueStrings([...admissionEvidenceFromCandidate(candidate, metadata), ...unusable.evidence], 30)
+    : admissionEvidenceFromCandidate(candidate, metadata);
 
-  setCandidateComicVine(candidate, { policyBucket }, {
-    admissionDecision: decision,
-    admissionReasons,
-    admissionEvidence: admissionEvidenceFromCandidate(candidate, metadata),
+  setCandidateComicVine(candidate, { policyBucket: effectivePolicyBucket }, {
+    admissionDecision: effectiveDecision,
+    admissionReasons: effectiveAdmissionReasons,
+    admissionEvidence: effectiveAdmissionEvidence,
   });
 
   return {
@@ -315,10 +357,10 @@ function evaluateComicVineCandidate(candidate: NormalizedCandidate): EvaluatedCo
     title,
     identity: metadata.identity,
     entityType: metadata.entityType,
-    policyBucket,
-    decision,
-    admissionReasons,
-    admissionEvidence: admissionEvidenceFromCandidate(candidate, metadata),
+    policyBucket: effectivePolicyBucket,
+    decision: effectiveDecision,
+    admissionReasons: effectiveAdmissionReasons,
+    admissionEvidence: effectiveAdmissionEvidence,
     sourceQuery,
     queryFamily,
     familyKey: metadata.familyKey || `source_id:${sourceId}`,

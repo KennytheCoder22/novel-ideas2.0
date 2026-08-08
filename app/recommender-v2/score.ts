@@ -491,6 +491,36 @@ function querySpecificityScore(candidate: NormalizedCandidate): number {
   return score;
 }
 
+function comicVineLowInformationQualityPenalty(candidate: NormalizedCandidate): number {
+  if (candidate.source !== "comicVine") return 0;
+  const normalizedTitle = normalized(candidate.title);
+  const metadataText = candidateMetadataText(candidate);
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const metadataCount = candidate.genres.length + candidate.themes.length;
+  const hasCreators = candidate.creators.length > 0;
+  const hasCover = Boolean(candidate.coverUrl || raw.cover_i || raw.imageUrl || raw.image_url);
+  const hasDescription = String(candidate.description || "").trim().length >= 40;
+  const weakGenericTitle = /^(hc|tpb|gn|sc|ogn|mgn)$/.test(normalizedTitle)
+    || /^(volume|vol|book)\s+\d+\b/.test(normalizedTitle)
+    || /\b(volume|vol|book)\s+\d+\b/.test(normalizedTitle)
+    || /#\s*\d+\b/.test(candidate.title)
+    || /\bcomics?\s*#\s*\d+\b/i.test(candidate.title)
+    || normalizedTitle.split(" ").filter(Boolean).length <= 2;
+  const severeLowInfo = weakGenericTitle && !hasCreators && !hasCover;
+
+  let penalty = 0;
+  if (!hasCreators) penalty -= 2.6;
+  if (!hasCover) penalty -= 1.2;
+  if (!hasDescription) penalty -= 0.9;
+  if (metadataCount <= 4) penalty -= 0.8;
+  if (weakGenericTitle) penalty -= 2.2;
+  if (severeLowInfo) penalty -= 3.5;
+  if (weakGenericTitle && metadataCount <= 4 && !/\b(graphic novel|manga|comic|fantasy|adventure|mystery|thriller|science fiction|horror)\b/.test(metadataText)) {
+    penalty -= 1.6;
+  }
+  return penalty;
+}
+
 function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: TasteProfile, genreMatches: WeightedSignalV2[], positiveMatches: WeightedSignalV2[]): number {
   const metadataText = candidateMetadataText(candidate);
   const adultOpenLibrary = candidate.source === "openLibrary" && profile.ageBand === "adult";
@@ -552,6 +582,7 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (/^[A-Z0-9\s:;,'!?.-]{12,}$/.test(candidate.title) && candidate.title !== candidate.title.toLowerCase()) score -= 1.25;
   if (/^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(candidate.title) && metadataCount <= 2) score -= 1.5;
   if (genreMatches.length === 0 && positiveMatches.length === 0) score -= 1.5;
+  score += comicVineLowInformationQualityPenalty(candidate);
   return score;
 }
 
