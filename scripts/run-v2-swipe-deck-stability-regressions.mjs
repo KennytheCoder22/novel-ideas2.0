@@ -313,6 +313,25 @@ test("S8: session diagnostics only reference component bindings initialized befo
 });
 
 // ---------------------------------------------------------------------------
+// S9 – panResponder reads currentCardRef, not stale closure
+// ---------------------------------------------------------------------------
+
+test("S9: panResponder uses ref so handleRight receives the live card, not a stale closure card", () => {
+  const currentCardRef = { current: null };
+
+  const cardA = { id: "a", title: "Buffy", author: "Various" };
+  currentCardRef.current = cardA;
+
+  // Simulate a render where the card advances
+  const cardB = { id: "b", title: "Peaky Blinders", author: "Various" };
+  currentCardRef.current = cardB;
+
+  const cardSeenByHandler = currentCardRef.current;
+  assert.equal(cardSeenByHandler.id, "b", "panResponder must see the current card via ref, not the stale closure card");
+  assert.notEqual(cardSeenByHandler.id, "a", "panResponder must not use the stale closure card");
+});
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 

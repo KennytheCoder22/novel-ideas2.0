@@ -1758,8 +1758,9 @@ export default function SwipeDeckScreen(props: Props) {
 
   const position = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const swipeAxisLock = useRef<"x" | "y" | null>(null);
-
-  async function refreshPipelinePreview() {
+  // Keep a ref so panResponder (which is memoized without currentCard in its deps)
+  // always reads the live card rather than a stale closure value.
+  const currentCardRef = useRef<SwipeDeckCard | null>(null); {
     const personality =
       personalityStoreRef.current[pipelineUserId] ?? initializePersonality(pipelineUserId);
     setPersonalityProfileState(personality);
@@ -1963,6 +1964,8 @@ export default function SwipeDeckScreen(props: Props) {
       objective: activeTwentyQObjective,
     });
   }, [isDone, deckKey, remainingCards, tagCounts, recentCardKeys, recentCards, activeTwentyQObjective]);
+  // Always keep the ref in sync so the panResponder closure never reads a stale card.
+  currentCardRef.current = currentCard;
 
   const [swipeCoverCache, setSwipeCoverCache] = useState<Record<string, string>>({});
   const [swipeCoverFailures, setSwipeCoverFailures] = useState<Record<string, string[]>>({});
@@ -2118,42 +2121,43 @@ function handleRight(card: SwipeDeckCard) {
   recordCardPerformance(card, "like");
   nextCard(card);
 }
-function handleLeft() {
+function handleLeft(card?: SwipeDeckCard | null) {
   setLeftSwipes((n) => n + 1);
-  const card = currentCard;
-  if (card) {
-    setSwipeHistory((prev) => [...prev, { direction: "dislike", card }]);
+  const resolvedCard = card !== undefined ? card : currentCard;
+  if (resolvedCard) {
+    setSwipeHistory((prev) => [...prev, { direction: "dislike", card: resolvedCard }]);
   }
-  const anyCard: any = card as any;
+  const anyCard: any = resolvedCard as any;
   if (Array.isArray(anyCard?.tags)) {
     const expandedTags = expandTeenCompanionTags(deckKey, anyCard.tags);
     setTagCounts((prev) => addTags(prev, expandedTags, -1));
   } else if (typeof anyCard?.genre === "string" && anyCard.genre.trim()) {
     setTagCounts((prev) => addTags(prev, [`genre:${anyCard.genre.trim()}`], -1));
   }
-  void recordPipelineSwipe(card, "dislike");
-  if (card) recordCardPerformance(card, "dislike");
-  nextCard(card);
+  void recordPipelineSwipe(resolvedCard, "dislike");
+  if (resolvedCard) recordCardPerformance(resolvedCard, "dislike");
+  nextCard(resolvedCard);
 }
 
   function handleDownNotSure() {
     setDownSwipes((n) => n + 1);
-    if (currentCard) {
-      setSwipeHistory((prev) => [...prev, { direction: "skip", card: currentCard }]);
+    const card = currentCardRef.current;
+    if (card) {
+      setSwipeHistory((prev) => [...prev, { direction: "skip", card }]);
     }
-    void recordPipelineSwipe(currentCard, "skip");
-    if (currentCard) recordCardPerformance(currentCard, "skip");
-    nextCard(currentCard);
+    void recordPipelineSwipe(card, "skip");
+    if (card) recordCardPerformance(card, "skip");
+    nextCard(card);
   }
 
   const panResponder = useMemo(() => {
     return PanResponder.create({
-      onMoveShouldSetPanResponder: () => !!currentCard,
+      onMoveShouldSetPanResponder: () => !!currentCardRef.current,
       onPanResponderGrant: () => {
         swipeAxisLock.current = null;
       },
       onPanResponderMove: (_, gesture) => {
-        if (!currentCard) return;
+        if (!currentCardRef.current) return;
         const dx = gesture.dx;
         const dyRaw = gesture.dy;
 
@@ -2173,7 +2177,9 @@ function handleLeft() {
         position.setValue({ x: dx, y: 0 });
       },
       onPanResponderRelease: (_, gesture) => {
-        if (!currentCard) return;
+        // Read from ref so we always get the live card, not a stale closure value.
+        const card = currentCardRef.current;
+        if (!card) return;
         const lock = swipeAxisLock.current;
         const dx = gesture.dx;
         const dy = Math.max(0, gesture.dy);
@@ -2193,11 +2199,11 @@ function handleLeft() {
         }
 
         if (dx > swipeThresholdX) {
-          animateOffscreen("right", () => handleRight(currentCard));
+          animateOffscreen("right", () => handleRight(card));
           return;
         }
         if (dx < -swipeThresholdX) {
-          animateOffscreen("left", () => handleLeft());
+          animateOffscreen("left", () => handleLeft(card));
           return;
         }
 
