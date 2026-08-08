@@ -275,6 +275,57 @@ function isContemporaryLowScoreAcceptable(candidate: ScoredCandidate, profile: T
   return candidate.score > -1.5 && /\b(contemporary|realistic|coming of age|teen realistic fiction|school|drama)\b/.test(text);
 }
 
+function hasUsableCreatorIdentity(candidate: ScoredCandidate): boolean {
+  const creators = Array.isArray(candidate.creators) ? candidate.creators.map((value) => normalized(value)).filter(Boolean) : [];
+  if (creators.length === 0) return false;
+  return creators.some((value) => ![
+    "kitsu",
+    "comicvine",
+    "comic vine",
+    "open library",
+    "openlibrary",
+    "google books",
+    "googlebooks",
+    "unknown",
+    "unknown author",
+  ].includes(value));
+}
+
+function missingCoverAndUsableCreatorFinalEligibility(candidate: ScoredCandidate): { allowed: boolean; reason?: string; evidence: string[] } {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const hasCover = Boolean(candidate.coverUrl || raw.cover_i || raw.coverUrl || raw.cover_url || raw.imageUrl || raw.image_url);
+  const hasUsableCreator = hasUsableCreatorIdentity(candidate);
+  if (hasCover || hasUsableCreator) {
+    return { allowed: true, evidence: [hasCover ? "cover_present" : "", hasUsableCreator ? "usable_creator_present" : ""].filter(Boolean) };
+  }
+  const normalizedTitleText = normalized(candidate.title);
+  const titleWordCount = normalizedTitleText.split(" ").filter(Boolean).length;
+  const descriptionLength = String(candidate.description || "").trim().length;
+  const sourceQuality = Number(candidate.scoreBreakdown?.sourceQualityRelevance || 0);
+  const publicationIdentity = normalized((candidate.diagnostics as any)?.publicationIdentity || "");
+  const hasSeriesEvidence = Boolean((candidate.diagnostics as any)?.comicVineFamilyKey || raw.series || raw.volume || raw.volume_name || raw.issue_number);
+  const strongWorkLevelEvidence = (
+    titleWordCount >= 2
+    && !/^(coming of age|adventure|fantasy|mystery|romance|comedy|drama|horror|thriller|science fiction)$/.test(normalizedTitleText)
+    && descriptionLength >= 120
+    && sourceQuality > 1.5
+  ) || (publicationIdentity && publicationIdentity !== "unknown" && hasSeriesEvidence && descriptionLength >= 80 && sourceQuality > 1);
+  return {
+    allowed: strongWorkLevelEvidence,
+    reason: strongWorkLevelEvidence ? undefined : "missing_cover_and_usable_creator_without_compensating_metadata",
+    evidence: [
+      "cover_missing",
+      "usable_creator_missing",
+      `title:${candidate.title}`,
+      `source:${candidate.source}`,
+      `source_quality:${sourceQuality}`,
+      publicationIdentity ? `publication_identity:${publicationIdentity}` : "",
+      hasSeriesEvidence ? "series_or_volume_evidence_present" : "series_or_volume_evidence_missing",
+      descriptionLength >= 120 ? "rich_description_present" : "rich_description_missing",
+    ].filter(Boolean),
+  };
+}
+
 function needsAdultWeakOpenLibraryEmptySlateFallback(candidate: ScoredCandidate, profile: TasteProfile): boolean {
   if (profile.ageBand !== "adult" || candidate.source !== "openLibrary") return false;
   const breakdown = candidate.scoreBreakdown || {};
@@ -7515,6 +7566,13 @@ function adultGoogleBooksFinalEligibility(candidate: ScoredCandidate, profile: T
 
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
+  const missingCoverAndCreatorGate = missingCoverAndUsableCreatorFinalEligibility(candidate);
+  candidate.diagnostics = {
+    ...(candidate.diagnostics || {}),
+    finalMissingCoverAndUsableCreatorGatePassed: missingCoverAndCreatorGate.allowed,
+    finalMissingCoverAndUsableCreatorGateEvidence: missingCoverAndCreatorGate.evidence,
+  };
+  if (!missingCoverAndCreatorGate.allowed) return missingCoverAndCreatorGate.reason || "missing_cover_and_usable_creator_without_compensating_metadata";
   const googleBooksMaturityReason = googleBooksMaturityRejectReason(candidate, profile);
   if (googleBooksMaturityReason) return googleBooksMaturityReason;
   if (profile.ageBand === "kids" && candidate.source === "googleBooks") {

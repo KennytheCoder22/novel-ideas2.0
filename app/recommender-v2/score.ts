@@ -521,6 +521,31 @@ function comicVineLowInformationQualityPenalty(candidate: NormalizedCandidate): 
   return penalty;
 }
 
+function hasPlaceholderCreatorIdentity(candidate: NormalizedCandidate): boolean {
+  const creators = Array.isArray(candidate.creators) ? candidate.creators.map((value) => normalized(value)).filter(Boolean) : [];
+  if (creators.length === 0) return true;
+  return creators.every((value) => [
+    "kitsu",
+    "comicvine",
+    "comic vine",
+    "open library",
+    "openlibrary",
+    "google books",
+    "googlebooks",
+    "unknown",
+    "unknown author",
+  ].includes(value));
+}
+
+function genericLowInformationTitlePenalty(candidate: NormalizedCandidate): number {
+  const normalizedTitle = normalized(candidate.title);
+  const titleWordCount = normalizedTitle.split(" ").filter(Boolean).length;
+  if (!normalizedTitle) return 0;
+  if (/^(coming of age|adventure|fantasy|mystery|romance|comedy|drama|horror|thriller|science fiction)$/.test(normalizedTitle)) return -3.2;
+  if (titleWordCount <= 2 && /^(coming|age|adventure|fantasy|mystery|romance|comedy|drama|horror|thriller|science|fiction|teen)$/.test(normalizedTitle.replace(/\s+/g, " "))) return -2.2;
+  return 0;
+}
+
 function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: TasteProfile, genreMatches: WeightedSignalV2[], positiveMatches: WeightedSignalV2[]): number {
   const metadataText = candidateMetadataText(candidate);
   const adultOpenLibrary = candidate.source === "openLibrary" && profile.ageBand === "adult";
@@ -583,6 +608,9 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (/^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(candidate.title) && metadataCount <= 2) score -= 1.5;
   if (genreMatches.length === 0 && positiveMatches.length === 0) score -= 1.5;
   score += comicVineLowInformationQualityPenalty(candidate);
+  if (hasPlaceholderCreatorIdentity(candidate)) score -= 2.2;
+  if (!candidate.coverUrl && hasPlaceholderCreatorIdentity(candidate)) score -= 2.4;
+  score += genericLowInformationTitlePenalty(candidate);
   return score;
 }
 
