@@ -1211,6 +1211,7 @@ export const deck36 = {
       title: "Miraculous: Tales of Ladybug & Cat Noir",
       author: "ZAG",
       genre: "Superheroes / Adventure / Friendship",
+      wikiTitle: "Miraculous: Tales of Ladybug & Cat Noir",
       semantic: {
         contentTraits: ["friendship", "secret_identity", "romance", "adventure"],
         toneTraits: ["fun", "energetic", "hopeful"],
@@ -1233,6 +1234,7 @@ export const deck36 = {
       title: "The Dragon Prince",
       author: "Netflix",
       genre: "Fantasy / Adventure / Friendship",
+      wikiTitle: "The Dragon Prince",
       semantic: {
         contentTraits: ["friendship", "magic", "adventure", "war"],
         toneTraits: ["adventurous", "epic", "heartfelt"],
@@ -1255,6 +1257,7 @@ export const deck36 = {
       title: "Voltron: Legendary Defender",
       author: "DreamWorks Animation",
       genre: "Science Fiction / Space / Adventure",
+      wikiTitle: "Voltron: Legendary Defender",
       semantic: {
         contentTraits: ["friendship", "space_politics", "war", "adventure"],
         toneTraits: ["energetic", "epic", "adventurous"],
@@ -1322,6 +1325,7 @@ export const deck36 = {
       title: "Jurassic World Camp Cretaceous",
       author: "DreamWorks Animation",
       genre: "Science Fiction / Dinosaurs / Adventure",
+      wikiTitle: "Jurassic World Camp Cretaceous",
       semantic: {
         contentTraits: ["friendship", "dinosaurs", "survival", "adventure"],
         toneTraits: ["tense", "adventurous", "fun"],
@@ -1367,6 +1371,7 @@ export const deck36 = {
       title: "Minecraft",
       author: "Mojang Studios",
       genre: "Adventure / Survival / Community",
+      wikiTitle: "Minecraft",
       semantic: {
         contentTraits: ["adventure", "community", "survival"],
         toneTraits: ["wonder_filled", "playful", "adventurous"],
@@ -1389,6 +1394,7 @@ export const deck36 = {
       title: "Roblox",
       author: "Roblox",
       genre: "Adventure / Community",
+      wikiTitle: "Roblox",
       semantic: {
         contentTraits: ["adventure", "community", "competition"],
         toneTraits: ["playful", "energetic", "chaotic"],
@@ -1434,6 +1440,7 @@ export const deck36 = {
       title: "Super Mario Odyssey",
       author: "Nintendo",
       genre: "Fantasy / Adventure / Heroic",
+      wikiTitle: "Super Mario Odyssey",
       semantic: {
         contentTraits: ["adventure", "magic", "friendship"],
         toneTraits: ["playful", "wonder_filled", "energetic"],
@@ -1479,6 +1486,7 @@ export const deck36 = {
       title: "The Legend of Zelda: Breath of the Wild",
       author: "Nintendo",
       genre: "Fantasy / Adventure / Heroic",
+      wikiTitle: "The Legend of Zelda: Breath of the Wild",
       semantic: {
         contentTraits: ["adventure", "magic", "survival", "chosen_one"],
         toneTraits: ["wonder_filled", "adventurous", "epic"],
@@ -1523,6 +1531,7 @@ export const deck36 = {
       title: "Fortnite",
       author: "Epic Games",
       genre: "Survival / Adventure",
+      wikiTitle: "Fortnite",
       semantic: {
         contentTraits: ["competition", "survival", "community"],
         toneTraits: ["energetic", "playful", "chaotic"],
@@ -1545,6 +1554,7 @@ export const deck36 = {
       title: "Splatoon",
       author: "Nintendo",
       genre: "Friendship / Adventure",
+      wikiTitle: "Splatoon",
       semantic: {
         contentTraits: ["competition", "friendship", "community"],
         toneTraits: ["energetic", "playful", "stylish"],
@@ -1567,6 +1577,7 @@ export const deck36 = {
       title: "Animal Crossing",
       author: "Nintendo",
       genre: "Community / Friendship",
+      wikiTitle: "Animal Crossing",
       semantic: {
         contentTraits: ["community", "friendship", "family"],
         toneTraits: ["cozy", "gentle", "playful"],
@@ -1656,6 +1667,7 @@ export const deck36 = {
       title: "Rocket League",
       author: "Psyonix",
       genre: "Friendship / Vehicles",
+      wikiTitle: "Rocket League",
       semantic: {
         contentTraits: ["competition", "community", "friendship"],
         toneTraits: ["energetic", "playful", "focused"],
@@ -1701,6 +1713,7 @@ export const deck36 = {
       title: "Subway Surfers",
       author: "SYBO",
       genre: "Runaway / Chase",
+      wikiTitle: "Subway Surfers",
       semantic: {
         contentTraits: ["adventure", "competition", "community"],
         toneTraits: ["energetic", "playful", "fast"],
@@ -1723,6 +1736,7 @@ export const deck36 = {
       title: "Clash Royale",
       author: "Supercell",
       genre: "Fantasy",
+      wikiTitle: "Clash Royale",
       semantic: {
         contentTraits: ["competition", "community", "power"],
         toneTraits: ["fast", "focused", "playful"],
@@ -1745,6 +1759,7 @@ export const deck36 = {
       title: "Brawl Stars",
       author: "Supercell",
       genre: "Friendship",
+      wikiTitle: "Brawl Stars",
       semantic: {
         contentTraits: ["competition", "friendship", "community"],
         toneTraits: ["energetic", "playful", "chaotic"],
@@ -1812,6 +1827,7 @@ export const deck36 = {
       title: "MrBeast",
       author: "Jimmy Donaldson",
       genre: "Comedy / Community",
+      wikiTitle: "MrBeast",
       semantic: {
         contentTraits: ["competition", "community", "adventure"],
         toneTraits: ["energetic", "spectacular", "playful"],
@@ -1834,6 +1850,7 @@ export const deck36 = {
       title: "Mark Rober",
       author: "Mark Rober",
       genre: "Nonfiction",
+      wikiTitle: "Mark Rober",
       semantic: {
         contentTraits: ["engineering", "science_problem_solving", "education"],
         toneTraits: ["fun", "clever", "uplifting"],
@@ -1856,6 +1873,7 @@ export const deck36 = {
       title: "Dude Perfect",
       author: "Dude Perfect",
       genre: "Friendship / Comedy",
+      wikiTitle: "Dude Perfect",
       semantic: {
         contentTraits: ["friendship", "competition", "community"],
         toneTraits: ["energetic", "playful", "spectacular"],
@@ -1969,6 +1987,7 @@ export const deck36 = {
       title: "DanTDM",
       author: "Daniel Middleton",
       genre: "Friendship / Adventure",
+      wikiTitle: "DanTDM",
       semantic: {
         contentTraits: ["community", "adventure", "friendship"],
         toneTraits: ["playful", "fun", "uplifting"],
@@ -2037,6 +2056,7 @@ export const deck36 = {
       title: "Ninja",
       author: "Tyler Blevins",
       genre: "Friendship / Adventure",
+      wikiTitle: "Ninja (gamer)",
       semantic: {
         contentTraits: ["competition", "community", "friendship"],
         toneTraits: ["energetic", "focused", "playful"],

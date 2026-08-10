@@ -13,8 +13,8 @@
     "decks": {
       "36": {
         "total": 100,
-        "reachable": 70,
-        "placeholderFallback": 30
+        "reachable": 90,
+        "placeholderFallback": 10
       },
       "adult": {
         "total": 140,
@@ -3192,10 +3192,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Animal Crossing",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Animal Crossing",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_avatar",
@@ -3252,10 +3252,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Brawl Stars",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Brawl Stars",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_captain",
@@ -3300,10 +3300,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Clash Royale",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Clash Royale",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_crashcoursekids",
@@ -3324,10 +3324,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "DanTDM",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "DanTDM",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_despicable",
@@ -3408,10 +3408,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Dude Perfect",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Dude Perfect",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_encanto",
@@ -3444,10 +3444,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Fortnite",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Fortnite",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_frindle",
@@ -3600,10 +3600,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Jurassic World Camp Cretaceous",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Jurassic World Camp Cretaceous",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_justdance",
@@ -3708,10 +3708,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Mark Rober",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Mark Rober",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_matilda",
@@ -3732,10 +3732,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Minecraft",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Minecraft",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_minions",
@@ -3756,10 +3756,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Miraculous: Tales of Ladybug & Cat Noir",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Miraculous: Tales of Ladybug & Cat Noir",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_moana",
@@ -3780,10 +3780,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "MrBeast",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "MrBeast",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_natgeokids",
@@ -3804,10 +3804,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Ninja",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Ninja (gamer)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_paddington",
@@ -3888,10 +3888,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Roblox",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Roblox",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_rocket",
@@ -3900,10 +3900,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Rocket League",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Rocket League",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_ryan",
@@ -4008,10 +4008,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Splatoon",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Splatoon",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_spongebob",
@@ -4080,10 +4080,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Subway Surfers",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Subway Surfers",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_mario_odyssey",
@@ -4092,10 +4092,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Super Mario Odyssey",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Super Mario Odyssey",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_smash",
@@ -4188,10 +4188,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The Dragon Prince",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Dragon Prince",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_korra",
@@ -4212,10 +4212,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The Legend of Zelda: Breath of the Wild",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Legend of Zelda: Breath of the Wild",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_percy1",
@@ -4332,10 +4332,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Voltron: Legendary Defender",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Voltron: Legendary Defender",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_wonder",
