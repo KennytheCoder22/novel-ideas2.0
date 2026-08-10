@@ -23,8 +23,8 @@
       },
       "k2": {
         "total": 120,
-        "reachable": 66,
-        "placeholderFallback": 54
+        "reachable": 86,
+        "placeholderFallback": 34
       }
     }
   },
@@ -1800,10 +1800,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Brown Bear, Brown Bear, What Do You See?",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Brown Bear, Brown Bear, What Do You See?",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:21",
@@ -1812,10 +1812,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Caps for Sale",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Caps for Sale",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:87",
@@ -1836,10 +1836,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Chicka Chicka Boom Boom",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Chicka Chicka Boom Boom",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:27",
@@ -1920,10 +1920,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Curious George",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Curious George",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:92",
@@ -1968,10 +1968,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Don't Let the Pigeon Drive the Bus!",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Don't Let the Pigeon Drive the Bus!",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:45",
@@ -1992,10 +1992,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Dragons Love Tacos",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Dragons Love Tacos",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:113",
@@ -2052,10 +2052,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Frog and Toad Are Friends",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Frog and Toad Are Friends",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:49",
@@ -2136,10 +2136,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Green Eggs and Ham",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Green Eggs and Ham",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:19",
@@ -2148,10 +2148,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Harold and the Purple Crayon",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Harold and the Purple Crayon",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:50",
@@ -2196,10 +2196,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "If You Give a Mouse a Cookie",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "If You Give a Mouse a Cookie",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:88",
@@ -2316,10 +2316,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Llama Llama Red Pajama",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Llama Llama Red Pajama",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:23",
@@ -2328,10 +2328,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Madeline",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Madeline",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:95",
@@ -2496,10 +2496,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Olivia",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Olivia (book series)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:81",
@@ -2580,10 +2580,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Pete the Cat: I Love My White Shoes",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Pete the Cat: I Love My White Shoes",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:105",
@@ -2736,10 +2736,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Cat in the Hat",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Cat in the Hat",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:53",
@@ -2760,10 +2760,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Day the Crayons Quit",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Day the Crayons Quit",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:15",
@@ -2772,10 +2772,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Gruffalo",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Gruffalo",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:89",
@@ -2904,10 +2904,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Rainbow Fish",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Rainbow Fish",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:86",
@@ -2928,10 +2928,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Snowy Day",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Snowy Day",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:24",
@@ -2940,10 +2940,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Tale of Peter Rabbit",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Tale of Peter Rabbit",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:36",

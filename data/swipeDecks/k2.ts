@@ -65,6 +65,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Brown Bear, Brown Bear, What Do You See?",
+      wikiTitle: "Brown Bear, Brown Bear, What Do You See?",
       author: "Bill Martin Jr.",
       genre: "animals",
       tags: [
@@ -135,6 +136,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Chicka Chicka Boom Boom",
+      wikiTitle: "Chicka Chicka Boom Boom",
       author: "Bill Martin Jr. & John Archambault",
       genre: "alphabet",
       tags: [
@@ -157,6 +159,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Green Eggs and Ham",
+      wikiTitle: "Green Eggs and Ham",
       author: "Dr. Seuss",
       genre: "humor",
       tags: [
@@ -179,6 +182,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Cat in the Hat",
+      wikiTitle: "The Cat in the Hat",
       author: "Dr. Seuss",
       genre: "humor",
       tags: [
@@ -202,6 +206,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "If You Give a Mouse a Cookie",
+      wikiTitle: "If You Give a Mouse a Cookie",
       author: "Laura Numeroff",
       genre: "humor",
       tags: [
@@ -224,6 +229,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Don't Let the Pigeon Drive the Bus!",
+      wikiTitle: "Don't Let the Pigeon Drive the Bus!",
       author: "Mo Willems",
       genre: "humor",
       tags: [
@@ -246,6 +252,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Frog and Toad Are Friends",
+      wikiTitle: "Frog and Toad Are Friends",
       author: "Arnold Lobel",
       genre: "friendship",
       tags: [
@@ -268,6 +275,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Pete the Cat: I Love My White Shoes",
+      wikiTitle: "Pete the Cat: I Love My White Shoes",
       author: "Eric Litwin",
       genre: "music",
       tags: [
@@ -292,6 +300,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Dragons Love Tacos",
+      wikiTitle: "Dragons Love Tacos",
       author: "Adam Rubin",
       genre: "humor",
       tags: [
@@ -316,6 +325,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Day the Crayons Quit",
+      wikiTitle: "The Day the Crayons Quit",
       author: "Drew Daywalt",
       genre: "humor",
       tags: [
@@ -361,6 +371,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Gruffalo",
+      wikiTitle: "The Gruffalo",
       author: "Julia Donaldson",
       genre: "fantasy",
       tags: [
@@ -384,6 +395,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Olivia",
+      wikiTitle: "Olivia (book series)",
       author: "Ian Falconer",
       genre: "family",
       tags: [
@@ -407,6 +419,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Snowy Day",
+      wikiTitle: "The Snowy Day",
       author: "Ezra Jack Keats",
       genre: "family",
       tags: [
@@ -453,6 +466,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Harold and the Purple Crayon",
+      wikiTitle: "Harold and the Purple Crayon",
       author: "Crockett Johnson",
       genre: "fantasy",
       tags: [
@@ -475,6 +489,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Rainbow Fish",
+      wikiTitle: "The Rainbow Fish",
       author: "Marcus Pfister",
       genre: "friendship",
       tags: [
@@ -497,6 +512,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Caps for Sale",
+      wikiTitle: "Caps for Sale",
       author: "Esphyr Slobodkina",
       genre: "humor",
       tags: [
@@ -520,6 +536,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Curious George",
+      wikiTitle: "Curious George",
       author: "H. A. Rey",
       genre: "adventure",
       tags: [
@@ -543,6 +560,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Madeline",
+      wikiTitle: "Madeline",
       author: "Ludwig Bemelmans",
       genre: "adventure",
       tags: [
@@ -565,6 +583,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Tale of Peter Rabbit",
+      wikiTitle: "The Tale of Peter Rabbit",
       author: "Beatrix Potter",
       genre: "animals",
       tags: [
@@ -588,6 +607,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Llama Llama Red Pajama",
+      wikiTitle: "Llama Llama Red Pajama",
       author: "Anna Dewdney",
       genre: "bedtime",
       tags: [
