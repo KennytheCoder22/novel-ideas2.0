@@ -303,7 +303,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["superheroes", "drama", "identity"],
    vibes: ["coming of age", "hopeful"],
  }, },
-  { isDefault: true, title: "School Spirits", semantic: { contentTraits: ["afterlife","high_school","mystery"], toneTraits: ["moody","mysterious"], characterTraits: ["confused_protagonist"], storyTraits: ["identity_discovery","mystery_unfolding"], aversionTraits: ["slow_burn"] }, author: "Paramount+", genre: "Paranormal / Mystery", wikiTitle: "School Spirits", tags: ["audience:teen","age:mshs","media:tv","format:series","series","mystery","identity","spooky","school"],tasteTraits: { warmth: 0.0, darkness: 0.48, pacing: 0.25, realism: -0.5, characterFocus: 1, ideaDensity: 0.86 }, 
+  { isDefault: true, title: "School Spirits", imageUri: "https://m.media-amazon.com/images/M/MV5BZDhiYjVmNDktNjFmZi00MDEyLTgzZTUtMDVlODZmOGNkNWUxXkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["afterlife","high_school","mystery"], toneTraits: ["moody","mysterious"], characterTraits: ["confused_protagonist"], storyTraits: ["identity_discovery","mystery_unfolding"], aversionTraits: ["slow_burn"] }, author: "Paramount+", genre: "Paranormal / Mystery", wikiTitle: "School Spirits", tags: ["audience:teen","age:mshs","media:tv","format:series","series","mystery","identity","spooky","school"],tasteTraits: { warmth: 0.0, darkness: 0.48, pacing: 0.25, realism: -0.5, characterFocus: 1, ideaDensity: 0.86 },
  output: {
    genre: ["mystery", "identity", "school"],
    vibes: ["spooky"],

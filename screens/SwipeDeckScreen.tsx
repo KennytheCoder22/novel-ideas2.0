@@ -471,33 +471,74 @@ async function lookupOpenLibraryCover(
   if (typeof apiKey === "string" && apiKey.trim()) params.set("key", apiKey.trim());
 
   const url = `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    console.warn("[NovelIdeas][coverLookup] Google Books lookup failed", { status: res.status, url });
-    return {};
+  try {
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      const item = json?.items?.[0];
+      const vi = item?.volumeInfo || {};
+      const imageLinks = vi?.imageLinks || {};
+      const thumb: string | undefined =
+        (typeof imageLinks?.thumbnail === "string" ? imageLinks.thumbnail : undefined) ||
+        (typeof imageLinks?.smallThumbnail === "string" ? imageLinks.smallThumbnail : undefined);
+      if (thumb) return { coverUrl: thumb.replace(/^http:\/\//, "https://") };
+    } else {
+      console.warn("[NovelIdeas][coverLookup] Google Books lookup failed", { status: res.status, url });
+    }
+  } catch {
+    // Fall through to Open Library.
   }
 
-  const json = await res.json();
-  const item = json?.items?.[0];
-  const vi = item?.volumeInfo || {};
-  const imageLinks = vi?.imageLinks || {};
-  const thumb: string | undefined =
-    (typeof imageLinks?.thumbnail === "string" ? imageLinks.thumbnail : undefined) ||
-    (typeof imageLinks?.smallThumbnail === "string" ? imageLinks.smallThumbnail : undefined);
-  if (!thumb) return {};
-  const coverUrl = thumb.replace(/^http:\/\//, "https://");
-  return { coverUrl };
+  try {
+    const openLibraryParams = new URLSearchParams({ limit: "1", title: safeTitle });
+    if (safeAuthor) openLibraryParams.set("author", safeAuthor);
+    const openLibraryRes = await fetch(`https://openlibrary.org/search.json?${openLibraryParams.toString()}`);
+    if (!openLibraryRes.ok) return {};
+    const openLibraryJson = await openLibraryRes.json();
+    const doc = Array.isArray(openLibraryJson?.docs) ? openLibraryJson.docs[0] : null;
+    const coverId = Number(doc?.cover_i || 0);
+    return coverId > 0
+      ? { coverUrl: `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`, olWorkId: String(doc?.key || "") }
+      : {};
+  } catch {
+    return {};
+  }
 }
 
 async function lookupWikipediaThumbnail(wikiTitle: string): Promise<{ imageUrl?: string }> {
+  const normalizedTitle = wikiTitle.replace(/\s+/g, " ").trim();
   try {
-    const safeTitle = encodeURIComponent(wikiTitle.replace(/\s+/g, " ").trim());
+    const safeTitle = encodeURIComponent(normalizedTitle);
     const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${safeTitle}`;
     const res = await fetch(url);
-    if (!res.ok) return {};
-    const data: any = await res.json();
-    const thumb = data?.thumbnail?.source as string | undefined;
-    if (thumb && typeof thumb === "string" && thumb.startsWith("http")) return { imageUrl: thumb };
+    if (res.ok) {
+      const data: any = await res.json();
+      const thumb = data?.thumbnail?.source as string | undefined;
+      if (thumb && typeof thumb === "string" && thumb.startsWith("http")) return { imageUrl: thumb };
+    }
+  } catch {
+    // Continue to the CORS-enabled MediaWiki API fallback.
+  }
+
+  try {
+    const parseParams = new URLSearchParams({
+      action: "parse",
+      page: normalizedTitle,
+      prop: "text",
+      section: "0",
+      format: "json",
+      formatversion: "2",
+      origin: "*",
+    });
+    const parseRes = await fetch(`https://en.wikipedia.org/w/api.php?${parseParams.toString()}`);
+    if (!parseRes.ok) return {};
+    const parseData: any = await parseRes.json();
+    const html = String(parseData?.parse?.text || "");
+    const infoboxImage = html.match(/<table[^>]*class="[^"]*\binfobox\b[^"]*"[\s\S]*?<img[^>]+src="([^"]+)"/i)?.[1];
+    if (!infoboxImage) return {};
+    const decoded = infoboxImage.replace(/&amp;/g, "&");
+    const imageUrl = decoded.startsWith("//") ? `https:${decoded}` : decoded;
+    if (imageUrl.startsWith("http")) return { imageUrl };
     return {};
   } catch {
     return {};

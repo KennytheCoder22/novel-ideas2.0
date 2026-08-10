@@ -1136,7 +1136,7 @@ export const k2: SwipeDeck = {
     { isDefault: true, title: "Yoshi’s Crafted World", author: "Nintendo", genre: "Platformer / Cozy", wikiTitle: "Yoshi's Crafted World", tags: ["media:game", "audience:children", "age:k2", "vibe:cozy"] },
     { isDefault: true, title: "LEGO City Undercover", author: "TT Games", genre: "Adventure / Comedy", wikiTitle: "Lego City Undercover", tags: ["media:game", "audience:children", "age:k2", "genre:adventure", "genre:comedy"] },
     { isDefault: true, title: "LEGO Marvel Super Heroes", author: "TT Games", genre: "Action / Adventure", wikiTitle: "Lego Marvel Super Heroes", tags: ["media:game", "audience:children", "age:k2", "genre:action", "genre:adventure"] },
-    { isDefault: true, title: "Paw Patrol: On a Roll!", author: "Outright Games", genre: "Kids / Platformer", wikiTitle: "PAW Patrol: On a Roll!", tags: ["media:game", "audience:children", "age:k2"] },
+    { isDefault: true, title: "Paw Patrol: On a Roll!", author: "Outright Games", genre: "Kids / Platformer", wikiTitle: "PAW Patrol: On a Roll!", imageUri: "https://m.media-amazon.com/images/M/MV5BOWI5NzQwNmUtZWI0MC00NzJiLTg4MmMtYzcyN2JiZDA0NTViXkEyXkFqcGc@._V1_.jpg", tags: ["media:game", "audience:children", "age:k2"] },
     { isDefault: true, title: "The Very Hungry Caterpillar", author: "Eric Carle", genre: "picture book", wikiTitle: "The Very Hungry Caterpillar", tags: ["media:book", "audience:children", "age:k2"] },
     { isDefault: true, title: "Goodnight Moon", author: "Margaret Wise Brown", genre: "picture book", wikiTitle: "Goodnight Moon", tags: ["media:book", "audience:children", "age:k2"] },
     { isDefault: true, title: "Where the Wild Things Are", author: "Maurice Sendak", genre: "picture book", wikiTitle: "Where the Wild Things Are", tags: ["media:book", "audience:children", "age:k2"] },
@@ -1157,7 +1157,7 @@ export const k2: SwipeDeck = {
     { isDefault: true, title: "Ratatouille", author: "Pixar", genre: "Illustrated / Comedy", wikiTitle: "Ratatouille (film)", tags: ["audience:children", "age:k2", "media:movie", "genre:animation", "genre:comedy", "theme:creativity"] },
     { isDefault: true, title: "Lil Gator Game", author: "MegaWobble", genre: "Adventure / Cozy", wikiTitle: "Lil Gator Game", tags: ["audience:children", "age:k2", "media:game", "genre:adventure", "vibe:cozy", "theme:imagination"] },
     { isDefault: true, title: "A Short Hike", author: "adamgryu", genre: "Adventure / Nature", wikiTitle: "A Short Hike", tags: ["audience:children", "age:k2", "media:game", "genre:adventure", "genre:nature", "vibe:gentle", "vibe:cozy"] },
-    { isDefault: true, title: "Unicorn Academy", author: "Netflix", genre: "Fantasy / Friendship", wikiTitle: "Unicorn Academy", tags: ["audience:children", "age:k2", "media:tv", "genre:fantasy", "theme:friendship", "tone:uplifting", "vibe:hopeful"] },
+    { isDefault: true, title: "Unicorn Academy", author: "Netflix", genre: "Fantasy / Friendship", wikiTitle: "Unicorn Academy", imageUri: "https://m.media-amazon.com/images/M/MV5BODc5NDgwMTEtMTkwZS00ZjY5LTlmZTEtNTU0Mzc1ZGQ2NDVlXkEyXkFqcGc@._V1_.jpg", tags: ["audience:children", "age:k2", "media:tv", "genre:fantasy", "theme:friendship", "tone:uplifting", "vibe:hopeful"] },
 ],
 };
 

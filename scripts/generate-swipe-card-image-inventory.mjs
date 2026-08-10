@@ -1,16 +1,31 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
 const outputPath = resolve(repoRoot, "scripts", "output", "swipe-card-image-inventory.json");
+const require = createRequire(import.meta.url);
+const ts = require("typescript");
+require.extensions[".ts"] = (module, filename) => {
+  const source = readFileSync(filename, "utf8");
+  const output = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+      esModuleInterop: true,
+      resolveJsonModule: true,
+    },
+  }).outputText;
+  module._compile(output, filename);
+};
 
-const DECK_FILES = [
-  { deckKey: "k2", ageBand: "kids", file: resolve(repoRoot, "data", "swipeDecks", "k2.ts") },
-  { deckKey: "36", ageBand: "preteens", file: resolve(repoRoot, "data", "swipeDecks", "36.ts") },
-  { deckKey: "ms_hs", ageBand: "teens", file: resolve(repoRoot, "data", "swipeDecks", "ms_hs.ts") },
-  { deckKey: "adult", ageBand: "adult", file: resolve(repoRoot, "data", "swipeDecks", "adult.ts") },
+const DECK_MODULES = [
+  { deckKey: "k2", ageBand: "kids", modulePath: resolve(repoRoot, "data", "swipeDecks", "k2.ts") },
+  { deckKey: "36", ageBand: "preteens", modulePath: resolve(repoRoot, "data", "swipeDecks", "36.ts") },
+  { deckKey: "ms_hs", ageBand: "teens", modulePath: resolve(repoRoot, "data", "swipeDecks", "ms_hs.ts") },
+  { deckKey: "adult", ageBand: "adult", modulePath: resolve(repoRoot, "data", "swipeDecks", "adult.ts") },
 ];
 
 function asArray(value) {
@@ -157,33 +172,20 @@ function propertyStringArray(objectText, key) {
   return values;
 }
 
-function extractCardsFromDeckTs(deckEntry) {
-  const sourceText = readFileSync(deckEntry.file, "utf8");
-  const deckLabel = (sourceText.match(/\bdeckLabel\s*:\s*["']([^"']+)["']/)?.[1] || deckEntry.deckKey).trim();
-  const cardsIndex = sourceText.search(/\bcards\s*:/);
-  if (cardsIndex < 0) return { cards: [], deckLabel };
-  const arrayStart = sourceText.indexOf("[", cardsIndex);
-  if (arrayStart < 0) return { cards: [], deckLabel };
-  const objects = parseTopLevelObjectsFromArrayLiteral(sourceText, arrayStart);
-  const cards = objects.map((objectText, index) => ({
-    index,
-    id: propertyString(objectText, "id"),
-    title: propertyString(objectText, "title"),
-    prompt: propertyString(objectText, "prompt"),
-    type: propertyString(objectText, "type"),
-    imageUri: propertyString(objectText, "imageUri"),
-    wikiTitle: propertyString(objectText, "wikiTitle"),
-    olWorkId: propertyString(objectText, "olWorkId"),
-    tags: propertyStringArray(objectText, "tags"),
-  }));
-  return { cards, deckLabel };
+function loadDeck(deckEntry) {
+  const loaded = require(deckEntry.modulePath);
+  const deck = loaded.default || loaded.k2 || loaded.deck36;
+  if (!deck || !Array.isArray(deck.cards)) {
+    throw new Error(`invalid_runtime_deck:${deckEntry.deckKey}`);
+  }
+  return deck;
 }
 
 function inventoryRows() {
   const rows = [];
-  for (const deckEntry of DECK_FILES) {
-    const parsedDeck = extractCardsFromDeckTs(deckEntry);
-    const cards = asArray(parsedDeck.cards);
+  for (const deckEntry of DECK_MODULES) {
+    const deck = loadDeck(deckEntry);
+    const cards = asArray(deck.cards);
     cards.forEach((card, index) => {
       const displayTitle = String(card.title || card.prompt || "").trim() || "(untitled card)";
       const cardId = String(card.id || `${deckEntry.deckKey}:${index + 1}`);
@@ -193,8 +195,9 @@ function inventoryRows() {
         cardId,
         deckKey: deckEntry.deckKey,
         ageBand: deckEntry.ageBand,
-        deckLabel: String(parsedDeck.deckLabel || deckEntry.deckKey),
+        deckLabel: String(deck.deckLabel || deckEntry.deckKey),
         displayedTitle: displayTitle,
+        author: String(card.author || ""),
         mediaType: mediaTypeForCard(card),
         imageSourceType: source.sourceType,
         imageSourcePath: source.sourcePath,

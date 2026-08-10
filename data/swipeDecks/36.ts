@@ -1924,6 +1924,7 @@ export const deck36 = {
     {
       id: "36_yt_unspeakable",
       title: "Unspeakable",
+      imageUri: "https://yt3.googleusercontent.com/ytc/AIdro_l9fWjJ_HbQgKpYTpi5Y21Cwow2-m0OBsxwzXyf6CE28ro=s900-c-k-c0x00ffffff-no-rj",
       wikiTitle: "Unspeakable",
       author: "Unspeakable",
       genre: "Comedy / Adventure",
@@ -1970,6 +1971,7 @@ export const deck36 = {
     {
       id: "36_yt_ssundee",
       title: "SSundee",
+      imageUri: "https://yt3.googleusercontent.com/ytc/AIdro_m8dGmeU2bqMcUcJqK6j_CNescTudYadR4uWPsL9U62qlQ=s900-c-k-c0x00ffffff-no-rj",
       wikiTitle: "SSundee",
       author: "SSundee",
       genre: "Comedy / Adventure",
@@ -2016,6 +2018,7 @@ export const deck36 = {
     {
       id: "36_yt_ldshadowlady",
       title: "LDShadowLady",
+      imageUri: "https://yt3.googleusercontent.com/ytc/AIdro_loVvz-5y3s38zJnTXR0E88D6zgprykC8f_4OfVoai2vgY=s900-c-k-c0x00ffffff-no-rj",
       wikiTitle: "LDShadowLady",
       author: "Lizzie",
       genre: "Friendship / Fantasy / Community",
@@ -2039,6 +2042,7 @@ export const deck36 = {
     {
       id: "36_yt_thinknoodles",
       title: "ThinkNoodles",
+      imageUri: "https://yt3.googleusercontent.com/E21on74L8U8k9JIjW-MY7Fb62L9qyn_ZzQ2rnPQ92aFZ1gvt43ZOXHXglJB27mO46SQgkR2iJQ=s900-c-k-c0x00ffffff-no-rj",
       wikiTitle: "ThinkNoodles",
       author: "ThinkNoodles",
       genre: "Friendship / Adventure / Comedy",
@@ -2200,6 +2204,7 @@ export const deck36 = {
     {
       id: "36_yt_brainpop",
       title: "BrainPOP",
+      imageUri: "https://yt3.googleusercontent.com/0q-6xu8ehxK4rpqBOUav2LU03I2znS_gqulxWJyAI1c9ZvZMsEjmgKi02kt2w1Gbb-rB5vNcMfU=s900-c-k-c0x00ffffff-no-rj",
       wikiTitle: "BrainPOP",
       author: "BrainPOP",
       genre: "Nonfiction / Concise",
@@ -2223,6 +2228,7 @@ export const deck36 = {
     {
       id: "36_yt_crashcoursekids",
       title: "Crash Course Kids",
+      imageUri: "https://yt3.googleusercontent.com/mDXMqPIcDc_yfAqXGvBu0ufz7J3AJVlcstUxXs_y1yh34pf34wDy96qKGM4HEE_l_fzNeqpP=s900-c-k-c0x00ffffff-no-rj",
       wikiTitle: "Crash Course Kids",
       author: "Crash Course Kids",
       genre: "Nonfiction / Concise",

@@ -60,6 +60,10 @@ function main() {
     wikipediaTitleCandidates("Never Have I Ever", "tv")[0] === "Never Have I Ever (TV series)",
     "ambiguous_tv_title_not_disambiguated",
   );
+  assert(
+    wikipediaTitleCandidates("The Sopranos (TV series)", "tv")[1] === "The Sopranos",
+    "invalid_explicit_suffix_does_not_fall_back_to_base_title",
+  );
   const screenSource = readFileSync(resolve(repoRoot, "screens", "SwipeDeckScreen.tsx"), "utf8");
   assert(
     screenSource.includes("[currentCard, currentCardKey, swipeCoverCache, swipeCoverFailures]"),
@@ -67,6 +71,7 @@ function main() {
   );
   checks.push(
     { name: "ambiguous_media_title_disambiguated", pass: true },
+    { name: "explicit_suffix_falls_back_to_base_title", pass: true },
     { name: "failed_image_advances_fallback", pass: true },
   );
   process.stdout.write(`${JSON.stringify({
