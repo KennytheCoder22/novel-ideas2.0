@@ -9,22 +9,22 @@
     "fallbackPolicy": "intentional_placeholder_when_image_source_missing_or_unreachable"
   },
   "summary": {
-    "totalCards": 357,
+    "totalCards": 360,
     "decks": {
       "36": {
         "total": 100,
-        "reachable": 0,
-        "placeholderFallback": 100
+        "reachable": 24,
+        "placeholderFallback": 76
       },
       "adult": {
         "total": 140,
-        "reachable": 120,
-        "placeholderFallback": 20
+        "reachable": 140,
+        "placeholderFallback": 0
       },
       "k2": {
-        "total": 117,
-        "reachable": 57,
-        "placeholderFallback": 60
+        "total": 120,
+        "reachable": 66,
+        "placeholderFallback": 54
       }
     }
   },
@@ -60,10 +60,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "A Court of Thorns and Roses",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "A Court of Thorns and Roses",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:130",
@@ -180,10 +180,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "Big Little Lies",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Big Little Lies",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:53",
@@ -276,10 +276,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "Circe",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Circe (novel)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:17",
@@ -288,10 +288,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "Cloud Atlas",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Cloud Atlas (novel)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:91",
@@ -360,10 +360,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "Dark Matter",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Dark Matter (Crouch novel)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:129",
@@ -612,10 +612,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "Gone Girl",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Gone Girl (novel)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:93",
@@ -660,8 +660,8 @@
       "deckLabel": "Adults",
       "displayedTitle": "Her",
       "mediaType": "movie",
-      "imageSourceType": "wikiTitle",
-      "imageSourcePath": "Her (film)",
+      "imageSourceType": "imageUri",
+      "imageSourcePath": "https://upload.wikimedia.org/wikipedia/en/4/44/Her2013Poster.jpg",
       "imageReachable": true,
       "fallbackStatus": "not_needed"
     },
@@ -840,10 +840,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "Normal People",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Normal People",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:138",
@@ -972,10 +972,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "Project Hail Mary",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Project Hail Mary",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:112",
@@ -1116,10 +1116,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "Station Eleven",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Station Eleven",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:75",
@@ -1272,10 +1272,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The Girl with the Dragon Tattoo",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Girl with the Dragon Tattoo",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:22",
@@ -1296,10 +1296,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The Goldfinch",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Goldfinch",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:80",
@@ -1356,10 +1356,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The House in the Cerulean Sea",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The House in the Cerulean Sea",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:56",
@@ -1428,10 +1428,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The Martian",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Martian",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:26",
@@ -1464,10 +1464,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The Name of the Wind",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Name of the Wind",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:1",
@@ -1476,10 +1476,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The Night Circus",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Night Circus",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:35",
@@ -1500,10 +1500,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The Poppy War",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Poppy War",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:33",
@@ -1536,10 +1536,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The Road",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Road",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:8",
@@ -1548,10 +1548,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The Seven Husbands of Evelyn Hugo",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Seven Husbands of Evelyn Hugo",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:16",
@@ -1560,10 +1560,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The Shadow of the Wind",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Shadow of the Wind",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:32",
@@ -1596,10 +1596,10 @@
       "deckLabel": "Adults",
       "displayedTitle": "The Silent Patient",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Silent Patient",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "adult:71",
@@ -1710,7 +1710,7 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:116",
+      "cardId": "k2:119",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -1734,7 +1734,7 @@
       "fallbackStatus": "intentional_placeholder"
     },
     {
-      "cardId": "k2:106",
+      "cardId": "k2:109",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -1884,10 +1884,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Corduroy",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Corduroy (book)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:67",
@@ -1950,7 +1950,7 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:107",
+      "cardId": "k2:110",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -1998,7 +1998,7 @@
       "fallbackStatus": "intentional_placeholder"
     },
     {
-      "cardId": "k2:110",
+      "cardId": "k2:113",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -2076,10 +2076,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Giraffes Can't Dance",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Giraffes Can't Dance",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:63",
@@ -2090,6 +2090,18 @@
       "mediaType": "tv",
       "imageSourceType": "wikiTitle",
       "imageSourcePath": "Go, Dog. Go!",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
+    },
+    {
+      "cardId": "k2:103",
+      "deckKey": "k2",
+      "ageBand": "kids",
+      "deckLabel": "Kids (K–2)",
+      "displayedTitle": "Goodnight Moon",
+      "mediaType": "book",
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Goodnight Moon",
       "imageReachable": true,
       "fallbackStatus": "not_needed"
     },
@@ -2202,19 +2214,19 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:108",
+      "cardId": "k2:111",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Interrupting Chicken",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Interrupting Chicken",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:113",
+      "cardId": "k2:116",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -2274,7 +2286,7 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:115",
+      "cardId": "k2:118",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -2358,7 +2370,7 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:111",
+      "cardId": "k2:114",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -2406,19 +2418,19 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:109",
+      "cardId": "k2:112",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Nanette's Baguette",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Nanette's Baguette",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:103",
+      "cardId": "k2:106",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -2436,10 +2448,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "No, David!",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "No, David!",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:55",
@@ -2533,7 +2545,7 @@
       "displayedTitle": "Paw Patrol: On a Roll!",
       "mediaType": "game",
       "imageSourceType": "wikiTitle",
-      "imageSourcePath": "Paw Patrol: On a Roll!",
+      "imageSourcePath": "PAW Patrol: On a Roll!",
       "imageReachable": true,
       "fallbackStatus": "not_needed"
     },
@@ -2574,7 +2586,7 @@
       "fallbackStatus": "intentional_placeholder"
     },
     {
-      "cardId": "k2:102",
+      "cardId": "k2:105",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -2598,7 +2610,7 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:114",
+      "cardId": "k2:117",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -2616,10 +2628,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Room on the Broom",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Room on the Broom",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:69",
@@ -2634,7 +2646,7 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:104",
+      "cardId": "k2:107",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -2958,6 +2970,18 @@
       "fallbackStatus": "intentional_placeholder"
     },
     {
+      "cardId": "k2:102",
+      "deckKey": "k2",
+      "ageBand": "kids",
+      "deckLabel": "Kids (K–2)",
+      "displayedTitle": "The Very Hungry Caterpillar",
+      "mediaType": "book",
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Very Hungry Caterpillar",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
+    },
+    {
       "cardId": "k2:46",
       "deckKey": "k2",
       "ageBand": "kids",
@@ -2982,7 +3006,7 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:112",
+      "cardId": "k2:115",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -3006,7 +3030,7 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:117",
+      "cardId": "k2:120",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -3018,7 +3042,7 @@
       "fallbackStatus": "not_needed"
     },
     {
-      "cardId": "k2:105",
+      "cardId": "k2:108",
       "deckKey": "k2",
       "ageBand": "kids",
       "deckLabel": "Kids (K–2)",
@@ -3064,6 +3088,18 @@
       "imageSourcePath": "",
       "imageReachable": false,
       "fallbackStatus": "intentional_placeholder"
+    },
+    {
+      "cardId": "k2:104",
+      "deckKey": "k2",
+      "ageBand": "kids",
+      "deckLabel": "Kids (K–2)",
+      "displayedTitle": "Where the Wild Things Are",
+      "mediaType": "book",
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Where the Wild Things Are",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:4",
@@ -3180,10 +3216,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Beyblade",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Beyblade",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_bighero6",
@@ -3204,10 +3240,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "BrainPOP",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "BrainPOP",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_brawl",
@@ -3240,10 +3276,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Carmen Sandiego",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Carmen Sandiego",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_charlie",
@@ -3276,10 +3312,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Crash Course Kids",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Crash Course Kids",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_danthdm",
@@ -3312,10 +3348,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Detective Pikachu",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Detective Pikachu",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_wimpy",
@@ -3396,10 +3432,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Fall Guys",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Fall Guys",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_fortnite",
@@ -3456,10 +3492,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Game Grumps",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Game Grumps",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_goosebumps",
@@ -3588,10 +3624,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Kurzgesagt – In a Nutshell",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Kurzgesagt – In a Nutshell",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_ldshadowlady",
@@ -3600,10 +3636,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "LDShadowLady",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "LDShadowLady",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_lego",
@@ -3648,10 +3684,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Mario Kart 8",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Mario Kart 8 Deluxe",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_marioparty",
@@ -3660,10 +3696,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Mario Party",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Mario Party",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_markrober",
@@ -3816,10 +3852,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Pokimane",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Pokimane",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_preston",
@@ -3828,10 +3864,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "PrestonPlayz",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "PrestonPlayz",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_redwall",
@@ -3876,10 +3912,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Ryan's World",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Ryan's World",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_wayside",
@@ -3936,10 +3972,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Sonic the Hedgehog",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Sonic the Hedgehog",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_sonic2",
@@ -3948,10 +3984,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Sonic the Hedgehog 2",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Sonic the Hedgehog 2",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_spiderverse",
@@ -3996,10 +4032,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "SSundee",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "SSundee",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_rebels",
@@ -4068,10 +4104,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Super Smash Bros.",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Super Smash Bros.",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_teded",
@@ -4080,10 +4116,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "TED-Ed",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "TED-Ed",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_teen_titans",
@@ -4104,10 +4140,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Tetris",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Tetris (video game)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_39clues",
@@ -4188,10 +4224,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The Lightning Thief",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Lightning Thief",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_narnia",
@@ -4224,10 +4260,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The Mitchells vs. the Machines",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Mitchells vs. the Machines",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_percy2",
@@ -4248,10 +4284,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "ThinkNoodles",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "ThinkNoodles",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_toystory",
@@ -4284,10 +4320,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Unspeakable",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Unspeakable",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_voltron",

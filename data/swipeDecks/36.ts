@@ -54,6 +54,7 @@ export const deck36 = {
     {
       id: "36_book_percy1",
       title: "The Lightning Thief",
+      wikiTitle: "The Lightning Thief",
       author: "Rick Riordan",
       semantic: {
         contentTraits: ["friendship", "demigods", "greek_mythology", "adventure"],
@@ -542,6 +543,7 @@ export const deck36 = {
     {
       id: "36_movie_mitchells",
       title: "The Mitchells vs. the Machines",
+      wikiTitle: "The Mitchells vs. the Machines",
       author: "Sony Pictures Animation",
       genre: "AI / Family / Comedy",
       semantic: {
@@ -740,6 +742,7 @@ export const deck36 = {
     {
       id: "36_movie_pokemon",
       title: "Detective Pikachu",
+      wikiTitle: "Detective Pikachu",
       author: "Warner Bros.",
       genre: "Mystery / Friendship / Adventure",
       semantic: {
@@ -762,6 +765,7 @@ export const deck36 = {
     {
       id: "36_movie_sonic",
       title: "Sonic the Hedgehog",
+      wikiTitle: "Sonic the Hedgehog",
       author: "Paramount Pictures",
       genre: "Adventure / Comedy",
       semantic: {
@@ -784,6 +788,7 @@ export const deck36 = {
     {
       id: "36_movie_sonic2",
       title: "Sonic the Hedgehog 2",
+      wikiTitle: "Sonic the Hedgehog 2",
       author: "Paramount Pictures",
       genre: "Adventure / Comedy",
       semantic: {
@@ -1246,6 +1251,7 @@ export const deck36 = {
     {
       id: "36_tv_carmen",
       title: "Carmen Sandiego",
+      wikiTitle: "Carmen Sandiego",
       author: "Netflix",
       genre: "Adventure / Mystery / Crime",
       semantic: {
@@ -1290,6 +1296,7 @@ export const deck36 = {
     {
       id: "36_tv_beyblade",
       title: "Beyblade",
+      wikiTitle: "Beyblade",
       author: "Takara Tomy",
       genre: "Friendship",
       semantic: {
@@ -1356,6 +1363,7 @@ export const deck36 = {
     {
       id: "36_game_mariokart",
       title: "Mario Kart 8",
+      wikiTitle: "Mario Kart 8 Deluxe",
       author: "Nintendo",
       genre: "Friendship / Vehicles",
       semantic: {
@@ -1400,6 +1408,7 @@ export const deck36 = {
     {
       id: "36_game_smash",
       title: "Super Smash Bros.",
+      wikiTitle: "Super Smash Bros.",
       author: "Nintendo",
       genre: "Friendship / Superheroes",
       semantic: {
@@ -1576,6 +1585,7 @@ export const deck36 = {
     {
       id: "36_game_fallguys",
       title: "Fall Guys",
+      wikiTitle: "Fall Guys",
       author: "Mediatonic",
       genre: "Comedy / Friendship",
       semantic: {
@@ -1620,6 +1630,7 @@ export const deck36 = {
     {
       id: "36_game_tetris",
       title: "Tetris",
+      wikiTitle: "Tetris (video game)",
       author: "The Tetris Company",
       genre: "Concise",
       semantic: {
@@ -1708,6 +1719,7 @@ export const deck36 = {
     {
       id: "36_game_marioparty",
       title: "Mario Party",
+      wikiTitle: "Mario Party",
       author: "Nintendo",
       genre: "Friendship / Comedy",
       semantic: {
@@ -1840,6 +1852,7 @@ export const deck36 = {
     {
       id: "36_yt_unspeakable",
       title: "Unspeakable",
+      wikiTitle: "Unspeakable",
       author: "Unspeakable",
       genre: "Comedy / Adventure",
       semantic: {
@@ -1862,6 +1875,7 @@ export const deck36 = {
     {
       id: "36_yt_preston",
       title: "PrestonPlayz",
+      wikiTitle: "PrestonPlayz",
       author: "Preston Arsement",
       genre: "Adventure / Comedy",
       semantic: {
@@ -1884,6 +1898,7 @@ export const deck36 = {
     {
       id: "36_yt_ssundee",
       title: "SSundee",
+      wikiTitle: "SSundee",
       author: "SSundee",
       genre: "Comedy / Adventure",
       semantic: {
@@ -1928,6 +1943,7 @@ export const deck36 = {
     {
       id: "36_yt_ldshadowlady",
       title: "LDShadowLady",
+      wikiTitle: "LDShadowLady",
       author: "Lizzie",
       genre: "Friendship / Fantasy / Community",
       semantic: {
@@ -1950,6 +1966,7 @@ export const deck36 = {
     {
       id: "36_yt_thinknoodles",
       title: "ThinkNoodles",
+      wikiTitle: "ThinkNoodles",
       author: "ThinkNoodles",
       genre: "Friendship / Adventure / Comedy",
       semantic: {
@@ -1994,6 +2011,7 @@ export const deck36 = {
     {
       id: "36_yt_pokimane",
       title: "Pokimane",
+      wikiTitle: "Pokimane",
       author: "Imane Anys",
       genre: "Friendship / Community / Comedy",
       semantic: {
@@ -2016,6 +2034,7 @@ export const deck36 = {
     {
       id: "36_yt_gamegrumps",
       title: "Game Grumps",
+      wikiTitle: "Game Grumps",
       author: "Game Grumps",
       genre: "Comedy / Friendship",
       semantic: {
@@ -2038,6 +2057,7 @@ export const deck36 = {
     {
       id: "36_yt_ryan",
       title: "Ryan's World",
+      wikiTitle: "Ryan's World",
       author: "Ryan Kaji",
       genre: "Friendship / Nonfiction",
       semantic: {
@@ -2104,6 +2124,7 @@ export const deck36 = {
     {
       id: "36_yt_brainpop",
       title: "BrainPOP",
+      wikiTitle: "BrainPOP",
       author: "BrainPOP",
       genre: "Nonfiction / Concise",
       semantic: {
@@ -2126,6 +2147,7 @@ export const deck36 = {
     {
       id: "36_yt_crashcoursekids",
       title: "Crash Course Kids",
+      wikiTitle: "Crash Course Kids",
       author: "Crash Course Kids",
       genre: "Nonfiction / Concise",
       semantic: {
@@ -2148,6 +2170,7 @@ export const deck36 = {
     {
       id: "36_yt_teded",
       title: "TED-Ed",
+      wikiTitle: "TED-Ed",
       author: "TED-Ed",
       genre: "Nonfiction / Concise",
       semantic: {
@@ -2170,6 +2193,7 @@ export const deck36 = {
     {
       id: "36_yt_kurzgesagt",
       title: "Kurzgesagt – In a Nutshell",
+      wikiTitle: "Kurzgesagt – In a Nutshell",
       author: "Kurzgesagt",
       genre: "Nonfiction / Science Fiction",
       semantic: {

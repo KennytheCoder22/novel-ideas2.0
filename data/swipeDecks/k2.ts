@@ -338,6 +338,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Giraffes Can't Dance",
+      wikiTitle: "Giraffes Can't Dance",
       author: "Giles Andreae",
       genre: "animals",
       tags: [
@@ -428,6 +429,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Corduroy",
+      wikiTitle: "Corduroy (book)",
       author: "Don Freeman",
       genre: "friendship",
       tags: [
@@ -608,6 +610,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "No, David!",
+      wikiTitle: "No, David!",
       author: "David Shannon",
       genre: "humor",
       tags: [
@@ -744,6 +747,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Room on the Broom",
+      wikiTitle: "Room on the Broom",
       author: "Julia Donaldson",
       genre: "fantasy",
       tags: [
@@ -1092,7 +1096,10 @@ export const k2: SwipeDeck = {
     { isDefault: true, title: "Yoshi’s Crafted World", author: "Nintendo", genre: "Platformer / Cozy", wikiTitle: "Yoshi's Crafted World", tags: ["media:game", "audience:children", "age:k2", "vibe:cozy"] },
     { isDefault: true, title: "LEGO City Undercover", author: "TT Games", genre: "Adventure / Comedy", wikiTitle: "Lego City Undercover", tags: ["media:game", "audience:children", "age:k2", "genre:adventure", "genre:comedy"] },
     { isDefault: true, title: "LEGO Marvel Super Heroes", author: "TT Games", genre: "Action / Adventure", wikiTitle: "Lego Marvel Super Heroes", tags: ["media:game", "audience:children", "age:k2", "genre:action", "genre:adventure"] },
-    { isDefault: true, title: "Paw Patrol: On a Roll!", author: "Outright Games", genre: "Kids / Platformer", wikiTitle: "Paw Patrol: On a Roll!", tags: ["media:game", "audience:children", "age:k2"] },
+    { isDefault: true, title: "Paw Patrol: On a Roll!", author: "Outright Games", genre: "Kids / Platformer", wikiTitle: "PAW Patrol: On a Roll!", tags: ["media:game", "audience:children", "age:k2"] },
+    { isDefault: true, title: "The Very Hungry Caterpillar", author: "Eric Carle", genre: "picture book", wikiTitle: "The Very Hungry Caterpillar", tags: ["media:book", "audience:children", "age:k2"] },
+    { isDefault: true, title: "Goodnight Moon", author: "Margaret Wise Brown", genre: "picture book", wikiTitle: "Goodnight Moon", tags: ["media:book", "audience:children", "age:k2"] },
+    { isDefault: true, title: "Where the Wild Things Are", author: "Maurice Sendak", genre: "picture book", wikiTitle: "Where the Wild Things Are", tags: ["media:book", "audience:children", "age:k2"] },
     { isDefault: true, title: "Pokémon: Let’s Go, Pikachu! / Eevee!", author: "Nintendo", genre: "Adventure / Creatures", wikiTitle: "Pokémon: Let's Go, Pikachu!", tags: ["media:game", "audience:children", "age:k2", "genre:adventure", "genre:creatures"] },
     { isDefault: true, title: "New Pokémon Snap", author: "Nintendo", genre: "Photography / Adventure", wikiTitle: "New Pokémon Snap", tags: ["media:game", "audience:children", "age:k2", "genre:adventure"] },
     { isDefault: true, title: "Scribblenauts Unlimited", author: "Warner Bros.", genre: "Puzzle / Creativity", wikiTitle: "Scribblenauts Unlimited", tags: ["media:game", "audience:children", "age:k2"] },
@@ -1101,8 +1108,8 @@ export const k2: SwipeDeck = {
     { isDefault: true, title: "Disney Dreamlight Valley", author: "Gameloft", genre: "Cozy / Adventure", wikiTitle: "Disney Dreamlight Valley", tags: ["media:game", "audience:children", "age:k2", "vibe:cozy", "genre:adventure"] },
 
     // New additions (+10)
-    { isDefault: true, title: "Interrupting Chicken", author: "David Ezra Stein", genre: "humor", tags: ["media:book", "layout:younger", "genre:humor", "vibe:bedtime", "vibe:interrupting", "vibe:silly", "vibe:read aloud", "format:Picture Book", "audience:children", "age:k2"] },
-    { isDefault: true, title: "Nanette's Baguette", author: "Mo Willems", genre: "humor", tags: ["media:book", "layout:older", "genre:humor", "vibe:rhyming", "vibe:wordplay", "vibe:family", "vibe:funny", "format:Picture Book", "audience:children", "age:k2"] },
+    { isDefault: true, title: "Interrupting Chicken", author: "David Ezra Stein", genre: "humor", wikiTitle: "Interrupting Chicken", tags: ["media:book", "layout:younger", "genre:humor", "vibe:bedtime", "vibe:interrupting", "vibe:silly", "vibe:read aloud", "format:Picture Book", "audience:children", "age:k2"] },
+    { isDefault: true, title: "Nanette's Baguette", author: "Mo Willems", genre: "humor", wikiTitle: "Nanette's Baguette", tags: ["media:book", "layout:older", "genre:humor", "vibe:rhyming", "vibe:wordplay", "vibe:family", "vibe:funny", "format:Picture Book", "audience:children", "age:k2"] },
     { isDefault: true, title: "Elephant & Piggie: My New Friend Is So Fun!", author: "Mo Willems", genre: "friendship", tags: ["media:book", "layout:older", "genre:friendship", "vibe:funny", "vibe:everyday", "vibe:gentle", "format:Early Reader", "audience:children", "age:k2"] },
     { isDefault: true, title: "Molly of Denali", author: "PBS", genre: "Adventure / Family", wikiTitle: "Molly of Denali", tags: ["audience:children", "age:k2", "media:tv", "genre:adventure", "theme:family", "theme:community", "tone:uplifting", "format:series"] },
     { isDefault: true, title: "Trash Truck", author: "Netflix", genre: "Friendship / Calm", wikiTitle: "Trash Truck", tags: ["audience:children", "age:k2", "media:tv", "theme:friendship", "tone:gentle", "vibe:cozy", "format:series"] },
