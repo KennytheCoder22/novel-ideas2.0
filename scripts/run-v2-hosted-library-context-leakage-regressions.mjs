@@ -345,7 +345,8 @@ checks.push(check("structural_personalized_route_sets_runtime_identity", () => {
     "[libraryId].tsx must call setRuntimeLibraryName"
   );
   assert(
-    libraryIdSrc.includes("setLibraryId(raw || \"\")"),
+    libraryIdSrc.includes("setLibraryId(normalized)") &&
+      libraryIdSrc.includes("normalizeHostedLibraryRouteId(raw || \"\")"),
     "[libraryId].tsx must preserve full slug string (no truncation)"
   );
   assert(

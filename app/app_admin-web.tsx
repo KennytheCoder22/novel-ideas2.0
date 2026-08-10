@@ -25,6 +25,7 @@ import {
   SHARED_COLLECTION_POST_MAX_BYTES,
 } from "../lib/localCollection/storage";
 import {
+  loadSharedLibraryConfigWithDiagnostics,
   saveSharedLibraryConfigWithDiagnostics,
   type SharedLibraryConfigSaveDiagnostics,
 } from "../lib/librarySharing/client";
@@ -47,7 +48,7 @@ import { ColorPickerField } from "../components/admin/ColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
 import { activateAdminSession, isAdminSessionActive, setPendingAdminRoute } from "../lib/adminSession";
-import { getRuntimeLibraryId } from "../constants/runtimeConfig";
+import { getRuntimeLibraryId, getRuntimeLibraryName } from "../constants/runtimeConfig";
 import {
   isPreviewAcceptanceHarnessEnabled,
   PREVIEW_ACCEPTANCE_PIN,
@@ -57,6 +58,14 @@ import {
   type PreviewAcceptanceDashboardMode,
   writePreviewAcceptanceDashboardModeCookie,
 } from "../lib/previewAcceptanceHarness";
+import {
+  MIN_NEW_LIBRARY_ID_LENGTH,
+  normalizeHostedLibraryId,
+  readAdminLibraries,
+  rememberAdminLibrary,
+  validateLibraryIdForSave,
+  type SavedLibrary,
+} from "../lib/savedLibraries";
 
 // ---------------------------------------------------------------------------
 // Constants & flags
@@ -135,10 +144,7 @@ function slugifyLibraryId(name: string) {
 }
 
 function normalizeLibraryId(raw: string) {
-  return String(raw || "")
-    .trim()
-    .replace(/[^a-zA-Z0-9_-]/g, "")
-    .slice(0, 40);
+  return normalizeHostedLibraryId(raw);
 }
 
 function resolveLibraryId(cfg: any) {
@@ -263,7 +269,7 @@ function deckLabel(k: DeckKey) {
 
 function sourceLabel(s: RecommendationSourceToggleKey) {
   if (s === "googleBooks") return "Google Books";
-  if (s === "openLibrary") return "Go To Library";
+  if (s === "openLibrary") return "Open Library";
   if (s === "localLibrary") return "This library's collection";
   if (s === "kitsu") return "Kitsu (Manga)";
   if (s === "gcd") return "ComicVine (Comics)";
@@ -485,6 +491,7 @@ export default function AdminWebScreen() {
     : (params as any)?.libraryId;
   const explicitLibraryIdFromRoute = String(explicitLibraryIdParam || "");
   const runtimeLibraryId = getRuntimeLibraryId();
+  const runtimeLibraryName = getRuntimeLibraryName();
   const adminDraftScopeId = useMemo(
     () => resolveAdminDraftScopeId(explicitLibraryIdFromRoute),
     [explicitLibraryIdFromRoute]
@@ -594,14 +601,24 @@ export default function AdminWebScreen() {
   const [isDirty, setIsDirty] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
   const [saveErrorDetails, setSaveErrorDetails] = useState<SharedLibraryConfigSaveDiagnostics | null>(null);
+  const [adminScopeLoading, setAdminScopeLoading] = useState(false);
+  const [adminScopeLoadError, setAdminScopeLoadError] = useState(false);
   const [pinDraft, setPinDraft] = useState("");
   const [pinEditorVisible, setPinEditorVisible] = useState(() => !hasSavedAdminPin(config) && !!config?.admin?.pinEnabled);
   const [pinStatus, setPinStatus] = useState<"idle" | "saved">("idle");
+  const [adminLibraries, setAdminLibraries] = useState<SavedLibrary[]>(() => {
+    try {
+      return readAdminLibraries(typeof localStorage === "undefined" ? null : localStorage);
+    } catch {
+      return [];
+    }
+  });
   const [previewAcceptanceMode, setPreviewAcceptanceMode] = useState<PreviewAcceptanceDashboardMode>(() =>
     readPreviewAcceptanceDashboardModeFromDocument()
   );
 
   useEffect(() => {
+    let cancelled = false;
     const {
       next,
       hadDraft,
@@ -633,6 +650,18 @@ export default function AdminWebScreen() {
     setPinEditorVisible(!hasSavedAdminPin(next) && !!next?.admin?.pinEnabled);
     setPinStatus("idle");
     setIsDirty(false);
+    setAdminScopeLoadError(false);
+    const loadedLibraryName = String(
+      next?.branding?.libraryName || next?.library?.name || runtimeLibraryName || "",
+    ).trim();
+    if (adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE && loadedLibraryName && (hadDraft || runtimeLibraryName)) {
+      try {
+        setAdminLibraries(rememberAdminLibrary(localStorage, {
+          libraryId: adminDraftScopeId,
+          libraryName: loadedLibraryName,
+        }));
+      } catch {}
+    }
     try {
       if (migratedPoisonedDefaultDraft) {
         console.info("[admin][default_scope_draft_migrated]", {
@@ -654,7 +683,57 @@ export default function AdminWebScreen() {
         finalStateLibraryId: resolveLibraryId(next),
       });
     } catch {}
-  }, [loadConfigForScope, adminDraftStorageKey, explicitLibraryIdParam, runtimeLibraryId, adminDraftScopeId]);
+    if (!hadDraft && adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
+      setAdminScopeLoading(true);
+      void (async () => {
+        try {
+          const result = await loadSharedLibraryConfigWithDiagnostics(adminDraftScopeId, false);
+          if (cancelled) return;
+          if (!result.config) {
+            setAdminScopeLoadError(true);
+            return;
+          }
+          const shared = deepClone(result.config);
+          shared.library = (shared.library && typeof shared.library === "object") ? shared.library : {};
+          shared.branding = (shared.branding && typeof shared.branding === "object") ? shared.branding : {};
+          shared.library.id = adminDraftScopeId;
+          shared.branding.libraryId = adminDraftScopeId;
+          syncSchema(shared);
+          const sharedColors = loadColorHex(shared);
+          setConfig(shared);
+          setMainColorHex(sharedColors.mainColorHex);
+          setHighlightColorHex(sharedColors.highlightColorHex);
+          setFontColorHex(sharedColors.fontColorHex);
+          setAutoFontColor(sharedColors.autoFontColorEnabled);
+          savedConfigRef.current = JSON.stringify(shared);
+          savedColorsRef.current = {
+            mainColorHex: sharedColors.mainColorHex,
+            highlightColorHex: sharedColors.highlightColorHex,
+            fontColorHex: sharedColors.fontColorHex,
+            autoFontColor: sharedColors.autoFontColorEnabled,
+          };
+          setPinEditorVisible(!hasSavedAdminPin(shared) && !!shared?.admin?.pinEnabled);
+          setIsDirty(false);
+          const sharedLibraryName = String(shared?.branding?.libraryName || shared?.library?.name || "").trim();
+          if (sharedLibraryName) {
+            setAdminLibraries(rememberAdminLibrary(localStorage, {
+              libraryId: adminDraftScopeId,
+              libraryName: sharedLibraryName,
+            }));
+          }
+        } catch {
+          if (!cancelled) setAdminScopeLoadError(true);
+        } finally {
+          if (!cancelled) setAdminScopeLoading(false);
+        }
+      })();
+    } else {
+      setAdminScopeLoading(false);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [loadConfigForScope, adminDraftStorageKey, explicitLibraryIdParam, runtimeLibraryId, runtimeLibraryName, adminDraftScopeId]);
 
   useEffect(() => {
     const configChanged = JSON.stringify(config) !== savedConfigRef.current;
@@ -985,15 +1064,35 @@ export default function AdminWebScreen() {
       const effectiveFontColor = autoFontColor ? autoChooseFontColor(mainColorHex) : fontColorHex;
       applyColorHex(next, mainColorHex, highlightColorHex, effectiveFontColor, autoFontColor);
       syncSchema(next);
+      const idValidation = validateLibraryIdForSave(resolveLibraryId(next), explicitLibraryIdFromRoute);
+      if (!idValidation.valid) {
+        setSaveStatus("error");
+        setSaveErrorDetails({
+          timestamp: new Date().toISOString(),
+          requestUrl: "/api/library-config",
+          libraryId: idValidation.normalizedId,
+          correlationId: "validation",
+          payloadUtf8Bytes: 0,
+          requestUtf8Bytes: 0,
+          httpStatus: null,
+          responseContentType: null,
+          requestReachedApiRoute: false,
+          appErrorCode: "library_id_too_short",
+          responseBodySnippet: idValidation.message,
+          success: false,
+        });
+        return false;
+      }
       const serializedNext = JSON.stringify(next);
       const nextLibraryId = resolveLibraryId(next);
+      const targetDraftStorageKey = adminConfigStorageKeyForScope(nextLibraryId || adminDraftScopeId);
       const payloadUtf8Bytes =
         typeof TextEncoder !== "undefined" ? new TextEncoder().encode(serializedNext).length : serializedNext.length;
 
       if (isWeb && typeof localStorage !== "undefined") {
-        localStorage.setItem(adminDraftStorageKey, serializedNext);
+        localStorage.setItem(targetDraftStorageKey, serializedNext);
         applyWebHighlightColor(next?.branding?.highlightColorHex || highlightColorHex);
-        dispatchAdminConfigSavedWebEvent(adminDraftStorageKey, serializedNext);
+        dispatchAdminConfigSavedWebEvent(targetDraftStorageKey, serializedNext);
       }
       if (nextLibraryId) {
         activateAdminSession("admin_web_save");
@@ -1001,13 +1100,23 @@ export default function AdminWebScreen() {
         console.info("[app_admin-web] save_click", {
           libraryId: nextLibraryId,
           payloadUtf8Bytes,
-          adminDraftStorageKey,
+          adminDraftStorageKey: targetDraftStorageKey,
           adminSessionActiveAfterSaveActivation,
         });
         const sharedSave = await saveSharedLibraryConfigWithDiagnostics(nextLibraryId, next as Record<string, unknown>);
         if (!sharedSave.success) {
           setSaveErrorDetails(sharedSave);
           throw new Error("shared_config_save_failed");
+        }
+        const nextLibraryName = String(next?.branding?.libraryName || next?.library?.name || "").trim();
+        if (nextLibraryName) {
+          setAdminLibraries(rememberAdminLibrary(localStorage, {
+            libraryId: nextLibraryId,
+            libraryName: nextLibraryName,
+          }));
+        }
+        if (resolveAdminDraftScopeId(nextLibraryId) !== adminDraftScopeId) {
+          router.replace(`/app_admin-web?libraryId=${encodeURIComponent(nextLibraryId)}` as any);
         }
       }
 
@@ -1041,7 +1150,7 @@ export default function AdminWebScreen() {
       });
       return false;
     }
-  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb, libraryId, adminDraftStorageKey]);
+  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb, libraryId, adminDraftScopeId, explicitLibraryIdFromRoute]);
 
   const onSave = useCallback(() => {
     void persistDraftConfig();
@@ -1167,6 +1276,42 @@ export default function AdminWebScreen() {
   // ---------------------------------------------------------------------------
 
   const showStickyBar = isDirty || saveStatus !== "idle";
+  const libraryIdValidation = validateLibraryIdForSave(
+    String(config?.library?.id || config?.branding?.libraryId || ""),
+    explicitLibraryIdFromRoute,
+  );
+
+  const switchAdminLibrary = (savedLibrary: SavedLibrary) => {
+    router.replace(`/app_admin-web?libraryId=${encodeURIComponent(savedLibrary.libraryId)}` as any);
+  };
+
+  const createNewLibrary = () => {
+    router.replace("/app_admin-web" as any);
+  };
+
+  if (adminScopeLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: t.appBg }}>
+        <Text style={{ color: t.text, fontWeight: "900" }}>Loading library settings...</Text>
+      </View>
+    );
+  }
+
+  if (adminScopeLoadError) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: t.appBg, padding: 24 }}>
+        <Text style={{ color: t.danger, fontWeight: "900", textAlign: "center" }}>
+          This library's saved settings could not be loaded. No changes were made.
+        </Text>
+        <TouchableOpacity
+          style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg, marginTop: 16 }]}
+          onPress={createNewLibrary}
+        >
+          <Text style={[styles.btnText, { color: t.text }]}>Create New Library</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: t.appBg }}>
@@ -1177,6 +1322,12 @@ export default function AdminWebScreen() {
         <View style={styles.pageHeader}>
           <View>
             <Text style={[styles.h1, { color: t.text }]}>Library Settings</Text>
+            <Text style={[styles.currentLibraryName, { color: t.text }]}>
+              {String(config?.branding?.libraryName || config?.library?.name || "Create New Library")}
+            </Text>
+            {adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE ? (
+              <Text style={[styles.currentLibraryId, { color: t.subtext }]}>ID: {adminDraftScopeId}</Text>
+            ) : null}
             <Text style={[styles.sub, { color: t.subtext }]}>
               Configure your library's branding, content, and appearance.
             </Text>
@@ -1243,6 +1394,36 @@ export default function AdminWebScreen() {
 
         <Divider />
 
+        <View style={styles.librarySelector}>
+          <Text style={[styles.label, { color: t.muted }]}>Admin Library</Text>
+          <View style={styles.librarySelectorButtons}>
+            <TouchableOpacity
+              style={[styles.btn, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
+              onPress={createNewLibrary}
+              accessibilityLabel="Create New Library"
+            >
+              <Text style={[styles.btnText, { color: t.text }]}>Create New Library</Text>
+            </TouchableOpacity>
+            {adminLibraries.map((savedLibrary) => (
+              <TouchableOpacity
+                key={savedLibrary.libraryId}
+                style={[
+                  styles.btn,
+                  { borderColor: t.cardBorder, backgroundColor: t.inputBg },
+                  savedLibrary.libraryId === adminDraftScopeId ? { borderColor: t.accent, borderWidth: 2 } : undefined,
+                ]}
+                onPress={() => switchAdminLibrary(savedLibrary)}
+                accessibilityLabel={`Manage ${savedLibrary.libraryName}`}
+              >
+                <Text style={[styles.btnText, { color: t.text }]}>{savedLibrary.libraryName}</Text>
+                <Text style={[styles.librarySelectorId, { color: t.subtext }]}>{savedLibrary.libraryId}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <Divider />
+
         {previewAcceptanceHarnessVisible ? (
           <>
             <SectionTitle>Preview Acceptance Harness</SectionTitle>
@@ -1297,7 +1478,6 @@ export default function AdminWebScreen() {
           placeholder="Your library's name"
           placeholderTextColor="#7a8aa0"
         />
-
         <Text style={[styles.label, { color: t.muted, marginTop: 14 }]}>Library ID</Text>
         <TextInput
           style={[styles.input, { backgroundColor: t.inputBg, borderColor: t.inputBorder, color: t.text }]}
@@ -1312,6 +1492,11 @@ export default function AdminWebScreen() {
           autoCapitalize="none"
           autoCorrect={false}
         />
+        <Note color={libraryIdValidation.valid ? t.subtext : t.danger}>
+          {libraryIdValidation.valid
+            ? `New Library IDs must be at least ${MIN_NEW_LIBRARY_ID_LENGTH} characters. Existing short IDs remain supported.`
+            : libraryIdValidation.message}
+        </Note>
 
         <Text style={[styles.label, { color: t.muted, marginTop: 14 }]}>Library logo</Text>
         <View style={styles.logoRow}>
@@ -1856,7 +2041,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   h1: { fontSize: 22, fontWeight: "900" },
+  currentLibraryName: { marginTop: 5, fontSize: 18, fontWeight: "900" },
+  currentLibraryId: { marginTop: 2, fontSize: 12, fontWeight: "700" },
   sub: { marginTop: 6, fontSize: 13, lineHeight: 18, maxWidth: 620 },
+  librarySelector: { gap: 6 },
+  librarySelectorButtons: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  librarySelectorId: { fontSize: 10, fontWeight: "700", marginTop: 2 },
   divider: { height: 1, marginVertical: 16 },
   sectionTitle: { fontSize: 16, fontWeight: "900", marginBottom: 12 },
   label: { fontSize: 12, fontWeight: "800", marginBottom: 6 },

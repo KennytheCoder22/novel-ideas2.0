@@ -6,6 +6,7 @@ import {
   loadSharedLibraryConfigPayload,
   saveSharedLibraryConfig,
 } from "../lib/librarySharing/storage";
+import { MIN_NEW_LIBRARY_ID_LENGTH, normalizeHostedLibraryId } from "../lib/savedLibraries";
 
 function hasAdminSessionCookie(req: VercelRequest): boolean {
   const cookie = String(req.headers.cookie || "");
@@ -134,22 +135,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       return sendJson(res, 400, { error: "missing_or_invalid_config", correlationId }, correlationId);
     }
+    const normalizedLibraryId = normalizeHostedLibraryId(libraryId);
+    if (normalizedLibraryId.length < MIN_NEW_LIBRARY_ID_LENGTH) {
+      const existingConfig = await loadSharedLibraryConfigPayload(normalizedLibraryId, { correlationId });
+      if (!existingConfig) {
+        return sendJson(
+          res,
+          400,
+          {
+            error: "library_id_too_short",
+            minimumLength: MIN_NEW_LIBRARY_ID_LENGTH,
+            correlationId,
+          },
+          correlationId,
+        );
+      }
+    }
     const payloadUtf8Bytes = estimateUtf8Bytes(config);
     console.info("[api/library-config][POST] save_start", {
+      ...(trace || getSharedLibraryConfigStorageTrace(libraryId)),
       correlationId,
       libraryId,
       requestUrl: req.url || "",
       requestBodyUtf8Bytes: estimateUtf8Bytes(req.body),
       payloadUtf8Bytes,
-      ...(trace || getSharedLibraryConfigStorageTrace(libraryId)),
     });
     await saveSharedLibraryConfig(libraryId, config as Record<string, unknown>, { correlationId });
     console.info("[api/library-config][POST] save_success", {
+      ...(trace || getSharedLibraryConfigStorageTrace(libraryId)),
       correlationId,
       libraryId,
       requestUrl: req.url || "",
       payloadUtf8Bytes,
-      ...(trace || getSharedLibraryConfigStorageTrace(libraryId)),
     });
     return sendJson(res, 200, { success: true, correlationId }, correlationId);
   } catch (error) {

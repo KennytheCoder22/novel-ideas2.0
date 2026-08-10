@@ -3,6 +3,7 @@ import { useLocalSearchParams } from "expo-router";
 import { View, Text } from "react-native";
 import { HomeScreen } from "./index";
 import { setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
+import { normalizeHostedLibraryRouteId } from "../../lib/savedLibraries";
 
 function humanizeLibraryId(raw: string): string {
   const slug = String(raw || "").trim().replace(/[_]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
@@ -27,10 +28,11 @@ export default function PersonalizedLibraryRoute() {
 
   useEffect(() => {
     const raw = Array.isArray(params.libraryId) ? params.libraryId[0] : params.libraryId;
-    const humanized = humanizeLibraryId(raw || "");
-    setRuntimeLibraryId(raw || "");
+    const normalized = normalizeHostedLibraryRouteId(raw || "");
+    const humanized = humanizeLibraryId(normalized);
+    setRuntimeLibraryId(normalized);
     setRuntimeLibraryName(humanized);
-    setLibraryId(raw || "");
+    setLibraryId(normalized);
     setReady(true);
   }, [params.libraryId]);
 

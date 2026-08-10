@@ -2,9 +2,10 @@ import { useEffect } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { View, Text } from "react-native";
 import { setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
+import { normalizeHostedLibraryRouteId } from "../../lib/savedLibraries";
 
 function humanizeLibraryId(raw: string): string {
-  const slug = String(raw || "").trim().replace(/[_]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+  const slug = normalizeHostedLibraryRouteId(raw || "");
   if (!slug) return "NovelIdeas";
   return slug
     .split("-")

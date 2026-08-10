@@ -43,6 +43,11 @@ import {
   type SharedLibraryConfigLoadDiagnostics,
 } from "../../lib/librarySharing/client";
 import { isPreviewAcceptanceEnvironmentEnabled } from "../../lib/previewAcceptanceHarness";
+import {
+  readPatronLibraries,
+  rememberPatronLibrary,
+  type SavedLibrary,
+} from "../../lib/savedLibraries";
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
   String(
@@ -1497,6 +1502,13 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [savedLibraries, setSavedLibraries] = useState<SavedLibrary[]>(() => {
+    try {
+      return readPatronLibraries(typeof localStorage === "undefined" ? null : localStorage);
+    } catch {
+      return [];
+    }
+  });
 
   const [config, setConfig] = useState<any>(() => {
     // Check if a library-specific config is saved in localStorage
@@ -1567,6 +1579,12 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
           const configuredLibraryName = String(next?.branding?.libraryName ?? next?.library?.name ?? "").trim();
           if (configuredLibraryName) {
             setRuntimeLibraryName(configuredLibraryName);
+            try {
+              setSavedLibraries(rememberPatronLibrary(
+                typeof localStorage === "undefined" ? null : localStorage,
+                { libraryId: props.libraryId as string, libraryName: configuredLibraryName },
+              ));
+            } catch {}
           }
           setConfig(next);
         } else {
@@ -1942,6 +1960,11 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     router.replace("/testing");
   }
 
+  function openSavedLibrary(library: SavedLibrary) {
+    closeHeaderMenu();
+    router.replace(library.hostedPath as any);
+  }
+
   const showAdminMenuItems = adminMenuUnlocked || adminUnlocked;
 
   function renderHeaderMenu() {
@@ -1957,6 +1980,31 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
         </TouchableOpacity>
         {showHeaderMenu ? (
           <View style={[styles.headerMenuPopover, { borderColor: theme.lightBorder, backgroundColor: theme.inputBg }]}>
+            {savedLibraries.length ? (
+              <>
+                <Text style={[styles.headerMenuSectionLabel, { color: theme.muted }]}>My Libraries</Text>
+                {savedLibraries.map((savedLibrary) => (
+                  <TouchableOpacity
+                    key={savedLibrary.libraryId}
+                    style={styles.headerMenuItem}
+                    onPress={() => openSavedLibrary(savedLibrary)}
+                    accessibilityLabel={`Go to ${savedLibrary.libraryName}`}
+                  >
+                    <Text
+                      style={[
+                        styles.headerMenuItemText,
+                        { color: theme.text },
+                        savedLibrary.libraryId === props.libraryId ? { fontWeight: "900" } : undefined,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {savedLibrary.libraryName}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
+              </>
+            ) : null}
             <TouchableOpacity
               style={styles.headerMenuItem}
               onPress={() => {
@@ -2480,6 +2528,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   headerMenuItemText: { fontSize: 14, fontWeight: "700" },
+  headerMenuSectionLabel: {
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+    textTransform: "uppercase",
+  },
 
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 as any },
   title: { fontSize: 30, fontWeight: "900", marginBottom: 2 },
