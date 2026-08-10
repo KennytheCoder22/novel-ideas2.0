@@ -653,6 +653,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Click, Clack, Moo: Cows That Type",
+      wikiTitle: "Click, Clack, Moo: Cows That Type",
       author: "Doreen Cronin",
       genre: "humor",
       tags: [
@@ -675,6 +676,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Little Engine That Could",
+      wikiTitle: "The Little Engine That Could",
       author: "Watty Piper",
       genre: "inspiration",
       tags: [
@@ -697,6 +699,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "We're Going on a Bear Hunt",
+      wikiTitle: "We're Going on a Bear Hunt",
       author: "Michael Rosen",
       genre: "adventure",
       tags: [
@@ -720,6 +723,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Mitten",
+      wikiTitle: "The Mitten",
       author: "Jan Brett",
       genre: "animals",
       tags: [
@@ -744,6 +748,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Polar Express",
+      wikiTitle: "The Polar Express",
       author: "Chris Van Allsburg",
       genre: "holiday",
       tags: [
@@ -791,6 +796,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Paper Bag Princess",
+      wikiTitle: "The Paper Bag Princess",
       author: "Robert Munsch",
       genre: "fantasy",
       tags: [
@@ -814,6 +820,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Alexander and the Terrible, Horrible, No Good, Very Bad Day",
+      wikiTitle: "Alexander and the Terrible, Horrible, No Good, Very Bad Day",
       author: "Judith Viorst",
       genre: "humor",
       tags: [
@@ -836,6 +843,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Cloudy with a Chance of Meatballs",
+      wikiTitle: "Cloudy with a Chance of Meatballs",
       author: "Judi Barrett",
       genre: "humor",
       tags: [
@@ -859,6 +867,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The True Story of the 3 Little Pigs",
+      wikiTitle: "The True Story of the Three Little Pigs",
       author: "Jon Scieszka",
       genre: "humor",
       tags: [
@@ -881,6 +890,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Monster at the End of This Book",
+      wikiTitle: "The Monster at the End of This Book",
       author: "Jon Stone",
       genre: "humor",
       tags: [
@@ -903,6 +913,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "I Want My Hat Back",
+      wikiTitle: "I Want My Hat Back",
       author: "Jon Klassen",
       genre: "humor",
       tags: [
@@ -926,6 +937,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Ada Twist, Scientist",
+      wikiTitle: "Ada Twist, Scientist",
       author: "Andrea Beaty",
       genre: "science",
       tags: [
@@ -948,6 +960,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Last Stop on Market Street",
+      wikiTitle: "Last Stop on Market Street",
       author: "Matt de la Peña",
       genre: "family",
       tags: [
@@ -970,6 +983,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Pout-Pout Fish",
+      wikiTitle: "The Pout-Pout Fish",
       author: "Deborah Diesen",
       genre: "friendship",
       tags: [
@@ -992,6 +1006,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Book with No Pictures",
+      wikiTitle: "The Book with No Pictures",
       author: "B. J. Novak",
       genre: "humor",
       tags: [
@@ -1014,6 +1029,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "The Bad Seed",
+      wikiTitle: "The Bad Seed",
       author: "Jory John",
       genre: "humor",
       tags: [
@@ -1036,6 +1052,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Creepy Carrots!",
+      wikiTitle: "Creepy Carrots!",
       author: "Aaron Reynolds",
       genre: "mystery",
       tags: [
@@ -1062,9 +1079,9 @@ export const k2: SwipeDeck = {
     // Imported from screens/swipe/defaultCards.ts (K–2)
     { isDefault: true, title: "Don’t Let the Pigeon Drive the Bus!", author: "Mo Willems", genre: "Humor", tags: ["audience:children", "age:k2", "format:picture_book", "genre:humor", "vibe:silly"] },
     { isDefault: true, title: "There’s a Monster at the End of This Book", author: "Jon Stone", genre: "Humor / Classic", tags: ["audience:children", "age:k2", "format:picture_book", "genre:humor", "vibe:meta"] },
-    { isDefault: true, title: "We Are in a Book!", author: "Mo Willems", genre: "Humor / Early Reader", tags: ["audience:children", "age:k2", "format:early_reader", "genre:humor", "vibe:fast_paced"] },
-    { isDefault: true, title: "Clifford the Big Red Dog", author: "Norman Bridwell", genre: "Animals / Character", tags: ["audience:children", "age:k2", "format:picture_book", "genre:animals", "vibe:wholesome"] },
-    { isDefault: true, title: "Froggy Gets Dressed", author: "Jonathan London", genre: "Humor / Everyday", tags: ["audience:children", "age:k2", "format:picture_book", "genre:humor", "vibe:silly"] },
+    { isDefault: true, title: "We Are in a Book!", author: "Mo Willems", genre: "Humor / Early Reader", wikiTitle: "We Are in a Book!", tags: ["audience:children", "age:k2", "format:early_reader", "genre:humor", "vibe:fast_paced"] },
+    { isDefault: true, title: "Clifford the Big Red Dog", author: "Norman Bridwell", genre: "Animals / Character", wikiTitle: "Clifford the Big Red Dog", tags: ["audience:children", "age:k2", "format:picture_book", "genre:animals", "vibe:wholesome"] },
+    { isDefault: true, title: "Froggy Gets Dressed", author: "Jonathan London", genre: "Humor / Everyday", wikiTitle: "Froggy Gets Dressed", tags: ["audience:children", "age:k2", "format:picture_book", "genre:humor", "vibe:silly"] },
     { isDefault: true, title: "How Do Dinosaurs Say Goodnight?", author: "Jane Yolen", genre: "Dinosaurs / Bedtime", tags: ["audience:children", "age:k2", "format:picture_book", "topic:dinosaurs", "genre:bedtime", "vibe:warm"] },
     { isDefault: true, title: "First Big Book of Animals", author: "Catherine D. Hughes", genre: "Animals / Nonfiction", tags: ["audience:children", "age:k2", "format:nonfiction", "genre:animals"] },
     { isDefault: true, title: "Goodnight, Goodnight, Construction Site", author: "Sherri Duskey Rinker", genre: "Vehicles / Bedtime", tags: ["audience:children", "age:k2", "format:picture_book", "topic:vehicles", "genre:bedtime", "vibe:calm"] },

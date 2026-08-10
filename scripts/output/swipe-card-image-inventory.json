@@ -23,8 +23,8 @@
       },
       "k2": {
         "total": 120,
-        "reachable": 86,
-        "placeholderFallback": 34
+        "reachable": 106,
+        "placeholderFallback": 14
       }
     }
   },
@@ -1728,10 +1728,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Ada Twist, Scientist",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Ada Twist, Scientist",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:109",
@@ -1752,10 +1752,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Alexander and the Terrible, Horrible, No Good, Very Bad Day",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Alexander and the Terrible, Horrible, No Good, Very Bad Day",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:94",
@@ -1848,10 +1848,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Click, Clack, Moo: Cows That Type",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Click, Clack, Moo: Cows That Type",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:48",
@@ -1860,10 +1860,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Clifford the Big Red Dog",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Clifford the Big Red Dog",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:35",
@@ -1872,10 +1872,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Cloudy with a Chance of Meatballs",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Cloudy with a Chance of Meatballs",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:18",
@@ -1908,10 +1908,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Creepy Carrots!",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Creepy Carrots!",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:22",
@@ -2064,10 +2064,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Froggy Gets Dressed",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Froggy Gets Dressed",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:14",
@@ -2184,10 +2184,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "I Want My Hat Back",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "I Want My Hat Back",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:8",
@@ -2256,10 +2256,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Last Stop on Market Street",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Last Stop on Market Street",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:99",
@@ -2712,10 +2712,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Bad Seed",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Bad Seed",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:42",
@@ -2724,10 +2724,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Book with No Pictures",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Book with No Pictures",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:7",
@@ -2808,10 +2808,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Little Engine That Could",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Little Engine That Could",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:84",
@@ -2832,10 +2832,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Mitten",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Mitten",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:37",
@@ -2844,10 +2844,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Monster at the End of This Book",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Monster at the End of This Book",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:33",
@@ -2856,10 +2856,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Paper Bag Princess",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Paper Bag Princess",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:91",
@@ -2880,10 +2880,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Polar Express",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Polar Express",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:41",
@@ -2892,10 +2892,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Pout-Pout Fish",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Pout-Pout Fish",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:20",
@@ -2952,10 +2952,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The True Story of the 3 Little Pigs",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The True Story of the Three Little Pigs",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:1",
@@ -3072,10 +3072,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "We Are in a Book!",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "We Are in a Book!",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:29",
@@ -3084,10 +3084,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "We're Going on a Bear Hunt",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "We're Going on a Bear Hunt",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:104",
