@@ -13,8 +13,8 @@
     "decks": {
       "36": {
         "total": 100,
-        "reachable": 90,
-        "placeholderFallback": 10
+        "reachable": 96,
+        "placeholderFallback": 4
       },
       "adult": {
         "total": 140,
@@ -3384,10 +3384,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Dream",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Dream (YouTuber)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_ducktales",
@@ -3612,10 +3612,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Just Dance",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Just Dance (video game series)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_kurzgesagt",
@@ -3648,10 +3648,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "LEGO Games",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "List of Lego video games",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_ninjago",
@@ -3828,10 +3828,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Pokémon",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Pokémon (TV series)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_pokemon",
@@ -3840,10 +3840,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Pokémon Games",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Pokémon (video game series)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_pokimane",
@@ -3960,10 +3960,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Sonic Games",
       "mediaType": "game",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Sonic the Hedgehog",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_sonic",

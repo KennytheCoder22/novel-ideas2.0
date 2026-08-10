@@ -1051,6 +1051,7 @@ export const deck36 = {
       title: "Pokémon",
       author: "The Pokemon Company",
       genre: "Adventure / Friendship",
+      wikiTitle: "Pokémon (TV series)",
       semantic: {
         contentTraits: ["friendship", "competition", "adventure", "training"],
         toneTraits: ["fun", "energetic", "hopeful"],
@@ -1509,6 +1510,7 @@ export const deck36 = {
       title: "Pokémon Games",
       author: "The Pokemon Company",
       genre: "Friendship / Adventure",
+      wikiTitle: "Pokémon (video game series)",
       semantic: {
         contentTraits: ["friendship", "competition", "adventure", "training"],
         toneTraits: ["playful", "fun", "hopeful"],
@@ -1600,6 +1602,7 @@ export const deck36 = {
       title: "LEGO Games",
       author: "LEGO",
       genre: "Adventure / Friendship / Comedy",
+      wikiTitle: "List of Lego video games",
       semantic: {
         contentTraits: ["friendship", "adventure", "community"],
         toneTraits: ["playful", "funny", "energetic"],
@@ -1622,6 +1625,7 @@ export const deck36 = {
       title: "Sonic Games",
       author: "Sega",
       genre: "Adventure / Heroic",
+      wikiTitle: "Sonic the Hedgehog",
       semantic: {
         contentTraits: ["adventure", "competition", "friendship"],
         toneTraits: ["energetic", "playful", "fast"],
@@ -1805,6 +1809,7 @@ export const deck36 = {
       title: "Just Dance",
       author: "Ubisoft",
       genre: "Music / Community",
+      wikiTitle: "Just Dance (video game series)",
       semantic: {
         contentTraits: ["community", "music_and_storytelling", "competition"],
         toneTraits: ["energetic", "playful", "uplifting"],
@@ -1896,6 +1901,7 @@ export const deck36 = {
       title: "Dream",
       author: "Dream",
       genre: "Survival / Adventure",
+      wikiTitle: "Dream (YouTuber)",
       semantic: {
         contentTraits: ["competition", "community", "survival"],
         toneTraits: ["energetic", "focused", "playful"],
