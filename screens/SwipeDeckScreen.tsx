@@ -57,6 +57,7 @@ import type { RecommenderInput } from "./recommenders/types";
 import { estimateReaderSophisticationFromTaste } from "./recommenders/taste/sophisticationModel";
 import { cardIdentityKey, selectAdaptiveCard } from "./swipe/adaptiveCardQueue";
 import { getSwipeCardFallbackImage } from "../assets/swipeCardFallback";
+import { wikipediaTitleCandidates } from "./swipe/swipeCardImages";
 import { BookshelfLoadingIndicator } from "../components/BookshelfLoadingIndicator";
 import {
   HUMAN_REVIEW_CONCERN_OPTIONS,
@@ -2020,27 +2021,30 @@ export default function SwipeDeckScreen(props: Props) {
       const author = (currentCard as any)?.author as string | undefined;
       const tags = Array.isArray((currentCard as any)?.tags) ? (currentCard as any).tags.map((t: any) => String(t).toLowerCase()) : [];
       const nonBookMediaCard = tags.some((t: string) => t === "media:tv" || t === "media:movie" || t === "media:game");
+      const blocked = new Set((swipeCoverFailures[currentCardKey] || []).map((value) => String(value || "").toLowerCase()));
       if (!title || title.trim().length === 0) return;
-      if (swipeCoverCache[currentCardKey]) return;
+      const cachedImage = normalizeImageUrl(swipeCoverCache[currentCardKey]);
+      if (cachedImage && !blocked.has(cachedImage.toLowerCase())) return;
 
       setSwipeCoverLoading((prev) => ({ ...prev, [currentCardKey]: true }));
       try {
         const wikiTitle = (currentCard as any)?.wikiTitle as string | undefined;
-        const explicitImage = (currentCard as any)?.imageUri as string | undefined;
-        if (!normalizeImageUrl(explicitImage) && wikiTitle && wikiTitle.trim().length > 0) {
-          try {
-            const foundWiki = await lookupWikipediaThumbnail(wikiTitle);
-            if (cancelled) return;
-            const wikiImage = normalizeImageUrl(foundWiki?.imageUrl);
-            if (wikiImage) {
-              setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: wikiImage }));
-              return;
+        const explicitImage = normalizeImageUrl((currentCard as any)?.imageUri);
+        const explicitImageAvailable = explicitImage && !blocked.has(explicitImage.toLowerCase());
+        if (!explicitImageAvailable && wikiTitle && wikiTitle.trim().length > 0) {
+          for (const candidateTitle of wikipediaTitleCandidates(wikiTitle, cardCategoryFromTags(currentCard))) {
+            try {
+              const foundWiki = await lookupWikipediaThumbnail(candidateTitle);
+              if (cancelled) return;
+              const wikiImage = normalizeImageUrl(foundWiki?.imageUrl);
+              if (wikiImage && !blocked.has(wikiImage.toLowerCase())) {
+                setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: wikiImage }));
+                return;
+              }
+            } catch {
             }
-          } catch {
           }
         }
-
-        if (swipeCoverCache[currentCardKey]) return;
 
         // Check static pre-resolved cover URL map first (instant, no API call)
         {
@@ -2050,8 +2054,9 @@ export default function SwipeDeckScreen(props: Props) {
           ].filter(Boolean).join('|');
           const staticUrl = (coverUrlsMap as Record<string, string>)[normalizedKey] ||
             (coverUrlsMap as Record<string, string>)[String(title || '').toLowerCase().trim().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ')];
-          if (staticUrl) {
-            setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: staticUrl }));
+          const normalizedStaticUrl = normalizeImageUrl(staticUrl);
+          if (normalizedStaticUrl && !blocked.has(normalizedStaticUrl.toLowerCase())) {
+            setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: normalizedStaticUrl }));
             return;
           }
         }
@@ -2061,7 +2066,7 @@ export default function SwipeDeckScreen(props: Props) {
             const found = await lookupOpenLibraryCover(title, author);
             if (cancelled) return;
             const coverUrl = normalizeImageUrl(found?.coverUrl);
-            if (coverUrl) {
+            if (coverUrl && !blocked.has(coverUrl.toLowerCase())) {
               setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: coverUrl }));
               return;
             }
@@ -2071,7 +2076,11 @@ export default function SwipeDeckScreen(props: Props) {
 
         const localFallbackImage = getSwipeCardFallbackImage(deckKey, title);
         const localFallbackUri = localFallbackImage ? Image.resolveAssetSource(localFallbackImage)?.uri : undefined;
-        if (typeof localFallbackUri === "string" && localFallbackUri.length > 0) {
+        if (
+          typeof localFallbackUri === "string"
+          && localFallbackUri.length > 0
+          && !blocked.has(localFallbackUri.toLowerCase())
+        ) {
           setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: localFallbackUri }));
         }
       } finally {
@@ -2084,7 +2093,7 @@ export default function SwipeDeckScreen(props: Props) {
     return () => {
       cancelled = true;
     };
-  }, [currentCard, currentCardKey, swipeCoverCache]);
+  }, [currentCard, currentCardKey, swipeCoverCache, swipeCoverFailures]);
 
   function animateOffscreen(dir: "left" | "right" | "down", onDone: () => void) {
     let toX = 0;

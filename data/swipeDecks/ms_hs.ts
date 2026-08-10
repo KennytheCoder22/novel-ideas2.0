@@ -203,7 +203,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["mystery", "survival", "community"],
    vibes: [],
  }, },
-  { isDefault: true, title: "Never Have I Ever", semantic: { contentTraits: ["teen_life","family","identity"], toneTraits: ["funny","quirky","heartfelt"], characterTraits: ["flawed_but_relatable"], storyTraits: ["coming_of_age","relationship_complexity"], aversionTraits: ["cringe_moments"] }, author: "Netflix", genre: "Comedy / Coming-of-Age", wikiTitle: "Never Have I Ever", tags: ["audience:teen","age:mshs","media:tv","format:series","series","comedy","coming of age","family","identity","quirky"],tasteTraits: { warmth: 1, darkness: 0.0, pacing: -0.02, realism: 0.0, characterFocus: 1, ideaDensity: 0.41 }, 
+  { isDefault: true, title: "Never Have I Ever", semantic: { contentTraits: ["teen_life","family","identity"], toneTraits: ["funny","quirky","heartfelt"], characterTraits: ["flawed_but_relatable"], storyTraits: ["coming_of_age","relationship_complexity"], aversionTraits: ["cringe_moments"] }, author: "Netflix", genre: "Comedy / Coming-of-Age", wikiTitle: "Never Have I Ever (TV series)", tags: ["audience:teen","age:mshs","media:tv","format:series","series","comedy","coming of age","family","identity","quirky"],tasteTraits: { warmth: 1, darkness: 0.0, pacing: -0.02, realism: 0.0, characterFocus: 1, ideaDensity: 0.41 },
  output: {
    genre: ["comedy", "family", "identity"],
    vibes: ["coming of age", "quirky"],
