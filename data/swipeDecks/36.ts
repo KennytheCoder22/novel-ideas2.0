@@ -1395,6 +1395,7 @@ export const deck36 = {
     {
       id: "36_game_roblox",
       title: "Roblox",
+      imageUri: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Roblox_%282025%29_%28App_Icon%29.svg/960px-Roblox_%282025%29_%28App_Icon%29.svg.png",
       author: "Roblox",
       genre: "Adventure / Community",
       wikiTitle: "Roblox",
@@ -1648,6 +1649,7 @@ export const deck36 = {
     {
       id: "36_game_fallguys",
       title: "Fall Guys",
+      imageUri: "https://cdn.cloudflare.steamstatic.com/steam/apps/1097150/library_600x900_2x.jpg",
       wikiTitle: "Fall Guys",
       author: "Mediatonic",
       genre: "Comedy / Friendship",
@@ -1809,6 +1811,7 @@ export const deck36 = {
     {
       id: "36_game_justdance",
       title: "Just Dance",
+      imageUri: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Dancing_girl_at_E3_2012_%287351776400%29.jpg/960px-Dancing_girl_at_E3_2012_%287351776400%29.jpg",
       author: "Ubisoft",
       genre: "Music / Community",
       wikiTitle: "Just Dance (video game series)",
@@ -2089,6 +2092,7 @@ export const deck36 = {
     {
       id: "36_yt_pokimane",
       title: "Pokimane",
+      imageUri: "https://yt3.googleusercontent.com/zLnHIkM51I6geJNta534_0eFyjKkvMMKuQB_GJhmm7qmOS_J0Kx-fHgaSP0Q7tjSrHBg803wbpE=s900-c-k-c0x00ffffff-no-rj",
       wikiTitle: "Pokimane",
       author: "Imane Anys",
       genre: "Friendship / Community / Comedy",

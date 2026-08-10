@@ -103,7 +103,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["science fiction", "mystery", "friendship"],
    vibes: ["spooky"],
  }, },
-  { isDefault: true, title: "The Umbrella Academy", semantic: { contentTraits: ["superpowered_family","time_travel","apocalypse"], toneTraits: ["dark","chaotic","quirky"], characterTraits: ["dysfunctional_family","gifted_outcasts"], storyTraits: ["prevent_apocalypse","family_conflict"], aversionTraits: ["overstimulating"] }, author: "Netflix", genre: "Superhero / Fantasy", wikiTitle: "The Umbrella Academy (TV series)", tags: ["audience:teen","age:mshs","media:tv","format:series","series","superheroes","fantasy","time travel","dark","quirky"],tasteTraits: { warmth: 0.75, darkness: 1, pacing: -0.02, realism: -1, characterFocus: 1, ideaDensity: 0.45 }, 
+  { isDefault: true, title: "The Umbrella Academy", imageUri: "https://m.media-amazon.com/images/M/MV5BYjZiZmIzYWUtYTBlOC00YmJmLTg5YWMtNTYwY2FkYjQxNDg1XkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["superpowered_family","time_travel","apocalypse"], toneTraits: ["dark","chaotic","quirky"], characterTraits: ["dysfunctional_family","gifted_outcasts"], storyTraits: ["prevent_apocalypse","family_conflict"], aversionTraits: ["overstimulating"] }, author: "Netflix", genre: "Superhero / Fantasy", wikiTitle: "The Umbrella Academy (TV series)", tags: ["audience:teen","age:mshs","media:tv","format:series","series","superheroes","fantasy","time travel","dark","quirky"],tasteTraits: { warmth: 0.75, darkness: 1, pacing: -0.02, realism: -1, characterFocus: 1, ideaDensity: 0.45 },
  output: {
    genre: ["superheroes", "fantasy", "time travel"],
    vibes: ["dark", "quirky"],
@@ -238,7 +238,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["historical", "crime"],
    vibes: ["dark"],
  }, },
-  { isDefault: true, title: "Buffy the Vampire Slayer", semantic: { contentTraits: ["monster_hunting","teen_life","destiny"], toneTraits: ["witty","dark","adventurous"], characterTraits: ["chosen_one","found_family_team"], storyTraits: ["monster_of_the_week","season_arc"], aversionTraits: ["dated_effects"] }, author: "The WB / UPN", genre: "Paranormal / Horror", wikiTitle: "Buffy the Vampire Slayer", tags: ["audience:teen","age:mshs","media:tv","format:series","series","horror","coming of age","spooky","dark"],tasteTraits: { warmth: 0.25, darkness: 1, pacing: 0.18, realism: -0.55, characterFocus: 1, ideaDensity: 0.0 }, 
+  { isDefault: true, title: "Buffy the Vampire Slayer", imageUri: "https://m.media-amazon.com/images/M/MV5BMDk4MGVkNDAtZjQwZi00MDc3LWE4MmEtY2YyODQ2NDQyMjgxXkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["monster_hunting","teen_life","destiny"], toneTraits: ["witty","dark","adventurous"], characterTraits: ["chosen_one","found_family_team"], storyTraits: ["monster_of_the_week","season_arc"], aversionTraits: ["dated_effects"] }, author: "The WB / UPN", genre: "Paranormal / Horror", wikiTitle: "Buffy the Vampire Slayer", tags: ["audience:teen","age:mshs","media:tv","format:series","series","horror","coming of age","spooky","dark"],tasteTraits: { warmth: 0.25, darkness: 1, pacing: 0.18, realism: -0.55, characterFocus: 1, ideaDensity: 0.0 },
  output: {
    genre: ["horror"],
    vibes: ["coming of age", "spooky", "dark"],
@@ -747,7 +747,7 @@ const CANON_MSHS_ANIME: any[] = [
    genre: ["horror", "school", "comedy"],
    vibes: ["spooky", "dark", "fast-paced"],
  }, },
-  { isDefault: true, title: "Fullmetal Alchemist: Brotherhood", semantic: { contentTraits: ["family","artificial_life","political_intrigue"], toneTraits: ["dramatic","adventurous","emotional"], characterTraits: ["loyal_siblings"], storyTraits: ["quest_journey","truth_discovery"], aversionTraits: ["violence","complex_themes"] }, author: "Anime", genre: "Fantasy / Adventure", wikiTitle: "Fullmetal Alchemist: Brotherhood", tags: ["audience:teen","age:mshs","media:anime","fantasy","adventure","family","robots","political","emotional growth"],tasteTraits: { warmth: 0.7, darkness: 0.0, pacing: 0.68, realism: -0.95, characterFocus: 1, ideaDensity: 0.55 }, 
+  { isDefault: true, title: "Fullmetal Alchemist: Brotherhood", imageUri: "https://m.media-amazon.com/images/M/MV5BMzNiODA5NjYtYWExZS00OTc4LTg3N2ItYWYwYTUyYmM5MWViXkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["family","artificial_life","political_intrigue"], toneTraits: ["dramatic","adventurous","emotional"], characterTraits: ["loyal_siblings"], storyTraits: ["quest_journey","truth_discovery"], aversionTraits: ["violence","complex_themes"] }, author: "Anime", genre: "Fantasy / Adventure", wikiTitle: "Fullmetal Alchemist: Brotherhood", tags: ["audience:teen","age:mshs","media:anime","fantasy","adventure","family","robots","political","emotional growth"],tasteTraits: { warmth: 0.7, darkness: 0.0, pacing: 0.68, realism: -0.95, characterFocus: 1, ideaDensity: 0.55 },
  output: {
    genre: ["fantasy", "adventure", "family", "robots", "political"],
    vibes: ["emotional growth"],
@@ -767,7 +767,7 @@ const CANON_MSHS_ANIME: any[] = [
    genre: ["adventure", "fantasy"],
    vibes: [],
  }, },
-  { isDefault: true, title: "Spy × Family", semantic: { contentTraits: ["undercover_policing","found_family","family_secrets"], toneTraits: ["light","funny","warm"], characterTraits: ["unlikely_allies","found_family_team"], storyTraits: ["case_of_the_week","relationship_building"], aversionTraits: ["low_plot"] }, author: "Anime", genre: "Adventure / Humor", wikiTitle: "Spy × Family", tags: ["audience:teen","age:mshs","media:anime","adventure","playful","family","comedy","warm"],tasteTraits: { warmth: 1, darkness: 0.41, pacing: 0.57, realism: -0.09, characterFocus: 1, ideaDensity: 0.0 }, 
+  { isDefault: true, title: "Spy × Family", imageUri: "https://m.media-amazon.com/images/M/MV5BZDkwNjc0NWEtNzJlOC00N2YwLTk4MjktZGFlZDE2Y2QzOWI0XkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["undercover_policing","found_family","family_secrets"], toneTraits: ["light","funny","warm"], characterTraits: ["unlikely_allies","found_family_team"], storyTraits: ["case_of_the_week","relationship_building"], aversionTraits: ["low_plot"] }, author: "Anime", genre: "Adventure / Humor", wikiTitle: "Spy × Family", tags: ["audience:teen","age:mshs","media:anime","adventure","playful","family","comedy","warm"],tasteTraits: { warmth: 1, darkness: 0.41, pacing: 0.57, realism: -0.09, characterFocus: 1, ideaDensity: 0.0 },
  output: {
    genre: ["adventure", "family", "comedy"],
    vibes: ["playful", "warm"],

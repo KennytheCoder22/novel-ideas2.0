@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { analyzeSwipeCardImage } from "./swipe-card-image-quality.mjs";
 
 const repoRoot = process.cwd();
 const inventory = JSON.parse(
@@ -67,19 +68,24 @@ async function fetchWithRetry(url, init = {}) {
   throw new Error("http_429_retry_exhausted");
 }
 
-function verifyLocalImage(sourcePath) {
+async function verifyLocalImage(sourcePath) {
   const absolute = resolve(repoRoot, ...String(sourcePath || "").split(/[\\/]+/).filter(Boolean));
   if (!existsSync(absolute)) return { ok: false, source: "local", path: sourcePath, error: "missing_file" };
   const bytes = readFileSync(absolute);
   const png = bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   const jpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const validImage = (png || jpeg) && statSync(absolute).size > 0;
+  const visualQuality = validImage ? await analyzeSwipeCardImage(bytes) : undefined;
   return {
-    ok: (png || jpeg) && statSync(absolute).size > 0,
+    ok: validImage && !visualQuality?.visuallyBlank,
     source: "local",
     path: sourcePath,
     contentType: png ? "image/png" : jpeg ? "image/jpeg" : "unknown",
     bytes: statSync(absolute).size,
-    error: png || jpeg ? undefined : "invalid_image_signature",
+    visualQuality,
+    error: !validImage
+      ? "invalid_image_signature"
+      : visualQuality?.visuallyBlank ? "visually_blank_image" : undefined,
   };
 }
 
@@ -87,17 +93,18 @@ async function verifyImageUrl(url) {
   if (imageCache.has(url)) return imageCache.get(url);
   let result;
   try {
-    let response = await fetchWithRetry(url, { method: "HEAD" });
-    if (response.status === 405) {
-      response = await fetchWithRetry(url, { headers: { Range: "bytes=0-1023" } });
-    }
+    const response = await fetchWithRetry(url);
     const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-    await response.body?.cancel();
+    const validResponse = response.ok && contentType.startsWith("image/");
+    const bytes = validResponse ? Buffer.from(await response.arrayBuffer()) : Buffer.alloc(0);
+    const visualQuality = validResponse ? await analyzeSwipeCardImage(bytes) : undefined;
     result = {
-      ok: response.ok && contentType.startsWith("image/"),
+      ok: validResponse && !visualQuality?.visuallyBlank,
       status: response.status,
       contentType,
       url,
+      visualQuality,
+      error: visualQuality?.visuallyBlank ? "visually_blank_image" : undefined,
     };
   } catch (error) {
     result = {
@@ -227,7 +234,7 @@ async function verifyRow(row) {
     const path = String(row.imageSourcePath || "");
     const result = /^https?:\/\//i.test(path)
       ? { source: "image_uri", ...(await verifyImageUrl(path)) }
-      : verifyLocalImage(path);
+      : await verifyLocalImage(path);
     attempts.push(result);
     if (result.ok) return { ...row, ok: true, attempts };
   }
@@ -260,7 +267,7 @@ async function verifyRow(row) {
 
   const fallbackPath = fallbackPathFor(row);
   if (fallbackPath) {
-    const result = verifyLocalImage(fallbackPath);
+    const result = await verifyLocalImage(fallbackPath);
     attempts.push(result);
     if (result.ok) return { ...row, ok: true, attempts };
   }
