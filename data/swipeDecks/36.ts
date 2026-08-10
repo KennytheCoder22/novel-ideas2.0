@@ -638,6 +638,7 @@ export const deck36 = {
       title: "Toy Story",
       author: "Pixar",
       genre: "Friendship / Comedy / Adventure",
+      wikiTitle: "Toy Story",
       semantic: {
         contentTraits: ["friendship", "community", "identity"],
         toneTraits: ["fun", "warm", "playful"],
@@ -660,6 +661,7 @@ export const deck36 = {
       title: "Toy Story 4",
       author: "Pixar",
       genre: "Friendship / Adventure / Identity",
+      wikiTitle: "Toy Story 4",
       semantic: {
         contentTraits: ["friendship", "identity", "community"],
         toneTraits: ["warm", "bittersweet", "fun"],
@@ -682,6 +684,7 @@ export const deck36 = {
       title: "How to Train Your Dragon",
       author: "DreamWorks Animation",
       genre: "Fantasy / Adventure / Friendship",
+      wikiTitle: "How to Train Your Dragon (film)",
       semantic: {
         contentTraits: ["friendship", "adventure", "family", "monsters"],
         toneTraits: ["adventurous", "heartfelt", "wonder_filled"],
@@ -704,6 +707,7 @@ export const deck36 = {
       title: "How to Train Your Dragon 2",
       author: "DreamWorks Animation",
       genre: "Fantasy / Adventure / Dragon",
+      wikiTitle: "How to Train Your Dragon 2",
       semantic: {
         contentTraits: ["friendship", "adventure", "family", "monsters"],
         toneTraits: ["epic", "heartfelt", "adventurous"],
@@ -726,6 +730,7 @@ export const deck36 = {
       title: "Sing",
       author: "Illumination",
       genre: "Music / Comedy / Friendship",
+      wikiTitle: "Sing (2016 American film)",
       semantic: {
         contentTraits: ["community", "music_and_storytelling", "ambition", "friendship"],
         toneTraits: ["fun", "energetic", "uplifting"],
@@ -748,6 +753,7 @@ export const deck36 = {
       title: "Sing 2",
       author: "Illumination",
       genre: "Music / Comedy / Friendship",
+      wikiTitle: "Sing 2",
       semantic: {
         contentTraits: ["community", "music_and_storytelling", "ambition", "friendship"],
         toneTraits: ["energetic", "uplifting", "fun"],
@@ -839,6 +845,7 @@ export const deck36 = {
       title: "Minions",
       author: "Illumination",
       genre: "Comedy / Adventure",
+      wikiTitle: "Minions (film)",
       semantic: {
         contentTraits: ["community", "adventure", "crime"],
         toneTraits: ["absurd", "funny", "playful"],
@@ -861,6 +868,7 @@ export const deck36 = {
       title: "Despicable Me",
       author: "Illumination",
       genre: "Comedy / Family / Redemption",
+      wikiTitle: "Despicable Me",
       semantic: {
         contentTraits: ["family", "community", "crime", "friendship"],
         toneTraits: ["funny", "heartfelt", "playful"],
@@ -883,6 +891,7 @@ export const deck36 = {
       title: "Paddington",
       author: "StudioCanal",
       genre: "Family / Comedy / Kindness",
+      wikiTitle: "Paddington (film)",
       semantic: {
         contentTraits: ["family", "community", "outsider_identity", "friendship"],
         toneTraits: ["warm", "gentle", "whimsical"],
@@ -905,6 +914,7 @@ export const deck36 = {
       title: "Avatar: The Last Airbender",
       author: "Nickelodeon",
       genre: "Fantasy / Adventure / Friendship",
+      wikiTitle: "Avatar: The Last Airbender",
       semantic: {
         contentTraits: ["friendship", "elemental_magic", "war", "chosen_one"],
         toneTraits: ["adventurous", "hopeful", "epic"],
@@ -927,6 +937,7 @@ export const deck36 = {
       title: "The Legend of Korra",
       author: "Nickelodeon",
       genre: "Fantasy / Adventure / Friendship",
+      wikiTitle: "The Legend of Korra",
       semantic: {
         contentTraits: ["friendship", "elemental_magic", "political_unrest", "identity"],
         toneTraits: ["adventurous", "epic", "thoughtful"],
@@ -949,6 +960,7 @@ export const deck36 = {
       title: "Gravity Falls",
       author: "Disney",
       genre: "Mystery / Comedy / Family",
+      wikiTitle: "Gravity Falls",
       semantic: {
         contentTraits: ["friendship", "family", "small_town_mystery", "mystery"],
         toneTraits: ["funny", "weird", "spooky"],
@@ -993,6 +1005,7 @@ export const deck36 = {
       title: "Star Wars: The Clone Wars",
       author: "Lucasfilm",
       genre: "Science Fiction / Space / Adventure",
+      wikiTitle: "Star Wars: The Clone Wars (2008 TV series)",
       semantic: {
         contentTraits: ["war", "friendship", "space_politics", "mentorship"],
         toneTraits: ["epic", "adventurous", "dramatic"],
@@ -1015,6 +1028,7 @@ export const deck36 = {
       title: "Star Wars Rebels",
       author: "Lucasfilm",
       genre: "Science Fiction / Space / Adventure",
+      wikiTitle: "Star Wars Rebels",
       semantic: {
         contentTraits: ["rebellion", "found_family", "space_politics", "friendship"],
         toneTraits: ["hopeful", "adventurous", "epic"],
@@ -1059,6 +1073,7 @@ export const deck36 = {
       title: "SpongeBob SquarePants",
       author: "Nickelodeon",
       genre: "Comedy / Friendship",
+      wikiTitle: "SpongeBob SquarePants",
       semantic: {
         contentTraits: ["friendship", "community", "adventure"],
         toneTraits: ["absurd", "funny", "playful"],
@@ -1081,6 +1096,7 @@ export const deck36 = {
       title: "The Amazing World of Gumball",
       author: "Cartoon Network",
       genre: "Comedy / Family / Friendship",
+      wikiTitle: "The Amazing World of Gumball",
       semantic: {
         contentTraits: ["friendship", "family", "community"],
         toneTraits: ["absurd", "chaotic", "funny"],
@@ -1103,6 +1119,7 @@ export const deck36 = {
       title: "The Loud House",
       author: "Nickelodeon",
       genre: "Comedy / Family / Friendship",
+      wikiTitle: "The Loud House",
       semantic: {
         contentTraits: ["family", "friendship", "community"],
         toneTraits: ["funny", "warm", "playful"],
@@ -1125,6 +1142,7 @@ export const deck36 = {
       title: "Adventure Time",
       author: "Cartoon Network",
       genre: "Fantasy / Adventure / Friendship",
+      wikiTitle: "Adventure Time",
       semantic: {
         contentTraits: ["friendship", "adventure", "magic", "community"],
         toneTraits: ["weird", "playful", "heartfelt"],
@@ -1147,6 +1165,7 @@ export const deck36 = {
       title: "Steven Universe",
       author: "Cartoon Network",
       genre: "Fantasy / Friendship / Family",
+      wikiTitle: "Steven Universe",
       semantic: {
         contentTraits: ["friendship", "family", "identity", "magic"],
         toneTraits: ["warm", "heartfelt", "playful"],
@@ -1169,6 +1188,7 @@ export const deck36 = {
       title: "Teen Titans Go!",
       author: "Cartoon Network",
       genre: "Superheroes / Comedy / Friendship",
+      wikiTitle: "Teen Titans Go!",
       semantic: {
         contentTraits: ["friendship", "community", "secret_identity"],
         toneTraits: ["absurd", "funny", "playful"],

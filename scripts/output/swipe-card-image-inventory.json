@@ -13,8 +13,8 @@
     "decks": {
       "36": {
         "total": 100,
-        "reachable": 50,
-        "placeholderFallback": 50
+        "reachable": 70,
+        "placeholderFallback": 30
       },
       "adult": {
         "total": 140,
@@ -3168,10 +3168,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Adventure Time",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Adventure Time",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_among_hidden",
@@ -3204,10 +3204,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Avatar: The Last Airbender",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Avatar: The Last Airbender",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_beyblade",
@@ -3336,10 +3336,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Despicable Me",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Despicable Me",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_pokemon",
@@ -3516,10 +3516,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Gravity Falls",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Gravity Falls",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_hp2",
@@ -3564,10 +3564,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "How to Train Your Dragon",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "How to Train Your Dragon (film)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_dragons2",
@@ -3576,10 +3576,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "How to Train Your Dragon 2",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "How to Train Your Dragon 2",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_inkheart",
@@ -3744,10 +3744,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Minions",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Minions (film)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_miraculous",
@@ -3816,10 +3816,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Paddington",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Paddington (film)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_pokemon",
@@ -3936,10 +3936,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Sing",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Sing (2016 American film)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_sing2",
@@ -3948,10 +3948,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Sing 2",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Sing 2",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_sonic",
@@ -4020,10 +4020,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "SpongeBob SquarePants",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "SpongeBob SquarePants",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_ssundee",
@@ -4044,10 +4044,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Star Wars Rebels",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Star Wars Rebels",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_clonewars",
@@ -4056,10 +4056,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Star Wars: The Clone Wars",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Star Wars: The Clone Wars (2008 TV series)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_steven",
@@ -4068,10 +4068,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Steven Universe",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Steven Universe",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_subway",
@@ -4128,10 +4128,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Teen Titans Go!",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Teen Titans Go!",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_tetris",
@@ -4164,10 +4164,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The Amazing World of Gumball",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Amazing World of Gumball",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_bfg",
@@ -4200,10 +4200,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The Legend of Korra",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Legend of Korra",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_zelda",
@@ -4248,10 +4248,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The Loud House",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Loud House",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_mitchells",
@@ -4296,10 +4296,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Toy Story",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Toy Story",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_toy4",
@@ -4308,10 +4308,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Toy Story 4",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Toy Story 4",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_unspeakable",
