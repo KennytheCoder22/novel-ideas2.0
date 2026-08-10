@@ -10,9 +10,9 @@
  *   than genre-subdivided sections), all records scored 0 and the fallback was alphabetical
  *   order — producing the same top-200 candidate pool regardless of swipe session.
  *
- * Fix: scoreByTasteProfile() now directly scores records against the TasteProfile's
- * genreFamily/tone/themes/avoidSignals weighted signals, ensuring different swipe profiles
- * produce different candidate orderings from the same collection.
+ * Fix: scoreByTasteProfile() directly scores catalog metadata against the TasteProfile's
+ * genreFamily/tone/themes/avoidSignals weighted signals. Titles are intentionally excluded:
+ * a word in a title is not reliable semantic metadata and must not dominate sparse catalogs.
  */
 
 import { createRequire } from "node:module";
@@ -48,8 +48,9 @@ function assert(condition, message) {
 }
 
 function check(name, fn) {
-  fn();
-  return { name, pass: true };
+  return Promise.resolve()
+    .then(fn)
+    .then(() => ({ name, pass: true }));
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +88,7 @@ function makeGenreShelfRecords() {
 }
 
 // Records where shelvingLocation is only "Adult Fiction" (broad shelving — no genre info).
-// This is the failure case the fix specifically addresses.
+// Title words must not be promoted as though they were catalog genre/tone evidence.
 function makeBroadShelfRecords() {
   const titles = [
     // Horror/thriller themed titles
@@ -241,6 +242,7 @@ Module._load = function(request, parent, isMain) {
 };
 
 const { localLibrarySourceAdapter } = require(resolve(repoRoot, "app", "recommender-v2", "sources", "localLibrarySource.ts"));
+const { scoreCandidates } = require(resolve(repoRoot, "app", "recommender-v2", "score.ts"));
 
 Module._load = originalLoad;
 
@@ -304,6 +306,15 @@ checks.push(check("S3_fallback_filter_uses_withPositiveScore", () => {
   assert(sourceSrc.includes("withPositiveScore"), "positive-score filter must be named withPositiveScore");
 }));
 
+checks.push(check("S4_title_and_author_excluded_from_catalog_taste_haystack", () => {
+  const functionStart = sourceSrc.indexOf("function recordCatalogHaystack");
+  const functionEnd = sourceSrc.indexOf("\n}", functionStart);
+  const catalogHaystack = sourceSrc.slice(functionStart, functionEnd);
+  assert(functionStart >= 0, "recordCatalogHaystack must exist");
+  assert(!catalogHaystack.includes("record.title"), "title must not be catalog taste evidence");
+  assert(!catalogHaystack.includes("record.author"), "author name must not be catalog taste evidence");
+}));
+
 // ---------------------------------------------------------------------------
 // Behavioral tests — genre-specific shelving (easy case: intent tokens match)
 // ---------------------------------------------------------------------------
@@ -339,47 +350,123 @@ checks.push(check("B3_different_profiles_produce_different_rankings_genre_shelvi
 }));
 
 // ---------------------------------------------------------------------------
-// Behavioral tests — broad shelving (the previously-broken case)
+// Behavioral tests — broad shelving and title-only false evidence
 // ---------------------------------------------------------------------------
 
 const broadRecords = makeBroadShelfRecords();
 
-checks.push(check("B4_horror_profile_avoids_romance_titles_with_broad_shelving", async () => {
+checks.push(check("B4_title_words_do_not_create_positive_catalog_scores", async () => {
   const horrorProfile = makeHorrorThrilerProfile();
-  const titles = await runAdapter(broadRecords, horrorProfile);
-  const top5 = new Set(titles.slice(0, 5));
-  const romanceTitles = new Set(["Always and Forever", "My Heart Belongs", "Love in the City", "The Wedding Day", "Sweet Nothings"]);
-  const romanceInTop5 = [...top5].filter((t) => romanceTitles.has(t)).length;
-  // Horror/thriller profile has avoidSignals for romance — romance titles should not dominate top 5.
-  assert(romanceInTop5 <= 2, `horror profile should avoid romance titles: ${romanceInTop5} romance titles in top 5 [${[...top5].join(", ")}]`);
+  stubbedRecords = [
+    {
+      localId: "title-only-dark",
+      title: "Dark Horror Night",
+      author: "Writer One",
+      audience: "Readers",
+      readingLevel: "",
+      shelvingLocation: "General",
+      localPlacement: "",
+      callNumber: "FIC W",
+      copies: 1,
+      publicationYear: 2020,
+    },
+    {
+      localId: "title-only-neutral",
+      title: "Summer Morning",
+      author: "Writer Two",
+      audience: "Readers",
+      readingLevel: "",
+      shelvingLocation: "General",
+      localPlacement: "",
+      callNumber: "FIC W",
+      copies: 1,
+      publicationYear: 2020,
+    },
+  ];
+  const plan = {
+    source: "localLibrary",
+    enabled: true,
+    status: "planned",
+    timeoutMs: 2500,
+    intents: [{
+      id: "primary-taste",
+      query: "horror thriller dark",
+      facets: ["horror", "thriller"],
+      priority: 1,
+      rationale: ["fixture"],
+    }],
+  };
+  const result = await localLibrarySourceAdapter.search(plan, { profile: horrorProfile });
+  assert(
+    result.diagnostics.localCollectionPositiveScoreCount === 0,
+    `title-only genre/tone words must not create positive catalog scores: ${result.diagnostics.localCollectionPositiveScoreCount}`,
+  );
 }));
 
-checks.push(check("B5_romance_profile_avoids_horror_titles_with_broad_shelving", async () => {
-  const romanceProfile = makeRomanceComedyProfile();
-  const titles = await runAdapter(broadRecords, romanceProfile);
-  const top5 = new Set(titles.slice(0, 5));
-  const horrorTitles = new Set(["The Monster Under the Bed", "Ghost Protocol", "Silent Screams", "The Psycho Path", "Chase the Dark"]);
-  const horrorInTop5 = [...top5].filter((t) => horrorTitles.has(t)).length;
-  // Romance/comedy profile has avoidSignals for horror — horror titles should not dominate top 5.
-  assert(horrorInTop5 <= 2, `romance profile should avoid horror titles: ${horrorInTop5} horror titles in top 5 [${[...top5].join(", ")}]`);
-}));
-
-checks.push(check("B6_different_profiles_produce_different_top_candidates_broad_shelving", async () => {
+checks.push(check("B5_opposite_profiles_do_not_reorder_title_only_catalog", async () => {
   const horrorProfile = makeHorrorThrilerProfile();
   const romanceProfile = makeRomanceComedyProfile();
   const horrorTitles = await runAdapter(broadRecords, horrorProfile);
   const romanceTitles = await runAdapter(broadRecords, romanceProfile);
-  // The same collection with different profiles should produce different orderings.
-  // For records whose titles contain genre keywords (even with broad shelving), the profile
-  // scoring differentiates them. Records with no genre keywords anywhere in their metadata
-  // score equally for both profiles and are alphabetically stable — so some top-5 overlap
-  // is expected and acceptable for truly sparse metadata.
   assert(
-    horrorTitles[0] !== romanceTitles[0] || horrorTitles[1] !== romanceTitles[1],
-    `broad-shelf records must produce different top candidates for different profiles: horror=[${horrorTitles.slice(0, 3).join(", ")}] romance=[${romanceTitles.slice(0, 3).join(", ")}]`
+    JSON.stringify(horrorTitles) === JSON.stringify(romanceTitles),
+    `title-only words must not change source ordering: horror=[${horrorTitles.slice(0, 5).join(", ")}] romance=[${romanceTitles.slice(0, 5).join(", ")}]`,
   );
-  const overlap5 = horrorTitles.slice(0, 5).filter((t) => romanceTitles.slice(0, 5).includes(t)).length;
-  assert(overlap5 <= 4, `top-5 overlap for broad-shelf records should be ≤4 with opposite profiles, got ${overlap5}`);
+}));
+
+checks.push(check("B6_dark_title_cluster_does_not_monopolize_sparse_source_pool", async () => {
+  const horrorProfile = makeHorrorThrilerProfile();
+  const records = Array.from({ length: 80 }, (_, index) => ({
+    localId: `dark-cluster-${index + 1}`,
+    title: index < 40 ? `Dark Story ${String(index + 1).padStart(2, "0")}` : `Library Story ${String(index + 1).padStart(2, "0")}`,
+    author: `Writer ${index + 1}`,
+    audience: "Teen",
+    readingLevel: "High School",
+    shelvingLocation: "Fiction",
+    localPlacement: "",
+    callNumber: `FIC W${index + 1}`,
+    copies: 1,
+    publicationYear: 2020,
+  }));
+  const titles = await runAdapter(records, horrorProfile);
+  const darkCount = titles.slice(0, 20).filter((title) => /\bdark\b/i.test(title)).length;
+  assert(
+    darkCount < 15,
+    `stable sparse-catalog fallback must not return an overwhelmingly Dark-title pool: ${darkCount}/20`,
+  );
+}));
+
+checks.push(check("B7_title_only_dark_signal_is_not_reintroduced_during_scoring", () => {
+  const profile = makeHorrorThrilerProfile();
+  const [candidate] = scoreCandidates([{
+    id: "localLibrary:title-only-dark",
+    sourceId: "title-only-dark",
+    source: "localLibrary",
+    title: "Dark Horror Night",
+    subtitle: "",
+    description: "",
+    creators: ["Writer One"],
+    genres: ["General", "Readers"],
+    themes: [],
+    tones: [],
+    characterDynamics: [],
+    formats: ["book"],
+    publicationYear: 2020,
+    raw: {},
+    diagnostics: {
+      queryText: "horror thriller dark",
+      queryFamily: "local_collection_text_match",
+      facets: ["horror", "thriller"],
+    },
+  }], profile);
+  assert(candidate.diagnostics.localLibraryTitleExcludedFromTasteMatch === true, "local title-exclusion diagnostic missing");
+  const matchedSignals = candidate.diagnostics.documentBackedTasteSignals;
+  assert(!matchedSignals.includes("dark"), `title-backed dark signal leaked into scoring: ${matchedSignals.join(", ")}`);
+  assert(!matchedSignals.includes("horror"), `title-backed horror signal leaked into scoring: ${matchedSignals.join(", ")}`);
+  assert(
+    matchedSignals.length === 1 && matchedSignals[0] === "book",
+    `only the document-backed book format should match: ${matchedSignals.join(", ")}`,
+  );
 }));
 
 // ---------------------------------------------------------------------------

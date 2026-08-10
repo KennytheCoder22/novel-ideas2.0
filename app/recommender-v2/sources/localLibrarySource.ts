@@ -29,10 +29,8 @@ function inferAudienceBand(record: LocalCollectionRecommendationRecord): AgeBand
   return undefined;
 }
 
-function recordHaystack(record: LocalCollectionRecommendationRecord): string {
+function recordCatalogHaystack(record: LocalCollectionRecommendationRecord): string {
   return [
-    record.title,
-    record.author,
     record.audience,
     record.readingLevel,
     record.shelvingLocation,
@@ -41,10 +39,19 @@ function recordHaystack(record: LocalCollectionRecommendationRecord): string {
   ].join(" ").toLowerCase();
 }
 
-// Score a record against the taste profile's weighted signals (genreFamily, tone, themes,
-// avoidSignals). This runs even when intent query tokens don't match verbatim metadata text,
-// ensuring that different swipe sessions produce different candidate orderings from the same
-// collection rather than always falling back to alphabetical order.
+function stableRecordOrder(record: LocalCollectionRecommendationRecord): number {
+  const value = `${record.localId}\u0000${record.title}`;
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+// Score only librarian/catalog metadata. A title word is not reliable evidence that a book
+// has the corresponding genre, tone, or theme, and sparse collections otherwise over-rank
+// clusters such as every title containing "Dark".
 function scoreByTasteProfile(haystack: string, profile: TasteProfile): number {
   let score = 0;
 
@@ -107,7 +114,7 @@ function rankByProfile(
   const fallbackFacets = plan.intents[0]?.facets || [];
 
   return records.map((record) => {
-    const haystack = recordHaystack(record);
+    const haystack = recordCatalogHaystack(record);
 
     // Intent-query text matching (exact token presence in metadata fields).
     let intentScore = 0;
@@ -225,7 +232,8 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
     const ranked = rankByProfile(records, plan, context.profile)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
-        return a.record.title.localeCompare(b.record.title);
+        const stableDifference = stableRecordOrder(a.record) - stableRecordOrder(b.record);
+        return stableDifference || a.record.title.localeCompare(b.record.title);
       });
 
     // Include all positively-scored rows first; fall back to the full ranked list only if

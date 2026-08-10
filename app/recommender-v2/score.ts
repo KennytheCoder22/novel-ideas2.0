@@ -79,6 +79,17 @@ function candidateMetadataText(candidate: NormalizedCandidate): string {
   ].join(" ").toLowerCase();
 }
 
+function localLibraryTasteText(candidate: NormalizedCandidate): string {
+  return [
+    candidate.description,
+    ...candidate.genres,
+    ...candidate.themes,
+    ...candidate.tones,
+    ...candidate.characterDynamics,
+    ...candidate.formats,
+  ].join(" ").toLowerCase();
+}
+
 type MetadataSignalField = {
   field: string;
   text: string;
@@ -629,6 +640,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const adultKitsu = profile.ageBand === "adult" && candidate.source === "kitsu";
     const adultComicVine = profile.ageBand === "adult" && candidate.source === "comicVine";
     const adultNyt = profile.ageBand === "adult" && candidate.source === "nyt";
+    const localLibrary = candidate.source === "localLibrary";
     const metadataOnlyEvidence = middleGradesOpenLibrary
       || kidsOpenLibrary
       || teenOpenLibrary
@@ -637,7 +649,11 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
       || adultKitsu
       || adultComicVine
       || adultNyt;
-    const text = metadataOnlyEvidence ? metadataText : fullText;
+    const text = localLibrary
+      ? localLibraryTasteText(candidate)
+      : metadataOnlyEvidence
+        ? metadataText
+        : fullText;
     const adultGoogleBooksFields = adultGoogleBooks ? candidateMetadataFields(candidate) : [];
     const adultGoogleBooksSignalTrace: AdultGoogleBooksSignalMatchTrace[] = [];
     const matchSignals = (signals: WeightedSignalV2[], signalBucket: string): WeightedSignalV2[] => adultGoogleBooks
@@ -713,6 +729,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
       diagnostics: {
         ...candidate.diagnostics,
         queryTextSignalsRemovedFromTasteMatch: removedQueryTextSignals,
+        localLibraryTitleExcludedFromTasteMatch: localLibrary || undefined,
         documentOnlyTasteMatch: metadataBackedMatchedLikedSignals,
         genericTasteSignalsRemoved: Array.from(new Set(removedGenericTasteSignals)),
         genericOnlyTasteMatch,
