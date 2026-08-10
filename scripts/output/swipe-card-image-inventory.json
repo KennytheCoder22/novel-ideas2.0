@@ -13,8 +13,8 @@
     "decks": {
       "36": {
         "total": 100,
-        "reachable": 24,
-        "placeholderFallback": 76
+        "reachable": 33,
+        "placeholderFallback": 67
       },
       "adult": {
         "total": 140,
@@ -23,8 +23,8 @@
       },
       "k2": {
         "total": 120,
-        "reachable": 106,
-        "placeholderFallback": 14
+        "reachable": 117,
+        "placeholderFallback": 3
       }
     }
   },
@@ -1980,10 +1980,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Don’t Let the Pigeon Drive the Bus!",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Don't Let the Pigeon Drive the Bus!",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:12",
@@ -2004,10 +2004,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Elephant & Piggie: My New Friend Is So Fun!",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "My New Friend Is So Fun!",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:79",
@@ -2028,10 +2028,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "First Big Book of Animals",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "National Geographic Little Kids First Big Book of Animals",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:77",
@@ -2124,10 +2124,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Goodnight, Goodnight, Construction Site",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Goodnight, Goodnight, Construction Site",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:6",
@@ -2160,10 +2160,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "How Do Dinosaurs Say Goodnight?",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "How Do Dinosaurs Say Goodnight?",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:56",
@@ -2172,10 +2172,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "I Am a Frog!",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "I Am a Frog!",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:38",
@@ -2460,10 +2460,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Not a Box",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Not a Box",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:75",
@@ -2568,10 +2568,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Pete the Cat and the Missing Cupcakes",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Pete the Cat and the Missing Cupcakes",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:11",
@@ -2748,10 +2748,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Color Monster",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Colour Monster",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:13",
@@ -2796,10 +2796,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Invisible String",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Invisible String",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:28",
@@ -2988,10 +2988,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "There’s a Monster at the End of This Book",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Monster at the End of This Book",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:78",
@@ -3264,10 +3264,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Captain Underpants",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Adventures of Captain Underpants",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_carmen",
@@ -3360,10 +3360,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Diary of a Wimpy Kid",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Diary of a Wimpy Kid",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_dogman",
@@ -3372,10 +3372,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Dog Man",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Dog Man",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_dream",
@@ -3528,10 +3528,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Harry Potter and the Chamber of Secrets",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Harry Potter and the Chamber of Secrets",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_hp1",
@@ -3540,10 +3540,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Harry Potter and the Sorcerer's Stone",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Harry Potter and the Philosopher's Stone",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_book_holes",
@@ -3552,10 +3552,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Holes",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Holes (novel)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_dragons",
@@ -3720,10 +3720,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Matilda",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Matilda (novel)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_minecraft",
@@ -4272,10 +4272,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The Sea of Monsters",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Sea of Monsters",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_thinknoodles",
@@ -4344,10 +4344,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Wonder",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Wonder (Palacio novel)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     }
   ]
 }

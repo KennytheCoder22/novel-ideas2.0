@@ -21,6 +21,7 @@ export const deck36 = {
         aversionTraits: ["fantasy_density"],
       },
       tags: ["fantasy", "friendship", "adventure", "mystery", "series"],
+      wikiTitle: "Harry Potter and the Philosopher's Stone",
 
       output: {
 
@@ -42,6 +43,7 @@ export const deck36 = {
         aversionTraits: ["monster_threat"],
       },
       tags: ["fantasy", "friendship", "mystery", "spooky", "series"],
+      wikiTitle: "Harry Potter and the Chamber of Secrets",
 
       output: {
 
@@ -77,6 +79,7 @@ export const deck36 = {
       id: "36_book_percy2",
       title: "The Sea of Monsters",
       author: "Rick Riordan",
+      wikiTitle: "The Sea of Monsters",
       semantic: {
         contentTraits: ["friendship", "demigods", "greek_mythology", "monsters"],
         toneTraits: ["fun", "adventurous", "witty"],
@@ -98,6 +101,7 @@ export const deck36 = {
       id: "36_book_wimpy",
       title: "Diary of a Wimpy Kid",
       author: "Jeff Kinney",
+      wikiTitle: "Diary of a Wimpy Kid",
       semantic: {
         contentTraits: ["coming_of_age", "friendship", "education"],
         toneTraits: ["funny", "playful", "quirky"],
@@ -119,6 +123,7 @@ export const deck36 = {
       id: "36_book_dogman",
       title: "Dog Man",
       author: "Dav Pilkey",
+      wikiTitle: "Dog Man",
       semantic: {
         contentTraits: ["friendship", "crime_solving", "community"],
         toneTraits: ["funny", "absurd", "playful"],
@@ -140,6 +145,7 @@ export const deck36 = {
       id: "36_book_captain",
       title: "Captain Underpants",
       author: "Dav Pilkey",
+      wikiTitle: "The Adventures of Captain Underpants",
       semantic: {
         contentTraits: ["friendship", "education", "community"],
         toneTraits: ["funny", "absurd", "playful"],
@@ -161,6 +167,7 @@ export const deck36 = {
       id: "36_book_wonder",
       title: "Wonder",
       author: "R.J. Palacio",
+      wikiTitle: "Wonder (Palacio novel)",
       semantic: {
         contentTraits: ["friendship", "coming_of_age", "bullying", "family"],
         toneTraits: ["heartfelt", "hopeful", "warm"],
@@ -182,6 +189,7 @@ export const deck36 = {
       id: "36_book_holes",
       title: "Holes",
       author: "Louis Sachar",
+      wikiTitle: "Holes (novel)",
       semantic: {
         contentTraits: ["friendship", "mystery", "family_secrets", "survival"],
         toneTraits: ["quirky", "mysterious", "clever"],
@@ -203,6 +211,7 @@ export const deck36 = {
       id: "36_book_matilda",
       title: "Matilda",
       author: "Roald Dahl",
+      wikiTitle: "Matilda (novel)",
       semantic: {
         contentTraits: ["giftedness", "family_conflict", "magic", "education"],
         toneTraits: ["whimsical", "funny", "clever"],
