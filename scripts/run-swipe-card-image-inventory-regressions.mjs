@@ -88,9 +88,17 @@ async function main() {
       '<svg width="100" height="100"><circle cx="50" cy="42" r="24" fill="#db8c37"/><rect x="12" y="76" width="76" height="8" fill="#eee"/></svg>',
     ),
   }]).png().toBuffer();
+  const wideBrightLogo = await sharp({
+    create: { width: 250, height: 16, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  }).composite([{
+    input: Buffer.from(
+      '<svg width="250" height="16"><rect width="250" height="16" fill="#fff"/><text x="25" y="13" fill="#d8a64b" font-size="13">WIDE TITLE LOGO</text></svg>',
+    ),
+  }]).png().toBuffer();
   assert((await analyzeSwipeCardImage(solidBlack)).visuallyBlank, "solid_black_image_not_rejected");
   assert((await analyzeSwipeCardImage(nearBlackLogo)).visuallyBlank, "near_black_logo_not_rejected");
   assert(!(await analyzeSwipeCardImage(legitimateDarkPoster)).visuallyBlank, "legitimate_dark_poster_rejected");
+  assert((await analyzeSwipeCardImage(wideBrightLogo)).visuallyBlank, "wide_logo_on_dark_card_not_rejected");
   checks.push(
     { name: "ambiguous_media_title_disambiguated", pass: true },
     { name: "explicit_suffix_falls_back_to_base_title", pass: true },
@@ -98,6 +106,7 @@ async function main() {
     { name: "solid_black_image_rejected", pass: true },
     { name: "near_black_logo_rejected", pass: true },
     { name: "legitimate_dark_poster_allowed", pass: true },
+    { name: "wide_logo_on_dark_card_rejected", pass: true },
   );
   process.stdout.write(`${JSON.stringify({
     ok: true,

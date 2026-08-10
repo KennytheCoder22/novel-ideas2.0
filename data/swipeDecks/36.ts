@@ -1211,6 +1211,7 @@ export const deck36 = {
     {
       id: "36_tv_miraculous",
       title: "Miraculous: Tales of Ladybug & Cat Noir",
+      imageUri: "https://m.media-amazon.com/images/M/MV5BODQ5NGFjZTQtNDkzNy00YWVjLWJiNGMtNTk1YzVmMmQ1YWQwXkEyXkFqcGc@._V1_.jpg",
       author: "ZAG",
       genre: "Superheroes / Adventure / Friendship",
       wikiTitle: "Miraculous: Tales of Ladybug & Cat Noir",
@@ -1234,6 +1235,7 @@ export const deck36 = {
     {
       id: "36_tv_dragon_prince",
       title: "The Dragon Prince",
+      imageUri: "https://m.media-amazon.com/images/M/MV5BMDg2YjI2YjYtYjY2Ny00ODg2LWIxNWQtODM3NjE1MzNkNjExXkEyXkFqcGc@._V1_.jpg",
       author: "Netflix",
       genre: "Fantasy / Adventure / Friendship",
       wikiTitle: "The Dragon Prince",
@@ -1257,6 +1259,7 @@ export const deck36 = {
     {
       id: "36_tv_voltron",
       title: "Voltron: Legendary Defender",
+      imageUri: "https://m.media-amazon.com/images/M/MV5BMjA2MzMzNTg5NV5BMl5BanBnXkFtZTgwMzAzOTc4ODE@._V1_.jpg",
       author: "DreamWorks Animation",
       genre: "Science Fiction / Space / Adventure",
       wikiTitle: "Voltron: Legendary Defender",

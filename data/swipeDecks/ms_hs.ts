@@ -47,7 +47,7 @@ function inferMsHsGraphicNovelKeywords(card: any): string[] {
 }
 
 const CANON_MSHS_BOOKS: any[] = [
-  { isDefault: true, title: "The Hunger Games", semantic: { contentTraits: ["dystopian_society","survival_game","rebellion"], toneTraits: ["intense","dark","fast"], characterTraits: ["reluctant_leader"], storyTraits: ["competition_arc","resistance_story","survival_story"], aversionTraits: ["violence","bleak_tone"] }, author: "Suzanne Collins", genre: "Dystopian / Survival", wikiTitle: "The Hunger Games", tags: ["audience:teen","age:mshs","media:book","dystopian","survival","high stakes","fast-paced","dark"],tasteTraits: { warmth: 0.0, darkness: 1, pacing: 1, realism: 0.0, characterFocus: 0.0, ideaDensity: 0.0 },  output: { genre: ["dystopian","survival","high stakes"], vibes: ["fast-paced","dark"] }, },
+  { isDefault: true, title: "The Hunger Games", imageUri: "https://covers.openlibrary.org/b/id/12646537-L.jpg", semantic: { contentTraits: ["dystopian_society","survival_game","rebellion"], toneTraits: ["intense","dark","fast"], characterTraits: ["reluctant_leader"], storyTraits: ["competition_arc","resistance_story","survival_story"], aversionTraits: ["violence","bleak_tone"] }, author: "Suzanne Collins", genre: "Dystopian / Survival", wikiTitle: "The Hunger Games", tags: ["audience:teen","age:mshs","media:book","dystopian","survival","high stakes","fast-paced","dark"],tasteTraits: { warmth: 0.0, darkness: 1, pacing: 1, realism: 0.0, characterFocus: 0.0, ideaDensity: 0.0 },  output: { genre: ["dystopian","survival","high stakes"], vibes: ["fast-paced","dark"] }, },
   { isDefault: true, title: "Catching Fire", semantic: { contentTraits: ["rebellion","political_control","arena"], toneTraits: ["tense","dark","dramatic"], characterTraits: ["reluctant_leader"], storyTraits: ["return_to_arena","revolt_building","survival_story"], aversionTraits: ["violence","bleak_tone"] }, author: "Suzanne Collins", genre: "Dystopian / Action", wikiTitle: "Catching Fire", tags: ["audience:teen","age:mshs","media:book","dystopian","political","survival","fast-paced","dark"],tasteTraits: { warmth: 0.0, darkness: 1, pacing: 1, realism: 0.07, characterFocus: 0.16, ideaDensity: 0.55 },  output: { genre: ["dystopian","political","survival"], vibes: ["fast-paced","dark"] }, },
   { isDefault: true, title: "Divergent", semantic: { contentTraits: ["faction_society","identity","rebellion"], toneTraits: ["serious","dramatic","fast"], characterTraits: ["independent_protagonist"], storyTraits: ["training_arc","rebellion_against_society","identity_discovery"], aversionTraits: ["predictable_tropes"] }, author: "Veronica Roth", genre: "Dystopian / Adventure", wikiTitle: "Divergent", tags: ["audience:teen","age:mshs","media:book","dystopian","identity","adventure","fast-paced"],tasteTraits: { warmth: 0.0, darkness: 0.5, pacing: 1, realism: -0.48, characterFocus: 1, ideaDensity: 1 },  output: { genre: ["dystopian","identity","adventure"], vibes: ["fast-paced"] }, },
   { isDefault: true, title: "The Maze Runner", semantic: { contentTraits: ["memory_loss","maze","survival"], toneTraits: ["mysterious","tense","fast"], characterTraits: ["curious_leader"], storyTraits: ["escape_mystery","group_dynamics","truth_discovery"], aversionTraits: ["violence","complexity"] }, author: "James Dashner", genre: "Dystopian / Mystery", wikiTitle: "The Maze Runner", tags: ["audience:teen","age:mshs","media:book","dystopian","mystery","survival","fast-paced"],tasteTraits: { warmth: 0.0, darkness: 0.5, pacing: 1, realism: 0.0, characterFocus: 0.0, ideaDensity: 0.45 },  output: { genre: ["dystopian","mystery","survival"], vibes: ["fast-paced"] }, },
@@ -128,7 +128,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["science fiction", "adventure", "drama"],
    vibes: [],
  }, },
-  { isDefault: true, title: "Arcane", semantic: { contentTraits: ["class_conflict","sister_relationship","political_intrigue"], toneTraits: ["dark","intense","tragic"], characterTraits: ["morally_complicated_characters"], storyTraits: ["parallel_arcs","tripwire_escalation"], aversionTraits: ["emotional_heaviness","violence"] }, author: "Netflix", genre: "Fantasy / Action", wikiTitle: "Arcane (TV series)", tags: ["audience:teen","age:mshs","media:tv","format:series","series","fantasy","fast-paced","political","dark"],tasteTraits: { warmth: 0.0, darkness: 1, pacing: 1, realism: -0.73, characterFocus: 0.02, ideaDensity: 0.55 }, 
+  { isDefault: true, title: "Arcane", imageUri: "https://m.media-amazon.com/images/M/MV5BYjA2NzhlMDItNWRmZC00MzRjLWE3ZjAtZjBlZDAwOWY2ODdjXkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["class_conflict","sister_relationship","political_intrigue"], toneTraits: ["dark","intense","tragic"], characterTraits: ["morally_complicated_characters"], storyTraits: ["parallel_arcs","tripwire_escalation"], aversionTraits: ["emotional_heaviness","violence"] }, author: "Netflix", genre: "Fantasy / Action", wikiTitle: "Arcane (TV series)", tags: ["audience:teen","age:mshs","media:tv","format:series","series","fantasy","fast-paced","political","dark"],tasteTraits: { warmth: 0.0, darkness: 1, pacing: 1, realism: -0.73, characterFocus: 0.02, ideaDensity: 0.55 },
  output: {
    genre: ["fantasy", "political"],
    vibes: ["fast-paced", "dark"],
@@ -188,7 +188,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["mystery", "adventure"],
    vibes: ["quirky"],
  }, },
-  { isDefault: true, title: "The Dragon Prince", semantic: { contentTraits: ["magic","war","friendship"], toneTraits: ["hopeful","adventurous"], characterTraits: ["young_heroes","unlikely_allies"], storyTraits: ["quest_journey","peace_vs_conflict"], aversionTraits: ["slow_burn_build"] }, author: "Netflix", genre: "Fantasy / Adventure", wikiTitle: "The Dragon Prince", tags: ["audience:teen","age:mshs","media:tv","format:series","series","fantasy","adventure","war & society","friendship","hopeful"],tasteTraits: { warmth: 1, darkness: 0.61, pacing: 0.59, realism: -1, characterFocus: 1, ideaDensity: 0.25 }, 
+  { isDefault: true, title: "The Dragon Prince", imageUri: "https://m.media-amazon.com/images/M/MV5BMDg2YjI2YjYtYjY2Ny00ODg2LWIxNWQtODM3NjE1MzNkNjExXkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["magic","war","friendship"], toneTraits: ["hopeful","adventurous"], characterTraits: ["young_heroes","unlikely_allies"], storyTraits: ["quest_journey","peace_vs_conflict"], aversionTraits: ["slow_burn_build"] }, author: "Netflix", genre: "Fantasy / Adventure", wikiTitle: "The Dragon Prince", tags: ["audience:teen","age:mshs","media:tv","format:series","series","fantasy","adventure","war & society","friendship","hopeful"],tasteTraits: { warmth: 1, darkness: 0.61, pacing: 0.59, realism: -1, characterFocus: 1, ideaDensity: 0.25 },
  output: {
    genre: ["fantasy", "adventure", "war & society", "friendship"],
    vibes: ["hopeful"],
@@ -198,7 +198,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["fantasy", "adventure", "drama", "mystery"],
    vibes: [],
  }, },
-  { isDefault: true, title: "The Society", semantic: { contentTraits: ["community","isolation","power"], toneTraits: ["tense","dramatic"], characterTraits: ["emerging_leaders"], storyTraits: ["society_building","tripwire_escalation"], aversionTraits: ["unfinished_story"] }, author: "Netflix", genre: "Mystery / Survival", wikiTitle: "The Society (TV series)", tags: ["audience:teen","age:mshs","media:tv","format:series","series","mystery","survival","community"],tasteTraits: { warmth: 1, darkness: 0.0, pacing: 0.68, realism: 0.25, characterFocus: 0.73, ideaDensity: 0.23 }, 
+  { isDefault: true, title: "The Society", imageUri: "https://m.media-amazon.com/images/M/MV5BMmNlZDcwNjYtOWY3ZC00NGY4LTlkYTktMTAxZjFjNjRhYjJiXkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["community","isolation","power"], toneTraits: ["tense","dramatic"], characterTraits: ["emerging_leaders"], storyTraits: ["society_building","tripwire_escalation"], aversionTraits: ["unfinished_story"] }, author: "Netflix", genre: "Mystery / Survival", wikiTitle: "The Society (TV series)", tags: ["audience:teen","age:mshs","media:tv","format:series","series","mystery","survival","community"],tasteTraits: { warmth: 1, darkness: 0.0, pacing: 0.68, realism: 0.25, characterFocus: 0.73, ideaDensity: 0.23 },
  output: {
    genre: ["mystery", "survival", "community"],
    vibes: [],
@@ -208,7 +208,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["comedy", "family", "identity"],
    vibes: ["coming of age", "quirky"],
  }, },
-  { isDefault: true, title: "Sweet Tooth", semantic: { contentTraits: ["post_apocalypse","hybrid_child","adventure"], toneTraits: ["hopeful","melancholic"], characterTraits: ["innocent_child","protective_guardian"], storyTraits: ["travel_arc","team_building"], aversionTraits: ["sad_tone"] }, author: "Netflix", genre: "Fantasy / Survival", wikiTitle: "Sweet Tooth (TV series)", tags: ["audience:teen","age:mshs","media:tv","format:series","series","fantasy","survival","adventure","hopeful","melancholic"],tasteTraits: { warmth: 1, darkness: 0.41, pacing: 0.75, realism: -0.73, characterFocus: 0.02, ideaDensity: 0.0 }, 
+  { isDefault: true, title: "Sweet Tooth", imageUri: "https://m.media-amazon.com/images/M/MV5BZWUxZWVhMTItOWQ1MS00OWFhLThkNzMtN2ZkN2EyMGI4M2M3XkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["post_apocalypse","hybrid_child","adventure"], toneTraits: ["hopeful","melancholic"], characterTraits: ["innocent_child","protective_guardian"], storyTraits: ["travel_arc","team_building"], aversionTraits: ["sad_tone"] }, author: "Netflix", genre: "Fantasy / Survival", wikiTitle: "Sweet Tooth (TV series)", tags: ["audience:teen","age:mshs","media:tv","format:series","series","fantasy","survival","adventure","hopeful","melancholic"],tasteTraits: { warmth: 1, darkness: 0.41, pacing: 0.75, realism: -0.73, characterFocus: 0.02, ideaDensity: 0.0 },
  output: {
    genre: ["fantasy", "survival", "adventure"],
    vibes: ["hopeful", "melancholic"],
@@ -253,7 +253,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["fantasy", "adventure", "mythology", "identity", "comedy"],
    vibes: [],
  }, },
-  { isDefault: true, title: "Veronica Mars", semantic: { contentTraits: ["teen_detective","crime","social_divide"], toneTraits: ["sharp","moody"], characterTraits: ["sarcastic_protagonist"], storyTraits: ["case_solving","season_mystery"], aversionTraits: ["heavy_themes"] }, author: "UPN / The CW", genre: "Mystery / Drama", wikiTitle: "Veronica Mars", tags: ["audience:teen","age:mshs","media:tv","format:series","series","mystery","drama","identity","crime"],tasteTraits: { warmth: 0.0, darkness: 0.32, pacing: 0.18, realism: 0.14, characterFocus: 0.86, ideaDensity: 0.73 }, 
+  { isDefault: true, title: "Veronica Mars", imageUri: "https://m.media-amazon.com/images/M/MV5BYjYyODQ3OTktM2IyMC00ZDk4LWIzMjYtZjczN2FkZGRhMDYwXkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["teen_detective","crime","social_divide"], toneTraits: ["sharp","moody"], characterTraits: ["sarcastic_protagonist"], storyTraits: ["case_solving","season_mystery"], aversionTraits: ["heavy_themes"] }, author: "UPN / The CW", genre: "Mystery / Drama", wikiTitle: "Veronica Mars", tags: ["audience:teen","age:mshs","media:tv","format:series","series","mystery","drama","identity","crime"],tasteTraits: { warmth: 0.0, darkness: 0.32, pacing: 0.18, realism: 0.14, characterFocus: 0.86, ideaDensity: 0.73 },
  output: {
    genre: ["mystery", "drama", "identity", "crime"],
    vibes: [],
@@ -278,7 +278,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["fantasy", "adventure", "identity", "family", "comedy"],
    vibes: ["coming of age"],
  }, },
-  { isDefault: true, title: "Young Royals", semantic: { contentTraits: ["royalty","romance","identity"], toneTraits: ["intimate","dramatic"], characterTraits: ["conflicted_protagonist"], storyTraits: ["relationship_conflict","self_acceptance"], aversionTraits: ["slow_burn"] }, author: "Netflix", genre: "Romance / Drama", wikiTitle: "Young Royals", tags: ["audience:teen","age:mshs","media:tv","format:series","series","romance","drama","coming of age","identity"],tasteTraits: { warmth: 0.61, darkness: 0.0, pacing: -0.02, realism: 0.2, characterFocus: 1, ideaDensity: 0.41 }, 
+  { isDefault: true, title: "Young Royals", imageUri: "https://m.media-amazon.com/images/M/MV5BNzdmMWY1MzItM2Y3My00OTcwLTkwMTQtNTg0YjI0NzM2YTc5XkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["royalty","romance","identity"], toneTraits: ["intimate","dramatic"], characterTraits: ["conflicted_protagonist"], storyTraits: ["relationship_conflict","self_acceptance"], aversionTraits: ["slow_burn"] }, author: "Netflix", genre: "Romance / Drama", wikiTitle: "Young Royals", tags: ["audience:teen","age:mshs","media:tv","format:series","series","romance","drama","coming of age","identity"],tasteTraits: { warmth: 0.61, darkness: 0.0, pacing: -0.02, realism: 0.2, characterFocus: 1, ideaDensity: 0.41 },
  output: {
    genre: ["romance", "drama", "identity"],
    vibes: ["coming of age"],
@@ -298,7 +298,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["fantasy", "comedy", "identity", "friendship"],
    vibes: [],
  }, },
-  { isDefault: true, title: "Smallville", semantic: { contentTraits: ["secret_identity","small_town"], toneTraits: ["dramatic","hopeful"], characterTraits: ["eager_hero"], storyTraits: ["power_awakening","patterned_conflict"], aversionTraits: ["predictable_beats"] }, author: "The WB / The CW", genre: "Superhero / Coming-of-Age", wikiTitle: "Smallville", tags: ["audience:teen","age:mshs","media:tv","format:series","series","superheroes","drama","identity","coming of age","hopeful"],tasteTraits: { warmth: 1, darkness: 0.0, pacing: -0.02, realism: -0.2, characterFocus: 1, ideaDensity: 0.41 }, 
+  { isDefault: true, title: "Smallville", imageUri: "https://m.media-amazon.com/images/M/MV5BZDU0ZDVjOTItMDNkMy00YTI0LWFjYzItY2M1NjU5NjAzZGViXkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["secret_identity","small_town"], toneTraits: ["dramatic","hopeful"], characterTraits: ["eager_hero"], storyTraits: ["power_awakening","patterned_conflict"], aversionTraits: ["predictable_beats"] }, author: "The WB / The CW", genre: "Superhero / Coming-of-Age", wikiTitle: "Smallville", tags: ["audience:teen","age:mshs","media:tv","format:series","series","superheroes","drama","identity","coming of age","hopeful"],tasteTraits: { warmth: 1, darkness: 0.0, pacing: -0.02, realism: -0.2, characterFocus: 1, ideaDensity: 0.41 },
  output: {
    genre: ["superheroes", "drama", "identity"],
    vibes: ["coming of age", "hopeful"],
@@ -308,7 +308,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["mystery", "identity", "school"],
    vibes: ["spooky"],
  }, },
-  { isDefault: true, title: "The Midnight Club", semantic: { contentTraits: ["terminal_illness","ghost_stories","friendship"], toneTraits: ["dark","emotional"], characterTraits: ["vulnerable_teens"], storyTraits: ["storytelling_frame","personal_awakening"], aversionTraits: ["heavy_themes"] }, author: "Netflix", genre: "Horror / Drama", wikiTitle: "The Midnight Club", tags: ["audience:teen","age:mshs","media:tv","format:series","series","horror","drama","friendship","dark","emotional growth"],tasteTraits: { warmth: 1, darkness: 1, pacing: -0.02, realism: 0.14, characterFocus: 1, ideaDensity: 0.0 }, 
+  { isDefault: true, title: "The Midnight Club", imageUri: "https://m.media-amazon.com/images/M/MV5BODZiOWMxZmItMjBiZS00NzExLTkxOWUtNDY4YjkzZjFjNmE3XkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["terminal_illness","ghost_stories","friendship"], toneTraits: ["dark","emotional"], characterTraits: ["vulnerable_teens"], storyTraits: ["storytelling_frame","personal_awakening"], aversionTraits: ["heavy_themes"] }, author: "Netflix", genre: "Horror / Drama", wikiTitle: "The Midnight Club", tags: ["audience:teen","age:mshs","media:tv","format:series","series","horror","drama","friendship","dark","emotional growth"],tasteTraits: { warmth: 1, darkness: 1, pacing: -0.02, realism: 0.14, characterFocus: 1, ideaDensity: 0.0 },
  output: {
    genre: ["horror", "drama", "friendship"],
    vibes: ["dark", "emotional growth"],
@@ -589,7 +589,7 @@ const CANON_MSHS_GAMES: any[] = [
    genre: ["ai", "science fiction"],
    vibes: [],
  }, },
-  { isDefault: true, title: "Undertale", semantic: { contentTraits: ["friendship","monsters","ethics"], toneTraits: ["quirky","warm","weird"], characterTraits: ["unlikely_allies"], storyTraits: ["choice_and_consequence","moral_growth"], aversionTraits: ["younger_skew"] }, author: "Toby Fox", genre: "Indie / RPG", wikiTitle: "Undertale", tags: ["audience:teen","age:mshs","media:game","friendship","quirky","warm"],tasteTraits: { warmth: 1, darkness: 0.75, pacing: 0.05, realism: -0.39, characterFocus: 1, ideaDensity: 0.32 }, 
+  { isDefault: true, title: "Undertale", imageUri: "https://m.media-amazon.com/images/M/MV5BMWI3ZTkxZjktYWU3NC00OGQ1LWFlNzgtYzIwMWI4NDg2YTU0XkEyXkFqcGc@._V1_.jpg", semantic: { contentTraits: ["friendship","monsters","ethics"], toneTraits: ["quirky","warm","weird"], characterTraits: ["unlikely_allies"], storyTraits: ["choice_and_consequence","moral_growth"], aversionTraits: ["younger_skew"] }, author: "Toby Fox", genre: "Indie / RPG", wikiTitle: "Undertale", tags: ["audience:teen","age:mshs","media:game","friendship","quirky","warm"],tasteTraits: { warmth: 1, darkness: 0.75, pacing: 0.05, realism: -0.39, characterFocus: 1, ideaDensity: 0.32 },
  output: {
    genre: ["friendship"],
    vibes: ["quirky", "warm"],
@@ -634,7 +634,7 @@ const CANON_MSHS_GAMES: any[] = [
    genre: ["fantasy", "mystery", "school"],
    vibes: ["atmospheric", "dark"],
  }, },
-  { isDefault: true, title: "Oxenfree", semantic: { contentTraits: ["ghost_stories","friendship","small_town"], toneTraits: ["moody","spooky","mysterious"], characterTraits: ["vulnerable_teens"], storyTraits: ["mystery_unfolding","truth_reveal"], aversionTraits: ["slow_burn","unease"] }, author: "Night School Studio", genre: "Mystery / Paranormal", wikiTitle: "Oxenfree", tags: ["audience:teen","age:mshs","media:game","mystery","spooky","friendship"],tasteTraits: { warmth: 1, darkness: 0.95, pacing: 0.25, realism: -0.8, characterFocus: 1, ideaDensity: 0.34 }, 
+  { isDefault: true, title: "Oxenfree", imageUri: "https://cdn.cloudflare.steamstatic.com/steam/apps/388880/library_600x900_2x.jpg", semantic: { contentTraits: ["ghost_stories","friendship","small_town"], toneTraits: ["moody","spooky","mysterious"], characterTraits: ["vulnerable_teens"], storyTraits: ["mystery_unfolding","truth_reveal"], aversionTraits: ["slow_burn","unease"] }, author: "Night School Studio", genre: "Mystery / Paranormal", wikiTitle: "Oxenfree", tags: ["audience:teen","age:mshs","media:game","mystery","spooky","friendship"],tasteTraits: { warmth: 1, darkness: 0.95, pacing: 0.25, realism: -0.8, characterFocus: 1, ideaDensity: 0.34 },
  output: {
    genre: ["mystery", "friendship"],
    vibes: ["spooky"],
