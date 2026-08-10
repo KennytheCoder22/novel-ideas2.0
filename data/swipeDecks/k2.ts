@@ -42,6 +42,7 @@ export const k2: SwipeDeck = {
   cards: [
     {
       title: "The Very Hungry Caterpillar",
+      wikiTitle: "The Very Hungry Caterpillar",
       author: "Eric Carle",
       genre: "animals",
       tags: [
@@ -89,6 +90,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Goodnight Moon",
+      wikiTitle: "Goodnight Moon",
       author: "Margaret Wise Brown",
       genre: "bedtime",
       tags: [
@@ -113,6 +115,7 @@ export const k2: SwipeDeck = {
     },
     {
       title: "Where the Wild Things Are",
+      wikiTitle: "Where the Wild Things Are",
       author: "Maurice Sendak",
       genre: "fantasy",
       tags: [

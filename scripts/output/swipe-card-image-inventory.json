@@ -13,8 +13,8 @@
     "decks": {
       "36": {
         "total": 100,
-        "reachable": 33,
-        "placeholderFallback": 67
+        "reachable": 50,
+        "placeholderFallback": 50
       },
       "adult": {
         "total": 140,
@@ -23,8 +23,8 @@
       },
       "k2": {
         "total": 120,
-        "reachable": 117,
-        "placeholderFallback": 3
+        "reachable": 120,
+        "placeholderFallback": 0
       }
     }
   },
@@ -2112,10 +2112,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Goodnight Moon",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Goodnight Moon",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:52",
@@ -2964,10 +2964,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "The Very Hungry Caterpillar",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Very Hungry Caterpillar",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:102",
@@ -3108,10 +3108,10 @@
       "deckLabel": "Kids (K–2)",
       "displayedTitle": "Where the Wild Things Are",
       "mediaType": "book",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Where the Wild Things Are",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "k2:62",
@@ -3180,10 +3180,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Among the Hidden",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Among the Hidden",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_animal",
@@ -3228,10 +3228,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Big Hero 6",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Big Hero 6 (film)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_brainpop",
@@ -3288,10 +3288,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Charlie and the Chocolate Factory",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Charlie and the Chocolate Factory",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_clash",
@@ -3420,10 +3420,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Encanto",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Encanto",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_fallguys",
@@ -3456,10 +3456,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Frindle",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Frindle",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_frozen",
@@ -3468,10 +3468,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Frozen",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Frozen (2013 film)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_frozen2",
@@ -3480,10 +3480,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Frozen II",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Frozen II",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_gamegrumps",
@@ -3504,10 +3504,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Goosebumps",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Goosebumps",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_gravity",
@@ -3588,10 +3588,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Inkheart",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Inkheart",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_jurassic",
@@ -3672,10 +3672,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Luca",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Luca (2021 film)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_mariokart",
@@ -3768,10 +3768,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Moana",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Moana (2016 film)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_mrbeast",
@@ -3876,10 +3876,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Redwall",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Redwall (novel)",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_roblox",
@@ -3924,10 +3924,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Sideways Stories from Wayside School",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Sideways Stories from Wayside School",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_sing",
@@ -3996,10 +3996,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Spider-Man: Into the Spider-Verse",
       "mediaType": "movie",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "Spider-Man: Into the Spider-Verse",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_game_splatoon",
@@ -4152,10 +4152,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The 39 Clues",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The 39 Clues",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_gumball",
@@ -4176,10 +4176,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The BFG",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The BFG",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_dragon_prince",
@@ -4236,10 +4236,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "The Lion, the Witch and the Wardrobe",
       "mediaType": "unknown",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "wikiTitle",
+      "imageSourcePath": "The Lion, the Witch and the Wardrobe",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_loud",

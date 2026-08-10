@@ -233,6 +233,7 @@ export const deck36 = {
       id: "36_book_bfg",
       title: "The BFG",
       author: "Roald Dahl",
+      wikiTitle: "The BFG",
       semantic: {
         contentTraits: ["friendship", "dream_world", "adventure"],
         toneTraits: ["whimsical", "fun", "warm"],
@@ -254,6 +255,7 @@ export const deck36 = {
       id: "36_book_charlie",
       title: "Charlie and the Chocolate Factory",
       author: "Roald Dahl",
+      wikiTitle: "Charlie and the Chocolate Factory",
       semantic: {
         contentTraits: ["family", "adventure", "community"],
         toneTraits: ["whimsical", "funny", "darkly_funny"],
@@ -275,6 +277,7 @@ export const deck36 = {
       id: "36_book_narnia",
       title: "The Lion, the Witch and the Wardrobe",
       author: "C.S. Lewis",
+      wikiTitle: "The Lion, the Witch and the Wardrobe",
       semantic: {
         contentTraits: ["adventure", "royalty", "magic", "chosen_one"],
         toneTraits: ["wonder_filled", "adventurous", "epic"],
@@ -296,6 +299,7 @@ export const deck36 = {
       id: "36_book_among_hidden",
       title: "Among the Hidden",
       author: "Margaret Peterson Haddix",
+      wikiTitle: "Among the Hidden",
       semantic: {
         contentTraits: ["dystopian_society", "political_control", "outsider_identity", "friendship"],
         toneTraits: ["tense", "thoughtful", "quiet"],
@@ -317,6 +321,7 @@ export const deck36 = {
       id: "36_book_39clues",
       title: "The 39 Clues",
       author: "Rick Riordan",
+      wikiTitle: "The 39 Clues",
       semantic: {
         contentTraits: ["adventure", "family_secrets", "treasure_hunt", "competition"],
         toneTraits: ["fast", "adventurous", "clever"],
@@ -338,6 +343,7 @@ export const deck36 = {
       id: "36_book_goosebumps",
       title: "Goosebumps",
       author: "R.L. Stine",
+      wikiTitle: "Goosebumps",
       semantic: {
         contentTraits: ["mystery", "monsters", "horror_elements"],
         toneTraits: ["spooky", "fun", "tense"],
@@ -359,6 +365,7 @@ export const deck36 = {
       id: "36_book_wayside",
       title: "Sideways Stories from Wayside School",
       author: "Louis Sachar",
+      wikiTitle: "Sideways Stories from Wayside School",
       semantic: {
         contentTraits: ["education", "friendship", "community"],
         toneTraits: ["absurd", "funny", "playful"],
@@ -380,6 +387,7 @@ export const deck36 = {
       id: "36_book_frindle",
       title: "Frindle",
       author: "Andrew Clements",
+      wikiTitle: "Frindle",
       semantic: {
         contentTraits: ["education", "friendship", "language"],
         toneTraits: ["clever", "playful", "warm"],
@@ -401,6 +409,7 @@ export const deck36 = {
       id: "36_book_inkheart",
       title: "Inkheart",
       author: "Cornelia Funke",
+      wikiTitle: "Inkheart",
       semantic: {
         contentTraits: ["books", "magic", "family", "adventure"],
         toneTraits: ["wonder_filled", "adventurous", "mysterious"],
@@ -422,6 +431,7 @@ export const deck36 = {
       id: "36_book_redwall",
       title: "Redwall",
       author: "Brian Jacques",
+      wikiTitle: "Redwall (novel)",
       semantic: {
         contentTraits: ["adventure", "community", "power", "survival"],
         toneTraits: ["epic", "adventurous", "warm"],
@@ -444,6 +454,7 @@ export const deck36 = {
       title: "Spider-Man: Into the Spider-Verse",
       author: "Sony Pictures Animation",
       genre: "Superheroes / Adventure / Family",
+      wikiTitle: "Spider-Man: Into the Spider-Verse",
       semantic: {
         contentTraits: ["identity", "multiverse", "family", "friendship"],
         toneTraits: ["energetic", "fun", "stylish"],
@@ -466,6 +477,7 @@ export const deck36 = {
       title: "Frozen",
       author: "Disney",
       genre: "Fantasy / Family / Music",
+      wikiTitle: "Frozen (2013 film)",
       semantic: {
         contentTraits: ["family", "sister_relationship", "magic", "identity"],
         toneTraits: ["emotional", "hopeful", "wonder_filled"],
@@ -488,6 +500,7 @@ export const deck36 = {
       title: "Frozen II",
       author: "Disney",
       genre: "Fantasy / Family / Music",
+      wikiTitle: "Frozen II",
       semantic: {
         contentTraits: ["family", "magic", "identity", "adventure"],
         toneTraits: ["emotional", "wonder_filled", "epic"],
@@ -510,6 +523,7 @@ export const deck36 = {
       title: "Luca",
       author: "Pixar",
       genre: "Friendship / Ocean",
+      wikiTitle: "Luca (2021 film)",
       semantic: {
         contentTraits: ["friendship", "family", "outsider_identity", "identity"],
         toneTraits: ["warm", "playful", "gentle"],
@@ -532,6 +546,7 @@ export const deck36 = {
       title: "Encanto",
       author: "Disney",
       genre: "Fantasy / Family / Music",
+      wikiTitle: "Encanto",
       semantic: {
         contentTraits: ["family", "magic", "giftedness", "community"],
         toneTraits: ["warm", "hopeful", "emotional"],
@@ -577,6 +592,7 @@ export const deck36 = {
       title: "Moana",
       author: "Disney",
       genre: "Fantasy / Adventure / Ocean",
+      wikiTitle: "Moana (2016 film)",
       semantic: {
         contentTraits: ["adventure", "mythology", "family", "identity"],
         toneTraits: ["hopeful", "wonder_filled", "adventurous"],
@@ -599,6 +615,7 @@ export const deck36 = {
       title: "Big Hero 6",
       author: "Disney",
       genre: "Superheroes / Friendship / Family",
+      wikiTitle: "Big Hero 6 (film)",
       semantic: {
         contentTraits: ["friendship", "artificial_intelligence", "grief", "family"],
         toneTraits: ["fun", "heartfelt", "energetic"],
