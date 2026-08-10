@@ -983,6 +983,7 @@ export const deck36 = {
       title: "DuckTales",
       author: "Disney",
       genre: "Adventure / Family / Comedy",
+      imageUri: "assets/swipeCardFallback/images/36__ducktales.png",
       semantic: {
         contentTraits: ["adventure", "family", "treasure_hunt", "community"],
         toneTraits: ["fun", "adventurous", "playful"],
@@ -1281,6 +1282,7 @@ export const deck36 = {
       title: "LEGO Ninjago",
       author: "LEGO",
       genre: "Fantasy / Adventure / Friendship",
+      imageUri: "assets/swipeCardFallback/images/36__lego-ninjago.png",
       semantic: {
         contentTraits: ["friendship", "martial_arts", "training", "adventure"],
         toneTraits: ["energetic", "fun", "adventurous"],
@@ -2154,6 +2156,7 @@ export const deck36 = {
       title: "5-Minute Crafts Kids",
       author: "5-Minute Crafts Kids",
       genre: "Nonfiction / Concise",
+      imageUri: "assets/swipeCardFallback/images/36__5-minute-crafts-kids.png",
       semantic: {
         contentTraits: ["education", "engineering", "community"],
         toneTraits: ["playful", "energetic", "uplifting"],
@@ -2176,6 +2179,7 @@ export const deck36 = {
       title: "Nat Geo Kids",
       author: "National Geographic Kids",
       genre: "Nonfiction / Animals / Nature",
+      imageUri: "assets/swipeCardFallback/images/36__nat-geo-kids.png",
       semantic: {
         contentTraits: ["education", "science_problem_solving", "community"],
         toneTraits: ["wonder_filled", "fun", "uplifting"],

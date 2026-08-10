@@ -13,8 +13,8 @@
     "decks": {
       "36": {
         "total": 100,
-        "reachable": 96,
-        "placeholderFallback": 4
+        "reachable": 100,
+        "placeholderFallback": 0
       },
       "adult": {
         "total": 140,
@@ -3156,10 +3156,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "5-Minute Crafts Kids",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "imageUri",
+      "imageSourcePath": "assets/swipeCardFallback/images/36__5-minute-crafts-kids.png",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_tv_adventure",
@@ -3396,10 +3396,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "DuckTales",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "imageUri",
+      "imageSourcePath": "assets/swipeCardFallback/images/36__ducktales.png",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_dudeperfect",
@@ -3660,10 +3660,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "LEGO Ninjago",
       "mediaType": "tv",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "imageUri",
+      "imageSourcePath": "assets/swipeCardFallback/images/36__lego-ninjago.png",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_movie_luca",
@@ -3792,10 +3792,10 @@
       "deckLabel": "Pre-Teens",
       "displayedTitle": "Nat Geo Kids",
       "mediaType": "youtube",
-      "imageSourceType": "none",
-      "imageSourcePath": "",
-      "imageReachable": false,
-      "fallbackStatus": "intentional_placeholder"
+      "imageSourceType": "imageUri",
+      "imageSourcePath": "assets/swipeCardFallback/images/36__nat-geo-kids.png",
+      "imageReachable": true,
+      "fallbackStatus": "not_needed"
     },
     {
       "cardId": "36_yt_ninja",
