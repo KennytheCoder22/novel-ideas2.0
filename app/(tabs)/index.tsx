@@ -2434,7 +2434,9 @@ logoDataUrl={logoDataUrl}
         <View style={styles.swipeStage}>
           {patronIdentityReady ? (
             <SwipeDeckScreen
+              key={`${patronId}:${props.libraryId || "default"}`}
               patronId={patronId}
+              libraryId={props.libraryId}
               onResetUser={() => void resetCurrentPatron()}
               swipeCategories={swipeCategories}
               enabledDecks={enabledDecks}

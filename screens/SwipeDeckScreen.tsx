@@ -62,6 +62,7 @@ import {
   clearPatronRecordStores,
   pipelineSessionIdForPatron,
   pipelineUserIdForPatron,
+  redactedPatronId,
   recommendationHistoryKeyForPatron,
 } from "../lib/patronIdentity.mjs";
 import { BookshelfLoadingIndicator } from "../components/BookshelfLoadingIndicator";
@@ -316,6 +317,7 @@ type RecommendationSourceToggleState = {
 
 type Props = {
   patronId?: string;
+  libraryId?: string;
   onResetUser?: () => void;
   onOpenSearch?: () => void;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
@@ -1634,12 +1636,12 @@ export default function SwipeDeckScreen(props: Props) {
   const [suppressPersonalityLearningForNextRun, setSuppressPersonalityLearningForNextRun] = useState(false);
 
   const pipelineUserId = useMemo(
-    () => pipelineUserIdForPatron(activePatronId, deckKey),
-    [activePatronId, deckKey],
+    () => pipelineUserIdForPatron(activePatronId, deckKey, props.libraryId),
+    [activePatronId, deckKey, props.libraryId],
   );
   const pipelineSessionId = useMemo(
-    () => pipelineSessionIdForPatron(activePatronId, deckKey, sessionNonce),
-    [activePatronId, deckKey, sessionNonce],
+    () => pipelineSessionIdForPatron(activePatronId, deckKey, sessionNonce, props.libraryId),
+    [activePatronId, deckKey, props.libraryId, sessionNonce],
   );
   const recordedCardPerformanceRef = useRef<Set<string>>(new Set());
 
@@ -1696,6 +1698,7 @@ export default function SwipeDeckScreen(props: Props) {
       `build:${DEPLOYED_COMMIT_MARKER}`,
       `platform:${Platform.OS}`,
       `library:${libId}`,
+      `patron:${redactedPatronId(props.patronId || pipelineUserId)}`,
       `session:${pipelineSessionId}`,
       `deck:${deckKey}  nonce:${sessionNonce}`,
       `ageBands:${enabledDeckList.join(",") || "(none)"}  curationTrusted:${enabledDeckList.length === 1}`,
@@ -1712,7 +1715,7 @@ export default function SwipeDeckScreen(props: Props) {
       `recent5:${recentTitles || "(none)"}`,
     ].join("\n");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [v2DebugResult, sourceEnabled, swipeHistory.length, pipelineSessionId, deckKey, sessionNonce, enabledDeckList, seenCardKeys.length, cards.length, rightSwipes, leftSwipes, decisionSwipes, recItems.length, lastDeploymentRuntimeMarker]);
+  }, [v2DebugResult, sourceEnabled, swipeHistory.length, pipelineSessionId, pipelineUserId, props.patronId, deckKey, sessionNonce, enabledDeckList, seenCardKeys.length, cards.length, rightSwipes, leftSwipes, decisionSwipes, recItems.length, lastDeploymentRuntimeMarker]);
 
   const personalityStoreRef = useRef<Record<string, PersonalityProfile>>({});
   const sessionSwipeStoreRef = useRef<Record<string, SwipeSignal[]>>({});
@@ -1878,7 +1881,7 @@ export default function SwipeDeckScreen(props: Props) {
   }
 
   function getRecommendationHistoryBucket(targetDeckKey: DeckKey): RecommendationHistoryBucket {
-    const historyKey = recommendationHistoryKeyForPatron(activePatronId, targetDeckKey);
+    const historyKey = recommendationHistoryKeyForPatron(activePatronId, targetDeckKey, props.libraryId);
     const existing = recommendationHistoryRef.current[historyKey];
     if (existing) return existing;
     const created = createRecommendationHistoryBucket();

@@ -1,9 +1,10 @@
 export const PATRON_ID_STORAGE_KEY: string;
 
 export function createPatronId(): string;
-export function pipelineUserIdForPatron(patronId: string, deckKey: string): string;
-export function pipelineSessionIdForPatron(patronId: string, deckKey: string, sessionNonce: number): string;
-export function recommendationHistoryKeyForPatron(patronId: string, deckKey: string): string;
+export function pipelineUserIdForPatron(patronId: string, deckKey: string, libraryId?: string): string;
+export function pipelineSessionIdForPatron(patronId: string, deckKey: string, sessionNonce: number, libraryId?: string): string;
+export function recommendationHistoryKeyForPatron(patronId: string, deckKey: string, libraryId?: string): string;
+export function redactedPatronId(patronId: string): string;
 export function clearPatronRecordStores(...stores: Array<Record<string, unknown>>): void;
 
 export function readOrCreatePatronId(
