@@ -326,6 +326,127 @@ function missingCoverAndUsableCreatorFinalEligibility(candidate: ScoredCandidate
   };
 }
 
+export type AdultInverseAgeBandEligibility = {
+  allowed: boolean;
+  reason: string;
+  youthEvidence: string[];
+  adultCrossoverEvidence: string[];
+};
+
+export function adultInverseAgeBandEligibility(
+  candidate: ScoredCandidate,
+  profile: TasteProfile,
+): AdultInverseAgeBandEligibility {
+  if (profile.ageBand !== "adult") {
+    return { allowed: true, reason: "not_adult_request", youthEvidence: [], adultCrossoverEvidence: [] };
+  }
+
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const volumeInfo = raw.volumeInfo && typeof raw.volumeInfo === "object"
+    ? raw.volumeInfo as Record<string, unknown>
+    : {};
+  const descriptionValues = uniqueSignals([
+    candidate.subtitle,
+    candidate.description,
+    raw.description,
+    volumeInfo.description,
+  ].map(normalized).filter(Boolean));
+  const structuredAudienceValues = uniqueSignals([
+    ...candidate.genres,
+    ...candidate.themes,
+    ...candidate.tones,
+    ...candidate.formats,
+    ...asStringList(raw.subject),
+    ...asStringList(raw.subjects),
+    ...asStringList(raw.subject_facet),
+    ...asStringList(raw.subject_key),
+    ...asStringList(raw.audience),
+    ...asStringList(raw.audience_facet),
+    ...asStringList(raw.age_group),
+    ...asStringList(raw.ageGroup),
+    ...asStringList(volumeInfo.categories),
+    raw.publisher,
+    volumeInfo.publisher,
+    candidate.maturityBand,
+  ].map(normalized).filter(Boolean));
+  const metadataValues = uniqueSignals([...descriptionValues, ...structuredAudienceValues]);
+  const canonicalMaturityBand = normalized(candidate.maturityBand);
+  const sourceAudienceBand = normalized(
+    candidate.diagnostics?.googleBooksAudienceBand
+    || raw.audienceBand
+    || raw.requestedAudienceBand
+    || (["kids", "preteens", "teens", "adult"].includes(canonicalMaturityBand) ? canonicalMaturityBand : "")
+    || "",
+  );
+  const structuredChildPreteenMarkers = structuredAudienceValues.filter((value) =>
+    /^(kids|children|childrens|juvenile|preteens|preteen|middle grades?)$/.test(value)
+    || /\b(picture books?|board books?|early readers?|easy readers?|beginning readers?|leveled readers?|learn to read|read aloud|phonics readers?|juvenile fiction|juvenile literature|children s fiction|children s books|middle grade|chapter books?|elementary school|primary school|kindergarten|preschool|grades?\s*(?:k|1|2|3|4|5|6|7|8)\b)\b/.test(value)
+    || /\b(?:ages?|readers aged)\s*(?:[3-9]|1[0-2])\s*(?:to|-|\s+)\s*(?:[4-9]|1[0-5])\b/.test(value)
+  );
+  const descriptiveChildPreteenMarkers = descriptionValues.filter((value) =>
+    /\b(picture books?|board books?|early readers?|easy readers?|beginning readers?|leveled readers?|learn to read|read aloud|phonics readers?|middle grade|kindergarten|preschool|grades?\s*(?:k|1|2|3|4|5|6|7|8)\b)\b/.test(value)
+    || /\b(?:ages?|readers aged)\s*(?:[3-9]|1[0-2])\s*(?:to|-|\s+)\s*(?:[4-9]|1[0-5])\b/.test(value)
+    || /\b(?:for|perfect for|written for|intended for)\s+(?:kids|children|young readers)\b/.test(value),
+  );
+  const explicitChildPreteenMarkers = uniqueSignals([
+    ...structuredChildPreteenMarkers,
+    ...descriptiveChildPreteenMarkers,
+  ]);
+  const explicitTeenMarkers = metadataValues.filter((value) =>
+    /\b(young adult fiction|young adult|ya fiction|teen fiction|teenage fiction|high school)\b/.test(value),
+  );
+  const contentMaturity = normalized(
+    candidate.diagnostics?.googleBooksContentMaturity
+    || raw.contentMaturity
+    || raw.maturityRating
+    || raw.sourceMaturityRating
+    || "",
+  );
+  const youthEvidence = uniqueSignals([
+    ...(sourceAudienceBand === "kids" || sourceAudienceBand === "preteens" ? [`source_audience:${sourceAudienceBand}`] : []),
+    ...(sourceAudienceBand === "teens" ? ["source_audience:teens"] : []),
+    ...explicitChildPreteenMarkers.map((value) => `child_preteen:${value}`),
+    ...explicitTeenMarkers.map((value) => `teen:${value}`),
+  ]);
+  const adultCrossoverEvidence = uniqueSignals([
+    ...(sourceAudienceBand === "adult" ? ["source_audience:adult"] : []),
+    ...metadataValues
+      .filter((value) =>
+        /\b(adult fiction|fiction for adults|adult audience|adult readership|for adult readers|new adult|college students?|college age|university students?)\b/.test(value)
+        || /^fiction\s+\//.test(value)
+        || /\b(adult collection|adult shelving|adult stacks)\b/.test(value),
+      )
+      .filter((value) => !/\byoung adult\b/.test(value))
+      .map((value) => `adult_crossover:${value}`),
+    ...(["mature", "explicit mature"].includes(contentMaturity)
+      ? ["content_maturity:mature"]
+      : []),
+  ]);
+
+  if (explicitChildPreteenMarkers.length > 0 || sourceAudienceBand === "kids" || sourceAudienceBand === "preteens") {
+    return {
+      allowed: false,
+      reason: "adult_inverse_age_band_child_preteen_metadata",
+      youthEvidence,
+      adultCrossoverEvidence,
+    };
+  }
+  if ((explicitTeenMarkers.length > 0 || sourceAudienceBand === "teens") && adultCrossoverEvidence.length === 0) {
+    return {
+      allowed: false,
+      reason: "adult_inverse_age_band_ya_without_adult_crossover_evidence",
+      youthEvidence,
+      adultCrossoverEvidence,
+    };
+  }
+  return {
+    allowed: true,
+    reason: youthEvidence.length > 0 ? "adult_ya_crossover_evidence_present" : "no_youth_audience_evidence",
+    youthEvidence,
+    adultCrossoverEvidence,
+  };
+}
+
 function needsAdultWeakOpenLibraryEmptySlateFallback(candidate: ScoredCandidate, profile: TasteProfile): boolean {
   if (profile.ageBand !== "adult" || candidate.source !== "openLibrary") return false;
   const breakdown = candidate.scoreBreakdown || {};
@@ -7573,6 +7694,15 @@ function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string
     finalMissingCoverAndUsableCreatorGateEvidence: missingCoverAndCreatorGate.evidence,
   };
   if (!missingCoverAndCreatorGate.allowed) return missingCoverAndCreatorGate.reason || "missing_cover_and_usable_creator_without_compensating_metadata";
+  const adultAgeBandEligibility = adultInverseAgeBandEligibility(candidate, profile);
+  candidate.diagnostics = {
+    ...(candidate.diagnostics || {}),
+    adultInverseAgeBandGatePassed: adultAgeBandEligibility.allowed,
+    adultInverseAgeBandReason: adultAgeBandEligibility.reason,
+    adultInverseAgeBandYouthEvidence: adultAgeBandEligibility.youthEvidence,
+    adultInverseAgeBandCrossoverEvidence: adultAgeBandEligibility.adultCrossoverEvidence,
+  };
+  if (!adultAgeBandEligibility.allowed) return adultAgeBandEligibility.reason;
   const googleBooksMaturityReason = googleBooksMaturityRejectReason(candidate, profile);
   if (googleBooksMaturityReason) return googleBooksMaturityReason;
   if (profile.ageBand === "kids" && candidate.source === "googleBooks") {

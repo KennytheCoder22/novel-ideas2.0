@@ -65,6 +65,7 @@
     "test:v2:hosted-library-context-leakage": "node scripts/run-v2-hosted-library-context-leakage-regressions.mjs",
     "test:v2:multi-library-polish": "node scripts/run-v2-multi-library-polish-regressions.mjs",
     "test:v2:patron-isolation": "node scripts/run-v2-patron-isolation-regressions.mjs",
+    "test:v2:adult-inverse-age-band": "node scripts/run-v2-adult-inverse-age-band-regressions.mjs",
     "test:v2:blob-library-sharing": "node scripts/run-v2-blob-library-sharing-regressions.mjs",
     "human-review:capture-snapshots": "node scripts/run-v2-human-review-capture-snapshot.mjs",
     "human-review:append-review": "node scripts/run-v2-human-review-append-review.mjs",
