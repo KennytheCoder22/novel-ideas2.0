@@ -125,8 +125,8 @@ run("UI confirmation and pipeline wiring use patron identity", () => {
   assert.match(homeSource, /window\.confirm/);
   assert.match(homeSource, /patronIdentityReady \? \(/);
   assert.match(homeSource, /patronId=\{patronId\}/);
-  assert.match(swipeSource, /pipelineUserIdForPatron\(activePatronId, deckKey\)/);
-  assert.match(swipeSource, /recommendationHistoryKeyForPatron\(activePatronId, targetDeckKey\)/);
+  assert.match(swipeSource, /pipelineUserIdForPatron\(activePatronId, deckKey, props\.libraryId\)/);
+  assert.match(swipeSource, /recommendationHistoryKeyForPatron\(activePatronId, targetDeckKey, props\.libraryId\)/);
   assert.match(swipeSource, /activePatronIdRef\.current !== recommendationPatronId/);
   assert.match(swipeSource, /activePatronIdRef\.current === recommendationPatronId/);
   assert.doesNotMatch(swipeSource, /`novelideas:\$\{deckKey\}`/);
