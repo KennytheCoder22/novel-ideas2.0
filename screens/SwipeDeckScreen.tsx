@@ -58,6 +58,12 @@ import { estimateReaderSophisticationFromTaste } from "./recommenders/taste/soph
 import { cardIdentityKey, selectAdaptiveCard } from "./swipe/adaptiveCardQueue";
 import { getSwipeCardFallbackImage } from "../assets/swipeCardFallback";
 import { wikipediaTitleCandidates } from "./swipe/swipeCardImages";
+import {
+  clearPatronRecordStores,
+  pipelineSessionIdForPatron,
+  pipelineUserIdForPatron,
+  recommendationHistoryKeyForPatron,
+} from "../lib/patronIdentity.mjs";
 import { BookshelfLoadingIndicator } from "../components/BookshelfLoadingIndicator";
 import {
   HUMAN_REVIEW_CONCERN_OPTIONS,
@@ -309,6 +315,8 @@ type RecommendationSourceToggleState = {
 };
 
 type Props = {
+  patronId?: string;
+  onResetUser?: () => void;
   onOpenSearch?: () => void;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
   recommendationSourceEnabled?: RecommendationSourceToggleState;
@@ -1495,6 +1503,8 @@ export default function SwipeDeckScreen(props: Props) {
   }, [deckKey, enabledDecks, enabledDeckList]);
 
   const [sessionNonce, setSessionNonce] = useState(0);
+  const [localPatronGeneration, setLocalPatronGeneration] = useState(0);
+  const activePatronId = props.patronId || `ephemeral-patron:${localPatronGeneration}`;
 
   const deck = useMemo(
     () => {
@@ -1603,6 +1613,8 @@ export default function SwipeDeckScreen(props: Props) {
   const [pendingRecommendationPromisePresent, setPendingRecommendationPromisePresent] = useState<boolean>(false);
   const [recommendationLockState, setRecommendationLockState] = useState<string>("idle");
   const pendingRecommendationPromiseRef = useRef<Promise<any> | null>(null);
+  const activePatronIdRef = useRef(activePatronId);
+  activePatronIdRef.current = activePatronId;
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
 
@@ -1621,8 +1633,14 @@ export default function SwipeDeckScreen(props: Props) {
   const [activeTasteWeights, setActiveTasteWeights] = useState<{ personalityWeight: number; moodWeight: number } | null>(null);
   const [suppressPersonalityLearningForNextRun, setSuppressPersonalityLearningForNextRun] = useState(false);
 
-  const pipelineUserId = useMemo(() => `novelideas:${deckKey}`, [deckKey]);
-  const pipelineSessionId = useMemo(() => `swipe-session:${deckKey}:${sessionNonce}`, [deckKey, sessionNonce]);
+  const pipelineUserId = useMemo(
+    () => pipelineUserIdForPatron(activePatronId, deckKey),
+    [activePatronId, deckKey],
+  );
+  const pipelineSessionId = useMemo(
+    () => pipelineSessionIdForPatron(activePatronId, deckKey, sessionNonce),
+    [activePatronId, deckKey, sessionNonce],
+  );
   const recordedCardPerformanceRef = useRef<Set<string>>(new Set());
 
   // Mobile-visible session diagnostics: tap the ⓘ button to see this without clipboard.
@@ -1699,12 +1717,8 @@ export default function SwipeDeckScreen(props: Props) {
   const personalityStoreRef = useRef<Record<string, PersonalityProfile>>({});
   const sessionSwipeStoreRef = useRef<Record<string, SwipeSignal[]>>({});
   const moodStoreRef = useRef<Record<string, MoodProfile>>({});
-  const recommendationHistoryRef = useRef<Record<DeckKey, RecommendationHistoryBucket>>({
-    k2: createRecommendationHistoryBucket(),
-    "36": createRecommendationHistoryBucket(),
-    ms_hs: createRecommendationHistoryBucket(),
-    adult: createRecommendationHistoryBucket(),
-  });
+  const recommendationHistoryRef = useRef<Record<string, RecommendationHistoryBucket>>({});
+  const previousPatronIdRef = useRef(activePatronId);
 
   useEffect(() => {
     let cancelled = false;
@@ -1827,6 +1841,7 @@ export default function SwipeDeckScreen(props: Props) {
   const currentCardRef = useRef<SwipeDeckCard | null>(null);
 
   async function refreshPipelinePreview() {
+    const previewPatronId = activePatronId;
     const personality =
       personalityStoreRef.current[pipelineUserId] ?? initializePersonality(pipelineUserId);
     setPersonalityProfileState(personality);
@@ -1836,12 +1851,14 @@ export default function SwipeDeckScreen(props: Props) {
 
     try {
       const activeTaste = await recommendationPipeline.previewActiveTaste(pipelineUserId, pipelineSessionId);
+      if (activePatronIdRef.current !== previewPatronId) return;
       setActiveTasteVector(activeTaste.vector);
       setActiveTasteWeights({
         personalityWeight: activeTaste.personalityWeight,
         moodWeight: activeTaste.moodWeight,
       });
     } catch {
+      if (activePatronIdRef.current !== previewPatronId) return;
       setActiveTasteVector(null);
       setActiveTasteWeights(null);
     }
@@ -1861,10 +1878,11 @@ export default function SwipeDeckScreen(props: Props) {
   }
 
   function getRecommendationHistoryBucket(targetDeckKey: DeckKey): RecommendationHistoryBucket {
-    const existing = recommendationHistoryRef.current[targetDeckKey];
+    const historyKey = recommendationHistoryKeyForPatron(activePatronId, targetDeckKey);
+    const existing = recommendationHistoryRef.current[historyKey];
     if (existing) return existing;
     const created = createRecommendationHistoryBucket();
-    recommendationHistoryRef.current[targetDeckKey] = created;
+    recommendationHistoryRef.current[historyKey] = created;
     return created;
   }
 
@@ -1957,6 +1975,19 @@ export default function SwipeDeckScreen(props: Props) {
   }
 
   React.useEffect(() => {
+    const patronChanged = previousPatronIdRef.current !== activePatronId;
+    if (patronChanged) {
+      clearPatronRecordStores(
+        personalityStoreRef.current,
+        sessionSwipeStoreRef.current,
+        moodStoreRef.current,
+        recommendationHistoryRef.current,
+      );
+      previousPatronIdRef.current = activePatronId;
+      if (humanReviewSnapshot?.snapshotId) {
+        safeStorageRemove(humanReviewDraftStorageKey(humanReviewSnapshot.snapshotId));
+      }
+    }
     recordedCardPerformanceRef.current.clear();
     setSeenCardKeys([]);
     setRecentCardKeys([]);
@@ -1973,6 +2004,7 @@ export default function SwipeDeckScreen(props: Props) {
     setRecItems([]);
     setRecIndex(0);
     setAutoSearched(false);
+    setForceRecommendationsView(false);
     setShowRating(false);
     setLastSourceCounts(null);
     setLastCandidatePool([]);
@@ -1984,6 +2016,7 @@ export default function SwipeDeckScreen(props: Props) {
     setLastSourceEnabled(sourceEnabled);
     setLastSourceSkippedReason([]);
     setFeedback([]);
+    setLastRecommendationResult(null);
     setSessionMoodProfile(null);
     setActiveTasteVector(null);
     setActiveTasteWeights(null);
@@ -1994,6 +2027,29 @@ export default function SwipeDeckScreen(props: Props) {
     setV2DebugResult(null);
     setV2DebugError("");
     setV2DebugLoading(false);
+    setPresetTestName("");
+    setPresetExecutionStarted("");
+    setPresetSwipesAppliedCount(0);
+    setPresetCardsMatchedCount(0);
+    setPresetRecommendationTriggered(false);
+    setPresetRecommendationCompleted(false);
+    setPresetExportedAfterRecommendation(false);
+    setPresetExecutionError("");
+    setShowHumanReviewPanel(false);
+    setShowHumanReviewContext(false);
+    setShowHumanReviewCompletion(false);
+    setHumanReviewSnapshot(null);
+    setHumanReviewForm(null);
+    setHumanReviewStepIndex(0);
+    setHumanReviewStepStartedAtByRank({});
+    setHumanReviewStepCompletedAtByRank({});
+    setHumanReviewStatus("");
+    setSuppressPersonalityLearningForNextRun(false);
+    setCurrentRecommendationRunId("");
+    setActiveRecommendationRunId("");
+    setPendingRecommendationPromisePresent(false);
+    setRecommendationLockState("idle");
+    pendingRecommendationPromiseRef.current = null;
     setSwipeCoverCache({});
     setSwipeCoverFailures({});
     setRecCoverCache({});
@@ -2001,7 +2057,7 @@ export default function SwipeDeckScreen(props: Props) {
     sessionSwipeStoreRef.current[pipelineSessionId] = [];
     delete moodStoreRef.current[pipelineSessionId];
     position.setValue({ x: 0, y: 0 });
-  }, [deckKey, sessionNonce, pipelineSessionId, pipelineUserId]);
+  }, [activePatronId, deckKey, sessionNonce, pipelineSessionId, pipelineUserId]);
 
   const totalSeenCards = seenCardKeys.length;
   const remainingCards = useMemo(() => cards.filter((card) => !seenCardKeys.includes(cardIdentityKey(card))), [cards, seenCardKeys]);
@@ -3186,7 +3242,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
     };
   }
 
-  async function performRecommendationRun(input: RecommenderInput) {
+  async function performRecommendationRun(input: RecommenderInput): Promise<boolean> {
     const markPhase = (phase: string, extra?: Record<string, any>) => {
       const timestamp = new Date().toISOString();
       const entry = { phase, timestamp, ...(extra || {}) };
@@ -3210,6 +3266,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
     setShowRating(false);
 
     const inputWithHistory = buildRecommendationInputWithHistory(input);
+    const recommendationPatronId = activePatronId;
     setRecommendFunctionCalled(true);
     setRecommendFunctionError("");
     setRecommendFunctionErrorStack("");
@@ -3255,6 +3312,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
           diagnostics: middleGradesDeepDebugDiagnostics,
           localLibraryCurationTrusted: enabledDeckList.length === 1,
         });
+        if (activePatronIdRef.current !== recommendationPatronId) return false;
         markPhase("v2_after_engine_call", { selected: result.items.length });
         setV2DebugResult(result);
         setV2DebugError("");
@@ -3384,7 +3442,9 @@ function handleLeft(card?: SwipeDeckCard | null) {
           setRecItems([]);
           setRecError("No V2 matches found for this swipe session. Diagnostics are available for comparison.");
         }
+        return true;
       } catch (err: any) {
+        if (activePatronIdRef.current !== recommendationPatronId) return false;
         markPhase("v2_engine_rejected", { error: String(err?.message || err || "unknown") });
         setLastEngineActuallyUsed("v2");
         setV2DebugError(String(err?.message || err || "recommender_v2_failed"));
@@ -3393,14 +3453,18 @@ function handleLeft(card?: SwipeDeckCard | null) {
         setRecommendFunctionErrorStack(String(err?.stack || ""));
         setRecItems([]);
         setRecError(err?.message || "Recommender V2 could not be reached.");
+        return false;
       } finally {
-        setRecommendationLockState("released");
-        setRecLoading(false);
+        if (activePatronIdRef.current === recommendationPatronId) {
+          setRecommendationLockState("released");
+          setRecLoading(false);
+        }
       }
   }
 
 
   async function runRecommenderV2DebugFromCurrentSession(trigger: "button" | "url" = "button") {
+    const debugPatronId = activePatronId;
     setV2DebugLoading(true);
     setV2DebugError("");
     try {
@@ -3424,6 +3488,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
         diagnostics: middleGradesDeepDebugDiagnostics,
         localLibraryCurationTrusted: enabledDeckList.length === 1,
       });
+      if (activePatronIdRef.current !== debugPatronId) return;
       setV2DebugResult(result);
       console.log("[NovelIdeas][V2] debug result", {
         trigger,
@@ -3432,11 +3497,12 @@ function handleLeft(card?: SwipeDeckCard | null) {
         sources: result.diagnostics.sources.map((source) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount })),
       });
     } catch (err: any) {
+      if (activePatronIdRef.current !== debugPatronId) return;
       const message = String(err?.message || err || "recommender_v2_debug_failed");
       setV2DebugError(message);
       console.log("[NovelIdeas][V2] debug error", { trigger, message });
     } finally {
-      setV2DebugLoading(false);
+      if (activePatronIdRef.current === debugPatronId) setV2DebugLoading(false);
     }
   }
 
@@ -3450,6 +3516,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
   }, [deckKey, swipeHistory, sourceEnabled.googleBooks, sourceEnabled.openLibrary, sourceEnabled.localLibrary, sourceEnabled.kitsu, sourceEnabled.comicVine, sourceEnabled.nyt]);
 
   async function runAutoRecommendations() {
+    const recommendationPatronId = activePatronId;
     const tagCountsForQuery: any = { ...(tagCounts as any) };
 
     Object.keys(tagCountsForQuery).forEach((k) => {
@@ -3472,6 +3539,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
 
     try {
       await refreshPipelinePreview();
+      if (activePatronIdRef.current !== recommendationPatronId) return;
 
       const input: RecommenderInput = {
         deckKey,
@@ -3481,7 +3549,8 @@ function handleLeft(card?: SwipeDeckCard | null) {
         timeoutMs: 9000,
       };
 
-      await performRecommendationRun(input);
+      const completed = await performRecommendationRun(input);
+      if (!completed || activePatronIdRef.current !== recommendationPatronId) return;
 
       if (suppressPersonalityLearningForNextRun) {
         setPersonalityProfileState(personalityStoreRef.current[pipelineUserId] ?? initializePersonality(pipelineUserId));
@@ -3493,6 +3562,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
       }
 
       const finalized = await recommendationPipeline.finalizeSession(pipelineUserId, pipelineSessionId);
+      if (activePatronIdRef.current !== recommendationPatronId) return;
       setPersonalityProfileState(finalized.nextPersonality);
       setSessionMoodProfile(finalized.mood);
       await refreshPipelinePreview();
@@ -3516,6 +3586,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
   }
 
   async function runTestSessionPreset(preset: TestSessionPreset) {
+    const presetPatronId = activePatronId;
     setPresetTestName(preset.label);
     setPresetExecutionStarted(new Date().toISOString());
     setPresetExecutionError("");
@@ -3611,7 +3682,8 @@ function handleLeft(card?: SwipeDeckCard | null) {
 
     try {
       setPresetRecommendationTriggered(true);
-      await performRecommendationRun(input);
+      const completed = await performRecommendationRun(input);
+      if (!completed || activePatronIdRef.current !== presetPatronId) return;
       setPresetRecommendationCompleted(true);
     } catch (err: any) {
       setPresetExecutionError(String(err?.message || err || "preset_execution_failed"));
@@ -3621,12 +3693,12 @@ function handleLeft(card?: SwipeDeckCard | null) {
   }
 
   function handleFreshUserReset() {
+    if (props.onResetUser) {
+      props.onResetUser();
+      return;
+    }
+    setLocalPatronGeneration((value) => value + 1);
     const fresh = initializePersonality(pipelineUserId);
-
-    personalityStoreRef.current[pipelineUserId] = fresh;
-    sessionSwipeStoreRef.current[pipelineSessionId] = [];
-    delete moodStoreRef.current[pipelineSessionId];
-    recommendationHistoryRef.current[deckKey] = createRecommendationHistoryBucket();
 
     setProfileOverridesByLane((prev) => {
       const lane = laneFromDeckKey(deckKey);

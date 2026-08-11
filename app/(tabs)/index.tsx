@@ -6,6 +6,7 @@ import {
   useState
 } from "react";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getRuntimeLibraryName, setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
 import {
   Alert,
@@ -48,6 +49,12 @@ import {
   rememberPatronLibrary,
   type SavedLibrary,
 } from "../../lib/savedLibraries";
+import {
+  readOrCreatePatronId,
+  readOrCreatePatronIdAsync,
+  resetPatronIdentity,
+  resetPatronIdentityAsync,
+} from "../../lib/patronIdentity.mjs";
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
   String(
@@ -1494,6 +1501,11 @@ setMainThemeKey: (t: ThemeKey) => void;
 
 export function HomeScreen(props: { libraryId?: string } = {}) {
   const [mode, setMode] = useState<"swipe" | "search">("swipe");
+  const [patronId, setPatronId] = useState(() => {
+    if (Platform.OS !== "web" || typeof localStorage === "undefined") return "";
+    return readOrCreatePatronId(localStorage);
+  });
+  const [patronIdentityReady, setPatronIdentityReady] = useState(Platform.OS === "web");
 
   const [tapCount, setTapCount] = useState(0);
   const [showAdminPinPrompt, setShowAdminPinPrompt] = useState(false);
@@ -1509,6 +1521,20 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
       return [];
     }
   });
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    let cancelled = false;
+    void readOrCreatePatronIdAsync(AsyncStorage).then((storedPatronId) => {
+      if (!cancelled) {
+        setPatronId(storedPatronId);
+        setPatronIdentityReady(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [config, setConfig] = useState<any>(() => {
     // Check if a library-specific config is saved in localStorage
@@ -1965,6 +1991,34 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     router.replace(library.hostedPath as any);
   }
 
+  async function resetCurrentPatron() {
+    const isWebStorage = Platform.OS === "web" && typeof localStorage !== "undefined";
+    if (!isWebStorage) setPatronIdentityReady(false);
+    const result = isWebStorage
+      ? resetPatronIdentity(localStorage)
+      : await resetPatronIdentityAsync(AsyncStorage);
+    setPatronId(result.nextId);
+    setPatronIdentityReady(true);
+    setMode("swipe");
+  }
+
+  function confirmResetUser() {
+    closeHeaderMenu();
+    const message = "This clears this patron's swipe and recommendation history and starts with a new identity. Library and admin settings will not change.";
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      if (window.confirm(`Reset User?\n\n${message}`)) void resetCurrentPatron();
+      return;
+    }
+    Alert.alert(
+      "Reset User?",
+      message,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Reset User", style: "destructive", onPress: () => void resetCurrentPatron() },
+      ],
+    );
+  }
+
   const showAdminMenuItems = adminMenuUnlocked || adminUnlocked;
 
   function renderHeaderMenu() {
@@ -2025,6 +2079,9 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/privacy")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Privacy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={confirmResetUser}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Reset User</Text>
             </TouchableOpacity>
             <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/about")}>
@@ -2375,20 +2432,26 @@ logoDataUrl={logoDataUrl}
 </View>
 
         <View style={styles.swipeStage}>
-          <SwipeDeckScreen
-            swipeCategories={swipeCategories}
-            enabledDecks={enabledDecks}
-            recommendationSourceEnabled={deckSourceEnabled[deck] || sourceEnabled}
-            recommendationSourceEnabledByDeck={deckSourceEnabled}
-            adultKitsuOnlyForceQueryForValidation={adultKitsuOnlyForceQueryForValidation}
-            localLibrarySupported={localLibrarySupported}
-            onOpenSearch={() => {
-              closeHeaderMenu();
-              setMode("search");
-              setTimeout(() => queryInputRef.current?.focus?.(), 50);
-            }}
-            isAdminMode={adminUnlocked}
-          />
+          {patronIdentityReady ? (
+            <SwipeDeckScreen
+              patronId={patronId}
+              onResetUser={() => void resetCurrentPatron()}
+              swipeCategories={swipeCategories}
+              enabledDecks={enabledDecks}
+              recommendationSourceEnabled={deckSourceEnabled[deck] || sourceEnabled}
+              recommendationSourceEnabledByDeck={deckSourceEnabled}
+              adultKitsuOnlyForceQueryForValidation={adultKitsuOnlyForceQueryForValidation}
+              localLibrarySupported={localLibrarySupported}
+              onOpenSearch={() => {
+                closeHeaderMenu();
+                setMode("search");
+                setTimeout(() => queryInputRef.current?.focus?.(), 50);
+              }}
+              isAdminMode={adminUnlocked}
+            />
+          ) : (
+            <ActivityIndicator size="large" color={theme.highlight} />
+          )}
         </View>
       </View>
     );
