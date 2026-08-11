@@ -118,7 +118,7 @@ const CANON_MSHS_TV: any[] = [
    genre: ["fantasy", "adventure", "identity", "drama"],
    vibes: [],
  }, },
-  { isDefault: true, title: "Wednesday", semantic: { contentTraits: ["school_mystery","outsider_identity","mystery"], toneTraits: ["deadpan","gothic","quirky"], characterTraits: ["emotionally_detached_protagonist","outsider_protagonist"], storyTraits: ["investigation","mystery_unfolding"], aversionTraits: ["deadpan_tone"] }, author: "Netflix", genre: "Mystery / Gothic", wikiTitle: "Wednesday (TV series)", tags: ["audience:teen","age:mshs","media:tv","format:series","series","mystery","identity","dark","outsider","quirky"],tasteTraits: { warmth: 0.0, darkness: 0.82, pacing: 0.32, realism: 0.2, characterFocus: 1, ideaDensity: 0.98 }, 
+  { isDefault: true, title: "Wednesday", imageUri: "assets/swipeCardFallback/images/mshs__wednesday.png", semantic: { contentTraits: ["school_mystery","outsider_identity","mystery"], toneTraits: ["deadpan","gothic","quirky"], characterTraits: ["emotionally_detached_protagonist","outsider_protagonist"], storyTraits: ["investigation","mystery_unfolding"], aversionTraits: ["deadpan_tone"] }, author: "Netflix", genre: "Mystery / Gothic", tags: ["audience:teen","age:mshs","media:tv","format:series","series","mystery","identity","dark","outsider","quirky"],tasteTraits: { warmth: 0.0, darkness: 0.82, pacing: 0.32, realism: 0.2, characterFocus: 1, ideaDensity: 0.98 },
  output: {
    genre: ["mystery", "identity", "outsider"],
    vibes: ["dark", "quirky"],

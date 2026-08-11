@@ -10,6 +10,7 @@ export const swipeCardFallbackImages = {
     "Nat Geo Kids": require("./images/36__nat-geo-kids.png"),
   },
   "ms_hs": {
+    "Wednesday": require("./images/mshs__wednesday.png"),
   },
 } as const;
 

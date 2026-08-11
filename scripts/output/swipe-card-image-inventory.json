@@ -7426,8 +7426,8 @@
       "displayedTitle": "Wednesday",
       "author": "Netflix",
       "mediaType": "tv",
-      "imageSourceType": "wikiTitle",
-      "imageSourcePath": "Wednesday (TV series)",
+      "imageSourceType": "imageUri",
+      "imageSourcePath": "assets/swipeCardFallback/images/mshs__wednesday.png",
       "imageReachable": true,
       "fallbackStatus": "not_needed"
     },
