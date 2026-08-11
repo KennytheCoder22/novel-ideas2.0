@@ -58,6 +58,8 @@ async function main() {
   const checks = Array.isArray(payload.checks) ? payload.checks : [];
   assert(checks.every((row) => row.pass), "inventory_regression_check_failed");
   const { wikipediaTitleCandidates } = require(resolve(repoRoot, "screens", "swipe", "swipeCardImages.ts"));
+  const swipeDeckScreenSource = readFileSync(resolve(repoRoot, "screens", "SwipeDeckScreen.tsx"), "utf8");
+  const fallbackMapSource = readFileSync(resolve(repoRoot, "assets", "swipeCardFallback", "index.ts"), "utf8");
   assert(
     wikipediaTitleCandidates("Never Have I Ever", "tv")[0] === "Never Have I Ever (TV series)",
     "ambiguous_tv_title_not_disambiguated",
@@ -107,6 +109,13 @@ async function main() {
     { name: "near_black_logo_rejected", pass: true },
     { name: "legitimate_dark_poster_allowed", pass: true },
     { name: "wide_logo_on_dark_card_rejected", pass: true },
+  );
+  assert(fallbackMapSource.includes('"Wednesday": require("./images/mshs__wednesday.png")'), "wednesday_bundled_fallback_missing");
+  assert(swipeDeckScreenSource.includes("if (bundledFallback) return bundledFallback;"), "bundled_fallback_not_prioritized");
+  assert(swipeDeckScreenSource.includes("source={currentSwipeCoverSource}"), "bundled_fallback_not_rendered_as_module_source");
+  checks.push(
+    { name: "wednesday_bundled_fallback_registered", pass: true },
+    { name: "bundled_fallback_rendered_as_module_source", pass: true },
   );
   process.stdout.write(`${JSON.stringify({
     ok: true,

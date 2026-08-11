@@ -2111,6 +2111,13 @@ export default function SwipeDeckScreen(props: Props) {
     if (cached && !blocked.has(cached.toLowerCase())) return cached;
     return undefined;
   }, [currentCard, currentCardKey, swipeCoverCache, swipeCoverFailures]);
+  const currentSwipeCoverSource = useMemo(() => {
+    if (!currentCard) return undefined;
+    const title = String((currentCard as any)?.title || "").trim();
+    const bundledFallback = getSwipeCardFallbackImage(deckKey, title);
+    if (bundledFallback) return bundledFallback;
+    return currentSwipeCoverUri ? { uri: currentSwipeCoverUri } : undefined;
+  }, [currentCard, currentSwipeCoverUri, deckKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -6039,13 +6046,13 @@ function handleLeft(card?: SwipeDeckCard | null) {
                       { transform: [{ translateX: position.x }, { translateY: position.y }] },
                     ]}
                   >
-                    {currentSwipeCoverUri ? (
+                    {currentSwipeCoverSource ? (
                       <Image
-                        source={{ uri: currentSwipeCoverUri }}
+                        source={currentSwipeCoverSource}
                         style={styles.swipeCover}
                         resizeMode="contain"
                         onError={() => {
-                          if (!currentCardKey || !currentSwipeCoverUri) return;
+                          if (!currentCardKey || !currentSwipeCoverUri || getSwipeCardFallbackImage(deckKey, String((currentCard as any)?.title || ""))) return;
                           setSwipeCoverFailures((prev) => {
                             const existing = Array.isArray(prev[currentCardKey]) ? prev[currentCardKey] : [];
                             const normalized = currentSwipeCoverUri.toLowerCase();
