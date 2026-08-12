@@ -14,6 +14,7 @@ import {
   readPreviewAcceptanceDashboardModeFromCookie,
 } from "../lib/previewAcceptanceHarness";
 import { listSwipeCardPerformance } from "../lib/swipeCardPerformance";
+import { listRealSessionAudits } from "../lib/realSessionOverlapAudit";
 
 function hasAdminSessionCookie(req: VercelRequest): boolean {
   const cookie = String(req.headers.cookie || "");
@@ -48,6 +49,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         swipeCardPerformanceStorageMode: "unavailable",
         swipeCardPerformanceError: null,
         swipeCardPerformance: [],
+        realSessionAuditStorageMode: "unavailable",
+        realSessionAuditError: null,
+        realSessionAudits: [],
         ...buildPreviewAcceptanceDashboardFixture(filters),
       });
     }
@@ -63,10 +67,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             error: typeof error?.message === "string" ? error.message : "swipe_card_performance_unavailable",
           }))
       : Promise.resolve({ rows: [], storageMode: "unavailable", error: null });
-    const [snapshots, reviews, swipeCardPerformance] = await Promise.all([
+    const realSessionAuditResult = swipeCardPerformanceStorageAvailable
+      ? listRealSessionAudits()
+          .then((rows) => ({ rows, storageMode: "durable_postgres", error: null }))
+          .catch((error: any) => ({
+            rows: [],
+            storageMode: "error",
+            error: typeof error?.message === "string" ? error.message : "real_session_audit_unavailable",
+          }))
+      : Promise.resolve({ rows: [], storageMode: "unavailable", error: null });
+    const [snapshots, reviews, swipeCardPerformance, realSessionAudits] = await Promise.all([
       repo.listSnapshots(),
       repo.listReviews(),
       swipeCardPerformanceResult,
+      realSessionAuditResult,
     ]);
     const dashboard = buildHumanReviewDashboardData({ filters, snapshots, reviews });
     return res.status(200).json({
@@ -75,6 +89,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       swipeCardPerformanceStorageMode: swipeCardPerformance.storageMode,
       swipeCardPerformanceError: swipeCardPerformance.error,
       swipeCardPerformance: swipeCardPerformance.rows,
+      realSessionAuditStorageMode: realSessionAudits.storageMode,
+      realSessionAuditError: realSessionAudits.error,
+      realSessionAudits: realSessionAudits.rows,
       ...dashboard,
     });
   } catch (error: any) {

@@ -46,6 +46,9 @@ type DashboardPayload = {
   swipeCardPerformanceStorageMode: "durable_postgres" | "unavailable" | "error";
   swipeCardPerformanceError: string | null;
   swipeCardPerformance: SwipeCardPerformanceRow[];
+  realSessionAuditStorageMode: "durable_postgres" | "unavailable" | "error";
+  realSessionAuditError: string | null;
+  realSessionAudits: RealSessionAuditRow[];
   [key: string]: any;
 };
 
@@ -64,6 +67,20 @@ type SwipeCardPerformanceRow = {
   utilityMetric: number;
 };
 
+type RealSessionAuditRow = {
+  auditId: string;
+  patronHash: string;
+  ageBand: string;
+  likes: number;
+  dislikes: number;
+  skips: number;
+  dominantTaste: Record<string, Array<{ value: string; weight: number }>>;
+  localQueries: string[];
+  finalRecommendations: Array<{ id: string; title: string }>;
+  recentOverlaps: Array<{ auditId: string; patronHash: string; overlapCount: number; overlapPercent: number }>;
+  createdAt: string;
+};
+
 function isRecord(value: unknown): value is Record<string, any> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -77,6 +94,7 @@ function isValidDashboardPayload(payload: unknown): payload is DashboardPayload 
   if (!isRecord(payload.summary)) return false;
   if (!Number.isFinite(payload.summary.completedReviewSubmissions)) return false;
   if (!Array.isArray(payload.swipeCardPerformance)) return false;
+  if (!Array.isArray(payload.realSessionAudits)) return false;
   return true;
 }
 
@@ -307,7 +325,7 @@ export default function HumanReviewDashboardRoute() {
     if (error) return "failure";
     if (!data) return "failure";
     const totalEvidence = data.datasetInventory.realReviews + data.datasetInventory.syntheticReviews;
-    return totalEvidence > 0 || (data.swipeCardPerformance || []).length > 0 ? "success" : "empty";
+    return totalEvidence > 0 || (data.swipeCardPerformance || []).length > 0 || (data.realSessionAudits || []).length > 0 ? "success" : "empty";
   })();
 
   const summary = data?.summary;
@@ -637,6 +655,44 @@ export default function HumanReviewDashboardRoute() {
 
         {dashboardState === "success" && data ? (
           <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Real Session Overlap Audit</Text>
+              <Text style={styles.sectionSubtitle}>
+                Anonymous completed /y sessions. Overlap compares each final slate with the five preceding sessions from other patrons in the same age band.
+              </Text>
+              {data.realSessionAuditStorageMode === "error" ? (
+                <Text style={styles.inlineNote}>
+                  Real Session Audit storage is unavailable: {data.realSessionAuditError || "unknown error"}
+                </Text>
+              ) : null}
+              {(data.realSessionAudits || []).map((row) => {
+                const dominant = Object.values(row.dominantTaste || {}).flat()
+                  .slice(0, 8)
+                  .map((signal) => `${signal.value} (${signal.weight})`)
+                  .join(", ");
+                const overlap = (row.recentOverlaps || [])
+                  .map((entry) => `${entry.patronHash}: ${entry.overlapCount}/${row.finalRecommendations.length} (${entry.overlapPercent}%)`)
+                  .join(" · ");
+                return (
+                  <View key={row.auditId} style={styles.storyCard}>
+                    <Text style={styles.storyTitle}>
+                      Patron {row.patronHash} · {labelAgeBand(row.ageBand)} · {new Date(row.createdAt).toLocaleString()}
+                    </Text>
+                    <Text style={styles.storyMeta}>
+                      Likes {row.likes} · Dislikes {row.dislikes} · Skips {row.skips}
+                    </Text>
+                    <Text style={styles.storyBody}>Taste: {dominant || "No dominant signals"}</Text>
+                    <Text style={styles.storyBody}>Local query: {row.localQueries.join(" | ") || "None"}</Text>
+                    <Text style={styles.storyBody}>
+                      Final 10: {row.finalRecommendations.map((item) => item.title).join(" · ")}
+                    </Text>
+                    <Text style={styles.storyMeta}>Recent overlap: {overlap || "No earlier sessions"}</Text>
+                  </View>
+                );
+              })}
+              {!data.realSessionAudits.length ? <Text style={styles.inlineNote}>No completed /y sessions collected yet.</Text> : null}
+            </View>
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Swipe Card Performance</Text>
               <Text style={styles.sectionSubtitle}>

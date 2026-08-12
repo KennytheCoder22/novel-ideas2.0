@@ -44,6 +44,9 @@ const KITSU_API_BASE = String(
 const SWIPE_CARD_PERFORMANCE_API_URL = Platform.OS === "web"
   ? "/api/swipe-card-performance"
   : `${String((process as any)?.env?.EXPO_PUBLIC_NOVELIDEAS_API_ORIGIN || "https://novelideas.app").replace(/\/+$/, "")}/api/swipe-card-performance`;
+const REAL_SESSION_AUDIT_API_URL = Platform.OS === "web"
+  ? "/api/real-session-overlap-audit"
+  : `${String((process as any)?.env?.EXPO_PUBLIC_NOVELIDEAS_API_ORIGIN || "https://novelideas.app").replace(/\/+$/, "")}/api/real-session-overlap-audit`;
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -1644,6 +1647,7 @@ export default function SwipeDeckScreen(props: Props) {
     [activePatronId, deckKey, props.libraryId, sessionNonce],
   );
   const recordedCardPerformanceRef = useRef<Set<string>>(new Set());
+  const recordedSessionAuditsRef = useRef<Set<string>>(new Set());
 
   // Mobile-visible session diagnostics: tap the ⓘ button to see this without clipboard.
   const [showSessionInfo, setShowSessionInfo] = useState(false);
@@ -3448,6 +3452,47 @@ function handleLeft(card?: SwipeDeckCard | null) {
           setRecommendationResultWasPersisted(true);
           setRecItems(guardedNormalizedItems);
           setRecError(null);
+          const runtimeLibraryId = String(getRuntimeLibraryId() || "").trim().toLowerCase();
+          if (runtimeLibraryId === "y" && !recordedSessionAuditsRef.current.has(runId)) {
+            recordedSessionAuditsRef.current.add(runId);
+            const history = Array.isArray((inputWithHistory as any)?.swipeHistory)
+              ? (inputWithHistory as any).swipeHistory
+              : swipeHistory;
+            const countDirection = (direction: string) => history.filter((entry: any) => entry?.direction === direction).length;
+            const profile = result.diagnostics.tasteProfile;
+            const localPlan = result.diagnostics.searchPlan.sourcePlans.find((plan) => plan.source === "localLibrary");
+            const topSignals = (signals: any[]) => (Array.isArray(signals) ? signals.slice(0, 5).map((signal) => ({
+              value: String(signal?.value || ""),
+              weight: Number(signal?.weight || 0),
+            })) : []);
+            void fetch(REAL_SESSION_AUDIT_API_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                auditId: runId,
+                libraryId: runtimeLibraryId,
+                patronHash: redactedPatronId(recommendationPatronId),
+                ageBand,
+                likes: countDirection("like"),
+                dislikes: countDirection("dislike"),
+                skips: countDirection("skip"),
+                dominantTaste: {
+                  genreFamily: topSignals(profile.genreFamily),
+                  tone: topSignals(profile.tone),
+                  themes: topSignals(profile.themes),
+                  avoidSignals: topSignals(profile.avoidSignals),
+                },
+                localQueries: (localPlan?.intents || []).map((intent) => intent.query),
+                finalRecommendations: guardedNormalizedItems.slice(0, 10).map((item) => item.kind === "open_library"
+                  ? { id: docId(item.doc), title: item.doc.title }
+                  : { id: fallbackId(item.book), title: item.book.title }),
+              }),
+            }).then((response) => {
+              if (!response.ok) console.warn("[real-session-audit] record_failed", { status: response.status });
+            }).catch((error) => {
+              console.warn("[real-session-audit] request_failed", String(error instanceof Error ? error.message : error));
+            });
+          }
         } else {
           setRecItems([]);
           setRecError("No V2 matches found for this swipe session. Diagnostics are available for comparison.");
