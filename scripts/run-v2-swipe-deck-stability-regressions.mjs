@@ -195,7 +195,7 @@ test("S3b: cardIdentityKey uses id when available, falls back to title", () => {
 
 test("S4: session info text includes all required fields", () => {
   // Simulate what the component computes
-  const DEPLOYED_COMMIT_MARKER = "test-sha";
+  const DEPLOYED_GIT_SHA = "test-sha";
   const platform = "web";
   const libId = "yvhs-library";
   const pipelineSessionId = "swipe-session:ms_hs:0";
@@ -222,7 +222,7 @@ test("S4: session info text includes all required fields", () => {
   ].join(" ");
 
   const text = [
-    `build:${DEPLOYED_COMMIT_MARKER}`,
+    `build:${DEPLOYED_GIT_SHA}`,
     `platform:${platform}`,
     `library:${libId}`,
     `session:${pipelineSessionId}`,
@@ -247,6 +247,18 @@ test("S4: session info text includes all required fields", () => {
   // verify source flags format
   assert.ok(text.includes("gb✓"), "enabled source should show ✓");
   assert.ok(text.includes("nyt✗"), "disabled source should show ✗");
+});
+
+test("S4b: session diagnostics use the build-injected Git SHA", () => {
+  const screenSource = fs.readFileSync(SWIPE_DECK_SCREEN_PATH, "utf8");
+  const babelConfigSource = fs.readFileSync(path.resolve(SCRIPT_DIR, "../babel.config.js"), "utf8");
+
+  assert.match(babelConfigSource, /process\.env\.VERCEL_GIT_COMMIT_SHA/);
+  assert.match(babelConfigSource, /git", \["rev-parse", "HEAD"\]/);
+  assert.match(babelConfigSource, /StringLiteral/);
+  assert.match(screenSource, /const DEPLOYED_GIT_SHA = "__NOVELIDEAS_DEPLOYED_GIT_SHA__"/);
+  assert.match(screenSource, /`build:\$\{DEPLOYED_GIT_SHA\}`/);
+  assert.doesNotMatch(screenSource, /DEPLOYED_COMMIT_MARKER/);
 });
 
 // ---------------------------------------------------------------------------

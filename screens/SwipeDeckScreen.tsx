@@ -34,7 +34,7 @@ import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { runRecommenderV2 } from "../app/recommender-v2";
 import { applyGoogleBooksRenderingStageLineage, computeGoogleBooksDropDiagnostics, computeGoogleBooksDropDiagnosticsByTitle, harmonizeGoogleBooksStageLineage } from "../app/recommender-v2/googleBooksLineageDiagnostics";
 import type { AgeBandV2, RecommendationResultV2, SwipeSignalV2 } from "../app/recommender-v2";
-const DEPLOYED_COMMIT_MARKER = "local-collection-storage-recovery-v1";
+const DEPLOYED_GIT_SHA = "__NOVELIDEAS_DEPLOYED_GIT_SHA__";
 const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-17c4615";
 const KITSU_API_BASE = String(
   (process as any)?.env?.EXPO_PUBLIC_KITSU_API_BASE_URL ||
@@ -1695,7 +1695,7 @@ export default function SwipeDeckScreen(props: Props) {
       .map(([key, value]) => `${key.replace(/^teen_openlibrary_|^teen_googlebooks_publication_identity_/, "tol:").replace(/^non_positive_score$/, "non_pos").replace(/^maturity_band_mismatch$/, "maturity_mm").replace(/^teen_soft_gate_rescue_/, "softRescue:")}:${value}`)
       .join(",");
     return [
-      `build:${DEPLOYED_COMMIT_MARKER}`,
+      `build:${DEPLOYED_GIT_SHA}`,
       `platform:${Platform.OS}`,
       `library:${libId}`,
       `patron:${redactedPatronId(props.patronId || pipelineUserId)}`,
