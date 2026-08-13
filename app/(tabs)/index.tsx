@@ -463,43 +463,41 @@ function StudentView(props: {
       >
         <Text style={[styles.sectionTitle, { color: props.theme.text, marginTop: 0 }]}>Choose audience</Text>
         <View style={styles.rowWrap}>
-          {(["k2", "36", "ms_hs", "adult"] as DeckKey[]).map((dk) => {
-            const enabled = !!props.enabledDecks[dk];
-            const selected = props.deck === dk;
+          {(["k2", "36", "ms_hs", "adult"] as DeckKey[])
+            .filter((dk) => !!props.enabledDecks[dk])
+            .map((dk) => {
+              const selected = props.deck === dk;
 
-            return (
-              <TouchableOpacity
-                key={dk}
-                disabled={!enabled}
-                onPress={() => props.setDeck(dk)}
-                style={[
-                  styles.chip,
-                  {
-                    borderColor: props.theme.highlight,
-                    backgroundColor: props.theme.inputBg,
-                    borderWidth: 1.5,
-                    borderRadius: 999,
-                  },
-                  selected && {
-                    backgroundColor: props.theme.highlight,
-                    borderColor: props.theme.lightBorder,
-                  },
-                  !enabled && styles.chipDisabled,
-                ]}
-              >
-                <Text
+              return (
+                <TouchableOpacity
+                  key={dk}
+                  onPress={() => props.setDeck(dk)}
                   style={[
-                    styles.chipText,
-                    { color: props.theme.text },
-                    selected && { color: props.theme.highlightTextOn },
-                    !enabled && styles.chipTextDisabled,
+                    styles.chip,
+                    {
+                      borderColor: props.theme.highlight,
+                      backgroundColor: props.theme.inputBg,
+                      borderWidth: 1.5,
+                      borderRadius: 999,
+                    },
+                    selected && {
+                      backgroundColor: props.theme.highlight,
+                      borderColor: props.theme.lightBorder,
+                    },
                   ]}
                 >
-                  {deckLabel(dk)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: props.theme.text },
+                      selected && { color: props.theme.highlightTextOn },
+                    ]}
+                  >
+                    {deckLabel(dk)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
         </View>
 
         <View style={[styles.divider, { backgroundColor: props.theme.cardBorder }]} />
@@ -1643,6 +1641,12 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
     () => config?.enabledDecks ?? config?.decks?.enabled ?? {},
     [config]
   );
+  useEffect(() => {
+    if (enabledDecks[deck]) return;
+    const firstEnabledDeck = (["k2", "36", "ms_hs", "adult"] as DeckKey[])
+      .find((deckKey) => !!enabledDecks[deckKey]);
+    if (firstEnabledDeck) setDeck(firstEnabledDeck);
+  }, [deck, enabledDecks]);
   const swipeCategories: SwipeCategories = useMemo(() => ({
     ...DEFAULT_SWIPE_CATEGORIES,
     ...(config?.swipe?.categories ?? {}),

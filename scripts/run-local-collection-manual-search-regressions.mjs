@@ -68,6 +68,8 @@ assert.match(home, /manualSearchRequestRef\.current === requestId/);
 assert.match(home, /\/api\/openlibrary\?q=/);
 assert.match(home, /Shelf: \{holdingLocation\}/);
 assert.match(home, /Call number: \{d\.callNumber\}/);
+assert.match(home, /\.filter\(\(dk\) => !!props\.enabledDecks\[dk\]\)/);
+assert.match(home, /if \(enabledDecks\[deck\]\) return;/);
 assert.doesNotMatch(home, /loadLocalCollectionRecommendationArtifact\(undefined\)/);
 
 console.log("Local Collection manual search regressions passed.");
