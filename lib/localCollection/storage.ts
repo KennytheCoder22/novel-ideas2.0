@@ -29,6 +29,8 @@ export type LocalCollectionRecommendationRecord = {
   publicationYear?: number;
   audience?: string;
   readingLevel?: string;
+  subjects?: string[];
+  genres?: string[];
   shelvingLocation?: string;
   localPlacement?: string;
   callNumber?: string;
@@ -112,6 +114,8 @@ function toRecommendationRecord(record: LocalCollectionArtifact["acceptedRecords
     publicationYear: Number.isFinite(Number(record.publicationYear)) ? Number(record.publicationYear) : undefined,
     audience: String(record.audience || "").trim() || undefined,
     readingLevel: String(record.readingLevel || "").trim() || undefined,
+    subjects: Array.isArray(record.subjects) ? record.subjects.map(String).map((value) => value.trim()).filter(Boolean) : undefined,
+    genres: Array.isArray(record.genres) ? record.genres.map(String).map((value) => value.trim()).filter(Boolean) : undefined,
     shelvingLocation: String(record.shelvingLocation || "").trim() || undefined,
     localPlacement: String(record.localPlacement || "").trim() || undefined,
     callNumber: String(record.callNumber || "").trim() || undefined,
@@ -333,6 +337,8 @@ function fromLegacyArtifact(raw: any): LocalCollectionRecommendationArtifact | n
       publicationYear: Number.isFinite(Number(record?.publicationYear)) ? Number(record.publicationYear) : undefined,
       audience: String(record?.audience || "").trim() || undefined,
       readingLevel: String(record?.readingLevel || "").trim() || undefined,
+      subjects: Array.isArray(record?.subjects) ? record.subjects.map(String).map((value: string) => value.trim()).filter(Boolean) : undefined,
+      genres: Array.isArray(record?.genres) ? record.genres.map(String).map((value: string) => value.trim()).filter(Boolean) : undefined,
       shelvingLocation: String(record?.shelvingLocation || "").trim() || undefined,
       localPlacement: String(record?.localPlacement || "").trim() || undefined,
       callNumber: String(record?.callNumber || "").trim() || undefined,

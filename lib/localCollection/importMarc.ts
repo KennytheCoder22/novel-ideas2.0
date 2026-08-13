@@ -335,6 +335,8 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
     "publicationDate",
     "audience",
     "readingLevel",
+    "subjects",
+    "genres",
     "shelvingLocation",
     "localPlacement",
     "coverUrl",
@@ -367,6 +369,8 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
     const coverUrl = pickCoverUrl(record) || "";
     const publicationDate = firstSubfield(record.dataFields["264"]?.[0], "c") || firstSubfield(record.dataFields["260"]?.[0], "c") || "";
     const { audience, readingLevel } = deriveAudienceAndReadingLevel(record);
+    const subjects = (record.dataFields["650"] || []).map((field) => firstSubfield(field, "a")).filter(Boolean);
+    const genres = (record.dataFields["655"] || []).map((field) => firstSubfield(field, "a")).filter(Boolean);
 
     const row = [
       composeTitle(record),
@@ -376,6 +380,8 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
       publicationDate,
       audience || "",
       readingLevel || "",
+      subjects.join(" | "),
+      genres.join(" | "),
       shelvingLocation,
       localPlacement,
       coverUrl,

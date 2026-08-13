@@ -43,6 +43,10 @@ export function dedupeAcceptedRecords(records: LocalCollectionNormalizedRecord[]
     existing.audience = mergeText(existing.audience, record.audience);
     existing.readingLevel = mergeText(existing.readingLevel, record.readingLevel);
     existing.shelvingLocation = mergeText(existing.shelvingLocation, record.shelvingLocation);
+    const subjects = Array.from(new Set([...(existing.subjects || []), ...(record.subjects || [])]));
+    const genres = Array.from(new Set([...(existing.genres || []), ...(record.genres || [])]));
+    if (subjects.length) existing.subjects = subjects;
+    if (genres.length) existing.genres = genres;
     existing.localPlacement = mergeText(existing.localPlacement, record.localPlacement);
     existing.callNumber = mergeText(existing.callNumber, record.callNumber);
     existing.availability = mergeText(existing.availability, record.availability);

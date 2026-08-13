@@ -38,6 +38,8 @@ export interface LocalCollectionNormalizedRecord {
   publicationDate?: string;
   audience?: string;
   readingLevel?: string;
+  subjects?: string[];
+  genres?: string[];
   shelvingLocation?: string;
   localPlacement?: string;
   callNumber?: string;

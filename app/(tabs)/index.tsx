@@ -55,6 +55,11 @@ import {
   resetPatronIdentity,
   resetPatronIdentityAsync,
 } from "../../lib/patronIdentity.mjs";
+import {
+  loadLocalCollectionRecommendationArtifact,
+  type LocalCollectionRecommendationRecord,
+} from "../../lib/localCollection/storage";
+import { searchLocalCollection } from "../../lib/localCollection/search";
 
 const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
   String(
@@ -259,6 +264,19 @@ type OLDoc = {
   cover_i?: number;
 };
 
+type ManualSearchResult = {
+  id: string;
+  source: SourceKey;
+  title: string;
+  author: string;
+  publicationYear?: number;
+  coverUrl?: string;
+  shelvingLocation?: string;
+  localPlacement?: string;
+  callNumber?: string;
+  isbn?: string;
+};
+
 function deckLabel(k: DeckKey) {
   if (k === "k2") return "Kids";
   if (k === "36") return "Pre-Teens";
@@ -351,7 +369,7 @@ function StudentView(props: {
   query: string;
   setQuery: (q: string) => void;
   loading: boolean;
-  results: OLDoc[];
+  results: ManualSearchResult[];
   currentResultIndex: number;
   errorMsg: string | null;
   onSearch: () => void;
@@ -487,15 +505,14 @@ function StudentView(props: {
         <View style={[styles.divider, { backgroundColor: props.theme.cardBorder }]} />
 
         <Text style={[styles.sectionTitle, { color: props.theme.text }]}>
-          {props.source === "open_library"
-            ? "Search Open Library"
-            : "Search This Library (coming next)"}
+          {props.source === "local_collection" ? "Search This Library" : "Search Open Library"}
         </Text>
 
-        {props.source === "open_library" ? (
-          <>
+        <>
             <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
-              Try a title, author, or topic (e.g., “Percy Jackson”, “mystery”, “Dora”).
+              {props.source === "local_collection"
+                ? "Search this library's catalog by title, author, ISBN, genre, subject, shelf, or call number."
+                : "Try a title, author, or topic (e.g., “Percy Jackson”, “mystery”, “Dora”)."}
             </Text>
 
             <TextInput
@@ -531,16 +548,21 @@ function StudentView(props: {
               (() => {
                 const d = props.results[props.currentResultIndex] ?? props.results[0];
                 const title = d.title || "Untitled";
-                const author = d.author_name?.[0] || "Unknown author";
-                const year = d.first_publish_year ? ` (${d.first_publish_year})` : "";
-                const cover = coverUrlFromCoverId(d.cover_i, "M");
+                const author = d.author || "Unknown author";
+                const year = d.publicationYear ? ` (${d.publicationYear})` : "";
+                const cover = d.coverUrl;
+                const holdingLocation = [d.shelvingLocation, d.localPlacement].filter(Boolean).join(" · ");
                 return (
                   <View style={[styles.resultRow, styles.resultRowCompact, styles.resultCardStack, { borderColor: props.theme.highlight, backgroundColor: props.theme.resultBg }]}>
                     {cover ? <Image source={{ uri: cover }} style={styles.coverLarge} resizeMode="cover" /> : <View style={[styles.coverPlaceholder, styles.coverLarge, { borderColor: props.theme.resultBorder }]}><Text style={[styles.coverPlaceholderText, { color: props.theme.muted }]}>No cover</Text></View>}
                     <View style={styles.resultMetaCentered}>
                       <Text style={[styles.resultTitle, { color: props.theme.text, textAlign: "center" }]} numberOfLines={2}>{title}<Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text></Text>
                       <Text style={[styles.resultAuthor, { color: props.theme.subtext, textAlign: "center" }]} numberOfLines={1}>{author}</Text>
-                      <Text style={[styles.resultHint, { color: props.theme.muted, textAlign: "center" }]}>Open Library result</Text>
+                      <Text style={[styles.resultHint, { color: props.theme.muted, textAlign: "center" }]}>
+                        {d.source === "local_collection" ? "In this library's catalog" : "Open Library result"}
+                      </Text>
+                      {holdingLocation ? <Text style={[styles.resultHint, { color: props.theme.subtext, textAlign: "center" }]}>Shelf: {holdingLocation}</Text> : null}
+                      {d.callNumber ? <Text style={[styles.resultHint, { color: props.theme.subtext, textAlign: "center" }]}>Call number: {d.callNumber}</Text> : null}
                     </View>
                     <View style={styles.resultInternalNav}>
                       <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onPrevResult}>
@@ -590,27 +612,7 @@ function StudentView(props: {
               <Text style={[styles.errorText, { color: "#fecaca" }]}>{props.errorMsg}</Text>
             ) : null}
 
-          </>
-        ) : (
-          <>
-            <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
-              This mode will recommend only books that this library actually owns. Upload/import tools are coming next.
-              For now, switch Source to Open Library if you want instant recommendations without uploading anything.
-            </Text>
-
-            <View style={styles.rowBetween}>
-              <TouchableOpacity
-                style={[
-                  styles.smallBtn,
-                  { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
-                ]}
-                onPress={props.onClear}
-              >
-                <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+        </>
 
       </View>
     </View>
@@ -1573,8 +1575,11 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   const [query, setQuery] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [results, setResults] = useState<OLDoc[]>([]);
+  const [results, setResults] = useState<ManualSearchResult[]>([]);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
+  const [manualSearchSource, setManualSearchSource] = useState<SourceKey>(
+    props.libraryId && config?.recommendations?.localLibrarySupported ? "local_collection" : "open_library"
+  );
 
   useEffect(() => {
     if (!props.libraryId) {
@@ -1631,6 +1636,7 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
 
   // Keep a stable ref to avoid weird focus behavior from accidental remounts.
   const queryInputRef = useRef<TextInput | null>(null);
+  const manualSearchRequestRef = useRef(0);
   // Stable references: both objects are built from config so they must be memoized;
   // otherwise a new object literal on every render causes the deck to reshuffle mid-session.
   const enabledDecks = useMemo(
@@ -1663,7 +1669,18 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   };
   const localLibrarySupported = recommendationSourceSettings.localLibrarySupported;
   const adultKitsuOnlyForceQueryForValidation = config?.recommendations?.adultKitsuOnlyForceQueryForValidation === "dystopian" ? "dystopian" : "";
-  const source: SourceKey = sourceEnabled.openLibrary ? "open_library" : "local_collection";
+  const source: SourceKey = manualSearchSource;
+
+  useEffect(() => {
+    manualSearchRequestRef.current += 1;
+    setLoading(false);
+    setResults([]);
+    setCurrentResultIndex(0);
+    setErrorMsg(null);
+    setManualSearchSource(
+      props.libraryId && localLibrarySupported ? "local_collection" : "open_library"
+    );
+  }, [props.libraryId, localLibrarySupported]);
 
   // Branding state from config (with safe defaults and support for saved hex colors).
   const { mainThemeKey, highlightKey, titleTextKey, mainColorHex, highlightColorHex, fontColorHex } = hostedBranding;
@@ -2279,12 +2296,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     setHasUnsavedChanges(false);
   }
 
-  async function runOpenLibrarySearch() {
-    if (!sourceEnabled.openLibrary) {
-      setErrorMsg("Open Library is turned off in Admin. Enable Open Library under Recommendation Source to search.");
-      return;
-    }
-
+  async function runManualSearch() {
     const q = query.trim();
     if (!q) {
       setErrorMsg("Type something to search (title, author, or topic).");
@@ -2292,24 +2304,69 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     }
 
     const maxResults = deck === "k2" ? 8 : deck === "36" ? 10 : 12;
+    const requestId = ++manualSearchRequestRef.current;
+    const isCurrentRequest = () => manualSearchRequestRef.current === requestId;
 
     setLoading(true);
     setErrorMsg(null);
 
     try {
+      const activeLibraryId = String(props.libraryId || "").trim();
+      if (activeLibraryId) {
+        const artifact = await loadLocalCollectionRecommendationArtifact(activeLibraryId);
+        if (!isCurrentRequest()) return;
+        const localRecords = Array.isArray(artifact?.records) ? artifact.records : [];
+        if (localRecords.length > 0) {
+          setManualSearchSource("local_collection");
+          const matches = searchLocalCollection(localRecords, q, maxResults);
+          setResults(matches.map((record: LocalCollectionRecommendationRecord) => ({
+            id: `local:${activeLibraryId}:${record.localId}`,
+            source: "local_collection",
+            title: record.title,
+            author: record.author,
+            publicationYear: record.publicationYear,
+            coverUrl: record.coverUrl,
+            shelvingLocation: record.shelvingLocation,
+            localPlacement: record.localPlacement,
+            callNumber: record.callNumber,
+            isbn: record.isbn13 || record.isbn10,
+          })));
+          setCurrentResultIndex(0);
+          if (!matches.length) setErrorMsg(`No matching books were found in ${libraryName || "this library"}'s catalog.`);
+          return;
+        }
+      }
+
+      if (!sourceEnabled.openLibrary) {
+        setErrorMsg("Open Library is turned off in Admin. Enable Open Library under Recommendation Source to search.");
+        setResults([]);
+        setCurrentResultIndex(0);
+        return;
+      }
+
+      setManualSearchSource("open_library");
       const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=${maxResults}`;
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Open Library error: ${resp.status}`);
       const data = await resp.json();
+      if (!isCurrentRequest()) return;
       const docs: OLDoc[] = Array.isArray(data?.docs) ? data.docs : [];
-      setResults(docs.filter((d) => d?.title).slice(0, maxResults));
+      setResults(docs.filter((d) => d?.title).slice(0, maxResults).map((doc) => ({
+        id: String(doc.key || `${doc.title}:${doc.author_name?.[0] || ""}`),
+        source: "open_library",
+        title: String(doc.title || ""),
+        author: String(doc.author_name?.[0] || "Unknown author"),
+        publicationYear: doc.first_publish_year,
+        coverUrl: coverUrlFromCoverId(doc.cover_i, "M") || undefined,
+      })));
       setCurrentResultIndex(0);
     } catch (err: any) {
+      if (!isCurrentRequest()) return;
       setErrorMsg(err?.message || "Something went wrong contacting Open Library. Try again.");
       setResults([]);
       setCurrentResultIndex(0);
     } finally {
-      setLoading(false);
+      if (isCurrentRequest()) setLoading(false);
     }
   }
 
@@ -2521,8 +2578,10 @@ logoDataUrl={logoDataUrl}
         results={results}
         currentResultIndex={currentResultIndex}
         errorMsg={errorMsg}
-        onSearch={runOpenLibrarySearch}
+        onSearch={runManualSearch}
         onClear={() => {
+          manualSearchRequestRef.current += 1;
+          setLoading(false);
           setQuery("");
           setResults([]);
           setCurrentResultIndex(0);

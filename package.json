@@ -59,6 +59,7 @@
     "test:v2:local-collection-source-taste": "node scripts/run-v2-local-collection-source-taste-regressions.mjs",
     "test:v2:local-collection-best-fit": "node scripts/run-v2-local-collection-best-fit-regressions.mjs",
     "test:v2:local-library-display-metadata": "node scripts/run-v2-local-library-display-metadata-regressions.mjs",
+    "test:local-collection-manual-search": "node scripts/run-local-collection-manual-search-regressions.mjs",
     "test:v2:hosted-patron-personalization": "node scripts/run-v2-hosted-patron-personalization-regressions.mjs",
     "test:v2:swipe-deck-stability": "node scripts/run-v2-swipe-deck-stability-regressions.mjs",
     "test:swipe-card-performance": "node scripts/run-swipe-card-performance-regressions.mjs",

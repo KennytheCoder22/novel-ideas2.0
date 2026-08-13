@@ -16,6 +16,8 @@ const HEADER_ALIASES: Record<string, string[]> = {
   publicationDate: ["publication date", "publish date", "date"],
   audience: ["audience", "age band", "age", "target audience"],
   readingLevel: ["reading level", "grade level", "lexile"],
+  subjects: ["subject", "subjects", "topic", "topics", "subject headings"],
+  genres: ["genre", "genres", "category", "categories"],
   shelvingLocation: ["shelving location", "shelf", "location", "collection"],
   localPlacement: ["local placement", "placement", "local location", "room", "classroom"],
   callNumber: ["call number", "callno", "call #"],
@@ -61,6 +63,12 @@ function parseCopies(value: string): number {
   const n = Number(clean(value));
   if (!Number.isFinite(n) || n <= 0) return 1;
   return Math.max(1, Math.floor(n));
+}
+
+function parseTerms(value: string): string[] {
+  return Array.from(new Set(
+    clean(value).split(/[|;,]/).map((term) => clean(term)).filter(Boolean)
+  ));
 }
 
 function normalizeIsbn(rawValue: string): { isbn10?: string; isbn13?: string; invalid: boolean } {
@@ -183,6 +191,8 @@ export function normalizeRow(
 
   const audience = clean(read("audience")) || undefined;
   const readingLevel = clean(read("readingLevel")) || undefined;
+  const subjects = parseTerms(read("subjects"));
+  const genres = parseTerms(read("genres"));
   const shelvingLocation = clean(read("shelvingLocation")) || undefined;
   const localPlacement = clean(read("localPlacement")) || undefined;
   const callNumber = clean(read("callNumber")) || undefined;
@@ -228,6 +238,8 @@ export function normalizeRow(
       publicationDate,
       audience,
       readingLevel,
+      subjects: subjects.length ? subjects : undefined,
+      genres: genres.length ? genres : undefined,
       shelvingLocation,
       localPlacement,
       callNumber,
