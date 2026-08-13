@@ -261,6 +261,12 @@ test("S4b: session diagnostics use the build-injected Git SHA", () => {
   assert.doesNotMatch(screenSource, /DEPLOYED_COMMIT_MARKER/);
 });
 
+test("S4c: recommendation completion copy has no encoding artifact", () => {
+  const screenSource = fs.readFileSync(SWIPE_DECK_SCREEN_PATH, "utf8");
+  assert.match(screenSource, />You've reached the end of your recommendations\.<\/Text>/);
+  assert.doesNotMatch(screenSource, /Youâ€™ve/);
+});
+
 // ---------------------------------------------------------------------------
 // S5 – Identical values in two swipeCategories objects produce identical card counts
 // ---------------------------------------------------------------------------

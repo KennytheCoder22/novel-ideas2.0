@@ -6048,7 +6048,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
                 {recItems.length > 0 && !recLoading && recDone ? (
                   <View style={styles.recCard}>
                     <View style={styles.recMeta}>
-                      <Text style={styles.recBookTitle}>Youâ€™ve reached the end of your recommendations.</Text>
+                      <Text style={styles.recBookTitle}>You've reached the end of your recommendations.</Text>
                       <Text style={styles.recCounter}>{recItems.length} of {recItems.length}</Text>
                     </View>
 
