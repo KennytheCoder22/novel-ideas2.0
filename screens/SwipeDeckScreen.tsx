@@ -59,6 +59,10 @@ import type { MoodProfile, SwipeSignal } from "./recommenders/taste/sessionMood"
 import type { RecommenderInput } from "./recommenders/types";
 import { estimateReaderSophisticationFromTaste } from "./recommenders/taste/sophisticationModel";
 import { cardIdentityKey, selectAdaptiveCard } from "./swipe/adaptiveCardQueue";
+import {
+  FINE_HOVER_POINTER_QUERY,
+  shouldShowDesktopSwipeControls,
+} from "./swipe/webSwipeControls";
 import { getSwipeCardFallbackImage } from "../assets/swipeCardFallback";
 import { wikipediaTitleCandidates } from "./swipe/swipeCardImages";
 import {
@@ -1480,6 +1484,29 @@ export default function SwipeDeckScreen(props: Props) {
   const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
   const isSmallScreen = windowWidth < 420 || windowHeight < 750;
   const needsCardOffset = isSmallScreen || (Platform.OS === "web" && windowWidth < 600);
+  const [hasFineHoverPointer, setHasFineHoverPointer] = useState<boolean | null>(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return null;
+    }
+    return window.matchMedia(FINE_HOVER_POINTER_QUERY).matches;
+  });
+  const showDesktopSwipeControls = shouldShowDesktopSwipeControls({
+    platform: Platform.OS,
+    isSmallScreen,
+    hasFineHoverPointer,
+  });
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const pointerQuery = window.matchMedia(FINE_HOVER_POINTER_QUERY);
+    const updatePointerCapability = () => setHasFineHoverPointer(pointerQuery.matches);
+    updatePointerCapability();
+    pointerQuery.addEventListener("change", updatePointerCapability);
+    return () => pointerQuery.removeEventListener("change", updatePointerCapability);
+  }, []);
   const highlightColor = Platform.OS === "web" ? "var(--highlight-color)" : "#e0b84b";
 
   const [cardStageHeight, setCardStageHeight] = useState<number>(0);
@@ -6139,7 +6166,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
                 </View>
               </View>
 
-              {isSmallScreen ? (
+              {!showDesktopSwipeControls ? (
                 <View style={styles.bottomPanel}>
                   <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
                     <View style={[styles.divider, isSmallScreen && styles.dividerTight]} />
