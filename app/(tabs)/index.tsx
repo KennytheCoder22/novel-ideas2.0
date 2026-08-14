@@ -10,6 +10,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getRuntimeLibraryName, setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
 import {
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -2007,6 +2008,13 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     router.replace("/testing");
   }
 
+  function openDeveloperTip() {
+    closeHeaderMenu();
+    Linking.openURL("https://venmo.com/u/ken-bragg").catch(() => {
+      Alert.alert("Unable to open Venmo", "Visit venmo.com/u/ken-bragg to tip the developer.");
+    });
+  }
+
   function openSavedLibrary(library: SavedLibrary) {
     closeHeaderMenu();
     router.replace(library.hostedPath as any);
@@ -2097,6 +2105,14 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/feedback")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Send Feedback</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerMenuItem}
+              onPress={openDeveloperTip}
+              accessibilityRole="link"
+              accessibilityLabel="Tip Developer on Venmo"
+            >
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Tip Developer</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/privacy")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Privacy</Text>

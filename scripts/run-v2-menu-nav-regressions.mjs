@@ -20,6 +20,7 @@
  *   NM13 — how-it-works.tsx covers swiping, recommendations, and Human Review
  *   NM14 — openInfoScreen helper closes the menu before routing
  *   NM15 — No admin stub TouchableOpacity items remain in the admin section of renderHeaderMenu
+ *   NM16 — Tip Developer opens the developer's Venmo profile
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -95,6 +96,16 @@ const adminSectionSource =
   assertIncludes(menuFnSource, 'openInfoScreen("/about")', "NM5: About must call openInfoScreen('/about')");
   assertIncludes(menuFnSource, "About", "NM5: About must still appear in menu");
   console.log("PASS NM5: About routes to /about");
+}
+
+// NM16: Tip Developer closes the menu and opens the developer's Venmo profile.
+{
+  assertIncludes(indexSource, 'Linking.openURL("https://venmo.com/u/ken-bragg")', "NM16: Tip Developer must open @ken-bragg on Venmo");
+  assertIncludes(indexSource, "function openDeveloperTip()", "NM16: Tip Developer handler must exist");
+  assertIncludes(indexSource, "closeHeaderMenu();", "NM16: external-link handlers must close the menu");
+  assertIncludes(menuFnSource, "onPress={openDeveloperTip}", "NM16: Tip Developer menu item must use its external-link handler");
+  assertIncludes(menuFnSource, "Tip Developer", "NM16: Tip Developer must appear in the menu");
+  console.log("PASS NM16: Tip Developer opens @ken-bragg on Venmo");
 }
 
 // NM6: Admin items are hidden — no TouchableOpacity wiring to stub calls in admin section.
