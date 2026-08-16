@@ -20,6 +20,7 @@ import {
   Modal,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import { getDeckLabel } from "../constants/deckLabels";
 import type { SwipeDeck, SwipeDeckCard } from "../data/swipeDecks/types";
@@ -6100,7 +6101,14 @@ function handleLeft(card?: SwipeDeckCard | null) {
                                   setTimeout(() => handleRate(r), 80);
                                 }}
                               >
-                                <Text style={styles.ratingStar}>{filled ? "â˜…" : "â˜†"}</Text>
+                                <MaterialIcons
+                                  name={filled ? "star" : "star-border"}
+                                  size={26}
+                                  color="#e5efff"
+                                  style={styles.ratingStar}
+                                  accessibilityElementsHidden
+                                  importantForAccessibility="no-hide-descendants"
+                                />
                                 <Text style={styles.ratingLabel} numberOfLines={1}>
                                   {ratingLabel(r)}
                                 </Text>
@@ -7003,7 +7011,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   ratingStarBtn: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 6, paddingHorizontal: 0, borderWidth: 0 },
-  ratingStar: { fontSize: 26, fontWeight: "900", color: "#e5efff", lineHeight: 28 },
+  ratingStar: { height: 28 },
   ratingLabel: { marginTop: 4, color: "#e5efff", fontSize: 11, fontWeight: "800", textAlign: "center", width: "100%", lineHeight: 12, includeFontPadding: false },
 
   recBookTitle: { color: "#fff" },
