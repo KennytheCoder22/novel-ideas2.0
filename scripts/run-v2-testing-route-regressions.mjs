@@ -10,9 +10,9 @@
  *   T3  — app/testing.tsx does NOT pass any raw diagnostic props (adultKitsuOnlyForceQueryForValidation etc.)
  *   T4  — SwipeDeckScreen Props type includes isTestingMode?: boolean
  *   T5  — In testing mode, "Evaluate Recommendations" label is used (not "Review This Slate")
- *   T6  — testing mode lower-right branch contains only Evaluate Recommendations + Fresh User
+ *   T6  — testing mode branch contains only the conditionally rendered Evaluate Recommendations control
  *   T7  — admin branch still contains Test A/B/C, Diagnostics, Codex Diagnostics, Review This Slate, and Fresh User
- *   T8  — "Fresh User" remains rendered in the testing branch
+ *   T8  — standalone "Fresh User" is not rendered in the testing branch
  *   T9  — "Review This Slate" label still used when isTestingMode is false/absent
  *   T10 — app/_layout.tsx registers the "testing" Stack.Screen
  *   T11 — testing.tsx does not import any internal recommendation engine modules
@@ -47,11 +47,16 @@
  *   T40 — anonymous reviewer identity remains internal for public testing
  *   T41 — Evaluate Recommendations still opens the Human Review modal path
  *   T42 — testing modal keeps the bookstore framing copy and book-first hierarchy
+ *   T43 — Reset User remains available in the three-dot patron menu
+ *   T44 — Evaluate Recommendations is hidden before recommendations exist
+ *   T45 — Evaluate Recommendations appears after a slate is rendered
+ *   T46 — resetting a session hides Evaluate Recommendations again
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { shouldShowTestingEvaluation } from "../screens/swipe/testingControls.mjs";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dir, "..");
@@ -72,6 +77,7 @@ function assertNotIncludes(content, fragment, msg) {
 
 const testingSource = readFileSync(resolve(ROOT, "app/testing.tsx"), "utf8");
 const swipeDeckSource = readFileSync(resolve(ROOT, "screens/SwipeDeckScreen.tsx"), "utf8");
+const homeSource = readFileSync(resolve(ROOT, "app/(tabs)/index.tsx"), "utf8");
 const layoutSource = readFileSync(resolve(ROOT, "app/_layout.tsx"), "utf8");
 const vercelConfigPath = resolve(ROOT, "vercel.json");
 const vercelConfig = existsSync(vercelConfigPath) ? JSON.parse(readFileSync(vercelConfigPath, "utf8")) : null;
@@ -123,17 +129,21 @@ const adminBranchSource =
   console.log("PASS T5: 'Evaluate Recommendations' label used when isTestingMode is true");
 }
 
-// T6: testing branch contains only the two public controls
+// T6: testing branch contains only the conditionally rendered evaluation control
 {
   assertIncludes(swipeDeckSource, "{isTestingMode ? (", "T6: controls must split into an explicit testing-mode branch");
   assertIncludes(swipeDeckSource, "<Text style={styles.debugToggleText}>Evaluate Recommendations</Text>", "T6: testing branch must render Evaluate Recommendations");
-  assertIncludes(swipeDeckSource, "<Text style={styles.debugToggleText}>Fresh User</Text>", "T6: testing branch must render Fresh User");
+  assertIncludes(
+    testingBranchSource,
+    "shouldShowTestingEvaluation({",
+    "T6: Evaluate Recommendations must require a rendered, non-empty recommendation slate"
+  );
   assertNotIncludes(
     swipeDeckSource,
     "{!isTestingMode && testSessionPresets.map",
     "T6: testing branch should not rely on a shared label that can leak admin copy"
   );
-  console.log("PASS T6: testing branch contains only Evaluate Recommendations and Fresh User");
+  console.log("PASS T6: testing branch contains only slate-gated Evaluate Recommendations");
 }
 
 // T7: admin branch retains the internal controls
@@ -145,11 +155,12 @@ const adminBranchSource =
   console.log("PASS T7: admin branch preserves the internal controls");
 }
 
-// T8: Fresh User remains available in testing mode
+// T8: standalone Fresh User is removed from testing mode
 {
   assert(testingBranchSource.length > 0, "T8: testing branch must be present");
-  assertIncludes(testingBranchSource, "Fresh User", "T8: Fresh User text must exist in testing branch");
-  console.log("PASS T8: 'Fresh User' remains available in testing mode");
+  assertNotIncludes(testingBranchSource, "Fresh User", "T8: testing branch must not render a standalone Fresh User control");
+  assertNotIncludes(testingBranchSource, "handleFreshUserReset", "T8: testing branch must not wire a standalone reset control");
+  console.log("PASS T8: standalone Fresh User is absent from testing mode");
 }
 
 // T9: "Review This Slate" label used when isTestingMode is false
@@ -272,8 +283,8 @@ const adminBranchSource =
       assertNotIncludes(testingBranchSource, forbidden, `T20: testing control branch must not include ${forbidden}`);
     }
     assertIncludes(testingBranchSource, "Evaluate Recommendations", "T20: testing control branch must include Evaluate Recommendations");
-    assertIncludes(testingBranchSource, "Fresh User", "T20: testing control branch must include Fresh User");
-    console.log("PASS T20: testing control branch omits Test A/B/C, Diagnostics, and Codex Diagnostics");
+    assertNotIncludes(testingBranchSource, "Fresh User", "T20: testing control branch must not include the duplicate Fresh User control");
+    console.log("PASS T20: testing control branch contains only the public slate-gated evaluation action");
   }
 
   // T21: extracted admin control branch preserves the internal controls
@@ -477,4 +488,67 @@ const adminBranchSource =
     console.log("PASS T42: testing modal keeps the bookstore framing and book-first hierarchy");
   }
 
-  console.log("\n✓ All testing-route regressions passed (42 tests).");
+  // T43: removing the duplicate /testing control must not remove menu Reset User.
+  {
+    assertIncludes(homeSource, "onPress={confirmResetUser}", "T43: three-dot menu must keep the Reset User handler");
+    assertIncludes(homeSource, ">Reset User</Text>", "T43: three-dot menu must keep the Reset User label");
+    console.log("PASS T43: Reset User remains available through the patron menu");
+  }
+
+  // T44: evaluation is hidden during swiping and before a slate exists.
+  {
+    assert(
+      !shouldShowTestingEvaluation({
+        isTestingMode: true,
+        platform: "web",
+        showRecommendationsView: false,
+        recommendationCount: 0,
+      }),
+      "T44: evaluation must be hidden during the swipe-card phase"
+    );
+    assert(
+      !shouldShowTestingEvaluation({
+        isTestingMode: true,
+        platform: "web",
+        showRecommendationsView: true,
+        recommendationCount: 0,
+      }),
+      "T44: recommendation view without a generated slate must not show evaluation"
+    );
+    console.log("PASS T44: Evaluate Recommendations is hidden before recommendations exist");
+  }
+
+  // T45: evaluation appears once a non-empty slate is rendered.
+  {
+    assert(
+      shouldShowTestingEvaluation({
+        isTestingMode: true,
+        platform: "web",
+        showRecommendationsView: true,
+        recommendationCount: 10,
+      }),
+      "T45: rendered recommendation slate must show evaluation"
+    );
+    console.log("PASS T45: Evaluate Recommendations appears after slate generation");
+  }
+
+  // T46: fresh/reset session state hides evaluation until another slate exists.
+  {
+    const resetStart = swipeDeckSource.indexOf("function handleFreshUserReset()");
+    const resetEnd = swipeDeckSource.indexOf("\n  function ", resetStart + 1);
+    const resetSource = swipeDeckSource.slice(resetStart, resetEnd);
+    assertIncludes(resetSource, "setRecItems([])", "T46: reset must clear recommendation items");
+    assertIncludes(resetSource, "setForceRecommendationsView(false)", "T46: reset must leave recommendation view");
+    assert(
+      !shouldShowTestingEvaluation({
+        isTestingMode: true,
+        platform: "web",
+        showRecommendationsView: false,
+        recommendationCount: 0,
+      }),
+      "T46: reset state must hide evaluation"
+    );
+    console.log("PASS T46: fresh/reset sessions hide evaluation until a new slate exists");
+  }
+
+  console.log("\n✓ All testing-route regressions passed (46 tests).");

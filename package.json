@@ -56,6 +56,7 @@
     "test:v2:human-review-dashboard": "node scripts/run-v2-human-review-dashboard-regressions.mjs",
     "test:v2:human-review-paginated-ux": "node scripts/run-v2-human-review-paginated-ux-regressions.mjs",
     "test:v2:testing-route": "node scripts/run-v2-testing-route-regressions.mjs",
+    "test:testing-patron-controls": "node scripts/run-testing-patron-controls-regressions.mjs",
     "test:v2:local-collection-import-foundation": "node scripts/run-v2-local-collection-import-foundation-regressions.mjs",
     "test:v2:local-collection-source-taste": "node scripts/run-v2-local-collection-source-taste-regressions.mjs",
     "test:v2:local-collection-best-fit": "node scripts/run-v2-local-collection-best-fit-regressions.mjs",

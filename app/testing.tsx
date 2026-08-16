@@ -11,9 +11,7 @@
  *   - Engine selectors
  *   - Deep-debug controls
  *
- * Controls kept visible:
- *   - "Evaluate Recommendations" (above)
- *   - "Fresh User" (below)
+ * "Evaluate Recommendations" appears only after a recommendation slate exists.
  */
 
 import { useCallback, useEffect, useState } from "react";

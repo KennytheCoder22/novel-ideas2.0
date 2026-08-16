@@ -29,6 +29,7 @@ import * as deck36Mod from "../data/swipeDecks/36";
 import msHsDeck from "../data/swipeDecks/ms_hs";
 import adultDeck from "../data/swipeDecks/adult";
 import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
+import { shouldShowTestingEvaluation } from "./swipe/testingControls.mjs";
 import coverUrlsMap from '../assets/coverUrls.json';
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { runRecommenderV2 } from "../app/recommender-v2";
@@ -6290,14 +6291,16 @@ function handleLeft(card?: SwipeDeckCard | null) {
           <View style={styles.testPillRow}>
             {isTestingMode ? (
               <>
-                {Platform.OS === "web" ? (
+                {shouldShowTestingEvaluation({
+                  isTestingMode,
+                  platform: Platform.OS,
+                  showRecommendationsView,
+                  recommendationCount: recItems.length,
+                }) ? (
                   <TouchableOpacity style={styles.humanReviewToggle} onPress={openHumanReviewForCurrentSlate}>
                     <Text style={styles.debugToggleText}>Evaluate Recommendations</Text>
                   </TouchableOpacity>
                 ) : null}
-                <TouchableOpacity style={styles.testPillButton} onPress={handleFreshUserReset}>
-                  <Text style={styles.debugToggleText}>Fresh User</Text>
-                </TouchableOpacity>
               </>
             ) : isAdminMode ? (
               <>
