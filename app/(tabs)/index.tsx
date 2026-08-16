@@ -28,6 +28,7 @@ import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
 import { MyListModal } from "../../components/MyListModal";
+import { PatronAgePreferencesModal } from "../../components/PatronAgePreferencesModal";
 import {
   applyWebHighlightColor,
   autoChooseFontColor,
@@ -69,6 +70,17 @@ import {
   writePatronMyListAsync,
   type SavedRecommendation,
 } from "../../lib/patronMyList";
+import {
+  clearAllPatronAgePreferences,
+  clearAllPatronAgePreferencesAsync,
+  effectivePatronAgeBands,
+  normalizeAvailableAgeBands,
+  readPatronAgePreferences,
+  readPatronAgePreferencesAsync,
+  writePatronAgePreferences,
+  writePatronAgePreferencesAsync,
+  type AgeBandSelection,
+} from "../../lib/patronAgePreferences";
 import {
   loadLocalCollectionRecommendationArtifact,
   type LocalCollectionRecommendationRecord,
@@ -1529,6 +1541,11 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showMyList, setShowMyList] = useState(false);
+  const [showPatronPreferences, setShowPatronPreferences] = useState(false);
+  const [patronAgePreferences, setPatronAgePreferences] = useState<AgeBandSelection | null>(null);
+  const [patronAgePreferencesDraft, setPatronAgePreferencesDraft] = useState<AgeBandSelection>(
+    () => normalizeAvailableAgeBands({}),
+  );
   const [myList, setMyList] = useState<SavedRecommendation[]>([]);
   const myListRef = useRef<SavedRecommendation[]>([]);
   const myListScopeRef = useRef("");
@@ -1685,10 +1702,38 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   const manualSearchRequestRef = useRef(0);
   // Stable references: both objects are built from config so they must be memoized;
   // otherwise a new object literal on every render causes the deck to reshuffle mid-session.
-  const enabledDecks = useMemo(
+  const libraryEnabledDecks = useMemo(
     () => config?.enabledDecks ?? config?.decks?.enabled ?? {},
     [config]
   );
+  const availablePatronAgeBands = useMemo(
+    () => normalizeAvailableAgeBands(libraryEnabledDecks),
+    [libraryEnabledDecks],
+  );
+  const enabledDecks = useMemo(
+    () => effectivePatronAgeBands(availablePatronAgeBands, patronAgePreferences),
+    [availablePatronAgeBands, patronAgePreferences],
+  );
+  useEffect(() => {
+    if (!patronIdentityReady || !patronId) return;
+    let cancelled = false;
+    setPatronAgePreferences(null);
+    async function loadPreferences() {
+      try {
+        const preference = Platform.OS === "web" && typeof localStorage !== "undefined"
+          ? readPatronAgePreferences(localStorage, patronId, props.libraryId, availablePatronAgeBands)
+          : await readPatronAgePreferencesAsync(AsyncStorage, patronId, props.libraryId, availablePatronAgeBands);
+        if (!cancelled) setPatronAgePreferences(preference);
+      } catch (error) {
+        console.error("Failed to load patron age preferences:", error);
+        if (!cancelled) setPatronAgePreferences(null);
+      }
+    }
+    void loadPreferences();
+    return () => {
+      cancelled = true;
+    };
+  }, [availablePatronAgeBands, patronId, patronIdentityReady, props.libraryId]);
   useEffect(() => {
     if (enabledDecks[deck]) return;
     const firstEnabledDeck = (["k2", "36", "ms_hs", "adult"] as DeckKey[])
@@ -2067,6 +2112,31 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     setShowMyList(true);
   }
 
+  function openPatronPreferences() {
+    closeHeaderMenu();
+    setPatronAgePreferencesDraft(
+      effectivePatronAgeBands(availablePatronAgeBands, patronAgePreferences),
+    );
+    setShowPatronPreferences(true);
+  }
+
+  async function savePatronPreferences() {
+    const boundedPreference = effectivePatronAgeBands(availablePatronAgeBands, patronAgePreferencesDraft);
+    if (!Object.values(boundedPreference).some(Boolean)) return;
+    try {
+      if (Platform.OS === "web" && typeof localStorage !== "undefined") {
+        writePatronAgePreferences(localStorage, patronId, props.libraryId, boundedPreference);
+      } else {
+        await writePatronAgePreferencesAsync(AsyncStorage, patronId, props.libraryId, boundedPreference);
+      }
+      setPatronAgePreferences(boundedPreference);
+      setShowPatronPreferences(false);
+    } catch (error) {
+      console.error("Failed to save patron age preferences:", error);
+      Alert.alert("Unable to save preferences", "Your personal age band preferences could not be saved.");
+    }
+  }
+
   async function persistMyList(items: SavedRecommendation[]) {
     if (Platform.OS === "web" && typeof localStorage !== "undefined") {
       writePatronMyList(localStorage, patronId, props.libraryId, items);
@@ -2157,6 +2227,27 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     );
   }
 
+  function renderPatronPreferences() {
+    return (
+      <PatronAgePreferencesModal
+        visible={showPatronPreferences}
+        available={availablePatronAgeBands}
+        value={patronAgePreferencesDraft}
+        colors={{
+          background: theme.appBg,
+          card: theme.inputBg,
+          border: theme.lightBorder,
+          text: theme.text,
+          muted: theme.muted,
+          highlight: theme.highlight,
+        }}
+        onChange={setPatronAgePreferencesDraft}
+        onCancel={() => setShowPatronPreferences(false)}
+        onSave={() => void savePatronPreferences()}
+      />
+    );
+  }
+
   function openSavedLibrary(library: SavedLibrary) {
     closeHeaderMenu();
     router.replace(library.hostedPath as any);
@@ -2170,8 +2261,10 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
       if (patronId) {
         if (isWebStorage) {
           clearAllPatronMyLists(localStorage, patronId);
+          clearAllPatronAgePreferences(localStorage, patronId);
         } else {
           await clearAllPatronMyListsAsync(AsyncStorage, patronId);
+          await clearAllPatronAgePreferencesAsync(AsyncStorage, patronId);
         }
       }
       const result = isWebStorage
@@ -2180,6 +2273,8 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
       myListRef.current = [];
       setMyList([]);
       setShowMyList(false);
+      setPatronAgePreferences(null);
+      setShowPatronPreferences(false);
       setPatronId(result.nextId);
       setPatronIdentityReady(true);
       setMode("swipe");
@@ -2192,7 +2287,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   function confirmResetUser() {
     closeHeaderMenu();
-    const message = "This clears this patron's My List, swipe history, and recommendation history and starts with a new identity. Library and admin settings will not change.";
+    const message = "This clears this patron's personal preferences, My List, swipe history, and recommendation history and starts with a new identity. Library and admin settings will not change.";
     if (Platform.OS === "web" && typeof window !== "undefined") {
       if (window.confirm(`Reset User?\n\n${message}`)) void resetCurrentPatron();
       return;
@@ -2247,6 +2342,10 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                 <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
               </>
             ) : null}
+            <Text style={[styles.headerMenuSectionLabel, { color: theme.muted }]}>Personal</Text>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={openPatronPreferences}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Age Band Preferences</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerMenuItem}
               onPress={() => {
@@ -2254,7 +2353,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                 openAdminEntry();
               }}
             >
-              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Customize</Text>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Library Settings / Customize</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={openTestingInvite}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Help Improve NovelIdeas</Text>
@@ -2334,7 +2433,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     // canonical stores it at config.decks.enabled.
     const useLegacy = !!config?.enabledDecks && typeof config?.enabledDecks === "object";
     const path: (string | number)[] = useLegacy ? ["enabledDecks", dk] : ["decks", "enabled", dk];
-    setInConfig(path, !enabledDecks[dk]);
+    setInConfig(path, !libraryEnabledDecks[dk]);
   }
 
   function toggleSwipeCategory(k: SwipeCategoryKey) {
@@ -2571,7 +2670,7 @@ logoDataUrl={logoDataUrl}
           mainThemeKey={mainThemeKey}
           highlightKey={highlightKey}
           titleTextKey={titleTextKey}
-          enabledDecks={enabledDecks}
+          enabledDecks={libraryEnabledDecks}
           sourceEnabled={sourceEnabled}
           deckSourceEnabled={deckSourceEnabled}
           adultKitsuOnlyForceQueryForValidation={adultKitsuOnlyForceQueryForValidation}
@@ -2697,6 +2796,7 @@ logoDataUrl={logoDataUrl}
           )}
         </View>
         {renderMyList()}
+        {renderPatronPreferences()}
       </View>
     );
   }
@@ -2785,6 +2885,7 @@ logoDataUrl={logoDataUrl}
       />
       </View>
       {renderMyList()}
+      {renderPatronPreferences()}
     </View>
   );
 }
