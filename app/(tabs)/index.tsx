@@ -5,7 +5,7 @@ import {
   useRef,
   useState
 } from "react";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getRuntimeLibraryName, setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
 import {
@@ -28,7 +28,6 @@ import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
 import { MyListModal } from "../../components/MyListModal";
-import { PatronAgePreferencesModal } from "../../components/PatronAgePreferencesModal";
 import {
   applyWebHighlightColor,
   autoChooseFontColor,
@@ -77,10 +76,17 @@ import {
   normalizeAvailableAgeBands,
   readPatronAgePreferences,
   readPatronAgePreferencesAsync,
-  writePatronAgePreferences,
-  writePatronAgePreferencesAsync,
-  type AgeBandSelection,
 } from "../../lib/patronAgePreferences";
+import {
+  clearAllPatronCustomizations,
+  clearAllPatronCustomizationsAsync,
+  effectivePatronSwipeCategories,
+  normalizeAvailableSwipeCategories,
+  readPatronCustomization,
+  readPatronCustomizationAsync,
+  resolvePatronAppearance,
+  type PatronCustomization,
+} from "../../lib/patronCustomization";
 import {
   loadLocalCollectionRecommendationArtifact,
   type LocalCollectionRecommendationRecord,
@@ -270,16 +276,6 @@ function resolveRecommendationSourceSettings(cfg: any): {
     localLibrarySupported,
   };
 }
-
-const DEFAULT_SWIPE_CATEGORIES: SwipeCategories = {
-  books: true,
-  movies: true,
-  tv: true,
-  games: true,
-  youtube: true,
-  anime: true,
-  podcasts: true,
-};
 
 
 type OLDoc = {
@@ -1541,11 +1537,7 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showMyList, setShowMyList] = useState(false);
-  const [showPatronPreferences, setShowPatronPreferences] = useState(false);
-  const [patronAgePreferences, setPatronAgePreferences] = useState<AgeBandSelection | null>(null);
-  const [patronAgePreferencesDraft, setPatronAgePreferencesDraft] = useState<AgeBandSelection>(
-    () => normalizeAvailableAgeBands({}),
-  );
+  const [patronCustomization, setPatronCustomization] = useState<PatronCustomization>({});
   const [myList, setMyList] = useState<SavedRecommendation[]>([]);
   const myListRef = useRef<SavedRecommendation[]>([]);
   const myListScopeRef = useRef("");
@@ -1711,42 +1703,48 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
     [libraryEnabledDecks],
   );
   const enabledDecks = useMemo(
-    () => effectivePatronAgeBands(availablePatronAgeBands, patronAgePreferences),
-    [availablePatronAgeBands, patronAgePreferences],
+    () => effectivePatronAgeBands(availablePatronAgeBands, patronCustomization.ageBands ?? null),
+    [availablePatronAgeBands, patronCustomization.ageBands],
   );
-  useEffect(() => {
-    if (!patronIdentityReady || !patronId) return;
+  useFocusEffect(useCallback(() => {
+    if (!patronIdentityReady || !patronId) return undefined;
     let cancelled = false;
-    setPatronAgePreferences(null);
-    async function loadPreferences() {
+    async function loadCustomization() {
       try {
-        const preference = Platform.OS === "web" && typeof localStorage !== "undefined"
+        const legacyAgeBands = Platform.OS === "web" && typeof localStorage !== "undefined"
           ? readPatronAgePreferences(localStorage, patronId, props.libraryId, availablePatronAgeBands)
           : await readPatronAgePreferencesAsync(AsyncStorage, patronId, props.libraryId, availablePatronAgeBands);
-        if (!cancelled) setPatronAgePreferences(preference);
+        const customization = Platform.OS === "web" && typeof localStorage !== "undefined"
+          ? readPatronCustomization(localStorage, patronId, props.libraryId, legacyAgeBands)
+          : await readPatronCustomizationAsync(AsyncStorage, patronId, props.libraryId, legacyAgeBands);
+        if (!cancelled) setPatronCustomization(customization);
       } catch (error) {
-        console.error("Failed to load patron age preferences:", error);
-        if (!cancelled) setPatronAgePreferences(null);
+        console.error("Failed to load patron customization:", error);
+        if (!cancelled) setPatronCustomization({});
       }
     }
-    void loadPreferences();
+    void loadCustomization();
     return () => {
       cancelled = true;
     };
-  }, [availablePatronAgeBands, patronId, patronIdentityReady, props.libraryId]);
+  }, [availablePatronAgeBands, patronId, patronIdentityReady, props.libraryId]));
   useEffect(() => {
     if (enabledDecks[deck]) return;
     const firstEnabledDeck = (["k2", "36", "ms_hs", "adult"] as DeckKey[])
       .find((deckKey) => !!enabledDecks[deckKey]);
     if (firstEnabledDeck) setDeck(firstEnabledDeck);
   }, [deck, enabledDecks]);
-  const swipeCategories: SwipeCategories = useMemo(() => ({
-    ...DEFAULT_SWIPE_CATEGORIES,
-    ...(config?.swipe?.categories ?? {}),
-  }), [config?.swipe?.categories]);
+  const librarySwipeCategories: SwipeCategories = useMemo(
+    () => normalizeAvailableSwipeCategories(config?.swipe?.categories ?? {}),
+    [config?.swipe?.categories],
+  );
+  const swipeCategories: SwipeCategories = useMemo(
+    () => effectivePatronSwipeCategories(librarySwipeCategories, patronCustomization.swipeCategories),
+    [librarySwipeCategories, patronCustomization.swipeCategories],
+  );
   const runtimeLibraryName = props.libraryId ? getRuntimeLibraryName() : "";
   const hostedBranding = useMemo(() => resolveHostedBranding(config), [config]);
-  const libraryName = useMemo(
+  const inheritedLibraryName = useMemo(
     () => hostedBranding.libraryName || runtimeLibraryName || "",
     [hostedBranding.libraryName, runtimeLibraryName]
   );
@@ -1781,26 +1779,49 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
 
   // Branding state from config (with safe defaults and support for saved hex colors).
   const { mainThemeKey, highlightKey, titleTextKey, mainColorHex, highlightColorHex, fontColorHex } = hostedBranding;
+  const libraryLogoDataUrl: string | null = config?.branding?.logoDataUrl ?? null;
+  const effectiveAppearance = useMemo(
+    () => resolvePatronAppearance({
+      name: inheritedLibraryName,
+      logoDataUrl: libraryLogoDataUrl,
+      mainColorHex,
+      highlightColorHex,
+      fontColorHex,
+    }, patronCustomization.appearance),
+    [fontColorHex, highlightColorHex, inheritedLibraryName, libraryLogoDataUrl, mainColorHex, patronCustomization.appearance],
+  );
+  const libraryName = effectiveAppearance.name;
+  const logoDataUrl = effectiveAppearance.logoDataUrl;
 
-  const logoDataUrl: string | null = config?.branding?.logoDataUrl ?? null;
-
-  const theme = useMemo(() => {
+  const buildResolvedTheme = useCallback((resolvedMain: string, resolvedHighlight: string, resolvedFont: string) => {
     const presetTheme = buildTheme(mainThemeKey, highlightKey, titleTextKey);
-    const accentTextOn = autoChooseFontColor(mainColorHex);
-    const highlightTextOn = autoChooseFontColor(highlightColorHex);
+    const accentTextOn = autoChooseFontColor(resolvedMain);
+    const highlightTextOn = autoChooseFontColor(resolvedHighlight);
     return {
       ...presetTheme,
-      accent: mainColorHex,
-      accentBorder: mainColorHex,
+      accent: resolvedMain,
+      accentBorder: resolvedMain,
       accentTextOn,
-      highlight: highlightColorHex,
-      lightBorder: highlightColorHex,
-      highlightBg: highlightColorHex,
+      highlight: resolvedHighlight,
+      lightBorder: resolvedHighlight,
+      highlightBg: resolvedHighlight,
       highlightTextOn,
       highlightText: highlightTextOn,
-      titleText: fontColorHex,
+      titleText: resolvedFont,
     };
-  }, [mainThemeKey, highlightKey, titleTextKey, mainColorHex, highlightColorHex, fontColorHex]);
+  }, [highlightKey, mainThemeKey, titleTextKey]);
+  const libraryTheme = useMemo(
+    () => buildResolvedTheme(mainColorHex, highlightColorHex, fontColorHex),
+    [buildResolvedTheme, fontColorHex, highlightColorHex, mainColorHex],
+  );
+  const theme = useMemo(
+    () => buildResolvedTheme(
+      effectiveAppearance.mainColorHex,
+      effectiveAppearance.highlightColorHex,
+      effectiveAppearance.fontColorHex,
+    ),
+    [buildResolvedTheme, effectiveAppearance.fontColorHex, effectiveAppearance.highlightColorHex, effectiveAppearance.mainColorHex],
+  );
   useEffect(() => {
     if (Platform.OS === "web") applyWebHighlightColor(theme.highlight);
   }, [theme.highlight]);
@@ -2114,27 +2135,10 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   function openPatronPreferences() {
     closeHeaderMenu();
-    setPatronAgePreferencesDraft(
-      effectivePatronAgeBands(availablePatronAgeBands, patronAgePreferences),
-    );
-    setShowPatronPreferences(true);
-  }
-
-  async function savePatronPreferences() {
-    const boundedPreference = effectivePatronAgeBands(availablePatronAgeBands, patronAgePreferencesDraft);
-    if (!Object.values(boundedPreference).some(Boolean)) return;
-    try {
-      if (Platform.OS === "web" && typeof localStorage !== "undefined") {
-        writePatronAgePreferences(localStorage, patronId, props.libraryId, boundedPreference);
-      } else {
-        await writePatronAgePreferencesAsync(AsyncStorage, patronId, props.libraryId, boundedPreference);
-      }
-      setPatronAgePreferences(boundedPreference);
-      setShowPatronPreferences(false);
-    } catch (error) {
-      console.error("Failed to save patron age preferences:", error);
-      Alert.alert("Unable to save preferences", "Your personal age band preferences could not be saved.");
-    }
+    router.push({
+      pathname: "/customize-my-experience",
+      params: props.libraryId ? { libraryId: props.libraryId } : {},
+    } as any);
   }
 
   async function persistMyList(items: SavedRecommendation[]) {
@@ -2227,27 +2231,6 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     );
   }
 
-  function renderPatronPreferences() {
-    return (
-      <PatronAgePreferencesModal
-        visible={showPatronPreferences}
-        available={availablePatronAgeBands}
-        value={patronAgePreferencesDraft}
-        colors={{
-          background: theme.appBg,
-          card: theme.inputBg,
-          border: theme.lightBorder,
-          text: theme.text,
-          muted: theme.muted,
-          highlight: theme.highlight,
-        }}
-        onChange={setPatronAgePreferencesDraft}
-        onCancel={() => setShowPatronPreferences(false)}
-        onSave={() => void savePatronPreferences()}
-      />
-    );
-  }
-
   function openSavedLibrary(library: SavedLibrary) {
     closeHeaderMenu();
     router.replace(library.hostedPath as any);
@@ -2262,9 +2245,11 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
         if (isWebStorage) {
           clearAllPatronMyLists(localStorage, patronId);
           clearAllPatronAgePreferences(localStorage, patronId);
+          clearAllPatronCustomizations(localStorage, patronId);
         } else {
           await clearAllPatronMyListsAsync(AsyncStorage, patronId);
           await clearAllPatronAgePreferencesAsync(AsyncStorage, patronId);
+          await clearAllPatronCustomizationsAsync(AsyncStorage, patronId);
         }
       }
       const result = isWebStorage
@@ -2273,8 +2258,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
       myListRef.current = [];
       setMyList([]);
       setShowMyList(false);
-      setPatronAgePreferences(null);
-      setShowPatronPreferences(false);
+      setPatronCustomization({});
       setPatronId(result.nextId);
       setPatronIdentityReady(true);
       setMode("swipe");
@@ -2344,7 +2328,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             ) : null}
             <Text style={[styles.headerMenuSectionLabel, { color: theme.muted }]}>Personal</Text>
             <TouchableOpacity style={styles.headerMenuItem} onPress={openPatronPreferences}>
-              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Age Band Preferences</Text>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Customize My Experience</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerMenuItem}
@@ -2353,7 +2337,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                 openAdminEntry();
               }}
             >
-              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Library Settings / Customize</Text>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Librarian Settings</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={openTestingInvite}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Help Improve NovelIdeas</Text>
@@ -2437,10 +2421,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
   }
 
   function toggleSwipeCategory(k: SwipeCategoryKey) {
-    const prev: SwipeCategories = {
-      ...DEFAULT_SWIPE_CATEGORIES,
-      ...(config?.swipe?.categories ?? {}),
-    };
+    const prev: SwipeCategories = librarySwipeCategories;
     const next: SwipeCategories = { ...prev, [k]: !prev[k] };
 
     // Guardrail: if everything is off, default Books back on.
@@ -2653,18 +2634,18 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   const saveButtonLabel = hasUnsavedChanges ? "Save Settings" : "Saved";
   const saveButtonStyle = hasUnsavedChanges
-    ? { backgroundColor: theme.highlight, borderColor: theme.lightBorder }
+    ? { backgroundColor: libraryTheme.highlight, borderColor: libraryTheme.lightBorder }
     : styles.saveBtnGreen;
 
   // Admin view takes precedence and is reachable from BOTH swipe + search
   if (adminUnlocked) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.appBg }]}>
+      <View style={[styles.container, { backgroundColor: libraryTheme.appBg }]}>
         <AdminView
-          theme={theme}
-          libraryName={libraryName}
+theme={libraryTheme}
+libraryName={inheritedLibraryName}
                     libraryId={libraryId}
-logoDataUrl={logoDataUrl}
+logoDataUrl={libraryLogoDataUrl}
           setConfig={setConfig}
           setHasUnsavedChanges={setHasUnsavedChanges}
           mainThemeKey={mainThemeKey}
@@ -2675,7 +2656,7 @@ logoDataUrl={logoDataUrl}
           deckSourceEnabled={deckSourceEnabled}
           adultKitsuOnlyForceQueryForValidation={adultKitsuOnlyForceQueryForValidation}
           localLibrarySupported={localLibrarySupported}
-          swipeCategories={swipeCategories}
+          swipeCategories={librarySwipeCategories}
           toggleSwipeCategory={toggleSwipeCategory}
           adminPinEnabled={adminPinEnabled}
           adminPin={adminPin}
@@ -2796,7 +2777,6 @@ logoDataUrl={logoDataUrl}
           )}
         </View>
         {renderMyList()}
-        {renderPatronPreferences()}
       </View>
     );
   }
@@ -2885,7 +2865,6 @@ logoDataUrl={logoDataUrl}
       />
       </View>
       {renderMyList()}
-      {renderPatronPreferences()}
     </View>
   );
 }

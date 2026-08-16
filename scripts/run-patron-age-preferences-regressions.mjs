@@ -30,7 +30,7 @@ const {
   writePatronAgePreferences,
 } = require(resolve(root, "lib", "patronAgePreferences.ts"));
 const homeSource = readFileSync(resolve(root, "app", "(tabs)", "index.tsx"), "utf8");
-const modalSource = readFileSync(resolve(root, "components", "PatronAgePreferencesModal.tsx"), "utf8");
+const customizationSource = readFileSync(resolve(root, "app", "customize-my-experience.tsx"), "utf8");
 const adminSource = readFileSync(resolve(root, "app", "app_admin-web.tsx"), "utf8");
 
 class MemoryStorage {
@@ -62,7 +62,7 @@ test("1. a default patron can save Adults-only without a Library ID", () => {
 test("2. Adults-only preferences leave only the Adult experience visible", () => {
   assert.deepEqual(effectivePatronAgeBands(allBands, adultsOnly), adultsOnly);
   assert.match(homeSource, /enabledDecks=\{enabledDecks\}/);
-  assert.match(modalSource, /Kids[\s\S]*Pre-Teens[\s\S]*Teens[\s\S]*Adults/);
+  assert.match(customizationSource, /Kids[\s\S]*Pre-Teens[\s\S]*Teens[\s\S]*Adults/);
 });
 
 test("3. preferences survive storage reloads and new sessions", () => {
@@ -123,22 +123,23 @@ test("7. Reset User clears preferences and restores library defaults", () => {
 });
 
 test("8. personal preference saves never call a library-admin save path", () => {
-  const handler = homeSource.slice(
-    homeSource.indexOf("async function savePatronPreferences"),
-    homeSource.indexOf("async function persistMyList"),
+  const handler = customizationSource.slice(
+    customizationSource.indexOf("async function save()"),
+    customizationSource.indexOf("async function resetCustomizations"),
   );
-  assert.match(handler, /writePatronAgePreferences/);
+  assert.match(handler, /writePatronCustomization/);
   assert.doesNotMatch(handler, /saveSettings|saveSharedLibraryConfig|setConfig|setInConfig/);
 });
 
 test("9. Create and Edit Library administration remain separate and available", () => {
-  assert.match(homeSource, />Library Settings \/ Customize</);
+  assert.match(homeSource, />Librarian Settings</);
   assert.match(homeSource, /openAdminEntry\(\)/);
   assert.match(adminSource, /Create New Library/);
-  assert.match(adminSource, />Library Settings</);
+  assert.match(adminSource, />Librarian Settings</);
   assert.match(adminSource, /adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE/);
 });
 
-assert.match(homeSource, />Age Band Preferences</);
+assert.match(homeSource, />Customize My Experience</);
+assert.match(customizationSource, /Age Band Preferences/);
 assert.match(homeSource, /clearAllPatronAgePreferences/);
 process.stdout.write("\nPatron age preference regressions passed.\n");

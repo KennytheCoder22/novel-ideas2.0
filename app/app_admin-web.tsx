@@ -1211,7 +1211,7 @@ export default function AdminWebScreen() {
   if (!isWeb) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: "#e5efff" }}>Library Settings (desktop web only)</Text>
+        <Text style={{ color: "#e5efff" }}>Librarian Settings (desktop web only)</Text>
       </View>
     );
   }
@@ -1321,7 +1321,7 @@ export default function AdminWebScreen() {
         {/* Page header */}
         <View style={styles.pageHeader}>
           <View>
-            <Text style={[styles.h1, { color: t.text }]}>Library Settings</Text>
+            <Text style={[styles.h1, { color: t.text }]}>Librarian Settings</Text>
             <Text style={[styles.currentLibraryName, { color: t.text }]}>
               {String(config?.branding?.libraryName || config?.library?.name || "Create New Library")}
             </Text>

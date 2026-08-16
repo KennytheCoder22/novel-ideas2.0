@@ -25,10 +25,7 @@ function patronAgePreferencesPrefix(patronId: string): string {
 }
 
 export function normalizeAvailableAgeBands(input: Partial<Record<AgeBandKey, boolean>>): AgeBandSelection {
-  const hasConfiguredBand = AGE_BAND_KEYS.some((key) => Object.prototype.hasOwnProperty.call(input, key));
-  return Object.fromEntries(
-    AGE_BAND_KEYS.map((key) => [key, hasConfiguredBand ? input[key] === true : true]),
-  ) as AgeBandSelection;
+  return Object.fromEntries(AGE_BAND_KEYS.map((key) => [key, input[key] !== false])) as AgeBandSelection;
 }
 
 export function normalizePatronAgeBands(
@@ -103,11 +100,24 @@ export function clearAllPatronAgePreferences(storage: SyncStorage, patronId: str
     const key = storage.key(index);
     if (key?.startsWith(prefix)) keys.push(key);
   }
+
   keys.forEach((key) => storage.removeItem(key));
+}
+
+export function clearPatronAgePreferences(storage: SyncStorage, patronId: string, libraryId?: string): void {
+  storage.removeItem(patronAgePreferencesStorageKey(patronId, libraryId));
 }
 
 export async function clearAllPatronAgePreferencesAsync(storage: AsyncStorage, patronId: string): Promise<void> {
   const prefix = patronAgePreferencesPrefix(patronId);
   const keys = (await storage.getAllKeys()).filter((key) => key.startsWith(prefix));
   await Promise.all(keys.map((key) => storage.removeItem(key)));
+}
+
+export async function clearPatronAgePreferencesAsync(
+  storage: AsyncStorage,
+  patronId: string,
+  libraryId?: string,
+): Promise<void> {
+  await storage.removeItem(patronAgePreferencesStorageKey(patronId, libraryId));
 }
