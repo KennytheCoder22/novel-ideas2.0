@@ -93,7 +93,7 @@ const openAdminEntrySource =
 // N5
 {
   const openTestingStart = indexSource.indexOf("function openTestingInvite()");
-  const openTestingEnd = indexSource.indexOf("const showAdminMenuItems", openTestingStart);
+  const openTestingEnd = indexSource.indexOf("function openDeveloperTip()", openTestingStart);
   const openTestingSource =
     openTestingStart >= 0 && openTestingEnd > openTestingStart ? indexSource.slice(openTestingStart, openTestingEnd) : "";
   assertIncludes(openTestingSource, "closeHeaderMenu();", "N5: Help Improve should close menu");
@@ -112,20 +112,17 @@ const openAdminEntrySource =
 
 // N7
 {
-  assertIncludes(indexSource, "const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);", "N7: admin menu auth state must exist");
-  assertIncludes(indexSource, "const showAdminMenuItems = adminMenuUnlocked || adminUnlocked;", "N7: admin menu must be gated by auth state");
-  for (const item of ["Diagnostics", "Human Review Dashboard", "Recommendation tuning", "Library management", "Import / Export", "Developer tools"]) {
-    assertIncludes(indexSource, item, `N7: admin menu must include ${item}`);
-  }
-  console.log("PASS N7: admin-only menu section is auth-gated");
+  assert(!indexSource.includes(">Human Review Dashboard</Text>"), "N7: owner dashboard must not render in patron/librarian menus");
+  assertIncludes(indexSource, "ownerLogoTapCountRef.current < 7", "N7: hidden owner entry must require seven logo taps");
+  console.log("PASS N7: owner analytics is absent from normal menus and uses hidden logo entry");
 }
 
 // N8
 {
   assertIncludes(indexSource, 'function openAdminEntry(source: "menu" | "easter_egg" = "menu")', "N8: openAdminEntry should distinguish source");
-  assertIncludes(indexSource, 'const unlockMenu = source === "easter_egg";', "N8: personal install path should not auto-unlock admin menu from Customize");
-  assertIncludes(openAdminEntrySource, "if (unlockMenu) {", "N8: admin menu unlock should be intentional");
-  console.log("PASS N8: no-PIN personal install supports public Customize without implicit admin unlock");
+  assertIncludes(openAdminEntrySource, 'router.push(adminRoute as any)', "N8: librarian entry still routes to Librarian Settings");
+  assert(!openAdminEntrySource.includes("/admin/human-review"), "N8: librarian entry must remain separate from owner analytics");
+  console.log("PASS N8: librarian entry remains separate from owner analytics");
 }
 
 // N9
@@ -150,17 +147,18 @@ const openAdminEntrySource =
 
 // N11
 {
-  assertIncludes(indexSource, "setAdminMenuUnlocked(true);", "N11: successful PIN authentication should unlock admin menu");
+  assertIncludes(indexSource, "if (Platform.OS === \"web\") {", "N11: successful PIN authentication should route web librarians");
+  assertIncludes(indexSource, "setAdminUnlocked(true);", "N11: successful PIN authentication should unlock native librarian settings");
   assertIncludes(indexSource, 'openAdminEntry("easter_egg");', "N11: easter-egg entry path should still exist");
-  console.log("PASS N11: successful PIN authentication unlocks admin section");
+  console.log("PASS N11: successful PIN authentication opens librarian settings");
 }
 
 // N12
 {
   assertIncludes(indexSource, "onExit={() => {", "N12: admin exit handler should exist");
   assertIncludes(indexSource, "setAdminUnlocked(false);", "N12: admin exit should clear admin screen state");
-  assertIncludes(indexSource, "setAdminMenuUnlocked(false);", "N12: admin exit should de-auth menu state");
-  console.log("PASS N12: explicit lock/exit de-auths admin section");
+  assertNotIncludes(indexSource, "setAdminMenuUnlocked", "N12: no analytics-capable librarian menu state should remain");
+  console.log("PASS N12: explicit exit closes librarian settings without exposing owner analytics");
 }
 
 // N13

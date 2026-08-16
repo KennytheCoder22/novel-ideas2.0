@@ -12,11 +12,6 @@ import {
   View,
 } from "react-native";
 import {
-  clearAdminSession,
-  isAdminSessionActive,
-  setPendingAdminRoute,
-} from "../../lib/adminSession";
-import {
   DEFAULT_HUMAN_REVIEW_DASHBOARD_FILTERS,
   parseHumanReviewDashboardFilters,
   serializeHumanReviewDashboardFilters,
@@ -211,7 +206,11 @@ export default function HumanReviewDashboardRoute() {
     [previewAcceptanceFlag]
   );
   const [draftFilters, setDraftFilters] = useState<HumanReviewDashboardFilters>(queryFilters);
-  const [authorized, setAuthorized] = useState(Platform.OS !== "web");
+  const [authorized, setAuthorized] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [ownerPassword, setOwnerPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authSubmitting, setAuthSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [error, setError] = useState("");
@@ -227,16 +226,21 @@ export default function HumanReviewDashboardRoute() {
   }, [queryFilters]);
 
   useEffect(() => {
-    if (Platform.OS !== "web") {
-      setAuthorized(true);
-      return;
-    }
-    if (isAdminSessionActive()) {
-      setAuthorized(true);
-      return;
-    }
-    setPendingAdminRoute(DASHBOARD_PATH);
-    router.replace("/");
+    let cancelled = false;
+    fetch("/api/owner-analytics-session", { credentials: "same-origin" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!cancelled) setAuthorized(payload?.authenticated === true);
+      })
+      .catch(() => {
+        if (!cancelled) setAuthorized(false);
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -255,10 +259,9 @@ export default function HumanReviewDashboardRoute() {
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
           const errorCode = String((payload as any)?.error || `dashboard_http_${response.status}`);
-          if (response.status === 401 || errorCode === "admin_session_required") {
-            clearAdminSession();
-            setPendingAdminRoute(DASHBOARD_PATH);
-            router.replace("/");
+          if (response.status === 401 || errorCode === "owner_session_required") {
+            setAuthorized(false);
+            setAuthError("Your owner session expired. Sign in again.");
             return;
           }
           throw new Error(errorCode);
@@ -311,11 +314,80 @@ export default function HumanReviewDashboardRoute() {
     setPreviewAcceptanceMode(mode);
   }
 
-  if (!authorized) {
+  async function authenticateOwner() {
+    setAuthSubmitting(true);
+    setAuthError("");
+    try {
+      const response = await fetch("/api/owner-analytics-session", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: ownerPassword }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.authenticated !== true) {
+        throw new Error(String(payload?.error || "owner_authentication_failed"));
+      }
+      setOwnerPassword("");
+      setAuthorized(true);
+    } catch (authFailure: any) {
+      const code = authFailure instanceof Error ? authFailure.message : String(authFailure);
+      setAuthError(
+        code === "owner_analytics_auth_not_configured"
+          ? "Owner analytics authentication is not configured."
+          : "Authentication failed.",
+      );
+    } finally {
+      setAuthSubmitting(false);
+      setAuthChecking(false);
+    }
+  }
+
+  async function signOutOwner() {
+    await fetch("/api/owner-analytics-session", { method: "DELETE", credentials: "same-origin" }).catch(() => null);
+    setAuthorized(false);
+    setData(null);
+  }
+
+  if (authChecking) {
     return (
       <SafeAreaView style={styles.loadingRoot}>
         <ActivityIndicator size="large" color="#fbbf24" />
-        <Text style={styles.loadingText}>Redirecting to Admin unlock…</Text>
+        <Text style={styles.loadingText}>Checking owner access…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <SafeAreaView style={styles.loadingRoot}>
+        <View style={styles.ownerAuthCard}>
+          <Text style={styles.headerTitle}>Owner Analytics</Text>
+          <Text style={styles.loadingText}>Enter the owner/developer credential to continue.</Text>
+          <TextInput
+            value={ownerPassword}
+            onChangeText={setOwnerPassword}
+            onSubmitEditing={() => void authenticateOwner()}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="Owner credential"
+            placeholderTextColor="#93a4bd"
+            style={styles.ownerAuthInput}
+            accessibilityLabel="Owner analytics credential"
+          />
+          {authError ? <Text style={styles.ownerAuthError}>{authError}</Text> : null}
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => void authenticateOwner()}
+            disabled={authSubmitting || !ownerPassword}
+          >
+            <Text style={styles.primaryButtonText}>{authSubmitting ? "Signing in…" : "Sign in"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => router.replace("/")}>
+            <Text style={styles.secondaryButtonText}>Return home</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -350,8 +422,8 @@ export default function HumanReviewDashboardRoute() {
           </Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => router.push("/app_admin-web" as any)}>
-            <Text style={styles.headerButtonText}>← Back to Admin</Text>
+          <TouchableOpacity style={styles.headerButton} onPress={() => void signOutOwner()}>
+            <Text style={styles.headerButtonText}>Sign out</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.push("/" as any)}>
             <Text style={styles.headerButtonText}>NovelIdeas Home</Text>
@@ -924,6 +996,30 @@ const styles = StyleSheet.create({
     color: "#d6e4ff",
     marginTop: 12,
     textAlign: "center",
+  },
+  ownerAuthCard: {
+    width: "100%",
+    maxWidth: 420,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#173354",
+    backgroundColor: "#0c2037",
+    gap: 12,
+  },
+  ownerAuthInput: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: "#315277",
+    borderRadius: 10,
+    backgroundColor: "#071526",
+    color: "#f8fbff",
+    paddingHorizontal: 14,
+    fontSize: 16,
+  },
+  ownerAuthError: {
+    color: "#fca5a5",
+    fontWeight: "700",
   },
   header: {
     paddingHorizontal: 20,

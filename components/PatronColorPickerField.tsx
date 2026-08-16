@@ -7,10 +7,10 @@ import { hexToHsv, hsvToHex, type HsvColor } from "../lib/colorSelection";
 type Props = {
   label: string;
   value: string;
-  inheritedValue: string;
+  inheritedValue?: string;
   onChange: (hex: string) => void;
-  onUseInherited: () => void;
-  isOverridden: boolean;
+  onUseInherited?: () => void;
+  isOverridden?: boolean;
   testID: string;
 };
 
@@ -26,7 +26,8 @@ export function PatronColorPickerField({
   isOverridden,
   testID,
 }: Props) {
-  const safeValue = isValidHex(value) ? value.toLowerCase() : inheritedValue.toLowerCase();
+  const safeInheritedValue = isValidHex(inheritedValue || "") ? String(inheritedValue).toLowerCase() : "#000000";
+  const safeValue = isValidHex(value) ? value.toLowerCase() : safeInheritedValue;
   const [hexDraft, setHexDraft] = useState(safeValue);
   const [hsv, setHsv] = useState(() => hexToHsv(safeValue));
   const lastEmittedHex = useRef<string | null>(null);
@@ -126,7 +127,7 @@ export function PatronColorPickerField({
           style={styles.hexInput}
           accessibilityLabel={`${label} hex value`}
         />
-        {isOverridden ? (
+        {isOverridden && onUseInherited ? (
           <TouchableOpacity
             onPress={onUseInherited}
             style={styles.inheritedButton}
@@ -135,9 +136,9 @@ export function PatronColorPickerField({
           >
             <Text style={styles.inheritedButtonText}>Use inherited</Text>
           </TouchableOpacity>
-        ) : (
+        ) : onUseInherited ? (
           <Text style={styles.inheritedStatus}>Inherited</Text>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.sliderRow}>

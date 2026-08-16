@@ -111,22 +111,8 @@ const adminSectionSource =
 // NM6: Admin items are hidden — no TouchableOpacity wiring to stub calls in admin section.
 {
   assertNotIncludes(adminSectionSource, 'onPress={() => showMenuInfoStub(', "NM6: admin section must not contain showMenuInfoStub calls");
-  // Verify the admin items that have no destination are in comments, not in live JSX.
-  const adminItems = ["Diagnostics", "Human Review Dashboard", "Recommendation tuning", "Library management", "Import / Export", "Developer tools"];
-  for (const item of adminItems) {
-    // The string must be in a JSX comment, not in a TouchableOpacity's Text child.
-    const commentPattern = `/* ${item}`;
-    assert(
-      adminSectionSource.includes(commentPattern),
-      `NM6: admin item "${item}" must be in a JSX comment (hidden), not rendered`
-    );
-    assertNotIncludes(
-      adminSectionSource,
-      `<Text style={[styles.headerMenuItemText, { color: theme.text }]}>${item}</Text>`,
-      `NM6: admin item "${item}" must not be rendered in live JSX`
-    );
-  }
-  console.log("PASS NM6: admin items without destinations are hidden (in comments, not rendered)");
+  assertNotIncludes(menuFnSource, "Human Review Dashboard", "NM6: owner analytics must not appear in normal menus");
+  console.log("PASS NM6: owner analytics and unfinished admin items are not rendered");
 }
 
 // NM7: Info screen files exist.

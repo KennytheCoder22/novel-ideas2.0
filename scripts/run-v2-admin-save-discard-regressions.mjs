@@ -220,13 +220,21 @@ function check(name, fn) {
 const adminWebSrc = readFileSync(resolve(repoRoot, "app", "app_admin-web.tsx"), "utf8");
 const homeSrc = readFileSync(resolve(repoRoot, "app", "(tabs)", "index.tsx"), "utf8");
 const layoutSrc = readFileSync(resolve(repoRoot, "app", "(tabs)", "_layout.tsx"), "utf8");
-const colorPickerSrc = readFileSync(resolve(repoRoot, "components", "admin", "ColorPickerField.tsx"), "utf8");
+const colorPickerSrc = readFileSync(resolve(repoRoot, "components", "PatronColorPickerField.tsx"), "utf8");
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 const checks = [];
+
+checks.push(check("R0_librarian_uses_shared_compact_color_editor", () => {
+  assert(
+    adminWebSrc.includes('import { PatronColorPickerField } from "../components/PatronColorPickerField";'),
+    "Librarian Settings must reuse the compact patron color editor",
+  );
+  assert((adminWebSrc.match(/<PatronColorPickerField/g) || []).length === 3, "Main, Highlight, and Font must use the shared editor");
+}));
 
 // R1 – Save & Return is visible at the top
 checks.push(check("R1_save_return_visible_at_top", () => {
@@ -320,9 +328,9 @@ checks.push(check("R6_discard_restores_last_saved_configuration", () => {
 
 // R7 – Color selection survives closing the native picker
 checks.push(check("R7_color_selection_survives_picker_closure", () => {
-  assert(colorPickerSrc.includes("onInput={(e: any) => commitPickerHex"), "color picker should commit on input");
-  assert(colorPickerSrc.includes("onChange={(e: any) => commitPickerHex"), "color picker should commit on change");
-  assert(colorPickerSrc.includes("onBlur={(e: any) => commitPickerHex"), "color picker should commit on blur/close");
+  assert(colorPickerSrc.includes("onInput={(event: any) => commitNativePicker"), "color picker should commit on input");
+  assert(colorPickerSrc.includes("onChange={(event: any) => commitNativePicker"), "color picker should commit on change");
+  assert(colorPickerSrc.includes("onBlur={commitHex}"), "editable hex should commit on blur");
   assert(adminWebSrc.includes("Finish choosing the color, then select Save Changes or Save & Return."), "native color picker guidance note missing");
 }));
 

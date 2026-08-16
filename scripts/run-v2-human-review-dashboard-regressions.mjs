@@ -17,7 +17,8 @@ const dashboardRoutePath = resolve(ROOT, "app", "admin", "human-review.tsx");
 const dashboardApiPath = resolve(ROOT, "api", "human-review-dashboard.ts");
 const dashboardLibPath = resolve(ROOT, "lib", "humanReview", "dashboard.ts");
 const dashboardPreviewFixturePath = resolve(ROOT, "lib", "humanReview", "dashboardPreviewAcceptanceFixture.ts");
-const adminSessionPath = resolve(ROOT, "lib", "adminSession.ts");
+const ownerAuthPath = resolve(ROOT, "lib", "ownerAnalyticsAuth.ts");
+const ownerSessionApiPath = resolve(ROOT, "api", "owner-analytics-session.ts");
 const previewAcceptanceHarnessPath = resolve(ROOT, "lib", "previewAcceptanceHarness.ts");
 const layoutPath = resolve(ROOT, "app", "_layout.tsx");
 const homePath = resolve(ROOT, "app", "(tabs)", "index.tsx");
@@ -27,7 +28,8 @@ const dashboardRoute = existsSync(dashboardRoutePath) ? readFileSync(dashboardRo
 const dashboardApi = existsSync(dashboardApiPath) ? readFileSync(dashboardApiPath, "utf8") : "";
 const dashboardLib = existsSync(dashboardLibPath) ? readFileSync(dashboardLibPath, "utf8") : "";
 const dashboardPreviewFixture = existsSync(dashboardPreviewFixturePath) ? readFileSync(dashboardPreviewFixturePath, "utf8") : "";
-const adminSession = existsSync(adminSessionPath) ? readFileSync(adminSessionPath, "utf8") : "";
+const ownerAuth = existsSync(ownerAuthPath) ? readFileSync(ownerAuthPath, "utf8") : "";
+const ownerSessionApi = existsSync(ownerSessionApiPath) ? readFileSync(ownerSessionApiPath, "utf8") : "";
 const previewAcceptanceHarness = existsSync(previewAcceptanceHarnessPath) ? readFileSync(previewAcceptanceHarnessPath, "utf8") : "";
 const layoutSource = readFileSync(layoutPath, "utf8");
 const homeSource = readFileSync(homePath, "utf8");
@@ -38,42 +40,43 @@ console.log("PASS D1: dashboard route file exists");
 
 assertIncludes(dashboardRoute, "export default function HumanReviewDashboardRoute", "D2: dashboard route exports default component");
 assertIncludes(dashboardRoute, 'fetch(`/api/human-review-dashboard', "D2: dashboard route fetches dashboard API");
-assertIncludes(dashboardRoute, "Back to Admin", "D2: dashboard route exposes back to Admin control");
+assertIncludes(dashboardRoute, "Owner Analytics", "D2: dashboard route exposes owner authentication");
+assertIncludes(dashboardRoute, "/api/owner-analytics-session", "D2: dashboard route checks the owner session API");
 assertIncludes(dashboardRoute, "NovelIdeas Home", "D2: dashboard route exposes path back to main UI");
 console.log("PASS D2: dashboard route exports and uses dashboard API with navigation controls");
 
 assertIncludes(layoutSource, 'name="admin/human-review"', "D3: root layout registers admin/human-review route");
 console.log("PASS D3: app/_layout.tsx registers admin/human-review");
 
-assertIncludes(adminSession, "activateAdminSession", "D4: admin session helper exposes activateAdminSession");
-assertIncludes(adminSession, "isAdminSessionActive", "D4: admin session helper exposes isAdminSessionActive");
-assertIncludes(adminSession, "setPendingAdminRoute", "D4: admin session helper exposes setPendingAdminRoute");
-assertIncludes(adminSession, "ADMIN_SESSION_COOKIE_NAME", "D4: admin session helper exposes admin session cookie name");
-console.log("PASS D4: admin session helper provides route-gating primitives");
+assertIncludes(ownerAuth, "OWNER_ANALYTICS_PASSWORD", "D4: owner auth reads an environment-backed credential");
+assertIncludes(ownerAuth, "OWNER_ANALYTICS_SESSION_SECRET", "D4: owner auth signs sessions with a separate environment secret");
+assertIncludes(ownerAuth, "timingSafeEqual", "D4: owner credential and signatures use timing-safe comparison");
+assertIncludes(ownerAuth, "HttpOnly; SameSite=Strict", "D4: owner session cookie is HttpOnly and strict same-site");
+assertIncludes(ownerSessionApi, "validateOwnerAnalyticsPassword", "D4: owner session API validates credentials server-side");
+console.log("PASS D4: owner authentication is environment-backed and server-side");
 
-assertIncludes(dashboardApi, "admin_session_required", "D5: dashboard API fails closed without admin session");
+assertIncludes(dashboardApi, "owner_session_required", "D5: dashboard API fails closed without owner session");
+assertIncludes(dashboardApi, "hasValidOwnerAnalyticsSession", "D5: dashboard API validates the signed owner cookie");
 assertIncludes(dashboardApi, "createRepository()", "D5: dashboard API reads the Human Review repository");
 assertIncludes(dashboardApi, "listSnapshots()", "D5: dashboard API loads snapshots");
 assertIncludes(dashboardApi, "listReviews()", "D5: dashboard API loads reviews");
-console.log("PASS D5: dashboard API is admin-gated and repository-backed");
+console.log("PASS D5: dashboard API is owner-gated and repository-backed");
 
 assertIncludes(dashboardLib, "Promising discoveries", "D6: dashboard aggregation computes discovery indicators");
 assertIncludes(dashboardLib, "Only synthetic certification or study fixtures are currently available", "D6: dashboard aggregation distinguishes synthetic-only evidence");
 assertIncludes(dashboardLib, "capturedSlateVerdicts", "D6: dashboard aggregation tracks unavailable verdict fields explicitly");
 console.log("PASS D6: dashboard aggregation preserves evidence caveats and discovery metrics");
 
-assertIncludes(homeSource, "Human Review Dashboard", "D7: home admin menu exposes Human Review Dashboard");
-assertIncludes(homeSource, 'router.push("/admin/human-review"', "D7: home admin menu routes to dashboard");
-assertIncludes(homeSource, "activateAdminSession(\"menu\")", "D7: home admin menu activates admin session before routing");
-assertIncludes(homeSource, "setPendingAdminRoute(\"/admin/human-review\")", "D7: home admin menu records pending dashboard route");
-console.log("PASS D7: main menu exposes dashboard and sets authenticated dashboard navigation intent");
+assert(!homeSource.includes(">Human Review Dashboard</Text>"), "D7: patron/admin menu does not render Human Review Dashboard");
+assertIncludes(homeSource, "ownerLogoTapCountRef.current += 1", "D7: logo taps count toward hidden owner entry");
+assertIncludes(homeSource, "ownerLogoTapCountRef.current < 7", "D7: owner entry requires seven taps");
+assertIncludes(homeSource, "}, 3000);", "D7: owner tap sequence resets after short inactivity");
+assertIncludes(homeSource, 'router.push("/admin/human-review"', "D7: seventh logo tap opens owner authentication");
+console.log("PASS D7: dashboard entry is hidden behind seven time-bounded logo taps");
 
-assertIncludes(adminWebSource, "Human Review Dashboard", "D8: desktop admin page links to Human Review Dashboard");
-assertIncludes(adminWebSource, 'const dashboardRoute = previewAcceptanceHarnessVisible', "D8: desktop admin computes the dashboard destination");
-assertIncludes(adminWebSource, "router.push(dashboardRoute as any)", "D8: desktop admin link routes to dashboard");
-assertIncludes(adminWebSource, "activateAdminSession(\"admin_web\")", "D8: desktop admin link activates admin session");
-assertIncludes(adminWebSource, "setPendingAdminRoute(\"/admin/human-review\")", "D8: desktop admin link records pending dashboard route");
-console.log("PASS D8: desktop admin links to dashboard with authenticated navigation intent");
+assert(!adminWebSource.includes("Human Review Dashboard"), "D8: Librarian Settings does not expose the dashboard");
+assert(!adminWebSource.includes('router.push("/admin/human-review"'), "D8: Librarian Settings cannot navigate to owner analytics");
+console.log("PASS D8: librarian administration has no owner analytics navigation");
 
 assertIncludes(dashboardRoute, "Clear all filters", "D9: dashboard UI provides clear-all filters control");
 assertIncludes(dashboardRoute, "Discovery indicators", "D9: dashboard UI renders discovery section");

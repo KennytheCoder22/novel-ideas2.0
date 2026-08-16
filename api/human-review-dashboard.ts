@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ADMIN_SESSION_COOKIE_NAME } from "../lib/adminSession";
+import { hasValidOwnerAnalyticsSession, ownerAnalyticsAuthConfigured } from "../lib/ownerAnalyticsAuth";
 import { createRepository } from "../lib/humanReview/index";
 import {
   buildHumanReviewDashboardData,
@@ -16,25 +16,25 @@ import {
 import { listSwipeCardPerformance } from "../lib/swipeCardPerformance";
 import { listRealSessionAudits } from "../lib/realSessionOverlapAudit";
 
-function hasAdminSessionCookie(req: VercelRequest): boolean {
-  const cookie = String(req.headers.cookie || "");
-  return cookie.split(";").some((part) => part.trim().startsWith(`${ADMIN_SESSION_COOKIE_NAME}=1`));
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader("Cache-Control", "no-store");
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "method_not_allowed" });
   }
 
-  if (!hasAdminSessionCookie(req)) {
-    return res.status(401).json({ error: "admin_session_required" });
+  if (!ownerAnalyticsAuthConfigured()) {
+    return res.status(503).json({ error: "owner_analytics_auth_not_configured" });
+  }
+
+  if (!hasValidOwnerAnalyticsSession(req)) {
+    return res.status(401).json({ error: "owner_session_required" });
   }
 
   try {
     const filters = parseHumanReviewDashboardFilters(req.query as Record<string, unknown>);
     const previewAcceptanceMode =
-      isPreviewAcceptanceEnvironmentEnabled() && hasAdminSessionCookie(req)
+      isPreviewAcceptanceEnvironmentEnabled() && hasValidOwnerAnalyticsSession(req)
         ? readPreviewAcceptanceDashboardModeFromCookie(req.headers.cookie || "")
         : "live";
 

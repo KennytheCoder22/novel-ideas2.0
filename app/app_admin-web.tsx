@@ -44,10 +44,10 @@ import {
   type ThemeKey,
   type TitleTextKey,
 } from "../constants/brandTheme";
-import { ColorPickerField } from "../components/admin/ColorPickerField";
+import { PatronColorPickerField } from "../components/PatronColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
-import { activateAdminSession, isAdminSessionActive, setPendingAdminRoute } from "../lib/adminSession";
+import { activateAdminSession, isAdminSessionActive } from "../lib/adminSession";
 import { getRuntimeLibraryId, getRuntimeLibraryName } from "../constants/runtimeConfig";
 import {
   isPreviewAcceptanceHarnessEnabled,
@@ -507,10 +507,6 @@ export default function AdminWebScreen() {
     () => isPreviewAcceptanceHarnessEnabled(previewAcceptanceFlag),
     [previewAcceptanceFlag]
   );
-  const dashboardRoute = previewAcceptanceHarnessVisible
-    ? "/admin/human-review?acceptanceHarness=1"
-    : "/admin/human-review";
-
   const loadConfigForScope = useCallback((): {
     next: any;
     hadDraft: boolean;
@@ -1336,18 +1332,6 @@ export default function AdminWebScreen() {
             <TouchableOpacity
               style={[styles.btn, styles.headerActionButton, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
               onPress={() => {
-                activateAdminSession("admin_web");
-                setPendingAdminRoute("/admin/human-review");
-                router.push(dashboardRoute as any);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Open Human Review Dashboard"
-            >
-              <Text style={[styles.btnText, { color: t.text }]}>Human Review Dashboard</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.btn, styles.headerActionButton, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
-              onPress={() => {
                 Alert.alert(
                   "Reset all settings?",
                   "This will restore the default library, theme, and recommendation settings, and clear imported collection data on this device.",
@@ -1536,24 +1520,20 @@ export default function AdminWebScreen() {
         <SectionTitle>B. Appearance</SectionTitle>
         <Note>Finish choosing the color, then select Save Changes or Save & Return.</Note>
 
-        <ColorPickerField
+        <PatronColorPickerField
           label="Main Color"
           value={mainColorHex}
           onChange={(hex) => {
             setMainColorHex(hex);
             if (autoFontColor) setFontColorHex(autoChooseFontColor(hex));
           }}
-          theme={t}
-          hint="Used for the app header and primary action areas."
           testID="color-picker-main"
         />
 
-        <ColorPickerField
+        <PatronColorPickerField
           label="Highlight Color"
           value={highlightColorHex}
           onChange={setHighlightColorHex}
-          theme={t}
-          hint="Used for borders, selected states, and accents."
           testID="color-picker-highlight"
         />
 
@@ -1575,12 +1555,10 @@ export default function AdminWebScreen() {
         </View>
 
         {!autoFontColor ? (
-          <ColorPickerField
+          <PatronColorPickerField
             label="Font Color"
             value={fontColorHex}
             onChange={setFontColorHex}
-            theme={t}
-            hint="Header and banner text color. Only adjustable when Auto Font Color is off."
             testID="color-picker-font"
           />
         ) : null}

@@ -39,7 +39,7 @@ import {
   type HighlightKey,
   type TitleTextKey
 } from "../../constants/brandTheme";
-import { activateAdminSession, isAdminSessionActive, setPendingAdminRoute } from "../../lib/adminSession";
+import { isAdminSessionActive } from "../../lib/adminSession";
 import {
   loadSharedLibraryConfigWithDiagnostics,
   saveSharedLibraryConfig,
@@ -399,6 +399,7 @@ function StudentView(props: {
   onPrevResult: () => void;
   onNextResult: () => void;
   onTitleTap: () => void;
+  onLogoTap: () => void;
   queryInputRef: any;
   showHeader?: boolean;
 }) {
@@ -407,7 +408,12 @@ function StudentView(props: {
       {props.showHeader !== false ? (
       <View style={[styles.headerFrame, { backgroundColor: props.theme.accent, borderColor: props.theme.highlight }]}>
         <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.headerLeft}
+            onPress={props.onLogoTap}
+            accessibilityRole="button"
+            accessibilityLabel="NovelIdeas logo"
+          >
             {props.logoDataUrl ? (
               <Image
                 source={{ uri: props.logoDataUrl }}
@@ -417,7 +423,7 @@ function StudentView(props: {
             ) : (
               <DefaultBookLogo highlight={props.theme.highlight} />
             )}
-          </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={props.onTitleTap}
@@ -1534,7 +1540,6 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   const [adminPinEntry, setAdminPinEntry] = useState("");
   const [adminPinError, setAdminPinError] = useState<string | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
-  const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showMyList, setShowMyList] = useState(false);
   const [patronCustomization, setPatronCustomization] = useState<PatronCustomization>({});
@@ -1692,6 +1697,13 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   // Keep a stable ref to avoid weird focus behavior from accidental remounts.
   const queryInputRef = useRef<TextInput | null>(null);
   const manualSearchRequestRef = useRef(0);
+  const ownerLogoTapCountRef = useRef(0);
+  const ownerLogoResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (ownerLogoResetTimerRef.current) clearTimeout(ownerLogoResetTimerRef.current);
+    };
+  }, []);
   // Stable references: both objects are built from config so they must be memoized;
   // otherwise a new object literal on every render causes the deck to reshuffle mid-session.
   const libraryEnabledDecks = useMemo(
@@ -2047,7 +2059,6 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   setShowAdminPinPrompt(false);
                   setAdminPinEntry("");
                   setAdminPinError(null);
-                  setAdminMenuUnlocked(true);
                   if (Platform.OS === "web") {
                     const adminRoute = props.libraryId
                       ? `/app_admin-web?libraryId=${encodeURIComponent(String(props.libraryId))}`
@@ -2078,9 +2089,6 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
       return;
     }
 
-    if (unlockMenu) {
-      setAdminMenuUnlocked(true);
-    }
     if (Platform.OS === "web") {
       try {
         const adminRoute = props.libraryId
@@ -2101,6 +2109,21 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     if (next >= 7) {
       openAdminEntry("easter_egg");
     }
+  }
+
+  function handleOwnerLogoTap() {
+    ownerLogoTapCountRef.current += 1;
+    if (ownerLogoResetTimerRef.current) clearTimeout(ownerLogoResetTimerRef.current);
+    ownerLogoResetTimerRef.current = setTimeout(() => {
+      ownerLogoTapCountRef.current = 0;
+      ownerLogoResetTimerRef.current = null;
+    }, 3000);
+
+    if (ownerLogoTapCountRef.current < 7) return;
+    ownerLogoTapCountRef.current = 0;
+    if (ownerLogoResetTimerRef.current) clearTimeout(ownerLogoResetTimerRef.current);
+    ownerLogoResetTimerRef.current = null;
+    router.push("/admin/human-review" as any);
   }
 
   function toggleHeaderMenu() {
@@ -2286,7 +2309,6 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     );
   }
 
-  const showAdminMenuItems = adminMenuUnlocked || adminUnlocked;
 
   function renderHeaderMenu() {
     return (
@@ -2369,28 +2391,6 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/about")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>About</Text>
             </TouchableOpacity>
-            {showAdminMenuItems ? (
-              <>
-                <View style={[styles.headerMenuDivider, { borderTopColor: theme.lightBorder }]} />
-                {/* Admin items below are hidden until they have real destinations. */}
-                {/* Diagnostics — hidden until implemented */}
-                <TouchableOpacity
-                  style={styles.headerMenuItem}
-                  onPress={() => {
-                    closeHeaderMenu();
-                    activateAdminSession("menu");
-                    setPendingAdminRoute("/admin/human-review");
-                    router.push("/admin/human-review" as any);
-                  }}
-                >
-                  <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Human Review Dashboard</Text>
-                </TouchableOpacity>
-                {/* Recommendation tuning — hidden until implemented */}
-                {/* Library management — hidden until implemented */}
-                {/* Import / Export — hidden until implemented */}
-                {/* Developer tools — hidden until implemented */}
-              </>
-            ) : null}
           </View>
         ) : null}
       </View>
@@ -2676,7 +2676,6 @@ logoDataUrl={libraryLogoDataUrl}
           setAdultKitsuOnlyForceQueryForValidation={setAdultKitsuOnlyForceQueryForValidationValue}
           onExit={() => {
             setAdminUnlocked(false);
-            setAdminMenuUnlocked(false);
           }}
           onSaveSettings={saveSettings}
           saveButtonLabel={saveButtonLabel}
@@ -2690,10 +2689,15 @@ logoDataUrl={libraryLogoDataUrl}
   if (mode === "swipe") {
     return (
       <View style={{ flex: 1, backgroundColor: theme.appBg }}>
-        {/* Novel | Ideas header (tap 7x = Admin) */}
+        {/* Title opens Librarian Settings; seven quick logo taps open owner analytics authentication. */}
         <View style={[styles.headerFrame, { backgroundColor: theme.accent, borderColor: theme.highlight }]}>
           <View style={styles.headerRow}>
-            <View style={styles.headerLeft}>
+            <TouchableOpacity
+              style={styles.headerLeft}
+              onPress={handleOwnerLogoTap}
+              accessibilityRole="button"
+              accessibilityLabel="NovelIdeas logo"
+            >
               {logoDataUrl ? (
                 <Image
                   source={{ uri: logoDataUrl }}
@@ -2703,7 +2707,7 @@ logoDataUrl={libraryLogoDataUrl}
               ) : (
                 <DefaultBookLogo highlight={theme.highlight} />
               )}
-            </View>
+            </TouchableOpacity>
 
             <TouchableOpacity
               onPress={handleTitleTap}
@@ -2786,13 +2790,18 @@ logoDataUrl={libraryLogoDataUrl}
     <View style={{ flex: 1, backgroundColor: theme.appBg }}>
       <View style={[styles.headerFrame, { backgroundColor: theme.accent, borderColor: theme.highlight }]}>
         <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.headerLeft}
+            onPress={handleOwnerLogoTap}
+            accessibilityRole="button"
+            accessibilityLabel="NovelIdeas logo"
+          >
             {logoDataUrl ? (
               <Image source={{ uri: logoDataUrl }} style={[styles.uploadedLogo, { borderColor: theme.lightBorder }]} resizeMode="contain" />
             ) : (
               <DefaultBookLogo highlight={theme.highlight} />
             )}
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleTitleTap} style={styles.headerCenter} accessibilityRole="button">
             <View style={styles.titleRow}>
               {(libraryName || "").trim().length > 0 ? (
@@ -2860,6 +2869,7 @@ logoDataUrl={libraryLogoDataUrl}
           setCurrentResultIndex((i) => (results.length > 0 ? (i + 1) % results.length : 0))
         }
         onTitleTap={handleTitleTap}
+        onLogoTap={handleOwnerLogoTap}
         queryInputRef={queryInputRef}
         showHeader={false}
       />
