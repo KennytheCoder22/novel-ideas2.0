@@ -15,6 +15,8 @@ import {
   View,
 } from "react-native";
 import configFile from "../NovelIdeas.json";
+import { PatronColorPickerField } from "../components/PatronColorPickerField";
+import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import {
   autoChooseFontColor,
   highlightKeyToHex,
@@ -31,6 +33,7 @@ import {
   normalizeAvailableSwipeCategories,
   readPatronCustomization,
   readPatronCustomizationAsync,
+  resolvePatronAppearance,
   SWIPE_CATEGORY_KEYS,
   writePatronCustomization,
   writePatronCustomizationAsync,
@@ -50,6 +53,7 @@ import {
   type AgeBandKey,
   type AgeBandSelection,
 } from "../lib/patronAgePreferences";
+import { colorContrastRatio } from "../lib/colorSelection";
 import { readOrCreatePatronId, readOrCreatePatronIdAsync } from "../lib/patronIdentity.mjs";
 
 const AGE_LABELS: Record<AgeBandKey, string> = {
@@ -125,6 +129,14 @@ export default function CustomizeMyExperienceScreen() {
   const selectedSwipeCategories = useMemo(
     () => effectivePatronSwipeCategories(availableSwipeCategories, draft.swipeCategories),
     [availableSwipeCategories, draft.swipeCategories],
+  );
+  const previewAppearance = useMemo(
+    () => resolvePatronAppearance(inherited, draft.appearance),
+    [draft.appearance, inherited],
+  );
+  const fontMainContrast = useMemo(
+    () => colorContrastRatio(previewAppearance.fontColorHex, previewAppearance.mainColorHex),
+    [previewAppearance.fontColorHex, previewAppearance.mainColorHex],
   );
 
   useEffect(() => {
@@ -318,9 +330,51 @@ export default function CustomizeMyExperienceScreen() {
               {draft.appearance?.logoDataUrl ? <Action label="Use inherited image" onPress={() => setAppearance("logoDataUrl")} /> : null}
             </View>
           </View>
-          <Field label="Main color" inherited={inherited.mainColorHex} value={draft.appearance?.mainColorHex} onChange={(value) => setAppearance("mainColorHex", value)} onReset={() => setAppearance("mainColorHex")} />
-          <Field label="Highlight color" inherited={inherited.highlightColorHex} value={draft.appearance?.highlightColorHex} onChange={(value) => setAppearance("highlightColorHex", value)} onReset={() => setAppearance("highlightColorHex")} />
-          <Field label="Font color" inherited={inherited.fontColorHex} value={draft.appearance?.fontColorHex} onChange={(value) => setAppearance("fontColorHex", value)} onReset={() => setAppearance("fontColorHex")} />
+          <PatronColorPickerField
+            label="Main color"
+            value={previewAppearance.mainColorHex}
+            inheritedValue={inherited.mainColorHex}
+            onChange={(value) => setAppearance("mainColorHex", value)}
+            onUseInherited={() => setAppearance("mainColorHex")}
+            isOverridden={Boolean(draft.appearance?.mainColorHex)}
+            testID="patron-color-picker-main"
+          />
+          <PatronColorPickerField
+            label="Highlight color"
+            value={previewAppearance.highlightColorHex}
+            inheritedValue={inherited.highlightColorHex}
+            onChange={(value) => setAppearance("highlightColorHex", value)}
+            onUseInherited={() => setAppearance("highlightColorHex")}
+            isOverridden={Boolean(draft.appearance?.highlightColorHex)}
+            testID="patron-color-picker-highlight"
+          />
+          <PatronColorPickerField
+            label="Font color"
+            value={previewAppearance.fontColorHex}
+            inheritedValue={inherited.fontColorHex}
+            onChange={(value) => setAppearance("fontColorHex", value)}
+            onUseInherited={() => setAppearance("fontColorHex")}
+            isOverridden={Boolean(draft.appearance?.fontColorHex)}
+            testID="patron-color-picker-font"
+          />
+          {fontMainContrast < 4.5 ? (
+            <View style={styles.contrastWarning} accessibilityRole="alert">
+              <Text style={styles.contrastWarningTitle}>Low contrast warning</Text>
+              <Text style={styles.contrastWarningText}>
+                Your font and main colors may be difficult to read together (contrast {fontMainContrast.toFixed(1)}:1).
+                You can still save this choice.
+              </Text>
+            </View>
+          ) : null}
+          <View style={styles.previewWrap}>
+            <Text style={styles.label}>Live preview</Text>
+            <ThemePreviewPanel
+              mainColor={previewAppearance.mainColorHex}
+              highlightColor={previewAppearance.highlightColorHex}
+              fontColor={previewAppearance.fontColorHex}
+              libraryName={previewAppearance.name || "NovelIdeas"}
+            />
+          </View>
           <Action label="Restore inherited appearance" onPress={() => setDraft((current) => ({ ...current, appearance: undefined }))} />
         </Section>
 
@@ -424,6 +478,10 @@ const styles = StyleSheet.create({
   field: { marginBottom: 16 },
   label: { color: "#d7e4f6", fontSize: 14, fontWeight: "800", marginBottom: 7 },
   input: { color: "#e5efff", backgroundColor: "#071526", borderColor: "#315277", borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11 },
+  contrastWarning: { backgroundColor: "#3b2a12", borderColor: "#fbbf24", borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 16 },
+  contrastWarningTitle: { color: "#fde68a", fontSize: 14, fontWeight: "900" },
+  contrastWarningText: { color: "#fef3c7", fontSize: 13, lineHeight: 19, marginTop: 3 },
+  previewWrap: { marginBottom: 18 },
   action: { alignSelf: "flex-start", borderColor: "#315277", borderWidth: 1, borderRadius: 9, paddingHorizontal: 11, paddingVertical: 8, marginTop: 8 },
   actionText: { color: "#93c5fd", fontSize: 13, fontWeight: "800" },
   logoRow: { flexDirection: "row", alignItems: "center", marginBottom: 18, gap: 14 },
