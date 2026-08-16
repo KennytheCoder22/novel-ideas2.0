@@ -307,7 +307,14 @@ export default function CustomizeMyExperienceScreen() {
         </TouchableOpacity>
         <Text style={styles.title}>Customize My Experience</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        horizontal={false}
+        directionalLockEnabled
+        alwaysBounceHorizontal={false}
+        showsHorizontalScrollIndicator={false}
+      >
         <Text style={styles.intro}>
           These settings apply only to this patron. Librarian settings and other patrons will not change.
         </Text>
@@ -464,15 +471,19 @@ function Action({ label, onPress }: { label: string; onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#071526" },
+  safe: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, backgroundColor: "#071526" },
+  scroll: Platform.select({
+    web: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden", overscrollBehaviorX: "none" } as any,
+    default: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0 },
+  }),
   loading: { flex: 1, backgroundColor: "#071526", alignItems: "center", justifyContent: "center" },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#1e3a5f" },
+  header: { width: "100%", maxWidth: "100%", minWidth: 0, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#1e3a5f" },
   headerButton: { paddingVertical: 7, paddingRight: 12 },
   headerButtonText: { color: "#93c5fd", fontWeight: "800" },
   title: { color: "#e5efff", fontSize: 18, fontWeight: "900", flex: 1 },
-  content: { padding: 10, paddingBottom: 32, width: "100%", maxWidth: 680, alignSelf: "center" },
+  content: { padding: 10, paddingBottom: 32, width: "100%", maxWidth: 680, minWidth: 0, alignSelf: "center" },
   intro: { color: "#b0c4de", fontSize: 13, lineHeight: 18, marginBottom: 10 },
-  section: { backgroundColor: "#10243f", borderColor: "#223b6b", borderWidth: 1, borderRadius: 12, padding: 11, marginBottom: 10 },
+  section: { width: "100%", maxWidth: "100%", minWidth: 0, backgroundColor: "#10243f", borderColor: "#223b6b", borderWidth: 1, borderRadius: 12, padding: 11, marginBottom: 10 },
   sectionTitle: { color: "#e5efff", fontSize: 16, fontWeight: "900", marginBottom: 6 },
   sectionHelp: { color: "#93aeca", fontSize: 12, lineHeight: 17, marginBottom: 4 },
   field: { marginBottom: 10 },
@@ -481,15 +492,15 @@ const styles = StyleSheet.create({
   contrastWarning: { backgroundColor: "#3b2a12", borderColor: "#fbbf24", borderWidth: 1, borderRadius: 9, padding: 9, marginBottom: 10 },
   contrastWarningTitle: { color: "#fde68a", fontSize: 13, fontWeight: "900" },
   contrastWarningText: { color: "#fef3c7", fontSize: 12, lineHeight: 17, marginTop: 2 },
-  previewWrap: { marginBottom: 10 },
+  previewWrap: { width: "100%", maxWidth: "100%", minWidth: 0, marginBottom: 10 },
   action: { alignSelf: "flex-start", minHeight: 38, justifyContent: "center", borderColor: "#315277", borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginTop: 6 },
   actionText: { color: "#93c5fd", fontSize: 12, fontWeight: "800" },
-  logoRow: { flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 10 },
+  logoRow: { width: "100%", maxWidth: "100%", minWidth: 0, flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 10 },
   logo: { width: 58, height: 58, borderRadius: 9, backgroundColor: "#071526" },
   logoPlaceholder: { width: 90, height: 58, borderColor: "#315277", borderWidth: 1, borderRadius: 9, alignItems: "center", justifyContent: "center", padding: 6 },
-  logoActions: { flex: 1 },
+  logoActions: { flex: 1, minWidth: 0 },
   muted: { color: "#6f8bad", fontSize: 12, textAlign: "center" },
-  preferenceRow: { minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopColor: "#223b6b", borderTopWidth: 1 },
+  preferenceRow: { width: "100%", maxWidth: "100%", minWidth: 0, minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopColor: "#223b6b", borderTopWidth: 1 },
   preferenceCopy: { flex: 1, paddingRight: 8 },
   preferenceLabel: { color: "#e5efff", fontSize: 14, fontWeight: "800" },
   disabled: { color: "#6f8bad" },

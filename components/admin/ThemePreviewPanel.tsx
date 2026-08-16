@@ -31,7 +31,9 @@ export function ThemePreviewPanel({ mainColor, highlightColor, fontColor, librar
         overflow: "hidden",
         borderWidth: 2,
         borderColor: safeHighlight,
+        width: "100%",
         maxWidth: 400,
+        minWidth: 0,
       }}
     >
       {/* App background + body text */}

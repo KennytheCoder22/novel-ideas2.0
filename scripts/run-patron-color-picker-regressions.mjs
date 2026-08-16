@@ -29,6 +29,7 @@ const {
 } = require(resolve(root, "lib", "patronCustomization.ts"));
 const pageSource = readFileSync(resolve(root, "app", "customize-my-experience.tsx"), "utf8");
 const pickerSource = readFileSync(resolve(root, "components", "PatronColorPickerField.tsx"), "utf8");
+const previewSource = readFileSync(resolve(root, "components", "admin", "ThemePreviewPanel.tsx"), "utf8");
 
 class MemoryStorage {
   constructor(entries = {}) {
@@ -126,5 +127,16 @@ assert.match(pickerSource, /type="color"/);
 assert.match(pickerSource, /style=\{styles\.hexInput\}/);
 assert.match(pickerSource, /width: 34, height: 34/);
 assert.match(pickerSource, /height: 8px/);
-assert.match(pageSource, /preferenceRow: \{ minHeight: 46/);
+assert.match(pageSource, /preferenceRow: \{ width: "100%", maxWidth: "100%", minWidth: 0, minHeight: 46/);
+assert.match(pickerSource, /compactHeader: \{ width: "100%", maxWidth: "100%", minWidth: 0/);
+assert.match(pickerSource, /hexInput: \{ width: 78, maxWidth: 78, flexShrink: 1/);
+assert.match(pickerSource, /touchAction: "none"/);
+assert.match(pageSource, /directionalLockEnabled/);
+assert.match(pageSource, /alwaysBounceHorizontal=\{false\}/);
+assert.match(pageSource, /overscrollBehaviorX: "none"/);
+assert.match(pageSource, /horizontal=\{false\}/);
+assert.match(pageSource, /showsHorizontalScrollIndicator=\{false\}/);
+assert.match(pageSource, /safe: \{ flex: 1, width: "100%", maxWidth: "100%", minWidth: 0/);
+assert.match(pageSource, /section: \{ width: "100%", maxWidth: "100%", minWidth: 0/);
+assert.match(previewSource, /width: "100%"[\s\S]*maxWidth: 400[\s\S]*minWidth: 0/);
 process.stdout.write("\nPatron color picker regressions passed.\n");

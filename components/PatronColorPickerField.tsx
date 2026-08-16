@@ -185,7 +185,7 @@ export function PatronColorPickerField({
               onInput={(event: any) => changeSpectrum(Number(event?.target?.value || 0))}
               onChange={(event: any) => changeSpectrum(Number(event?.target?.value || 0))}
               aria-label={`${label} hue spectrum`}
-              style={{ color: safeValue }}
+              style={{ color: safeValue, touchAction: "none", maxWidth: "100%" }}
             />
           </>
         ) : (
@@ -259,15 +259,15 @@ function ColorSlider(props: {
 }
 
 const styles = StyleSheet.create({
-  container: { borderTopWidth: 1, borderTopColor: "#315277", paddingTop: 10, marginTop: 2, marginBottom: 10 },
-  compactHeader: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 7 },
-  label: { color: "#d7e4f6", fontSize: 14, fontWeight: "900", flexShrink: 1 },
-  inheritedButton: { minHeight: 38, justifyContent: "center", borderWidth: 1, borderColor: "#315277", borderRadius: 8, paddingHorizontal: 9, marginLeft: "auto" },
+  container: { width: "100%", maxWidth: "100%", minWidth: 0, borderTopWidth: 1, borderTopColor: "#315277", paddingTop: 10, marginTop: 2, marginBottom: 10 },
+  compactHeader: { width: "100%", maxWidth: "100%", minWidth: 0, minHeight: 40, flexDirection: "row", alignItems: "center", gap: 6 },
+  label: { color: "#d7e4f6", fontSize: 14, fontWeight: "900", flexShrink: 1, minWidth: 0 },
+  inheritedButton: { minHeight: 38, maxWidth: "100%", flexShrink: 1, justifyContent: "center", borderWidth: 1, borderColor: "#315277", borderRadius: 8, paddingHorizontal: 7, marginLeft: "auto" },
   inheritedButtonText: { color: "#93c5fd", fontSize: 11, fontWeight: "800" },
   inheritedStatus: { color: "#6f8bad", fontSize: 12, fontWeight: "700" },
   swatch: { width: 34, height: 34, borderRadius: 8, borderWidth: 1, borderColor: "#d7e4f6", overflow: "hidden", position: "relative", flexShrink: 0 },
-  sliderRow: { minHeight: 38, flexDirection: "row", alignItems: "center", gap: 6 },
-  sliderLabel: { color: "#b9cce4", width: 68, fontSize: 12, fontWeight: "800" },
+  sliderRow: { width: "100%", maxWidth: "100%", minWidth: 0, minHeight: 38, flexDirection: "row", alignItems: "center", gap: 6 },
+  sliderLabel: { color: "#b9cce4", width: 68, flexShrink: 0, fontSize: 12, fontWeight: "800" },
   slider: { flex: 1, height: 34, minWidth: 0 },
-  hexInput: { width: 80, color: "#e5efff", backgroundColor: "#071526", borderColor: "#315277", borderWidth: 1, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 7, fontSize: 12, fontWeight: "800" },
+  hexInput: { width: 78, maxWidth: 78, flexShrink: 1, color: "#e5efff", backgroundColor: "#071526", borderColor: "#315277", borderWidth: 1, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 7, fontSize: 12, fontWeight: "800" },
 });
