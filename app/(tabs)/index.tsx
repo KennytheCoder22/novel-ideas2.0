@@ -27,6 +27,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
+import { MyListModal } from "../../components/MyListModal";
 import {
   applyWebHighlightColor,
   autoChooseFontColor,
@@ -56,6 +57,18 @@ import {
   resetPatronIdentity,
   resetPatronIdentityAsync,
 } from "../../lib/patronIdentity.mjs";
+import {
+  addSavedRecommendation,
+  clearAllPatronMyLists,
+  clearAllPatronMyListsAsync,
+  patronMyListStorageKey,
+  readPatronMyList,
+  readPatronMyListAsync,
+  removeSavedRecommendation,
+  writePatronMyList,
+  writePatronMyListAsync,
+  type SavedRecommendation,
+} from "../../lib/patronMyList";
 import {
   loadLocalCollectionRecommendationArtifact,
   type LocalCollectionRecommendationRecord,
@@ -1515,6 +1528,12 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminMenuUnlocked, setAdminMenuUnlocked] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [showMyList, setShowMyList] = useState(false);
+  const [myList, setMyList] = useState<SavedRecommendation[]>([]);
+  const myListRef = useRef<SavedRecommendation[]>([]);
+  const myListScopeRef = useRef("");
+  const myListMutationVersionRef = useRef(0);
+  const myListWriteQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [savedLibraries, setSavedLibraries] = useState<SavedLibrary[]>(() => {
     try {
       return readPatronLibraries(typeof localStorage === "undefined" ? null : localStorage);
@@ -1536,6 +1555,34 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!patronIdentityReady || !patronId) return;
+    let cancelled = false;
+    myListRef.current = [];
+    setMyList([]);
+    async function loadMyList() {
+      try {
+        const items = Platform.OS === "web" && typeof localStorage !== "undefined"
+          ? readPatronMyList(localStorage, patronId, props.libraryId)
+          : await readPatronMyListAsync(AsyncStorage, patronId, props.libraryId);
+        if (!cancelled) {
+          myListRef.current = items;
+          setMyList(items);
+        }
+      } catch (error) {
+        console.error("Failed to load patron My List:", error);
+        if (!cancelled) {
+          myListRef.current = [];
+          setMyList([]);
+        }
+      }
+    }
+    void loadMyList();
+    return () => {
+      cancelled = true;
+    };
+  }, [patronId, patronIdentityReady, props.libraryId]);
 
   const [config, setConfig] = useState<any>(() => {
     // Check if a library-specific config is saved in localStorage
@@ -2015,6 +2062,101 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     });
   }
 
+  function openMyList() {
+    closeHeaderMenu();
+    setShowMyList(true);
+  }
+
+  async function persistMyList(items: SavedRecommendation[]) {
+    if (Platform.OS === "web" && typeof localStorage !== "undefined") {
+      writePatronMyList(localStorage, patronId, props.libraryId, items);
+      return;
+    }
+    await writePatronMyListAsync(AsyncStorage, patronId, props.libraryId, items);
+  }
+
+  myListScopeRef.current = patronMyListStorageKey(patronId, props.libraryId);
+
+  function queueMyListWrite(
+    nextItems: SavedRecommendation[],
+    previousItems: SavedRecommendation[],
+    scopeKey: string,
+    mutationVersion: number,
+    errorTitle: string,
+    errorMessage: string,
+  ) {
+    myListWriteQueueRef.current = myListWriteQueueRef.current
+      .catch(() => undefined)
+      .then(() => persistMyList(nextItems))
+      .catch((error) => {
+        console.error(`${errorTitle}:`, error);
+        if (
+          myListScopeRef.current === scopeKey &&
+          myListMutationVersionRef.current === mutationVersion
+        ) {
+          myListRef.current = previousItems;
+          setMyList(previousItems);
+        }
+        Alert.alert(errorTitle, errorMessage);
+      });
+  }
+
+  async function saveRecommendationToMyList(item: SavedRecommendation): Promise<boolean> {
+    const previousItems = myListRef.current;
+    const result = addSavedRecommendation(previousItems, item);
+    if (!result.added) return false;
+    const mutationVersion = ++myListMutationVersionRef.current;
+    const scopeKey = myListScopeRef.current;
+    myListRef.current = result.items;
+    setMyList(result.items);
+    queueMyListWrite(
+      result.items,
+      previousItems,
+      scopeKey,
+      mutationVersion,
+      "Unable to save",
+      "This recommendation could not be added to My List.",
+    );
+    return true;
+  }
+
+  function removeRecommendationFromMyList(itemId: string) {
+    const previousItems = myListRef.current;
+    const nextItems = removeSavedRecommendation(previousItems, itemId);
+    if (nextItems.length === previousItems.length) return;
+    const mutationVersion = ++myListMutationVersionRef.current;
+    const scopeKey = myListScopeRef.current;
+    myListRef.current = nextItems;
+    setMyList(nextItems);
+    queueMyListWrite(
+      nextItems,
+      previousItems,
+      scopeKey,
+      mutationVersion,
+      "Unable to remove",
+      "This recommendation could not be removed from My List.",
+    );
+  }
+
+  function renderMyList() {
+    return (
+      <MyListModal
+        visible={showMyList}
+        items={myList}
+        colors={{
+          background: theme.appBg,
+          card: theme.inputBg,
+          border: theme.lightBorder,
+          text: theme.text,
+          muted: theme.muted,
+          highlight: theme.highlight,
+        }}
+        onClose={() => setShowMyList(false)}
+        onRemove={removeRecommendationFromMyList}
+      />
+    );
+  }
+
   function openSavedLibrary(library: SavedLibrary) {
     closeHeaderMenu();
     router.replace(library.hostedPath as any);
@@ -2023,17 +2165,34 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
   async function resetCurrentPatron() {
     const isWebStorage = Platform.OS === "web" && typeof localStorage !== "undefined";
     if (!isWebStorage) setPatronIdentityReady(false);
-    const result = isWebStorage
-      ? resetPatronIdentity(localStorage)
-      : await resetPatronIdentityAsync(AsyncStorage);
-    setPatronId(result.nextId);
-    setPatronIdentityReady(true);
-    setMode("swipe");
+    try {
+      await myListWriteQueueRef.current;
+      if (patronId) {
+        if (isWebStorage) {
+          clearAllPatronMyLists(localStorage, patronId);
+        } else {
+          await clearAllPatronMyListsAsync(AsyncStorage, patronId);
+        }
+      }
+      const result = isWebStorage
+        ? resetPatronIdentity(localStorage)
+        : await resetPatronIdentityAsync(AsyncStorage);
+      myListRef.current = [];
+      setMyList([]);
+      setShowMyList(false);
+      setPatronId(result.nextId);
+      setPatronIdentityReady(true);
+      setMode("swipe");
+    } catch (error) {
+      console.error("Failed to reset patron identity:", error);
+      setPatronIdentityReady(true);
+      Alert.alert("Unable to reset user", "The patron could not be reset. Please try again.");
+    }
   }
 
   function confirmResetUser() {
     closeHeaderMenu();
-    const message = "This clears this patron's swipe and recommendation history and starts with a new identity. Library and admin settings will not change.";
+    const message = "This clears this patron's My List, swipe history, and recommendation history and starts with a new identity. Library and admin settings will not change.";
     if (Platform.OS === "web" && typeof window !== "undefined") {
       if (window.confirm(`Reset User?\n\n${message}`)) void resetCurrentPatron();
       return;
@@ -2105,6 +2264,9 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/feedback")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Send Feedback</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={openMyList}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>My List</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerMenuItem}
@@ -2515,6 +2677,8 @@ logoDataUrl={logoDataUrl}
               patronId={patronId}
               libraryId={props.libraryId}
               onResetUser={() => void resetCurrentPatron()}
+              savedRecommendationIds={myList.map((item) => item.id)}
+              onSaveRecommendation={saveRecommendationToMyList}
               swipeCategories={swipeCategories}
               enabledDecks={enabledDecks}
               recommendationSourceEnabled={deckSourceEnabled[deck] || sourceEnabled}
@@ -2532,6 +2696,7 @@ logoDataUrl={logoDataUrl}
             <ActivityIndicator size="large" color={theme.highlight} />
           )}
         </View>
+        {renderMyList()}
       </View>
     );
   }
@@ -2619,6 +2784,7 @@ logoDataUrl={logoDataUrl}
         showHeader={false}
       />
       </View>
+      {renderMyList()}
     </View>
   );
 }

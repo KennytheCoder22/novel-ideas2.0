@@ -72,6 +72,10 @@ import {
   redactedPatronId,
   recommendationHistoryKeyForPatron,
 } from "../lib/patronIdentity.mjs";
+import {
+  normalizeSavedRecommendation,
+  type SavedRecommendation,
+} from "../lib/patronMyList";
 import { BookshelfLoadingIndicator } from "../components/BookshelfLoadingIndicator";
 import {
   HUMAN_REVIEW_CONCERN_OPTIONS,
@@ -327,6 +331,8 @@ type Props = {
   libraryId?: string;
   onResetUser?: () => void;
   onOpenSearch?: () => void;
+  savedRecommendationIds?: readonly string[];
+  onSaveRecommendation?: (item: SavedRecommendation) => Promise<boolean>;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
   recommendationSourceEnabled?: RecommendationSourceToggleState;
   recommendationSourceEnabledByDeck?: Partial<Record<DeckKey, RecommendationSourceToggleState>>;
@@ -5774,6 +5780,28 @@ function handleLeft(card?: SwipeDeckCard | null) {
     return formatRecommendationLocationLine(currentRec.doc);
   }, [currentRec]);
 
+  const currentSavedRecommendation = useMemo(() => {
+    if (!currentRec) return null;
+    const title = currentRec.kind === "open_library"
+      ? String(currentRec.doc?.title || "Untitled")
+      : String(currentRec.book?.title || "Untitled");
+    const author = currentRec.kind === "open_library"
+      ? recommendationAuthor(currentRec.doc)
+      : String(currentRec.book?.author || "Unknown author");
+    return normalizeSavedRecommendation({
+      title,
+      author,
+      coverUrl: currentRecCoverUri || undefined,
+      subLocation: currentRec.kind === "open_library" ? recommendationSubLocation(currentRec.doc) : undefined,
+      callNumber: currentRec.kind === "open_library" ? recommendationCallNumber(currentRec.doc) : undefined,
+      source: currentRec.kind === "open_library" ? String(currentRec.doc?.source || "") : "fallback",
+      sourceId: currentRec.kind === "open_library" ? docId(currentRec.doc) : fallbackId(currentRec.book),
+    });
+  }, [currentRec, currentRecCoverUri]);
+  const currentRecommendationSaved = Boolean(
+    currentSavedRecommendation && props.savedRecommendationIds?.includes(currentSavedRecommendation.id),
+  );
+
   const humanReviewTotalRecommendations = humanReviewForm?.itemReviews.length || 0;
   const humanReviewCurrentStepIndex = clampHumanReviewStepIndex(humanReviewStepIndex, humanReviewTotalRecommendations);
   const humanReviewSlateStepVisible = humanReviewTotalRecommendations > 0 && humanReviewCurrentStepIndex >= humanReviewTotalRecommendations;
@@ -5982,27 +6010,41 @@ function handleLeft(card?: SwipeDeckCard | null) {
                 {recItems.length > 0 && !recLoading && currentRec ? (
                   <View style={styles.recCard}>
                     <View style={styles.bigCoverWrap}>
-                      {currentRecCoverUri ? (
-                        <Image
-                          source={{ uri: currentRecCoverUri }}
-                          style={styles.bigCover}
-                          resizeMode="contain"
-                          onError={() => {
-                            if (!currentRecKey || !currentRecCoverUri) return;
-                            setRecCoverFailures((prev) => {
-                              const existing = Array.isArray(prev[currentRecKey]) ? prev[currentRecKey] : [];
-                              const normalized = currentRecCoverUri.toLowerCase();
-                              if (existing.some((row) => row.toLowerCase() === normalized)) return prev;
-                              return { ...prev, [currentRecKey]: [...existing, currentRecCoverUri] };
-                            });
+                      <View style={styles.bigCoverFrame}>
+                        {currentRecCoverUri ? (
+                          <Image
+                            source={{ uri: currentRecCoverUri }}
+                            style={styles.bigCover}
+                            resizeMode="contain"
+                            onError={() => {
+                              if (!currentRecKey || !currentRecCoverUri) return;
+                              setRecCoverFailures((prev) => {
+                                const existing = Array.isArray(prev[currentRecKey]) ? prev[currentRecKey] : [];
+                                const normalized = currentRecCoverUri.toLowerCase();
+                                if (existing.some((row) => row.toLowerCase() === normalized)) return prev;
+                                return { ...prev, [currentRecKey]: [...existing, currentRecCoverUri] };
+                              });
+                            }}
+                          />
+                        ) : (
+                          <View style={styles.bigCoverPlaceholder}>
+                            <Text style={styles.bigCoverPlaceholderTitle} numberOfLines={2}>{currentRecPlaceholderTitle}</Text>
+                            <Text style={styles.bigCoverPlaceholderText}>Cover unavailable</Text>
+                          </View>
+                        )}
+                        <TouchableOpacity
+                          style={[styles.saveRecommendationButton, currentRecommendationSaved && styles.saveRecommendationButtonSaved]}
+                          onPress={() => {
+                            if (!currentSavedRecommendation || currentRecommendationSaved) return;
+                            void props.onSaveRecommendation?.(currentSavedRecommendation);
                           }}
-                        />
-                      ) : (
-                        <View style={styles.bigCoverPlaceholder}>
-                          <Text style={styles.bigCoverPlaceholderTitle} numberOfLines={2}>{currentRecPlaceholderTitle}</Text>
-                          <Text style={styles.bigCoverPlaceholderText}>Cover unavailable</Text>
-                        </View>
-                      )}
+                          disabled={currentRecommendationSaved || !props.onSaveRecommendation}
+                          accessibilityRole="button"
+                          accessibilityLabel={currentRecommendationSaved ? "Saved to My List" : "Save recommendation to My List"}
+                        >
+                          <Text style={styles.saveRecommendationButtonText}>{currentRecommendationSaved ? "✓" : "+"}</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     <View style={styles.recMeta}>
@@ -6921,10 +6963,26 @@ const styles = StyleSheet.create({
 
   recCard: { marginTop: 16 },
   bigCoverWrap: { width: "100%", alignItems: "center" },
+  bigCoverFrame: { width: 220, height: 320, position: "relative" },
   bigCover: { aspectRatio: 2 / 3, backgroundColor: "#000", width: 220, height: 320, borderRadius: 10 },
   bigCoverPlaceholder: { width: 220, height: 320, borderRadius: 10, borderWidth: 1, borderColor: "#223b6b", backgroundColor: "#10243f", alignItems: "center", justifyContent: "center", paddingHorizontal: 14, gap: 8 },
   bigCoverPlaceholderTitle: { color: "#e5efff", fontWeight: "800", textAlign: "center", fontSize: 15 },
   bigCoverPlaceholderText: { color: "#cbd5f5", fontWeight: "800", fontSize: 12 },
+  saveRecommendationButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(7, 21, 38, 0.9)",
+    borderWidth: 1,
+    borderColor: "#d6b35a",
+  },
+  saveRecommendationButtonSaved: { backgroundColor: "#2f855a" },
+  saveRecommendationButtonText: { color: "#fff", fontSize: 24, fontWeight: "900", lineHeight: 27 },
 
   recActions: { marginTop: 12, flexDirection: "row", gap: 12, justifyContent: "center" },
   smallNote: { color: "#cbd5f5", fontWeight: "800", fontSize: 12, marginTop: 8 },
