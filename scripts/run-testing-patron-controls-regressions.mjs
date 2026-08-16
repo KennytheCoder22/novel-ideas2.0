@@ -9,9 +9,12 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const swipeSource = readFileSync(resolve(root, "screens", "SwipeDeckScreen.tsx"), "utf8");
 const homeSource = readFileSync(resolve(root, "app", "(tabs)", "index.tsx"), "utf8");
 
-const testingStart = swipeSource.indexOf("{isTestingMode ? (");
-const testingEnd = swipeSource.indexOf(") : isAdminMode ? (", testingStart);
+const testingStart = swipeSource.indexOf("{shouldShowTestingEvaluation({");
+const testingEnd = swipeSource.indexOf(") : !isTestingMode ? (", testingStart);
 const testingBranch = swipeSource.slice(testingStart, testingEnd);
+const adminControlsStart = swipeSource.indexOf("<View style={styles.tempButtonsWrap}>");
+const adminControlsEnd = swipeSource.indexOf('{Platform.OS === "web" ? (', adminControlsStart);
+const adminControls = swipeSource.slice(adminControlsStart, adminControlsEnd);
 const resetStart = swipeSource.indexOf("function handleFreshUserReset()");
 const resetEnd = swipeSource.indexOf("\n  function ", resetStart + 1);
 const resetHandler = swipeSource.slice(resetStart, resetEnd);
@@ -21,9 +24,9 @@ function pass(name) {
 }
 
 assert(testingBranch.length > 0, "testing control branch must be present");
-assert(!testingBranch.includes("Fresh User"), "/testing must not render standalone Fresh User");
-assert(!testingBranch.includes("handleFreshUserReset"), "/testing must not wire standalone Fresh User");
-pass("/testing omits standalone Fresh User");
+assert(!adminControls.includes("Evaluate Recommendations"), "floating controls must not render Evaluate Recommendations");
+assert.equal((swipeSource.match(/<Text style=\{styles\.btnText\}>Evaluate Recommendations<\/Text>/g) || []).length, 1);
+pass("/testing renders only one Evaluate Recommendations control");
 
 assert(homeSource.includes("onPress={confirmResetUser}"), "menu Reset User handler must remain");
 assert(homeSource.includes(">Reset User</Text>"), "menu Reset User label must remain");
@@ -59,7 +62,18 @@ assert.equal(
   true,
 );
 assert(testingBranch.includes("onPress={openHumanReviewForCurrentSlate}"));
-pass("Evaluate Recommendations appears for a rendered slate");
+assert(testingBranch.includes("styles.btn"));
+pass("Evaluate Recommendations appears in the normal bottom-action location");
+
+const searchLabels = (swipeSource.match(/Search on my own/g) || []).length;
+assert.equal(searchLabels, 3, "normal routes must retain all three Search on my own placements");
+assert(testingEnd > testingStart && swipeSource.slice(testingEnd, testingEnd + 500).includes("!isTestingMode"));
+assert.equal(
+  (swipeSource.match(/\{!isTestingMode \? \(/g) || []).length >= 2,
+  true,
+  "swipe-phase Search actions must be hidden in testing mode",
+);
+pass("/testing hides Search on my own while normal routes retain it");
 
 assert(resetHandler.includes("setRecItems([])"), "reset must clear recommendation items");
 assert(resetHandler.includes("setForceRecommendationsView(false)"), "reset must leave recommendation view");

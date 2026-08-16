@@ -351,10 +351,8 @@ type Props = {
   };
   /**
    * When true, hides all engineering/debug controls (Test A/B/C, Diagnostics,
-   * Engine selectors, Deep-debug) and shows only "Evaluate Recommendations"
-   * (above) and "Fresh User" (below) in the lower-right corner.
-   * Also relabels the Human Review button from "Review This Slate" to
-   * "Evaluate Recommendations" and adjusts the submission success message.
+   * Engine selectors, Deep-debug), replaces the recommendation-page search
+   * action with "Evaluate Recommendations", and adjusts the submission success message.
    * Set this on the public /testing route.
    */
   isTestingMode?: boolean;
@@ -6139,12 +6137,26 @@ function handleLeft(card?: SwipeDeckCard | null) {
                   </View>
                 ) : null}
 
-                <TouchableOpacity
-                  style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 14, minWidth: 220, alignSelf: "center" }]}
-                  onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
-                >
-                  <Text style={styles.btnText}>Search on my own</Text>
-                </TouchableOpacity>
+                {shouldShowTestingEvaluation({
+                  isTestingMode,
+                  platform: Platform.OS,
+                  showRecommendationsView,
+                  recommendationCount: recItems.length,
+                }) ? (
+                  <TouchableOpacity
+                    style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 14, minWidth: 220, alignSelf: "center" }]}
+                    onPress={openHumanReviewForCurrentSlate}
+                  >
+                    <Text style={styles.btnText}>Evaluate Recommendations</Text>
+                  </TouchableOpacity>
+                ) : !isTestingMode ? (
+                  <TouchableOpacity
+                    style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 14, minWidth: 220, alignSelf: "center" }]}
+                    onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
+                  >
+                    <Text style={styles.btnText}>Search on my own</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             </ScrollView>
           ) : currentCard ? (
@@ -6218,20 +6230,22 @@ function handleLeft(card?: SwipeDeckCard | null) {
                       <Text style={styles.clueText}>↓ Skip</Text>
                       <Text style={styles.clueText}>Like →</Text>
                     </View>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.btn,
-                        styles.btnOutlineGold,
-                        { borderColor: highlightColor },
-                        pressed && styles.btnPressedBlue,
-                        { marginTop: 12, minWidth: 220 },
-                      ]}
-                      onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
-                    >
-                      {({ pressed }) => (
-                        <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Search on my own</Text>
-                      )}
-                    </Pressable>
+                    {!isTestingMode ? (
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.btn,
+                          styles.btnOutlineGold,
+                          { borderColor: highlightColor },
+                          pressed && styles.btnPressedBlue,
+                          { marginTop: 12, minWidth: 220 },
+                        ]}
+                        onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
+                      >
+                        {({ pressed }) => (
+                          <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Search on my own</Text>
+                        )}
+                      </Pressable>
+                    ) : null}
                   </ScrollView>
                 </View>
               ) : (
@@ -6260,20 +6274,22 @@ function handleLeft(card?: SwipeDeckCard | null) {
                       {({ pressed }) => <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Like</Text>}
                     </Pressable>
                   </View>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.btn,
-                      styles.btnOutlineGold,
-                      { borderColor: highlightColor },
-                      pressed && styles.btnPressedBlue,
-                      { marginTop: 12, minWidth: 220 },
-                    ]}
-                    onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
-                  >
-                    {({ pressed }) => (
-                      <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Search on my own</Text>
-                    )}
-                  </Pressable>
+                  {!isTestingMode ? (
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.btn,
+                        styles.btnOutlineGold,
+                        { borderColor: highlightColor },
+                        pressed && styles.btnPressedBlue,
+                        { marginTop: 12, minWidth: 220 },
+                      ]}
+                      onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
+                    >
+                      {({ pressed }) => (
+                        <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Search on my own</Text>
+                      )}
+                    </Pressable>
+                  ) : null}
                 </>
               )}
             </View>
@@ -6289,20 +6305,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
           <View style={styles.testPillRow}>
-            {isTestingMode ? (
-              <>
-                {shouldShowTestingEvaluation({
-                  isTestingMode,
-                  platform: Platform.OS,
-                  showRecommendationsView,
-                  recommendationCount: recItems.length,
-                }) ? (
-                  <TouchableOpacity style={styles.humanReviewToggle} onPress={openHumanReviewForCurrentSlate}>
-                    <Text style={styles.debugToggleText}>Evaluate Recommendations</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </>
-            ) : isAdminMode ? (
+            {!isTestingMode && isAdminMode ? (
               <>
                 {testSessionPresets.map((preset) => (
                   <TouchableOpacity key={preset.id} style={styles.testPillButton} onPress={() => runTestSessionPreset(preset)}>

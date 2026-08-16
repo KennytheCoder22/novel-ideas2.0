@@ -45,11 +45,11 @@ const indexSource = readFileSync(resolve(ROOT, "app/(tabs)/index.tsx"), "utf8");
 const swipeDeckSource = readFileSync(resolve(ROOT, "screens/SwipeDeckScreen.tsx"), "utf8");
 const testingSource = readFileSync(resolve(ROOT, "app/testing.tsx"), "utf8");
 
-const controlsStart = swipeDeckSource.indexOf("{isTestingMode ? (");
-const adminDivider = swipeDeckSource.indexOf(") : isAdminMode ? (", controlsStart);
-const adminBranchEnd = swipeDeckSource.indexOf("</>", adminDivider);
+const controlsStart = swipeDeckSource.indexOf("<View style={styles.tempButtonsWrap}>");
+const adminDivider = swipeDeckSource.indexOf("{!isTestingMode && isAdminMode ? (", controlsStart);
+const adminBranchEnd = swipeDeckSource.indexOf("visible={showHumanReviewPanel", adminDivider);
 const adminBranchSource =
-  adminDivider >= 0 && adminBranchEnd > adminDivider ? swipeDeckSource.slice(adminDivider, adminBranchEnd + 3) : "";
+  adminDivider >= 0 && adminBranchEnd > adminDivider ? swipeDeckSource.slice(adminDivider, adminBranchEnd) : "";
 
 const openAdminEntryStart = indexSource.indexOf('function openAdminEntry(source: "menu" | "easter_egg" = "menu") {');
 const openAdminEntryEnd = indexSource.indexOf("function handleTitleTap()", openAdminEntryStart);
@@ -184,7 +184,7 @@ const openAdminEntrySource =
   for (const required of ["Diagnostics", "Review This Slate", "Fresh User"]) {
     assertIncludes(adminBranchSource, required, `N15: admin branch should keep ${required}`);
   }
-  assertIncludes(swipeDeckSource, ") : isAdminMode ? (", "N15: admin-only controls must be behind isAdminMode branch");
+  assertIncludes(adminBranchSource, "{!isTestingMode && isAdminMode ? (", "N15: admin-only controls must be hidden from testing mode");
   console.log("PASS N15: Diagnostics/Review/Fresh User hidden from public non-admin render");
 }
 

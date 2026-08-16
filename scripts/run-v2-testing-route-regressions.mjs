@@ -81,19 +81,18 @@ const homeSource = readFileSync(resolve(ROOT, "app/(tabs)/index.tsx"), "utf8");
 const layoutSource = readFileSync(resolve(ROOT, "app/_layout.tsx"), "utf8");
 const vercelConfigPath = resolve(ROOT, "vercel.json");
 const vercelConfig = existsSync(vercelConfigPath) ? JSON.parse(readFileSync(vercelConfigPath, "utf8")) : null;
-const testingBranchStart = swipeDeckSource.indexOf("{isTestingMode ? (");
-const adminBranchDivider =
-  swipeDeckSource.indexOf(") : isAdminMode ? (", testingBranchStart) >= 0
-    ? swipeDeckSource.indexOf(") : isAdminMode ? (", testingBranchStart)
-    : swipeDeckSource.indexOf(") : (", testingBranchStart);
+const testingBranchStart = swipeDeckSource.indexOf("{shouldShowTestingEvaluation({");
+const testingBranchEnd = swipeDeckSource.indexOf(") : !isTestingMode ? (", testingBranchStart);
 const testingBranchSource =
-  testingBranchStart >= 0 && adminBranchDivider > testingBranchStart
-    ? swipeDeckSource.slice(testingBranchStart, adminBranchDivider)
+  testingBranchStart >= 0 && testingBranchEnd > testingBranchStart
+    ? swipeDeckSource.slice(testingBranchStart, testingBranchEnd)
     : "";
-const adminBranchEnd = swipeDeckSource.indexOf("</>", adminBranchDivider);
+const adminControlsStart = swipeDeckSource.indexOf("<View style={styles.tempButtonsWrap}>");
+const adminBranchDivider = swipeDeckSource.indexOf("{!isTestingMode && isAdminMode ? (", adminControlsStart);
+const adminBranchEnd = swipeDeckSource.indexOf("visible={showHumanReviewPanel", adminBranchDivider);
 const adminBranchSource =
   adminBranchDivider >= 0 && adminBranchEnd > adminBranchDivider
-    ? swipeDeckSource.slice(adminBranchDivider, adminBranchEnd + 3)
+    ? swipeDeckSource.slice(adminBranchDivider, adminBranchEnd)
     : "";
 
 // T1: testing.tsx exists and has default export
@@ -125,14 +124,14 @@ const adminBranchSource =
 // T5: In testing mode, "Evaluate Recommendations" label is used
 {
   assertIncludes(swipeDeckSource, "Evaluate Recommendations", "T5: 'Evaluate Recommendations' label must exist in SwipeDeckScreen");
-  assertIncludes(swipeDeckSource, "{isTestingMode ? (", "T5: controls must branch explicitly for testing mode");
+  assertIncludes(swipeDeckSource, "{shouldShowTestingEvaluation({", "T5: bottom action must branch explicitly for testing mode");
   console.log("PASS T5: 'Evaluate Recommendations' label used when isTestingMode is true");
 }
 
 // T6: testing branch contains only the conditionally rendered evaluation control
 {
-  assertIncludes(swipeDeckSource, "{isTestingMode ? (", "T6: controls must split into an explicit testing-mode branch");
-  assertIncludes(swipeDeckSource, "<Text style={styles.debugToggleText}>Evaluate Recommendations</Text>", "T6: testing branch must render Evaluate Recommendations");
+  assertIncludes(swipeDeckSource, "{shouldShowTestingEvaluation({", "T6: controls must split into an explicit testing-mode branch");
+  assertIncludes(testingBranchSource, "<Text style={styles.btnText}>Evaluate Recommendations</Text>", "T6: bottom action must render Evaluate Recommendations");
   assertIncludes(
     testingBranchSource,
     "shouldShowTestingEvaluation({",
@@ -143,7 +142,7 @@ const adminBranchSource =
     "{!isTestingMode && testSessionPresets.map",
     "T6: testing branch should not rely on a shared label that can leak admin copy"
   );
-  console.log("PASS T6: testing branch contains only slate-gated Evaluate Recommendations");
+  console.log("PASS T6: normal bottom-action slot contains slate-gated Evaluate Recommendations");
 }
 
 // T7: admin branch retains the internal controls
@@ -165,7 +164,7 @@ const adminBranchSource =
 
 // T9: "Review This Slate" label used when isTestingMode is false
 {
-  assertIncludes(swipeDeckSource, '"Review This Slate"', "T9: 'Review This Slate' label must still exist for non-testing mode");
+  assertIncludes(swipeDeckSource, ">Review This Slate</Text>", "T9: 'Review This Slate' label must still exist for non-testing mode");
   console.log("PASS T9: 'Review This Slate' label preserved for non-testing mode (Admin)");
 }
 
