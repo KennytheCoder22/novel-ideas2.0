@@ -14,7 +14,8 @@ type Props = {
   testID: string;
 };
 
-const HUE_STOPS = [0, 30, 60, 120, 180, 210, 240, 280, 320] as const;
+const HUE_SPECTRUM =
+  "linear-gradient(90deg, #000000 0%, #ff0000 10%, #ff8000 20%, #ffff00 30%, #00ff00 40%, #00ffff 50%, #0000ff 65%, #8000ff 75%, #ff00ff 90%, #ffffff 100%)";
 
 export function PatronColorPickerField({
   label,
@@ -70,25 +71,28 @@ export function PatronColorPickerField({
     onChange(nextHex);
   }
 
+  function changeSpectrum(position: number) {
+    if (position <= 10) {
+      changeHsv({ value: position / 10 });
+      return;
+    }
+    if (position >= 90) {
+      changeHsv({ saturation: (100 - position) / 10, value: 1 });
+      return;
+    }
+    changeHsv({
+      hue: (position - 10) / 80 * 359,
+      saturation: Math.max(hsv.saturation, 0.65),
+      value: Math.max(hsv.value, 0.65),
+    });
+  }
+
+  const spectrumPosition = 10 + hsv.hue / 359 * 80;
+
   return (
     <View testID={testID} style={styles.container}>
-      <View style={styles.headingRow}>
+      <View style={styles.compactHeader}>
         <Text style={styles.label}>{label}</Text>
-        {isOverridden ? (
-          <TouchableOpacity
-            onPress={onUseInherited}
-            style={styles.inheritedButton}
-            accessibilityRole="button"
-            accessibilityLabel={`Use inherited ${label.toLowerCase()}`}
-          >
-            <Text style={styles.inheritedButtonText}>Use inherited color</Text>
-          </TouchableOpacity>
-        ) : (
-          <Text style={styles.inheritedStatus}>Using inherited color</Text>
-        )}
-      </View>
-
-      <View style={styles.swatchRow}>
         <View style={[styles.swatch, { backgroundColor: safeValue }]}>
           {Platform.OS === "web" ? (
             <input
@@ -111,42 +115,95 @@ export function PatronColorPickerField({
             />
           ) : null}
         </View>
-        <View style={styles.swatchCopy}>
-          <Text style={styles.currentColor}>Current color</Text>
-          <Text style={styles.hexValue}>{safeValue}</Text>
-          <Text style={styles.swatchHint}>
-            {Platform.OS === "web" ? "Tap the swatch for your browser picker, or use the sliders." : "Use the sliders below."}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.visualPickerLabel}>Visual hue choices</Text>
-      <View style={styles.hueChoices}>
-        {HUE_STOPS.map((hue) => (
+        <TextInput
+          value={hexDraft}
+          onChangeText={setHexDraft}
+          onBlur={commitHex}
+          onSubmitEditing={commitHex}
+          maxLength={7}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={styles.hexInput}
+          accessibilityLabel={`${label} hex value`}
+        />
+        {isOverridden ? (
           <TouchableOpacity
-            key={hue}
-            style={[
-              styles.hueChoice,
-              { backgroundColor: hsvToHex({ hue, saturation: 1, value: 1 }) },
-              Math.abs(hsv.hue - hue) < 15 ? styles.hueChoiceSelected : undefined,
-            ]}
-            onPress={() => changeHsv({ hue, saturation: Math.max(hsv.saturation, 0.65), value: Math.max(hsv.value, 0.65) })}
+            onPress={onUseInherited}
+            style={styles.inheritedButton}
             accessibilityRole="button"
-            accessibilityLabel={`Choose ${hue} degree hue for ${label.toLowerCase()}`}
-          />
-        ))}
+            accessibilityLabel={`Use inherited ${label.toLowerCase()}`}
+          >
+            <Text style={styles.inheritedButtonText}>Use inherited</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.inheritedStatus}>Inherited</Text>
+        )}
       </View>
 
-      <ColorSlider
-        fieldLabel={label}
-        label="Hue"
-        value={hsv.hue}
-        minimumValue={0}
-        maximumValue={359}
-        onChange={(hue) => changeHsv({ hue })}
-        minimumTrackTintColor={hsvToHex({ hue: hsv.hue, saturation: 1, value: 1 })}
-        testID={`${testID}-hue`}
-      />
+      <View style={styles.sliderRow}>
+        <Text style={styles.sliderLabel}>Hue</Text>
+        {Platform.OS === "web" ? (
+          <>
+            <style>{`
+              .patron-hue-spectrum {
+                -webkit-appearance: none;
+                appearance: none;
+                flex: 1;
+                min-width: 0;
+                height: 8px;
+                margin: 10px 0;
+                cursor: pointer;
+                border-radius: 999px;
+                background: ${HUE_SPECTRUM};
+              }
+              .patron-hue-spectrum::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                border: 2px solid #ffffff;
+                background: currentColor;
+                box-shadow: 0 0 0 1px #071526;
+              }
+              .patron-hue-spectrum::-moz-range-thumb {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                border: 2px solid #ffffff;
+                background: currentColor;
+                box-shadow: 0 0 0 1px #071526;
+              }
+            `}</style>
+            <input
+              className="patron-hue-spectrum"
+              data-testid={`${testID}-hue`}
+              type="range"
+              min="0"
+              max="100"
+              step="0.5"
+              value={spectrumPosition}
+              onInput={(event: any) => changeSpectrum(Number(event?.target?.value || 0))}
+              onChange={(event: any) => changeSpectrum(Number(event?.target?.value || 0))}
+              aria-label={`${label} hue spectrum`}
+              style={{ color: safeValue }}
+            />
+          </>
+        ) : (
+          <Slider
+            testID={`${testID}-hue`}
+            style={styles.slider}
+            value={spectrumPosition}
+            minimumValue={0}
+            maximumValue={100}
+            step={0.5}
+            onValueChange={changeSpectrum}
+            minimumTrackTintColor={safeValue}
+            maximumTrackTintColor="#315277"
+            thumbTintColor="#f8fafc"
+            accessibilityLabel={`${label} hue spectrum`}
+          />
+        )}
+      </View>
       <ColorSlider
         fieldLabel={label}
         label="Saturation"
@@ -167,21 +224,6 @@ export function PatronColorPickerField({
         minimumTrackTintColor={hsvToHex({ hue: hsv.hue, saturation: hsv.saturation, value: 1 })}
         testID={`${testID}-brightness`}
       />
-
-      <View style={styles.hexRow}>
-        <Text style={styles.hexLabel}>Hex value</Text>
-        <TextInput
-          value={hexDraft}
-          onChangeText={setHexDraft}
-          onBlur={commitHex}
-          onSubmitEditing={commitHex}
-          maxLength={7}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.hexInput}
-          accessibilityLabel={`${label} hex value`}
-        />
-      </View>
     </View>
   );
 }
@@ -217,26 +259,15 @@ function ColorSlider(props: {
 }
 
 const styles = StyleSheet.create({
-  container: { borderTopWidth: 1, borderTopColor: "#315277", paddingTop: 16, marginTop: 6, marginBottom: 20 },
-  headingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" },
-  label: { color: "#d7e4f6", fontSize: 16, fontWeight: "900" },
-  inheritedButton: { minHeight: 42, justifyContent: "center", borderWidth: 1, borderColor: "#315277", borderRadius: 10, paddingHorizontal: 12 },
-  inheritedButtonText: { color: "#93c5fd", fontSize: 13, fontWeight: "800" },
+  container: { borderTopWidth: 1, borderTopColor: "#315277", paddingTop: 10, marginTop: 2, marginBottom: 10 },
+  compactHeader: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 7 },
+  label: { color: "#d7e4f6", fontSize: 14, fontWeight: "900", flexShrink: 1 },
+  inheritedButton: { minHeight: 38, justifyContent: "center", borderWidth: 1, borderColor: "#315277", borderRadius: 8, paddingHorizontal: 9, marginLeft: "auto" },
+  inheritedButtonText: { color: "#93c5fd", fontSize: 11, fontWeight: "800" },
   inheritedStatus: { color: "#6f8bad", fontSize: 12, fontWeight: "700" },
-  swatchRow: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 14, marginBottom: 10 },
-  swatch: { width: 76, height: 76, borderRadius: 14, borderWidth: 2, borderColor: "#d7e4f6", overflow: "hidden", position: "relative" },
-  swatchCopy: { flex: 1 },
-  currentColor: { color: "#d7e4f6", fontSize: 13, fontWeight: "800" },
-  hexValue: { color: "#e5efff", fontSize: 16, fontWeight: "900", marginTop: 2 },
-  swatchHint: { color: "#93aeca", fontSize: 12, lineHeight: 17, marginTop: 4 },
-  visualPickerLabel: { color: "#b9cce4", fontSize: 12, fontWeight: "800", marginBottom: 8 },
-  hueChoices: { flexDirection: "row", minHeight: 44, borderRadius: 10, overflow: "hidden", marginBottom: 6 },
-  hueChoice: { flex: 1, minWidth: 28, minHeight: 44, borderWidth: 0 },
-  hueChoiceSelected: { borderWidth: 3, borderColor: "#ffffff" },
-  sliderRow: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 8 },
-  sliderLabel: { color: "#b9cce4", width: 76, fontSize: 13, fontWeight: "800" },
-  slider: { flex: 1, height: 44, minWidth: 180 },
-  hexRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 6 },
-  hexLabel: { color: "#93aeca", fontSize: 12, fontWeight: "800" },
-  hexInput: { width: 112, color: "#e5efff", backgroundColor: "#071526", borderColor: "#315277", borderWidth: 1, borderRadius: 9, paddingHorizontal: 10, paddingVertical: 9, fontWeight: "800" },
+  swatch: { width: 34, height: 34, borderRadius: 8, borderWidth: 1, borderColor: "#d7e4f6", overflow: "hidden", position: "relative", flexShrink: 0 },
+  sliderRow: { minHeight: 38, flexDirection: "row", alignItems: "center", gap: 6 },
+  sliderLabel: { color: "#b9cce4", width: 68, fontSize: 12, fontWeight: "800" },
+  slider: { flex: 1, height: 34, minWidth: 0 },
+  hexInput: { width: 80, color: "#e5efff", backgroundColor: "#071526", borderColor: "#315277", borderWidth: 1, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 7, fontSize: 12, fontWeight: "800" },
 });

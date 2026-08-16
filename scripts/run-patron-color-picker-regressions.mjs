@@ -63,7 +63,9 @@ test("1. visual picker changes Main color", () => {
 test("2. visual picker changes Highlight color", () => {
   assert.equal(hsvToHex({ hue: 120, saturation: 1, value: 1 }), "#00ff00");
   assert.match(pageSource, /label="Highlight color"[\s\S]*onChange=\{\(value\) => setAppearance\("highlightColorHex", value\)\}/);
-  assert.match(pickerSource, /Visual hue choices/);
+  assert.match(pickerSource, /linear-gradient\(90deg/);
+  assert.match(pickerSource, /className="patron-hue-spectrum"/);
+  assert.doesNotMatch(pickerSource, /Visual hue choices|HUE_STOPS|hueChoice/);
 });
 
 test("3. visual picker changes Font color", () => {
@@ -91,7 +93,7 @@ test("5. Use inherited color removes only that override", () => {
   assert.equal(effective.mainColorHex, inherited.mainColorHex);
   assert.equal(effective.highlightColorHex, overrides.highlightColorHex);
   assert.equal(effective.fontColorHex, overrides.fontColorHex);
-  assert.match(pickerSource, /Use inherited color/);
+  assert.match(pickerSource, />Use inherited</);
   assert.match(pageSource, /onUseInherited=\{\(\) => setAppearance\("mainColorHex"\)\}/);
 });
 
@@ -121,5 +123,8 @@ test("8. another patron does not inherit personal color choices", () => {
 
 assert.match(pageSource, /ThemePreviewPanel/);
 assert.match(pickerSource, /type="color"/);
-assert.match(pickerSource, /Hex value/);
+assert.match(pickerSource, /style=\{styles\.hexInput\}/);
+assert.match(pickerSource, /width: 34, height: 34/);
+assert.match(pickerSource, /height: 8px/);
+assert.match(pageSource, /preferenceRow: \{ minHeight: 46/);
 process.stdout.write("\nPatron color picker regressions passed.\n");
