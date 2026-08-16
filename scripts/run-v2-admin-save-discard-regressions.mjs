@@ -236,6 +236,24 @@ checks.push(check("R0_librarian_uses_shared_compact_color_editor", () => {
   assert((adminWebSrc.match(/<PatronColorPickerField/g) || []).length === 3, "Main, Highlight, and Font must use the shared editor");
 }));
 
+checks.push(check("R0_close_bypasses_save_validation_and_warns_only_when_dirty", () => {
+  assert(adminWebSrc.includes('testID="close-librarian-settings"'), "Close control must render at the top of Librarian Settings");
+  assert(adminWebSrc.includes('accessibilityLabel="Close Librarian Settings"'), "Close control must have an accessible label");
+  const closeStart = adminWebSrc.indexOf("const onClose = useCallback(() => {");
+  const closeEnd = adminWebSrc.indexOf("\n  const ", closeStart + 1);
+  const closeSource = closeStart >= 0 && closeEnd > closeStart ? adminWebSrc.slice(closeStart, closeEnd) : "";
+  assert(closeSource.includes("if (!isDirty)"), "unchanged settings must close immediately");
+  assert(closeSource.includes("window.confirm(message)"), "dirty settings must ask before discarding");
+  assert(closeSource.includes('router.replace("/")'), "Close must return to the main page");
+  assert(!closeSource.includes("persistDraftConfig"), "Close must not invoke save or validation");
+}));
+
+checks.push(check("R0_save_failure_is_rendered_once", () => {
+  assert((adminWebSrc.match(/>Save failed<|>Save failed\./g) || []).length === 1, "failed save UI must render only once");
+  assert(!adminWebSrc.includes("Save failed: code="), "sticky bar must not duplicate detailed save errors");
+  assert(adminWebSrc.includes('const showStickyBar = isDirty || saveStatus === "saved";'), "save errors alone must not open the sticky bar");
+}));
+
 // R1 – Save & Return is visible at the top
 checks.push(check("R1_save_return_visible_at_top", () => {
   assert(adminWebSrc.includes("Save & Return"), "Save & Return label missing");
@@ -446,8 +464,8 @@ checks.push(check("structural_onsave_syncs_font_color_state", () => {
 // Sticky bar shows confirmation after save (showStickyBar includes saveStatus check).
 checks.push(check("structural_sticky_bar_shows_post_save_confirmation", () => {
   assert(
-    adminWebSrc.includes('saveStatus !== "idle"'),
-    'showStickyBar must include saveStatus !== "idle" to show post-save confirmation'
+    adminWebSrc.includes('saveStatus === "saved"'),
+    'showStickyBar must include the saved status to show post-save confirmation without duplicating errors'
   );
   assert(
     adminWebSrc.includes('"Changes saved'),

@@ -1159,6 +1159,24 @@ export default function AdminWebScreen() {
     })();
   }, [persistDraftConfig]);
 
+  const onClose = useCallback(() => {
+    if (!isDirty) {
+      router.replace("/");
+      return;
+    }
+
+    const message = "You have unsaved Librarian Settings changes. Close and discard them?";
+    if (typeof window !== "undefined") {
+      if (window.confirm(message)) router.replace("/");
+      return;
+    }
+
+    Alert.alert("Discard unsaved changes?", message, [
+      { text: "Keep Editing", style: "cancel" },
+      { text: "Discard", style: "destructive", onPress: () => router.replace("/") },
+    ]);
+  }, [isDirty]);
+
   const preparePreviewAcceptancePin = useCallback(() => {
     setPreviewAcceptanceHarnessEnabled(true);
     setConfig((prev: any) => {
@@ -1271,7 +1289,7 @@ export default function AdminWebScreen() {
   // Render
   // ---------------------------------------------------------------------------
 
-  const showStickyBar = isDirty || saveStatus !== "idle";
+  const showStickyBar = isDirty || saveStatus === "saved";
   const libraryIdValidation = validateLibraryIdForSave(
     String(config?.library?.id || config?.branding?.libraryId || ""),
     explicitLibraryIdFromRoute,
@@ -1311,13 +1329,24 @@ export default function AdminWebScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.appBg }}>
+    <View style={[styles.navigationHeader, { borderBottomColor: t.cardBorder }]}>
+      <TouchableOpacity
+        onPress={onClose}
+        style={styles.closeButton}
+        accessibilityRole="button"
+        accessibilityLabel="Close Librarian Settings"
+        testID="close-librarian-settings"
+      >
+        <Text style={[styles.closeButtonText, { color: t.muted }]}>Close</Text>
+      </TouchableOpacity>
+      <Text style={[styles.navigationTitle, { color: t.text }]}>Librarian Settings</Text>
+    </View>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
       <View style={[styles.wrap, { borderColor: t.cardBorder, backgroundColor: t.cardBg }]}>
 
         {/* Page header */}
         <View style={styles.pageHeader}>
           <View>
-            <Text style={[styles.h1, { color: t.text }]}>Librarian Settings</Text>
             <Text style={[styles.currentLibraryName, { color: t.text }]}>
               {String(config?.branding?.libraryName || config?.library?.name || "Create New Library")}
             </Text>
@@ -1963,23 +1992,9 @@ export default function AdminWebScreen() {
             <Text style={{ color: t.subtext, fontSize: 11, marginLeft: 4 }}>
               You have unsaved changes.
             </Text>
-            {saveStatus === "error" && saveErrorDetails ? (
-              <Text style={{ color: t.danger, fontSize: 11, marginLeft: 4 }}>
-                {`Save failed: code=${saveErrorDetails.appErrorCode || "unknown"} status=${saveErrorDetails.httpStatus ?? "n/a"} routeReached=${saveErrorDetails.requestReachedApiRoute ? "true" : "false"} corr=${saveErrorDetails.correlationId}`}
-              </Text>
-            ) : null}
           </>
         ) : saveStatus === "saved" ? (
           <Text style={{ color: t.success, fontSize: 13, fontWeight: "800" }}>{"Changes saved \u2713"}</Text>
-        ) : saveStatus === "error" ? (
-          <View style={{ gap: 4 }}>
-            <Text style={{ color: t.danger, fontSize: 13, fontWeight: "800" }}>Save failed. Please try again.</Text>
-            {saveErrorDetails ? (
-              <Text style={{ color: t.danger, fontSize: 11 }}>
-                {`code=${saveErrorDetails.appErrorCode || "unknown"} status=${saveErrorDetails.httpStatus ?? "n/a"} routeReached=${saveErrorDetails.requestReachedApiRoute ? "true" : "false"} corr=${saveErrorDetails.correlationId}`}
-              </Text>
-            ) : null}
-          </View>
         ) : null}
       </View>
     ) : null}
@@ -2001,6 +2016,27 @@ const styles = StyleSheet.create({
     maxWidth: 980,
     alignSelf: "center",
     width: "100%",
+  },
+  closeButton: {
+    paddingVertical: 7,
+    paddingRight: 12,
+  },
+  closeButtonText: {
+    fontWeight: "800",
+  },
+  navigationHeader: {
+    width: "100%",
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+  },
+  navigationTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: "900",
   },
   pageHeader: {
     flexDirection: "row",
