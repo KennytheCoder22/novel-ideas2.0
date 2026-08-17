@@ -3512,7 +3512,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
           setRecItems(guardedNormalizedItems);
           setRecError(null);
           const runtimeLibraryId = String(getRuntimeLibraryId() || "").trim().toLowerCase();
-          if (runtimeLibraryId === "y" && !recordedSessionAuditsRef.current.has(runId)) {
+          if (!recordedSessionAuditsRef.current.has(runId)) {
             recordedSessionAuditsRef.current.add(runId);
             const history = Array.isArray((inputWithHistory as any)?.swipeHistory)
               ? (inputWithHistory as any).swipeHistory
@@ -3529,7 +3529,8 @@ function handleLeft(card?: SwipeDeckCard | null) {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 auditId: runId,
-                libraryId: runtimeLibraryId,
+                libraryId: runtimeLibraryId || "default",
+                libraryScope: runtimeLibraryId ? "hosted" : "default",
                 patronHash: redactedPatronId(recommendationPatronId),
                 ageBand,
                 likes: countDirection("like"),
@@ -3542,9 +3543,10 @@ function handleLeft(card?: SwipeDeckCard | null) {
                   avoidSignals: topSignals(profile.avoidSignals),
                 },
                 localQueries: (localPlan?.intents || []).map((intent) => intent.query),
+                searchPlan: result.diagnostics.searchPlan,
                 finalRecommendations: guardedNormalizedItems.slice(0, 10).map((item) => item.kind === "open_library"
-                  ? { id: docId(item.doc), title: item.doc.title }
-                  : { id: fallbackId(item.book), title: item.book.title }),
+                  ? { id: docId(item.doc), title: item.doc.title, source: String(item.doc.source || "unknown") }
+                  : { id: fallbackId(item.book), title: item.book.title, source: "fallback" }),
               }),
             }).then((response) => {
               if (!response.ok) console.warn("[real-session-audit] record_failed", { status: response.status });

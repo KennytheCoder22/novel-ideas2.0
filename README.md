@@ -34,6 +34,7 @@ You can start developing by editing the files inside the **app** directory. This
 - Google Books deterministic source certification is documented in [`docs/GOOGLE_BOOKS_SOURCE_CERTIFICATION.md`](docs/GOOGLE_BOOKS_SOURCE_CERTIFICATION.md).
 - Offline source comparison architecture and workflow are documented in [`docs/SOURCE_COMPARISON_HARNESS.md`](docs/SOURCE_COMPARISON_HARNESS.md).
 - Owner analytics requires server-only `OWNER_ANALYTICS_PASSWORD` and `OWNER_ANALYTICS_SESSION_SECRET` environment variables. Do not expose either through an `EXPO_PUBLIC_*` variable.
+- Anonymous recommendation-session audits use the existing private Vercel Blob store through `BLOB_READ_WRITE_TOKEN`; they do not require Postgres.
 
 ## Quick quality checks
 

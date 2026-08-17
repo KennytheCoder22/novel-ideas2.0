@@ -14,7 +14,7 @@ import {
   readPreviewAcceptanceDashboardModeFromCookie,
 } from "../lib/previewAcceptanceHarness";
 import { listSwipeCardPerformance } from "../lib/swipeCardPerformance";
-import { listRealSessionAudits } from "../lib/realSessionOverlapAudit";
+import { listRealSessionAudits, logRealSessionAuditStorageFailure } from "../lib/realSessionOverlapAudit";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Cache-Control", "no-store");
@@ -67,14 +67,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             error: typeof error?.message === "string" ? error.message : "swipe_card_performance_unavailable",
           }))
       : Promise.resolve({ rows: [], storageMode: "unavailable", error: null });
-    const realSessionAuditResult = swipeCardPerformanceStorageAvailable
+    const realSessionAuditStorageAvailable = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+    const realSessionAuditResult = realSessionAuditStorageAvailable
       ? listRealSessionAudits()
-          .then((rows) => ({ rows, storageMode: "durable_postgres", error: null }))
-          .catch((error: any) => ({
-            rows: [],
-            storageMode: "error",
-            error: typeof error?.message === "string" ? error.message : "real_session_audit_unavailable",
-          }))
+          .then((rows) => ({ rows, storageMode: "durable_blob", error: null }))
+          .catch((error: any) => {
+            logRealSessionAuditStorageFailure("dashboard-read", error);
+            return {
+              rows: [],
+              storageMode: "error",
+              error: typeof error?.message === "string" ? error.message : "real_session_audit_unavailable",
+            };
+          })
       : Promise.resolve({ rows: [], storageMode: "unavailable", error: null });
     const [snapshots, reviews, swipeCardPerformance, realSessionAudits] = await Promise.all([
       repo.listSnapshots(),

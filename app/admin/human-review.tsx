@@ -41,7 +41,7 @@ type DashboardPayload = {
   swipeCardPerformanceStorageMode: "durable_postgres" | "unavailable" | "error";
   swipeCardPerformanceError: string | null;
   swipeCardPerformance: SwipeCardPerformanceRow[];
-  realSessionAuditStorageMode: "durable_postgres" | "unavailable" | "error";
+  realSessionAuditStorageMode: "durable_blob" | "unavailable" | "error";
   realSessionAuditError: string | null;
   realSessionAudits: RealSessionAuditRow[];
   [key: string]: any;
@@ -64,6 +64,8 @@ type SwipeCardPerformanceRow = {
 
 type RealSessionAuditRow = {
   auditId: string;
+  libraryId: string;
+  libraryScope: "default" | "hosted";
   patronHash: string;
   ageBand: string;
   likes: number;
@@ -71,7 +73,11 @@ type RealSessionAuditRow = {
   skips: number;
   dominantTaste: Record<string, Array<{ value: string; weight: number }>>;
   localQueries: string[];
-  finalRecommendations: Array<{ id: string; title: string }>;
+  searchPlan: {
+    intents: Array<{ query: string }>;
+    sourcePlans: Array<{ source: string; intents: Array<{ query: string }> }>;
+  };
+  finalRecommendations: Array<{ id: string; title: string; source: string }>;
   recentOverlaps: Array<{ auditId: string; patronHash: string; overlapCount: number; overlapPercent: number }>;
   createdAt: string;
 };
@@ -730,7 +736,7 @@ export default function HumanReviewDashboardRoute() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Real Session Overlap Audit</Text>
               <Text style={styles.sectionSubtitle}>
-                Anonymous completed /y sessions. Overlap compares each final slate with the five preceding sessions from other patrons in the same age band.
+                Anonymous completed sessions across default and hosted scopes. Overlap compares each final slate with the five preceding sessions from other patrons in the same library scope and age band.
               </Text>
               {data.realSessionAuditStorageMode === "error" ? (
                 <Text style={styles.inlineNote}>
@@ -738,31 +744,39 @@ export default function HumanReviewDashboardRoute() {
                 </Text>
               ) : null}
               {(data.realSessionAudits || []).map((row) => {
-                const dominant = Object.values(row.dominantTaste || {}).flat()
-                  .slice(0, 8)
+                const formatSignals = (key: string) => (row.dominantTaste?.[key] || [])
                   .map((signal) => `${signal.value} (${signal.weight})`)
-                  .join(", ");
+                  .join(", ") || "None";
+                const searchQueries = (row.searchPlan?.intents || []).map((intent) => intent.query);
+                const sourceQueries = (row.searchPlan?.sourcePlans || [])
+                  .map((plan) => `${plan.source}: ${plan.intents.map((intent) => intent.query).join(" | ") || "None"}`)
+                  .join(" · ");
                 const overlap = (row.recentOverlaps || [])
                   .map((entry) => `${entry.patronHash}: ${entry.overlapCount}/${row.finalRecommendations.length} (${entry.overlapPercent}%)`)
                   .join(" · ");
                 return (
                   <View key={row.auditId} style={styles.storyCard}>
                     <Text style={styles.storyTitle}>
-                      Patron {row.patronHash} · {labelAgeBand(row.ageBand)} · {new Date(row.createdAt).toLocaleString()}
+                      Patron {row.patronHash} · {labelAgeBand(row.ageBand)} · {row.libraryScope === "hosted" ? `Hosted ${row.libraryId}` : "Default"} · {new Date(row.createdAt).toLocaleString()}
                     </Text>
                     <Text style={styles.storyMeta}>
                       Likes {row.likes} · Dislikes {row.dislikes} · Skips {row.skips}
                     </Text>
-                    <Text style={styles.storyBody}>Taste: {dominant || "No dominant signals"}</Text>
+                    <Text style={styles.storyBody}>Genres: {formatSignals("genreFamily")}</Text>
+                    <Text style={styles.storyBody}>Tones: {formatSignals("tone")}</Text>
+                    <Text style={styles.storyBody}>Themes: {formatSignals("themes")}</Text>
+                    <Text style={styles.storyBody}>Avoid: {formatSignals("avoidSignals")}</Text>
+                    <Text style={styles.storyBody}>Recommendation queries: {searchQueries.join(" | ") || "None"}</Text>
+                    <Text style={styles.storyBody}>Source plans: {sourceQueries || "None"}</Text>
                     <Text style={styles.storyBody}>Local query: {row.localQueries.join(" | ") || "None"}</Text>
                     <Text style={styles.storyBody}>
-                      Final 10: {row.finalRecommendations.map((item) => item.title).join(" · ")}
+                      Final 10: {row.finalRecommendations.map((item) => `${item.title} [${item.source}]`).join(" · ")}
                     </Text>
                     <Text style={styles.storyMeta}>Recent overlap: {overlap || "No earlier sessions"}</Text>
                   </View>
                 );
               })}
-              {!data.realSessionAudits.length ? <Text style={styles.inlineNote}>No completed /y sessions collected yet.</Text> : null}
+              {!data.realSessionAudits.length ? <Text style={styles.inlineNote}>No completed recommendation sessions collected yet.</Text> : null}
             </View>
 
             <View style={styles.section}>

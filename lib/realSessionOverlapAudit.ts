@@ -1,11 +1,30 @@
 export type RealSessionRecommendation = {
   id: string;
   title: string;
+  source: string;
 };
 
 export type RealSessionTasteSignal = {
   value: string;
   weight: number;
+};
+
+export type RealSessionSearchIntent = {
+  query: string;
+  facets: string[];
+  priority: number;
+  rationale: string[];
+};
+
+export type RealSessionSearchPlan = {
+  intents: RealSessionSearchIntent[];
+  sourcePlans: Array<{
+    source: string;
+    enabled: boolean;
+    status: string;
+    intents: RealSessionSearchIntent[];
+    skippedReason?: string;
+  }>;
 };
 
 export type RealSessionOverlap = {
@@ -17,7 +36,8 @@ export type RealSessionOverlap = {
 
 export type RealSessionAuditEvent = {
   auditId: string;
-  libraryId: "y";
+  libraryId: string;
+  libraryScope: "default" | "hosted";
   patronHash: string;
   ageBand: string;
   likes: number;
@@ -30,6 +50,7 @@ export type RealSessionAuditEvent = {
     avoidSignals: RealSessionTasteSignal[];
   };
   localQueries: string[];
+  searchPlan: RealSessionSearchPlan;
   finalRecommendations: RealSessionRecommendation[];
 };
 
@@ -38,10 +59,26 @@ export type RealSessionAuditRow = RealSessionAuditEvent & {
   createdAt: string;
 };
 
-type SqlClient = (strings: TemplateStringsArray, ...values: any[]) => Promise<{ rows: any[]; rowCount: number }>;
+export type RealSessionAuditBlobMetadata = {
+  pathname: string;
+  uploadedAt: string;
+};
 
-let sqlClient: SqlClient | null = null;
-let schemaReady: Promise<void> | null = null;
+export interface RealSessionAuditBlobStore {
+  putJson(pathname: string, value: unknown): Promise<RealSessionAuditBlobMetadata>;
+  list(prefix: string): Promise<RealSessionAuditBlobMetadata[]>;
+  readJson(pathname: string): Promise<unknown | null>;
+  delete(pathnames: string[]): Promise<void>;
+}
+
+const AUDIT_BLOB_PREFIX = "human-review/real-session-audits/v2/";
+export const REAL_SESSION_AUDIT_RETENTION_LIMIT = 500;
+const DASHBOARD_READ_LIMIT = 200;
+const STORAGE_LOG_LIMIT = 5;
+const STORAGE_LOG_WINDOW_MS = 60_000;
+
+let storageLogWindowStartedAt = 0;
+let storageLogCount = 0;
 
 function cleanText(value: unknown, maxLength: number): string {
   return String(value || "").trim().slice(0, maxLength);
@@ -61,17 +98,149 @@ function cleanSignals(value: unknown): RealSessionTasteSignal[] {
   })).filter((signal) => signal.value);
 }
 
+function cleanSearchIntents(value: unknown): RealSessionSearchIntent[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 12).map((intent) => ({
+    query: cleanText((intent as any)?.query, 300),
+    facets: Array.isArray((intent as any)?.facets)
+      ? (intent as any).facets.slice(0, 12).map((facet: unknown) => cleanText(facet, 100)).filter(Boolean)
+      : [],
+    priority: Math.max(-100, Math.min(100, Number((intent as any)?.priority) || 0)),
+    rationale: Array.isArray((intent as any)?.rationale)
+      ? (intent as any).rationale.slice(0, 12).map((reason: unknown) => cleanText(reason, 160)).filter(Boolean)
+      : [],
+  })).filter((intent) => intent.query);
+}
+
+function cleanSearchPlan(value: unknown): RealSessionSearchPlan {
+  const input = value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, any>
+    : {};
+  return {
+    intents: cleanSearchIntents(input.intents),
+    sourcePlans: Array.isArray(input.sourcePlans)
+      ? input.sourcePlans.slice(0, 12).map((plan: any) => ({
+          source: cleanText(plan?.source, 60),
+          enabled: plan?.enabled === true,
+          status: cleanText(plan?.status, 60),
+          intents: cleanSearchIntents(plan?.intents),
+          ...(cleanText(plan?.skippedReason, 160) ? { skippedReason: cleanText(plan?.skippedReason, 160) } : {}),
+        })).filter((plan: any) => plan.source)
+      : [],
+  };
+}
+
 function cleanRecommendations(value: unknown): RealSessionRecommendation[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   return value.slice(0, 10).map((item) => ({
     id: cleanText((item as any)?.id, 300),
     title: cleanText((item as any)?.title, 300),
+    source: cleanText((item as any)?.source, 60) || "unknown",
   })).filter((item) => {
     if (!item.id || !item.title || seen.has(item.id)) return false;
     seen.add(item.id);
     return true;
   });
+}
+
+function safePathSegment(value: string): string {
+  return value.toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 100) || "unknown";
+}
+
+function readBlobReadWriteToken(): string {
+  const raw = String(process.env.BLOB_READ_WRITE_TOKEN || "").replace(/\r?\n/g, "").trim();
+  if (!raw) return "";
+  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+    return raw.slice(1, -1).trim();
+  }
+  return raw;
+}
+
+function safeStorageErrorCode(error: unknown): string {
+  const code = cleanText((error as any)?.code, 80);
+  if (code) return code.replace(/[^a-z0-9_-]/gi, "_");
+  const message = String(error instanceof Error ? error.message : error || "").toLowerCase();
+  if (message.includes("token")) return "blob_token_error";
+  if (message.includes("network") || message.includes("fetch")) return "blob_network_error";
+  return "real_session_audit_storage_error";
+}
+
+export function logRealSessionAuditStorageFailure(stage: string, error: unknown): void {
+  const now = Date.now();
+  if (now - storageLogWindowStartedAt >= STORAGE_LOG_WINDOW_MS) {
+    storageLogWindowStartedAt = now;
+    storageLogCount = 0;
+  }
+  if (storageLogCount >= STORAGE_LOG_LIMIT) return;
+  storageLogCount += 1;
+  console.error("[real-session-audit][storage-failure]", {
+    stage: cleanText(stage, 60),
+    code: safeStorageErrorCode(error),
+    occurrence: storageLogCount,
+    windowMs: STORAGE_LOG_WINDOW_MS,
+  });
+}
+
+async function readBlobText(result: unknown): Promise<string | null> {
+  if (!result || typeof result !== "object") return null;
+  const body = (result as any).stream ?? (result as any).body;
+  if (!body) return null;
+  try {
+    return await new Response(body as BodyInit).text();
+  } catch {
+    return null;
+  }
+}
+
+export function createVercelBlobRealSessionAuditStore(): RealSessionAuditBlobStore {
+  const token = readBlobReadWriteToken();
+  if (!token) throw new Error("real_session_audit_blob_unavailable");
+
+  return {
+    async putJson(pathname, value) {
+      const { put } = await import("@vercel/blob");
+      const blob = await put(pathname, JSON.stringify(value), {
+        access: "private",
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: "application/json",
+        token,
+      });
+      return { pathname: blob.pathname, uploadedAt: new Date().toISOString() };
+    },
+    async list(prefix) {
+      const { list } = await import("@vercel/blob");
+      const blobs: RealSessionAuditBlobMetadata[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await list({ prefix, limit: 1000, cursor, token });
+        blobs.push(...page.blobs.map((blob) => ({
+          pathname: blob.pathname,
+          uploadedAt: new Date(blob.uploadedAt).toISOString(),
+        })));
+        cursor = page.hasMore ? page.cursor : undefined;
+      } while (cursor);
+      return blobs;
+    },
+    async readJson(pathname) {
+      const { get } = await import("@vercel/blob");
+      const result = await get(pathname, { access: "private", token });
+      if (!result) return null;
+      const text = await readBlobText(result);
+      if (text == null) throw new Error("real_session_audit_blob_read_failed");
+      return JSON.parse(text);
+    },
+    async delete(pathnames) {
+      if (!pathnames.length) return;
+      const { del } = await import("@vercel/blob");
+      await del(pathnames, { token });
+    },
+  };
 }
 
 export function parseRealSessionAuditEvent(value: unknown): RealSessionAuditEvent {
@@ -80,23 +249,31 @@ export function parseRealSessionAuditEvent(value: unknown): RealSessionAuditEven
   }
   const input = value as Record<string, any>;
   const auditId = cleanText(input.auditId, 100);
-  const libraryId = cleanText(input.libraryId, 30).toLowerCase();
+  const rawLibraryId = cleanText(input.libraryId, 100).toLowerCase();
+  const requestedScope = cleanText(input.libraryScope, 20).toLowerCase();
+  const libraryScope = requestedScope === "hosted" || (rawLibraryId && rawLibraryId !== "default")
+    ? "hosted"
+    : "default";
+  const libraryId = libraryScope === "default" ? "default" : rawLibraryId;
   const patronHash = cleanText(input.patronHash, 16).toLowerCase();
   const ageBand = cleanText(input.ageBand, 30).toLowerCase();
   const localQueries = Array.isArray(input.localQueries)
-    ? input.localQueries.slice(0, 5).map((query: unknown) => cleanText(query, 300)).filter(Boolean)
+    ? input.localQueries.slice(0, 12).map((query: unknown) => cleanText(query, 300)).filter(Boolean)
     : [];
   const finalRecommendations = cleanRecommendations(input.finalRecommendations);
 
   if (!/^[a-z0-9-]{8,100}$/i.test(auditId)) throw new Error("invalid_real_session_audit_id");
-  if (libraryId !== "y") throw new Error("invalid_real_session_library");
+  if (libraryScope === "hosted" && !/^[a-z0-9_-]{1,100}$/.test(libraryId)) {
+    throw new Error("invalid_real_session_library");
+  }
   if (!/^[0-9a-f]{8}$/.test(patronHash)) throw new Error("invalid_real_session_patron_hash");
   if (!["kids", "preteens", "teens", "adult"].includes(ageBand)) throw new Error("invalid_real_session_age_band");
   if (!finalRecommendations.length) throw new Error("missing_real_session_recommendations");
 
   return {
     auditId,
-    libraryId: "y",
+    libraryId,
+    libraryScope,
     patronHash,
     ageBand,
     likes: cleanCount(input.likes),
@@ -109,6 +286,7 @@ export function parseRealSessionAuditEvent(value: unknown): RealSessionAuditEven
       avoidSignals: cleanSignals(input.dominantTaste?.avoidSignals),
     },
     localQueries,
+    searchPlan: cleanSearchPlan(input.searchPlan),
     finalRecommendations,
   };
 }
@@ -126,117 +304,114 @@ export function computeRecommendationOverlap(
   };
 }
 
-async function getSQL(): Promise<SqlClient> {
-  if (sqlClient) return sqlClient;
-  if (!process.env.POSTGRES_URL) throw new Error("real_session_audit_storage_unavailable");
-  const mod = await import("@vercel/postgres");
-  sqlClient = mod.sql as SqlClient;
-  return sqlClient;
+function auditScopeBlobPrefix(event: RealSessionAuditEvent): string {
+  return `${AUDIT_BLOB_PREFIX}${event.libraryScope}/${safePathSegment(event.libraryId)}/${safePathSegment(event.ageBand)}/`;
 }
 
-async function ensureSchema(sql: SqlClient): Promise<void> {
-  if (!schemaReady) {
-    schemaReady = sql`
-      CREATE TABLE IF NOT EXISTS real_session_overlap_audit (
-        audit_id TEXT PRIMARY KEY,
-        library_id TEXT NOT NULL,
-        patron_hash TEXT NOT NULL,
-        age_band TEXT NOT NULL,
-        likes INTEGER NOT NULL,
-        dislikes INTEGER NOT NULL,
-        skips INTEGER NOT NULL,
-        dominant_taste JSONB NOT NULL,
-        local_queries JSONB NOT NULL,
-        final_recommendations JSONB NOT NULL,
-        recent_overlaps JSONB NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `.then(() => undefined).catch((error) => {
-      schemaReady = null;
-      throw error;
-    });
-  }
-  await schemaReady;
+function auditBlobPathname(event: RealSessionAuditEvent): string {
+  return `${auditScopeBlobPrefix(event)}${safePathSegment(event.auditId)}.json`;
 }
 
-function parseJsonArray(value: unknown): any[] {
-  if (Array.isArray(value)) return value;
-  if (typeof value !== "string") return [];
+function sortNewestFirst(rows: RealSessionAuditBlobMetadata[]): RealSessionAuditBlobMetadata[] {
+  return [...rows].sort((left, right) => (
+    Date.parse(right.uploadedAt) - Date.parse(left.uploadedAt)
+    || right.pathname.localeCompare(left.pathname)
+  ));
+}
+
+function parseStoredAuditRow(value: unknown): RealSessionAuditRow | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : [];
+    const input = value as Record<string, any>;
+    const event = parseRealSessionAuditEvent(input);
+    const createdAt = new Date(input.createdAt);
+    const recentOverlaps = Array.isArray(input.recentOverlaps)
+      ? input.recentOverlaps.slice(0, 5).map((overlap: any) => ({
+          auditId: cleanText(overlap?.auditId, 100),
+          patronHash: cleanText(overlap?.patronHash, 16).toLowerCase(),
+          overlapCount: cleanCount(overlap?.overlapCount),
+          overlapPercent: Math.max(0, Math.min(100, Number(overlap?.overlapPercent) || 0)),
+        })).filter((overlap: RealSessionOverlap) => overlap.auditId && /^[0-9a-f]{8}$/.test(overlap.patronHash))
+      : [];
+    return {
+      ...event,
+      recentOverlaps,
+      createdAt: Number.isFinite(createdAt.getTime()) ? createdAt.toISOString() : new Date(0).toISOString(),
+    };
   } catch {
-    return [];
+    return null;
   }
 }
 
-export async function recordRealSessionAudit(event: RealSessionAuditEvent): Promise<RealSessionAuditRow> {
-  const sql = await getSQL();
-  await ensureSchema(sql);
-  const previous = await sql`
-    SELECT audit_id, patron_hash, final_recommendations
-    FROM real_session_overlap_audit
-    WHERE library_id = ${event.libraryId}
-      AND age_band = ${event.ageBand}
-      AND patron_hash <> ${event.patronHash}
-    ORDER BY created_at DESC
-    LIMIT 5
-  `;
-  const recentOverlaps = previous.rows.map((row) => ({
-    auditId: String(row.audit_id || ""),
-    patronHash: String(row.patron_hash || ""),
-    ...computeRecommendationOverlap(event.finalRecommendations, parseJsonArray(row.final_recommendations)),
-  }));
-  const dominantTasteJson = JSON.stringify(event.dominantTaste);
-  const localQueriesJson = JSON.stringify(event.localQueries);
-  const finalRecommendationsJson = JSON.stringify(event.finalRecommendations);
-  const recentOverlapsJson = JSON.stringify(recentOverlaps);
-
-  await sql`
-    INSERT INTO real_session_overlap_audit
-      (audit_id, library_id, patron_hash, age_band, likes, dislikes, skips, dominant_taste, local_queries, final_recommendations, recent_overlaps)
-    VALUES
-      (${event.auditId}, ${event.libraryId}, ${event.patronHash}, ${event.ageBand}, ${event.likes}, ${event.dislikes}, ${event.skips},
-       CAST(${dominantTasteJson} AS JSONB), CAST(${localQueriesJson} AS JSONB), CAST(${finalRecommendationsJson} AS JSONB),
-       CAST(${recentOverlapsJson} AS JSONB))
-    ON CONFLICT (audit_id) DO NOTHING
-  `;
-  await sql`
-    DELETE FROM real_session_overlap_audit
-    WHERE audit_id IN (
-      SELECT audit_id
-      FROM real_session_overlap_audit
-      WHERE library_id = ${event.libraryId}
-      ORDER BY created_at DESC
-      OFFSET 500
-    )
-  `;
-  return { ...event, recentOverlaps, createdAt: new Date().toISOString() };
+async function loadRecentRows(
+  store: RealSessionAuditBlobStore,
+  metadata: RealSessionAuditBlobMetadata[],
+  limit: number,
+  include: (row: RealSessionAuditRow) => boolean = () => true,
+): Promise<RealSessionAuditRow[]> {
+  const rows: RealSessionAuditRow[] = [];
+  for (let offset = 0; offset < metadata.length && rows.length < limit; offset += 25) {
+    const batch = metadata.slice(offset, offset + 25);
+    const values = await Promise.allSettled(batch.map((blob) => store.readJson(blob.pathname)));
+    for (const result of values) {
+      if (result.status === "rejected") {
+        logRealSessionAuditStorageFailure("read-record", result.reason);
+        continue;
+      }
+      const value = result.value;
+      const row = parseStoredAuditRow(value);
+      if (row && include(row)) rows.push(row);
+      if (rows.length >= limit) break;
+    }
+  }
+  return rows.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
 }
 
-export async function listRealSessionAudits(): Promise<RealSessionAuditRow[]> {
-  const sql = await getSQL();
-  await ensureSchema(sql);
-  const result = await sql`
-    SELECT audit_id, library_id, patron_hash, age_band, likes, dislikes, skips,
-           dominant_taste, local_queries, final_recommendations, recent_overlaps, created_at
-    FROM real_session_overlap_audit
-    WHERE library_id = 'y'
-    ORDER BY created_at DESC
-    LIMIT 200
-  `;
-  return result.rows.map((row) => ({
-    auditId: String(row.audit_id || ""),
-    libraryId: "y",
-    patronHash: String(row.patron_hash || ""),
-    ageBand: String(row.age_band || ""),
-    likes: Number(row.likes || 0),
-    dislikes: Number(row.dislikes || 0),
-    skips: Number(row.skips || 0),
-    dominantTaste: row.dominant_taste || {},
-    localQueries: parseJsonArray(row.local_queries).map(String),
-    finalRecommendations: parseJsonArray(row.final_recommendations),
-    recentOverlaps: parseJsonArray(row.recent_overlaps),
-    createdAt: new Date(row.created_at).toISOString(),
-  })) as RealSessionAuditRow[];
+export async function recordRealSessionAudit(
+  event: RealSessionAuditEvent,
+  store: RealSessionAuditBlobStore = createVercelBlobRealSessionAuditStore(),
+): Promise<RealSessionAuditRow> {
+  let recentOverlaps: RealSessionOverlap[] = [];
+  try {
+    const scopeMetadata = sortNewestFirst(await store.list(auditScopeBlobPrefix(event)));
+    const recentRows = await loadRecentRows(
+      store,
+      scopeMetadata,
+      5,
+      (row) => row.patronHash !== event.patronHash,
+    );
+    recentOverlaps = recentRows.map((row) => ({
+      auditId: row.auditId,
+      patronHash: row.patronHash,
+      ...computeRecommendationOverlap(event.finalRecommendations, row.finalRecommendations),
+    }));
+  } catch (error) {
+    logRealSessionAuditStorageFailure("overlap-read", error);
+  }
+  const row: RealSessionAuditRow = {
+    ...event,
+    recentOverlaps,
+    createdAt: new Date().toISOString(),
+  };
+
+  await store.putJson(auditBlobPathname(event), row);
+
+  try {
+    const metadataAfter = sortNewestFirst(await store.list(AUDIT_BLOB_PREFIX));
+    const expired = metadataAfter.slice(REAL_SESSION_AUDIT_RETENTION_LIMIT).map((blob) => blob.pathname);
+    await store.delete(expired);
+  } catch (error) {
+    logRealSessionAuditStorageFailure("retention", error);
+  }
+  return row;
+}
+
+export async function listRealSessionAudits(options: {
+  limit?: number;
+  store?: RealSessionAuditBlobStore;
+} = {}): Promise<RealSessionAuditRow[]> {
+  const store = options.store || createVercelBlobRealSessionAuditStore();
+  const limit = Math.max(1, Math.min(REAL_SESSION_AUDIT_RETENTION_LIMIT, Number(options.limit) || DASHBOARD_READ_LIMIT));
+  const metadata = sortNewestFirst(await store.list(AUDIT_BLOB_PREFIX));
+  return loadRecentRows(store, metadata, limit);
 }
