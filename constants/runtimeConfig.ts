@@ -1,3 +1,5 @@
+import { canonicalLibraryId } from "../lib/libraryIdMigration.mjs";
+
 type Listener = () => void;
 
 const RUNTIME_LIBRARY_NAME_STORAGE_KEY = "novelideas_runtime_library_name_v1";
@@ -28,7 +30,7 @@ function storeLibraryName(name: string): void {
 function readStoredLibraryId(): string {
   try {
     if (typeof window === "undefined" || typeof window.sessionStorage === "undefined") return "";
-    return String(window.sessionStorage.getItem(RUNTIME_LIBRARY_ID_STORAGE_KEY) || "");
+    return canonicalLibraryId(window.sessionStorage.getItem(RUNTIME_LIBRARY_ID_STORAGE_KEY) || "");
   } catch {
     return "";
   }
@@ -65,7 +67,7 @@ export function getRuntimeLibraryId(): string {
 }
 
 export function setRuntimeLibraryId(id: string): void {
-  libraryId = id ?? "";
+  libraryId = canonicalLibraryId(id ?? "");
   storeLibraryId(libraryId);
   listeners.forEach((l) => l());
 }

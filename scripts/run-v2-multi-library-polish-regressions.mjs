@@ -107,7 +107,10 @@ checks.push(check("admin_libraries_are_separate_and_switch_full_scope", () => {
   assert(adminSource.includes("adminConfigStorageKeyForScope(adminDraftScopeId)"), "admin config must remain scope-isolated");
   assert(adminSource.includes("adminConfigStorageKeyForScope(nextLibraryId || adminDraftScopeId)"), "first save must move a new library into its own scope");
   assert(adminSource.includes("resolveAdminDraftScopeId(nextLibraryId) !== adminDraftScopeId"), "created or renamed libraries must navigate to their full new scope");
-  assert(adminSource.includes("localCollectionCsvStorageKeyForScope(scopeId)"), "local collection must remain scope-isolated");
+  assert(
+    adminSource.includes("localCollectionCsvStorageKeyForExactScope(candidateScopeId)"),
+    "local collection must remain scope-isolated while reading legacy aliases",
+  );
 }));
 
 checks.push(check("hosted_navigation_wording_is_precise", () => {

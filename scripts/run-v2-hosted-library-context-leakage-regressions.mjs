@@ -444,16 +444,16 @@ checks.push(check("L14_hosted_custom_colors_survive_save_load_render", () => {
   assert(theme.highlight === "#12ab34", "hosted highlight color hex must drive theme highlight");
   assert(theme.titleText === "#fefefe", "hosted font color hex must drive title text");
   assert(
-    homeSrc.includes("accent: mainColorHex") &&
-    homeSrc.includes("highlight: highlightColorHex") &&
-    homeSrc.includes("titleText: fontColorHex"),
+    homeSrc.includes("accent: resolvedMain") &&
+    homeSrc.includes("highlight: resolvedHighlight") &&
+    homeSrc.includes("titleText: resolvedFont"),
     "HomeScreen theme must apply saved hex colors directly"
   );
 }));
 
 checks.push(check("L15_hosted_logo_and_age_band_fields_remain_mapped", () => {
   assert(
-    homeSrc.includes("const logoDataUrl: string | null = config?.branding?.logoDataUrl ?? null;"),
+    homeSrc.includes("const libraryLogoDataUrl: string | null = config?.branding?.logoDataUrl ?? null;"),
     "hosted logo must still come from branding.logoDataUrl"
   );
   assert(

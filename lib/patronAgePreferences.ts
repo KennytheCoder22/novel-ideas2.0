@@ -1,3 +1,5 @@
+import { canonicalLibraryId, libraryIdReadCandidates } from "./libraryIdMigration.mjs";
+
 export const PATRON_AGE_PREFERENCES_STORAGE_PREFIX = "novelideas_patron_age_preferences_v1";
 
 export const AGE_BAND_KEYS = ["k2", "36", "ms_hs", "adult"] as const;
@@ -17,6 +19,10 @@ function scopePart(value: unknown, fallback: string): string {
 }
 
 export function patronAgePreferencesStorageKey(patronId: string, libraryId?: string): string {
+  return patronAgePreferencesStorageKeyExact(patronId, canonicalLibraryId(libraryId) || "default");
+}
+
+function patronAgePreferencesStorageKeyExact(patronId: string, libraryId: string): string {
   return `${PATRON_AGE_PREFERENCES_STORAGE_PREFIX}:${scopePart(patronId, "anonymous")}:${scopePart(libraryId, "default")}`;
 }
 
@@ -63,7 +69,16 @@ export function readPatronAgePreferences(
   libraryId: string | undefined,
   available: Partial<Record<AgeBandKey, boolean>>,
 ): AgeBandSelection | null {
-  return parsePreference(storage.getItem(patronAgePreferencesStorageKey(patronId, libraryId)), available);
+  const canonicalKey = patronAgePreferencesStorageKey(patronId, libraryId);
+  for (const candidateId of libraryIdReadCandidates(canonicalLibraryId(libraryId) || "default")) {
+    const candidateKey = patronAgePreferencesStorageKeyExact(patronId, candidateId);
+    const raw = storage.getItem(candidateKey);
+    if (raw) {
+      if (candidateKey !== canonicalKey) storage.setItem(canonicalKey, raw);
+      return parsePreference(raw, available);
+    }
+  }
+  return null;
 }
 
 export function writePatronAgePreferences(
@@ -81,7 +96,16 @@ export async function readPatronAgePreferencesAsync(
   libraryId: string | undefined,
   available: Partial<Record<AgeBandKey, boolean>>,
 ): Promise<AgeBandSelection | null> {
-  return parsePreference(await storage.getItem(patronAgePreferencesStorageKey(patronId, libraryId)), available);
+  const canonicalKey = patronAgePreferencesStorageKey(patronId, libraryId);
+  for (const candidateId of libraryIdReadCandidates(canonicalLibraryId(libraryId) || "default")) {
+    const candidateKey = patronAgePreferencesStorageKeyExact(patronId, candidateId);
+    const raw = await storage.getItem(candidateKey);
+    if (raw) {
+      if (candidateKey !== canonicalKey) await storage.setItem(canonicalKey, raw);
+      return parsePreference(raw, available);
+    }
+  }
+  return null;
 }
 
 export async function writePatronAgePreferencesAsync(
@@ -105,7 +129,9 @@ export function clearAllPatronAgePreferences(storage: SyncStorage, patronId: str
 }
 
 export function clearPatronAgePreferences(storage: SyncStorage, patronId: string, libraryId?: string): void {
-  storage.removeItem(patronAgePreferencesStorageKey(patronId, libraryId));
+  for (const candidateId of libraryIdReadCandidates(canonicalLibraryId(libraryId) || "default")) {
+    storage.removeItem(patronAgePreferencesStorageKeyExact(patronId, candidateId));
+  }
 }
 
 export async function clearAllPatronAgePreferencesAsync(storage: AsyncStorage, patronId: string): Promise<void> {
@@ -119,5 +145,8 @@ export async function clearPatronAgePreferencesAsync(
   patronId: string,
   libraryId?: string,
 ): Promise<void> {
-  await storage.removeItem(patronAgePreferencesStorageKey(patronId, libraryId));
+  await Promise.all(
+    libraryIdReadCandidates(canonicalLibraryId(libraryId) || "default")
+      .map((candidateId) => storage.removeItem(patronAgePreferencesStorageKeyExact(patronId, candidateId)))
+  );
 }

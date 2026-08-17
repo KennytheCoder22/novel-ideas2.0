@@ -1,3 +1,5 @@
+import { canonicalLibraryId } from "./libraryIdMigration.mjs";
+
 export type RealSessionRecommendation = {
   id: string;
   title: string;
@@ -249,7 +251,7 @@ export function parseRealSessionAuditEvent(value: unknown): RealSessionAuditEven
   }
   const input = value as Record<string, any>;
   const auditId = cleanText(input.auditId, 100);
-  const rawLibraryId = cleanText(input.libraryId, 100).toLowerCase();
+  const rawLibraryId = canonicalLibraryId(cleanText(input.libraryId, 100).toLowerCase());
   const requestedScope = cleanText(input.libraryScope, 20).toLowerCase();
   const libraryScope = requestedScope === "hosted" || (rawLibraryId && rawLibraryId !== "default")
     ? "hosted"

@@ -51,6 +51,7 @@ import {
   rememberPatronLibrary,
   type SavedLibrary,
 } from "../../lib/savedLibraries";
+import { libraryIdReadCandidates } from "../../lib/libraryIdMigration.mjs";
 import {
   readOrCreatePatronId,
   readOrCreatePatronIdAsync,
@@ -1602,11 +1603,16 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
     // Check if a library-specific config is saved in localStorage
     if (props.libraryId) {
       try {
-        const saved = localStorage.getItem(`lib_config_${props.libraryId}`);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          syncSchema(parsed);
-          return parsed;
+        for (const candidateId of libraryIdReadCandidates(props.libraryId)) {
+          const saved = localStorage.getItem(`lib_config_${candidateId}`);
+          if (saved) {
+            if (candidateId !== props.libraryId) {
+              localStorage.setItem(`lib_config_${props.libraryId}`, saved);
+            }
+            const parsed = JSON.parse(saved);
+            syncSchema(parsed);
+            return parsed;
+          }
         }
       } catch (e) {
         console.error(`Failed to load config for library ${props.libraryId}:`, e);

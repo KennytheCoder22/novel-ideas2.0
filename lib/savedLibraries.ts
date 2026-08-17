@@ -1,3 +1,5 @@
+import { canonicalLibraryId } from "./libraryIdMigration.mjs";
+
 export const MIN_NEW_LIBRARY_ID_LENGTH = 3;
 
 const PATRON_LIBRARIES_STORAGE_KEY = "novelideas_patron_libraries_v1";
@@ -16,9 +18,10 @@ export function normalizeHostedLibraryId(raw: string): string {
 }
 
 export function normalizeHostedLibraryRouteId(raw: string): string {
-  return String(raw || "")
+  const normalized = String(raw || "")
     .trim()
     .replace(/[^a-z0-9_-]/gi, "");
+  return canonicalLibraryId(normalized);
 }
 
 export function validateLibraryIdForSave(
@@ -46,20 +49,32 @@ export function validateLibraryIdForSave(
 function readLibraries(storage: LibraryStorage | null, key: string): SavedLibrary[] {
   if (!storage) return [];
   try {
-    const parsed = JSON.parse(storage.getItem(key) || "[]");
+    const raw = storage.getItem(key) || "[]";
+    const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    const byId = new Map<string, SavedLibrary>();
+    const byId = new Map<string, { library: SavedLibrary; canonicalSource: boolean }>();
+    let migratedLegacyEntry = false;
     for (const item of parsed) {
-      const libraryId = normalizeHostedLibraryRouteId(item?.libraryId);
+      const rawLibraryId = String(item?.libraryId || "").trim();
+      const libraryId = normalizeHostedLibraryRouteId(rawLibraryId);
       const libraryName = String(item?.libraryName || "").trim();
       if (!libraryId || !libraryName) continue;
-      byId.set(libraryId.toLowerCase(), {
+      const canonicalSource = rawLibraryId.toLowerCase() === libraryId.toLowerCase();
+      const mapKey = libraryId.toLowerCase();
+      const existing = byId.get(mapKey);
+      if (rawLibraryId !== libraryId || existing) migratedLegacyEntry = true;
+      if (existing?.canonicalSource && !canonicalSource) continue;
+      byId.set(mapKey, { library: {
         libraryId,
         libraryName,
         hostedPath: `/${encodeURIComponent(libraryId)}`,
-      });
+      }, canonicalSource });
     }
-    return [...byId.values()].sort((a, b) => a.libraryName.localeCompare(b.libraryName));
+    const libraries = [...byId.values()]
+      .map((entry) => entry.library)
+      .sort((a, b) => a.libraryName.localeCompare(b.libraryName));
+    if (migratedLegacyEntry) storage.setItem(key, JSON.stringify(libraries));
+    return libraries;
   } catch {
     return [];
   }

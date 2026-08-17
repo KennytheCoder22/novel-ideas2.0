@@ -1,6 +1,7 @@
 import type { LocalCollectionArtifact } from "./types";
 import { loadSharedLibraryCollection, saveSharedLibraryCollection } from "../librarySharing/client";
 import { ADMIN_CONFIG_DEFAULT_SCOPE, normalizeAdminDraftScopeId } from "../../constants/brandTheme";
+import { libraryIdReadCandidates, YVHS_LIBRARY_ID } from "../libraryIdMigration.mjs";
 
 const LOCAL_COLLECTION_DB_NAME = "novelideas_local_collection";
 const LOCAL_COLLECTION_DB_STORE = "artifacts";
@@ -15,11 +16,19 @@ export function normalizeLocalCollectionScopeId(raw?: string): string {
 }
 
 export function localCollectionRecommendationStorageKeyForScope(scopeId?: string): string {
-  return `${LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY}:${normalizeLocalCollectionScopeId(scopeId)}`;
+  return localCollectionRecommendationStorageKeyForExactScope(normalizeLocalCollectionScopeId(scopeId));
 }
 
 export function localCollectionSummaryStorageKeyForScope(scopeId?: string): string {
-  return `${LOCAL_COLLECTION_SUMMARY_STORAGE_KEY}:${normalizeLocalCollectionScopeId(scopeId)}`;
+  return localCollectionSummaryStorageKeyForExactScope(normalizeLocalCollectionScopeId(scopeId));
+}
+
+function localCollectionRecommendationStorageKeyForExactScope(scopeId: string): string {
+  return `${LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY}:${scopeId}`;
+}
+
+function localCollectionSummaryStorageKeyForExactScope(scopeId: string): string {
+  return `${LOCAL_COLLECTION_SUMMARY_STORAGE_KEY}:${scopeId}`;
 }
 
 export type LocalCollectionRecommendationRecord = {
@@ -271,6 +280,29 @@ function artifactBelongsToScope(artifact: LocalCollectionRecommendationArtifact 
   return artifactScope === scopeId;
 }
 
+function canonicalizeRecommendationArtifact(
+  artifact: LocalCollectionRecommendationArtifact,
+  scopeId: string,
+): LocalCollectionRecommendationArtifact {
+  if (scopeId !== YVHS_LIBRARY_ID) return artifact;
+  return {
+    ...artifact,
+    metadata: { ...artifact.metadata, libraryId: YVHS_LIBRARY_ID },
+  };
+}
+
+function summarySnapshotForArtifact(
+  artifact: LocalCollectionRecommendationArtifact,
+): LocalCollectionSummarySnapshot {
+  return {
+    schemaVersion: "local_collection_summary_v1",
+    deterministicContentHash: artifact.deterministicContentHash,
+    metadata: artifact.metadata,
+    summary: artifact.summary,
+    acceptedRecordsCount: Array.isArray(artifact.records) ? artifact.records.length : 0,
+  };
+}
+
 async function persistRecommendationArtifactForScope(
   recommendationArtifact: LocalCollectionRecommendationArtifact,
   summarySnapshot: LocalCollectionSummarySnapshot,
@@ -390,31 +422,33 @@ export async function publishSharedLocalCollectionRecommendationArtifact(library
 
 export async function loadLocalCollectionRecommendationArtifact(libraryId?: string): Promise<LocalCollectionRecommendationArtifact | null> {
   const scopeId = localCollectionScopeIdFromLibraryId(libraryId);
-  const recommendationKey = localCollectionRecommendationStorageKeyForScope(scopeId);
-  const summaryKey = localCollectionSummaryStorageKeyForScope(scopeId);
+  for (const candidateScopeId of libraryIdReadCandidates(scopeId)) {
+    const recommendationKey = localCollectionRecommendationStorageKeyForExactScope(candidateScopeId);
+    const indexed = await readIndexedDbValue<LocalCollectionRecommendationArtifact>(recommendationKey);
+    if (indexed && indexed.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(indexed.records)) {
+      const artifact = canonicalizeRecommendationArtifact(indexed, scopeId);
+      if (candidateScopeId !== scopeId) {
+        await persistRecommendationArtifactForScope(artifact, summarySnapshotForArtifact(artifact), scopeId);
+      }
+      return artifact;
+    }
 
-  const indexed = await readIndexedDbValue<LocalCollectionRecommendationArtifact>(recommendationKey);
-  if (indexed && indexed.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(indexed.records)) {
-    return indexed;
-  }
-
-  const recommended = localStorageGetJson<LocalCollectionRecommendationArtifact>(recommendationKey);
-  if (recommended && recommended.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(recommended.records)) {
-    return recommended;
+    const recommended = localStorageGetJson<LocalCollectionRecommendationArtifact>(recommendationKey);
+    if (recommended && recommended.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(recommended.records)) {
+      const artifact = canonicalizeRecommendationArtifact(recommended, scopeId);
+      if (candidateScopeId !== scopeId) {
+        await persistRecommendationArtifactForScope(artifact, summarySnapshotForArtifact(artifact), scopeId);
+      }
+      return artifact;
+    }
   }
 
   if (scopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
     const legacy = await loadLegacyGlobalLocalCollectionRecommendationArtifact();
-    if (artifactBelongsToScope(legacy, scopeId)) {
-      const summarySnapshot: LocalCollectionSummarySnapshot = {
-        schemaVersion: "local_collection_summary_v1",
-        deterministicContentHash: legacy.deterministicContentHash,
-        metadata: legacy.metadata,
-        summary: legacy.summary,
-        acceptedRecordsCount: Array.isArray(legacy.records) ? legacy.records.length : 0,
-      };
-      await persistRecommendationArtifactForScope(legacy, summarySnapshot, scopeId);
-      return legacy;
+    if (legacy && artifactBelongsToScope(legacy, scopeId)) {
+      const artifact = canonicalizeRecommendationArtifact(legacy, scopeId);
+      await persistRecommendationArtifactForScope(artifact, summarySnapshotForArtifact(artifact), scopeId);
+      return artifact;
     }
   }
 
@@ -422,7 +456,7 @@ export async function loadLocalCollectionRecommendationArtifact(libraryId?: stri
   if (sharedLibraryId) {
     const shared = await loadSharedLibraryCollection(sharedLibraryId);
     if (shared && shared.schemaVersion === "local_collection_recommendation_v1" && Array.isArray(shared.records)) {
-      return shared as LocalCollectionRecommendationArtifact;
+      return canonicalizeRecommendationArtifact(shared as LocalCollectionRecommendationArtifact, scopeId);
     }
   }
 
@@ -431,22 +465,24 @@ export async function loadLocalCollectionRecommendationArtifact(libraryId?: stri
 
 export function readLocalCollectionAcceptedCountFromLocalStorage(libraryIdOrScopeId?: string): number {
   const scopeId = localCollectionScopeIdFromLibraryId(libraryIdOrScopeId);
-  const summary = localStorageGetJson<any>(localCollectionSummaryStorageKeyForScope(scopeId));
-  if (summary) {
-    if (Number.isFinite(Number(summary.acceptedRecordsCount))) {
-      return Math.max(0, Number(summary.acceptedRecordsCount));
+  for (const candidateScopeId of libraryIdReadCandidates(scopeId)) {
+    const summary = localStorageGetJson<any>(localCollectionSummaryStorageKeyForExactScope(candidateScopeId));
+    if (summary) {
+      if (Number.isFinite(Number(summary.acceptedRecordsCount))) {
+        return Math.max(0, Number(summary.acceptedRecordsCount));
+      }
+      if (Number.isFinite(Number(summary?.summary?.acceptedTitles))) {
+        return Math.max(0, Number(summary.summary.acceptedTitles));
+      }
+      if (Array.isArray(summary.acceptedRecords)) {
+        return summary.acceptedRecords.length;
+      }
     }
-    if (Number.isFinite(Number(summary?.summary?.acceptedTitles))) {
-      return Math.max(0, Number(summary.summary.acceptedTitles));
-    }
-    if (Array.isArray(summary.acceptedRecords)) {
-      return summary.acceptedRecords.length;
-    }
-  }
 
-  const recommendation = localStorageGetJson<LocalCollectionRecommendationArtifact>(
-    localCollectionRecommendationStorageKeyForScope(scopeId)
-  );
-  if (recommendation && Array.isArray(recommendation.records)) return recommendation.records.length;
+    const recommendation = localStorageGetJson<LocalCollectionRecommendationArtifact>(
+      localCollectionRecommendationStorageKeyForExactScope(candidateScopeId)
+    );
+    if (recommendation && Array.isArray(recommendation.records)) return recommendation.records.length;
+  }
   return 0;
 }

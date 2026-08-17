@@ -25,7 +25,9 @@ export default function LibraryLandingRoute() {
 
   useEffect(() => {
     const raw = Array.isArray(params.libraryId) ? params.libraryId[0] : params.libraryId;
-    const slug = String(raw || "").trim().replace(/[_]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+    const slug = normalizeHostedLibraryRouteId(
+      String(raw || "").trim().replace(/[_]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "")
+    );
     setRuntimeLibraryId(slug || "");
     setRuntimeLibraryName(humanizeLibraryId(slug || ""));
     router.replace((slug ? `/${encodeURIComponent(slug)}` : "/") as any);

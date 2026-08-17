@@ -1,5 +1,7 @@
+import { canonicalLibraryId } from "../libraryIdMigration.mjs";
+
 function sharedApiUrl(path: string, libraryId: string): string | null {
-  const id = String(libraryId || "").trim();
+  const id = canonicalLibraryId(libraryId);
   if (!id) return null;
   try {
     if (typeof window === "undefined" || !window.location?.origin) return null;
@@ -12,11 +14,24 @@ function sharedApiUrl(path: string, libraryId: string): string | null {
 }
 
 function normalizeLibraryId(libraryId: string): string {
-  return String(libraryId || "")
+  return canonicalLibraryId(String(libraryId || "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, "")
-    .slice(0, 64);
+    .slice(0, 64));
+}
+
+function canonicalizeCollectionArtifact(
+  artifact: Record<string, unknown>,
+  libraryId: string,
+): Record<string, unknown> {
+  if (normalizeLibraryId(libraryId) !== "yvhs") return artifact;
+  const metadata = artifact.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return artifact;
+  return {
+    ...artifact,
+    metadata: { ...(metadata as Record<string, unknown>), libraryId: "yvhs" },
+  };
 }
 
 function newCorrelationId(): string {
@@ -352,14 +367,14 @@ export async function loadSharedLibraryCollection(libraryId: string): Promise<Re
 
   // Inline artifact (local dev / filesystem mode)
   if (payload.artifact && typeof payload.artifact === "object" && !Array.isArray(payload.artifact)) {
-    return payload.artifact as Record<string, unknown>;
+    return canonicalizeCollectionArtifact(payload.artifact as Record<string, unknown>, libraryId);
   }
 
   // Blob URL (Vercel Blob mode): fetch artifact directly from CDN
   if (typeof payload.artifactUrl === "string" && payload.artifactUrl) {
     const artifact = await readJsonAny(payload.artifactUrl);
     if (artifact && typeof artifact === "object" && !Array.isArray(artifact)) {
-      return artifact;
+      return canonicalizeCollectionArtifact(artifact, libraryId);
     }
 
     // Private Blob stores reject browser requests to the CDN URL. The collection
@@ -368,7 +383,7 @@ export async function loadSharedLibraryCollection(libraryId: string): Promise<Re
     inlineUrl.searchParams.set("inline", "1");
     const inlinePayload = await readJson(inlineUrl.toString(), "loadSharedLibraryCollectionInlineFallback");
     if (inlinePayload?.artifact && typeof inlinePayload.artifact === "object" && !Array.isArray(inlinePayload.artifact)) {
-      return inlinePayload.artifact as Record<string, unknown>;
+      return canonicalizeCollectionArtifact(inlinePayload.artifact as Record<string, unknown>, libraryId);
     }
   }
 

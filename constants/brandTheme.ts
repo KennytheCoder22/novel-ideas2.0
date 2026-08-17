@@ -1,3 +1,5 @@
+import { canonicalLibraryId } from "../lib/libraryIdMigration.mjs";
+
 export type ThemeKey =
   | "dark_blue"
   | "classic_blue"
@@ -23,11 +25,11 @@ export const ADMIN_CONFIG_DEFAULT_SCOPE = "default";
 export const ADMIN_CONFIG_CHANGED_EVENT = "novelideas:admin-config-saved";
 
 export function normalizeAdminDraftScopeId(raw: string): string {
-  const normalized = String(raw || "")
+  const normalized = canonicalLibraryId(String(raw || "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, "")
-    .slice(0, 64);
+    .slice(0, 64));
   return normalized || ADMIN_CONFIG_DEFAULT_SCOPE;
 }
 

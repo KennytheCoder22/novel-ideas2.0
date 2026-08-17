@@ -229,7 +229,7 @@ console.log("\n4. Collection upload via server API");
   );
   check(
     "saveSharedLibraryCollection writes collection.json in vercel_blob mode",
-    contains(storage, "putBlobJson(collectionBlobPathname(id), payload)")
+    contains(storage, "putBlobJson(collectionBlobPathname(id), canonicalizeLibraryPayload(payload, id))")
   );
   check(
     "saveSharedLibraryCollection stores the returned URL string, not the full write result",

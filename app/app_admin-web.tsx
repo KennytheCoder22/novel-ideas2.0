@@ -32,6 +32,7 @@ import {
 import {
   adminConfigStorageKeyForScope,
   ADMIN_CONFIG_DEFAULT_SCOPE,
+  ADMIN_CONFIG_STORAGE_KEY_PREFIX,
   ADMIN_CONFIG_CHANGED_EVENT,
   applyWebHighlightColor,
   autoChooseFontColor,
@@ -66,6 +67,7 @@ import {
   validateLibraryIdForSave,
   type SavedLibrary,
 } from "../lib/savedLibraries";
+import { libraryIdReadCandidates } from "../lib/libraryIdMigration.mjs";
 
 // ---------------------------------------------------------------------------
 // Constants & flags
@@ -163,16 +165,26 @@ function resolveAdminDraftScopeId(rawLibraryId?: string): string {
 }
 
 function localCollectionCsvStorageKeyForScope(scopeId: string): string {
-  return `${LOCAL_COLLECTION_CSV_STORAGE_KEY_PREFIX}:${resolveAdminDraftScopeId(scopeId)}`;
+  return localCollectionCsvStorageKeyForExactScope(resolveAdminDraftScopeId(scopeId));
 }
 
 function localCollectionImportReportStorageKeyForScope(scopeId: string): string {
-  return `${LOCAL_COLLECTION_IMPORT_REPORT_STORAGE_KEY_PREFIX}:${resolveAdminDraftScopeId(scopeId)}`;
+  return localCollectionImportReportStorageKeyForExactScope(resolveAdminDraftScopeId(scopeId));
+}
+
+function localCollectionCsvStorageKeyForExactScope(scopeId: string): string {
+  return `${LOCAL_COLLECTION_CSV_STORAGE_KEY_PREFIX}:${scopeId}`;
+}
+
+function localCollectionImportReportStorageKeyForExactScope(scopeId: string): string {
+  return `${LOCAL_COLLECTION_IMPORT_REPORT_STORAGE_KEY_PREFIX}:${scopeId}`;
 }
 
 function clearScopedCollectionArtifacts(storage: { removeItem: (key: string) => void }, scopeId: string): void {
-  storage.removeItem(localCollectionCsvStorageKeyForScope(scopeId));
-  storage.removeItem(localCollectionImportReportStorageKeyForScope(scopeId));
+  for (const candidateScopeId of libraryIdReadCandidates(resolveAdminDraftScopeId(scopeId))) {
+    storage.removeItem(localCollectionCsvStorageKeyForExactScope(candidateScopeId));
+    storage.removeItem(localCollectionImportReportStorageKeyForExactScope(candidateScopeId));
+  }
 }
 
 function clearDefaultScopeCollectionArtifacts(storage: { removeItem: (key: string) => void }): void {
@@ -180,13 +192,21 @@ function clearDefaultScopeCollectionArtifacts(storage: { removeItem: (key: strin
 }
 
 function readScopedUploadedCollectionCount(
-  storage: Pick<Storage, "getItem">,
+  storage: Pick<Storage, "getItem" | "setItem">,
   scopeId: string
 ): number {
   const persistedCount = readLocalCollectionAcceptedCountFromLocalStorage(scopeId);
   if (persistedCount > 0) return persistedCount;
-  const csv = storage.getItem(localCollectionCsvStorageKeyForScope(scopeId));
-  if (csv) return Math.max(0, csv.split(/\r?\n/).filter((r) => r.trim().length > 0).length - 1);
+  const canonicalScopeId = resolveAdminDraftScopeId(scopeId);
+  for (const candidateScopeId of libraryIdReadCandidates(canonicalScopeId)) {
+    const csv = storage.getItem(localCollectionCsvStorageKeyForExactScope(candidateScopeId));
+    if (csv) {
+      if (candidateScopeId !== canonicalScopeId) {
+        storage.setItem(localCollectionCsvStorageKeyForExactScope(canonicalScopeId), csv);
+      }
+      return Math.max(0, csv.split(/\r?\n/).filter((r) => r.trim().length > 0).length - 1);
+    }
+  }
   return 0;
 }
 
@@ -536,7 +556,17 @@ export default function AdminWebScreen() {
     }
 
     try {
-      const raw = localStorage.getItem(adminDraftStorageKey);
+      let raw: string | null = null;
+      for (const candidateScopeId of libraryIdReadCandidates(adminDraftScopeId)) {
+        const candidateKey = `${ADMIN_CONFIG_STORAGE_KEY_PREFIX}:${candidateScopeId}`;
+        raw = localStorage.getItem(candidateKey);
+        if (raw) {
+          if (candidateKey !== adminDraftStorageKey) {
+            localStorage.setItem(adminDraftStorageKey, raw);
+          }
+          break;
+        }
+      }
       hadDraft = Boolean(raw);
       if (raw) {
         const parsed = JSON.parse(raw);

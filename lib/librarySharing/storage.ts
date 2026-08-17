@@ -16,6 +16,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { canonicalLibraryId, libraryIdReadCandidates, YVHS_LIBRARY_ID } from "../libraryIdMigration.mjs";
 
 // ── Storage mode ──────────────────────────────────────────────────────────────
 
@@ -120,8 +121,12 @@ function storageMode(): StorageMode {
   return "local_filesystem";
 }
 
-function normalizeLibraryId(libraryId: string): string {
+function normalizeLibraryIdExact(libraryId: string): string {
   return String(libraryId || "").trim();
+}
+
+function normalizeLibraryId(libraryId: string): string {
+  return canonicalLibraryId(normalizeLibraryIdExact(libraryId));
 }
 
 function logConfigEvent(
@@ -149,6 +154,17 @@ export function getSharedLibraryConfigStorageTrace(libraryId: string): {
   configFilePath: string;
 } {
   const id = normalizeLibraryId(libraryId);
+  return getSharedLibraryConfigStorageTraceExact(id);
+}
+
+function getSharedLibraryConfigStorageTraceExact(libraryId: string): {
+  backend: StorageMode;
+  libraryId: string;
+  normalizedLibraryId: string;
+  configBlobPath: string;
+  configFilePath: string;
+} {
+  const id = normalizeLibraryIdExact(libraryId);
   return {
     backend: storageMode(),
     libraryId,
@@ -156,6 +172,24 @@ export function getSharedLibraryConfigStorageTrace(libraryId: string): {
     configBlobPath: configBlobPathname(id || "unknown"),
     configFilePath: filePath("config", id || "unknown"),
   };
+}
+
+function canonicalizeLibraryPayload(
+  payload: Record<string, unknown>,
+  requestedLibraryId: string,
+): Record<string, unknown> {
+  if (normalizeLibraryId(requestedLibraryId).toLowerCase() !== YVHS_LIBRARY_ID) return payload;
+  const next = { ...payload };
+  if (payload.library && typeof payload.library === "object" && !Array.isArray(payload.library)) {
+    next.library = { ...(payload.library as Record<string, unknown>), id: YVHS_LIBRARY_ID };
+  }
+  if (payload.branding && typeof payload.branding === "object" && !Array.isArray(payload.branding)) {
+    next.branding = { ...(payload.branding as Record<string, unknown>), libraryId: YVHS_LIBRARY_ID };
+  }
+  if (payload.metadata && typeof payload.metadata === "object" && !Array.isArray(payload.metadata)) {
+    next.metadata = { ...(payload.metadata as Record<string, unknown>), libraryId: YVHS_LIBRARY_ID };
+  }
+  return next;
 }
 
 export type SharedLibraryConfigDiagnostics = {
@@ -533,11 +567,11 @@ function loadFileAsset(kind: "config" | "collection", libraryId: string): Record
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-export async function diagnoseSharedLibraryConfig(
+async function diagnoseSharedLibraryConfigExact(
   libraryId: string,
   correlationId?: string
 ): Promise<SharedLibraryConfigDiagnostics> {
-  const trace = getSharedLibraryConfigStorageTrace(libraryId);
+  const trace = getSharedLibraryConfigStorageTraceExact(libraryId);
   const id = trace.normalizedLibraryId;
   if (!id) {
     return {
@@ -733,6 +767,27 @@ export async function diagnoseSharedLibraryConfig(
   }
 }
 
+export async function diagnoseSharedLibraryConfig(
+  libraryId: string,
+  correlationId?: string
+): Promise<SharedLibraryConfigDiagnostics> {
+  const canonicalId = normalizeLibraryId(libraryId);
+  let first: SharedLibraryConfigDiagnostics | null = null;
+  for (const candidateId of libraryIdReadCandidates(canonicalId)) {
+    const diagnostics = await diagnoseSharedLibraryConfigExact(candidateId, correlationId);
+    first ??= diagnostics;
+    if (diagnostics.validConfig && !diagnostics.errorCode) {
+      return {
+        ...diagnostics,
+        libraryId,
+        normalizedLibraryId: canonicalId,
+      };
+    }
+    if (diagnostics.errorCode !== "config_not_found") return diagnostics;
+  }
+  return first ?? diagnoseSharedLibraryConfigExact(canonicalId, correlationId);
+}
+
 export async function saveSharedLibraryConfig(
   libraryId: string,
   payload: Record<string, unknown>,
@@ -759,7 +814,7 @@ export async function saveSharedLibraryConfig(
     if (trace.backend === "vercel_blob") {
       let write: { blobUrl: string; blobPath: string; wrappedPayloadUtf8Bytes: number; authMode: string };
       try {
-        write = await saveBlobConfig(id, payload);
+        write = await saveBlobConfig(id, canonicalizeLibraryPayload(payload, id));
       } catch (error) {
         const safe = safeBlobExceptionDetails(error);
         console.error(
@@ -782,12 +837,12 @@ export async function saveSharedLibraryConfig(
         correlationId
       );
     } else {
-      await saveFileAsset("config", id, payload);
+      await saveFileAsset("config", id, canonicalizeLibraryPayload(payload, id));
       logConfigEvent("filesystem_write_succeeded", { ...trace, payloadUtf8Bytes }, correlationId);
     }
     let verification: SharedLibraryConfigDiagnostics;
     try {
-      verification = await diagnoseSharedLibraryConfig(id, correlationId);
+      verification = await diagnoseSharedLibraryConfigExact(id, correlationId);
     } catch (error) {
       console.error(
         "[library-sharing][config][save_verification_probe_failed]",
@@ -828,12 +883,18 @@ export async function loadSharedLibraryConfigPayload(
   if (!id) return null;
   const correlationId = options?.correlationId;
   try {
-    const diagnostics = await diagnoseSharedLibraryConfig(id, correlationId);
-    if (!diagnostics.validConfig || diagnostics.errorCode) return null;
-    if (diagnostics.backend === "vercel_blob") {
-      return loadBlobConfig(id);
+    for (const candidateId of libraryIdReadCandidates(id)) {
+      const diagnostics = await diagnoseSharedLibraryConfigExact(candidateId, correlationId);
+      if (!diagnostics.validConfig || diagnostics.errorCode) {
+        if (diagnostics.errorCode === "config_not_found") continue;
+        return null;
+      }
+      const payload = diagnostics.backend === "vercel_blob"
+        ? await loadBlobConfig(candidateId)
+        : loadFileAsset("config", candidateId);
+      if (payload) return canonicalizeLibraryPayload(payload, id);
     }
-    return loadFileAsset("config", id);
+    return null;
   } catch (error) {
     const trace = getSharedLibraryConfigStorageTrace(id);
     console.error("[library-sharing][config][load_failed]", { correlationId, ...trace }, error);
@@ -852,7 +913,7 @@ export async function recordSharedLibraryCollectionUrl(
   libraryId: string,
   blobUrl: string
 ): Promise<void> {
-  const id = String(libraryId || "").trim();
+  const id = normalizeLibraryId(libraryId);
   if (!id) throw new Error("missing_library_id");
   if (!blobUrl || typeof blobUrl !== "string") throw new Error("missing_blob_url");
   if (storageMode() === "vercel_blob") {
@@ -873,16 +934,22 @@ export async function loadSharedLibraryCollectionResult(libraryId: string): Prom
   artifact: Record<string, unknown> | null;
   artifactUrl: string | null;
 }> {
-  const id = String(libraryId || "").trim();
+  const id = normalizeLibraryId(libraryId);
   if (!id) return { artifact: null, artifactUrl: null };
 
   if (storageMode() === "vercel_blob") {
-    const artifactUrl = await loadBlobCollectionUrl(id);
-    return { artifact: null, artifactUrl: artifactUrl ?? null };
+    for (const candidateId of libraryIdReadCandidates(id)) {
+      const artifactUrl = await loadBlobCollectionUrl(candidateId);
+      if (artifactUrl) return { artifact: null, artifactUrl };
+    }
+    return { artifact: null, artifactUrl: null };
   }
 
-  const artifact = loadFileAsset("collection", id);
-  return { artifact, artifactUrl: null };
+  for (const candidateId of libraryIdReadCandidates(id)) {
+    const artifact = loadFileAsset("collection", candidateId);
+    if (artifact) return { artifact: canonicalizeLibraryPayload(artifact, id), artifactUrl: null };
+  }
+  return { artifact: null, artifactUrl: null };
 }
 
 /**
@@ -901,7 +968,7 @@ export async function loadSharedLibraryCollectionPayload(
   if (result.artifactUrl) {
     const data = await loadBlobJson(result.artifactUrl);
     if (data && typeof data === "object" && !Array.isArray(data)) {
-      return data as Record<string, unknown>;
+      return canonicalizeLibraryPayload(data as Record<string, unknown>, libraryId);
     }
   }
   return null;
@@ -916,12 +983,12 @@ export async function saveSharedLibraryCollection(
   libraryId: string,
   payload: Record<string, unknown>
 ): Promise<void> {
-  const id = String(libraryId || "").trim();
+  const id = normalizeLibraryId(libraryId);
   if (!id) throw new Error("missing_library_id");
   if (storageMode() === "vercel_blob") {
-    const write = await putBlobJson(collectionBlobPathname(id), payload);
+    const write = await putBlobJson(collectionBlobPathname(id), canonicalizeLibraryPayload(payload, id));
     await saveBlobCollectionPtr(id, write.url);
     return;
   }
-  await saveFileAsset("collection", id, payload);
+  await saveFileAsset("collection", id, canonicalizeLibraryPayload(payload, id));
 }

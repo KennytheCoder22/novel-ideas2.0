@@ -1,3 +1,5 @@
+import { canonicalLibraryId, libraryIdReadCandidates } from "./libraryIdMigration.mjs";
+
 export const PATRON_MY_LIST_STORAGE_PREFIX = "novelideas_patron_my_list_v1";
 
 export type SavedRecommendation = {
@@ -30,6 +32,10 @@ function normalizedBookPart(value: unknown): string {
 }
 
 export function patronMyListStorageKey(patronId: string, libraryId?: string): string {
+  return patronMyListStorageKeyExact(patronId, canonicalLibraryId(libraryId) || "default");
+}
+
+function patronMyListStorageKeyExact(patronId: string, libraryId: string): string {
   return `${PATRON_MY_LIST_STORAGE_PREFIX}:${normalizedScope(patronId, "anonymous")}:${normalizedScope(libraryId, "default")}`;
 }
 
@@ -87,7 +93,16 @@ export function removeSavedRecommendation(
 }
 
 export function readPatronMyList(storage: SyncStorage, patronId: string, libraryId?: string): SavedRecommendation[] {
-  return parseSavedRecommendations(storage.getItem(patronMyListStorageKey(patronId, libraryId)));
+  const canonicalKey = patronMyListStorageKey(patronId, libraryId);
+  for (const candidateId of libraryIdReadCandidates(canonicalLibraryId(libraryId) || "default")) {
+    const candidateKey = patronMyListStorageKeyExact(patronId, candidateId);
+    const raw = storage.getItem(candidateKey);
+    if (raw) {
+      if (candidateKey !== canonicalKey) storage.setItem(canonicalKey, raw);
+      return parseSavedRecommendations(raw);
+    }
+  }
+  return [];
 }
 
 export function writePatronMyList(
@@ -100,7 +115,9 @@ export function writePatronMyList(
 }
 
 export function clearPatronMyList(storage: SyncStorage, patronId: string, libraryId?: string): void {
-  storage.removeItem(patronMyListStorageKey(patronId, libraryId));
+  for (const candidateId of libraryIdReadCandidates(canonicalLibraryId(libraryId) || "default")) {
+    storage.removeItem(patronMyListStorageKeyExact(patronId, candidateId));
+  }
 }
 
 export function clearAllPatronMyLists(storage: SyncStorage, patronId: string): void {
@@ -118,7 +135,16 @@ export async function readPatronMyListAsync(
   patronId: string,
   libraryId?: string,
 ): Promise<SavedRecommendation[]> {
-  return parseSavedRecommendations(await storage.getItem(patronMyListStorageKey(patronId, libraryId)));
+  const canonicalKey = patronMyListStorageKey(patronId, libraryId);
+  for (const candidateId of libraryIdReadCandidates(canonicalLibraryId(libraryId) || "default")) {
+    const candidateKey = patronMyListStorageKeyExact(patronId, candidateId);
+    const raw = await storage.getItem(candidateKey);
+    if (raw) {
+      if (candidateKey !== canonicalKey) await storage.setItem(canonicalKey, raw);
+      return parseSavedRecommendations(raw);
+    }
+  }
+  return [];
 }
 
 export async function writePatronMyListAsync(
@@ -135,7 +161,10 @@ export async function clearPatronMyListAsync(
   patronId: string,
   libraryId?: string,
 ): Promise<void> {
-  await storage.removeItem(patronMyListStorageKey(patronId, libraryId));
+  await Promise.all(
+    libraryIdReadCandidates(canonicalLibraryId(libraryId) || "default")
+      .map((candidateId) => storage.removeItem(patronMyListStorageKeyExact(patronId, candidateId)))
+  );
 }
 
 export async function clearAllPatronMyListsAsync(storage: AsyncStorage, patronId: string): Promise<void> {
