@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   Image,
   KeyboardAvoidingView,
   PanResponder,
@@ -18,6 +17,7 @@ import {
   Platform,
   Pressable,
   Modal,
+  useWindowDimensions,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -1487,7 +1487,7 @@ export default function SwipeDeckScreen(props: Props) {
   const router = useRouter();
   const isTestingMode = props.isTestingMode === true;
   const isAdminMode = props.isAdminMode === true;
-  const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isSmallScreen = windowWidth < 420 || windowHeight < 750;
   const needsCardOffset = isSmallScreen || (Platform.OS === "web" && windowWidth < 600);
   const [hasFineHoverPointer, setHasFineHoverPointer] = useState<boolean | null>(() => {
@@ -1515,7 +1515,7 @@ export default function SwipeDeckScreen(props: Props) {
   }, []);
   const highlightColor = Platform.OS === "web" ? "var(--highlight-color)" : "#e0b84b";
 
-  const [cardStageHeight, setCardStageHeight] = useState<number>(0);
+  const [cardStageSize, setCardStageSize] = useState({ width: 0, height: 0 });
   const [deckKey, setDeckKey] = useState<DeckKey>("ms_hs");
 
   const enabledDecks = props.enabledDecks ?? {};
@@ -1870,7 +1870,8 @@ export default function SwipeDeckScreen(props: Props) {
     return profileOverridesByLane[laneFromDeckKey(deckKey)] || undefined;
   }, [deckKey, profileOverridesByLane]);
 
-  const { width, height } = Dimensions.get("window");
+  const width = windowWidth;
+  const height = windowHeight;
   const swipeThresholdX = Math.min(140, width * 0.25);
   const swipeThresholdDown = Math.min(170, height * 0.22);
 
@@ -1879,6 +1880,31 @@ export default function SwipeDeckScreen(props: Props) {
   // Keep a ref so panResponder (which is memoized without currentCard in its deps)
   // always reads the live card rather than a stale closure value.
   const currentCardRef = useRef<SwipeDeckCard | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const html = document.documentElement;
+    const body = document.body;
+    const previous = {
+      htmlMaxWidth: html.style.maxWidth,
+      htmlOverflowX: html.style.overflowX,
+      bodyMaxWidth: body.style.maxWidth,
+      bodyOverflowX: body.style.overflowX,
+      bodyOverscrollBehaviorX: body.style.overscrollBehaviorX,
+    };
+    html.style.maxWidth = "100%";
+    html.style.overflowX = "hidden";
+    body.style.maxWidth = "100%";
+    body.style.overflowX = "hidden";
+    body.style.overscrollBehaviorX = "none";
+    return () => {
+      html.style.maxWidth = previous.htmlMaxWidth;
+      html.style.overflowX = previous.htmlOverflowX;
+      body.style.maxWidth = previous.bodyMaxWidth;
+      body.style.overflowX = previous.bodyOverflowX;
+      body.style.overscrollBehaviorX = previous.bodyOverscrollBehaviorX;
+    };
+  }, []);
 
   async function refreshPipelinePreview() {
     const previewPatronId = activePatronId;
@@ -5903,11 +5929,14 @@ function handleLeft(card?: SwipeDeckCard | null) {
   }
 
   const cardFitStyle = useMemo(() => {
-    const h = Math.max(0, cardStageHeight || 0);
-    if (h <= 0) return {};
-    const w = h * (2 / 3);
-    return { height: h, width: w };
-  }, [cardStageHeight]);
+    const stageWidth = Math.max(0, cardStageSize.width || 0);
+    const stageHeight = Math.max(0, cardStageSize.height || 0);
+    if (stageWidth <= 0 || stageHeight <= 0) return { maxWidth: "100%" as const };
+    return {
+      width: Math.min(stageWidth, stageHeight * (2 / 3)),
+      maxWidth: "100%" as const,
+    };
+  }, [cardStageSize]);
 
   const isFirstRec = recItems.length > 0 && recIndex === 0;
   const candidatePoolRows = Array.isArray(lastCandidatePool) ? lastCandidatePool : [];
@@ -6152,14 +6181,14 @@ function handleLeft(card?: SwipeDeckCard | null) {
                   recommendationCount: recItems.length,
                 }) ? (
                   <TouchableOpacity
-                    style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 14, minWidth: 220, alignSelf: "center" }]}
+                    style={[styles.btn, styles.btnOutlineGold, styles.contextualBottomAction, { borderColor: highlightColor }]}
                     onPress={openHumanReviewForCurrentSlate}
                   >
                     <Text style={styles.btnText}>Evaluate Recommendations</Text>
                   </TouchableOpacity>
                 ) : !isTestingMode ? (
                   <TouchableOpacity
-                    style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 14, minWidth: 220, alignSelf: "center" }]}
+                    style={[styles.btn, styles.btnOutlineGold, styles.contextualBottomAction, { borderColor: highlightColor }]}
                     onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
                   >
                     <Text style={styles.btnText}>Search on my own</Text>
@@ -6169,15 +6198,28 @@ function handleLeft(card?: SwipeDeckCard | null) {
             </ScrollView>
           ) : currentCard ? (
             <View style={[styles.cardArea, isSmallScreen && styles.cardAreaTight]}>
-              <View style={styles.cardStage} onLayout={(e) => setCardStageHeight(e.nativeEvent.layout.height)}>
+              <View
+                style={styles.cardStage}
+                testID="swipe-card-stage"
+                onLayout={(event) => {
+                  const { width: measuredWidth, height: measuredHeight } = event.nativeEvent.layout;
+                  setCardStageSize((previous) => (
+                    previous.width === measuredWidth && previous.height === measuredHeight
+                      ? previous
+                      : { width: measuredWidth, height: measuredHeight }
+                  ));
+                }}
+              >
                 <View style={styles.cardWrap}>
                   <Animated.View
+                    testID="swipe-card"
                     {...panResponder.panHandlers}
                     style={[
                       styles.card,
                       { borderColor: highlightColor },
                       needsCardOffset && styles.cardOffset,
                       cardFitStyle,
+                      Platform.OS === "web" ? ({ touchAction: "pinch-zoom" } as any) : null,
                       { transform: [{ translateX: position.x }, { translateY: position.y }] },
                     ]}
                   >
@@ -6202,7 +6244,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
                       </View>
                     ) : (
                       <View style={styles.swipeCoverPlaceholder}>
-                        <Text style={styles.swipeCoverPlaceholderTitle} numberOfLines={2}>
+                        <Text style={styles.swipeCoverPlaceholderTitle}>
                           {String((currentCard as any)?.title || (currentCard as any)?.prompt || "Untitled")}
                         </Text>
                         <Text style={styles.swipeCoverPlaceholderText}>Image unavailable</Text>
@@ -6211,13 +6253,13 @@ function handleLeft(card?: SwipeDeckCard | null) {
 
                     {((currentCard as any)?.title || (currentCard as any)?.author || (currentCard as any)?.genre) ? (
                       <View style={styles.swipeMetaBox}>
-                        <Text style={styles.swipeTitle} numberOfLines={2}>
+                        <Text style={styles.swipeTitle}>
                           {(currentCard as any)?.title ?? ""}
                         </Text>
-                        <Text style={styles.swipeAuthor} numberOfLines={1}>
+                        <Text style={styles.swipeAuthor}>
                           {(currentCard as any)?.author ?? ""}
                         </Text>
-                        <Text style={styles.swipeGenre} numberOfLines={1}>
+                        <Text style={styles.swipeGenre}>
                           {(currentCard as any)?.genre ?? ""}
                         </Text>
                       </View>
@@ -6245,7 +6287,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
                           styles.btnOutlineGold,
                           { borderColor: highlightColor },
                           pressed && styles.btnPressedBlue,
-                          { marginTop: 12, minWidth: 220 },
+                          styles.contextualBottomAction,
                         ]}
                         onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
                       >
@@ -6805,8 +6847,8 @@ function handleLeft(card?: SwipeDeckCard | null) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#071526" },
-  container: { flex: 1, minHeight: "100%", position: "relative", padding: 16, gap: 12 },
+  safe: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, backgroundColor: "#071526" },
+  container: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, minHeight: "100%", position: "relative", padding: 16, gap: 12 },
   divider: { width: "100%", height: 1, backgroundColor: "#223b6b", opacity: 0.9 },
   dividerTight: { marginTop: 6 },
 
@@ -6854,11 +6896,14 @@ const styles = StyleSheet.create({
   sessionInfoScroll: { maxHeight: 400 },
   sessionInfoText: { color: "#c8daf5", fontFamily: Platform.OS === "web" ? "monospace" : undefined, fontSize: 12, lineHeight: 20 },
 
-  cardArea: { flex: 1, width: "100%", alignItems: "center", justifyContent: "flex-start", minHeight: 0 },
+  cardArea: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, alignItems: "center", justifyContent: "flex-start", minHeight: 0, overflow: "hidden" },
   cardAreaTight: { paddingTop: 0, paddingBottom: 0 },
 
-  topRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  topRow: { width: "100%", maxWidth: "100%", minWidth: 0, flexDirection: "row", flexWrap: "wrap", gap: 8 },
   deckChip: {
+    maxWidth: "100%",
+    minWidth: 0,
+    flexShrink: 1,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 999,
@@ -6867,22 +6912,25 @@ const styles = StyleSheet.create({
     backgroundColor: "#0b1e33",
   },
   deckChipSelected: { backgroundColor: "#2563eb", borderColor: "#e0b84b" },
-  deckChipText: { color: "#e5efff", fontWeight: "800", fontSize: 12 },
+  deckChipText: { maxWidth: "100%", minWidth: 0, flexShrink: 1, color: "#e5efff", fontWeight: "800", fontSize: 12, textAlign: "center" },
   deckChipTextSelected: { color: "#f9fafb" },
 
   statusRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   statusText: { color: "#cbd5f5", fontWeight: "800", fontSize: 12 },
 
-  stage: { flex: 1, justifyContent: "center", alignItems: "center" },
+  stage: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, justifyContent: "center", alignItems: "center", overflow: "hidden" },
   stageTop: { justifyContent: "flex-start", paddingTop: 10 },
 
   statusDivider: { width: "100%", height: 1, backgroundColor: "rgba(255,255,255,0.10)", marginTop: 8, marginBottom: 8 },
 
-  cardWrap: { width: "100%", maxWidth: 560, alignItems: "center", overflow: "hidden" },
-  cardStage: { flex: 1, width: "100%", alignItems: "center", justifyContent: "flex-start", minHeight: 0, overflow: "hidden" },
+  cardWrap: { width: "100%", maxWidth: 560, minWidth: 0, alignItems: "center", overflow: "hidden" },
+  cardStage: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, alignItems: "center", justifyContent: "flex-start", minHeight: 0, overflow: "hidden" },
 
   card: {
     width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
+    flexShrink: 1,
     alignSelf: "center",
     marginTop: 0,
     aspectRatio: 2 / 3,
@@ -6914,6 +6962,8 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 20,
     textAlign: "center",
+    maxWidth: "100%",
+    flexShrink: 1,
   },
   swipeCoverPlaceholderText: {
     color: "#cbd5f5",
@@ -6926,6 +6976,8 @@ const styles = StyleSheet.create({
     left: 14,
     bottom: 14,
     width: "66%",
+    maxWidth: "100%",
+    minWidth: 0,
     minHeight: "20%",
     paddingVertical: 10,
     paddingHorizontal: 10,
@@ -6933,17 +6985,18 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.65)",
     justifyContent: "flex-end",
   },
-  swipeTitle: { fontSize: 16, fontWeight: "700", color: "#fff", marginBottom: 3 },
-  swipeAuthor: { fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.9)", marginBottom: 4 },
-  swipeGenre: { fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.75)" },
+  swipeTitle: { maxWidth: "100%", minWidth: 0, flexShrink: 1, fontSize: 16, fontWeight: "700", color: "#fff", marginBottom: 3 },
+  swipeAuthor: { maxWidth: "100%", minWidth: 0, flexShrink: 1, fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.9)", marginBottom: 4 },
+  swipeGenre: { maxWidth: "100%", minWidth: 0, flexShrink: 1, fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.75)" },
 
-  cardPrompt: { color: "#e5efff", fontSize: 26, fontWeight: "900", lineHeight: 32 },
+  cardPrompt: { maxWidth: "100%", minWidth: 0, flexShrink: 1, color: "#e5efff", fontSize: 26, fontWeight: "900", lineHeight: 32 },
 
   cardOffset: { marginTop: 0 },
 
-  actionRow: { marginTop: 12, flexDirection: "row", gap: 12, flexWrap: "wrap", justifyContent: "center" },
-  bottomPanel: { width: "100%", marginTop: 0 },
-  clueRow: { marginTop: 6, flexDirection: "row", gap: 14, justifyContent: "center", alignItems: "center", flexWrap: "wrap" },
+  actionRow: { width: "100%", maxWidth: "100%", minWidth: 0, marginTop: 12, flexDirection: "row", gap: 12, flexWrap: "wrap", justifyContent: "center" },
+  bottomPanel: { width: "100%", maxWidth: "100%", minWidth: 0, marginTop: 0 },
+  contextualBottomAction: { width: "100%", maxWidth: 220, minWidth: 0, marginTop: 12, alignSelf: "center" },
+  clueRow: { width: "100%", maxWidth: "100%", minWidth: 0, marginTop: 6, flexDirection: "row", gap: 14, justifyContent: "center", alignItems: "center", flexWrap: "wrap" },
   clueText: { color: "#cfe0ff", fontSize: 14, fontWeight: "800" },
 
   btn: {

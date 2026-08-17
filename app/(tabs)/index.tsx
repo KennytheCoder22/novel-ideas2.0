@@ -2688,7 +2688,13 @@ logoDataUrl={libraryLogoDataUrl}
 
   if (mode === "swipe") {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.appBg }}>
+      <View
+        style={[
+          styles.swipeScreen,
+          { backgroundColor: theme.appBg },
+          Platform.OS === "web" ? ({ overflowX: "hidden" } as any) : null,
+        ]}
+      >
         {/* Title opens Librarian Settings; seven quick logo taps open owner analytics authentication. */}
         <View style={[styles.headerFrame, { backgroundColor: theme.accent, borderColor: theme.highlight }]}>
           <View style={styles.headerRow}>
@@ -2885,6 +2891,9 @@ const styles = StyleSheet.create({
 
   // Header frame with synchronized highlight borders (top & bottom)
   headerFrame: {
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
     paddingHorizontal: 20,
     paddingTop: 20,
     zIndex: 10,
@@ -2894,11 +2903,11 @@ const styles = StyleSheet.create({
     overflow: "visible",
   },
 
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  headerLeft: { width: 72, alignItems: "flex-start", justifyContent: "center" },
-  headerCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
+  headerRow: { width: "100%", maxWidth: "100%", minWidth: 0, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  headerLeft: { width: 72, flexShrink: 0, alignItems: "flex-start", justifyContent: "center" },
+  headerCenter: { flex: 1, minWidth: 0, maxWidth: "100%", alignItems: "center", justifyContent: "center" },
   headerRight: { width: 72 },
-  menuAnchor: { alignItems: "flex-end", justifyContent: "center", position: "relative" },
+  menuAnchor: { flexShrink: 0, alignItems: "flex-end", justifyContent: "center", position: "relative" },
   headerMenuButton: {
     width: 44,
     height: 44,
@@ -2938,8 +2947,8 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
 
-  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 as any },
-  title: { fontSize: 30, fontWeight: "900", marginBottom: 2 },
+  titleRow: { width: "100%", maxWidth: "100%", minWidth: 0, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 10 as any },
+  title: { maxWidth: "100%", minWidth: 0, flexShrink: 1, fontSize: 30, fontWeight: "900", marginBottom: 2, textAlign: "center" },
   subtitle: { fontSize: 13, fontWeight: "700" },
 
   // Mimics the “spine” line in the book icon
@@ -3089,7 +3098,16 @@ const styles = StyleSheet.create({
 
   swipeStage: {
     flex: 1,
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
     position: "relative",
+  },
+  swipeScreen: {
+    flex: 1,
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
   },
 
 });

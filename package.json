@@ -66,6 +66,7 @@
     "test:v2:hosted-patron-personalization": "node scripts/run-v2-hosted-patron-personalization-regressions.mjs",
     "test:v2:swipe-deck-stability": "node scripts/run-v2-swipe-deck-stability-regressions.mjs",
     "test:swipe-card-performance": "node scripts/run-swipe-card-performance-regressions.mjs",
+    "test:mobile-swipe-containment": "node scripts/run-mobile-swipe-containment-regressions.mjs",
     "test:real-session-overlap-audit": "node scripts/run-real-session-overlap-audit-regressions.mjs",
     "test:v2:admin-save-discard": "node scripts/run-v2-admin-save-discard-regressions.mjs",
     "test:v2:hosted-library-context-leakage": "node scripts/run-v2-hosted-library-context-leakage-regressions.mjs",
