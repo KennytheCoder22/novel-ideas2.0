@@ -18,21 +18,22 @@ export default function HowItWorksScreen() {
       </View>
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
         <Section heading="Swiping">
-          NovelIdeas shows you books one at a time. Swipe right (or tap Like) if the book sounds
-          interesting. Swipe left (or tap Pass) if it doesn't fit your mood. There are no wrong
-          answers — every swipe teaches NovelIdeas about your taste.
+          NovelIdeas shows you cards from categories such as books, movies, TV shows, games,
+          YouTube, anime/manga, and podcasts. Swipe right (or tap Like) when something appeals to
+          you. Swipe left (or tap Pass) when it doesn't. There are no wrong answers — every choice
+          helps NovelIdeas learn more about your taste.
         </Section>
 
         <Section heading="Getting Recommendations">
-          After you've swiped a few books, NovelIdeas analyzes your choices and generates a
-          personalized reading slate. Recommendations come from multiple sources — Google Books,
-          Open Library, Kitsu, and others — so you'll see a diverse mix of titles.
+          After you've made enough choices, NovelIdeas analyzes the patterns in what you liked and
+          disliked to find books you may enjoy. Your recommendations can come from several sources,
+          depending on how your library is configured.
         </Section>
 
         <Section heading="Age-Band Decks">
-          NovelIdeas supports several reader age bands: picture books & early readers, middle
-          grade (grades 3–6), middle school / high school, and adult. The deck used depends on
-          how your library has been configured.
+          NovelIdeas supports Kids, Pre-Teens, Teens, and Adults. Each age band has its own
+          age-appropriate swipe experience. Your library may also choose which age bands and swipe
+          categories are available.
         </Section>
 
         <Section heading="Anonymous Human Review (Optional)">
@@ -44,8 +45,9 @@ export default function HowItWorksScreen() {
         </Section>
 
         <Section heading="No Account Required">
-          NovelIdeas never asks you to sign in. Your preferences are used only to generate
-          recommendations in the current session and are not stored on any server.
+          NovelIdeas never asks you to sign in. Your preferences and personal customizations can be
+          stored on your device so they survive new sessions; no name, email, or patron login is
+          required.
         </Section>
       </ScrollView>
     </SafeAreaView>
