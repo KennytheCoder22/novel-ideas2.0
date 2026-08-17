@@ -1,4 +1,4 @@
-import { canonicalLibraryId } from "../libraryIdMigration.mjs";
+import { canonicalLibraryId } from "../libraryIdMigration.js";
 
 function sharedApiUrl(path: string, libraryId: string): string | null {
   const id = canonicalLibraryId(libraryId);

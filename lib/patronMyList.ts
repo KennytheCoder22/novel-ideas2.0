@@ -1,4 +1,4 @@
-import { canonicalLibraryId, libraryIdReadCandidates } from "./libraryIdMigration.mjs";
+import { canonicalLibraryId, libraryIdReadCandidates } from "./libraryIdMigration.js";
 
 export const PATRON_MY_LIST_STORAGE_PREFIX = "novelideas_patron_my_list_v1";
 

@@ -1,4 +1,4 @@
-import { canonicalLibraryId, libraryIdReadCandidates } from "./libraryIdMigration.mjs";
+import { canonicalLibraryId, libraryIdReadCandidates } from "./libraryIdMigration.js";
 
 export const PATRON_AGE_PREFERENCES_STORAGE_PREFIX = "novelideas_patron_age_preferences_v1";
 

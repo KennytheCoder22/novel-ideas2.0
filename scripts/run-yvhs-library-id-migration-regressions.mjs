@@ -24,7 +24,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const {
   canonicalLibraryId,
   libraryIdReadCandidates,
-} = await import(pathToFileURL(resolve(repoRoot, "lib", "libraryIdMigration.mjs")).href);
+} = await import(pathToFileURL(resolve(repoRoot, "lib", "libraryIdMigration.js")).href);
 const {
   normalizeHostedLibraryRouteId,
   readPatronLibraries,

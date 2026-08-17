@@ -4,7 +4,7 @@ import { View, Text } from "react-native";
 import { HomeScreen } from "./index";
 import { setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
 import { normalizeHostedLibraryRouteId } from "../../lib/savedLibraries";
-import { isLegacyYvhsLibraryId } from "../../lib/libraryIdMigration.mjs";
+import { isLegacyYvhsLibraryId } from "../../lib/libraryIdMigration.js";
 
 function humanizeLibraryId(raw: string): string {
   const slug = String(raw || "").trim().replace(/[_]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");

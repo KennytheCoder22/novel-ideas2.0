@@ -1,4 +1,4 @@
-import { canonicalLibraryId } from "./libraryIdMigration.mjs";
+import { canonicalLibraryId } from "./libraryIdMigration.js";
 
 export type RealSessionRecommendation = {
   id: string;

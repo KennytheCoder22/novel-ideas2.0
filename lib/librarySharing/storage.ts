@@ -16,7 +16,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { canonicalLibraryId, libraryIdReadCandidates, YVHS_LIBRARY_ID } from "../libraryIdMigration.mjs";
+import { canonicalLibraryId, libraryIdReadCandidates, YVHS_LIBRARY_ID } from "../libraryIdMigration.js";
 
 // ── Storage mode ──────────────────────────────────────────────────────────────
 

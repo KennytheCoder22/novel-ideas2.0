@@ -1,4 +1,4 @@
-import { canonicalLibraryId } from "./libraryIdMigration.mjs";
+import { canonicalLibraryId } from "./libraryIdMigration.js";
 
 export const MIN_NEW_LIBRARY_ID_LENGTH = 3;
 

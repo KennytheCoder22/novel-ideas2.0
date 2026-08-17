@@ -3,7 +3,7 @@ import {
   normalizePatronAgeBands,
   type AgeBandSelection,
 } from "./patronAgePreferences";
-import { canonicalLibraryId, libraryIdReadCandidates } from "./libraryIdMigration.mjs";
+import { canonicalLibraryId, libraryIdReadCandidates } from "./libraryIdMigration.js";
 
 export const PATRON_CUSTOMIZATION_STORAGE_PREFIX = "novelideas_patron_customization_v1";
 export const SWIPE_CATEGORY_KEYS = ["books", "movies", "tv", "games", "youtube", "anime", "podcasts"] as const;

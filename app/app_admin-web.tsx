@@ -67,7 +67,7 @@ import {
   validateLibraryIdForSave,
   type SavedLibrary,
 } from "../lib/savedLibraries";
-import { libraryIdReadCandidates } from "../lib/libraryIdMigration.mjs";
+import { libraryIdReadCandidates } from "../lib/libraryIdMigration.js";
 
 // ---------------------------------------------------------------------------
 // Constants & flags

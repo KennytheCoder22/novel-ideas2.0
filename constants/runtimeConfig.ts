@@ -1,4 +1,4 @@
-import { canonicalLibraryId } from "../lib/libraryIdMigration.mjs";
+import { canonicalLibraryId } from "../lib/libraryIdMigration.js";
 
 type Listener = () => void;
 

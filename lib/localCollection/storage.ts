@@ -1,7 +1,7 @@
 import type { LocalCollectionArtifact } from "./types";
 import { loadSharedLibraryCollection, saveSharedLibraryCollection } from "../librarySharing/client";
 import { ADMIN_CONFIG_DEFAULT_SCOPE, normalizeAdminDraftScopeId } from "../../constants/brandTheme";
-import { libraryIdReadCandidates, YVHS_LIBRARY_ID } from "../libraryIdMigration.mjs";
+import { libraryIdReadCandidates, YVHS_LIBRARY_ID } from "../libraryIdMigration.js";
 
 const LOCAL_COLLECTION_DB_NAME = "novelideas_local_collection";
 const LOCAL_COLLECTION_DB_STORE = "artifacts";
