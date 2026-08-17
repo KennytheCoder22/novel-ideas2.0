@@ -31,14 +31,28 @@ assert(
 assert(swipeSource.includes("useWindowDimensions()"), "viewport sizing reacts to browser zoom and display-size changes");
 assert(swipeSource.includes('html.style.overflowX = "hidden"'), "document root has a defensive horizontal overflow guard");
 assert(swipeSource.includes('body.style.overflowX = "hidden"'), "document body has a defensive horizontal overflow guard");
+assert(!swipeSource.includes(".style.overflowY"), "vertical page scrolling is not disabled by the containment guard");
 assert(swipeSource.includes('touchAction: "pinch-zoom"'), "touch containment is scoped to the draggable card while preserving user zoom");
 assert(
   swipeSource.includes("Platform.OS === \"web\" ? ({ touchAction: \"pinch-zoom\" } as any) : null"),
   "horizontal gestures are not disabled globally",
 );
 assert(
-  (swipeSource.match(/overflow: "hidden"/g) || []).length >= 5,
-  "the transformed card is clipped by its deck and viewport ancestors",
+  swipeSource.includes("position.setValue({ x: 0, y: dy })"),
+  "downward card translation remains enabled",
+);
+assert(
+  swipeSource.includes('animateOffscreen("down", handleDownNotSure)'),
+  "a downward threshold swipe still triggers Skip",
+);
+assert(
+  !/cardArea:\s*\{[^\n]*overflow:\s*"hidden"/.test(swipeSource)
+    && !/stage:\s*\{[^\n]*overflow:\s*"hidden"/.test(swipeSource),
+  "outer swipe layout does not clip the card's vertical drag axis",
+);
+assert(
+  /cardStage:\s*\{[^\n]*overflow:\s*"hidden"/.test(swipeSource),
+  "the immediate card viewport still contains transformed card visuals",
 );
 assert(
   swipeSource.includes('swipeTitle: { maxWidth: "100%", minWidth: 0, flexShrink: 1'),

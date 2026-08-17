@@ -6896,7 +6896,7 @@ const styles = StyleSheet.create({
   sessionInfoScroll: { maxHeight: 400 },
   sessionInfoText: { color: "#c8daf5", fontFamily: Platform.OS === "web" ? "monospace" : undefined, fontSize: 12, lineHeight: 20 },
 
-  cardArea: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, alignItems: "center", justifyContent: "flex-start", minHeight: 0, overflow: "hidden" },
+  cardArea: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, alignItems: "center", justifyContent: "flex-start", minHeight: 0 },
   cardAreaTight: { paddingTop: 0, paddingBottom: 0 },
 
   topRow: { width: "100%", maxWidth: "100%", minWidth: 0, flexDirection: "row", flexWrap: "wrap", gap: 8 },
@@ -6918,7 +6918,7 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   statusText: { color: "#cbd5f5", fontWeight: "800", fontSize: 12 },
 
-  stage: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, justifyContent: "center", alignItems: "center", overflow: "hidden" },
+  stage: { flex: 1, width: "100%", maxWidth: "100%", minWidth: 0, justifyContent: "center", alignItems: "center" },
   stageTop: { justifyContent: "flex-start", paddingTop: 10 },
 
   statusDivider: { width: "100%", height: 1, backgroundColor: "rgba(255,255,255,0.10)", marginTop: 8, marginBottom: 8 },
