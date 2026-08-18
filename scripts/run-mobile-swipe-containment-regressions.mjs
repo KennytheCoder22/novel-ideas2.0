@@ -46,6 +46,27 @@ assert(
   "a downward threshold swipe still triggers Skip",
 );
 assert(
+  swipeSource.includes('animateOffscreen("left", () => handleLeft(card))')
+    && swipeSource.includes('animateOffscreen("right", () => handleRight(card))'),
+  "left and right threshold swipes retain their actions",
+);
+assert(
+  swipeSource.includes("window.visualViewport")
+    && swipeSource.includes('visualViewport.addEventListener("resize", updateVisualViewportInset)')
+    && swipeSource.includes('visualViewport.addEventListener("scroll", updateVisualViewportInset)'),
+  "mobile direction placement follows the browser visual viewport",
+);
+assert(
+  swipeSource.includes('testID="swipe-direction-panel"')
+    && swipeSource.includes("translateY: -visualViewportBottomInset")
+    && swipeSource.includes('"max(0px, calc(100vh - 100dvh))"'),
+  "testing directions move above dynamic mobile browser chrome without resizing the card",
+);
+assert(
+  swipeSource.includes('"env(safe-area-inset-bottom, 0px)"'),
+  "testing directions account for the device bottom safe area",
+);
+assert(
   !/cardArea:\s*\{[^\n]*overflow:\s*"hidden"/.test(swipeSource)
     && !/stage:\s*\{[^\n]*overflow:\s*"hidden"/.test(swipeSource),
   "outer swipe layout does not clip the card's vertical drag axis",

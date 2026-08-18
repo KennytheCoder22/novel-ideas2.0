@@ -1501,6 +1501,7 @@ export default function SwipeDeckScreen(props: Props) {
     isSmallScreen,
     hasFineHoverPointer,
   });
+  const [visualViewportBottomInset, setVisualViewportBottomInset] = useState(0);
 
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -1512,6 +1513,25 @@ export default function SwipeDeckScreen(props: Props) {
     updatePointerCapability();
     pointerQuery.addEventListener("change", updatePointerCapability);
     return () => pointerQuery.removeEventListener("change", updatePointerCapability);
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined" || !window.visualViewport) {
+      return;
+    }
+
+    const visualViewport = window.visualViewport;
+    const updateVisualViewportInset = () => {
+      const visibleBottom = visualViewport.offsetTop + visualViewport.height;
+      setVisualViewportBottomInset(Math.max(0, Math.round(window.innerHeight - visibleBottom)));
+    };
+    updateVisualViewportInset();
+    visualViewport.addEventListener("resize", updateVisualViewportInset);
+    visualViewport.addEventListener("scroll", updateVisualViewportInset);
+    return () => {
+      visualViewport.removeEventListener("resize", updateVisualViewportInset);
+      visualViewport.removeEventListener("scroll", updateVisualViewportInset);
+    };
   }, []);
   const highlightColor = Platform.OS === "web" ? "var(--highlight-color)" : "#e0b84b";
 
@@ -6274,7 +6294,24 @@ function handleLeft(card?: SwipeDeckCard | null) {
               </View>
 
               {!showDesktopSwipeControls ? (
-                <View style={styles.bottomPanel}>
+                <View
+                  testID="swipe-direction-panel"
+                  style={[
+                    styles.bottomPanel,
+                    isTestingMode && visualViewportBottomInset > 0
+                      ? { transform: [{ translateY: -visualViewportBottomInset }] }
+                      : null,
+                    Platform.OS === "web" && isTestingMode
+                      ? ({
+                          position: "relative",
+                          bottom: visualViewportBottomInset > 0
+                            ? 0
+                            : "max(0px, calc(100vh - 100dvh))",
+                          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+                        } as any)
+                      : null,
+                  ]}
+                >
                   <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
                     <View style={[styles.divider, isSmallScreen && styles.dividerTight]} />
                     <View style={styles.clueRow}>
