@@ -19,7 +19,6 @@ export type HighlightKey = ThemeKey | "white" | "black" | "silver";
 export type TitleTextKey = "white" | "black";
 export const WEB_HIGHLIGHT_CSS_VAR = "--highlight-color";
 export const DEFAULT_HIGHLIGHT_COLOR = "#fbbf24";
-export const ADMIN_CONFIG_STORAGE_KEY = "novelideas_admin_config";
 export const ADMIN_CONFIG_STORAGE_KEY_PREFIX = "novelideas_admin_config_v2";
 export const ADMIN_CONFIG_DEFAULT_SCOPE = "default";
 export const ADMIN_CONFIG_CHANGED_EVENT = "novelideas:admin-config-saved";
