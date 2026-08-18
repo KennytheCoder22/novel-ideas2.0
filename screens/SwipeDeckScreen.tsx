@@ -6119,21 +6119,42 @@ function handleLeft(card?: SwipeDeckCard | null) {
                       </Text>
                     </View>
 
-                    <View style={styles.recActions}>
+                    <View style={[styles.recActions, styles.recNavigationActions]}>
                       <TouchableOpacity
-                        style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }]}
+                        style={[
+                          styles.btn,
+                          styles.btnOutlineGold,
+                          styles.recNavigationButton,
+                          styles.recNavigationOuterButton,
+                          { borderColor: highlightColor },
+                        ]}
                         onPress={isFirstRec ? tryAgain : handleBack}
                       >
-                        <Text style={styles.btnText}>{isFirstRec ? "Try Again" : "Back"}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }]} onPress={handleAlreadyRead}>
-                        <Text style={styles.btnText}>Already Read It</Text>
+                        <Text style={[styles.btnText, styles.recNavigationButtonText]}>{isFirstRec ? "Try Again" : "Back"}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }]}
+                        style={[
+                          styles.btn,
+                          styles.btnOutlineGold,
+                          styles.recNavigationButton,
+                          styles.recNavigationMiddleButton,
+                          { borderColor: highlightColor },
+                        ]}
+                        onPress={handleAlreadyRead}
+                      >
+                        <Text style={[styles.btnText, styles.recNavigationButtonText]}>Already Read It</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.btn,
+                          styles.btnOutlineGold,
+                          styles.recNavigationButton,
+                          styles.recNavigationOuterButton,
+                          { borderColor: highlightColor },
+                        ]}
                         onPress={handleNext}
                       >
-                        <Text style={styles.btnText}>Next</Text>
+                        <Text style={[styles.btnText, styles.recNavigationButtonText]}>Next</Text>
                       </TouchableOpacity>
                     </View>
 
@@ -7091,6 +7112,22 @@ const styles = StyleSheet.create({
   saveRecommendationButtonText: { color: "#fff", fontSize: 24, fontWeight: "900", lineHeight: 27 },
 
   recActions: { marginTop: 12, flexDirection: "row", gap: 12, justifyContent: "center" },
+  recNavigationActions: {
+    width: "100%",
+    maxWidth: 560,
+    minWidth: 0,
+    alignSelf: "center",
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+  recNavigationButton: {
+    minWidth: 0,
+    maxWidth: "100%",
+    paddingHorizontal: 6,
+  },
+  recNavigationOuterButton: { flex: 23 },
+  recNavigationMiddleButton: { flex: 50 },
+  recNavigationButtonText: { maxWidth: "100%", minWidth: 0, flexShrink: 1, textAlign: "center" },
   smallNote: { color: "#cbd5f5", fontWeight: "800", fontSize: 12, marginTop: 8 },
 
   ratingRow: {

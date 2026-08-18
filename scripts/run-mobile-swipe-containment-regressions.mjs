@@ -67,6 +67,26 @@ assert(
   "testing directions account for the device bottom safe area",
 );
 assert(
+  swipeSource.includes(">Already Read It</Text>")
+    && swipeSource.includes(">Next</Text>")
+    && swipeSource.includes('"Back"'),
+  "recommendation navigation keeps the full Back, Already Read It, and Next labels",
+);
+assert(
+  swipeSource.includes("recNavigationOuterButton: { flex: 23 }")
+    && swipeSource.includes("recNavigationMiddleButton: { flex: 50 }"),
+  "recommendation navigation gives the middle action substantially more width",
+);
+assert(
+  /recNavigationActions:\s*\{[^}]*width:\s*"100%",[^}]*minWidth:\s*0,[^}]*gap:\s*8,[^}]*paddingHorizontal:\s*8,/s.test(swipeSource)
+    && /recNavigationButton:\s*\{[^}]*minWidth:\s*0,[^}]*maxWidth:\s*"100%"/s.test(swipeSource),
+  "recommendation navigation stays inset and shrinkable on narrow screens",
+);
+assert(
+  /recNavigationButtonText:\s*\{[^}]*maxWidth:\s*"100%",[^}]*minWidth:\s*0,[^}]*flexShrink:\s*1/.test(swipeSource),
+  "enlarged recommendation action text wraps within its button",
+);
+assert(
   !/cardArea:\s*\{[^\n]*overflow:\s*"hidden"/.test(swipeSource)
     && !/stage:\s*\{[^\n]*overflow:\s*"hidden"/.test(swipeSource),
   "outer swipe layout does not clip the card's vertical drag axis",
