@@ -15,6 +15,7 @@
  *   S6 – Turning off the books category removes book cards from the deck.
  *   S7 – Default swipeCategories (all true) returns full deck; no cards are dropped.
  *   S8 – Session diagnostics never reference component bindings declared after the hook.
+ *   S10 – Fresh sessions use the full Fisher–Yates shuffle and do not reuse prior order.
  */
 
 import assert from "node:assert/strict";
@@ -347,6 +348,66 @@ test("S9: panResponder uses ref so handleRight receives the live card, not a sta
   const cardSeenByHandler = currentCardRef.current;
   assert.equal(cardSeenByHandler.id, "b", "panResponder must see the current card via ref, not the stale closure card");
   assert.notEqual(cardSeenByHandler.id, "a", "panResponder must not use the stale closure card");
+});
+
+// ---------------------------------------------------------------------------
+// S10 – Fresh session order is a new unbiased full-deck shuffle
+// ---------------------------------------------------------------------------
+
+test("S10: fresh sessions use shuffled position one and do not reuse prior card order", () => {
+  const source = fs.readFileSync(SWIPE_DECK_SCREEN_PATH, "utf8");
+  assert.match(
+    source,
+    /if \(!hasSessionEvidence\) return cards\[0\] \?\? null;\s*\n\s*const fallback = selectAdaptiveCard/,
+    "fresh sessions must use the first card from the session shuffle before adaptive ranking",
+  );
+  assert.match(
+    source,
+    /const cards = useMemo\(\(\) => shuffleArray\(deck\.cards\), \[deckKey, sessionNonce, deck\.cards\]\)/,
+    "sessionNonce must invalidate the memoized card order",
+  );
+  assert.match(
+    source,
+    /for \(let i = a\.length - 1; i > 0; i--\)[\s\S]*Math\.floor\(Math\.random\(\) \* \(i \+ 1\)\)/,
+    "production shuffle must remain full Fisher–Yates",
+  );
+
+  let state = 0x6d2b79f5;
+  const random = () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+  const shuffle = (values) => {
+    const copy = values.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const deck = Array.from({ length: 20 }, (_, index) => `card-${index}`);
+  const firstCounts = new Map(deck.map((card) => [card, 0]));
+  let previousOrder = null;
+  let consecutiveOrderReuses = 0;
+  for (let session = 0; session < 10_000; session++) {
+    const order = shuffle(deck);
+    firstCounts.set(order[0], firstCounts.get(order[0]) + 1);
+    if (previousOrder && order.every((card, index) => card === previousOrder[index])) {
+      consecutiveOrderReuses++;
+    }
+    previousOrder = order;
+  }
+
+  assert.equal(consecutiveOrderReuses, 0, "fresh sessions must not reuse the prior full order");
+  assert.equal(
+    [...firstCounts.values()].filter((count) => count > 0).length,
+    deck.length,
+    "every card must be able to appear first",
+  );
+  const expected = 10_000 / deck.length;
+  const maxDeviation = Math.max(...[...firstCounts.values()].map((count) => Math.abs(count - expected)));
+  assert.ok(maxDeviation < 5 * Math.sqrt(expected), "first-card distribution must remain statistically reasonable");
 });
 
 // ---------------------------------------------------------------------------

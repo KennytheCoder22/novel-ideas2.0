@@ -1402,12 +1402,12 @@ function selectTwentyQCard(args: {
     recentCardKeys.length > 0 ||
     Object.values(tagCounts || {}).some((value) => Number(value || 0) !== 0);
 
-  const fallback = selectAdaptiveCard({ deckKey, cards, tagCounts, recentCardKeys, recentCards });
-
   // First card of a fresh session should not be locked to the strongest
-  // diagnostic/20Q card. Use the already shuffled session deck plus the
-  // adaptive weighted picker so every age band starts with real variety.
-  if (!hasSessionEvidence) return fallback;
+  // diagnostic/20Q cards. The first position of the unbiased session shuffle
+  // already gives every enabled card an equal chance to lead.
+  if (!hasSessionEvidence) return cards[0] ?? null;
+
+  const fallback = selectAdaptiveCard({ deckKey, cards, tagCounts, recentCardKeys, recentCards });
 
   if (!objective) return fallback;
 
