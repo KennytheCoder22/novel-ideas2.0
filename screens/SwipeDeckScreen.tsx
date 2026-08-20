@@ -2313,22 +2313,37 @@ export default function SwipeDeckScreen(props: Props) {
     const presentationKey = `${deckKey}:${sessionNonce}:${cardId}`;
     if (recordedCardPerformanceRef.current.has(presentationKey)) return;
     recordedCardPerformanceRef.current.add(presentationKey);
-    void fetch(SWIPE_CARD_PERFORMANCE_API_URL, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        cardId,
-        cardType: cardCategoryFromTags(card),
-        title: String((card as any)?.title || (card as any)?.prompt || cardId),
-        ageBand: deckKeyToAgeBandV2(deckKey),
-        action,
-      }),
-    }).then((response) => {
-      if (!response.ok) console.warn("[swipe-card-performance] record_failed", { status: response.status });
-    }).catch((error) => {
-      console.warn("[swipe-card-performance] request_failed", String(error instanceof Error ? error.message : error));
+    const eventId = `swipe-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
+    const body = JSON.stringify({
+      eventId,
+      cardId,
+      cardType: cardCategoryFromTags(card),
+      title: String((card as any)?.title || (card as any)?.prompt || cardId),
+      ageBand: deckKeyToAgeBandV2(deckKey),
+      action,
     });
+    void (async () => {
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        try {
+          const response = await fetch(SWIPE_CARD_PERFORMANCE_API_URL, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body,
+          });
+          if (response.ok) return;
+          console.warn("[swipe-card-performance] record_failed", { status: response.status, attempt });
+          if (response.status < 500) break;
+        } catch (error) {
+          console.warn("[swipe-card-performance] request_failed", {
+            attempt,
+            message: String(error instanceof Error ? error.message : error),
+          });
+        }
+        if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 300));
+      }
+      recordedCardPerformanceRef.current.delete(presentationKey);
+    })();
   }
 function handleRight(card: SwipeDeckCard) {
   setRightSwipes((n) => n + 1);

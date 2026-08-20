@@ -10,3 +10,8 @@ CREATE TABLE IF NOT EXISTS swipe_card_performance (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (card_id, age_band)
 );
+
+CREATE TABLE IF NOT EXISTS swipe_card_performance_events (
+  event_id TEXT PRIMARY KEY,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

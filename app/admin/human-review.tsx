@@ -38,7 +38,7 @@ type DashboardPayload = {
     completedReviewSubmissions: number;
     [key: string]: any;
   };
-  swipeCardPerformanceStorageMode: "durable_postgres" | "unavailable" | "error";
+  swipeCardPerformanceStorageMode: "durable_postgres" | "durable_blob" | "unavailable" | "error";
   swipeCardPerformanceError: string | null;
   swipeCardPerformance: SwipeCardPerformanceRow[];
   realSessionAuditStorageMode: "durable_blob" | "unavailable" | "error";
@@ -788,7 +788,15 @@ export default function HumanReviewDashboardRoute() {
                 <Text style={styles.inlineNote}>
                   Swipe Card Performance storage is unavailable: {data.swipeCardPerformanceError || "unknown error"}
                 </Text>
-              ) : null}
+              ) : data.swipeCardPerformanceStorageMode === "unavailable" ? (
+                <Text style={styles.inlineNote}>
+                  Swipe Card Performance collection is off because no durable storage is configured.
+                </Text>
+              ) : (
+                <Text style={styles.inlineNote}>
+                  Collection active ({data.swipeCardPerformanceStorageMode === "durable_postgres" ? "Postgres" : "Blob"}).
+                </Text>
+              )}
               <View style={styles.chipWrap}>
                 {([
                   ["highest_skip_rate", "Highest skip rate"],
@@ -834,7 +842,9 @@ export default function HumanReviewDashboardRoute() {
                   </View>
                 );
               })}
-              {!swipeCardRows.length ? <Text style={styles.inlineNote}>No swipe card performance data collected yet.</Text> : null}
+              {!swipeCardRows.length && data.swipeCardPerformanceStorageMode !== "unavailable" && data.swipeCardPerformanceStorageMode !== "error" ? (
+                <Text style={styles.inlineNote}>Collection is active, but no swipe card performance data has been recorded yet.</Text>
+              ) : null}
             </View>
 
             {Array.isArray(data.evidenceNotes) && data.evidenceNotes.length ? (

@@ -13,7 +13,7 @@ import {
   isPreviewAcceptanceEnvironmentEnabled,
   readPreviewAcceptanceDashboardModeFromCookie,
 } from "../lib/previewAcceptanceHarness";
-import { listSwipeCardPerformance } from "../lib/swipeCardPerformance";
+import { listSwipeCardPerformance, listSwipeCardPerformanceBlob } from "../lib/swipeCardPerformance";
 import { listRealSessionAudits, logRealSessionAuditStorageFailure } from "../lib/realSessionOverlapAudit";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -57,10 +57,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const repo = createRepository();
-    const swipeCardPerformanceStorageAvailable = Boolean(process.env.POSTGRES_URL);
-    const swipeCardPerformanceResult = swipeCardPerformanceStorageAvailable
-      ? listSwipeCardPerformance()
-          .then((rows) => ({ rows, storageMode: "durable_postgres", error: null }))
+    const swipeCardPerformanceStorageMode = process.env.POSTGRES_URL
+      ? "durable_postgres"
+      : process.env.BLOB_READ_WRITE_TOKEN
+        ? "durable_blob"
+        : "unavailable";
+    const swipeCardPerformanceResult = swipeCardPerformanceStorageMode !== "unavailable"
+      ? (swipeCardPerformanceStorageMode === "durable_postgres" ? listSwipeCardPerformance() : listSwipeCardPerformanceBlob())
+          .then((rows) => ({ rows, storageMode: swipeCardPerformanceStorageMode, error: null }))
           .catch((error: any) => ({
             rows: [],
             storageMode: "error",
