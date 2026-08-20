@@ -48,6 +48,7 @@ import {
 import { PatronColorPickerField } from "../components/PatronColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
+import { LibrarianSetupGuideModal } from "../components/admin/LibrarianSetupGuideModal";
 import { activateAdminSession, isAdminSessionActive } from "../lib/adminSession";
 import { getRuntimeLibraryId, getRuntimeLibraryName } from "../constants/runtimeConfig";
 import {
@@ -632,6 +633,7 @@ export default function AdminWebScreen() {
   const [pinDraft, setPinDraft] = useState("");
   const [pinEditorVisible, setPinEditorVisible] = useState(() => !hasSavedAdminPin(config) && !!config?.admin?.pinEnabled);
   const [pinStatus, setPinStatus] = useState<"idle" | "saved">("idle");
+  const [setupGuideVisible, setSetupGuideVisible] = useState(false);
   const [adminLibraries, setAdminLibraries] = useState<SavedLibrary[]>(() => {
     try {
       return readAdminLibraries(typeof localStorage === "undefined" ? null : localStorage);
@@ -1389,6 +1391,15 @@ export default function AdminWebScreen() {
           </View>
           <View style={styles.pageHeaderActions}>
             <TouchableOpacity
+              style={[styles.btn, styles.headerActionButton, { borderColor: t.accentBorder, backgroundColor: t.inputBg }]}
+              onPress={() => setSetupGuideVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Open Librarian Setup Guide"
+              testID="open-librarian-setup-guide"
+            >
+              <Text style={[styles.btnText, { color: t.text }]}>Librarian Setup Guide</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.btn, styles.headerActionButton, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}
               onPress={() => {
                 Alert.alert(
@@ -2028,6 +2039,19 @@ export default function AdminWebScreen() {
         ) : null}
       </View>
     ) : null}
+    <LibrarianSetupGuideModal
+      visible={setupGuideVisible}
+      onClose={() => setSetupGuideVisible(false)}
+      colors={{
+        background: t.appBg,
+        card: t.cardBg,
+        border: t.cardBorder,
+        text: t.text,
+        muted: t.subtext,
+        accent: t.accent,
+        accentText: t.accentTextOn,
+      }}
+    />
     </View>
   );
 }
