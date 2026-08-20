@@ -2157,6 +2157,16 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     });
   }
 
+  function openNovelIdeasTutorial() {
+    closeHeaderMenu();
+    const tutorialUrl = Platform.OS === "web" && typeof window !== "undefined"
+      ? new URL("/how-to-use-novelideas.mp4", window.location.origin).toString()
+      : "https://novelideas.app/how-to-use-novelideas.mp4";
+    Linking.openURL(tutorialUrl).catch(() => {
+      Alert.alert("Unable to open tutorial", "Visit novelideas.app/how-to-use-novelideas.mp4.");
+    });
+  }
+
   function openMyList() {
     closeHeaderMenu();
     setShowMyList(true);
@@ -2372,6 +2382,14 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/how-it-works")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How NovelIdeas Works</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerMenuItem}
+              onPress={openNovelIdeasTutorial}
+              accessibilityRole="link"
+              accessibilityLabel="How to Use NovelIdeas video"
+            >
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How to Use NovelIdeas</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/feedback")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Send Feedback</Text>

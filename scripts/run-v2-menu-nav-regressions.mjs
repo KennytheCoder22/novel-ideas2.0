@@ -21,6 +21,7 @@
  *   NM14 — openInfoScreen helper closes the menu before routing
  *   NM15 — No admin stub TouchableOpacity items remain in the admin section of renderHeaderMenu
  *   NM16 — Tip Developer opens the developer's Venmo profile
+ *   NM17 — How to Use NovelIdeas opens the bundled tutorial video
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -106,6 +107,19 @@ const adminSectionSource =
   assertIncludes(menuFnSource, "onPress={openDeveloperTip}", "NM16: Tip Developer menu item must use its external-link handler");
   assertIncludes(menuFnSource, "Tip Developer", "NM16: Tip Developer must appear in the menu");
   console.log("PASS NM16: Tip Developer opens @ken-bragg on Venmo");
+}
+
+// NM17: How to Use NovelIdeas closes the menu and opens the bundled tutorial video.
+{
+  const tutorialPath = resolve(ROOT, "public/how-to-use-novelideas.mp4");
+  assert(existsSync(tutorialPath), "NM17: tutorial video must be included in public assets");
+  assert(readFileSync(tutorialPath).byteLength > 0, "NM17: tutorial video must not be empty");
+  assertIncludes(indexSource, "function openNovelIdeasTutorial()", "NM17: tutorial handler must exist");
+  assertIncludes(indexSource, 'new URL("/how-to-use-novelideas.mp4", window.location.origin)', "NM17: web must use the deployed tutorial URL");
+  assertIncludes(indexSource, '"https://novelideas.app/how-to-use-novelideas.mp4"', "NM17: native must use the production tutorial URL");
+  assertIncludes(menuFnSource, "onPress={openNovelIdeasTutorial}", "NM17: tutorial menu item must use its external-link handler");
+  assertIncludes(menuFnSource, "How to Use NovelIdeas", "NM17: tutorial link must appear in the menu");
+  console.log("PASS NM17: How to Use NovelIdeas opens the bundled tutorial video");
 }
 
 // NM6: Admin items are hidden — no TouchableOpacity wiring to stub calls in admin section.
