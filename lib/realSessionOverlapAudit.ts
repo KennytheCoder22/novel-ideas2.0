@@ -160,7 +160,12 @@ function readBlobReadWriteToken(): string {
   if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
     return raw.slice(1, -1).trim();
   }
+
   return raw;
+}
+
+export function realSessionAuditBlobStorageConfigured(): boolean {
+  return Boolean(readBlobReadWriteToken());
 }
 
 function safeStorageErrorCode(error: unknown): string {

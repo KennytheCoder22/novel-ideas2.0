@@ -2,12 +2,20 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   logRealSessionAuditStorageFailure,
   parseRealSessionAuditEvent,
+  realSessionAuditBlobStorageConfigured,
   recordRealSessionAudit,
 } from "../lib/realSessionOverlapAudit";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "GET") {
+    const available = realSessionAuditBlobStorageConfigured();
+    return res.status(available ? 200 : 503).json({
+      status: available ? "ready" : "unavailable",
+      storageMode: available ? "durable_blob" : "unavailable",
+    });
+  }
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "method_not_allowed" });
   }
 

@@ -31,7 +31,7 @@ export interface ListReviewsFilter {
 export interface HumanReviewRepository {
   /**
    * Identifies the storage backend in API responses.
-   * "local_filesystem" | "durable_postgres"
+   * "local_filesystem" | "durable_postgres" | "durable_blob"
    */
   readonly storageMode: string;
 

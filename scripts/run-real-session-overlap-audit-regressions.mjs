@@ -26,8 +26,17 @@ const {
   computeRecommendationOverlap,
   listRealSessionAudits,
   parseRealSessionAuditEvent,
+  realSessionAuditBlobStorageConfigured,
   recordRealSessionAudit,
 } = require(resolve(repoRoot, "lib", "realSessionOverlapAudit.ts"));
+
+const savedBlobToken = process.env.BLOB_READ_WRITE_TOKEN;
+process.env.BLOB_READ_WRITE_TOKEN = " '  ' ";
+assert.equal(realSessionAuditBlobStorageConfigured(), false);
+process.env.BLOB_READ_WRITE_TOKEN = "test-token";
+assert.equal(realSessionAuditBlobStorageConfigured(), true);
+if (savedBlobToken === undefined) delete process.env.BLOB_READ_WRITE_TOKEN;
+else process.env.BLOB_READ_WRITE_TOKEN = savedBlobToken;
 
 class MemoryBlobStore {
   constructor() {
@@ -197,10 +206,12 @@ assert.match(screen, /libraryScope: runtimeLibraryId \? "hosted" : "default"/);
 assert.doesNotMatch(screen, /runtimeLibraryId === "y" && !recordedSessionAuditsRef/);
 assert.match(screen, /searchPlan: result\.diagnostics\.searchPlan/);
 assert.match(screen, /source: String\(item\.doc\.source \|\| "unknown"\)/);
-assert.match(screen, /void fetch\(REAL_SESSION_AUDIT_API_URL/);
-assert.match(screen, /\.catch\(\(error\) => \{\s*console\.warn\("\[real-session-audit\] request_failed"/);
-assert(screen.indexOf("setRecItems(guardedNormalizedItems)") < screen.indexOf("void fetch(REAL_SESSION_AUDIT_API_URL"));
+assert.match(screen, /fetch\(REAL_SESSION_AUDIT_API_URL/);
+assert.match(screen, /for \(let attempt = 1; attempt <= 3; attempt \+= 1\)/);
+assert.match(screen, /recordedSessionAuditsRef\.current\.delete\(runId\)/);
+assert(screen.indexOf("setRecItems(guardedNormalizedItems)") < screen.indexOf("fetch(REAL_SESSION_AUDIT_API_URL"));
 assert.match(api, /logRealSessionAuditStorageFailure\("record", error\)/);
+assert.match(api, /req\.method === "GET"/);
 assert.match(dashboardApi, /storageMode: "durable_blob"/);
 assert.match(dashboardApi, /listRealSessionAudits\(\)/);
 assert.match(dashboard, /Recommendation queries:/);

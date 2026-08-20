@@ -6,9 +6,10 @@
  *   const repo = createRepository();
  *
  * Storage mode selection (in priority order):
- *   1. HUMAN_REVIEW_STORAGE_MODE env var ("durable_postgres" | "local_filesystem")
+ *   1. HUMAN_REVIEW_STORAGE_MODE env var ("durable_postgres" | "durable_blob" | "local_filesystem")
  *   2. POSTGRES_URL present → "durable_postgres"
- *   3. Default → "local_filesystem"
+ *   3. BLOB_READ_WRITE_TOKEN present → "durable_blob"
+ *   4. Default → "local_filesystem"
  *
  * Operator setup for durable_postgres:
  *   1. Create a Vercel Postgres store in the Vercel dashboard.
@@ -20,10 +21,12 @@
 export type { HumanReviewRepository, SaveSnapshotResult, AppendReviewResult, ListReviewsFilter } from "./HumanReviewRepository";
 export { LocalFilesystemHumanReviewRepository } from "./LocalFilesystemHumanReviewRepository";
 export { DurableHumanReviewRepository } from "./DurableHumanReviewRepository";
+export { BlobHumanReviewRepository } from "./BlobHumanReviewRepository";
 
 import type { HumanReviewRepository } from "./HumanReviewRepository";
 import { LocalFilesystemHumanReviewRepository } from "./LocalFilesystemHumanReviewRepository";
 import { DurableHumanReviewRepository } from "./DurableHumanReviewRepository";
+import { BlobHumanReviewRepository, humanReviewBlobStorageConfigured } from "./BlobHumanReviewRepository";
 
 /**
  * Create and return the appropriate repository instance.
@@ -42,9 +45,16 @@ export function createRepository(): HumanReviewRepository {
     return new LocalFilesystemHumanReviewRepository();
   }
 
-  // Auto-select: use durable if POSTGRES_URL is present.
+  if (explicitMode === "durable_blob") {
+    return new BlobHumanReviewRepository();
+  }
+
   if (process.env.POSTGRES_URL) {
     return new DurableHumanReviewRepository();
+  }
+
+  if (humanReviewBlobStorageConfigured()) {
+    return new BlobHumanReviewRepository();
   }
 
   return new LocalFilesystemHumanReviewRepository();

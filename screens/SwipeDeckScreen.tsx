@@ -3559,10 +3559,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
               value: String(signal?.value || ""),
               weight: Number(signal?.weight || 0),
             })) : []);
-            void fetch(REAL_SESSION_AUDIT_API_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
+            const auditBody = JSON.stringify({
                 auditId: runId,
                 libraryId: runtimeLibraryId || "default",
                 libraryScope: runtimeLibraryId ? "hosted" : "default",
@@ -3582,12 +3579,28 @@ function handleLeft(card?: SwipeDeckCard | null) {
                 finalRecommendations: guardedNormalizedItems.slice(0, 10).map((item) => item.kind === "open_library"
                   ? { id: docId(item.doc), title: item.doc.title, source: String(item.doc.source || "unknown") }
                   : { id: fallbackId(item.book), title: item.book.title, source: "fallback" }),
-              }),
-            }).then((response) => {
-              if (!response.ok) console.warn("[real-session-audit] record_failed", { status: response.status });
-            }).catch((error) => {
-              console.warn("[real-session-audit] request_failed", String(error instanceof Error ? error.message : error));
             });
+            void (async () => {
+              for (let attempt = 1; attempt <= 3; attempt += 1) {
+                try {
+                  const response = await fetch(REAL_SESSION_AUDIT_API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: auditBody,
+                  });
+                  if (response.ok) return;
+                  console.warn("[real-session-audit] record_failed", { status: response.status, attempt });
+                  if (response.status < 500) break;
+                } catch (error) {
+                  console.warn("[real-session-audit] request_failed", {
+                    attempt,
+                    message: String(error instanceof Error ? error.message : error),
+                  });
+                }
+                if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 300));
+              }
+              recordedSessionAuditsRef.current.delete(runId);
+            })();
           }
         } else {
           setRecItems([]);
@@ -5765,7 +5778,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
       }
 
       const storageMode: string = String((payload as any)?.storageMode || "local_filesystem");
-      const durableSaved = storageMode === "durable_postgres";
+      const durableSaved = storageMode === "durable_postgres" || storageMode === "durable_blob";
       if (isTestingMode && !durableSaved) {
         setHumanReviewStatus(
           "We couldn't save your evaluation because durable review storage is unavailable. Please tell the test operator and try again later."

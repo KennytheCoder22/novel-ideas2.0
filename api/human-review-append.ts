@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRepository } from "../lib/humanReview/index";
+import { humanReviewBlobStorageConfigured } from "../lib/humanReview/BlobHumanReviewRepository";
 
 type CoreModule = {
   loadRubric: (versionOrPath?: string) => { path: string; rubric: any };
@@ -21,12 +22,26 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "GET") {
+    try {
+      const repo = createRepository();
+      const durable = repo.storageMode === "durable_postgres" || repo.storageMode === "durable_blob";
+      return res.status(durable ? 200 : 503).json({
+        status: durable ? "ready" : "unavailable",
+        storageMode: repo.storageMode,
+      });
+    } catch (error: any) {
+      return res.status(503).json({
+        status: "unavailable",
+        error: typeof error?.message === "string" ? error.message : "human_review_storage_unavailable",
+      });
+    }
+  }
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "method_not_allowed" });
   }
 
-  // Fail fast if durable mode is expected but POSTGRES_URL is missing.
   const requestedMode = process.env.HUMAN_REVIEW_STORAGE_MODE;
   if (requestedMode === "durable_postgres" && !process.env.POSTGRES_URL) {
     return res.status(503).json({
@@ -34,6 +49,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       detail:
         "HUMAN_REVIEW_STORAGE_MODE is set to durable_postgres but POSTGRES_URL is not configured. " +
         "Link a Vercel Postgres store and re-deploy.",
+    });
+  }
+  if (requestedMode === "durable_blob" && !humanReviewBlobStorageConfigured()) {
+    return res.status(503).json({
+      error: "durable_storage_unavailable",
+      detail: "HUMAN_REVIEW_STORAGE_MODE is set to durable_blob but BLOB_READ_WRITE_TOKEN is not configured.",
     });
   }
 

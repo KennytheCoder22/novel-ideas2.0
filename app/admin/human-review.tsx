@@ -742,7 +742,13 @@ export default function HumanReviewDashboardRoute() {
                 <Text style={styles.inlineNote}>
                   Real Session Audit storage is unavailable: {data.realSessionAuditError || "unknown error"}
                 </Text>
-              ) : null}
+              ) : data.realSessionAuditStorageMode === "unavailable" ? (
+                <Text style={styles.inlineNote}>
+                  Real Session Audit collection is off because durable Blob storage is not configured.
+                </Text>
+              ) : (
+                <Text style={styles.inlineNote}>Collection active (Blob).</Text>
+              )}
               {(data.realSessionAudits || []).map((row) => {
                 const formatSignals = (key: string) => (row.dominantTaste?.[key] || [])
                   .map((signal) => `${signal.value} (${signal.weight})`)
@@ -776,7 +782,9 @@ export default function HumanReviewDashboardRoute() {
                   </View>
                 );
               })}
-              {!data.realSessionAudits.length ? <Text style={styles.inlineNote}>No completed recommendation sessions collected yet.</Text> : null}
+              {!data.realSessionAudits.length && data.realSessionAuditStorageMode === "durable_blob" ? (
+                <Text style={styles.inlineNote}>Collection is active, but no completed recommendation sessions have been recorded yet.</Text>
+              ) : null}
             </View>
 
             <View style={styles.section}>

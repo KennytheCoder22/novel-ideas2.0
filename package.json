@@ -53,6 +53,7 @@
     "test:v2:human-review-infrastructure": "node scripts/run-v2-human-review-regressions.mjs",
     "test:v2:human-review-admin-form": "node scripts/run-v2-human-review-admin-form-regressions.mjs",
     "test:v2:human-review-durable-storage": "node scripts/run-v2-human-review-durable-regressions.mjs",
+    "test:human-review-blob-storage": "node scripts/run-human-review-blob-regressions.mjs",
     "test:v2:human-review-dashboard": "node scripts/run-v2-human-review-dashboard-regressions.mjs",
     "test:v2:human-review-paginated-ux": "node scripts/run-v2-human-review-paginated-ux-regressions.mjs",
     "test:v2:testing-route": "node scripts/run-v2-testing-route-regressions.mjs",
