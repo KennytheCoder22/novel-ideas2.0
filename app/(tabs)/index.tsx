@@ -2383,9 +2383,9 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
               style={styles.headerMenuItem}
               onPress={openDeveloperTip}
               accessibilityRole="link"
-              accessibilityLabel="Tip Developer on Venmo"
+              accessibilityLabel="Tip the Developer on Venmo"
             >
-              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Tip Developer</Text>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Tip the Developer</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/privacy")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Privacy</Text>

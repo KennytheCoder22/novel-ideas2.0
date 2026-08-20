@@ -106,7 +106,7 @@ const adminSectionSource =
   assertIncludes(indexSource, "function openDeveloperTip()", "NM16: Tip Developer handler must exist");
   assertIncludes(indexSource, "closeHeaderMenu();", "NM16: external-link handlers must close the menu");
   assertIncludes(menuFnSource, "onPress={openDeveloperTip}", "NM16: Tip Developer menu item must use its external-link handler");
-  assertIncludes(menuFnSource, "Tip Developer", "NM16: Tip Developer must appear in the menu");
+  assertIncludes(menuFnSource, "Tip the Developer", "NM16: Tip the Developer must appear in the menu");
   console.log("PASS NM16: Tip Developer opens @ken-bragg on Venmo");
 }
 
