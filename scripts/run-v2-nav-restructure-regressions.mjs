@@ -103,7 +103,7 @@ const openAdminEntrySource =
 
 // N6
 {
-  for (const item of ["Customize", "Help Improve NovelIdeas", "How NovelIdeas Works", "Send Feedback", "Privacy", "About"]) {
+  for (const item of ["Customize", "Help Improve NovelIdeas", "How to Use NovelIdeas", "Send Feedback", "Privacy", "About"]) {
     assertIncludes(indexSource, item, `N6: public menu must include ${item}`);
   }
   assertIncludes(indexSource, "headerMenuDivider", "N6: menu should include section divider(s)");

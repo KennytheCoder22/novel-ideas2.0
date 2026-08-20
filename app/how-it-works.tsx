@@ -4,8 +4,9 @@
  * Explains: swiping, recommendation generation, and optional anonymous Human Review.
  */
 
+import React from "react";
 import { router } from "expo-router";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, SafeAreaView } from "react-native";
+import { Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, SafeAreaView } from "react-native";
 
 export default function HowItWorksScreen() {
   return (
@@ -14,9 +15,12 @@ export default function HowItWorksScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
           <Text style={styles.closeBtnText}>✕</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>How NovelIdeas Works</Text>
+        <Text style={styles.title}>How to Use NovelIdeas</Text>
       </View>
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+        <TutorialVideo />
+        <Text style={styles.pageHeading}>How NovelIdeas Works</Text>
+
         <Section heading="Swiping">
           NovelIdeas shows you cards from categories such as books, movies, TV shows, games,
           YouTube, anime/manga, and podcasts. Swipe right (or tap Like) when something appeals to
@@ -54,6 +58,38 @@ export default function HowItWorksScreen() {
   );
 }
 
+function TutorialVideo() {
+  if (Platform.OS === "web") {
+    return React.createElement("video", {
+      controls: true,
+      playsInline: true,
+      preload: "metadata",
+      src: "/how-to-use-novelideas.mp4",
+      title: "How to Use NovelIdeas video",
+      style: {
+        width: "100%",
+        maxWidth: 760,
+        height: "auto",
+        alignSelf: "center",
+        borderRadius: 12,
+        backgroundColor: "#000",
+        display: "block",
+      },
+    });
+  }
+
+  return (
+    <TouchableOpacity
+      style={styles.videoFallback}
+      onPress={() => void Linking.openURL("https://novelideas.app/how-to-use-novelideas.mp4")}
+      accessibilityRole="link"
+      accessibilityLabel="Play How to Use NovelIdeas video"
+    >
+      <Text style={styles.videoFallbackText}>Play How to Use NovelIdeas Video</Text>
+    </TouchableOpacity>
+  );
+}
+
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
@@ -79,6 +115,21 @@ const styles = StyleSheet.create({
   title: { color: "#e5efff", fontSize: 18, fontWeight: "900", flex: 1 },
   body: { flex: 1 },
   bodyContent: { padding: 20, paddingBottom: 40 },
+  pageHeading: { color: "#e5efff", fontSize: 20, fontWeight: "900", marginTop: 24, marginBottom: 20 },
+  videoFallback: {
+    width: "100%",
+    maxWidth: 760,
+    minHeight: 120,
+    alignSelf: "center",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#d6b35a",
+    backgroundColor: "#0e2442",
+    padding: 20,
+  },
+  videoFallbackText: { color: "#e5efff", fontSize: 16, fontWeight: "800", textAlign: "center" },
   section: { marginBottom: 24 },
   heading: { color: "#c9d8f0", fontSize: 14, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 },
   body_text: { color: "#b0c4de", fontSize: 15, lineHeight: 23 },

@@ -6,7 +6,7 @@
  *
  * Tests:
  *   NM1  — showMenuInfoStub is removed (no "Coming soon" stubs in the menu)
- *   NM2  — How NovelIdeas Works routes to /how-it-works (openInfoScreen call)
+ *   NM2  — How to Use NovelIdeas routes to the combined /how-it-works page
  *   NM3  — Send Feedback routes to /feedback (openInfoScreen call)
  *   NM4  — Privacy routes to /privacy (openInfoScreen call)
  *   NM5  — About routes to /about (openInfoScreen call)
@@ -21,7 +21,7 @@
  *   NM14 — openInfoScreen helper closes the menu before routing
  *   NM15 — No admin stub TouchableOpacity items remain in the admin section of renderHeaderMenu
  *   NM16 — Tip Developer opens the developer's Venmo profile
- *   NM17 — How to Use NovelIdeas opens the bundled tutorial video
+ *   NM17 — Combined How to Use page embeds the bundled tutorial above the explanatory text
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -71,11 +71,12 @@ const adminSectionSource =
   console.log("PASS NM1: showMenuInfoStub removed — no dead stubs");
 }
 
-// NM2: How NovelIdeas Works routes to /how-it-works.
+// NM2: How to Use NovelIdeas routes to the combined /how-it-works page.
 {
-  assertIncludes(menuFnSource, 'openInfoScreen("/how-it-works")', "NM2: How NovelIdeas Works must call openInfoScreen('/how-it-works')");
-  assertIncludes(menuFnSource, "How NovelIdeas Works", "NM2: How NovelIdeas Works must still appear in menu");
-  console.log("PASS NM2: How NovelIdeas Works routes to /how-it-works");
+  assertIncludes(menuFnSource, 'openInfoScreen("/how-it-works")', "NM2: How to Use NovelIdeas must call openInfoScreen('/how-it-works')");
+  assertIncludes(menuFnSource, "How to Use NovelIdeas", "NM2: How to Use NovelIdeas must appear in menu");
+  assertNotIncludes(menuFnSource, ">How NovelIdeas Works</Text>", "NM2: duplicate How NovelIdeas Works menu item must be removed");
+  console.log("PASS NM2: How to Use NovelIdeas routes to the combined page");
 }
 
 // NM3: Send Feedback routes to /feedback.
@@ -109,17 +110,22 @@ const adminSectionSource =
   console.log("PASS NM16: Tip Developer opens @ken-bragg on Venmo");
 }
 
-// NM17: How to Use NovelIdeas closes the menu and opens the bundled tutorial video.
+// NM17: Combined page embeds the tutorial above the explanatory text.
 {
   const tutorialPath = resolve(ROOT, "public/how-to-use-novelideas.mp4");
+  const howToSource = readFileSync(resolve(ROOT, "app/how-it-works.tsx"), "utf8");
   assert(existsSync(tutorialPath), "NM17: tutorial video must be included in public assets");
   assert(readFileSync(tutorialPath).byteLength > 0, "NM17: tutorial video must not be empty");
-  assertIncludes(indexSource, "function openNovelIdeasTutorial()", "NM17: tutorial handler must exist");
-  assertIncludes(indexSource, 'new URL("/how-to-use-novelideas.mp4", window.location.origin)', "NM17: web must use the deployed tutorial URL");
-  assertIncludes(indexSource, '"https://novelideas.app/how-to-use-novelideas.mp4"', "NM17: native must use the production tutorial URL");
-  assertIncludes(menuFnSource, "onPress={openNovelIdeasTutorial}", "NM17: tutorial menu item must use its external-link handler");
-  assertIncludes(menuFnSource, "How to Use NovelIdeas", "NM17: tutorial link must appear in the menu");
-  console.log("PASS NM17: How to Use NovelIdeas opens the bundled tutorial video");
+  assertIncludes(howToSource, 'React.createElement("video"', "NM17: web page must embed a video player");
+  assertIncludes(howToSource, 'src: "/how-to-use-novelideas.mp4"', "NM17: video player must use the bundled tutorial");
+  assertIncludes(howToSource, "<TutorialVideo />", "NM17: tutorial video must render in the page body");
+  assertIncludes(howToSource, ">How NovelIdeas Works</Text>", "NM17: explanatory text heading must remain beneath the video");
+  assert(
+    howToSource.indexOf("<TutorialVideo />") < howToSource.indexOf(">How NovelIdeas Works</Text>"),
+    "NM17: tutorial video must appear above How NovelIdeas Works text",
+  );
+  assertNotIncludes(indexSource, "openNovelIdeasTutorial", "NM17: duplicate external tutorial handler must be removed");
+  console.log("PASS NM17: combined page embeds video above How NovelIdeas Works text");
 }
 
 // NM6: Admin items are hidden — no TouchableOpacity wiring to stub calls in admin section.
