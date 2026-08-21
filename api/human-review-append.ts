@@ -3,7 +3,10 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRepository } from "../lib/humanReview/index";
 import { humanReviewBlobStorageConfigured } from "../lib/humanReview/BlobHumanReviewRepository";
-import { deleteHumanReviewDraft } from "../lib/humanReview/humanReviewDraftStorage";
+import {
+  deleteHumanReviewDraft,
+  saveHumanReviewDraft,
+} from "../lib/humanReview/humanReviewDraftStorage";
 
 type CoreModule = {
   loadRubric: (versionOrPath?: string) => { path: string; rubric: any };
@@ -60,9 +63,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const core = await loadCore();
     const payload = req.body;
     if (!isObject(payload)) return res.status(400).json({ error: "invalid_payload" });
+
+    if (payload.action === "save_draft") {
+      const snapshot = payload.snapshot;
+      const draft = payload.draft;
+      if (!isObject(snapshot) || !isObject(draft)) {
+        return res.status(400).json({ error: "invalid_draft_payload" });
+      }
+      if (JSON.stringify(payload).length > 128_000) {
+        return res.status(413).json({ error: "draft_payload_too_large" });
+      }
+      const snapshotId = String(snapshot.snapshotId || "").trim();
+      const profileId = String(snapshot.profileId || "").trim();
+      const reviewerId = String(payload.draftOwnerId || "").trim();
+      const updatedAt = String(draft.updatedAt || "").trim();
+      const itemReviews = draft?.form?.itemReviews;
+      const recommendationItems = snapshot.recommendationItems;
+      if (
+        snapshot.schemaVersion !== "human_review_snapshot_v1"
+        || draft.schemaVersion !== "human_review_draft_v1"
+        || draft.snapshotId !== snapshotId
+        || !snapshotId
+        || snapshotId.length > 160
+        || !profileId
+        || profileId.length > 160
+        || !reviewerId
+        || reviewerId.length > 160
+        || !Number.isFinite(Date.parse(updatedAt))
+      ) {
+        return res.status(400).json({ error: "missing_draft_identity" });
+      }
+      if (
+        !Array.isArray(itemReviews)
+        || !Array.isArray(recommendationItems)
+        || itemReviews.length !== recommendationItems.length
+        || itemReviews.length > 20
+        || itemReviews.some((item: any, index: number) => (
+          !isObject(item)
+          || item.rank !== recommendationItems[index]?.rank
+          || String(item.title || "") !== String(recommendationItems[index]?.title || "")
+        ))
+      ) {
+        return res.status(400).json({ error: "invalid_draft_items" });
+      }
+      await saveHumanReviewDraft({
+        schemaVersion: "human_review_durable_draft_v1",
+        snapshotId,
+        profileId,
+        reviewerId,
+        snapshot,
+        draft,
+        updatedAt,
+      });
+      return res.status(200).json({ status: "saved", storageMode: createRepository().storageMode, updatedAt });
+    }
+
+    const core = await loadCore();
 
     const snapshot = payload.snapshot;
     const record = payload.record;

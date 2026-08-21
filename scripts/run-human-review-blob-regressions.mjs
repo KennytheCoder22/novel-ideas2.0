@@ -178,7 +178,7 @@ else process.env.HUMAN_REVIEW_STORAGE_MODE = savedMode;
 const screen = readFileSync(resolve("screens", "SwipeDeckScreen.tsx"), "utf8");
 const factory = readFileSync(resolve("lib", "humanReview", "index.ts"), "utf8");
 assert.match(screen, /storageMode === "durable_postgres" \|\| storageMode === "durable_blob"/);
-assert.match(screen, /fetch\("\/api\/human-review-draft"/);
+assert.match(screen, /action: "save_draft"/);
 assert.match(screen, /Save Draft & Exit/);
 assert.match(screen, /await queueDurableHumanReviewDraft\(humanReviewSnapshot, draft\)/);
 assert.match(factory, /humanReviewBlobStorageConfigured\(\)/);

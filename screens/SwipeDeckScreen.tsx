@@ -5677,10 +5677,10 @@ function handleLeft(card?: SwipeDeckCard | null) {
       .catch(() => false)
       .then(async () => {
         try {
-          const response = await fetch("/api/human-review-draft", {
+          const response = await fetch("/api/human-review-append", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ snapshot, draft: durableDraft, draftOwnerId }),
+            body: JSON.stringify({ action: "save_draft", snapshot, draft: durableDraft, draftOwnerId }),
           });
           if (!response.ok) throw new Error(`draft_save_${response.status}`);
           return true;
