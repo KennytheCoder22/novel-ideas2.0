@@ -54,3 +54,12 @@ CREATE INDEX IF NOT EXISTS idx_hr_reviews_reviewer_id
 -- prevent the same reviewer from submitting a second review for the same slate.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_hr_reviews_reviewer_snapshot_unique
   ON human_review_reviews (snapshot_id, reviewer_id);
+
+CREATE TABLE IF NOT EXISTS human_review_drafts (
+  snapshot_id  TEXT        NOT NULL,
+  reviewer_id  TEXT        NOT NULL,
+  profile_id   TEXT        NOT NULL,
+  updated_at   TIMESTAMPTZ NOT NULL,
+  payload_json JSONB       NOT NULL,
+  PRIMARY KEY (snapshot_id, reviewer_id)
+);

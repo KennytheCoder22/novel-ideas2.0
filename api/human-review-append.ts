@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRepository } from "../lib/humanReview/index";
 import { humanReviewBlobStorageConfigured } from "../lib/humanReview/BlobHumanReviewRepository";
+import { deleteHumanReviewDraft } from "../lib/humanReview/humanReviewDraftStorage";
 
 type CoreModule = {
   loadRubric: (versionOrPath?: string) => { path: string; rubric: any };
@@ -84,6 +85,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const snapshotResult = await repo.saveSnapshot(snapshot);
     const reviewResult = await repo.appendReview(record, rubric);
+    const draftOwnerId = String(payload.draftOwnerId || record.reviewerId || "").trim();
+    let draftCleanupPending = false;
+    if (repo.storageMode === "durable_blob" || repo.storageMode === "durable_postgres") {
+      await deleteHumanReviewDraft(snapshotId, draftOwnerId).catch(() => {
+        draftCleanupPending = true;
+      });
+    }
 
     return res.status(200).json({
       status: "ok",
@@ -92,6 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       profileId: reviewResult.profileId,
       snapshotUnchanged: snapshotResult.status === "unchanged",
       storageMode: repo.storageMode,
+      draftCleanupPending,
     });
   } catch (error: any) {
     const code = error?.code || error?.message;

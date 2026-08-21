@@ -44,6 +44,13 @@ type DashboardPayload = {
   realSessionAuditStorageMode: "durable_blob" | "unavailable" | "error";
   realSessionAuditError: string | null;
   realSessionAudits: RealSessionAuditRow[];
+  incompleteReviewDrafts: Array<{
+    snapshotId: string;
+    ageBand: string;
+    updatedAt: string;
+    completedItems: number;
+    totalItems: number;
+  }>;
   [key: string]: any;
 };
 
@@ -96,6 +103,7 @@ function isValidDashboardPayload(payload: unknown): payload is DashboardPayload 
   if (!Number.isFinite(payload.summary.completedReviewSubmissions)) return false;
   if (!Array.isArray(payload.swipeCardPerformance)) return false;
   if (!Array.isArray(payload.realSessionAudits)) return false;
+  if (!Array.isArray(payload.incompleteReviewDrafts)) return false;
   return true;
 }
 
@@ -403,7 +411,12 @@ export default function HumanReviewDashboardRoute() {
     if (error) return "failure";
     if (!data) return "failure";
     const totalEvidence = data.datasetInventory.realReviews + data.datasetInventory.syntheticReviews;
-    return totalEvidence > 0 || (data.swipeCardPerformance || []).length > 0 || (data.realSessionAudits || []).length > 0 ? "success" : "empty";
+    return totalEvidence > 0
+      || (data.incompleteReviewDrafts || []).length > 0
+      || (data.swipeCardPerformance || []).length > 0
+      || (data.realSessionAudits || []).length > 0
+      ? "success"
+      : "empty";
   })();
 
   const summary = data?.summary;
@@ -447,7 +460,7 @@ export default function HumanReviewDashboardRoute() {
             <>
               <Text style={styles.storageBadge}>Storage: {String(data?.storageMode || "unknown")}</Text>
               <Text style={styles.storageMeta}>
-                Real reviews: {data?.datasetInventory.realReviews} · Synthetic fixtures: {data?.datasetInventory.syntheticReviews}
+                Completed reviews: {data?.datasetInventory.realReviews} · Incomplete drafts: {data?.incompleteReviewDrafts.length} · Synthetic fixtures: {data?.datasetInventory.syntheticReviews}
               </Text>
             </>
           )}
@@ -733,6 +746,24 @@ export default function HumanReviewDashboardRoute() {
 
         {dashboardState === "success" && data ? (
           <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Incomplete Human Reviews</Text>
+              <Text style={styles.sectionSubtitle}>
+                Partial reviews are saved automatically and kept separate from completed-review metrics.
+              </Text>
+              {data.incompleteReviewDrafts.map((draft) => (
+                <View key={`${draft.snapshotId}:${draft.updatedAt}`} style={styles.storyCard}>
+                  <Text style={styles.storyTitle}>
+                    {labelAgeBand(draft.ageBand)} · {draft.completedItems}/{draft.totalItems} recommendations answered
+                  </Text>
+                  <Text style={styles.storyMeta}>Last saved {new Date(draft.updatedAt).toLocaleString()}</Text>
+                </View>
+              ))}
+              {!data.incompleteReviewDrafts.length ? (
+                <Text style={styles.inlineNote}>No incomplete Human Review drafts.</Text>
+              ) : null}
+            </View>
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Real Session Overlap Audit</Text>
               <Text style={styles.sectionSubtitle}>

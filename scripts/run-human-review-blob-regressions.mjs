@@ -26,6 +26,12 @@ const {
   humanReviewBlobStorageConfigured,
 } = require(resolve("lib", "humanReview", "BlobHumanReviewRepository.ts"));
 const { createRepository } = require(resolve("lib", "humanReview", "index.ts"));
+const {
+  deleteHumanReviewDraft,
+  listHumanReviewDrafts,
+  saveHumanReviewDraft,
+  summarizeHumanReviewDraft,
+} = require(resolve("lib", "humanReview", "humanReviewDraftStorage.ts"));
 const core = await import(pathToFileURL(resolve("scripts", "human-review", "lib", "human-review-core.mjs")).toString());
 
 class MemoryBlobStore {
@@ -122,6 +128,35 @@ await assert.rejects(
   /duplicate_reviewer_snapshot/,
 );
 
+const partialDraft = {
+  schemaVersion: "human_review_durable_draft_v1",
+  snapshotId: "hrs-blob-draft",
+  profileId: "runtime-adult-blob-draft",
+  reviewerId: "anonymous-reviewer",
+  snapshot: snapshot({ snapshotId: "hrs-blob-draft", profileId: "runtime-adult-blob-draft" }),
+  draft: {
+    form: {
+      reviewerId: "anonymous-reviewer",
+      itemReviews: [{ expectedEnjoyment: 5 }, { expectedEnjoyment: null }],
+    },
+  },
+  updatedAt: "2026-08-21T15:00:00.000Z",
+};
+await saveHumanReviewDraft(partialDraft, store);
+await saveHumanReviewDraft({ ...partialDraft, updatedAt: "2026-08-21T15:01:00.000Z" }, store);
+await saveHumanReviewDraft({ ...partialDraft, updatedAt: "2026-08-21T14:59:00.000Z" }, store);
+const drafts = await listHumanReviewDrafts(store);
+assert.equal(drafts.length, 1);
+assert.deepEqual(summarizeHumanReviewDraft(drafts[0]), {
+  snapshotId: "hrs-blob-draft",
+  ageBand: "adult",
+  updatedAt: "2026-08-21T15:01:00.000Z",
+  completedItems: 1,
+  totalItems: 2,
+});
+await deleteHumanReviewDraft(partialDraft.snapshotId, partialDraft.reviewerId, store);
+assert.equal((await listHumanReviewDrafts(store)).length, 0);
+
 const savedPostgres = process.env.POSTGRES_URL;
 const savedBlob = process.env.BLOB_READ_WRITE_TOKEN;
 const savedMode = process.env.HUMAN_REVIEW_STORAGE_MODE;
@@ -143,6 +178,9 @@ else process.env.HUMAN_REVIEW_STORAGE_MODE = savedMode;
 const screen = readFileSync(resolve("screens", "SwipeDeckScreen.tsx"), "utf8");
 const factory = readFileSync(resolve("lib", "humanReview", "index.ts"), "utf8");
 assert.match(screen, /storageMode === "durable_postgres" \|\| storageMode === "durable_blob"/);
+assert.match(screen, /fetch\("\/api\/human-review-draft"/);
+assert.match(screen, /Save Draft & Exit/);
+assert.match(screen, /await queueDurableHumanReviewDraft\(humanReviewSnapshot, draft\)/);
 assert.match(factory, /humanReviewBlobStorageConfigured\(\)/);
 
 console.log("Human Review Blob regressions passed.");

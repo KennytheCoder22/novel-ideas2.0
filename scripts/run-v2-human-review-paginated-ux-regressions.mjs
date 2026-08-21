@@ -311,10 +311,11 @@ async function run() {
 
   checks.push({ id: 10, name: "vibe_summary_rendering_and_fallback", pass: true });
 
-  // --- Check 11: "Save & Exit" action label present in source ---
+  // --- Check 11: durable draft exit action is explicit ---
   assert(
-    swipeScreenSource.includes("Save & Exit"),
-    "save_and_exit_label_missing"
+    swipeScreenSource.includes("Save Draft & Exit")
+      && swipeScreenSource.includes("await queueDurableHumanReviewDraft(humanReviewSnapshot, draft)"),
+    "durable_save_and_exit_missing"
   );
   checks.push({ id: 11, name: "save_and_exit_label_present", pass: true });
 

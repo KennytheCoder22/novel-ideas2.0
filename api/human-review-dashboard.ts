@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { hasValidOwnerAnalyticsSession, ownerAnalyticsAuthConfigured } from "../lib/ownerAnalyticsAuth";
 import { createRepository } from "../lib/humanReview/index";
+import { humanReviewBlobStorageConfigured } from "../lib/humanReview/BlobHumanReviewRepository";
 import {
   buildHumanReviewDashboardData,
   parseHumanReviewDashboardFilters,
@@ -19,6 +20,10 @@ import {
   logRealSessionAuditStorageFailure,
   realSessionAuditBlobStorageConfigured,
 } from "../lib/realSessionOverlapAudit";
+import {
+  listHumanReviewDrafts,
+  summarizeHumanReviewDraft,
+} from "../lib/humanReview/humanReviewDraftStorage";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Cache-Control", "no-store");
@@ -50,6 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({
         status: "ok",
         storageMode: PREVIEW_ACCEPTANCE_FIXTURE_STORAGE_MODE,
+        incompleteReviewDrafts: [],
         swipeCardPerformanceStorageMode: "unavailable",
         swipeCardPerformanceError: null,
         swipeCardPerformance: [],
@@ -88,16 +94,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             };
           })
       : Promise.resolve({ rows: [], storageMode: "unavailable", error: null });
-    const [snapshots, reviews, swipeCardPerformance, realSessionAudits] = await Promise.all([
+    const draftResult = process.env.POSTGRES_URL || humanReviewBlobStorageConfigured()
+      ? listHumanReviewDrafts().catch(() => [])
+      : Promise.resolve([]);
+    const [snapshots, reviews, drafts, swipeCardPerformance, realSessionAudits] = await Promise.all([
       repo.listSnapshots(),
       repo.listReviews(),
+      draftResult,
       swipeCardPerformanceResult,
       realSessionAuditResult,
     ]);
+    const completedDraftKeys = new Set(reviews.map((review) => (
+      `${String(review.snapshotId || "")}::${String(review.reviewerId || "")}`
+    )));
+    const incompleteDrafts = drafts.filter((draft) => (
+      !completedDraftKeys.has(`${draft.snapshotId}::${String(draft.draft?.form?.reviewerId || draft.reviewerId)}`)
+    ));
     const dashboard = buildHumanReviewDashboardData({ filters, snapshots, reviews });
     return res.status(200).json({
       status: "ok",
       storageMode: repo.storageMode,
+      incompleteReviewDrafts: incompleteDrafts.map(summarizeHumanReviewDraft),
       swipeCardPerformanceStorageMode: swipeCardPerformance.storageMode,
       swipeCardPerformanceError: swipeCardPerformance.error,
       swipeCardPerformance: swipeCardPerformance.rows,

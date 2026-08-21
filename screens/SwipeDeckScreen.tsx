@@ -1640,6 +1640,8 @@ export default function SwipeDeckScreen(props: Props) {
   const [humanReviewStepIndex, setHumanReviewStepIndex] = useState(0);
   const [humanReviewStepStartedAtByRank, setHumanReviewStepStartedAtByRank] = useState<Record<string, string>>({});
   const [humanReviewStepCompletedAtByRank, setHumanReviewStepCompletedAtByRank] = useState<Record<string, string>>({});
+  const humanReviewDraftSaveChainRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const humanReviewDraftOwnerIdRef = useRef("");
   const [middleGradesDeepDebugUiEnabled, setMiddleGradesDeepDebugUiEnabled] = useState(() => readMiddleGradesDeepDebugRequest().active);
   const v2UrlTriggeredRef = useRef(false);
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
@@ -5623,6 +5625,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
         anonymousReviewerId: isTestingMode ? getOrCreateAnonymousHumanReviewerId() : undefined,
       });
     setHumanReviewSnapshot(snapshot);
+    humanReviewDraftOwnerIdRef.current = getOrCreateAnonymousHumanReviewerId();
     setHumanReviewForm(effectiveForm);
     setHumanReviewStepIndex(initialStepIndex);
     setHumanReviewStepStartedAtByRank(initialStartedAtByRank);
@@ -5657,6 +5660,38 @@ function handleLeft(card?: SwipeDeckCard | null) {
     });
   }
 
+  function queueDurableHumanReviewDraft(
+    snapshot: HumanReviewSnapshotV1,
+    draft: ReturnType<typeof buildHumanReviewDraft>,
+  ): Promise<boolean> {
+    const draftOwnerId = humanReviewDraftOwnerIdRef.current || getOrCreateAnonymousHumanReviewerId();
+    humanReviewDraftOwnerIdRef.current = draftOwnerId;
+    const durableDraft = {
+      ...draft,
+      form: {
+        ...draft.form,
+        reviewerId: String(draft.form.reviewerId || "").trim() || draftOwnerId,
+      },
+    };
+    humanReviewDraftSaveChainRef.current = humanReviewDraftSaveChainRef.current
+      .catch(() => false)
+      .then(async () => {
+        try {
+          const response = await fetch("/api/human-review-draft", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ snapshot, draft: durableDraft, draftOwnerId }),
+          });
+          if (!response.ok) throw new Error(`draft_save_${response.status}`);
+          return true;
+        } catch (error) {
+          console.warn("[human-review] durable_draft_save_failed", String(error instanceof Error ? error.message : error));
+          return false;
+        }
+      });
+    return humanReviewDraftSaveChainRef.current;
+  }
+
   useEffect(() => {
     if (!showHumanReviewPanel || !humanReviewSnapshot || !humanReviewForm) return;
     const draft = buildHumanReviewDraft({
@@ -5668,6 +5703,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
       updatedAt: new Date().toISOString(),
     });
     safeStorageSet(humanReviewDraftStorageKey(humanReviewSnapshot.snapshotId), JSON.stringify(draft));
+    void queueDurableHumanReviewDraft(humanReviewSnapshot, draft);
   }, [
     showHumanReviewPanel,
     humanReviewSnapshot,
@@ -5676,6 +5712,27 @@ function handleLeft(card?: SwipeDeckCard | null) {
     humanReviewStepStartedAtByRank,
     humanReviewStepCompletedAtByRank,
   ]);
+
+  async function saveAndExitHumanReview() {
+    if (!humanReviewSnapshot || !humanReviewForm) return;
+    const draft = buildHumanReviewDraft({
+      snapshotId: humanReviewSnapshot.snapshotId,
+      form: humanReviewForm,
+      stepIndex: humanReviewStepIndex,
+      stepStartedAtByRank: humanReviewStepStartedAtByRank,
+      stepCompletedAtByRank: humanReviewStepCompletedAtByRank,
+      updatedAt: new Date().toISOString(),
+    });
+    safeStorageSet(humanReviewDraftStorageKey(humanReviewSnapshot.snapshotId), JSON.stringify(draft));
+    setHumanReviewStatus("Saving draft…");
+    const saved = await queueDurableHumanReviewDraft(humanReviewSnapshot, draft);
+    if (!saved) {
+      setHumanReviewStatus("Draft could not be saved securely. Please try Save Draft & Exit again.");
+      return;
+    }
+    setShowHumanReviewPanel(false);
+    setShowHumanReviewContext(false);
+  }
 
   function goToPreviousHumanReviewStep() {
     if (!humanReviewForm) return;
@@ -5754,12 +5811,14 @@ function handleLeft(card?: SwipeDeckCard | null) {
         form: formForSubmission,
       });
 
+      await humanReviewDraftSaveChainRef.current.catch(() => false);
       const response = await fetch("/api/human-review-append", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           snapshot: humanReviewSnapshot,
           record,
+          draftOwnerId: humanReviewDraftOwnerIdRef.current || reviewerId,
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -6818,12 +6877,9 @@ function handleLeft(card?: SwipeDeckCard | null) {
                     <View style={styles.humanReviewActionRow}>
                       <TouchableOpacity
                         style={styles.humanReviewActionButton}
-                        onPress={() => {
-                          setShowHumanReviewPanel(false);
-                          setShowHumanReviewContext(false);
-                        }}
+                        onPress={() => void saveAndExitHumanReview()}
                       >
-                        <Text style={styles.humanReviewActionButtonText}>Save & Exit</Text>
+                        <Text style={styles.humanReviewActionButtonText}>Save Draft & Exit</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.humanReviewActionButton, humanReviewCurrentStepIndex <= 0 && styles.humanReviewActionButtonDisabled]}
