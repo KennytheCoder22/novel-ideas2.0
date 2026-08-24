@@ -64,6 +64,39 @@ export function registerNovelIdeasServiceWorker(): void {
   }
 }
 
+export function updatePwaDocumentBranding(
+  libraryId: string | undefined,
+  libraryName: string,
+  themeColor: string,
+  logoDataUrl: string,
+): void {
+  if (Platform.OS !== "web" || typeof window === "undefined") return;
+  const installedName = libraryId && libraryName.trim() ? libraryName.trim() : "Novel Ideas";
+  window.document.title = installedName;
+  window.document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", installedName);
+  if (/^#[0-9a-f]{6}$/i.test(themeColor)) {
+    window.document.querySelector('meta[name="theme-color"]')?.setAttribute("content", themeColor);
+  }
+  if (libraryId) {
+    let hash = 2166136261;
+    const brandingSource = `${installedName}\n${themeColor}\n${logoDataUrl}`;
+    for (let index = 0; index < brandingSource.length; index += 1) {
+      hash ^= brandingSource.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    const version = (hash >>> 0).toString(36);
+    const encodedId = encodeURIComponent(libraryId);
+    window.document.querySelector('link[rel="manifest"]')?.setAttribute(
+      "href",
+      `/api/library-config?libraryId=${encodedId}&format=pwa-manifest&v=${version}`,
+    );
+    window.document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute(
+      "href",
+      `/api/library-config?libraryId=${encodedId}&format=pwa-icon&size=180&purpose=any&v=${version}`,
+    );
+  }
+}
+
 export function initializePwaRuntime(): void {
   rememberPwaLaunchPath();
   registerNovelIdeasServiceWorker();

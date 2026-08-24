@@ -1,4 +1,4 @@
-const CACHE_NAME = "novelideas-static-v1";
+const CACHE_NAME = "novelideas-static-v2";
 const INSTALL_ASSETS = [
   "/manifest.webmanifest",
   "/icons/novelideas-192.png",

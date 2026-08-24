@@ -41,6 +41,7 @@ import {
 } from "../../constants/brandTheme";
 import { isAdminSessionActive } from "../../lib/adminSession";
 import { usePwaInstall } from "../../hooks/use-pwa-install";
+import { updatePwaDocumentBranding } from "../../lib/pwaRuntime";
 import {
   loadSharedLibraryConfigWithDiagnostics,
   saveSharedLibraryConfig,
@@ -1812,6 +1813,10 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
   );
   const libraryName = effectiveAppearance.name;
   const logoDataUrl = effectiveAppearance.logoDataUrl;
+
+  useEffect(() => {
+    updatePwaDocumentBranding(props.libraryId, libraryName, mainColorHex, logoDataUrl);
+  }, [libraryName, logoDataUrl, mainColorHex, props.libraryId]);
 
   const buildResolvedTheme = useCallback((resolvedMain: string, resolvedHighlight: string, resolvedFont: string) => {
     const presetTheme = buildTheme(mainThemeKey, highlightKey, titleTextKey);

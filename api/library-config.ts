@@ -1,6 +1,15 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { ADMIN_SESSION_COOKIE_NAME } from "../lib/adminSession";
 import {
+  buildHostedLibraryManifest,
+  fallbackPwaIconPath,
+  libraryPwaIconVersion,
+  libraryPwaLogoIsUsable,
+  libraryPwaThemeColor,
+  readLibraryLogoBuffer,
+  renderLibraryPwaIcon,
+} from "../lib/libraryPwaBranding.mjs";
+import {
   diagnoseSharedLibraryConfig,
   getSharedLibraryConfigStorageTrace,
   loadSharedLibraryConfigPayload,
@@ -16,6 +25,19 @@ function hasAdminSessionCookie(req: VercelRequest): boolean {
 function readLibraryId(req: VercelRequest): string {
   const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
   return String(body.libraryId || req.query.libraryId || "").trim();
+}
+
+function readFormat(req: VercelRequest): string {
+  return String(req.query.format || "").trim().toLowerCase();
+}
+
+function readIconSize(req: VercelRequest): 180 | 192 | 512 | null {
+  const value = Number(req.query.size);
+  return value === 180 || value === 192 || value === 512 ? value : null;
+}
+
+function readIconPurpose(req: VercelRequest): "any" | "maskable" {
+  return String(req.query.purpose || "") === "maskable" ? "maskable" : "any";
 }
 
 function estimateUtf8Bytes(value: unknown): number | null {
@@ -48,9 +70,32 @@ function sendJson(
   return res.status(status).json(payload);
 }
 
+function sendPwaManifest(
+  res: VercelResponse,
+  manifest: object,
+  correlationId: string,
+): VercelResponse {
+  writeConfigHeaders(res, correlationId);
+  res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+  res.setHeader("Cache-Control", "private, no-store");
+  return res.status(200).send(JSON.stringify(manifest));
+}
+
+function redirectToFallbackIcon(
+  res: VercelResponse,
+  size: 180 | 192 | 512,
+  purpose: "any" | "maskable",
+  correlationId: string,
+): VercelResponse {
+  writeConfigHeaders(res, correlationId);
+  res.setHeader("Cache-Control", "private, no-store");
+  return res.redirect(307, fallbackPwaIconPath(size, purpose));
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const correlationId = correlationIdFromRequest(req);
   const libraryId = readLibraryId(req);
+  const format = readFormat(req);
   const trace = libraryId ? getSharedLibraryConfigStorageTrace(libraryId) : null;
   console.info("[api/library-config] route_entered", {
     correlationId,
@@ -83,6 +128,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         requestedLibraryId: libraryId,
         ...(trace || {}),
       });
+      if (format === "pwa-manifest" || format === "pwa-icon") {
+        const hostedLibraryId = normalizeHostedLibraryId(libraryId);
+        if (!hostedLibraryId) {
+          return sendJson(res, 400, { error: "invalid_library_id", correlationId }, correlationId);
+        }
+        const config = await loadSharedLibraryConfigPayload(hostedLibraryId, { correlationId });
+        if (!config) {
+          return sendJson(res, 404, { error: "config_not_found", correlationId }, correlationId);
+        }
+
+        const logoBuffer = readLibraryLogoBuffer(config);
+        if (format === "pwa-manifest") {
+          const hasCustomIcon = await libraryPwaLogoIsUsable(logoBuffer);
+          const manifest = buildHostedLibraryManifest(config, hostedLibraryId, {
+            hasCustomIcon,
+            iconVersion: libraryPwaIconVersion(config, hasCustomIcon ? logoBuffer : null),
+          });
+          return sendPwaManifest(res, manifest, correlationId);
+        }
+
+        const size = readIconSize(req);
+        if (!size) {
+          return sendJson(res, 400, { error: "invalid_pwa_icon_size", correlationId }, correlationId);
+        }
+        const purpose = readIconPurpose(req);
+        if (!logoBuffer) return redirectToFallbackIcon(res, size, purpose, correlationId);
+
+        try {
+          const icon = await renderLibraryPwaIcon(
+            logoBuffer,
+            size,
+            purpose,
+            libraryPwaThemeColor(config),
+          );
+          writeConfigHeaders(res, correlationId);
+          res.setHeader("Content-Type", "image/png");
+          res.setHeader("Cache-Control", "private, no-store");
+          return res.status(200).send(icon);
+        } catch (error) {
+          console.warn("[api/library-config][GET] pwa_icon_fallback", {
+            correlationId,
+            libraryId,
+            size,
+            purpose,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return redirectToFallbackIcon(res, size, purpose, correlationId);
+        }
+      }
+
       const diagnostics = await diagnoseSharedLibraryConfig(libraryId, correlationId);
       if (!diagnostics.validConfig || diagnostics.errorCode) {
         const status = diagnostics.errorCode === "config_not_found" ? 404 : 500;

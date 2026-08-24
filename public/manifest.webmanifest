@@ -3,7 +3,7 @@
   "name": "Novel Ideas",
   "short_name": "NovelIdeas",
   "description": "Swipe-based discovery and recommendations for readers",
-  "start_url": "/__pwa_launch__",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
