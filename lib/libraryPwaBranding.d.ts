@@ -35,3 +35,17 @@ export function renderLibraryPwaIcon(
   purpose: "any" | "maskable",
   background: string,
 ): Promise<Buffer>;
+
+declare const libraryPwaBranding: {
+  buildHostedLibraryManifest: typeof buildHostedLibraryManifest;
+  fallbackPwaIconPath: typeof fallbackPwaIconPath;
+  libraryPwaIconVersion: typeof libraryPwaIconVersion;
+  libraryPwaLogoIsUsable: typeof libraryPwaLogoIsUsable;
+  libraryPwaName: typeof libraryPwaName;
+  libraryPwaShortName: typeof libraryPwaShortName;
+  libraryPwaThemeColor: typeof libraryPwaThemeColor;
+  readLibraryLogoBuffer: typeof readLibraryLogoBuffer;
+  renderLibraryPwaIcon: typeof renderLibraryPwaIcon;
+};
+
+export default libraryPwaBranding;

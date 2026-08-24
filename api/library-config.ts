@@ -1,14 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { ADMIN_SESSION_COOKIE_NAME } from "../lib/adminSession";
-import {
-  buildHostedLibraryManifest,
-  fallbackPwaIconPath,
-  libraryPwaIconVersion,
-  libraryPwaLogoIsUsable,
-  libraryPwaThemeColor,
-  readLibraryLogoBuffer,
-  renderLibraryPwaIcon,
-} from "../lib/libraryPwaBranding.mjs";
+import libraryPwaBranding from "../lib/libraryPwaBranding.js";
 import {
   diagnoseSharedLibraryConfig,
   getSharedLibraryConfigStorageTrace,
@@ -16,6 +8,16 @@ import {
   saveSharedLibraryConfig,
 } from "../lib/librarySharing/storage";
 import { MIN_NEW_LIBRARY_ID_LENGTH, normalizeHostedLibraryId } from "../lib/savedLibraries";
+
+const {
+  buildHostedLibraryManifest,
+  fallbackPwaIconPath,
+  libraryPwaIconVersion,
+  libraryPwaLogoIsUsable,
+  libraryPwaThemeColor,
+  readLibraryLogoBuffer,
+  renderLibraryPwaIcon,
+} = libraryPwaBranding;
 
 function hasAdminSessionCookie(req: VercelRequest): boolean {
   const cookie = String(req.headers.cookie || "");

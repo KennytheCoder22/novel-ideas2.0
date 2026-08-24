@@ -2,12 +2,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import sharp from "sharp";
 
-import {
+import libraryPwaBranding from "../lib/libraryPwaBranding.js";
+
+const {
   buildHostedLibraryManifest,
   libraryPwaLogoIsUsable,
   readLibraryLogoBuffer,
   renderLibraryPwaIcon,
-} from "../lib/libraryPwaBranding.mjs";
+} = libraryPwaBranding;
 
 const root = process.cwd();
 const read = (path) => readFileSync(resolve(root, path), "utf8");
