@@ -69,5 +69,13 @@ assert.match(guideSource, /width: "100%"/);
 assert.match(guideSource, /maxHeight: "94%"/);
 assert.match(guideSource, /<ScrollView/);
 assert.match(guideSource, /Closing this guide keeps your current draft unchanged/);
+assert.match(guideSource, /<LibrarianSetupVideo colors=\{colors\} \/>/);
+assert.match(guideSource, /src: "\/librarian-setup-guide\.mp4"/);
+assert.match(guideSource, /controls: true/);
+assert.match(guideSource, /playsInline: true/);
+assert(
+  guideSource.indexOf("<LibrarianSetupVideo colors={colors} />") < guideSource.indexOf("GUIDE_SECTIONS.map"),
+  "video walkthrough must appear before the written guide sections"
+);
 
 console.log("Librarian Setup Guide regressions passed.");

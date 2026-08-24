@@ -1,4 +1,5 @@
-import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React from "react";
+import { Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type GuideColors = {
   background: string;
@@ -69,6 +70,42 @@ const GUIDE_SECTIONS = [
   },
 ] as const;
 
+function LibrarianSetupVideo({ colors }: { colors: GuideColors }) {
+  if (Platform.OS === "web") {
+    return (
+      <View style={[styles.videoCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: colors.accent }]}>Video Walkthrough</Text>
+        {React.createElement("video", {
+          controls: true,
+          playsInline: true,
+          preload: "metadata",
+          src: "/librarian-setup-guide.mp4",
+          title: "Librarian Setup Guide video walkthrough",
+          style: {
+            width: "100%",
+            height: "auto",
+            borderRadius: 10,
+            backgroundColor: "#000",
+            display: "block",
+          },
+        })}
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={[styles.videoCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+      onPress={() => void Linking.openURL("https://novelideas.app/librarian-setup-guide.mp4")}
+      accessibilityRole="link"
+      accessibilityLabel="Open Librarian Setup Guide video walkthrough"
+    >
+      <Text style={[styles.sectionTitle, { color: colors.accent }]}>Video Walkthrough</Text>
+      <Text style={[styles.body, { color: colors.text }]}>Open the Librarian Setup Guide video.</Text>
+    </TouchableOpacity>
+  );
+}
+
 export function LibrarianSetupGuideModal({ visible, colors, onClose }: Props) {
   return (
     <Modal
@@ -107,6 +144,7 @@ export function LibrarianSetupGuideModal({ visible, colors, onClose }: Props) {
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator
           >
+            <LibrarianSetupVideo colors={colors} />
             {GUIDE_SECTIONS.map((section) => (
               <View
                 key={section.title}
@@ -191,6 +229,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   section: {
+    borderWidth: 1,
+    borderRadius: 13,
+    padding: 14,
+  },
+  videoCard: {
     borderWidth: 1,
     borderRadius: 13,
     padding: 14,
