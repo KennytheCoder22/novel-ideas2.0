@@ -40,6 +40,7 @@ import {
   type TitleTextKey
 } from "../../constants/brandTheme";
 import { isAdminSessionActive } from "../../lib/adminSession";
+import { usePwaInstall } from "../../hooks/use-pwa-install";
 import {
   loadSharedLibraryConfigWithDiagnostics,
   saveSharedLibraryConfig,
@@ -1529,6 +1530,7 @@ setMainThemeKey: (t: ThemeKey) => void;
 }
 
 export function HomeScreen(props: { libraryId?: string } = {}) {
+  const pwaInstall = usePwaInstall();
   const [mode, setMode] = useState<"swipe" | "search">("swipe");
   const [patronId, setPatronId] = useState(() => {
     if (Platform.OS !== "web" || typeof localStorage === "undefined") return "";
@@ -2157,6 +2159,11 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     });
   }
 
+  function installNovelIdeas() {
+    closeHeaderMenu();
+    void pwaInstall.install();
+  }
+
   function openMyList() {
     closeHeaderMenu();
     setShowMyList(true);
@@ -2373,6 +2380,16 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/how-it-works")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How to Use NovelIdeas</Text>
             </TouchableOpacity>
+            {pwaInstall.shouldShowInstall ? (
+              <TouchableOpacity
+                style={styles.headerMenuItem}
+                onPress={installNovelIdeas}
+                accessibilityRole="button"
+                accessibilityLabel="Install NovelIdeas"
+              >
+                <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Install NovelIdeas</Text>
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/feedback")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Send Feedback</Text>
             </TouchableOpacity>

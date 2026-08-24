@@ -11,8 +11,24 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="NovelIdeas" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="manifest" href="/manifest.json" />
+        <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (window.location.pathname === "/__pwa_launch__") {
+                try {
+                  var launchPath = window.localStorage.getItem("novelideas:pwa-launch-path") || "/";
+                  var isValidLaunchPath = launchPath === "/"
+                    || /^\\/[A-Za-z0-9_-]+\\/?(?:\\?[^#]*)?$/.test(launchPath);
+                  window.location.replace(isValidLaunchPath ? launchPath : "/");
+                } catch (error) {
+                  window.location.replace("/");
+                }
+              }
+            `,
+          }}
+        />
         <ScrollViewStyleReset />
         <style
           dangerouslySetInnerHTML={{
