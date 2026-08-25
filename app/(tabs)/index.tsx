@@ -2856,58 +2856,64 @@ logoDataUrl={libraryLogoDataUrl}
         </View>
       </View>
 
-      <View style={styles.searchStage}>
-      <View style={styles.searchTopRow}>
-        <TouchableOpacity
-          style={[
-            styles.smallBtn,
-            { borderColor: theme.lightBorder, backgroundColor: theme.inputBg, minWidth: 120 },
-          ]}
-          onPress={() => {
-            closeHeaderMenu();
-            setMode("swipe");
-          }}
-        >
-          <Text style={[styles.smallBtnText, { color: theme.text }]}>Back to Swipe</Text>
-        </TouchableOpacity>
-      </View>
+      <ScrollView
+        style={styles.searchScroll}
+        contentContainerStyle={styles.searchScrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.searchStage}>
+          <View style={styles.searchTopRow}>
+            <TouchableOpacity
+              style={[
+                styles.smallBtn,
+                { borderColor: theme.lightBorder, backgroundColor: theme.inputBg, minWidth: 120 },
+              ]}
+              onPress={() => {
+                closeHeaderMenu();
+                setMode("swipe");
+              }}
+            >
+              <Text style={[styles.smallBtnText, { color: theme.text }]}>Back to Swipe</Text>
+            </TouchableOpacity>
+          </View>
 
-      <StudentView
-        theme={theme}
-        libraryName={libraryName}
-        logoDataUrl={logoDataUrl}
-        enabledDecks={enabledDecks}
-        source={source}
-        deck={deck}
-        setDeck={setDeck}
-        query={query}
-        setQuery={setQuery}
-        loading={loading}
-        results={results}
-        currentResultIndex={currentResultIndex}
-        errorMsg={errorMsg}
-        onSearch={runManualSearch}
-        onClear={() => {
-          manualSearchRequestRef.current += 1;
-          setLoading(false);
-          setQuery("");
-          setResults([]);
-          setCurrentResultIndex(0);
-          setErrorMsg(null);
-          queryInputRef.current?.focus?.();
-        }}
-        onPrevResult={() =>
-          setCurrentResultIndex((i) => (results.length > 0 ? (i - 1 + results.length) % results.length : 0))
-        }
-        onNextResult={() =>
-          setCurrentResultIndex((i) => (results.length > 0 ? (i + 1) % results.length : 0))
-        }
-        onTitleTap={handleTitleTap}
-        onLogoTap={handleOwnerLogoTap}
-        queryInputRef={queryInputRef}
-        showHeader={false}
-      />
-      </View>
+          <StudentView
+            theme={theme}
+            libraryName={libraryName}
+            logoDataUrl={logoDataUrl}
+            enabledDecks={enabledDecks}
+            source={source}
+            deck={deck}
+            setDeck={setDeck}
+            query={query}
+            setQuery={setQuery}
+            loading={loading}
+            results={results}
+            currentResultIndex={currentResultIndex}
+            errorMsg={errorMsg}
+            onSearch={runManualSearch}
+            onClear={() => {
+              manualSearchRequestRef.current += 1;
+              setLoading(false);
+              setQuery("");
+              setResults([]);
+              setCurrentResultIndex(0);
+              setErrorMsg(null);
+              queryInputRef.current?.focus?.();
+            }}
+            onPrevResult={() =>
+              setCurrentResultIndex((i) => (results.length > 0 ? (i - 1 + results.length) % results.length : 0))
+            }
+            onNextResult={() =>
+              setCurrentResultIndex((i) => (results.length > 0 ? (i + 1) % results.length : 0))
+            }
+            onTitleTap={handleTitleTap}
+            onLogoTap={handleOwnerLogoTap}
+            queryInputRef={queryInputRef}
+            showHeader={false}
+          />
+        </View>
+      </ScrollView>
       {renderMyList()}
     </View>
   );
@@ -3117,6 +3123,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  searchScroll: {
+    flex: 1,
+    width: "100%",
+  },
+  searchScrollContent: {
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
   searchStage: {
     width: "100%",
     maxWidth: 720,

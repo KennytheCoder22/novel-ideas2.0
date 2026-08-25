@@ -70,6 +70,12 @@ assert.match(home, /Shelf: \{holdingLocation\}/);
 assert.match(home, /Call number: \{d\.callNumber\}/);
 assert.match(home, /\.filter\(\(dk\) => !!props\.enabledDecks\[dk\]\)/);
 assert.match(home, /if \(enabledDecks\[deck\]\) return;/);
+assert.match(
+  home,
+  /<ScrollView\s+style=\{styles\.searchScroll\}\s+contentContainerStyle=\{styles\.searchScrollContent\}\s+keyboardShouldPersistTaps="handled"/,
+);
+assert.match(home, /searchScroll:\s*\{\s*flex: 1,\s*width: "100%"/);
+assert.match(home, /searchScrollContent:\s*\{[\s\S]*?paddingBottom: 40/);
 assert.doesNotMatch(home, /loadLocalCollectionRecommendationArtifact\(undefined\)/);
 
 console.log("Local Collection manual search regressions passed.");
