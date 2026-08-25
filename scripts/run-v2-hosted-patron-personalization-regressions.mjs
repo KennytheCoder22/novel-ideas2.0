@@ -59,6 +59,11 @@ const profileDefinitions = [
 ];
 
 function fixtureArtifact() {
+  const fixtureWord = (index) => {
+    const first = String.fromCharCode(97 + Math.floor(index / 26));
+    const second = String.fromCharCode(97 + (index % 26));
+    return `${first}${second}`;
+  };
   const shelves = [
     ["Fantasy", "Fantasy"],
     ["Realistic Fiction", "Realistic"],
@@ -69,7 +74,7 @@ function fixtureArtifact() {
   ];
   const records = shelves.flatMap(([shelf, prefix], shelfIndex) => Array.from({ length: 70 }, (_, index) => ({
     localId: `fixture-${shelfIndex}-${index}`,
-    title: `${prefix} Book ${index + 1}`,
+    title: `${prefix} Story ${fixtureWord(index)}`,
     author: `Author ${shelfIndex}-${index}`,
     publicationYear: 2000 + (index % 24),
     audience: "Young Adult",
@@ -96,6 +101,9 @@ function loadArtifact() {
 const artifact = loadArtifact();
 const homeSource = readFileSync(resolve(repoRoot, "app", "(tabs)", "index.tsx"), "utf8");
 const swipeScreenSource = readFileSync(resolve(repoRoot, "screens", "SwipeDeckScreen.tsx"), "utf8");
+const engineSource = readFileSync(resolve(repoRoot, "app", "recommender-v2", "engine.ts"), "utf8");
+const localSource = readFileSync(resolve(repoRoot, "app", "recommender-v2", "sources", "localLibrarySource.ts"), "utf8");
+const scoreSource = readFileSync(resolve(repoRoot, "app", "recommender-v2", "score.ts"), "utf8");
 if (!homeSource.includes("readOrCreatePatronId") || !homeSource.includes("resetPatronIdentity")) {
   throw new Error("HomeScreen does not initialize and reset device-local patron identity");
 }
@@ -104,6 +112,19 @@ if (!homeSource.includes("Reset User") || !homeSource.includes("patronId={patron
 }
 if (!swipeScreenSource.includes("pipelineUserIdForPatron(activePatronId, deckKey, props.libraryId)") || swipeScreenSource.includes("`novelideas:${deckKey}`")) {
   throw new Error("pipeline identity is not isolated by patron and hosted library");
+}
+if (!swipeScreenSource.includes("diversitySeed: `${redactedPatronId(recommendationPatronId)}:${String(props.libraryId || getRuntimeLibraryId()")) {
+  throw new Error("normal recommendation runs do not provide an anonymous patron diversity seed");
+}
+if (!engineSource.includes("diversitySeed: session.diversitySeed")) {
+  throw new Error("recommender engine does not pass the diversity seed to source adapters");
+}
+if (!localSource.includes("localCollectionTieBreakOrder: context.diversitySeed")
+  || !localSource.includes("stableRecordOrder(record, context.diversitySeed)")) {
+  throw new Error("Local Collection source does not preserve seeded equal-score order");
+}
+if (!scoreSource.includes('a.source === "localLibrary" && b.source === "localLibrary"')) {
+  throw new Error("scoring does not preserve the Local Collection equal-score order");
 }
 const Module = require("module");
 const originalLoad = Module._load;
@@ -173,7 +194,10 @@ for (let index = 0; index < profileDefinitions.length; index += 1) {
   });
   const plan = buildSearchPlan(profile, { localLibrary: true });
   const localPlan = plan.sourcePlans.find((row) => row.source === "localLibrary");
-  const sourceResult = await localLibrarySourceAdapter.search(localPlan, { profile });
+  const sourceResult = await localLibrarySourceAdapter.search(localPlan, {
+    profile,
+    diversitySeed: redactedPatronId(patrons[index].id),
+  });
   const normalized = normalizeSourceResults([sourceResult]);
   const scored = scoreCandidates(normalized, profile);
   const selection = selectRecommendations(scored, profile, 10);
@@ -216,6 +240,52 @@ if (pairs.some((pair) => pair.finalSlateOverlapPercent > 50)) {
   throw new Error(`materially different profiles converged: ${JSON.stringify(pairs)}`);
 }
 
+const tiedProfile = buildTasteProfile({
+  requestId: "hosted-personalization-tied-profile",
+  ageBand: "teens",
+  enabledSources: { localLibrary: true },
+  signals: profileDefinitions[0].signals,
+  localLibraryCurationTrusted: true,
+});
+const tiedPlan = buildSearchPlan(tiedProfile, { localLibrary: true }).sourcePlans
+  .find((row) => row.source === "localLibrary");
+
+async function tiedSlate(diversitySeed) {
+  const sourceResult = await localLibrarySourceAdapter.search(tiedPlan, { profile: tiedProfile, diversitySeed });
+  if (sourceResult.diagnostics.localCollectionDiversitySeedApplied !== true) {
+    throw new Error("local collection did not report seeded tie-breaking");
+  }
+  const normalized = normalizeSourceResults([sourceResult]);
+  return selectRecommendations(scoreCandidates(normalized, tiedProfile), tiedProfile, 10)
+    .selected
+    .map((item) => item.sourceId || item.id);
+}
+
+const tiedSeeds = Array.from({ length: 18 }, (_, index) => `class-patron-${index + 1}`);
+const tiedSlates = await Promise.all(tiedSeeds.map(tiedSlate));
+const tiedSlatesRepeated = await Promise.all(tiedSeeds.map(tiedSlate));
+if (tiedSlates.some((slate, index) => JSON.stringify(slate) !== JSON.stringify(tiedSlatesRepeated[index]))) {
+  throw new Error("seeded tie-breaking was not deterministic for the same patron");
+}
+const tiedSlateKeys = tiedSlates.map((slate) => [...slate].sort().join("|"));
+if (new Set(tiedSlateKeys).size !== tiedSlates.length) {
+  throw new Error(`equal-score class patrons received duplicate final slates: ${JSON.stringify({
+    uniqueSlates: new Set(tiedSlateKeys).size,
+    patrons: tiedSlates.length,
+    lengths: tiedSlates.map((slate) => slate.length),
+  })}`);
+}
+const tiedPairOverlaps = [];
+for (let left = 0; left < tiedSlates.length; left += 1) {
+  for (let right = left + 1; right < tiedSlates.length; right += 1) {
+    tiedPairOverlaps.push(overlapPercent(tiedSlates[left], tiedSlates[right]));
+  }
+}
+const tiedMeanOverlap = tiedPairOverlaps.reduce((sum, value) => sum + value, 0) / tiedPairOverlaps.length;
+if (tiedMeanOverlap >= 35 || tiedPairOverlaps.some((value) => value >= 100)) {
+  throw new Error(`equal-score patron diversity remained too concentrated: mean=${tiedMeanOverlap}; max=${Math.max(...tiedPairOverlaps)}`);
+}
+
 console.log(JSON.stringify({
   pass: true,
   artifact: {
@@ -237,4 +307,11 @@ console.log(JSON.stringify({
     finalCount: finalIds.length,
   })),
   overlap: pairs,
+  equalScoreTieDiversity: {
+    patrons: tiedSlates.length,
+    uniqueSlates: new Set(tiedSlateKeys).size,
+    meanOverlapPercent: Math.round(tiedMeanOverlap * 10) / 10,
+    maxOverlapPercent: Math.max(...tiedPairOverlaps),
+    deterministicRepeat: true,
+  },
 }, null, 2));

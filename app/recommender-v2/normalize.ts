@@ -199,6 +199,7 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           originalPlannedQuery: row.originalPlannedQuery,
           simplifiedOpenLibraryQuery: row.simplifiedOpenLibraryQuery,
           queryCascadeIndex: row.queryCascadeIndex,
+          localCollectionTieBreakOrder: row.localCollectionTieBreakOrder,
           queryFamily: row.queryFamily,
           routingReason: row.routingReason,
           facets: row.facets,

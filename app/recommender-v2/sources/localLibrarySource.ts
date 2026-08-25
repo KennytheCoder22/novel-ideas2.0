@@ -39,14 +39,29 @@ function recordCatalogHaystack(record: LocalCollectionRecommendationRecord): str
   ].join(" ").toLowerCase();
 }
 
-function stableRecordOrder(record: LocalCollectionRecommendationRecord): number {
-  const value = `${record.localId}\u0000${record.title}`;
+function stableHash(value: string): number {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
+}
+
+function seededHash(value: string): number {
+  let hash = 1779033703 ^ value.length;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(hash ^ value.charCodeAt(index), 3432918353);
+    hash = (hash << 13) | (hash >>> 19);
+  }
+  hash = Math.imul(hash ^ (hash >>> 16), 2246822507);
+  hash = Math.imul(hash ^ (hash >>> 13), 3266489909);
+  return (hash ^ (hash >>> 16)) >>> 0;
+}
+
+function stableRecordOrder(record: LocalCollectionRecommendationRecord, diversitySeed = ""): number {
+  const recordKey = `${record.localId}\u0000${record.title}`;
+  return diversitySeed ? seededHash(`${diversitySeed}\u0000${recordKey}`) : stableHash(recordKey);
 }
 
 // Score only librarian/catalog metadata. A title word is not reliable evidence that a book
@@ -195,7 +210,7 @@ function diagnosticResult(
 
 export const localLibrarySourceAdapter: SourceAdapterV2 = {
   source: "localLibrary",
-  async search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal }): Promise<SourceResult> {
+  async search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal; diversitySeed?: string }): Promise<SourceResult> {
     const startedAt = nowIso();
     const libraryId = getRuntimeLibraryId();
     if (context.signal?.aborted) {
@@ -232,7 +247,7 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
     const ranked = rankByProfile(records, plan, context.profile)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
-        const stableDifference = stableRecordOrder(a.record) - stableRecordOrder(b.record);
+        const stableDifference = stableRecordOrder(a.record, context.diversitySeed) - stableRecordOrder(b.record, context.diversitySeed);
         return stableDifference || a.record.title.localeCompare(b.record.title);
       });
 
@@ -269,6 +284,9 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
         originalPlannedQuery: row.queryText || fallbackQuery,
         queryFamily: "local_collection_text_match",
         queryCascadeIndex: 0,
+        localCollectionTieBreakOrder: context.diversitySeed
+          ? stableRecordOrder(record, context.diversitySeed)
+          : undefined,
         facets: row.facets.length ? row.facets : fallbackFacets,
         callNumber: record.callNumber,
         subLocation: record.shelvingLocation || record.localPlacement,
@@ -316,6 +334,8 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
         localCollectionRankedCount: ranked.length,
         localCollectionPositiveScoreCount: withPositiveScore.length,
         localCollectionRecordHash: artifact?.deterministicContentHash || "",
+        localCollectionDiversitySeedApplied: Boolean(context.diversitySeed),
+        localCollectionTieBreakerVersion: context.diversitySeed ? "patron_seed_v1" : "catalog_stable_v1",
       } as Partial<SourceDiagnosticV2>,
     );
   },

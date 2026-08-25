@@ -30,6 +30,8 @@ export interface SwipeSessionV2 {
   limit?: number;
   enabledSources?: Partial<Record<SourceIdV2, boolean>>;
   requestId?: string;
+  // Opaque, non-identifying seed used only to order otherwise equal candidates.
+  diversitySeed?: string;
   debugMiddleGradesDeepTrace?: boolean;
   debugMiddleGradesNoTimeouts?: boolean;
   diagnostics?: Record<string, unknown>;
@@ -830,5 +832,5 @@ export interface RecommendationResultV2 {
 
 export interface SourceAdapterV2 {
   source: SourceIdV2;
-  search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal }): Promise<SourceResult>;
+  search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal; diversitySeed?: string }): Promise<SourceResult>;
 }

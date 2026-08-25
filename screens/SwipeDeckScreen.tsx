@@ -3406,6 +3406,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
         const middleGradesDeepDebugDiagnostics = middleGradesDeepDebugDiagnosticsForSession(ageBand, middleGradesDeepDebugUiEnabled);
         const result = await runRecommenderV2({
           requestId: `normal-ui-v2-${Date.now()}`,
+          diversitySeed: `${redactedPatronId(recommendationPatronId)}:${String(props.libraryId || getRuntimeLibraryId() || "default").trim().toLowerCase()}:${deckKey}`,
           ageBand,
           limit: inputWithHistory.limit || 10,
           enabledSources: {

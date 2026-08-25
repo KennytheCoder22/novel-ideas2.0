@@ -728,6 +728,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
       scoreBreakdown,
       diagnostics: {
         ...candidate.diagnostics,
+        localCollectionTieBreakOrder: candidate.diagnostics.localCollectionTieBreakOrder,
         queryTextSignalsRemovedFromTasteMatch: removedQueryTextSignals,
         localLibraryTitleExcludedFromTasteMatch: localLibrary || undefined,
         documentOnlyTasteMatch: metadataBackedMatchedLikedSignals,
@@ -771,5 +772,15 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
         adultGoogleBooksRejectedShortSignalMatches: adultGoogleBooks ? adultGoogleBooksShortSubstringMatches : undefined,
       },
     };
-  }).sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
+  }).sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (a.source === "localLibrary" && b.source === "localLibrary") {
+      const aTieBreak = Number(a.diagnostics?.localCollectionTieBreakOrder);
+      const bTieBreak = Number(b.diagnostics?.localCollectionTieBreakOrder);
+      if (Number.isFinite(aTieBreak) && Number.isFinite(bTieBreak) && aTieBreak !== bTieBreak) {
+        return aTieBreak - bTieBreak;
+      }
+    }
+    return a.title.localeCompare(b.title);
+  });
 }

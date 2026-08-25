@@ -2464,7 +2464,10 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     if (!adapter) return skippedResult(plan, "adapter_not_implemented");
     const sourceStartedAt = Date.now();
     const effectiveTimeoutMs = middleGradesDeepDebugActive && plan.source === "openLibrary" ? Math.max(plan.timeoutMs, 180_000) : plan.timeoutMs;
-    const response = await runWithTimeout(effectiveTimeoutMs, (signal) => adapter.search({ ...plan, timeoutMs: effectiveTimeoutMs }, { profile: tasteProfile, signal }));
+    const response = await runWithTimeout(effectiveTimeoutMs, (signal) => adapter.search(
+      { ...plan, timeoutMs: effectiveTimeoutMs },
+      { profile: tasteProfile, signal, diversitySeed: session.diversitySeed },
+    ));
     const elapsedMs = Date.now() - sourceStartedAt;
     if (response.value) return response.value;
     return failedResult(plan, response.timedOut ? "timed_out" : "failed", response.error || "source_failed", elapsedMs);
