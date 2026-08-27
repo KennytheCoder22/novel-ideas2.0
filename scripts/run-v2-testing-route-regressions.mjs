@@ -308,7 +308,10 @@ const adminBranchSource =
       (rewrite) => rewrite && rewrite.source === "/testing" && rewrite.destination === "/"
     );
     assert(Boolean(directTestingRewrite), "T23: vercel.json must rewrite /testing to /");
-    assert(!("redirects" in vercelConfig), "T23: vercel.json must use rewrites, not redirects, for /testing");
+    const directTestingRedirect = (vercelConfig.redirects || []).find(
+      (redirect) => redirect && (redirect.source === "/testing" || redirect.source === "/testing/:path*")
+    );
+    assert(!directTestingRedirect, "T23: vercel.json must not redirect /testing");
     console.log("PASS T23: direct /testing navigation rewrites to the SPA shell without redirecting");
   }
 

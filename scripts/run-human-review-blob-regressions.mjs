@@ -128,6 +128,35 @@ await assert.rejects(
   /duplicate_reviewer_snapshot/,
 );
 
+const anonymousSnapshot = snapshot({
+  snapshotId: "hrs-anonymous-test",
+  profileId: "runtime-teens-anonymous-test",
+  ageBand: "teens",
+  deckKey: "ms_hs",
+  reviewMode: "anonymous_session",
+  sourceSessionId: "anonymous-1234567890abcdef12345678",
+});
+assert.equal((await repo.saveSnapshot(anonymousSnapshot)).status, "created");
+const anonymousReviewBase = {
+  snapshotId: anonymousSnapshot.snapshotId,
+  profileId: anonymousSnapshot.profileId,
+  reviewMode: "anonymous_session",
+  sourceSessionId: anonymousSnapshot.sourceSessionId,
+};
+await repo.appendReview(review({
+  ...anonymousReviewBase,
+  reviewId: "hr-anonymous-reviewer-a",
+  reviewerId: "anonymous-reviewer-a",
+}), rubric);
+await repo.appendReview(review({
+  ...anonymousReviewBase,
+  reviewId: "hr-anonymous-reviewer-b",
+  reviewerId: "anonymous-reviewer-b",
+}), rubric);
+const anonymousReviews = (await repo.listReviews()).filter((row) => row.sourceSessionId === anonymousSnapshot.sourceSessionId);
+assert.equal(anonymousReviews.length, 2);
+assert.deepEqual(anonymousReviews.map((row) => row.reviewerId).sort(), ["anonymous-reviewer-a", "anonymous-reviewer-b"]);
+
 const partialDraft = {
   schemaVersion: "human_review_durable_draft_v1",
   snapshotId: "hrs-blob-draft",

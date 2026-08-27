@@ -2,6 +2,7 @@ export interface HumanReviewDashboardFilters {
   startDate: string;
   endDate: string;
   ageBands: string[];
+  reviewModes: string[];
   sources: string[];
   libraryIds: string[];
   lanes: string[];
@@ -29,6 +30,7 @@ export const DEFAULT_HUMAN_REVIEW_DASHBOARD_FILTERS: HumanReviewDashboardFilters
   startDate: "",
   endDate: "",
   ageBands: [],
+  reviewModes: [],
   sources: [],
   libraryIds: [],
   lanes: [],
@@ -54,6 +56,7 @@ export const DEFAULT_HUMAN_REVIEW_DASHBOARD_FILTERS: HumanReviewDashboardFilters
 
 const MULTI_KEYS = [
   "ageBands",
+  "reviewModes",
   "sources",
   "libraryIds",
   "lanes",
@@ -161,6 +164,12 @@ function normalizeSlateDecision(summary: Record<string, any>): string {
   return "unsure";
 }
 
+function normalizeReviewMode(snapshot: Record<string, any>, review: Record<string, any>): "self_session" | "anonymous_session" {
+  return review?.reviewMode === "anonymous_session" || snapshot?.reviewMode === "anonymous_session"
+    ? "anonymous_session"
+    : "self_session";
+}
+
 function classifyDataset(snapshot: Record<string, any>, review: Record<string, any>): "real" | "synthetic" {
   if (review?.reviewScope?.studyId) return "synthetic";
   if (String(snapshot?.profileId || "").startsWith("runtime-")) return "real";
@@ -238,6 +247,7 @@ export function buildHumanReviewDashboardData(args: {
     const summary = review?.summary && typeof review.summary === "object" ? review.summary : {};
     const dataset = classifyDataset(snapshot, review);
     const ageBand = deriveAgeBand(snapshot, review);
+    const reviewMode = normalizeReviewMode(snapshot, review);
     const swipeSignals = Array.isArray(snapshot?.swipeSignals) ? snapshot.swipeSignals : [];
     const sessionLikeCount = swipeSignals.filter((row) => row?.action === "like").length;
     const sessionDislikeCount = swipeSignals.filter((row) => row?.action === "dislike").length;
@@ -282,6 +292,7 @@ export function buildHumanReviewDashboardData(args: {
         createdAt: String(review?.createdAt || ""),
         dataset,
         ageBand,
+        reviewMode,
         title: String(item?.title || "").trim(),
         author,
         rank: rank == null ? null : String(rank),
@@ -320,6 +331,7 @@ export function buildHumanReviewDashboardData(args: {
       createdAt: String(review?.createdAt || ""),
       dataset,
       ageBand,
+      reviewMode,
       sources: uniqueSorted(Array.from(sources)),
       lanes: uniqueSorted(Array.from(lanes)),
       titlePreview: uniqueSorted(titlePreview).slice(0, 6),
@@ -352,6 +364,7 @@ export function buildHumanReviewDashboardData(args: {
     if (appliedFilters.startDate && dateOnly(row.createdAt) < appliedFilters.startDate) return false;
     if (appliedFilters.endDate && dateOnly(row.createdAt) > appliedFilters.endDate) return false;
     if (!intersects([row.ageBand], appliedFilters.ageBands)) return false;
+    if (!intersects([row.reviewMode], appliedFilters.reviewModes)) return false;
     if (!intersects([row.source], appliedFilters.sources)) return false;
     if (!intersects([row.libraryId], appliedFilters.libraryIds)) return false;
     if (!intersects([row.lane], appliedFilters.lanes)) return false;
@@ -605,6 +618,7 @@ export function buildHumanReviewDashboardData(args: {
       reviewerLabel: row.reviewerLabel,
       createdAt: row.createdAt,
       ageBand: row.ageBand,
+      reviewMode: row.reviewMode,
       dataset: row.dataset,
       sources: row.sources,
       lanes: row.lanes,
@@ -617,6 +631,7 @@ export function buildHumanReviewDashboardData(args: {
 
   const filterOptions = {
     ageBands: uniqueSorted(itemRows.map((row) => row.ageBand)),
+    reviewModes: uniqueSorted(itemRows.map((row) => row.reviewMode)),
     sources: uniqueSorted(itemRows.map((row) => row.source)),
     libraryIds: uniqueSorted(itemRows.map((row) => row.libraryId)),
     lanes: uniqueSorted(itemRows.map((row) => row.lane)),
@@ -660,6 +675,8 @@ export function buildHumanReviewDashboardData(args: {
     filterOptions,
     summary: {
       completedReviewSubmissions: completedReviews,
+      selfSessionReviews: filteredSlateRows.filter((row) => row.reviewMode === "self_session").length,
+      anonymousSessionReviews: filteredSlateRows.filter((row) => row.reviewMode === "anonymous_session").length,
       reviewedRecommendationItems: reviewedItems,
       uniqueAnonymousReviewers: uniqueReviewers,
       uniqueReviewedSnapshots: uniqueSnapshots,

@@ -43,6 +43,8 @@ export interface HumanReviewSnapshotV1 {
   swipeSignalCount: number;
   swipeSignals: Array<Pick<SwipeSignalV2, "id" | "title" | "action" | "source" | "format">>;
   recommendationItems: HumanReviewSlateItem[];
+  reviewMode?: "self_session" | "anonymous_session";
+  sourceSessionId?: string;
 }
 
 export interface HumanReviewItemFormEntry {
@@ -67,6 +69,7 @@ export interface HumanReviewItemFormEntry {
 export interface HumanReviewSessionContextItem {
   title: string;
   coverUrl?: string;
+  mediaType?: string;
 }
 
 export interface HumanReviewSessionContext {
@@ -93,6 +96,8 @@ export interface HumanReviewRecordV1 {
   rubricVersion: "v1";
   reviewerId: string;
   createdAt: string;
+  reviewMode?: "self_session" | "anonymous_session";
+  sourceSessionId?: string;
   itemReviews: Array<{
     rank: number;
     title: string;
@@ -165,6 +170,9 @@ export function createHumanReviewSnapshot(args: {
   engineVersion: string;
   swipeSignals: SwipeSignalV2[];
   recommendationItems: HumanReviewSlateItem[];
+  reviewMode?: "self_session" | "anonymous_session";
+  sourceSessionId?: string;
+  capturedAt?: string;
 }): HumanReviewSnapshotV1 {
   const profileFingerprint = deterministicHash({
     ageBand: args.ageBand,
@@ -187,6 +195,9 @@ export function createHumanReviewSnapshot(args: {
       author: item.author,
       source: item.source || "",
     })),
+    ...(args.reviewMode === "anonymous_session"
+      ? { reviewMode: args.reviewMode, sourceSessionId: args.sourceSessionId || "" }
+      : {}),
   }, 2);
 
   return {
@@ -197,7 +208,7 @@ export function createHumanReviewSnapshot(args: {
     manifestVersion: "runtime-v1",
     rubricVersion: "v1",
     engineVersion: args.engineVersion || "unknown",
-    capturedAt: nowIso(),
+    capturedAt: args.capturedAt || nowIso(),
     ageBand: args.ageBand,
     deckKey: args.deckKey,
     swipeSignalCount: args.swipeSignals.length,
@@ -216,6 +227,10 @@ export function createHumanReviewSnapshot(args: {
       coverUrl: item.coverUrl,
       matchedSignals: item.matchedSignals,
     })),
+    ...(args.reviewMode === "anonymous_session" ? { reviewMode: args.reviewMode } : {}),
+    ...(args.reviewMode === "anonymous_session" && args.sourceSessionId
+      ? { sourceSessionId: args.sourceSessionId }
+      : {}),
   };
 }
 
@@ -287,6 +302,8 @@ export function createHumanReviewRecordFromForm(args: {
     rubricVersion: "v1",
     reviewerId: normalizedReviewer,
     createdAt: nowIso(),
+    reviewMode: args.snapshot.reviewMode === "anonymous_session" ? "anonymous_session" : "self_session",
+    ...(args.snapshot.sourceSessionId ? { sourceSessionId: args.snapshot.sourceSessionId } : {}),
     itemReviews: normalizedItems,
     summary: {
       wouldUseSlate,

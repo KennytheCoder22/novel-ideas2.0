@@ -29,6 +29,11 @@ const {
   realSessionAuditBlobStorageConfigured,
   recordRealSessionAudit,
 } = require(resolve(repoRoot, "lib", "realSessionOverlapAudit.ts"));
+const {
+  isAnonymousReviewEligible,
+  selectAnonymousReviewSession,
+  toAnonymousReviewSession,
+} = require(resolve(repoRoot, "lib", "anonymousHumanReview.ts"));
 
 const savedBlobToken = process.env.BLOB_READ_WRITE_TOKEN;
 process.env.BLOB_READ_WRITE_TOKEN = " '  ' ";
@@ -120,6 +125,27 @@ function payload(index = 0, overrides = {}) {
   };
 }
 
+function reviewEvidence(index = 0) {
+  return {
+    schemaVersion: "anonymous_review_evidence_v1",
+    swipeEvidence: [
+      { id: `swipe-${index}-1`, title: "Card One", mediaType: "books", imageUrl: "https://images.example/one.jpg", action: "like" },
+      { id: `swipe-${index}-2`, title: "Card Two", mediaType: "movies", action: "dislike" },
+      { id: `swipe-${index}-3`, title: "Card Three", mediaType: "games", action: "like" },
+      { id: `swipe-${index}-4`, title: "Card Four", mediaType: "tv", action: "dislike" },
+      { id: `swipe-${index}-5`, title: "Card Five", mediaType: "anime", action: "skip" },
+    ],
+    recommendationSlate: Array.from({ length: 5 }, (_, rank) => ({
+      id: `exact-rec-${index}-${rank}`,
+      title: `Exact Recommendation ${index}-${rank}`,
+      author: `Author ${rank}`,
+      source: "openLibrary",
+      coverUrl: `https://images.example/${rank}.jpg`,
+      matchedSignals: ["adventure", "hopeful"],
+    })),
+  };
+}
+
 const parsedDefault = parseRealSessionAuditEvent(payload());
 assert.equal(parsedDefault.libraryId, "default");
 assert.equal(parsedDefault.libraryScope, "default");
@@ -130,6 +156,47 @@ assert.deepEqual(Object.keys(parsedDefault).sort(), [
   "libraryScope", "likes", "localQueries", "patronHash", "searchPlan", "skips",
 ]);
 assert(!JSON.stringify(parsedDefault).includes("must-not-persist"));
+assert.equal(isAnonymousReviewEligible(parsedDefault), false);
+
+const parsedWithReviewEvidence = parseRealSessionAuditEvent(payload(20, {
+  reviewEvidence: {
+    ...reviewEvidence(20),
+    patronHash: "must-not-leak",
+    deviceId: "must-not-leak",
+  },
+}));
+assert.equal(isAnonymousReviewEligible(parsedWithReviewEvidence), true);
+assert.deepEqual(parsedWithReviewEvidence.reviewEvidence.recommendationSlate, reviewEvidence(20).recommendationSlate);
+const publicSession = toAnonymousReviewSession({ ...parsedWithReviewEvidence, createdAt: "2026-08-02T00:00:00.000Z", recentOverlaps: [] });
+assert(publicSession);
+assert.deepEqual(publicSession.recommendationSlate, reviewEvidence(20).recommendationSlate);
+assert(!JSON.stringify(publicSession).includes(parsedWithReviewEvidence.auditId));
+assert(!JSON.stringify(publicSession).includes(parsedWithReviewEvidence.patronHash));
+assert(!JSON.stringify(publicSession).includes("must-not-leak"));
+assert(!("capturedAt" in publicSession));
+
+const selectionRows = [20, 21, 22].map((index) => ({
+  ...parseRealSessionAuditEvent(payload(index, {
+    ageBand: index === 22 ? "teens" : "adult",
+    reviewEvidence: reviewEvidence(index),
+  })),
+  createdAt: `2026-08-0${index - 19}T00:00:00.000Z`,
+  recentOverlaps: [],
+}));
+const session20 = toAnonymousReviewSession(selectionRows[0]);
+const selectedLowCoverage = selectAnonymousReviewSession({
+  rows: selectionRows,
+  reviewCoverageBySessionId: new Map([[session20.anonymousSessionId, 3]]),
+  rotationKey: "2026-08-02",
+});
+assert.notEqual(selectedLowCoverage.anonymousSessionId, session20.anonymousSessionId);
+const selectedWithExclusions = selectAnonymousReviewSession({
+  rows: selectionRows,
+  reviewCoverageBySessionId: new Map(),
+  excludedSessionIds: new Set(selectionRows.slice(0, 2).map((row) => toAnonymousReviewSession(row).anonymousSessionId)),
+  rotationKey: "2026-08-02",
+});
+assert.equal(selectedWithExclusions.anonymousSessionId, toAnonymousReviewSession(selectionRows[2]).anonymousSessionId);
 
 const parsedHosted = parseRealSessionAuditEvent(payload(1, {
   libraryId: "branch-42",
@@ -209,6 +276,9 @@ assert.match(screen, /source: String\(item\.doc\.source \|\| "unknown"\)/);
 assert.match(screen, /fetch\(REAL_SESSION_AUDIT_API_URL/);
 assert.match(screen, /for \(let attempt = 1; attempt <= 3; attempt \+= 1\)/);
 assert.match(screen, /recordedSessionAuditsRef\.current\.delete\(runId\)/);
+assert.match(screen, /schemaVersion: "anonymous_review_evidence_v1"/);
+assert.match(screen, /swipeEvidence: history\.slice\(0, 200\)/);
+assert.match(screen, /recommendationSlate: guardedNormalizedItems\.slice\(0, 10\)/);
 assert(screen.indexOf("setRecItems(guardedNormalizedItems)") < screen.indexOf("fetch(REAL_SESSION_AUDIT_API_URL"));
 assert.match(api, /logRealSessionAuditStorageFailure\("record", error\)/);
 assert.match(api, /req\.method === "GET"/);
@@ -217,5 +287,8 @@ assert.match(dashboardApi, /listRealSessionAudits\(\)/);
 assert.match(dashboard, /Recommendation queries:/);
 assert.match(dashboard, /Final 10:/);
 assert.match(dashboard, /\[\$\{item\.source\}\]/);
+const anonymousApi = readFileSync(resolve(repoRoot, "api", "anonymous-human-review-session.ts"), "utf8");
+assert.doesNotMatch(anonymousApi, /\\.\\.\\.row|patronHash|auditId:/);
+assert.match(anonymousApi, /reviewMode !== "anonymous_session"/);
 
 console.log("Real session Blob audit regressions passed.");

@@ -24,6 +24,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import { getDeckLabel } from "../constants/deckLabels";
 import type { SwipeDeck, SwipeDeckCard } from "../data/swipeDecks/types";
+import type { AnonymousReviewSession } from "../lib/anonymousHumanReview";
 import { cardCategoryFromTags, swipeCardPerformanceIdentity } from "../data/swipeDecks/cardMetadata";
 import * as k2DeckMod from "../data/swipeDecks/k2";
 import * as deck36Mod from "../data/swipeDecks/36";
@@ -362,6 +363,9 @@ type Props = {
    * Keep false for the public home screen.
    */
   isAdminMode?: boolean;
+  anonymousReviewSession?: AnonymousReviewSession;
+  onExitAnonymousReview?: () => void;
+  onCompleteAnonymousReview?: () => void;
 };
 
 
@@ -3582,6 +3586,41 @@ function handleLeft(card?: SwipeDeckCard | null) {
                 finalRecommendations: guardedNormalizedItems.slice(0, 10).map((item) => item.kind === "open_library"
                   ? { id: docId(item.doc), title: item.doc.title, source: String(item.doc.source || "unknown") }
                   : { id: fallbackId(item.book), title: item.book.title, source: "fallback" }),
+                reviewEvidence: {
+                  schemaVersion: "anonymous_review_evidence_v1",
+                  swipeEvidence: history.slice(0, 200).map((entry: any) => {
+                    const card = entry?.card || {};
+                    const title = String(card?.title || card?.prompt || "").trim();
+                    return {
+                      id: cardIdentityKey(card),
+                      title,
+                      mediaType: cardCategoryFromTags(card),
+                      imageUrl: normalizeImageUrl(card?.imageUri) || undefined,
+                      action: entry?.direction,
+                    };
+                  }).filter((item: any) => item.id && item.title),
+                  recommendationSlate: guardedNormalizedItems.slice(0, 10).map((item) => {
+                    if (item.kind === "open_library") {
+                      return {
+                        id: docId(item.doc),
+                        title: String(item.doc.title || ""),
+                        author: recommendationAuthor(item.doc),
+                        source: String((item.doc as any)?.source || "unknown"),
+                        coverUrl: recommendationCoverUrl(item.doc) || undefined,
+                        matchedSignals: Array.isArray((item.doc as any)?.diagnostics?.matchedSignals)
+                          ? (item.doc as any).diagnostics.matchedSignals
+                          : [],
+                      };
+                    }
+                    return {
+                      id: fallbackId(item.book),
+                      title: String(item.book.title || ""),
+                      author: String(item.book.author || "Unknown author"),
+                      source: "fallback",
+                      matchedSignals: [],
+                    };
+                  }),
+                },
             });
             void (async () => {
               for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -5638,6 +5677,92 @@ function handleLeft(card?: SwipeDeckCard | null) {
     setShowHumanReviewPanel(true);
   }
 
+  function openAnonymousHumanReviewSession(session: AnonymousReviewSession) {
+    const deckKeyByAgeBand: Record<AnonymousReviewSession["ageBand"], string> = {
+      kids: "k2",
+      preteens: "36",
+      teens: "ms_hs",
+      adult: "adult",
+    };
+    const recommendationItems = session.recommendationSlate.map((item, index) => ({
+      rank: index + 1,
+      title: item.title,
+      author: item.author,
+      source: item.source,
+      coverUrl: item.coverUrl,
+      matchedSignals: item.matchedSignals,
+    }));
+    const snapshot = createHumanReviewSnapshot({
+      ageBand: session.ageBand,
+      deckKey: deckKeyByAgeBand[session.ageBand],
+      engineVersion: "preserved-production-session",
+      capturedAt: "1970-01-01T00:00:00.000Z",
+      swipeSignals: session.swipeEvidence.map((item) => ({
+        id: item.id,
+        title: item.title,
+        action: item.action,
+        source: "preserved_session",
+        format: item.mediaType === "books" ? "book" : item.mediaType === "anime" ? "anime" : "unknown",
+      })),
+      recommendationItems,
+      reviewMode: "anonymous_session",
+      sourceSessionId: session.anonymousSessionId,
+    });
+    const form = createDefaultHumanReviewForm(snapshot);
+    const rowsForAction = (action: "like" | "dislike" | "skip") =>
+      session.swipeEvidence
+        .filter((item) => item.action === action)
+        .map((item) => ({ title: item.title, coverUrl: item.imageUrl, mediaType: item.mediaType }));
+    form.sessionContext = {
+      likedItems: rowsForAction("like"),
+      dislikedItems: rowsForAction("dislike"),
+      unsureItems: rowsForAction("skip"),
+      engineSignals: Array.from(
+        new Set(session.recommendationSlate.flatMap((item) => item.matchedSignals)),
+      ).slice(0, 12),
+    };
+    form.reviewerId = getOrCreateAnonymousHumanReviewerId();
+    form.itemReviews = form.itemReviews.map((row, index) => ({
+      ...row,
+      author: recommendationItems[index]?.author || row.author,
+      whyRecommended: recommendationItems[index]?.matchedSignals || [],
+      becauseLiked: form.sessionContext?.likedItems.map((item) => item.title).slice(0, 3) || [],
+      expectedEnjoyment: null,
+      familiarity: null,
+    }));
+    const prepared = prepareHumanReviewModalState({
+      snapshotId: snapshot.snapshotId,
+      form,
+      rawDraft: safeStorageGet(humanReviewDraftStorageKey(snapshot.snapshotId)),
+      nowIso: new Date().toISOString(),
+      isTestingMode: true,
+      anonymousReviewerId: form.reviewerId,
+    });
+    setHumanReviewSnapshot(snapshot);
+    humanReviewDraftOwnerIdRef.current = form.reviewerId;
+    setHumanReviewForm(prepared.effectiveForm);
+    setHumanReviewStepIndex(prepared.initialStepIndex);
+    setHumanReviewStepStartedAtByRank(prepared.initialStartedAtByRank);
+    setHumanReviewStepCompletedAtByRank(prepared.initialCompletedAtByRank);
+    setHumanReviewStatus("");
+    setShowHumanReviewCompletion(false);
+    setHumanReviewSynopsisExpanded(false);
+    setShowHumanReviewContext(true);
+    setShowHumanReviewPanel(true);
+  }
+
+  const openedAnonymousSessionIdRef = useRef("");
+  useEffect(() => {
+    const session = props.anonymousReviewSession;
+    if (!session) {
+      openedAnonymousSessionIdRef.current = "";
+      return;
+    }
+    if (openedAnonymousSessionIdRef.current === session.anonymousSessionId) return;
+    openedAnonymousSessionIdRef.current = session.anonymousSessionId;
+    openAnonymousHumanReviewSession(session);
+  }, [props.anonymousReviewSession]);
+
   function updateHumanReviewItem(
     rank: number,
     updater: (item: HumanReviewSlateForm["itemReviews"][number]) => HumanReviewSlateForm["itemReviews"][number]
@@ -5733,6 +5858,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
     }
     setShowHumanReviewPanel(false);
     setShowHumanReviewContext(false);
+    if (humanReviewSnapshot.reviewMode === "anonymous_session") props.onExitAnonymousReview?.();
   }
 
   function goToPreviousHumanReviewStep() {
@@ -6536,8 +6662,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
           transparent={true}
           animationType="slide"
           onRequestClose={() => {
-            setShowHumanReviewPanel(false);
-            setShowHumanReviewContext(false);
+            void saveAndExitHumanReview();
           }}
         >
           <View style={styles.humanReviewModalOverlay}>
@@ -6554,11 +6679,15 @@ function handleLeft(card?: SwipeDeckCard | null) {
                     keyboardShouldPersistTaps="handled"
                   >
                     <Text style={styles.v2DebugTitle}>
-                      {isTestingMode ? "Evaluate Recommendations" : "Human Review (Admin)"}
+                      {humanReviewSnapshot.reviewMode === "anonymous_session"
+                        ? "Review an Anonymous Reader's Recommendations"
+                        : isTestingMode ? "Evaluate Recommendations" : "Human Review (Admin)"}
                     </Text>
                     {isTestingMode ? (
                       <Text style={[styles.v2DebugText, styles.humanReviewPublicIntro]}>
-                        Tell us whether these recommendations fit the tastes you showed while swiping. Your feedback is saved anonymously.
+                        {humanReviewSnapshot.reviewMode === "anonymous_session"
+                          ? "Judge the exact recommendations NovelIdeas gave this reader using only their preserved, anonymous swipe evidence."
+                          : "Tell us whether these recommendations fit the tastes you showed while swiping. Your feedback is saved anonymously."}
                       </Text>
                     ) : (
                       <>
@@ -6594,14 +6723,15 @@ function handleLeft(card?: SwipeDeckCard | null) {
 
                     {humanReviewForm.sessionContext &&
                     (humanReviewForm.sessionContext.likedItems.length > 0 ||
-                      humanReviewForm.sessionContext.dislikedItems.length > 0) ? (
+                      humanReviewForm.sessionContext.dislikedItems.length > 0 ||
+                      humanReviewForm.sessionContext.unsureItems.length > 0) ? (
                       <View style={styles.humanReviewContextSection}>
                         <TouchableOpacity
                           style={styles.humanReviewContextToggle}
                           onPress={() => setShowHumanReviewContext((prev) => !prev)}
                         >
                           <Text style={styles.humanReviewContextToggleText}>
-                            What you swiped {showHumanReviewContext ? "▾" : "▸"}
+                            {humanReviewSnapshot.reviewMode === "anonymous_session" ? "What this reader swiped" : "What you swiped"} {showHumanReviewContext ? "▾" : "▸"}
                           </Text>
                         </TouchableOpacity>
                         {showHumanReviewContext ? (
@@ -6627,6 +6757,12 @@ function handleLeft(card?: SwipeDeckCard | null) {
                                   "disliked"
                                 ),
                               },
+                              {
+                                label: "Skipped",
+                                items: humanReviewForm.sessionContext.unsureItems,
+                                thumbStyle: styles.humanReviewContextThumbUnsure,
+                                vibeText: "",
+                              },
                             ].map((group) =>
                               group.items.length ? (
                                 <View key={group.label} style={styles.humanReviewContextGroup}>
@@ -6639,14 +6775,22 @@ function handleLeft(card?: SwipeDeckCard | null) {
                                         {group.items.slice(0, 12).map((entry, index) => (
                                           <View
                                             key={`${group.label}-${index}-${entry.title}`}
-                                            style={[styles.humanReviewContextThumbFrame, group.thumbStyle]}
+                                            style={styles.humanReviewContextItem}
                                             accessibilityLabel={`${group.label}: ${entry.title}`}
                                           >
-                                            {entry.coverUrl ? (
-                                              <Image source={{ uri: entry.coverUrl }} style={styles.humanReviewContextThumb} resizeMode="cover" />
-                                            ) : (
-                                              <View style={[styles.humanReviewContextThumb, styles.humanReviewCoverPlaceholder]} />
-                                            )}
+                                            <View style={[styles.humanReviewContextThumbFrame, group.thumbStyle]}>
+                                              {entry.coverUrl ? (
+                                                <Image source={{ uri: entry.coverUrl }} style={styles.humanReviewContextThumb} resizeMode="cover" />
+                                              ) : (
+                                                <View style={[styles.humanReviewContextThumb, styles.humanReviewCoverPlaceholder]} />
+                                              )}
+                                            </View>
+                                            <Text style={styles.humanReviewContextItemTitle} numberOfLines={2}>
+                                              {entry.title}
+                                            </Text>
+                                            {entry.mediaType ? (
+                                              <Text style={styles.humanReviewContextItemType}>{entry.mediaType}</Text>
+                                            ) : null}
                                           </View>
                                         ))}
                                       </View>
@@ -6921,7 +7065,10 @@ function handleLeft(card?: SwipeDeckCard | null) {
           visible={showHumanReviewCompletion}
           transparent={true}
           animationType="fade"
-          onRequestClose={() => setShowHumanReviewCompletion(false)}
+          onRequestClose={() => {
+            setShowHumanReviewCompletion(false);
+            if (humanReviewSnapshot?.reviewMode === "anonymous_session") props.onCompleteAnonymousReview?.();
+          }}
         >
           <View style={styles.humanReviewModalOverlay}>
             <View style={styles.humanReviewCompletionCard}>
@@ -6933,12 +7080,18 @@ function handleLeft(card?: SwipeDeckCard | null) {
                 style={styles.humanReviewCompletionPrimaryButton}
                 onPress={() => {
                   setShowHumanReviewCompletion(false);
-                  handleFreshUserReset();
+                  if (humanReviewSnapshot?.reviewMode === "anonymous_session") {
+                    props.onCompleteAnonymousReview?.();
+                  } else {
+                    handleFreshUserReset();
+                  }
                 }}
                 accessibilityRole="button"
                 accessibilityLabel="Start fresh with a new testing session"
               >
-                <Text style={styles.humanReviewCompletionPrimaryButtonText}>Start Fresh</Text>
+                <Text style={styles.humanReviewCompletionPrimaryButtonText}>
+                  {humanReviewSnapshot?.reviewMode === "anonymous_session" ? "Review Another Session" : "Start Fresh"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -7445,6 +7598,28 @@ const styles = StyleSheet.create({
   humanReviewContextThumbDisliked: {
     borderWidth: 2,
     borderColor: "#ef4444",
+  },
+  humanReviewContextThumbUnsure: {
+    borderWidth: 2,
+    borderColor: "#94a3b8",
+  },
+  humanReviewContextItem: {
+    width: 90,
+    alignItems: "center",
+  },
+  humanReviewContextItemTitle: {
+    color: "#dbeafe",
+    fontSize: 10,
+    lineHeight: 13,
+    textAlign: "center",
+    marginTop: 4,
+  },
+  humanReviewContextItemType: {
+    color: "#93a9c7",
+    fontSize: 9,
+    textTransform: "capitalize",
+    textAlign: "center",
+    marginTop: 2,
   },
   humanReviewContextThumb: {
     width: "100%",

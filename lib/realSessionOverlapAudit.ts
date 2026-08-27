@@ -6,6 +6,29 @@ export type RealSessionRecommendation = {
   source: string;
 };
 
+export type RealSessionReviewSwipeItem = {
+  id: string;
+  title: string;
+  mediaType: string;
+  imageUrl?: string;
+  action: "like" | "dislike" | "skip";
+};
+
+export type RealSessionReviewRecommendation = {
+  id: string;
+  title: string;
+  author: string;
+  source: string;
+  coverUrl?: string;
+  matchedSignals: string[];
+};
+
+export type RealSessionReviewEvidence = {
+  schemaVersion: "anonymous_review_evidence_v1";
+  swipeEvidence: RealSessionReviewSwipeItem[];
+  recommendationSlate: RealSessionReviewRecommendation[];
+};
+
 export type RealSessionTasteSignal = {
   value: string;
   weight: number;
@@ -54,6 +77,7 @@ export type RealSessionAuditEvent = {
   localQueries: string[];
   searchPlan: RealSessionSearchPlan;
   finalRecommendations: RealSessionRecommendation[];
+  reviewEvidence?: RealSessionReviewEvidence;
 };
 
 export type RealSessionAuditRow = RealSessionAuditEvent & {
@@ -144,6 +168,47 @@ function cleanRecommendations(value: unknown): RealSessionRecommendation[] {
     seen.add(item.id);
     return true;
   });
+}
+
+function cleanUrl(value: unknown): string | undefined {
+  const url = cleanText(value, 1000);
+  if (!/^https:\/\//i.test(url)) return undefined;
+  return url;
+}
+
+function cleanReviewEvidence(value: unknown): RealSessionReviewEvidence | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const input = value as Record<string, any>;
+  if (input.schemaVersion !== "anonymous_review_evidence_v1") return undefined;
+
+  const swipeEvidence = Array.isArray(input.swipeEvidence)
+    ? input.swipeEvidence.slice(0, 200).map((item: any) => {
+        const action = cleanText(item?.action, 20).toLowerCase();
+        return {
+          id: cleanText(item?.id, 200),
+          title: cleanText(item?.title, 300),
+          mediaType: cleanText(item?.mediaType, 60) || "unknown",
+          ...(cleanUrl(item?.imageUrl) ? { imageUrl: cleanUrl(item.imageUrl) } : {}),
+          action,
+        };
+      }).filter((item: any): item is RealSessionReviewSwipeItem => (
+        Boolean(item.id && item.title) && ["like", "dislike", "skip"].includes(item.action)
+      ))
+    : [];
+  const recommendationSlate = Array.isArray(input.recommendationSlate)
+    ? input.recommendationSlate.slice(0, 10).map((item: any) => ({
+        id: cleanText(item?.id, 300),
+        title: cleanText(item?.title, 300),
+        author: cleanText(item?.author, 300) || "Unknown author",
+        source: cleanText(item?.source, 60) || "unknown",
+        ...(cleanUrl(item?.coverUrl) ? { coverUrl: cleanUrl(item.coverUrl) } : {}),
+        matchedSignals: Array.isArray(item?.matchedSignals)
+          ? item.matchedSignals.slice(0, 12).map((signal: unknown) => cleanText(signal, 100)).filter(Boolean)
+          : [],
+      })).filter((item: RealSessionReviewRecommendation) => item.id && item.title)
+    : [];
+  if (!swipeEvidence.length || !recommendationSlate.length) return undefined;
+  return { schemaVersion: "anonymous_review_evidence_v1", swipeEvidence, recommendationSlate };
 }
 
 function safePathSegment(value: string): string {
@@ -295,6 +360,7 @@ export function parseRealSessionAuditEvent(value: unknown): RealSessionAuditEven
     localQueries,
     searchPlan: cleanSearchPlan(input.searchPlan),
     finalRecommendations,
+    ...(cleanReviewEvidence(input.reviewEvidence) ? { reviewEvidence: cleanReviewEvidence(input.reviewEvidence) } : {}),
   };
 }
 

@@ -559,6 +559,12 @@ export default function HumanReviewDashboardRoute() {
             onToggle={(value) => setDraftFilters((prev) => updateArrayFilter(prev, "ageBands", value))}
           />
           <ChipGroup
+            title="Review mode"
+            options={filterOptions.reviewModes || []}
+            selected={draftFilters.reviewModes}
+            onToggle={(value) => setDraftFilters((prev) => updateArrayFilter(prev, "reviewModes", value))}
+          />
+          <ChipGroup
             title="Source"
             options={filterOptions.sources || []}
             selected={draftFilters.sources}
@@ -899,6 +905,8 @@ export default function HumanReviewDashboardRoute() {
               <Text style={styles.sectionTitle}>Overview</Text>
               <View style={styles.metricGrid}>
                 <MetricCard label="Completed review submissions" value={String(summary?.completedReviewSubmissions ?? 0)} />
+                <MetricCard label="My-own-session reviews" value={String(summary?.selfSessionReviews ?? 0)} />
+                <MetricCard label="Anonymous-reader-session reviews" value={String(summary?.anonymousSessionReviews ?? 0)} />
                 <MetricCard label="Reviewed recommendation items" value={String(summary?.reviewedRecommendationItems ?? 0)} />
                 <MetricCard label="Unique anonymous reviewers" value={String(summary?.uniqueAnonymousReviewers ?? 0)} />
                 <MetricCard label="Unique snapshots/slates reviewed" value={String(summary?.uniqueReviewedSnapshots ?? 0)} />
@@ -1004,7 +1012,9 @@ export default function HumanReviewDashboardRoute() {
               </View>
               {(data.recentSubmissions || []).map((row: any) => (
                 <View key={row.reviewId} style={styles.storyCard}>
-                  <Text style={styles.storyTitle}>{labelAgeBand(row.ageBand)} · {row.reviewerLabel}</Text>
+                  <Text style={styles.storyTitle}>
+                    {labelAgeBand(row.ageBand)} · {row.reviewMode === "anonymous_session" ? "Anonymous reader" : "My own session"} · {row.reviewerLabel}
+                  </Text>
                   <Text style={styles.storyBody}>
                     {row.titlePreview.join(" · ") || "No titles recorded"}
                   </Text>

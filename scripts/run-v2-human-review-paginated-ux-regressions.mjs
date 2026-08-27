@@ -125,9 +125,16 @@ async function run() {
     "direct_testing_resume_behavior_changed"
   );
   assert(
-    testingRouteSource.includes("router.setParams({ intro: undefined, returnTo: undefined })"),
-    "start_reviewing_does_not_enter_existing_workflow"
+    testingRouteSource.includes("setShowModeChooser(true)") &&
+      testingRouteSource.includes("Review My Own Recommendations") &&
+      testingRouteSource.includes("Review an Anonymous Reader's Recommendations"),
+    "review_mode_chooser_missing"
   );
+  assert(testingRouteSource.includes('setReviewMode("self")'), "existing_self_review_mode_missing");
+  assert(testingRouteSource.includes("/api/anonymous-human-review-session"), "anonymous_session_load_missing");
+  assert(swipeScreenSource.includes("openAnonymousHumanReviewSession"), "anonymous_review_must_reuse_existing_workflow");
+  assert(swipeScreenSource.includes("What this reader swiped"), "anonymous_swipe_evidence_label_missing");
+  assert(swipeScreenSource.includes("sessionContext.unsureItems"), "anonymous_skip_evidence_missing");
   checks.push({ id: 0, name: "reviewer_introduction_navigation_and_resume", pass: true });
 
   // 1) only one recommendation renders at a time.
@@ -164,6 +171,42 @@ async function run() {
   });
   const form = createDefaultHumanReviewForm(snapshot);
   form.reviewerId = "ux-reviewer";
+  const taggedSelfSnapshot = createHumanReviewSnapshot({
+    ageBand: "teens",
+    deckKey: "ms_hs",
+    engineVersion: "v2",
+    swipeSignals: snapshot.swipeSignals,
+    recommendationItems: snapshot.recommendationItems,
+    reviewMode: "self_session",
+  });
+  assert(taggedSelfSnapshot.snapshotId === snapshot.snapshotId, "self_review_snapshot_identity_changed");
+  const untaggedSelfAtSameTime = createHumanReviewSnapshot({
+    ageBand: "teens",
+    deckKey: "ms_hs",
+    engineVersion: "v2",
+    capturedAt: taggedSelfSnapshot.capturedAt,
+    swipeSignals: snapshot.swipeSignals,
+    recommendationItems: snapshot.recommendationItems,
+  });
+  assert(
+    stableStringify(taggedSelfSnapshot) === stableStringify(untaggedSelfAtSameTime),
+    "self_review_snapshot_payload_changed",
+  );
+  const anonymousSnapshot = createHumanReviewSnapshot({
+    ageBand: "teens",
+    deckKey: "ms_hs",
+    engineVersion: "preserved-production-session",
+    capturedAt: "2026-08-01T00:00:00.000Z",
+    swipeSignals: snapshot.swipeSignals,
+    recommendationItems: snapshot.recommendationItems,
+    reviewMode: "anonymous_session",
+    sourceSessionId: "anonymous-1234567890abcdef12345678",
+  });
+  const anonymousForm = createDefaultHumanReviewForm(anonymousSnapshot);
+  anonymousForm.reviewerId = "anonymous-reviewer";
+  const anonymousRecord = createHumanReviewRecordFromForm({ snapshot: anonymousSnapshot, form: anonymousForm });
+  assert(anonymousRecord.reviewMode === "anonymous_session", "anonymous_review_mode_not_persisted");
+  assert(anonymousRecord.sourceSessionId === anonymousSnapshot.sourceSessionId, "anonymous_source_session_not_persisted");
 
   // 3) all item fields are visible immediately on step open (no expected-enjoyment reveal gate).
   assert(

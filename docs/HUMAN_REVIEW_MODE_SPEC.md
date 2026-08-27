@@ -250,6 +250,17 @@ A `draft` review is also not completed coverage. An `abstained` review is comple
 8. **Generate comparison reports.** Join machine artifacts and review records without merging their claims.
 9. **Propose future work.** Use patterns and disagreements to form diagnostics, retrieval, policy, or product hypotheses. Never mutate the reviewed run to make it agree with the proposal.
 
+### Public review modes
+
+The public Human Review entry point supports two related populations:
+
+- `self_session`: the reviewer swipes for themselves and judges the resulting recommendations.
+- `anonymous_session`: the reviewer judges the exact preserved recommendation slate from a different, completed anonymous reader session.
+
+Anonymous-session review is available only when the completed session contains a bounded, privacy-safe evidence bundle with card-level likes, dislikes, meaningful skips, and the exact final recommendation slate. Historical sessions that contain only aggregate swipe counts are ineligible and must not be reconstructed or supplemented by rerunning the recommender. Public review payloads must never expose patron hashes, internal audit identifiers, device identifiers, names, IP addresses, or other reader-identifying data.
+
+Both modes use the same rubric and append-only review records. The mode is stored with each new review, while older records without a mode are treated as `self_session`. Multiple reviewers may independently review the same anonymous snapshot; their judgments remain separate records.
+
 ## Slate-level review
 
 Slate review is a separate versioned record tied to the harness run, final returned slate, and artifact hash. It must not be synthesized automatically from candidate labels.

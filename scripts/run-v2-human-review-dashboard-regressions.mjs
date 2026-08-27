@@ -81,6 +81,9 @@ console.log("PASS D8: librarian administration has no owner analytics navigation
 assertIncludes(dashboardRoute, "Clear all filters", "D9: dashboard UI provides clear-all filters control");
 assertIncludes(dashboardRoute, "Discovery indicators", "D9: dashboard UI renders discovery section");
 assertIncludes(dashboardRoute, "Disagreement worth inspecting", "D9: dashboard UI renders disagreement section");
+assertIncludes(dashboardRoute, "My-own-session reviews", "D9: dashboard distinguishes self-session reviews");
+assertIncludes(dashboardRoute, "Anonymous-reader-session reviews", "D9: dashboard distinguishes anonymous-session reviews");
+assertIncludes(dashboardLib, "normalizeReviewMode", "D9: legacy reviews default to self-session reporting");
 console.log("PASS D9: dashboard UI exposes filters and evidence sections");
 
 assertIncludes(dashboardRoute, 'const dashboardState: "loading" | "failure" | "empty" | "success"', "D10: dashboard route models loading/success/empty/failure states explicitly");
