@@ -7,6 +7,8 @@ import { stableStringify } from "./human-review/lib/human-review-core.mjs";
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
 const swipeScreenPath = resolve(repoRoot, "screens", "SwipeDeckScreen.tsx");
+const testingRoutePath = resolve(repoRoot, "app", "testing.tsx");
+const homeRoutePath = resolve(repoRoot, "app", "(tabs)", "index.tsx");
 const appDir = resolve(repoRoot, "app", "recommender-v2");
 const screenDir = resolve(repoRoot, "screens", "swipe");
 const manifestPath = resolve(repoRoot, "scripts", "human-review", "frozen-profile-manifest.v1.json");
@@ -94,6 +96,39 @@ function loadBaselineSnapshotForProfile(profileId) {
 async function run() {
   const checks = [];
   const swipeScreenSource = readFileSync(swipeScreenPath, "utf8");
+  const testingRouteSource = readFileSync(testingRoutePath, "utf8");
+  const homeRouteSource = readFileSync(homeRoutePath, "utf8");
+
+  // 0) Help Improve NovelIdeas explains the review before starting without intercepting direct resume links.
+  assert(
+    homeRouteSource.includes('intro: "1"') && homeRouteSource.includes('returnTo: props.libraryId'),
+    "help_improve_menu_intro_route_missing"
+  );
+  for (const requiredCopy of [
+    "Help Improve NovelIdeas",
+    "NovelIdeas uses human reviewers to evaluate the quality of its book recommendations.",
+    "fits the reader's tastes",
+    "interesting or non-obvious discovery",
+    "How confident you are in your judgment",
+    "specific problem with the recommendation",
+    "stored anonymously",
+    "used to evaluate NovelIdeas—not the reader",
+  ]) {
+    assert(testingRouteSource.includes(requiredCopy), `review_intro_copy_missing:${requiredCopy}`);
+  }
+  assert(testingRouteSource.includes(">Start Reviewing</Text>"), "review_intro_start_button_missing");
+  assert(testingRouteSource.includes(">Cancel</Text>"), "review_intro_cancel_button_missing");
+  assert(testingRouteSource.includes("router.replace(returnTo as any)"), "review_intro_safe_return_missing");
+  assert(testingRouteSource.includes("if (introRequested) return false;"), "menu_intro_not_forced");
+  assert(
+    testingRouteSource.includes('safeGetStorage(INTRO_DISMISSED_KEY) === "1"'),
+    "direct_testing_resume_behavior_changed"
+  );
+  assert(
+    testingRouteSource.includes("router.setParams({ intro: undefined, returnTo: undefined })"),
+    "start_reviewing_does_not_enter_existing_workflow"
+  );
+  checks.push({ id: 0, name: "reviewer_introduction_navigation_and_resume", pass: true });
 
   // 1) only one recommendation renders at a time.
   assert(

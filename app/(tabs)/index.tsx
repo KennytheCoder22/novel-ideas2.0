@@ -2154,7 +2154,13 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   function openTestingInvite() {
     closeHeaderMenu();
-    router.replace("/testing");
+    router.push({
+      pathname: "/testing",
+      params: {
+        intro: "1",
+        returnTo: props.libraryId ? `/${encodeURIComponent(props.libraryId)}` : "/",
+      },
+    } as any);
   }
 
   function openDeveloperTip() {
