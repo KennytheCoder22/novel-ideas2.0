@@ -66,7 +66,7 @@ function IntroBanner({ onStart, onCancel }: { onStart: () => void; onCancel: () 
             NovelIdeas uses human reviewers to evaluate the quality of its book recommendations.
           </Text>
           <Text style={styles.introBody}>
-            {"You'll be shown the tastes a reader expressed while swiping and the books NovelIdeas recommended."}
+            {"You'll be shown the tastes a reader expressed while swiping and the books NovelIdeas recommended. "}
             Imagine that you are helping that reader choose what to read next, and judge each recommendation
             based only on the information shown.
           </Text>

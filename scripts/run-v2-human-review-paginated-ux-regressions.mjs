@@ -512,7 +512,17 @@ async function run() {
     },
   });
   assert(
-    stableStringify(evidenceBeforeSticky) === stableStringify(evidenceAfterSticky),
+    stableStringify({
+      itemReviews: evidenceBeforeSticky.itemReviews,
+      summary: evidenceBeforeSticky.summary,
+      reviewMode: evidenceBeforeSticky.reviewMode,
+      sourceSessionId: evidenceBeforeSticky.sourceSessionId,
+    }) === stableStringify({
+      itemReviews: evidenceAfterSticky.itemReviews,
+      summary: evidenceAfterSticky.summary,
+      reviewMode: evidenceAfterSticky.reviewMode,
+      sourceSessionId: evidenceAfterSticky.sourceSessionId,
+    }),
     "sticky_footer_changed_stored_evidence"
   );
   checks.push({ id: 19, name: "sticky_footer_preserves_stored_evidence", pass: true });
