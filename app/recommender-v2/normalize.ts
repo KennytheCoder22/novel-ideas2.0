@@ -153,6 +153,7 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
       if (!title) continue;
       const source = result.source as SourceIdV2;
       const id = String(row.id || row.sourceId || `${source}:${title}`).trim();
+      const normalizedDescription = normalizeDescription(row);
       const sourceMaturityRating = source === "googleBooks" ? googleBooksSourceMaturityRating(row) : "";
       const comicVineEntity = source === "comicVine"
         ? buildComicVineEntityMetadata({
@@ -176,7 +177,8 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
         title,
         subtitle: String(row.subtitle || "").trim() || undefined,
         creators: asStringArray(row.creators || row.authors || row.author_name),
-        description: normalizeDescription(row),
+        description: source === "localLibrary" ? undefined : normalizedDescription,
+        displayDescription: normalizedDescription,
         formats: asStringArray(row.formats).map(normalizeFormat),
         genres: asStringArray(row.genres),
         themes: Array.from(new Set([...asStringArray(row.themes), ...asStringArray(row.meaningfulTasteRecoveryDocumentSignals)])),

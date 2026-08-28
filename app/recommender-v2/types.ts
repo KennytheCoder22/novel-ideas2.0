@@ -767,6 +767,7 @@ export interface NormalizedCandidate {
   subtitle?: string;
   creators: string[];
   description?: string;
+  displayDescription?: string;
   formats: CandidateFormatV2[];
   genres: string[];
   themes: string[];

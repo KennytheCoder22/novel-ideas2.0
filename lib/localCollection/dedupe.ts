@@ -40,6 +40,7 @@ export function dedupeAcceptedRecords(records: LocalCollectionNormalizedRecord[]
     existing.sourceRows = [...existing.sourceRows, ...record.sourceRows];
     existing.warnings = mergeWarnings(existing.warnings, record.warnings);
     existing.coverUrl = mergeText(existing.coverUrl, record.coverUrl);
+    existing.description = mergeText(existing.description, record.description);
     existing.audience = mergeText(existing.audience, record.audience);
     existing.readingLevel = mergeText(existing.readingLevel, record.readingLevel);
     existing.shelvingLocation = mergeText(existing.shelvingLocation, record.shelvingLocation);

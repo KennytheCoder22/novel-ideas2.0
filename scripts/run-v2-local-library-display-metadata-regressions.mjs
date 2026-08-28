@@ -207,6 +207,7 @@ async function runAdapter(records) {
 console.log("\nS1: structural UI/admin checks");
 check("S1-a source adapter forwards shelving + call + sub-location aliases", () => {
   assert(localSource.includes("coverUrl: record.coverUrl"), "source must forward coverUrl");
+  assert(localSource.includes("description: record.description"), "source must forward normalized local description");
   assert(localSource.includes("callNumber: record.callNumber"), "source must forward callNumber");
   assert(localSource.includes("subLocation: record.shelvingLocation || record.localPlacement"), "source must prefer shelvingLocation for student-facing shelf label");
   assert(localSource.includes("shelvingLocation: record.shelvingLocation"), "source must forward shelvingLocation");
@@ -239,6 +240,7 @@ const fixtureRecords = [
     localId: "loc-001",
     title: "Ghost Shelf",
     author: "Shelley Reader",
+    description: "A haunted library tests one reader's courage.",
     publicationYear: 2021,
     audience: "Adult",
     readingLevel: "Adult",
@@ -258,6 +260,7 @@ const sourceResult = await runAdapter(fixtureRecords);
 check("B1 source rows keep cover and local holdings metadata", () => {
   const row = sourceResult.rawItems[0] || {};
   assert(row.coverUrl === "https://cdn.example.test/ghost-shelf.jpg", `expected coverUrl, got ${row.coverUrl}`);
+  assert(row.description === "A haunted library tests one reader's courage.", `expected description, got ${row.description}`);
   assert(row.callNumber === "FIC REI", `expected callNumber, got ${row.callNumber}`);
   assert(row.localCollectionCallNumber === "FIC REI", `expected localCollectionCallNumber, got ${row.localCollectionCallNumber}`);
   assert(row.localCollectionPlacement === "FIC REI", `expected localCollectionPlacement, got ${row.localCollectionPlacement}`);
@@ -271,6 +274,8 @@ const normalized = normalizeSourceResults([sourceResult]);
 check("B2 normalized candidate preserves cover/call/sub-location fields", () => {
   const candidate = normalized[0] || {};
   assert(candidate.coverUrl === "https://cdn.example.test/ghost-shelf.jpg", `normalized coverUrl missing: ${candidate.coverUrl}`);
+  assert(candidate.description === undefined, "local display description must not enter scoring metadata");
+  assert(candidate.displayDescription === "A haunted library tests one reader's courage.", `normalized display description missing: ${candidate.displayDescription}`);
   assert(candidate.callNumber === "FIC REI", `normalized callNumber missing: ${candidate.callNumber}`);
   assert(candidate.localCollectionCallNumber === "FIC REI", `normalized localCollectionCallNumber missing: ${candidate.localCollectionCallNumber}`);
   assert(candidate.subLocation === "Adventure, Mystery, & Suspense", `normalized subLocation missing: ${candidate.subLocation}`);
@@ -282,6 +287,8 @@ const selected = selectRecommendations(scoreCandidates(normalized, makeProfile()
 check("B3 selected recommendation still preserves local display metadata", () => {
   const candidate = selected[0] || {};
   assert(candidate.coverUrl === "https://cdn.example.test/ghost-shelf.jpg", `selected coverUrl missing: ${candidate.coverUrl}`);
+  assert(candidate.description === undefined, "selected local description must remain presentation-only");
+  assert(candidate.displayDescription === "A haunted library tests one reader's courage.", `selected display description missing: ${candidate.displayDescription}`);
   assert(candidate.callNumber === "FIC REI", `selected callNumber missing: ${candidate.callNumber}`);
   assert(candidate.subLocation === "Adventure, Mystery, & Suspense", `selected subLocation missing: ${candidate.subLocation}`);
   assert(candidate.localCollectionPlacement === "FIC REI", `selected localCollectionPlacement missing: ${candidate.localCollectionPlacement}`);

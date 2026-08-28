@@ -35,6 +35,7 @@ export type LocalCollectionRecommendationRecord = {
   localId: string;
   title: string;
   author: string;
+  description?: string;
   publicationYear?: number;
   audience?: string;
   readingLevel?: string;
@@ -120,6 +121,7 @@ function toRecommendationRecord(record: LocalCollectionArtifact["acceptedRecords
     localId: String(record.localId || ""),
     title: String(record.title || ""),
     author: String(record.author || ""),
+    description: String(record.description || "").trim() || undefined,
     publicationYear: Number.isFinite(Number(record.publicationYear)) ? Number(record.publicationYear) : undefined,
     audience: String(record.audience || "").trim() || undefined,
     readingLevel: String(record.readingLevel || "").trim() || undefined,
@@ -366,6 +368,7 @@ function fromLegacyArtifact(raw: any): LocalCollectionRecommendationArtifact | n
       localId: String(record?.localId || ""),
       title: String(record?.title || ""),
       author: String(record?.author || ""),
+      description: String(record?.description || "").trim() || undefined,
       publicationYear: Number.isFinite(Number(record?.publicationYear)) ? Number(record.publicationYear) : undefined,
       audience: String(record?.audience || "").trim() || undefined,
       readingLevel: String(record?.readingLevel || "").trim() || undefined,

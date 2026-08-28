@@ -9,6 +9,7 @@ import type {
 const HEADER_ALIASES: Record<string, string[]> = {
   title: ["title", "book title", "name"],
   author: ["author", "authors", "creator", "creators", "primary author"],
+  description: ["description", "summary", "annotation", "abstract", "book description"],
   isbn10: ["isbn10", "isbn-10", "isbn 10"],
   isbn13: ["isbn13", "isbn-13", "isbn 13", "ean"],
   isbn: ["isbn", "identifier", "isbn/ean"],
@@ -190,6 +191,7 @@ export function normalizeRow(
   }
 
   const audience = clean(read("audience")) || undefined;
+  const description = clean(read("description")) || undefined;
   const readingLevel = clean(read("readingLevel")) || undefined;
   const subjects = parseTerms(read("subjects"));
   const genres = parseTerms(read("genres"));
@@ -232,6 +234,7 @@ export function normalizeRow(
       titleNormalized,
       author,
       authorNormalized,
+      description,
       isbn10: isbn.isbn10,
       isbn13: isbn.isbn13,
       publicationYear,

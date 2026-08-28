@@ -272,6 +272,7 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
         sourceId: record.localId,
         title: record.title,
         authors: [record.author],
+        description: record.description,
         publicationYear: record.publicationYear,
         formats: ["book"],
         genres: [record.shelvingLocation, record.audience].filter(Boolean),

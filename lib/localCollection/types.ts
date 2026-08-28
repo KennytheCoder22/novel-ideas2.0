@@ -32,6 +32,7 @@ export interface LocalCollectionNormalizedRecord {
   titleNormalized: string;
   author: string;
   authorNormalized: string;
+  description?: string;
   isbn10?: string;
   isbn13?: string;
   publicationYear?: number;

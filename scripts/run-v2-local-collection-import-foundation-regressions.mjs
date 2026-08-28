@@ -49,7 +49,7 @@ function runImport(
   });
 }
 
-function buildMarcRecord({ control001, title, author, isbn13, pubYear, audience, readingLevel, holdings = [], localPlacement, urls = [] }) {
+function buildMarcRecord({ control001, title, author, isbn13, pubYear, audience, readingLevel, description, holdings = [], localPlacement, urls = [] }) {
   const fieldTerm = "\x1e";
   const recordTerm = "\x1d";
   const sub = "\x1f";
@@ -71,6 +71,9 @@ function buildMarcRecord({ control001, title, author, isbn13, pubYear, audience,
   pushData("020", " ", " ", [["a", isbn13]]);
   pushData("100", "1", " ", [["a", author]]);
   pushData("245", "1", "0", [["a", title]]);
+  if (description) {
+    pushData("520", " ", " ", [["a", description]]);
+  }
   pushData("260", " ", " ", [["c", pubYear]]);
   if (readingLevel) {
     pushData("521", "0", " ", [["a", readingLevel], ["b", "Follett Library Resources"]]);
@@ -413,6 +416,7 @@ checks.push(check("marc_import_maps_852_collection_and_multi_copy_counts", () =>
     pubYear: "1989",
     audience: "5-8",
     readingLevel: "4.5",
+    description: "A young reader faces occupation with courage and friendship.",
     holdings: [
       {
         copyId: "379467",
@@ -441,6 +445,7 @@ checks.push(check("marc_import_maps_852_collection_and_multi_copy_counts", () =>
   assert(accepted.marcRecordControlNumber === "fol00118715", "marc_001_not_preserved");
   assert(Array.isArray(accepted.marcHoldings) && accepted.marcHoldings.length === 2, "marc_holdings_not_preserved");
   assert(accepted.marcHoldings[0].rawPacked === "FSC@aAll Regular@c20000330", "marc_852x_not_preserved");
+  assert(accepted.description === "A young reader faces occupation with courage and friendship.", "marc_520_description_not_preserved");
 }));
 
 checks.push(check("marc_import_missing_852b_keeps_record_with_warning_path", () => {

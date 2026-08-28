@@ -270,6 +270,14 @@ function deriveAudienceAndReadingLevel(record: ParsedMarcRecord): { audience?: s
   return { audience, readingLevel };
 }
 
+function deriveDescription(record: ParsedMarcRecord): string | undefined {
+  const summaries = (record.dataFields["520"] || [])
+    .map((field) => ["a", "b"].map((code) => firstSubfield(field, code)).filter(Boolean).join(" "))
+    .map(clean)
+    .filter(Boolean);
+  return summaries.join(" ") || undefined;
+}
+
 function parseAvailabilityFromPacked(rawPacked: string | undefined): string | undefined {
   const packed = clean(rawPacked || "");
   if (!packed) return undefined;
@@ -330,6 +338,7 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
   const headers = [
     "title",
     "author",
+    "description",
     "isbn",
     "publicationYear",
     "publicationDate",
@@ -375,6 +384,7 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
     const row = [
       composeTitle(record),
       deriveAuthor(record),
+      deriveDescription(record) || "",
       pickIsbn(record) || "",
       publicationDate,
       publicationDate,

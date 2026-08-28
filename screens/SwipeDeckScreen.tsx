@@ -32,6 +32,7 @@ import msHsDeck from "../data/swipeDecks/ms_hs";
 import adultDeck from "../data/swipeDecks/adult";
 import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
 import { shouldShowTestingEvaluation } from "./swipe/testingControls.mjs";
+import { recommendationDescriptionExcerpt } from "./swipe/recommendationDescription";
 import coverUrlsMap from '../assets/coverUrls.json';
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { runRecommenderV2 } from "../app/recommender-v2";
@@ -148,6 +149,7 @@ type OLDoc = {
   coverImageUrl?: string;
   imageUrl?: string;
   source?: string;
+  description?: string;
   callNumber?: string;
   subLocation?: string;
   localPlacement?: string;
@@ -165,6 +167,7 @@ type FallbackBook = {
   title: string;
   author: string;
   year?: number;
+  description?: string;
 };
 
 type RecItem =
@@ -1621,6 +1624,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [presetExecutionError, setPresetExecutionError] = useState<string>("");
 
   const [showRating, setShowRating] = useState(false);
+  const [showRecommendationDescription, setShowRecommendationDescription] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
   const [profileOverridesByLane, setProfileOverridesByLane] = useState<Partial<Record<RecommenderLane, Partial<RecommenderProfile>>>>({});
   const [ratingPreview, setRatingPreview] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
@@ -2474,7 +2478,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
         title: candidate.title,
         author_name: candidate.creators.length ? candidate.creators : [],
         source: candidate.source,
-        description: candidate.description,
+        description: candidate.displayDescription || candidate.description,
         first_publish_year: (candidate.publicationYear as number | undefined) ?? ((candidate.raw as any)?.first_publish_year as number | undefined),
         cover_i:
           (candidate.raw as any)?.cover_i ??
@@ -6023,6 +6027,22 @@ function handleLeft(card?: SwipeDeckCard | null) {
     return `fb::${t}::${a}`.toLowerCase();
   }, [currentRec]);
 
+  useEffect(() => {
+    setShowRecommendationDescription(false);
+  }, [currentRecKey]);
+
+  const currentRecDescription = useMemo(() => {
+    if (!currentRec) return "";
+    const description = currentRec.kind === "open_library"
+      ? currentRec.doc?.description
+      : currentRec.book?.description;
+    return recommendationDescriptionExcerpt(description);
+  }, [currentRec]);
+
+  const currentRecTitle = currentRec?.kind === "open_library"
+    ? String(currentRec.doc?.title || "Untitled")
+    : String(currentRec?.book?.title || "Untitled");
+
   const currentRecCoverUri = useMemo(() => {
     if (!currentRec || !currentRecKey) return "";
     const blocked = new Set((recCoverFailures[currentRecKey] || []).map((value) => String(value || "").toLowerCase()));
@@ -6114,11 +6134,13 @@ function handleLeft(card?: SwipeDeckCard | null) {
   }, [currentRec, currentRecKey, recCoverCache, recCoverFailures]);
 
   function advanceRec() {
+    setShowRecommendationDescription(false);
     setShowRating(false);
     setRecIndex((i) => Math.min(i + 1, recItems.length));
   }
 
   function goBackRec() {
+    setShowRecommendationDescription(false);
     setShowRating(false);
     setRecIndex((i) => Math.max(i - 1, 0));
   }
@@ -6298,6 +6320,16 @@ function handleLeft(card?: SwipeDeckCard | null) {
                           </View>
                         )}
                         <TouchableOpacity
+                          style={styles.aboutRecommendationButton}
+                          onPress={() => setShowRecommendationDescription(true)}
+                          accessibilityRole="button"
+                          accessibilityLabel="About this book"
+                          accessibilityHint="Shows a description of this recommendation"
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Text style={styles.aboutRecommendationButtonText}>?</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
                           style={[styles.saveRecommendationButton, currentRecommendationSaved && styles.saveRecommendationButtonSaved]}
                           onPress={() => {
                             if (!currentSavedRecommendation || currentRecommendationSaved) return;
@@ -6406,6 +6438,40 @@ function handleLeft(card?: SwipeDeckCard | null) {
                     ) : null}
                   </View>
                 ) : null}
+
+                <Modal
+                  visible={showRecommendationDescription && currentRec != null}
+                  transparent
+                  animationType="fade"
+                  onRequestClose={() => setShowRecommendationDescription(false)}
+                >
+                  <View style={styles.recommendationDescriptionOverlay}>
+                    <View
+                      style={styles.recommendationDescriptionCard}
+                      accessibilityViewIsModal
+                      accessibilityLabel={`About ${currentRecTitle}`}
+                    >
+                      <View style={styles.recommendationDescriptionHeader}>
+                        <Text style={styles.recommendationDescriptionHeading}>About this book</Text>
+                        <TouchableOpacity
+                          style={styles.recommendationDescriptionCloseButton}
+                          onPress={() => setShowRecommendationDescription(false)}
+                          accessibilityRole="button"
+                          accessibilityLabel="Close book description"
+                        >
+                          <Text style={styles.recommendationDescriptionCloseText}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.recommendationDescriptionTitle}>{currentRecTitle}</Text>
+                      <ScrollView
+                        style={styles.recommendationDescriptionScroll}
+                        contentContainerStyle={styles.recommendationDescriptionScrollContent}
+                      >
+                        <Text style={styles.recommendationDescriptionBody}>{currentRecDescription}</Text>
+                      </ScrollView>
+                    </View>
+                  </View>
+                </Modal>
 
                 {recItems.length > 0 && !recLoading && recDone ? (
                   <View style={styles.recCard}>
@@ -7348,6 +7414,57 @@ const styles = StyleSheet.create({
   },
   saveRecommendationButtonSaved: { backgroundColor: "#2f855a" },
   saveRecommendationButtonText: { color: "#fff", fontSize: 24, fontWeight: "900", lineHeight: 27 },
+  aboutRecommendationButton: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(7, 21, 38, 0.9)",
+    borderWidth: 1,
+    borderColor: "#d6b35a",
+  },
+  aboutRecommendationButtonText: { color: "#fff", fontSize: 21, fontWeight: "900", lineHeight: 24 },
+  recommendationDescriptionOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  recommendationDescriptionCard: {
+    width: "100%",
+    maxWidth: 520,
+    maxHeight: "78%",
+    minWidth: 0,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#d6b35a",
+    backgroundColor: "#0b1e33",
+    padding: 18,
+  },
+  recommendationDescriptionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  recommendationDescriptionHeading: { color: "#e5efff", fontSize: 20, fontWeight: "900", flex: 1 },
+  recommendationDescriptionCloseButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recommendationDescriptionCloseText: { color: "#e5efff", fontSize: 20, fontWeight: "800" },
+  recommendationDescriptionTitle: { color: "#d6b35a", fontSize: 16, fontWeight: "800", marginTop: 8 },
+  recommendationDescriptionScroll: { marginTop: 14, maxHeight: 360 },
+  recommendationDescriptionScrollContent: { paddingBottom: 4 },
+  recommendationDescriptionBody: { color: "#d5e2f3", fontSize: 16, lineHeight: 24 },
 
   recActions: { marginTop: 12, flexDirection: "row", gap: 12, justifyContent: "center" },
   recNavigationActions: {

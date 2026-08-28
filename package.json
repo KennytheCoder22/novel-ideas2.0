@@ -48,6 +48,7 @@
     "audit:swipe-card-image-responses": "node scripts/generate-swipe-card-image-inventory.mjs --assert && node scripts/verify-swipe-card-image-responses.mjs",
     "test:swipe-card-image-inventory": "node scripts/run-swipe-card-image-inventory-regressions.mjs",
     "test:v2:recommendation-cover-fallback": "node scripts/run-v2-recommendation-cover-fallback-regressions.mjs",
+    "test:v2:recommendation-descriptions": "node scripts/run-v2-recommendation-description-regressions.mjs",
     "test:v2:comicvine-source-certification": "node scripts/run-v2-comicvine-source-certification-regressions.mjs",
     "test:v2:comicvine-cert-gap-closure": "node scripts/run-v2-comicvine-cert-gap-closure-regressions.mjs",
     "test:v2:human-review-infrastructure": "node scripts/run-v2-human-review-regressions.mjs",
