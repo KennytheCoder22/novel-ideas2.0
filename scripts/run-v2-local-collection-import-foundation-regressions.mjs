@@ -24,6 +24,7 @@ const repoRoot = resolve(scriptDir, "..");
 const { importLocalCollectionCsv, importLocalCollectionMarc } = require(resolve(repoRoot, "lib", "localCollection", "index.ts"));
 const {
   loadLocalCollectionRecommendationArtifact,
+  buildRecommendationArtifact,
   persistLocalCollectionRecommendationArtifact,
   readLocalCollectionAcceptedCountFromLocalStorage,
   LOCAL_COLLECTION_RECOMMENDATION_STORAGE_KEY,
@@ -446,6 +447,11 @@ checks.push(check("marc_import_maps_852_collection_and_multi_copy_counts", () =>
   assert(Array.isArray(accepted.marcHoldings) && accepted.marcHoldings.length === 2, "marc_holdings_not_preserved");
   assert(accepted.marcHoldings[0].rawPacked === "FSC@aAll Regular@c20000330", "marc_852x_not_preserved");
   assert(accepted.description === "A young reader faces occupation with courage and friendship.", "marc_520_description_not_preserved");
+  const recommendationArtifact = buildRecommendationArtifact(result);
+  assert(
+    recommendationArtifact.records[0].description === accepted.description,
+    "marc_520_description_not_persisted_to_recommendation_artifact",
+  );
 }));
 
 checks.push(check("marc_import_missing_852b_keeps_record_with_warning_path", () => {
@@ -468,6 +474,29 @@ checks.push(check("marc_import_missing_852b_keeps_record_with_warning_path", () 
   assert(result.summary.acceptedTitles === 1, "marc_missing_852b_should_not_reject");
   const accepted = result.acceptedRecords[0];
   assert(!accepted.shelvingLocation, "marc_missing_852b_should_leave_shelving_empty");
+}));
+
+checks.push(check("marc_import_without_520_does_not_fabricate_description", () => {
+  const record = buildMarcRecord({
+    control001: "fol00520000",
+    title: "No Summary Record",
+    author: "Writer, Morgan.",
+    isbn13: "9780439708180",
+    pubYear: "2001",
+    holdings: [{
+      copyId: "C1",
+      locationCode: "YVHS",
+      collection: "Fiction",
+      callNumber: "FIC Wri",
+    }],
+  });
+  const result = runMarcImport(record);
+  assert(result.summary.acceptedTitles === 1, "marc_without_520_should_remain_eligible");
+  assert(result.acceptedRecords[0].description === undefined, "marc_without_520_fabricated_normalized_description");
+  assert(
+    buildRecommendationArtifact(result).records[0].description === undefined,
+    "marc_without_520_fabricated_persisted_description",
+  );
 }));
 
 checks.push(check("marc_import_extracts_cover_url_from_real_856_image_links", () => {
