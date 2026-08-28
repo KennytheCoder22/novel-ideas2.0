@@ -993,7 +993,7 @@ function uniqueIsbnCandidates(values: unknown[]): string[] {
 function coverUrlFromIsbn(isbn: unknown): string | null {
   const normalized = normalizeIsbn(isbn);
   if (!normalized) return null;
-  return `https://covers.openlibrary.org/b/isbn/${normalized}-L.jpg`;
+  return `https://covers.openlibrary.org/b/isbn/${normalized}-L.jpg?default=false`;
 }
 
 function recommendationIsbnCandidates(doc: any): string[] {

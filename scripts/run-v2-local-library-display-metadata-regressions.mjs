@@ -336,8 +336,16 @@ check("B7 ISBN-first cover enrichment candidates survive when no local cover exi
     },
   };
   const candidates = recommendationCoverCandidates(noLocalCoverDoc);
-  assert(candidates.includes("https://covers.openlibrary.org/b/isbn/9780123456789-L.jpg"), `expected ISBN cover candidate, got ${JSON.stringify(candidates)}`);
+  const isbnCover = "https://covers.openlibrary.org/b/isbn/9780123456789-L.jpg?default=false";
+  const enrichedCover = "https://books.google.test/enriched-cover.jpg";
+  assert(
+    candidates.includes(isbnCover),
+    `expected non-placeholder ISBN cover candidate, got ${JSON.stringify(candidates)}`,
+  );
   assert(recommendationIsbnCandidates(noLocalCoverDoc)[0] === "9780123456789", `expected ISBN candidate, got ${JSON.stringify(recommendationIsbnCandidates(noLocalCoverDoc))}`);
+  const candidatesAfterMissingCover = recommendationCoverCandidates(noLocalCoverDoc, enrichedCover)
+    .filter((candidate) => candidate.toLowerCase() !== isbnCover.toLowerCase());
+  assert(candidatesAfterMissingCover[0] === enrichedCover, "missing ISBN cover must yield to the asynchronously enriched cover");
 });
 check("B8 UI still renders safely when no cover and no shelf metadata exist", () => {
   const bareDoc = { title: "Bare Record", raw: {} };
