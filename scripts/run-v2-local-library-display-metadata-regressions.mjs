@@ -87,6 +87,7 @@ const { selectRecommendations } = require(resolve(ROOT, "app", "recommender-v2",
 Module._load = originalLoad;
 
 const swipeDeckSource = readFileSync(resolve(ROOT, "screens", "SwipeDeckScreen.tsx"), "utf8");
+const openLibraryFromTagsSource = readFileSync(resolve(ROOT, "screens", "swipe", "openLibraryFromTags.ts"), "utf8");
 const adminSource = readFileSync(resolve(ROOT, "app", "app_admin-web.tsx"), "utf8");
 const localSource = readFileSync(resolve(ROOT, "app", "recommender-v2", "sources", "localLibrarySource.ts"), "utf8");
 const swipeDeckFile = ts.createSourceFile("SwipeDeckScreen.tsx", swipeDeckSource, ts.ScriptTarget.ES2020, true, ts.ScriptKind.TSX);
@@ -228,6 +229,22 @@ check("S1-d cover fallback path remains intact", () => {
   assert(swipeDeckSource.includes("const fromCoverId = coverUrlFromCoverId(doc.cover_i || doc.coverId, \"L\");"), "cover fallback must still try coverId");
   assert(swipeDeckSource.includes("doc?.imageLinks?.thumbnail"), "cover fallback must still try imageLinks thumbnail");
   assert(swipeDeckSource.includes("raw?.thumbnail"), "cover fallback must still try raw thumbnail");
+  assert(
+    !swipeDeckSource.includes("(process as any)?.env?.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY"),
+    "recommendation cover lookups must use Expo-inlinable API key access",
+  );
+  assert(
+    !openLibraryFromTagsSource.includes("(process as any)?.env?.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY"),
+    "tag-based Google Books lookups must use Expo-inlinable API key access",
+  );
+  assert(
+    swipeDeckSource.includes("const viewCover = await lookupGoogleBooksViewCover(safeIsbn);"),
+    "missing Open Library ISBN covers must try the keyless Google Books view lookup before REST search",
+  );
+  assert(
+    swipeDeckSource.includes("jscmd=viewapi&bibkeys="),
+    "keyless Google Books cover lookup must use the documented view API",
+  );
 });
 check("S1-e Admin text uses Go To Library", () => {
   assert(adminSource.includes('if (s === "openLibrary") return "Go To Library";'), "source label must read Go To Library");

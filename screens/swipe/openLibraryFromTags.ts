@@ -546,7 +546,7 @@ export async function openLibrarySearch(
   }
 ) {
   const maxResults = Math.max(1, Math.min(80, limit));
-  const apiKey = (process as any)?.env?.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY as string | undefined;
+  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
 
   const q = String(query || "").trim();
   const orderBy = opts?.orderBy ?? "relevance";

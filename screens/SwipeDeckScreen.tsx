@@ -452,6 +452,41 @@ function attachGraphicNovelKeywords(cards: any[]): any[] {
   return cards.map((card) => ({ ...card, graphicNovelKeywords: inferGraphicNovelKeywordsForCard(card) }));
 }
 
+let googleBooksViewCallbackSequence = 0;
+
+async function lookupGoogleBooksViewCover(isbn: string): Promise<string | undefined> {
+  if (Platform.OS !== "web" || typeof document === "undefined") return undefined;
+  const safeIsbn = String(isbn || "").replace(/[^0-9Xx]/g, "").toUpperCase();
+  if (!/^\d{13}$/.test(safeIsbn) && !/^\d{9}[\dX]$/.test(safeIsbn)) return undefined;
+
+  return new Promise((resolve) => {
+    const callbackName = `__novelIdeasGoogleBooksView_${Date.now()}_${googleBooksViewCallbackSequence++}`;
+    const callbackHost = globalThis as Record<string, any>;
+    const script = document.createElement("script");
+    let settled = false;
+    const finish = (coverUrl?: string) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      delete callbackHost[callbackName];
+      script.remove();
+      resolve(coverUrl);
+    };
+    const timeout = setTimeout(() => finish(), 4500);
+
+    callbackHost[callbackName] = (payload: any) => {
+      const entry = payload?.[`ISBN:${safeIsbn}`] || payload?.[safeIsbn];
+      const thumbnail = typeof entry?.thumbnail_url === "string" ? entry.thumbnail_url : undefined;
+      finish(thumbnail?.replace(/^http:\/\//, "https://"));
+    };
+    script.onerror = () => finish();
+    script.src =
+      `https://books.google.com/books?jscmd=viewapi&bibkeys=${encodeURIComponent(`ISBN:${safeIsbn}`)}` +
+      `&callback=${encodeURIComponent(callbackName)}`;
+    document.head.appendChild(script);
+  });
+}
+
 async function lookupOpenLibraryCover(
   title: string,
   author?: string,
@@ -459,12 +494,15 @@ async function lookupOpenLibraryCover(
 ): Promise<{ coverUrl?: string; olWorkId?: string }> {
   const safeIsbn = String(isbn || "").replace(/[^0-9Xx]/g, "").toUpperCase();
   if (/^\d{13}$/.test(safeIsbn) || /^\d{9}[\dX]$/.test(safeIsbn)) {
+    const viewCover = await lookupGoogleBooksViewCover(safeIsbn);
+    if (viewCover) return { coverUrl: viewCover };
+
     const isbnParams = new URLSearchParams();
     isbnParams.set("q", `isbn:${safeIsbn}`);
     isbnParams.set("printType", "books");
     isbnParams.set("orderBy", "relevance");
     isbnParams.set("maxResults", "1");
-    const apiKey = (process as any)?.env?.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
+    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
     if (typeof apiKey === "string" && apiKey.trim()) isbnParams.set("key", apiKey.trim());
     try {
       const isbnRes = await fetch(`https://www.googleapis.com/books/v1/volumes?${isbnParams.toString()}`);
@@ -497,7 +535,7 @@ async function lookupOpenLibraryCover(
   params.set("maxResults", "1");
   params.set("langRestrict", "en");
 
-  const apiKey = (process as any)?.env?.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
+  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
   if (typeof apiKey === "string" && apiKey.trim()) params.set("key", apiKey.trim());
 
   const url = `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
