@@ -370,6 +370,7 @@ type Props = {
   anonymousReviewSession?: AnonymousReviewSession;
   onExitAnonymousReview?: () => void;
   onCompleteAnonymousReview?: () => void;
+  onExitTesting?: () => void;
 };
 
 
@@ -5912,6 +5913,13 @@ function handleLeft(card?: SwipeDeckCard | null) {
     setHumanReviewSynopsisExpanded(false);
   }
 
+  function exitCompletedTestingWorkflow() {
+    if (humanReviewSnapshot?.reviewMode === "anonymous_session") {
+      props.onCompleteAnonymousReview?.();
+    }
+    props.onExitTesting?.();
+  }
+
   function goToNextHumanReviewStep() {
     if (!humanReviewForm) return;
     const total = humanReviewForm.itemReviews.length;
@@ -6783,6 +6791,16 @@ function handleLeft(card?: SwipeDeckCard | null) {
                     showsVerticalScrollIndicator={true}
                     keyboardShouldPersistTaps="handled"
                   >
+                    {isTestingMode && props.onExitTesting ? (
+                      <TouchableOpacity
+                        style={styles.humanReviewWorkflowExitButton}
+                        onPress={props.onExitTesting}
+                        accessibilityRole="button"
+                        accessibilityLabel="Back to NovelIdeas"
+                      >
+                        <Text style={styles.humanReviewWorkflowExitButtonText}>← Back to NovelIdeas</Text>
+                      </TouchableOpacity>
+                    ) : null}
                     <Text style={styles.v2DebugTitle}>
                       {humanReviewSnapshot.reviewMode === "anonymous_session"
                         ? "Review an Anonymous Reader's Recommendations"
@@ -7204,6 +7222,16 @@ function handleLeft(card?: SwipeDeckCard | null) {
                   {humanReviewSnapshot?.reviewMode === "anonymous_session" ? "Review Another Session" : "Start Fresh"}
                 </Text>
               </TouchableOpacity>
+              {props.onExitTesting ? (
+                <TouchableOpacity
+                  style={styles.humanReviewCompletionExitButton}
+                  onPress={exitCompletedTestingWorkflow}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to NovelIdeas"
+                >
+                  <Text style={styles.humanReviewCompletionExitButtonText}>← Back to NovelIdeas</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </View>
         </Modal>
@@ -8040,6 +8068,21 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 12,
   },
+  humanReviewWorkflowExitButton: {
+    alignSelf: "flex-start",
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#2f5f96",
+    borderRadius: 10,
+  },
+  humanReviewWorkflowExitButtonText: {
+    color: "#e5efff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
   humanReviewCompletionCard: {
     alignSelf: "center",
     width: "100%",
@@ -8078,6 +8121,21 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 15,
     fontWeight: "900",
+  },
+  humanReviewCompletionExitButton: {
+    minWidth: 180,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: "#2f5f96",
+    borderRadius: 999,
+  },
+  humanReviewCompletionExitButtonText: {
+    color: "#e5efff",
+    fontSize: 14,
+    fontWeight: "800",
   },
   randomizeToggle: {
     minWidth: 112,

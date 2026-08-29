@@ -27,6 +27,7 @@ import {
 } from "react-native";
 import SwipeDeckScreen from "../screens/SwipeDeckScreen";
 import type { AnonymousReviewSession } from "../lib/anonymousHumanReview";
+import { resolveTestingReturnTo } from "../screens/swipe/testingNavigation.mjs";
 
 const INTRO_DISMISSED_KEY = "novelideas_testing_intro_dismissed";
 const ANONYMOUS_REVIEW_RECENT_KEY = "novelideas_anonymous_review_recent";
@@ -168,11 +169,7 @@ export default function TestingRoute() {
   const router = useRouter();
   const params = useLocalSearchParams<{ intro?: string | string[]; returnTo?: string | string[] }>();
   const introRequested = (Array.isArray(params.intro) ? params.intro[0] : params.intro) === "1";
-  const requestedReturnTo = Array.isArray(params.returnTo) ? params.returnTo[0] : params.returnTo;
-  const returnTo =
-    typeof requestedReturnTo === "string" && requestedReturnTo.startsWith("/") && !requestedReturnTo.startsWith("//")
-      ? requestedReturnTo
-      : "/";
+  const returnTo = resolveTestingReturnTo(params.returnTo);
   const [introDismissed, setIntroDismissed] = useState<boolean>(() => {
     if (introRequested) return false;
     if (Platform.OS !== "web") return true;
@@ -289,7 +286,18 @@ export default function TestingRoute() {
   return (
     <SafeAreaView style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>NovelIdeas</Text>
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleCancel}
+            accessibilityRole="button"
+            accessibilityLabel="Back to NovelIdeas"
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>NovelIdeas</Text>
+          <View style={styles.headerSideSpacer} />
+        </View>
         <Text style={styles.headerSubtitle}>Reader Experience Testing</Text>
       </View>
 
@@ -302,6 +310,7 @@ export default function TestingRoute() {
           anonymousReviewSession={reviewMode === "anonymous" ? anonymousSession : undefined}
           onExitAnonymousReview={exitAnonymousReview}
           onCompleteAnonymousReview={completeAnonymousReview}
+          onExitTesting={handleCancel}
         />
       </View>
 
@@ -327,18 +336,43 @@ const styles = StyleSheet.create({
     backgroundColor: "#071526",
   },
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingTop: Platform.OS === "web" ? 16 : 8,
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#1a3355",
     alignItems: "center",
   },
+  headerTopRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  backButton: {
+    width: 84,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#2f5f96",
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0e2442",
+  },
+  backButtonText: {
+    color: "#e5efff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  headerSideSpacer: {
+    width: 84,
+  },
   headerTitle: {
+    flex: 1,
     color: "#e5efff",
     fontSize: 20,
     fontWeight: "900",
     letterSpacing: 0.5,
+    textAlign: "center",
   },
   headerSubtitle: {
     color: "#6b8cb8",
