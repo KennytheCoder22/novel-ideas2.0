@@ -709,7 +709,7 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
   console.log("PASS T28: mixed-positive routed family does not rescue zero-evidence candidate");
 }
 
-// --- T29: Non-Adult skip behavior is unchanged ---
+// --- T29: Teen skips are recommendation-neutral while remaining observable ---
 {
   const profile = buildTasteProfile({
     ageBand: "teens",
@@ -718,8 +718,11 @@ function assertAdultFamilyDecision(profile, family, expected, message) {
       { title: "Skipped Teen Fantasy", action: "skip", genres: ["Fantasy"], tags: ["magic"], source: "mock", format: "book" },
     ],
   });
-  assertIncludes(profile.genreFamily.map((row) => row.value), "fantasy", "T29: non-Adult skip behavior should remain unchanged");
-  console.log("PASS T29: non-Adult skip contribution remains unchanged");
+  assertEqual(profile.genreFamily.length, 0, "T29: Teen skip must not create genre evidence");
+  assertEqual(profile.themes.length, 0, "T29: Teen skip must not create theme evidence");
+  assertEqual(profile.sourceHints.length, 0, "T29: Teen skip must not create source hints");
+  assertEqual(profile.diagnostics.skippedCount, 1, "T29: Teen skip telemetry must remain observable");
+  console.log("PASS T29: Teen skip is recommendation-neutral and remains observable");
 }
 
 // --- T30: Canonical narrative family extraction promotes missing description cues ---

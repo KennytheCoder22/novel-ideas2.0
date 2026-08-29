@@ -102,6 +102,7 @@ import {
   humanReviewDraftStorageKey,
   isHumanReviewItemStepComplete,
   prepareHumanReviewModalState,
+  shouldDisplayHumanReviewSwipeGroup,
 } from "./swipe/humanReviewPaginatedUx";
 import { getRuntimeLibraryId } from "../constants/runtimeConfig";
 
@@ -301,7 +302,7 @@ function swipeHistoryToV2Signals(entries: SwipeHistoryEntry[]): SwipeSignalV2[] 
       tones,
       themes,
       characterDynamics,
-      weight: entry.direction === "skip" ? 0.25 : 1,
+      weight: entry.direction === "skip" ? 0 : 1,
     };
   });
 }
@@ -6828,7 +6829,8 @@ function handleLeft(card?: SwipeDeckCard | null) {
                     {humanReviewForm.sessionContext &&
                     (humanReviewForm.sessionContext.likedItems.length > 0 ||
                       humanReviewForm.sessionContext.dislikedItems.length > 0 ||
-                      humanReviewForm.sessionContext.unsureItems.length > 0) ? (
+                      (shouldDisplayHumanReviewSwipeGroup(humanReviewSnapshot.reviewMode, "skipped") &&
+                        humanReviewForm.sessionContext.unsureItems.length > 0)) ? (
                       <View style={styles.humanReviewContextSection}>
                         <TouchableOpacity
                           style={styles.humanReviewContextToggle}
@@ -6843,6 +6845,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
                             {[
                               {
                                 label: "Liked",
+                                group: "liked" as const,
                                 items: humanReviewForm.sessionContext.likedItems,
                                 thumbStyle: styles.humanReviewContextThumbLiked,
                                 vibeText: computeSwipeVibeSummary(
@@ -6853,6 +6856,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
                               },
                               {
                                 label: "Disliked",
+                                group: "disliked" as const,
                                 items: humanReviewForm.sessionContext.dislikedItems,
                                 thumbStyle: styles.humanReviewContextThumbDisliked,
                                 vibeText: computeSwipeVibeSummary(
@@ -6863,52 +6867,55 @@ function handleLeft(card?: SwipeDeckCard | null) {
                               },
                               {
                                 label: "Skipped",
+                                group: "skipped" as const,
                                 items: humanReviewForm.sessionContext.unsureItems,
                                 thumbStyle: styles.humanReviewContextThumbUnsure,
                                 vibeText: "",
                               },
-                            ].map((group) =>
-                              group.items.length ? (
-                                <View key={group.label} style={styles.humanReviewContextGroup}>
-                                  <Text style={styles.humanReviewContextLabel}>
-                                    {group.label} ({group.items.length})
-                                  </Text>
-                                  <View style={isWebTestingMode ? styles.humanReviewContextVibeRow : undefined}>
-                                    <View>
-                                      <View style={styles.humanReviewContextThumbGrid}>
-                                        {group.items.slice(0, 12).map((entry, index) => (
-                                          <View
-                                            key={`${group.label}-${index}-${entry.title}`}
-                                            style={styles.humanReviewContextItem}
-                                            accessibilityLabel={`${group.label}: ${entry.title}`}
-                                          >
-                                            <View style={[styles.humanReviewContextThumbFrame, group.thumbStyle]}>
-                                              {entry.coverUrl ? (
-                                                <Image source={{ uri: entry.coverUrl }} style={styles.humanReviewContextThumb} resizeMode="cover" />
-                                              ) : (
-                                                <View style={[styles.humanReviewContextThumb, styles.humanReviewCoverPlaceholder]} />
-                                              )}
+                            ]
+                              .filter((group) => shouldDisplayHumanReviewSwipeGroup(humanReviewSnapshot.reviewMode, group.group))
+                              .map((group) =>
+                                group.items.length ? (
+                                  <View key={group.label} style={styles.humanReviewContextGroup}>
+                                    <Text style={styles.humanReviewContextLabel}>
+                                      {group.label} ({group.items.length})
+                                    </Text>
+                                    <View style={isWebTestingMode ? styles.humanReviewContextVibeRow : undefined}>
+                                      <View>
+                                        <View style={styles.humanReviewContextThumbGrid}>
+                                          {group.items.slice(0, 12).map((entry, index) => (
+                                            <View
+                                              key={`${group.label}-${index}-${entry.title}`}
+                                              style={styles.humanReviewContextItem}
+                                              accessibilityLabel={`${group.label}: ${entry.title}`}
+                                            >
+                                              <View style={[styles.humanReviewContextThumbFrame, group.thumbStyle]}>
+                                                {entry.coverUrl ? (
+                                                  <Image source={{ uri: entry.coverUrl }} style={styles.humanReviewContextThumb} resizeMode="cover" />
+                                                ) : (
+                                                  <View style={[styles.humanReviewContextThumb, styles.humanReviewCoverPlaceholder]} />
+                                                )}
+                                              </View>
+                                              <Text style={styles.humanReviewContextItemTitle} numberOfLines={2}>
+                                                {entry.title}
+                                              </Text>
+                                              {entry.mediaType ? (
+                                                <Text style={styles.humanReviewContextItemType}>{entry.mediaType}</Text>
+                                              ) : null}
                                             </View>
-                                            <Text style={styles.humanReviewContextItemTitle} numberOfLines={2}>
-                                              {entry.title}
-                                            </Text>
-                                            {entry.mediaType ? (
-                                              <Text style={styles.humanReviewContextItemType}>{entry.mediaType}</Text>
-                                            ) : null}
-                                          </View>
-                                        ))}
+                                          ))}
+                                        </View>
+                                        {group.items.length > 12 ? (
+                                          <Text style={styles.humanReviewContextMore}>and {group.items.length - 12} more</Text>
+                                        ) : null}
                                       </View>
-                                      {group.items.length > 12 ? (
-                                        <Text style={styles.humanReviewContextMore}>and {group.items.length - 12} more</Text>
+                                      {group.vibeText ? (
+                                        <Text style={styles.humanReviewContextVibeSummary}>{group.vibeText}</Text>
                                       ) : null}
                                     </View>
-                                    {group.vibeText ? (
-                                      <Text style={styles.humanReviewContextVibeSummary}>{group.vibeText}</Text>
-                                    ) : null}
                                   </View>
-                                </View>
-                              ) : null
-                            )}
+                                ) : null
+                              )}
                           </View>
                         ) : null}
                       </View>

@@ -68,6 +68,7 @@ const {
   humanReviewDraftStorageKey,
   prepareHumanReviewModalState,
   restoreHumanReviewDraft,
+  shouldDisplayHumanReviewSwipeGroup,
 } = require(resolve(screenDir, "humanReviewPaginatedUx.ts"));
 const { runRecommenderV2 } = require(resolve(appDir, "engine.ts"));
 
@@ -134,7 +135,11 @@ async function run() {
   assert(testingRouteSource.includes("/api/anonymous-human-review-session"), "anonymous_session_load_missing");
   assert(swipeScreenSource.includes("openAnonymousHumanReviewSession"), "anonymous_review_must_reuse_existing_workflow");
   assert(swipeScreenSource.includes("What this reader swiped"), "anonymous_swipe_evidence_label_missing");
-  assert(swipeScreenSource.includes("sessionContext.unsureItems"), "anonymous_skip_evidence_missing");
+  assert(shouldDisplayHumanReviewSwipeGroup("anonymous_session", "skipped") === false, "anonymous_skip_evidence_must_be_hidden");
+  assert(shouldDisplayHumanReviewSwipeGroup("anonymous_session", "liked") === true, "anonymous_like_evidence_missing");
+  assert(shouldDisplayHumanReviewSwipeGroup("anonymous_session", "disliked") === true, "anonymous_dislike_evidence_missing");
+  assert(shouldDisplayHumanReviewSwipeGroup("self_session", "skipped") === true, "self_review_skip_evidence_changed");
+  assert(swipeScreenSource.includes("sessionContext.unsureItems"), "preserved_skip_evidence_missing");
   checks.push({ id: 0, name: "reviewer_introduction_navigation_and_resume", pass: true });
 
   // 1) only one recommendation renders at a time.

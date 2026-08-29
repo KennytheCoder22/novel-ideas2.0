@@ -418,6 +418,9 @@ export function signalPresentInText(text: string, value: string): boolean {
 
 function signalMatches(text: string, signals: WeightedSignalV2[]): WeightedSignalV2[] {
   return signals.filter((signal) => {
+    if (signal.evidence.length > 0 && signal.evidence.every((item) => String(item || "").startsWith("skip:"))) {
+      return false;
+    }
     const value = normalized(signal.value);
     return signalPresentInText(text, value);
   });

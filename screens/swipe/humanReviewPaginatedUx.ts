@@ -3,6 +3,13 @@ import type { HumanReviewItemFormEntry, HumanReviewSlateForm } from "./humanRevi
 export const HUMAN_REVIEW_DRAFT_SCHEMA_VERSION = "human_review_draft_v1";
 const HUMAN_REVIEW_DRAFT_STORAGE_PREFIX = "novelideas_human_review_draft_v1:";
 
+export function shouldDisplayHumanReviewSwipeGroup(
+  reviewMode: "self_session" | "anonymous_session" | undefined,
+  group: "liked" | "disliked" | "skipped",
+): boolean {
+  return reviewMode !== "anonymous_session" || group !== "skipped";
+}
+
 export interface HumanReviewDraftV1 {
   schemaVersion: typeof HUMAN_REVIEW_DRAFT_SCHEMA_VERSION;
   snapshotId: string;

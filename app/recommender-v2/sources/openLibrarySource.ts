@@ -1966,6 +1966,7 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
   const positiveRows = [...profile.genreFamily, ...profile.themes]
     .filter((row) => Number(row.weight || 0) > 0)
     .map((row) => ({ value: cleanOpenLibraryQueryPart(row.value), weight: Math.abs(Number(row.weight || 0)), evidence: Array.isArray(row.evidence) ? row.evidence.map(String) : [] }))
+    .filter((row) => !(row.evidence.length > 0 && row.evidence.every((item) => item.startsWith("skip:"))))
     .filter((row) => row.value);
   const avoidRows = profile.avoidSignals
     .filter((row) => Number(row.weight || 0) < 0)
@@ -2035,35 +2036,18 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
   ];
   const scoreByFamily: Record<string, number> = {};
   const likedEvidenceByFamily: Record<string, string[]> = {};
-  const skipEvidenceByFamily: Record<string, string[]> = {};
   const avoidEvidenceByFamily: Record<string, string[]> = {};
   const evidenceTitles = (row: { value: string; evidence: string[] }): string[] => row.evidence.length ? row.evidence : [row.value];
-  const hasLikedPositiveRow = (pattern: RegExp): boolean => positiveRows.some((row) => {
-    const liked = row.evidence.some((item) => item.startsWith("like:")) || !row.evidence.some((item) => item.startsWith("skip:"));
-    return liked && pattern.test(row.value);
-  });
+  const hasLikedPositiveRow = (pattern: RegExp): boolean => positiveRows.some((row) => pattern.test(row.value));
   for (const def of familyDefinitions) {
     let liked = 0;
-    let skip = 0;
     let avoid = 0;
     const likedEvidence: string[] = [];
-    const skipEvidence: string[] = [];
     const avoidEvidence: string[] = [];
     for (const row of positiveRows) {
       if (!def.patterns.some((pattern) => pattern.test(row.value))) continue;
-      const hasLike = row.evidence.some((item) => item.startsWith("like:"));
-      const hasSkip = row.evidence.some((item) => item.startsWith("skip:"));
-      if (hasLike) {
-        liked += row.weight;
-        likedEvidence.push(...evidenceTitles(row).filter((item) => item.startsWith("like:") || !item.includes(":")));
-      }
-      if (hasSkip && !hasLike) {
-        skip += row.weight;
-        skipEvidence.push(...evidenceTitles(row).filter((item) => item.startsWith("skip:") || !item.includes(":")));
-      } else if (hasSkip) {
-        skip += row.weight * 0.25;
-        skipEvidence.push(...evidenceTitles(row).filter((item) => item.startsWith("skip:")));
-      }
+      liked += row.weight;
+      likedEvidence.push(...evidenceTitles(row).filter((item) => item.startsWith("like:") || !item.includes(":")));
     }
     for (const row of avoidRows) {
       if (!def.patterns.some((pattern) => pattern.test(row.value))) continue;
@@ -2085,23 +2069,19 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
         && hasLikedPositiveRow(/\b(family|friendship|friends?|music|playful|community|ocean|sea|island|kindness)\b/i)
         ? 3
       : 0;
-    const score = Math.round((liked + distinctiveLikedBoost - avoid + skip * 0.15) * 1000) / 1000;
+    const score = Math.round((liked + distinctiveLikedBoost - avoid) * 1000) / 1000;
     scoreByFamily[def.family] = score;
     likedEvidenceByFamily[def.family] = uniqueStrings(likedEvidence, 8);
-    skipEvidenceByFamily[def.family] = uniqueStrings(skipEvidence, 8);
     avoidEvidenceByFamily[def.family] = uniqueStrings(avoidEvidence, 8);
   }
   const ranked = familyDefinitions
-    .map((def, index) => ({ ...def, index, score: Number(scoreByFamily[def.family] || 0), likedEvidenceCount: likedEvidenceByFamily[def.family]?.length || 0, skipEvidenceCount: skipEvidenceByFamily[def.family]?.length || 0 }))
+    .map((def, index) => ({ ...def, index, score: Number(scoreByFamily[def.family] || 0), likedEvidenceCount: likedEvidenceByFamily[def.family]?.length || 0 }))
     .filter((def) => def.score > 0)
     .sort((a, b) => b.score - a.score || b.likedEvidenceCount - a.likedEvidenceCount || a.index - b.index);
-  const likedRanked = ranked.filter((def) => def.likedEvidenceCount > 0);
-  const chosen = likedRanked.length ? likedRanked : ranked;
-  const skipOnlyFamilyPromotedToFirstBatch = chosen.length > 0 && chosen[0].likedEvidenceCount === 0 && chosen[0].skipEvidenceCount > 0;
-  const queries = uniqueStrings(chosen.flatMap((def) => def.queries), 14);
+  const queries = uniqueStrings(ranked.flatMap((def) => def.queries), 14);
   const familyByQuery: Record<string, string> = {};
   const familiesByQuery: Record<string, string[]> = {};
-  for (const def of chosen) {
+  for (const def of ranked) {
     for (const query of def.queries) {
       familyByQuery[query] = def.family;
       familiesByQuery[query] = uniqueStrings([...(familiesByQuery[query] || []), def.family], 12);
@@ -2112,11 +2092,11 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
     queries,
     scoreByFamily,
     likedEvidenceByFamily,
-    skipEvidenceByFamily,
+    skipEvidenceByFamily: {},
     avoidEvidenceByFamily,
-    firstBatchChosenBecause: chosen[0] ? `${chosen[0].family}:score=${chosen[0].score}:liked=${chosen[0].likedEvidenceCount}:skip=${chosen[0].skipEvidenceCount}` : undefined,
-    skipOnlyFamilyPromotedToFirstBatch,
-    likedEvidenceQueryFamilies: likedRanked.map((def) => def.family),
+    firstBatchChosenBecause: ranked[0] ? `${ranked[0].family}:score=${ranked[0].score}:liked=${ranked[0].likedEvidenceCount}:skip=0` : undefined,
+    skipOnlyFamilyPromotedToFirstBatch: false,
+    likedEvidenceQueryFamilies: ranked.map((def) => def.family),
     familyByQuery,
     familiesByQuery,
     reliableVariantQueries,
@@ -2816,9 +2796,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesTargetedPlanForRun = ageProfile.key === "middleGrades" ? middleGradesTargetedQueryPlan(context.profile) : undefined;
     const middleGradesTargetedQueriesForRun = middleGradesTargetedPlanForRun?.queries || [];
     const middleGradesTargetedQuerySet = new Set(middleGradesTargetedQueriesForRun.map((query) => query.toLowerCase()));
-    const middleGradesFirstBatchSkipOnlyFamilyBlocked = ageProfile.key === "middleGrades"
-      ? Boolean((middleGradesTargetedPlanForRun?.likedEvidenceQueryFamilies.length || 0) > 0 && !middleGradesTargetedPlanForRun?.skipOnlyFamilyPromotedToFirstBatch)
-      : undefined;
+    const middleGradesFirstBatchSkipOnlyFamilyBlocked = ageProfile.key === "middleGrades" ? false : undefined;
     const middleGradesSkippedFantasyPromotedToFirstBatch = ageProfile.key === "middleGrades"
       ? Boolean(middleGradesTargetedPlanForRun?.skipOnlyFamilyPromotedToFirstBatch && /^fantasy/i.test(String(middleGradesTargetedPlanForRun?.firstBatchChosenBecause || "")))
       : undefined;

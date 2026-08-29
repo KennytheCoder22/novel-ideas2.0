@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 const OUT_DIR = ".tmp/v2-openlibrary-routing-regressions";
+const COMPILED_APP_DIR = `${OUT_DIR}/app/recommender-v2`;
 const TS_FILES = [
   "app/recommender-v2/tasteProfile.ts",
   "app/recommender-v2/diagnostics.ts",
@@ -42,6 +43,8 @@ function compileHarnessDependencies() {
     "--outDir", OUT_DIR,
     ...TS_FILES,
   ], { stdio: "pipe" });
+  mkdirSync(`${OUT_DIR}/lib`, { recursive: true });
+  copyFileSync("lib/libraryIdMigration.js", `${OUT_DIR}/lib/libraryIdMigration.js`);
 }
 
 function summarizePlans(plans) {
@@ -109,14 +112,14 @@ async function main() {
   assertEqual(swipeDeckSource.includes("scoredCandidateUniverseCount: scoredCandidateUniverseCountForReport"), true, "v2 wrapper should export scored candidate universe count from the real scoring pipeline");
   assertEqual(swipeDeckSource.includes("finalEligibilityCleanCandidateCount: finalEligibilityCleanCandidateCountForReport"), true, "v2 wrapper should export final eligibility count from selected V2 items");
   console.log(JSON.stringify({ name: "v2 returned-items audit exposes actual return-path lineage", pass: true }));
-  const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
-  const { applyOpenLibraryPerQueryFinalLineage, runRecommenderV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/engine.js`).href);
-  const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);
-  const { selectRecommendations } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/select.js`).href);
-  const { scoreCandidates } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/score.js`).href);
-  const { normalizeSourceResults } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/normalize.js`).href);
-  const { applyOpenLibraryPerQuerySourceLineage, buildOpenLibraryQueryPlansForRegression, openLibrarySourceAdapter } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibrarySource.js`).href);
-  const { openLibraryProfileForAgeBand } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibraryProfiles.js`).href);
+  const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${COMPILED_APP_DIR}/tasteProfile.js`).href);
+  const { applyOpenLibraryPerQueryFinalLineage, runRecommenderV2 } = await import(pathToFileURL(`${process.cwd()}/${COMPILED_APP_DIR}/engine.js`).href);
+  const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${COMPILED_APP_DIR}/diagnostics.js`).href);
+  const { selectRecommendations } = await import(pathToFileURL(`${process.cwd()}/${COMPILED_APP_DIR}/select.js`).href);
+  const { scoreCandidates } = await import(pathToFileURL(`${process.cwd()}/${COMPILED_APP_DIR}/score.js`).href);
+  const { normalizeSourceResults } = await import(pathToFileURL(`${process.cwd()}/${COMPILED_APP_DIR}/normalize.js`).href);
+  const { applyOpenLibraryPerQuerySourceLineage, buildOpenLibraryQueryPlansForRegression, openLibrarySourceAdapter } = await import(pathToFileURL(`${process.cwd()}/${COMPILED_APP_DIR}/sources/openLibrarySource.js`).href);
+  const { openLibraryProfileForAgeBand } = await import(pathToFileURL(`${process.cwd()}/${COMPILED_APP_DIR}/sources/openLibraryProfiles.js`).href);
   const adultProfile = openLibraryProfileForAgeBand("adult");
   assertEqual(adultProfile.lockedBaseline, true, "adult Open Library profile should be locked");
   assertEqual(adultProfile.behaviorLabel, "adult_openlibrary_locked_baseline", "adult Open Library profile should expose locked label");
@@ -782,12 +785,12 @@ async function main() {
       assertEqual(orderingCase.disallowedFirst.test(firstQuery), false, `${orderingCase.name} should not start with skip-only or incidental recovery query`);
       assertEqual(orderingCase.expectedLikedQuery.test(firstQuery), true, `${orderingCase.name} should start with liked-evidence query family`);
       assertEqual(Boolean(result.diagnostics.skipOnlyFamilyPromotedToFirstBatch), false, `${orderingCase.name} should not promote skip-only family to first batch`);
-      assertEqual(Boolean(result.diagnostics.firstBatchSkipOnlyFamilyBlocked), true, `${orderingCase.name} should diagnose skip-only first-batch blocking when liked evidence exists`);
+      assertEqual(Boolean(result.diagnostics.firstBatchSkipOnlyFamilyBlocked), false, `${orderingCase.name} should not retain skip-only routing state`);
       assertEqual(Boolean(result.diagnostics.skippedFantasyPromotedToFirstBatch), false, `${orderingCase.name} should not promote skipped fantasy to first batch`);
       assertEqual((result.diagnostics.likedEvidenceFirstBatchFamilies || []).includes(orderingCase.expectedFamily), true, `${orderingCase.name} should expose liked-evidence first-batch families`);
       assertEqual(Object.keys(result.diagnostics.targetedQueryFamilyLikedEvidenceByFamily || {}).includes(orderingCase.expectedFamily), true, `${orderingCase.name} should record liked evidence for first-batch family`);
       assertEqual(String(result.diagnostics.firstBatchChosenBecause || "").includes("liked="), true, `${orderingCase.name} should explain first batch with liked evidence`);
-      assertEqual((result.diagnostics.likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery || []).includes(orderingCase.expectedFamily), true, `${orderingCase.name} should attempt liked-evidence family before skip-only recovery`);
+      assertEqual((result.diagnostics.likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery || []).includes(orderingCase.expectedFamily), true, `${orderingCase.name} should attempt liked-evidence family`);
       console.log(JSON.stringify({ name: orderingCase.name, pass: true, firstQuery, firstBatchChosenBecause: result.diagnostics.firstBatchChosenBecause }));
     } finally {
       globalThis.fetch = originalFetch;

@@ -584,8 +584,8 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
   const deepDebugFailure = middleGradesDeepDebugExpectedButInactive(session, deepDebug.active);
 
   for (const signal of session.signals || []) {
-    const adultSkip = session.ageBand === "adult" && signal.action === "skip";
-    const direction = signal.action === "like" ? 1 : signal.action === "dislike" ? -1 : adultSkip ? 0 : 0.25;
+    if (signal.action === "skip") continue;
+    const direction = signal.action === "like" ? 1 : -1;
     const weight = direction * Math.max(0.25, Number(signal.weight || 1));
     const evidence = signal.title ? `${signal.action}:${signal.title}` : signal.action;
     const targetMap = signal.action === "dislike" ? avoidSignals : null;
@@ -601,7 +601,7 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
     }
     if (signal.format) addWeighted(targetMap || formatPreference, signal.format, weight, evidence);
     const source = String(signal.source || "") as SourceIdV2;
-    if (SOURCE_HINTS.has(source) && !adultSkip) sourceHints.add(source);
+    if (SOURCE_HINTS.has(source)) sourceHints.add(source);
   }
 
   const positiveMaps = [tone, pacing, genreFamily, themes, characterDynamics, formatPreference];

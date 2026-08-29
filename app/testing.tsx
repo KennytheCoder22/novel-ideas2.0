@@ -148,7 +148,7 @@ function ModeChooser(props: {
         />
         <ChoiceButton
           title={props.loadingAnonymous ? "Finding an anonymous session..." : "Review an Anonymous Reader's Recommendations"}
-          description="See the likes, dislikes, and skips from a completed anonymous reader session, then evaluate the exact books NovelIdeas recommended."
+          description="See the likes and dislikes from a completed anonymous reader session, then evaluate the exact books NovelIdeas recommended."
           onPress={props.onAnonymous}
         />
         <TouchableOpacity

@@ -104,7 +104,7 @@ function buildSignalsFromPreset(sequence) {
       tones,
       themes,
       characterDynamics,
-      weight: action === "skip" ? 0.25 : 1,
+      weight: action === "skip" ? 0 : 1,
     };
   });
 }
