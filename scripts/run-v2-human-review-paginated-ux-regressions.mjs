@@ -100,13 +100,13 @@ async function run() {
   const testingRouteSource = readFileSync(testingRoutePath, "utf8");
   const homeRouteSource = readFileSync(homeRoutePath, "utf8");
 
-  // 0) Help Improve NovelIdeas explains the review before starting without intercepting direct resume links.
+  // 0) Librarian Review explains the review before starting without intercepting direct resume links.
   assert(
     homeRouteSource.includes('intro: "1"') && homeRouteSource.includes('returnTo: props.libraryId'),
     "help_improve_menu_intro_route_missing"
   );
   for (const requiredCopy of [
-    "Help Improve NovelIdeas",
+    "Librarian Review",
     "NovelIdeas uses human reviewers to evaluate the quality of its book recommendations.",
     "fits the reader's tastes",
     "interesting or non-obvious discovery",
@@ -117,6 +117,11 @@ async function run() {
   ]) {
     assert(testingRouteSource.includes(requiredCopy), `review_intro_copy_missing:${requiredCopy}`);
   }
+  assert(
+    !homeRouteSource.includes("Help Improve NovelIdeas") &&
+      !testingRouteSource.includes("Help Improve NovelIdeas"),
+    "retired_help_improve_label_still_visible"
+  );
   assert(testingRouteSource.includes(">Start Reviewing</Text>"), "review_intro_start_button_missing");
   assert(testingRouteSource.includes(">Cancel</Text>"), "review_intro_cancel_button_missing");
   assert(testingRouteSource.includes("router.replace(returnTo as any)"), "review_intro_safe_return_missing");

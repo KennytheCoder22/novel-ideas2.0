@@ -41,7 +41,7 @@ export default function HowItWorksScreen() {
         </Section>
 
         <Section heading="Anonymous Human Review (Optional)">
-          If you tap <Text style={styles.bold}>Help Improve NovelIdeas</Text>, you enter a
+          If you tap <Text style={styles.bold}>Librarian Review</Text>, you enter a
           separate anonymous evaluation flow. You'll swipe again and then rate whether the
           resulting recommendations matched your preferences. Your review is saved with a
           randomly-generated anonymous ID — no name, email, or login is ever required or recorded.

@@ -2386,7 +2386,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Librarian Settings</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={openTestingInvite}>
-              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Help Improve NovelIdeas</Text>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Librarian Review</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/how-it-works")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How to Use NovelIdeas</Text>

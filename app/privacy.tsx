@@ -31,7 +31,7 @@ export default function PrivacyScreen() {
         </Section>
 
         <Section heading="Anonymous Human Review">
-          When you participate in the optional evaluation flow (Help Improve NovelIdeas), your
+          When you participate in the optional evaluation flow (Librarian Review), your
           review is saved with a randomly-generated anonymous reviewer ID. This ID is created
           automatically — you do not choose it and it is not linked to you in any external system.
           No name, email, student ID, or other identifying information is ever attached to a

@@ -22,6 +22,7 @@
  *   NM15 — No admin stub TouchableOpacity items remain in the admin section of renderHeaderMenu
  *   NM16 — Tip Developer opens the developer's Venmo profile
  *   NM17 — Combined How to Use page embeds the bundled tutorial above the explanatory text
+ *   NM18 — Librarian Review product label is consistent across public guidance
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -77,6 +78,14 @@ const adminSectionSource =
   assertIncludes(menuFnSource, "How to Use NovelIdeas", "NM2: How to Use NovelIdeas must appear in menu");
   assertNotIncludes(menuFnSource, ">How NovelIdeas Works</Text>", "NM2: duplicate How NovelIdeas Works menu item must be removed");
   console.log("PASS NM2: How to Use NovelIdeas routes to the combined page");
+}
+
+// Librarian Review retains the existing /testing behavior under its new product label.
+{
+  assertIncludes(menuFnSource, "Librarian Review", "Librarian Review must appear in the public menu");
+  assertIncludes(indexSource, 'pathname: "/testing"', "Librarian Review must retain the /testing route");
+  assertNotIncludes(indexSource, "Help Improve NovelIdeas", "retired Help Improve NovelIdeas label must not remain visible");
+  console.log("PASS: Librarian Review retains the existing /testing route");
 }
 
 // NM3: Send Feedback routes to /feedback.
@@ -204,6 +213,17 @@ const adminSectionSource =
   console.log("PASS NM13: how-it-works.tsx covers swiping, recommendations, and Human Review");
 }
 
+// NM18: public guidance uses the Librarian Review product label.
+{
+  const privacySrc = readFileSync(resolve(ROOT, "app/privacy.tsx"), "utf8");
+  const howSrc = readFileSync(resolve(ROOT, "app/how-it-works.tsx"), "utf8");
+  assertIncludes(privacySrc, "Librarian Review", "NM18: privacy guidance must use the Librarian Review label");
+  assertIncludes(howSrc, "Librarian Review", "NM18: how-to guidance must use the Librarian Review label");
+  assertNotIncludes(privacySrc, "Help Improve NovelIdeas", "NM18: privacy guidance must not use the retired label");
+  assertNotIncludes(howSrc, "Help Improve NovelIdeas", "NM18: how-to guidance must not use the retired label");
+  console.log("PASS NM18: Librarian Review label is consistent across public guidance");
+}
+
 // NM14: openInfoScreen helper closes the menu before routing.
 {
   const helperStart = indexSource.indexOf("function openInfoScreen(");
@@ -225,4 +245,4 @@ const adminSectionSource =
   console.log("PASS NM15: no live TouchableOpacity items in admin section (all hidden)");
 }
 
-console.log("\nAll menu-nav destination regressions passed (15/15).");
+console.log("\nAll menu-nav destination regressions passed (18/18).");

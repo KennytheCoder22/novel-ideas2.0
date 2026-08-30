@@ -62,7 +62,7 @@ function IntroBanner({ onStart, onCancel }: { onStart: () => void; onCancel: () 
           contentContainerStyle={styles.introContent}
           showsVerticalScrollIndicator={true}
         >
-          <Text style={styles.introTitle}>Help Improve NovelIdeas</Text>
+          <Text style={styles.introTitle}>Librarian Review</Text>
           <Text style={styles.introBody}>
             NovelIdeas uses human reviewers to evaluate the quality of its book recommendations.
           </Text>

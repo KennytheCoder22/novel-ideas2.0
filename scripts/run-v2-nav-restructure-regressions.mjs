@@ -6,8 +6,8 @@
  *   N2  — header overflow menu stays in header right slot (swipe + search)
  *   N3  — menu trigger is plain (no border/chip styling)
  *   N4  — dropdown is right-anchored and opens downward
- *   N5  — Help Improve stays public, closes menu, and routes directly to /testing
- *   N6  — public menu structure includes Customize/Help Improve/How/Feedback/Privacy/About
+ *   N5  — Librarian Review stays public, closes menu, and routes directly to /testing
+ *   N6  — public menu structure includes Customize/Librarian Review/How/Feedback/Privacy/About
  *   N7  — admin-only menu section is gated by authenticated state
  *   N8  — no-PIN personal install keeps Customize public without auto-unlocking admin section
  *   N9  — PIN-enabled flow prompts for PIN and route visitation alone is not treated as auth
@@ -96,16 +96,19 @@ const openAdminEntrySource =
   const openTestingEnd = indexSource.indexOf("function openDeveloperTip()", openTestingStart);
   const openTestingSource =
     openTestingStart >= 0 && openTestingEnd > openTestingStart ? indexSource.slice(openTestingStart, openTestingEnd) : "";
-  assertIncludes(openTestingSource, "closeHeaderMenu();", "N5: Help Improve should close menu");
-  assertIncludes(openTestingSource, 'router.replace("/testing");', "N5: Help Improve should route directly to /testing");
-  console.log("PASS N5: Help Improve remains public and routes directly to /testing");
+  assertIncludes(openTestingSource, "closeHeaderMenu();", "N5: Librarian Review should close menu");
+  assertIncludes(openTestingSource, 'pathname: "/testing"', "N5: Librarian Review should route directly to /testing");
+  assertIncludes(openTestingSource, 'intro: "1"', "N5: Librarian Review should request the review introduction");
+  assertIncludes(openTestingSource, "returnTo: props.libraryId", "N5: Librarian Review should preserve the return destination");
+  console.log("PASS N5: Librarian Review remains public and routes directly to /testing");
 }
 
 // N6
 {
-  for (const item of ["Customize", "Help Improve NovelIdeas", "How to Use NovelIdeas", "Send Feedback", "Privacy", "About"]) {
+  for (const item of ["Customize", "Librarian Review", "How to Use NovelIdeas", "Send Feedback", "Privacy", "About"]) {
     assertIncludes(indexSource, item, `N6: public menu must include ${item}`);
   }
+  assert(!indexSource.includes("Help Improve NovelIdeas"), "N6: retired Help Improve NovelIdeas label must not remain visible");
   assertIncludes(indexSource, "headerMenuDivider", "N6: menu should include section divider(s)");
   console.log("PASS N6: public menu structure is present");
 }
