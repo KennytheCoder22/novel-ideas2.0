@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   MEDIA_MANIA_EVENT_SCHEMA_VERSION,
+  MEDIA_MANIA_AGE_BANDS,
   MEDIA_MANIA_SOURCES,
   MEDIA_MANIA_UNLOCK_SCORE,
+  changeMediaManiaAgeBand,
   chooseMediaManiaCandidate,
   createMediaManiaState,
+  eligibleMediaManiaCatalog,
   markMediaManiaBasisUnknown,
   markMediaManiaCandidateUnknown,
   resolveMediaManiaUnlock,
@@ -23,6 +26,7 @@ const catalog = MEDIA_MANIA_SOURCES.flatMap((mediaSource) =>
     mediaSource,
     title: `${mediaSource} ${index}`,
     creator: `creator ${index}`,
+    ageBands: [...MEDIA_MANIA_AGE_BANDS],
     traitKeys: [`tone:${index % 3}`, `pace:${index % 2}`],
   })),
 );
@@ -47,6 +51,32 @@ test("all seven sources can start a clean single-source game", () => {
     assert.ok(result.state.currentRound.candidates.every((item) => item.mediaSource === source));
     assert.equal(result.events[0].action, "starting_source_selected");
   }
+});
+
+test("all four age bands start with age-eligible candidates across all seven sources", () => {
+  for (const ageBand of MEDIA_MANIA_AGE_BANDS) {
+    for (const source of MEDIA_MANIA_SOURCES) {
+      const state = createMediaManiaState({ playerId: "player-1", sessionId: `${ageBand}-${source}`, ageBand, nowMs: 1_000 });
+      const result = startMediaMania(state, source, catalog, { random, nowMs: 2_000 });
+      assert.equal(result.state.ageBand, ageBand);
+      assert.equal(result.state.currentRound.ageBand, ageBand);
+      assert.ok(result.state.currentRound.candidates.every((item) => item.ageBands.includes(ageBand)));
+      assert.equal(result.events[0].activeAgeBand, ageBand);
+    }
+  }
+});
+
+test("kids rounds exclude adult-only titles before cross-media selection", () => {
+  const mixedCatalog = [
+    ...catalog.map((item) => ({ ...item, ageBands: ["kids"] })),
+    { id: "adult-expanse", source: "fixture:adult", mediaSource: "tv", title: "The Expanse", creator: "Prime Video", ageBands: ["adults"], traitKeys: ["epic"] },
+  ];
+  const state = createMediaManiaState({ playerId: "player-1", sessionId: "kids-session", ageBand: "kids", nowMs: 1_000 });
+  const result = startMediaMania(state, "tv", mixedCatalog, { random, nowMs: 2_000 });
+  const shown = [...result.state.currentRound.basisItems, ...result.state.currentRound.candidates];
+  assert.ok(shown.every((item) => item.ageBands.includes("kids")));
+  assert.ok(!shown.some((item) => item.title === "The Expanse"));
+  assert.ok(!eligibleMediaManiaCatalog(mixedCatalog, "kids").some((item) => item.id === "adult-expanse"));
 });
 
 test("LIKE and DISLIKE evidence accumulate separately", () => {
@@ -75,7 +105,32 @@ test("unknown candidate is replaced without becoming dislike or earning score", 
   assert.equal(after[2], before[2]);
   assert.deepEqual(result.state.negativeItemIds, []);
   assert.equal(result.state.tasteScore, 0);
+  assert.equal(result.state.ageBand, "teens");
   assert.deepEqual(result.events[0].familiarityActions[0].familiarity, "unknown");
+});
+
+test("changing age band safely regenerates and clears cross-age game evidence", () => {
+  let state = start();
+  state = chooseFirst(state, 3_000).state;
+  assert.ok(state.tasteScore > 0);
+  const result = changeMediaManiaAgeBand(state, "kids", catalog, { random, nowMs: 4_000 });
+  assert.equal(result.state.ageBand, "kids");
+  assert.equal(result.state.tasteScore, 0);
+  assert.deepEqual(result.state.positiveItemIds, []);
+  assert.deepEqual(result.state.negativeItemIds, []);
+  assert.equal(result.state.currentRound.roundNumber, 1);
+  assert.ok(result.state.currentRound.candidates.every((item) => item.ageBands.includes("kids")));
+  assert.equal(result.events[0].action, "age_band_changed");
+  assert.equal(result.events[0].previousAgeBand, "teens");
+  assert.equal(result.events[0].selectedAgeBand, "kids");
+});
+
+test("likes and dislikes never infer or change the active age band", () => {
+  let state = createMediaManiaState({ playerId: "player-1", sessionId: "stable-age", ageBand: "preteens", nowMs: 1_000 });
+  state = startMediaMania(state, "books", catalog, { random, nowMs: 2_000 }).state;
+  for (let round = 0; round < 4; round += 1) state = chooseFirst(state, 3_000 + round).state;
+  assert.equal(state.ageBand, "preteens");
+  assert.equal(state.currentRound.ageBand, "preteens");
 });
 
 test("unknown basis regenerates the whole round without a taste signal", () => {
@@ -111,6 +166,17 @@ test("accepting a second source creates cross-media rounds", () => {
   assert.ok(new Set(result.state.currentRound.candidates.map((item) => item.mediaSource)).size > 1);
 });
 
+test("cross-media unlocks remain age-eligible in every band", () => {
+  for (const ageBand of MEDIA_MANIA_AGE_BANDS) {
+    let state = createMediaManiaState({ playerId: "player-1", sessionId: `cross-${ageBand}`, ageBand, nowMs: 1_000 });
+    state = startMediaMania(state, "movies", catalog, { random, nowMs: 2_000 }).state;
+    while (state.tasteScore < MEDIA_MANIA_UNLOCK_SCORE) state = chooseFirst(state, 5_000 + state.completedRoundCount).state;
+    const result = resolveMediaManiaUnlock(state, state.unlockOptions[0], catalog, { random, nowMs: 8_000 });
+    assert.equal(result.state.currentRound.isCrossMedia, true);
+    assert.ok(result.state.currentRound.candidates.every((item) => item.ageBands.includes(ageBand)));
+  }
+});
+
 test("undo restores the completed round and reverses its raw taste signal", () => {
   let state = start();
   for (let round = 1; round <= 3; round += 1) state = chooseFirst(state, 3_000 + round).state;
@@ -137,6 +203,7 @@ test("raw event serialization preserves reconstructable evidence", () => {
   assert.equal(parsed.schemaVersion, MEDIA_MANIA_EVENT_SCHEMA_VERSION);
   assert.equal(parsed.gameId, "media_mania");
   assert.equal(parsed.gameVersion, 1);
+  assert.equal(parsed.activeAgeBand, "teens");
   assert.equal(parsed.responseTimeMs, 1_249);
   assert.equal(parsed.candidates.length, 3);
   assert.equal(parsed.presentationOrder.length, 3);
@@ -150,4 +217,14 @@ test("versioned state restores while foreign schemas are rejected", () => {
   const state = start();
   assert.equal(restoreMediaManiaState(JSON.parse(JSON.stringify(state))).sessionId, state.sessionId);
   assert.equal(restoreMediaManiaState({ ...state, schemaVersion: "human_review_record_v1" }), null);
+});
+
+test("legacy Media Mania state restarts safely in Teens instead of preserving a mixed round", () => {
+  const legacy = { ...start() };
+  delete legacy.ageBand;
+  const restored = restoreMediaManiaState(legacy);
+  assert.equal(restored.ageBand, "teens");
+  assert.equal(restored.startingSource, null);
+  assert.equal(restored.currentRound, null);
+  assert.deepEqual(restored.positiveItemIds, []);
 });

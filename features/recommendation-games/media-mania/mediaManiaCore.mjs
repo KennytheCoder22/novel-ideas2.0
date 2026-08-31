@@ -5,6 +5,8 @@ export const MEDIA_MANIA_STATE_SCHEMA_VERSION = "media_mania_state_v1";
 export const MEDIA_MANIA_UNLOCK_SCORE = 60;
 export const MEDIA_MANIA_SOURCES = Object.freeze(["books", "movies", "tv", "games", "youtube", "anime", "podcasts"]);
 export const MEDIA_MANIA_SOURCE_LABELS = Object.freeze({ books: "Books", movies: "Movies", tv: "TV", games: "Games", youtube: "YouTube", anime: "Anime", podcasts: "Podcasts" });
+export const MEDIA_MANIA_AGE_BANDS = Object.freeze(["kids", "preteens", "teens", "adults"]);
+export const MEDIA_MANIA_AGE_BAND_LABELS = Object.freeze({ kids: "Kids", preteens: "Pre-Teens", teens: "Teens", adults: "Adults" });
 export const MEDIA_MANIA_SCORE_RULES = Object.freeze({ like: 10, dislike: 12, crossMediaBonus: 3, unfamiliarity: 0 });
 
 const CANDIDATE_COUNT = 3;
@@ -28,9 +30,24 @@ function assertSource(source) {
   if (!MEDIA_MANIA_SOURCES.includes(source)) throw new Error(`Unsupported Media Mania source: ${source}`);
 }
 
-function validateCatalog(catalog, sources) {
+function assertAgeBand(ageBand) {
+  if (!MEDIA_MANIA_AGE_BANDS.includes(ageBand)) throw new Error(`Unsupported Media Mania age band: ${ageBand}`);
+}
+
+export function eligibleMediaManiaCatalog(catalog, ageBand) {
+  assertAgeBand(ageBand);
+  return catalog.filter((item) => Array.isArray(item.ageBands) && item.ageBands.includes(ageBand));
+}
+
+export function availableMediaManiaSources(catalog, ageBand) {
+  const eligibleCatalog = eligibleMediaManiaCatalog(catalog, ageBand);
+  return MEDIA_MANIA_SOURCES.filter((source) => eligibleCatalog.filter((item) => item.mediaSource === source).length >= 4);
+}
+
+function validateCatalog(catalog, sources, ageBand) {
+  const availableSources = availableMediaManiaSources(catalog, ageBand);
   for (const source of sources) {
-    if (catalog.filter((item) => item.mediaSource === source).length < 4) throw new Error(`Media Mania needs at least four ${source} items.`);
+    if (!availableSources.includes(source)) throw new Error(`Media Mania needs at least four ${source} items for ${ageBand}.`);
   }
 }
 
@@ -41,7 +58,7 @@ function overlap(item, basis) {
 
 function poolFor(state, catalog, basis, extraExcluded = []) {
   const excluded = new Set([...basis.map((item) => item.id), ...state.positiveItemIds, ...state.negativeItemIds, ...extraExcluded]);
-  return catalog.filter((item) => state.activeSources.includes(item.mediaSource) && !excluded.has(item.id));
+  return eligibleMediaManiaCatalog(catalog, state.ageBand).filter((item) => state.activeSources.includes(item.mediaSource) && !excluded.has(item.id));
 }
 
 function chooseCandidates(state, catalog, basis, random, extraExcluded = []) {
@@ -57,6 +74,12 @@ function chooseCandidates(state, catalog, basis, random, extraExcluded = []) {
   if (state.activeSources.length > 1) {
     for (const source of state.activeSources) {
       const sourcePool = neighborhood.filter((item) => item.mediaSource === source && !chosen.some((choice) => choice.id === item.id));
+      if (!sourcePool.length) {
+        sourcePool.push(...preferred.filter((item) => item.mediaSource === source && !chosen.some((choice) => choice.id === item.id)));
+      }
+      if (!sourcePool.length) {
+        sourcePool.push(...pool.filter((item) => item.mediaSource === source && !chosen.some((choice) => choice.id === item.id)));
+      }
       if (sourcePool.length) chosen.push(sourcePool[randomIndex(sourcePool.length, random)]);
     }
   }
@@ -67,12 +90,13 @@ function chooseCandidates(state, catalog, basis, random, extraExcluded = []) {
 }
 
 function makeRound(state, catalog, random, nowMs, excludedBasisIds = []) {
-  validateCatalog(catalog, state.activeSources);
+  validateCatalog(catalog, state.activeSources, state.ageBand);
+  const eligibleCatalog = eligibleMediaManiaCatalog(catalog, state.ageBand);
   const positiveContext = state.positiveItemIds.slice(-CONTEXT_COUNT).map((id) => byId(catalog, id)).filter(Boolean);
   let basisItems = positiveContext;
   if (!basisItems.length) {
     const excluded = new Set([...state.unknownItemIds, ...excludedBasisIds]);
-    const pool = catalog.filter((item) => item.mediaSource === state.startingSource && !excluded.has(item.id));
+    const pool = eligibleCatalog.filter((item) => item.mediaSource === state.startingSource && !excluded.has(item.id));
     const familiar = pool.filter((item) => state.familiarItemIds.includes(item.id));
     const preferred = familiar.length ? familiar : pool;
     if (!preferred.length) throw new Error("Media Mania could not find a starting point.");
@@ -86,6 +110,7 @@ function makeRound(state, catalog, random, nowMs, excludedBasisIds = []) {
     roundType: state.completedRoundCount > 0 && roundNumber % 4 === 0 ? "DISLIKE" : "LIKE",
     startedAtMs: nowMs,
     activeSources: state.activeSources.slice(),
+    ageBand: state.ageBand,
     basisItems,
     visiblePositiveContext: positiveContext.map(snap),
     visibleNegativeContext: state.negativeItemIds.slice(-CONTEXT_COUNT).map((id) => byId(catalog, id)).filter(Boolean).map(snap),
@@ -108,6 +133,7 @@ function baseEvent(state, action, timestampMs) {
     sessionId: state.sessionId,
     startingMediaSource: state.startingSource,
     activeMediaSources: state.activeSources.slice(),
+    activeAgeBand: state.ageBand,
     timestamp: new Date(timestampMs).toISOString(),
     tasteScore: state.tasteScore,
   };
@@ -135,12 +161,13 @@ function withEvents(state, events, timestampMs) {
   return { ...state, nextEventSequence: state.nextEventSequence + events.length, updatedAt: new Date(timestampMs).toISOString() };
 }
 
-export function createMediaManiaState({ playerId, sessionId, nowMs = Date.now() }) {
+export function createMediaManiaState({ playerId, sessionId, ageBand = "teens", nowMs = Date.now() }) {
   if (!playerId || !sessionId) throw new Error("Media Mania requires playerId and sessionId.");
+  assertAgeBand(ageBand);
   const timestamp = new Date(nowMs).toISOString();
   return {
     schemaVersion: MEDIA_MANIA_STATE_SCHEMA_VERSION, gameId: MEDIA_MANIA_GAME_ID, gameVersion: MEDIA_MANIA_GAME_VERSION,
-    playerId, sessionId, startingSource: null, activeSources: [], positiveItemIds: [], negativeItemIds: [],
+    playerId, sessionId, ageBand, startingSource: null, activeSources: [], positiveItemIds: [], negativeItemIds: [],
     familiarItemIds: [], unknownItemIds: [], tasteScore: 0, completedRoundCount: 0,
     unlockStatus: "locked", unlockOptions: [], currentRound: null, lastChoiceUndo: null, nextEventSequence: 1,
     createdAt: timestamp, updatedAt: timestamp,
@@ -151,11 +178,46 @@ export function startMediaMania(state, source, catalog, options = {}) {
   assertSource(source);
   const random = options.random || Math.random;
   const nowMs = options.nowMs ?? Date.now();
-  validateCatalog(catalog, [source]);
+  validateCatalog(catalog, [source], state.ageBand);
   const started = { ...state, startingSource: source, activeSources: [source] };
   const event = { ...baseEvent(started, "starting_source_selected", nowMs), selectedMediaSource: source, scoreDelta: 0 };
   const next = withEvents(started, [event], nowMs);
   return { state: { ...next, currentRound: makeRound(next, catalog, random, nowMs + 1) }, events: [event] };
+}
+
+export function changeMediaManiaAgeBand(state, ageBand, catalog, options = {}) {
+  assertAgeBand(ageBand);
+  if (ageBand === state.ageBand) return { state, events: [] };
+  const random = options.random || Math.random;
+  const nowMs = options.nowMs ?? Date.now();
+  const previousAgeBand = state.ageBand;
+  const availableSources = availableMediaManiaSources(catalog, ageBand);
+  const startingSource = availableSources.includes(state.startingSource) ? state.startingSource : null;
+  const reset = {
+    ...state,
+    ageBand,
+    startingSource,
+    activeSources: startingSource ? [startingSource] : [],
+    positiveItemIds: [],
+    negativeItemIds: [],
+    familiarItemIds: [],
+    unknownItemIds: [],
+    tasteScore: 0,
+    completedRoundCount: 0,
+    unlockStatus: "locked",
+    unlockOptions: [],
+    currentRound: null,
+    lastChoiceUndo: null,
+  };
+  const event = {
+    ...baseEvent(reset, "age_band_changed", nowMs),
+    previousAgeBand,
+    selectedAgeBand: ageBand,
+    scoreDelta: 0,
+  };
+  const next = withEvents(reset, [event], nowMs);
+  if (next.startingSource) next.currentRound = makeRound(next, catalog, random, nowMs + 1);
+  return { state: next, events: [event] };
 }
 
 export function chooseMediaManiaCandidate(state, candidateId, catalog, options = {}) {
@@ -192,7 +254,8 @@ export function chooseMediaManiaCandidate(state, candidateId, catalog, options =
   };
   const events = [event];
   if (tasteScore >= MEDIA_MANIA_UNLOCK_SCORE && nextState.unlockStatus === "locked") {
-    const eligible = MEDIA_MANIA_SOURCES.filter((source) => !nextState.activeSources.includes(source));
+    const eligible = availableMediaManiaSources(catalog, state.ageBand)
+      .filter((source) => !nextState.activeSources.includes(source));
     nextState.unlockStatus = "offered";
     nextState.unlockOptions = shuffle(eligible, random).slice(0, 3);
     events.push({ ...baseEvent({ ...nextState, nextEventSequence: state.nextEventSequence + 1 }, "source_unlock_offered", nowMs), roundId: round.id, eligibleMediaSources: eligible, offeredMediaSources: nextState.unlockOptions.slice(), scoreDelta: 0, tasteScore });
@@ -242,7 +305,7 @@ export function resolveMediaManiaUnlock(state, selectedSource, catalog, options 
   }
   const accepted = selectedSource !== null;
   const nextState = { ...state, activeSources: accepted ? unique([...state.activeSources, selectedSource]) : state.activeSources.slice(), unlockStatus: accepted ? "accepted" : "declined", unlockOptions: [], lastChoiceUndo: null };
-  if (accepted) validateCatalog(catalog, nextState.activeSources);
+  if (accepted) validateCatalog(catalog, nextState.activeSources, state.ageBand);
   const event = { ...baseEvent(nextState, accepted ? "source_unlock_selected" : "source_unlock_declined", nowMs), offeredMediaSources: state.unlockOptions.slice(), selectedMediaSource: selectedSource, scoreDelta: 0 };
   const persisted = withEvents(nextState, [event], nowMs);
   persisted.currentRound = makeRound(persisted, catalog, random, nowMs + 1);
@@ -287,5 +350,21 @@ export function serializeMediaManiaEvent(event) {
 export function restoreMediaManiaState(value) {
   if (!value || value.schemaVersion !== MEDIA_MANIA_STATE_SCHEMA_VERSION) return null;
   if (value.gameId !== MEDIA_MANIA_GAME_ID || value.gameVersion !== MEDIA_MANIA_GAME_VERSION) return null;
-  return value;
+  if (MEDIA_MANIA_AGE_BANDS.includes(value.ageBand)) return value;
+  return {
+    ...value,
+    ageBand: "teens",
+    startingSource: null,
+    activeSources: [],
+    positiveItemIds: [],
+    negativeItemIds: [],
+    familiarItemIds: [],
+    unknownItemIds: [],
+    tasteScore: 0,
+    completedRoundCount: 0,
+    unlockStatus: "locked",
+    unlockOptions: [],
+    currentRound: null,
+    lastChoiceUndo: null,
+  };
 }

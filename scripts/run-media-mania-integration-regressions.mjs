@@ -20,6 +20,8 @@ assert.match(menu, /pathname: "\/media-mania"/, "menu must open Media Mania dire
 assert.match(layout, /name="media-mania"/, "Media Mania route must be registered");
 assert.match(screen, /Let's get ready to play Media Mania!/, "starting invitation missing");
 assert.match(screen, /Where would you like to start\?/, "starting-source prompt missing");
+assert.match(screen, /Active age band:/, "active age-band control missing");
+assert.match(menu, /ageBand: deck === "k2" \? "kids"/, "Media Mania must inherit the current NovelIdeas age band");
 for (const source of ["Books", "Movies", "TV", "Games", "YouTube", "Anime", "Podcasts"]) assert.match(screen, new RegExp(`\\b${source}\\b`, "i"));
 
 assert.doesNotMatch(gameSources, /humanReview|human_review_record_v1|human_review_snapshot_v1/i, "Media Mania must not couple to Librarian Review");
@@ -27,6 +29,11 @@ assert.doesNotMatch(gameSources, /TasteFeedbackEvent|tasteProfileBuilder|Recomme
 assert.match(persistence, /novelideas_media_mania_v1/, "game-specific storage key missing");
 assert.match(persistence, /media_mania_save_v1/, "save schema must be versioned");
 assert.match(core, /media_mania_event_v1/, "raw-event schema must be versioned");
+assert.match(core, /activeAgeBand: state\.ageBand/, "raw events must preserve the active age band");
+assert.match(core, /eligibleMediaManiaCatalog\(catalog, state\.ageBand\)/, "age eligibility must run before candidate selection");
+assert.match(screen, /NOT IN THIS BAND/, "sources without a trusted age pool must fail closed in the UI");
+assert.match(catalog, /ageBandByDeckKey/, "Media Mania must reuse trusted swipe-deck age membership");
+assert.match(catalog, /existing\.ageBands\.push\(ageBand\)/, "cross-band titles must retain every eligible deck membership");
 assert.doesNotMatch(core, /similarityScore|tasteDistance|recommendationWeight/, "derived scores must not be stored as raw truth");
 
 assert.match(screen, /document\.addEventListener\("keydown"/, "keyboard controls missing");

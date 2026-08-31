@@ -2395,7 +2395,11 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                 closeHeaderMenu();
                 router.push({
                   pathname: "/media-mania",
-                  params: { playerId: patronId, libraryId: props.libraryId || "default" },
+                  params: {
+                    playerId: patronId,
+                    libraryId: props.libraryId || "default",
+                    ageBand: deck === "k2" ? "kids" : deck === "36" ? "preteens" : deck === "adult" ? "adults" : "teens",
+                  },
                 } as any);
               }}
             >

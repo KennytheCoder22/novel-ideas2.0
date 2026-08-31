@@ -3,9 +3,13 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Image, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { MEDIA_MANIA_CATALOG } from "../features/recommendation-games/media-mania/mediaManiaCatalog";
 import {
+  MEDIA_MANIA_AGE_BAND_LABELS,
+  MEDIA_MANIA_AGE_BANDS,
   MEDIA_MANIA_SOURCE_LABELS,
   MEDIA_MANIA_SOURCES,
   MEDIA_MANIA_UNLOCK_SCORE,
+  availableMediaManiaSources,
+  changeMediaManiaAgeBand,
   chooseMediaManiaCandidate,
   createMediaManiaState,
   markMediaManiaBasisUnknown,
@@ -13,6 +17,7 @@ import {
   resolveMediaManiaUnlock,
   startMediaMania,
   undoLastMediaManiaChoice,
+  type MediaManiaAgeBand,
   type MediaManiaCatalogItem,
   type MediaManiaEvent,
   type MediaManiaSource,
@@ -31,6 +36,12 @@ const SOURCE_META: Record<MediaManiaSource, { icon: string; color: string }> = {
 
 const catalogById = new Map(MEDIA_MANIA_CATALOG.map((item) => [item.id, item]));
 const titleFor = (id: string) => catalogById.get(id)?.title || "Unknown title";
+const normalizeAgeBand = (value: unknown): MediaManiaAgeBand => {
+  const normalized = String(value || "").trim().toLowerCase();
+  return MEDIA_MANIA_AGE_BANDS.includes(normalized as MediaManiaAgeBand)
+    ? normalized as MediaManiaAgeBand
+    : "teens";
+};
 
 function MediaArtwork({ item }: { item: MediaManiaCatalogItem }) {
   const meta = SOURCE_META[item.mediaSource];
@@ -87,9 +98,10 @@ function MediaArtwork({ item }: { item: MediaManiaCatalogItem }) {
   );
 }
 export default function MediaManiaScreen() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string }>();
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
   const playerId = String(params.playerId || "media-mania-player");
   const libraryId = String(params.libraryId || "default");
+  const initialAgeBand = normalizeAgeBand(params.ageBand);
   const { width } = useWindowDimensions();
   const compact = width < 760;
   const [state, setState] = useState<MediaManiaState | null>(null);
@@ -109,7 +121,7 @@ export default function MediaManiaScreen() {
         setState(saved.state);
         setEvents(saved.events);
       } else {
-        setState(createMediaManiaState({ playerId, sessionId: createMediaManiaSessionId() }));
+        setState(createMediaManiaState({ playerId, sessionId: createMediaManiaSessionId(), ageBand: initialAgeBand }));
       }
       setLoading(false);
     });
@@ -117,7 +129,7 @@ export default function MediaManiaScreen() {
       cancelled = true;
       if (flashTimer.current) clearTimeout(flashTimer.current);
     };
-  }, [libraryId, playerId]);
+  }, [initialAgeBand, libraryId, playerId]);
 
   async function commit(result: { state: MediaManiaState; events: MediaManiaEvent[] }, delay = 0, message?: string) {
     const nextEvents = [...events, ...result.events];
@@ -160,6 +172,11 @@ export default function MediaManiaScreen() {
     void commit(markMediaManiaBasisUnknown(state, basisId, MEDIA_MANIA_CATALOG));
   }
 
+  function selectAgeBand(ageBand: MediaManiaAgeBand) {
+    if (!state || locked || state.ageBand === ageBand) return;
+    void commit(changeMediaManiaAgeBand(state, ageBand, MEDIA_MANIA_CATALOG));
+  }
+
   useEffect(() => {
     const round = state?.currentRound;
     if (round?.roundType === "DISLIKE" && !firstDislikeHintSeen) {
@@ -194,6 +211,10 @@ export default function MediaManiaScreen() {
   const progress = Math.min(1, (state?.tasteScore || 0) / MEDIA_MANIA_UNLOCK_SCORE);
   const positiveTitles = useMemo(() => state?.positiveItemIds.slice(-2).map(titleFor) || [], [state?.positiveItemIds]);
   const negativeTitles = useMemo(() => state?.negativeItemIds.slice(-2).map(titleFor) || [], [state?.negativeItemIds]);
+  const availableSources = useMemo(
+    () => state ? availableMediaManiaSources(MEDIA_MANIA_CATALOG, state.ageBand) : [],
+    [state?.ageBand],
+  );
 
   if (loading || !state) {
     return <SafeAreaView style={styles.safe}><ActivityIndicator size="large" color="#fbbf24" /></SafeAreaView>;
@@ -206,13 +227,22 @@ export default function MediaManiaScreen() {
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => router.back()} style={styles.backButton}><Text style={styles.backText}>{"< NovelIdeas"}</Text></TouchableOpacity>
           <Text style={styles.eyebrow}>RECOMMENDATION GAMES</Text>
           <Text style={styles.startTitle}>{"Let's get ready to play Media Mania!"}</Text>
+          <AgeBandControl ageBand={state.ageBand} onChange={selectAgeBand} />
           <Text style={styles.startSubtitle}>Where would you like to start?</Text>
           <View style={styles.sourceGrid}>
             {MEDIA_MANIA_SOURCES.map((source) => (
-              <TouchableOpacity key={source} accessibilityRole="button" accessibilityLabel={`Start with ${MEDIA_MANIA_SOURCE_LABELS[source]}`} style={[styles.sourceCard, { borderColor: SOURCE_META[source].color }]} onPress={() => void commit(startMediaMania(state, source, MEDIA_MANIA_CATALOG))}>
+              <TouchableOpacity
+                key={source}
+                accessibilityRole="button"
+                accessibilityLabel={`Start with ${MEDIA_MANIA_SOURCE_LABELS[source]}`}
+                accessibilityState={{ disabled: !availableSources.includes(source) }}
+                disabled={!availableSources.includes(source)}
+                style={[styles.sourceCard, { borderColor: SOURCE_META[source].color }, !availableSources.includes(source) && styles.sourceCardDisabled]}
+                onPress={() => void commit(startMediaMania(state, source, MEDIA_MANIA_CATALOG))}
+              >
                 <Text style={styles.sourceIcon}>{SOURCE_META[source].icon}</Text>
                 <Text style={styles.sourceLabel}>{MEDIA_MANIA_SOURCE_LABELS[source]}</Text>
-                <Text style={[styles.sourceArrow, { color: SOURCE_META[source].color }]}>PLAY &gt;</Text>
+                <Text style={[styles.sourceArrow, { color: SOURCE_META[source].color }]}>{availableSources.includes(source) ? "PLAY >" : "NOT IN THIS BAND"}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -228,6 +258,7 @@ export default function MediaManiaScreen() {
           <Text style={styles.unlockIcon}>+</Text>
           <Text style={styles.unlockTitle}>New media unlocked!</Text>
           <Text style={styles.unlockSubtitle}>Choose a new world to mix into your taste - or keep playing your current one.</Text>
+          <AgeBandControl ageBand={state.ageBand} onChange={selectAgeBand} compact />
           {state.lastChoiceUndo ? <TouchableOpacity accessibilityRole="button" style={styles.undoButton} onPress={undoLastChoice}><Text style={styles.undoText}>Undo last choice</Text></TouchableOpacity> : null}
           <View style={styles.unlockOptions}>
             {state.unlockOptions.map((source) => (
@@ -253,8 +284,12 @@ export default function MediaManiaScreen() {
         <View style={styles.topBar}>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => router.back()} style={styles.backButton}><Text style={styles.backText}>{"< Back"}</Text></TouchableOpacity>
           <Text style={styles.logo}>MEDIA <Text style={styles.logoAccent}>MANIA</Text></Text>
-          <Text style={styles.roundLabel}>ROUND {round.roundNumber}</Text>
+          <View style={styles.roundMeta}>
+            <Text style={styles.roundLabel}>{MEDIA_MANIA_AGE_BAND_LABELS[state.ageBand].toUpperCase()}</Text>
+            <Text style={styles.roundLabel}>ROUND {round.roundNumber}</Text>
+          </View>
         </View>
+        <AgeBandControl ageBand={state.ageBand} onChange={selectAgeBand} compact />
         <View style={[styles.roundModeBanner, dislikeRound ? styles.dislikeRoundBanner : styles.likeRoundBanner]}>
           <Text style={[styles.roundModeLabel, dislikeRound && styles.dislikeRoundLabel]}>{dislikeRound ? "DISLIKE ROUND" : "LIKE ROUND"}</Text>
           <Text style={[styles.roundModeInstruction, dislikeRound && styles.dislikeRoundInstruction]}>{dislikeRound ? "Pick the one you'd skip" : "Pick the one that fits your taste"}</Text>
@@ -314,6 +349,28 @@ export default function MediaManiaScreen() {
   );
 }
 
+function AgeBandControl({ ageBand, onChange, compact = false }: { ageBand: MediaManiaAgeBand; onChange: (ageBand: MediaManiaAgeBand) => void; compact?: boolean }) {
+  return (
+    <View style={[styles.ageBandControl, compact && styles.ageBandControlCompact]} accessibilityLabel={`Active age band: ${MEDIA_MANIA_AGE_BAND_LABELS[ageBand]}`}>
+      {MEDIA_MANIA_AGE_BANDS.map((band) => {
+        const selected = band === ageBand;
+        return (
+          <TouchableOpacity
+            key={band}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            accessibilityLabel={`Use ${MEDIA_MANIA_AGE_BAND_LABELS[band]} age band`}
+            onPress={() => onChange(band)}
+            style={[styles.ageBandButton, compact && styles.ageBandButtonCompact, selected && styles.ageBandButtonSelected]}
+          >
+            <Text style={[styles.ageBandText, selected && styles.ageBandTextSelected]}>{MEDIA_MANIA_AGE_BAND_LABELS[band]}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#06172a" },
   startContent: { flexGrow: 1, alignItems: "center", padding: 24, paddingBottom: 48 },
@@ -322,11 +379,20 @@ const styles = StyleSheet.create({
   eyebrow: { color: "#fbbf24", fontWeight: "900", letterSpacing: 2.2, marginTop: 20 },
   startTitle: { color: "#f8fafc", fontSize: 38, lineHeight: 44, fontWeight: "900", textAlign: "center", maxWidth: 760, marginTop: 14 },
   startSubtitle: { color: "#9fb2ca", fontSize: 22, fontWeight: "700", marginTop: 12, marginBottom: 28 },
+  ageBandControl: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 18 },
+  ageBandControlCompact: { marginTop: 12 },
+  ageBandButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 15, borderWidth: 1, borderColor: "#3a5875", borderRadius: 999, backgroundColor: "#0a1d33" },
+  ageBandButtonCompact: { minHeight: 36, paddingHorizontal: 12 },
+  ageBandButtonSelected: { borderColor: "#fbbf24", backgroundColor: "#4a3510" },
+  ageBandText: { color: "#b8c8dc", fontSize: 13, fontWeight: "900" },
+  ageBandTextSelected: { color: "#fde68a" },
   sourceGrid: { width: "100%", maxWidth: 900, flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" },
   sourceCard: { width: 205, minHeight: 170, borderWidth: 2, borderRadius: 24, backgroundColor: "#0d233d", padding: 20, alignItems: "center", justifyContent: "center" },
+  sourceCardDisabled: { opacity: 0.42 },
   sourceIcon: { fontSize: 42 }, sourceLabel: { color: "#f8fafc", fontWeight: "900", fontSize: 21, marginTop: 10 }, sourceArrow: { fontWeight: "900", marginTop: 14, letterSpacing: 1.4 },
   gameContent: { flexGrow: 1, width: "100%", maxWidth: 1180, alignSelf: "center", padding: 18, paddingBottom: 44 },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  roundMeta: { alignItems: "flex-end", gap: 3 },
   logo: { color: "#f8fafc", fontWeight: "900", fontSize: 23, letterSpacing: 1 }, logoAccent: { color: "#fbbf24" }, roundLabel: { color: "#7890ad", fontSize: 12, fontWeight: "900", letterSpacing: 1.5 },
   roundModeBanner: { marginTop: 14, borderRadius: 18, borderWidth: 2, padding: 14, alignItems: "center" }, likeRoundBanner: { backgroundColor: "#0d2f2b", borderColor: "#2f9b74" }, dislikeRoundBanner: { backgroundColor: "#481524", borderColor: "#fb7185" }, roundModeLabel: { color: "#6ee7b7", fontSize: 18, fontWeight: "900", letterSpacing: 2 }, dislikeRoundLabel: { color: "#fecdd3", fontSize: 22 }, roundModeInstruction: { color: "#d1fae5", fontSize: 15, fontWeight: "800", marginTop: 4 }, dislikeRoundInstruction: { color: "#fff1f2", fontSize: 19 },
   scorePanel: { marginTop: 12, padding: 14, backgroundColor: "#0b213a", borderRadius: 18, borderWidth: 1, borderColor: "#214566" },
