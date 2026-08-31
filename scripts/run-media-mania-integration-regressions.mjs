@@ -1,0 +1,53 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
+const screen = read("app/media-mania.tsx");
+const menu = read("app/(tabs)/index.tsx");
+const layout = read("app/_layout.tsx");
+const core = read("features/recommendation-games/media-mania/mediaManiaCore.mjs");
+const catalog = read("features/recommendation-games/media-mania/mediaManiaCatalog.ts");
+const artwork = read("features/recommendation-games/media-mania/mediaManiaArtwork.ts");
+const persistence = read("features/recommendation-games/media-mania/mediaManiaPersistence.ts");
+const gameSources = [screen, core, catalog, artwork, persistence].join("\n");
+
+assert.match(menu, />Librarian Review<\/Text>/, "Librarian Review menu entry must remain");
+assert.match(menu, />Play Recommendation Games<\/Text>/, "Recommendation Games menu entry missing");
+assert.match(menu, /pathname: "\/media-mania"/, "menu must open Media Mania directly");
+assert.match(layout, /name="media-mania"/, "Media Mania route must be registered");
+assert.match(screen, /Let's get ready to play Media Mania!/, "starting invitation missing");
+assert.match(screen, /Where would you like to start\?/, "starting-source prompt missing");
+for (const source of ["Books", "Movies", "TV", "Games", "YouTube", "Anime", "Podcasts"]) assert.match(screen, new RegExp(`\\b${source}\\b`, "i"));
+
+assert.doesNotMatch(gameSources, /humanReview|human_review_record_v1|human_review_snapshot_v1/i, "Media Mania must not couple to Librarian Review");
+assert.doesNotMatch(gameSources, /TasteFeedbackEvent|tasteProfileBuilder|RecommendationPipeline/, "Media Mania must not couple to TasteFeedbackEvent");
+assert.match(persistence, /novelideas_media_mania_v1/, "game-specific storage key missing");
+assert.match(persistence, /media_mania_save_v1/, "save schema must be versioned");
+assert.match(core, /media_mania_event_v1/, "raw-event schema must be versioned");
+assert.doesNotMatch(core, /similarityScore|tasteDistance|recommendationWeight/, "derived scores must not be stored as raw truth");
+
+assert.match(screen, /document\.addEventListener\("keydown"/, "keyboard controls missing");
+assert.match(screen, /event\.repeat/, "held Chromebook keys must not repeat choices");
+assert.match(screen, /\["1", "2", "3"\]/, "candidate keyboard shortcuts missing");
+assert.match(screen, /event\.shiftKey/, "keyboard unfamiliarity shortcut missing");
+assert.match(screen, /useWindowDimensions/, "responsive layout signal missing");
+assert.match(screen, /width < 760/, "phone breakpoint missing");
+assert.match(screen, /minHeight: 44|minHeight: 48/, "touch targets must be at least 44px");
+assert.match(screen, /candidateColumn/, "mobile stacked candidate layout missing");
+assert.match(screen, /I don't know this/, "visible unfamiliarity controls missing");
+assert.match(screen, /testID="media-mania-unlock-progress"/, "unlock progress indicator missing");
+
+assert.match(screen, /DISLIKE ROUND/, "negative round label must be unmistakable");
+assert.match(screen, /Pick the one you'd skip/, "negative round instruction missing");
+assert.match(screen, /FIRST DISLIKE ROUND/, "first-negative-round hint missing");
+assert.match(screen, /Undo last choice/, "undo control missing");
+assert.match(core, /round_choice_undone/, "undo must preserve an explicit raw reversal event");
+assert.match(catalog, /staticMediaManiaArtworkUrl/, "catalog must use the existing pre-resolved artwork map");
+assert.match(artwork, /wikipedia|google_books|open_library/, "dynamic artwork fallbacks missing");
+assert.match(screen, /ARTWORK UNAVAILABLE/, "failed image state missing");
+assert.match(screen, /NO ARTWORK AVAILABLE/, "no-image state missing");
+assert.match(screen, /height: 230/, "artwork must reserve stable card height");
+console.log("Media Mania integration regressions passed.");
