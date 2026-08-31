@@ -48,7 +48,16 @@ assert.match(screen, /I don't know this/, "visible unfamiliarity controls missin
 assert.match(screen, /testID="media-mania-unlock-progress"/, "unlock progress indicator missing");
 
 assert.match(screen, /DISLIKE ROUND/, "negative round label must be unmistakable");
-assert.match(screen, /Pick the one you'd skip/, "negative round instruction missing");
+assert.match(screen, /LIKE ROUND/, "positive round label must be unmistakable");
+assert.match(screen, /Pick the one you WANT most/, "positive round instruction missing");
+assert.match(screen, /Pick the one you'd SKIP/, "negative round instruction missing");
+assert.match(screen, /media-mania-\$\{dislikeRound \? "dislike" : "like"\}-round/, "round mode test state missing");
+assert.match(screen, /candidateCardLikeSelected/, "positive selection state missing");
+assert.match(screen, /candidateCardDislikeSelected/, "negative selection state missing");
+assert.match(screen, /dislikeRound \? "SKIP" : "MY PICK"/, "mode-specific selection feedback missing");
+assert.match(screen, /AccessibilityInfo\.isReduceMotionEnabled/, "reduced-motion preference must be read");
+assert.match(screen, /reduceMotionEnabled[\s\S]*roundTransitionOpacity\.setValue\(1\)/, "reduced-motion fallback must disable the transition");
+assert.match(screen, /compact && styles\.candidateColumn/, "mode-colored cards must remain visible in the mobile stack");
 assert.match(screen, /FIRST DISLIKE ROUND/, "first-negative-round hint missing");
 assert.match(screen, /Undo last choice/, "undo control missing");
 assert.match(core, /round_choice_undone/, "undo must preserve an explicit raw reversal event");

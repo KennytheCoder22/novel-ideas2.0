@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, Image, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { AccessibilityInfo, ActivityIndicator, Animated, Image, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { MEDIA_MANIA_CATALOG } from "../features/recommendation-games/media-mania/mediaManiaCatalog";
 import {
   MEDIA_MANIA_AGE_BAND_LABELS,
@@ -111,7 +111,10 @@ export default function MediaManiaScreen() {
   const [flash, setFlash] = useState<string | null>(null);
   const [firstDislikeHintSeen, setFirstDislikeHintSeen] = useState(false);
   const [showDislikeHint, setShowDislikeHint] = useState(false);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [reduceMotionEnabled, setReduceMotionEnabled] = useState(true);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const roundTransitionOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     let cancelled = false;
@@ -131,6 +134,26 @@ export default function MediaManiaScreen() {
     };
   }, [initialAgeBand, libraryId, playerId]);
 
+  useEffect(() => {
+    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotionEnabled);
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotionEnabled);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    roundTransitionOpacity.stopAnimation();
+    if (reduceMotionEnabled) {
+      roundTransitionOpacity.setValue(1);
+      return;
+    }
+    roundTransitionOpacity.setValue(0.45);
+    Animated.timing(roundTransitionOpacity, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [reduceMotionEnabled, roundTransitionOpacity, state?.currentRound?.id]);
+
   async function commit(result: { state: MediaManiaState; events: MediaManiaEvent[] }, delay = 0, message?: string) {
     const nextEvents = [...events, ...result.events];
     setEvents(nextEvents);
@@ -143,6 +166,7 @@ export default function MediaManiaScreen() {
     flashTimer.current = setTimeout(() => {
       setState(result.state);
       setFlash(null);
+      setSelectedCandidateId(null);
       setLocked(false);
     }, delay);
   }
@@ -150,9 +174,10 @@ export default function MediaManiaScreen() {
   function choose(candidateId: string) {
     if (!state || !state.currentRound || locked) return;
     setLocked(true);
+    setSelectedCandidateId(candidateId);
     const result = chooseMediaManiaCandidate(state, candidateId, MEDIA_MANIA_CATALOG);
     const delta = Number(result.events[0]?.scoreDelta || 0);
-    const message = state.currentRound.roundType === "DISLIKE" ? `Boundary found! +${delta}` : `Taste match! +${delta}`;
+    const message = state.currentRound.roundType === "DISLIKE" ? `Skip - not for me  +${delta}` : `My pick - fits me  +${delta}`;
     void commit(result, 360, message);
   }
 
@@ -211,9 +236,10 @@ export default function MediaManiaScreen() {
   const progress = Math.min(1, (state?.tasteScore || 0) / MEDIA_MANIA_UNLOCK_SCORE);
   const positiveTitles = useMemo(() => state?.positiveItemIds.slice(-2).map(titleFor) || [], [state?.positiveItemIds]);
   const negativeTitles = useMemo(() => state?.negativeItemIds.slice(-2).map(titleFor) || [], [state?.negativeItemIds]);
+  const activeAgeBand = state?.ageBand;
   const availableSources = useMemo(
-    () => state ? availableMediaManiaSources(MEDIA_MANIA_CATALOG, state.ageBand) : [],
-    [state?.ageBand],
+    () => activeAgeBand ? availableMediaManiaSources(MEDIA_MANIA_CATALOG, activeAgeBand) : [],
+    [activeAgeBand],
   );
 
   if (loading || !state) {
@@ -290,49 +316,75 @@ export default function MediaManiaScreen() {
           </View>
         </View>
         <AgeBandControl ageBand={state.ageBand} onChange={selectAgeBand} compact />
-        <View style={[styles.roundModeBanner, dislikeRound ? styles.dislikeRoundBanner : styles.likeRoundBanner]}>
-          <Text style={[styles.roundModeLabel, dislikeRound && styles.dislikeRoundLabel]}>{dislikeRound ? "DISLIKE ROUND" : "LIKE ROUND"}</Text>
-          <Text style={[styles.roundModeInstruction, dislikeRound && styles.dislikeRoundInstruction]}>{dislikeRound ? "Pick the one you'd skip" : "Pick the one that fits your taste"}</Text>
-        </View>
-        <View style={styles.scorePanel}>
-          <View style={styles.scoreRow}><Text style={styles.scoreLabel}>Taste Score</Text><Text style={styles.scoreValue}>{state.tasteScore}{state.unlockStatus === "locked" ? ` / ${MEDIA_MANIA_UNLOCK_SCORE}` : " unlocked"}</Text></View>
-          <View style={styles.progressTrack}><View testID="media-mania-unlock-progress" style={[styles.progressFill, { width: `${progress * 100}%` }]} /></View>
-          <Text style={styles.progressHint}>{state.unlockStatus === "locked" ? `${Math.max(0, MEDIA_MANIA_UNLOCK_SCORE - state.tasteScore)} points to a new media unlock` : `${state.activeSources.length} media worlds active`}</Text>
-          {state.lastChoiceUndo ? <TouchableOpacity accessibilityRole="button" style={styles.undoButton} onPress={undoLastChoice}><Text style={styles.undoText}>Undo last choice</Text></TouchableOpacity> : null}
-        </View>
-
-        {(positiveTitles.length || negativeTitles.length) ? (
-          <View style={styles.contextPanel}>
-            {positiveTitles.length ? <View style={styles.contextLine}><Text style={styles.contextLabel}>YOU LIKE</Text><Text style={styles.contextText}>{positiveTitles.join("  +  ")}</Text></View> : null}
-            {negativeTitles.length ? <View style={styles.contextLine}><Text style={[styles.contextLabel, styles.negativeLabel]}>NOT FOR YOU</Text><Text style={styles.contextText}>{negativeTitles.join("   /   ")}</Text></View> : null}
+        <Animated.View
+          testID={`media-mania-${dislikeRound ? "dislike" : "like"}-round`}
+          accessibilityLabel={`${dislikeRound ? "Dislike" : "Like"} round: ${dislikeRound ? "Pick the one you'd skip" : "Pick the one you want most"}`}
+          style={[
+            styles.roundSurface,
+            dislikeRound ? styles.dislikeRoundSurface : styles.likeRoundSurface,
+            { opacity: roundTransitionOpacity },
+          ]}
+        >
+          <View style={[styles.roundModeBanner, dislikeRound ? styles.dislikeRoundBanner : styles.likeRoundBanner]}>
+            <Text style={[styles.roundModeLabel, dislikeRound && styles.dislikeRoundLabel]}>{dislikeRound ? "DISLIKE ROUND" : "LIKE ROUND"}</Text>
+            <Text style={[styles.roundModeInstruction, dislikeRound && styles.dislikeRoundInstruction]}>{dislikeRound ? "Pick the one you'd SKIP" : "Pick the one you WANT most"}</Text>
           </View>
-        ) : (
-          <View style={styles.anchorPanel}>
-            <Text style={styles.contextLabel}>STARTING WITH</Text>
-            {round.basisItems.map((item) => <View key={item.id} style={styles.anchorRow}><Text style={styles.anchorTitle}>{item.title}</Text><TouchableOpacity accessibilityRole="button" onPress={() => unknownBasis(item.id)} style={styles.unknownAnchor}><Text style={styles.unknownText}>{"I don't know this"}</Text></TouchableOpacity></View>)}
+          <View style={[styles.scorePanel, dislikeRound ? styles.dislikeInsetPanel : styles.likeInsetPanel]}>
+            <View style={styles.scoreRow}><Text style={styles.scoreLabel}>Taste Score</Text><Text style={styles.scoreValue}>{state.tasteScore}{state.unlockStatus === "locked" ? ` / ${MEDIA_MANIA_UNLOCK_SCORE}` : " unlocked"}</Text></View>
+            <View style={styles.progressTrack}><View testID="media-mania-unlock-progress" style={[styles.progressFill, { width: `${progress * 100}%` }]} /></View>
+            <Text style={styles.progressHint}>{state.unlockStatus === "locked" ? `${Math.max(0, MEDIA_MANIA_UNLOCK_SCORE - state.tasteScore)} points to a new media unlock` : `${state.activeSources.length} media worlds active`}</Text>
+            {state.lastChoiceUndo ? <TouchableOpacity accessibilityRole="button" style={styles.undoButton} onPress={undoLastChoice}><Text style={styles.undoText}>Undo last choice</Text></TouchableOpacity> : null}
           </View>
-        )}
 
-        <Text style={[styles.prompt, dislikeRound && styles.dislikePrompt]}>{dislikeRound ? "Pick the one you'd skip" : round.visiblePositiveContext.length ? "What fits your taste next?" : `If you like ${round.basisItems[0]?.title}, what else would you enjoy?`}</Text>
-        {round.isCrossMedia ? <Text style={styles.crossMedia}>CROSS-MEDIA ROUND  +3 BONUS</Text> : null}
-
-        <View style={[styles.candidateRow, compact && styles.candidateColumn]}>
-          {round.candidates.map((candidate, candidateIndex) => (
-            <View key={candidate.id} style={[styles.candidateShell, compact && styles.candidateShellCompact]}>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${dislikeRound ? "Not for me" : "Choose"} ${candidate.title}`} disabled={locked || showDislikeHint} onPress={() => choose(candidate.id)} style={[styles.candidateCard, dislikeRound && styles.candidateCardDislike]}>
-                <Text style={styles.keyHint}>{candidateIndex + 1}</Text>
-                <MediaArtwork item={candidate} />
-                <View style={styles.candidateCopy}>
-                  <Text style={[styles.mediaPill, { color: SOURCE_META[candidate.mediaSource].color }]}>{MEDIA_MANIA_SOURCE_LABELS[candidate.mediaSource].toUpperCase()}</Text>
-                  <Text style={styles.candidateTitle} numberOfLines={3}>{candidate.title}</Text>
-                  {candidate.creator ? <Text style={styles.candidateCreator} numberOfLines={1}>{candidate.creator}</Text> : null}
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel={`I do not know ${candidate.title}`} disabled={locked || showDislikeHint} onPress={() => unknownCandidate(candidate.id)} style={styles.unknownCandidate}><Text style={styles.unknownText}>{"I don't know this"}</Text></TouchableOpacity>
+          {(positiveTitles.length || negativeTitles.length) ? (
+            <View style={[styles.contextPanel, dislikeRound ? styles.dislikeInsetPanel : styles.likeInsetPanel]}>
+              {positiveTitles.length ? <View style={styles.contextLine}><Text style={styles.contextLabel}>YOU LIKE</Text><Text style={styles.contextText}>{positiveTitles.join("  +  ")}</Text></View> : null}
+              {negativeTitles.length ? <View style={styles.contextLine}><Text style={[styles.contextLabel, styles.negativeLabel]}>NOT FOR YOU</Text><Text style={styles.contextText}>{negativeTitles.join("   /   ")}</Text></View> : null}
             </View>
-          ))}
-        </View>
-        {Platform.OS === "web" ? <Text style={styles.keyboardHint}>Keys 1-3 choose  /  Shift + 1-3 replaces an unknown  /  R replaces the starting item</Text> : null}
+          ) : (
+            <View style={[styles.anchorPanel, dislikeRound ? styles.dislikeInsetPanel : styles.likeInsetPanel]}>
+              <Text style={styles.contextLabel}>STARTING WITH</Text>
+              {round.basisItems.map((item) => <View key={item.id} style={styles.anchorRow}><Text style={styles.anchorTitle}>{item.title}</Text><TouchableOpacity accessibilityRole="button" onPress={() => unknownBasis(item.id)} style={styles.unknownAnchor}><Text style={styles.unknownText}>{"I don't know this"}</Text></TouchableOpacity></View>)}
+            </View>
+          )}
+
+          <Text style={[styles.prompt, dislikeRound ? styles.dislikePrompt : styles.likePrompt]}>{dislikeRound ? "Pick the one you'd SKIP" : "Pick the one you WANT most"}</Text>
+          {round.isCrossMedia ? <Text style={styles.crossMedia}>CROSS-MEDIA ROUND  +3 BONUS</Text> : null}
+
+          <View style={[styles.candidateRow, compact && styles.candidateColumn]}>
+            {round.candidates.map((candidate, candidateIndex) => {
+              const selected = selectedCandidateId === candidate.id;
+              return (
+                <View key={candidate.id} style={[styles.candidateShell, compact && styles.candidateShellCompact]}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`${dislikeRound ? "Skip" : "Pick"} ${candidate.title}`}
+                    accessibilityState={{ selected }}
+                    disabled={locked || showDislikeHint}
+                    activeOpacity={0.68}
+                    onPress={() => choose(candidate.id)}
+                    style={[
+                      styles.candidateCard,
+                      dislikeRound ? styles.candidateCardDislike : styles.candidateCardLike,
+                      selected && (dislikeRound ? styles.candidateCardDislikeSelected : styles.candidateCardLikeSelected),
+                    ]}
+                  >
+                    <Text style={[styles.keyHint, dislikeRound ? styles.keyHintDislike : styles.keyHintLike]}>{candidateIndex + 1}</Text>
+                    {selected ? <View style={[styles.selectionBadge, dislikeRound ? styles.selectionBadgeDislike : styles.selectionBadgeLike]}><Text style={styles.selectionBadgeText}>{dislikeRound ? "SKIP" : "MY PICK"}</Text></View> : null}
+                    <MediaArtwork item={candidate} />
+                    <View style={styles.candidateCopy}>
+                      <Text style={[styles.mediaPill, { color: SOURCE_META[candidate.mediaSource].color }]}>{MEDIA_MANIA_SOURCE_LABELS[candidate.mediaSource].toUpperCase()}</Text>
+                      <Text style={styles.candidateTitle} numberOfLines={3}>{candidate.title}</Text>
+                      {candidate.creator ? <Text style={styles.candidateCreator} numberOfLines={1}>{candidate.creator}</Text> : null}
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel={`I do not know ${candidate.title}`} disabled={locked || showDislikeHint} onPress={() => unknownCandidate(candidate.id)} style={styles.unknownCandidate}><Text style={styles.unknownText}>{"I don't know this"}</Text></TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+          {Platform.OS === "web" ? <Text style={styles.keyboardHint}>Keys 1-3 choose  /  Shift + 1-3 replaces an unknown  /  R replaces the starting item</Text> : null}
+        </Animated.View>
       </ScrollView>
       <Modal visible={showDislikeHint} transparent animationType="fade" onRequestClose={() => setShowDislikeHint(false)}>
         <View style={styles.hintBackdrop}>
@@ -344,7 +396,7 @@ export default function MediaManiaScreen() {
           </View>
         </View>
       </Modal>
-      {flash ? <View pointerEvents="none" style={styles.flash}><Text style={styles.flashText}>{flash}</Text></View> : null}
+      {flash ? <View pointerEvents="none" style={[styles.flash, dislikeRound ? styles.flashDislike : styles.flashLike]}><Text style={[styles.flashText, dislikeRound && styles.flashTextDislike]}>{flash}</Text></View> : null}
     </SafeAreaView>
   );
 }
@@ -394,20 +446,36 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   roundMeta: { alignItems: "flex-end", gap: 3 },
   logo: { color: "#f8fafc", fontWeight: "900", fontSize: 23, letterSpacing: 1 }, logoAccent: { color: "#fbbf24" }, roundLabel: { color: "#7890ad", fontSize: 12, fontWeight: "900", letterSpacing: 1.5 },
-  roundModeBanner: { marginTop: 14, borderRadius: 18, borderWidth: 2, padding: 14, alignItems: "center" }, likeRoundBanner: { backgroundColor: "#0d2f2b", borderColor: "#2f9b74" }, dislikeRoundBanner: { backgroundColor: "#481524", borderColor: "#fb7185" }, roundModeLabel: { color: "#6ee7b7", fontSize: 18, fontWeight: "900", letterSpacing: 2 }, dislikeRoundLabel: { color: "#fecdd3", fontSize: 22 }, roundModeInstruction: { color: "#d1fae5", fontSize: 15, fontWeight: "800", marginTop: 4 }, dislikeRoundInstruction: { color: "#fff1f2", fontSize: 19 },
+  roundSurface: { marginTop: 14, padding: 10, borderRadius: 26, borderWidth: 2 },
+  likeRoundSurface: { backgroundColor: "#071f25", borderColor: "#247d68" },
+  dislikeRoundSurface: { backgroundColor: "#25111b", borderColor: "#a83d57" },
+  roundModeBanner: { borderRadius: 18, borderWidth: 3, padding: 14, alignItems: "center" }, likeRoundBanner: { backgroundColor: "#0b4138", borderColor: "#5ee1b7" }, dislikeRoundBanner: { backgroundColor: "#5a1629", borderColor: "#fb7185" }, roundModeLabel: { color: "#a7f3d0", fontSize: 21, fontWeight: "900", letterSpacing: 2 }, dislikeRoundLabel: { color: "#ffe4e6" }, roundModeInstruction: { color: "#ecfdf5", fontSize: 19, fontWeight: "900", marginTop: 4 }, dislikeRoundInstruction: { color: "#fff1f2" },
   scorePanel: { marginTop: 12, padding: 14, backgroundColor: "#0b213a", borderRadius: 18, borderWidth: 1, borderColor: "#214566" },
+  likeInsetPanel: { backgroundColor: "#0a292c", borderWidth: 1, borderColor: "#1c6658" },
+  dislikeInsetPanel: { backgroundColor: "#301521", borderWidth: 1, borderColor: "#813047" },
   scoreRow: { flexDirection: "row", justifyContent: "space-between" }, scoreLabel: { color: "#d6e5f5", fontWeight: "900", fontSize: 16 }, scoreValue: { color: "#fbbf24", fontWeight: "900", fontSize: 18 },
   progressTrack: { height: 9, borderRadius: 9, backgroundColor: "#183651", marginTop: 10, overflow: "hidden" }, progressFill: { height: "100%", backgroundColor: "#fbbf24", borderRadius: 9 }, progressHint: { color: "#7890ad", fontSize: 12, marginTop: 7 },
   contextPanel: { marginTop: 14, padding: 14, borderRadius: 18, backgroundColor: "#0a1d33", gap: 9 }, contextLine: { flexDirection: "row", flexWrap: "wrap", gap: 10 }, contextLabel: { color: "#54d68b", fontSize: 11, fontWeight: "900", letterSpacing: 1.2 }, negativeLabel: { color: "#fb7185" }, contextText: { color: "#d6e5f5", flexShrink: 1 },
   anchorPanel: { marginTop: 14, padding: 14, borderRadius: 18, backgroundColor: "#0a1d33" }, anchorRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 6 }, anchorTitle: { color: "#f8fafc", fontWeight: "900", fontSize: 19, flex: 1 }, unknownAnchor: { minHeight: 44, paddingHorizontal: 12, justifyContent: "center" },
-  prompt: { color: "#f8fafc", fontSize: 28, lineHeight: 34, fontWeight: "900", textAlign: "center", marginVertical: 20 }, dislikePrompt: { color: "#fda4af" }, crossMedia: { color: "#67e8f9", textAlign: "center", fontSize: 12, fontWeight: "900", letterSpacing: 1.2, marginTop: -12, marginBottom: 14 },
+  prompt: { fontSize: 28, lineHeight: 34, fontWeight: "900", textAlign: "center", marginVertical: 20 }, likePrompt: { color: "#86efcc" }, dislikePrompt: { color: "#fda4af" }, crossMedia: { color: "#67e8f9", textAlign: "center", fontSize: 12, fontWeight: "900", letterSpacing: 1.2, marginTop: -12, marginBottom: 14 },
   candidateRow: { flexDirection: "row", gap: 14, alignItems: "stretch" }, candidateColumn: { flexDirection: "column" }, candidateShell: { flex: 1, minWidth: 0 }, candidateShellCompact: { width: "100%", flex: 0 },
-  candidateCard: { flex: 1, minHeight: 390, borderWidth: 2, borderColor: "#2b5b82", borderRadius: 22, backgroundColor: "#0d2540", overflow: "hidden" }, candidateCardDislike: { borderColor: "#9f3c52" }, keyHint: { position: "absolute", zIndex: 2, top: 10, left: 10, color: "#06172a", backgroundColor: "#f8fafc", width: 28, height: 28, borderRadius: 14, textAlign: "center", lineHeight: 28, fontWeight: "900" },
+  candidateCard: { flex: 1, minHeight: 390, borderWidth: 3, borderRadius: 22, backgroundColor: "#0d2540", overflow: "hidden" },
+  candidateCardLike: { borderColor: "#36b98f" },
+  candidateCardDislike: { borderColor: "#d15370" },
+  candidateCardLikeSelected: { borderColor: "#86efcc", backgroundColor: "#104438" },
+  candidateCardDislikeSelected: { borderColor: "#fda4af", backgroundColor: "#561a2d" },
+  keyHint: { position: "absolute", zIndex: 2, top: 10, left: 10, color: "#06172a", width: 30, height: 30, borderRadius: 15, textAlign: "center", lineHeight: 30, fontWeight: "900", borderWidth: 2 },
+  keyHintLike: { backgroundColor: "#86efcc", borderColor: "#d1fae5" },
+  keyHintDislike: { backgroundColor: "#fda4af", borderColor: "#ffe4e6" },
+  selectionBadge: { position: "absolute", zIndex: 3, top: 10, right: 10, minHeight: 30, justifyContent: "center", paddingHorizontal: 12, borderRadius: 999, borderWidth: 2 },
+  selectionBadgeLike: { backgroundColor: "#0f765c", borderColor: "#a7f3d0" },
+  selectionBadgeDislike: { backgroundColor: "#9f294a", borderColor: "#fecdd3" },
+  selectionBadgeText: { color: "#fff", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
   artwork: { width: "100%", height: 230, backgroundColor: "#102943" }, artworkLoading: { alignItems: "center", justifyContent: "center", gap: 10 }, artworkStatus: { color: "#91a7c0", fontWeight: "800" }, artworkFallback: { alignItems: "center", justifyContent: "center" }, artworkIcon: { fontSize: 62 }, artworkSource: { color: "#fff", fontSize: 12, fontWeight: "900", letterSpacing: 1.6, marginTop: 8 },
   candidateCopy: { padding: 15 }, mediaPill: { fontSize: 11, fontWeight: "900", letterSpacing: 1.3 }, candidateTitle: { color: "#f8fafc", fontSize: 21, lineHeight: 25, fontWeight: "900", marginTop: 7 }, candidateCreator: { color: "#91a7c0", marginTop: 7, fontWeight: "700" },
   undoButton: { minHeight: 44, alignSelf: "center", justifyContent: "center", paddingHorizontal: 16, marginTop: 10, borderWidth: 1, borderColor: "#7890ad", borderRadius: 999 }, undoText: { color: "#d6e5f5", fontWeight: "900" },
   unknownCandidate: { minHeight: 48, alignItems: "center", justifyContent: "center", marginTop: 7 }, unknownText: { color: "#9fb2ca", fontWeight: "800", fontSize: 13 }, keyboardHint: { color: "#657e9c", textAlign: "center", marginTop: 18, fontSize: 12 },
   hintBackdrop: { flex: 1, backgroundColor: "rgba(3, 10, 20, 0.86)", alignItems: "center", justifyContent: "center", padding: 24 }, hintCard: { width: "100%", maxWidth: 480, borderRadius: 24, borderWidth: 3, borderColor: "#fb7185", backgroundColor: "#3b1220", padding: 26, alignItems: "center" }, hintEyebrow: { color: "#fecdd3", fontSize: 14, fontWeight: "900", letterSpacing: 2 }, hintTitle: { color: "#fff", fontSize: 28, lineHeight: 34, fontWeight: "900", textAlign: "center", marginTop: 10 }, hintCopy: { color: "#ffe4e6", fontSize: 17, lineHeight: 24, textAlign: "center", marginTop: 10 }, hintButton: { minHeight: 52, marginTop: 22, borderRadius: 999, backgroundColor: "#fb7185", paddingHorizontal: 22, justifyContent: "center" }, hintButtonText: { color: "#310b16", fontWeight: "900", fontSize: 16 },
-  flash: { position: "absolute", top: "42%", alignSelf: "center", backgroundColor: "#fbbf24", borderRadius: 999, paddingVertical: 16, paddingHorizontal: 28 }, flashText: { color: "#071629", fontWeight: "900", fontSize: 20 },
+  flash: { position: "absolute", top: "42%", alignSelf: "center", borderRadius: 999, borderWidth: 3, paddingVertical: 16, paddingHorizontal: 28 }, flashLike: { backgroundColor: "#5ee1b7", borderColor: "#d1fae5" }, flashDislike: { backgroundColor: "#be3458", borderColor: "#fecdd3" }, flashText: { color: "#06241d", fontWeight: "900", fontSize: 20 }, flashTextDislike: { color: "#fff1f2" },
   unlockContent: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 }, unlockIcon: { color: "#fbbf24", fontSize: 70 }, unlockTitle: { color: "#f8fafc", fontSize: 38, fontWeight: "900", textAlign: "center" }, unlockSubtitle: { color: "#9fb2ca", fontSize: 18, lineHeight: 25, textAlign: "center", maxWidth: 650, marginTop: 12 }, unlockOptions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 14, marginTop: 28 }, unlockCard: { width: 190, minHeight: 155, borderWidth: 2, borderRadius: 22, backgroundColor: "#0d233d", alignItems: "center", justifyContent: "center" }, continueButton: { minHeight: 48, justifyContent: "center", marginTop: 25, paddingHorizontal: 18 }, continueText: { color: "#b8c8dc", fontWeight: "800" },
 });
