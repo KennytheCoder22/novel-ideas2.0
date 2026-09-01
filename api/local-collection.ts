@@ -87,19 +87,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const protection = await adminPinProtectionState(libraryId);
     if (protection.pinEnabled && !hasAuthorizedAdminSession(req, libraryId)) {
-      return res.status(403).json({ error: "unauthorized" });
+      return res.status(403).json({ error: "unauthorized", activeArtifactState: "previous_retained" });
     }
     const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
     let artifact: Record<string, unknown>;
     try {
       artifact = readCollectionArtifact(body);
     } catch (error) {
-      return res.status(400).json({ error: error instanceof Error ? error.message : "invalid_artifact" });
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : "invalid_artifact",
+        activeArtifactState: "previous_retained",
+      });
     }
     await saveSharedLibraryCollection(libraryId, artifact);
-    return res.status(200).json({ success: true });
+    const expectedVersion = artifact.collectionVersion;
+    return res.status(200).json({
+      success: true,
+      activeArtifactState: "activated_verified",
+      collectionVersion: expectedVersion || null,
+      health: artifact.health || null,
+    });
   } catch (error) {
     console.error("local-collection POST error:", error);
-    return res.status(500).json({ error: "internal_server_error" });
+    const errorCode = error instanceof Error ? error.message : "";
+    const retainedPrevious = [
+      "collection_checksum_mismatch",
+      "collection_staged_readback_failed",
+      "collection_staged_readback_mismatch",
+      "invalid_collection_version_metadata",
+    ].includes(errorCode);
+    return res.status(500).json({
+      error: retainedPrevious ? errorCode : "internal_server_error",
+      activeArtifactState: retainedPrevious ? "previous_retained" : "unknown",
+    });
   }
 }

@@ -17,12 +17,14 @@ import configFile from "../NovelIdeas.json";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
 import { importLocalCollectionCsv, importLocalCollectionMarc } from "../lib/localCollection";
 import {
+  buildRecommendationArtifact,
   loadLocalCollectionRecommendationArtifact,
   measureSharedLocalCollectionPublishBytes,
   persistLocalCollectionRecommendationArtifact,
-  publishSharedLocalCollectionRecommendationArtifact,
+  publishAndVerifySharedLocalCollectionRecommendationArtifact,
   readLocalCollectionAcceptedCountFromLocalStorage,
 } from "../lib/localCollection/storage";
+import type { LocalCollectionHealth, LocalCollectionVersionMetadata } from "../lib/localCollection/types";
 import {
   loadSharedLibraryConfigWithDiagnostics,
   saveSharedLibraryConfigWithDiagnostics,
@@ -278,8 +280,24 @@ function localCollectionImportErrorMessage(error: unknown): string {
   return "Import failed. Check the file and try again.";
 }
 
+function localCollectionPublishErrorMessage(error: string | null): string {
+  if (error === "compression_failed") return "compression failed";
+  if (error === "compressed_request_too_large") return "the compressed artifact exceeds the upload limit";
+  if (error === "collection_checksum_mismatch") return "the stored checksum did not match";
+  if (error?.includes("readback") || error?.includes("read_back")) return "stored-artifact read-back failed";
+  if (error === "request_failed") return "the durable storage request could not be confirmed";
+  return error || "verification failed";
+}
+
 function formatByteCount(bytes: number): string {
-  return `${Math.max(0, Math.floor(bytes)).toLocaleString()} bytes`;
+  const value = Math.max(0, Math.floor(bytes));
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${value.toLocaleString()} bytes`;
+}
+
+function coveragePercent(count: number, total: number): string {
+  return total > 0 ? `${Math.round(count / total * 100)}%` : "0%";
 }
 
 function hasSavedAdminPin(cfg: any): boolean {
@@ -855,6 +873,10 @@ export default function AdminWebScreen() {
       return readScopedUploadedCollectionCount(localStorage, adminDraftScopeId);
     } catch { return 0; }
   });
+  const [collectionHealth, setCollectionHealth] = useState<LocalCollectionHealth | null>(null);
+  const [collectionAttemptHealth, setCollectionAttemptHealth] = useState<LocalCollectionHealth | null>(null);
+  const [collectionVersion, setCollectionVersion] = useState<LocalCollectionVersionMetadata | null>(null);
+  const [collectionHealthDetailsVisible, setCollectionHealthDetailsVisible] = useState(false);
 
   useEffect(() => {
     if (!isWeb || typeof localStorage === "undefined") {
@@ -864,14 +886,19 @@ export default function AdminWebScreen() {
     let cancelled = false;
     const initialCount = readScopedUploadedCollectionCount(localStorage, adminDraftScopeId);
     setUploadedCollectionCount(initialCount);
+    setCollectionAttemptHealth(null);
     void loadLocalCollectionRecommendationArtifact(
       adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE ? undefined : adminDraftScopeId
     ).then((artifact) => {
       if (cancelled) return;
       if (!artifact) {
         setUploadedCollectionCount(initialCount);
+        setCollectionHealth(null);
+        setCollectionVersion(null);
         return;
       }
+      setCollectionHealth(artifact.health || null);
+      setCollectionVersion(artifact.collectionVersion || null);
       const acceptedCount = Number(artifact.summary?.acceptedTitles || 0);
       if (Number.isFinite(acceptedCount) && acceptedCount >= 0) {
         setUploadedCollectionCount(acceptedCount);
@@ -1055,6 +1082,7 @@ export default function AdminWebScreen() {
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return;
+      setCollectionAttemptHealth(null);
       const sourceFilename = file.name || "collection.csv";
       const isMarcUpload = /\.(mrc|marc|001)$/i.test(sourceFilename);
       setImportStatus({ phase: 'reading', pct: 5, label: 'Reading file…' });
@@ -1088,9 +1116,20 @@ export default function AdminWebScreen() {
                 libraryId: adminDraftScopeId,
               });
             }
+            const preflightArtifact = buildRecommendationArtifact(artifact, { publishStatus: "local_only" });
+            if (preflightArtifact.health?.status === "failed") {
+              setCollectionAttemptHealth(preflightArtifact.health);
+              setImportStatus({
+                phase: "error",
+                pct: 0,
+                label: `Collection import failed. ${preflightArtifact.health.failures.join(" ")}`,
+              });
+              return;
+            }
             setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
             const sharedLibraryId = resolveLibraryId(config);
             let sharedPublishNote = "";
+            let verifiedRecommendationArtifact;
             if (sharedLibraryId && adminAuthorization.mode !== "local") {
               const size = measureSharedLocalCollectionPublishBytes(sharedLibraryId, artifact);
               console.info("[local-collection] shared publish bytes", {
@@ -1098,13 +1137,28 @@ export default function AdminWebScreen() {
                 artifactUtf8Bytes: size.artifactUtf8Bytes,
                 requestUtf8Bytes: size.requestUtf8Bytes,
               });
-              const published = await publishSharedLocalCollectionRecommendationArtifact(sharedLibraryId, artifact);
-              if (published) {
+              const publishResult = await publishAndVerifySharedLocalCollectionRecommendationArtifact(sharedLibraryId, artifact);
+              if (publishResult.success) {
+                verifiedRecommendationArtifact = publishResult.artifact;
+                setCollectionHealth(publishResult.health);
+                setCollectionAttemptHealth(null);
+                setCollectionVersion(publishResult.artifact.collectionVersion || null);
                 sharedPublishNote = size.exceedsFunctionLimit
-                  ? ` Shared publish used compressed transfer for ${formatByteCount(size.artifactUtf8Bytes)} artifact.`
-                  : ` Shared publish payload: artifact ${formatByteCount(size.artifactUtf8Bytes)}, request ${formatByteCount(size.requestUtf8Bytes)}.`;
+                  ? ` Published and verified using compressed transfer.`
+                  : ` Published and verified from durable read-back.`;
               } else {
-                throw new Error("shared_collection_publish_failed");
+                setCollectionAttemptHealth(publishResult.health);
+                const previous = publishResult.previousArtifact;
+                setImportStatus({
+                  phase: "error",
+                  pct: 0,
+                  label: publishResult.previousArtifactRetained
+                    ? previous
+                      ? `New upload failed (${localCollectionPublishErrorMessage(publishResult.error)}). Previous collection remains active: ${previous.importedCount.toLocaleString()} titles from ${new Date(previous.uploadedAt).toLocaleDateString()}.`
+                      : `New upload failed (${localCollectionPublishErrorMessage(publishResult.error)}). No collection was activated.`
+                    : `The upload could not be fully verified (${localCollectionPublishErrorMessage(publishResult.error)}). Reload Librarian Settings to confirm which collection is active.`,
+                });
+                return;
               }
             }
             if (isMarcUpload) {
@@ -1112,10 +1166,22 @@ export default function AdminWebScreen() {
             } else {
               localStorage.setItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId), String(reader.result || ""));
             }
-            await persistLocalCollectionRecommendationArtifact(artifact);
+            await persistLocalCollectionRecommendationArtifact(artifact, {
+              recommendationArtifact: verifiedRecommendationArtifact,
+            });
+            if (!verifiedRecommendationArtifact) {
+              const localArtifact = await loadLocalCollectionRecommendationArtifact(adminDraftScopeId);
+              setCollectionHealth(localArtifact?.health || null);
+              setCollectionAttemptHealth(null);
+              setCollectionVersion(localArtifact?.collectionVersion || null);
+            }
             localStorage.setItem(
               localCollectionImportReportStorageKeyForScope(adminDraftScopeId),
-              JSON.stringify(artifact.summary)
+              JSON.stringify({
+                summary: artifact.summary,
+                health: verifiedRecommendationArtifact?.health || null,
+                collectionVersion: verifiedRecommendationArtifact?.collectionVersion || null,
+              })
             );
             setUploadedCollectionCount(artifact.summary.acceptedTitles);
             // Mark collection as available (supported) but do NOT auto-enable the source toggle.
@@ -1926,11 +1992,84 @@ export default function AdminWebScreen() {
         <SectionTitle>E. Local Collection</SectionTitle>
 
         <View style={[styles.infoCard, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}>
+          {collectionAttemptHealth?.status === "failed" ? (
+            <View style={{ borderWidth: 1, borderColor: t.danger, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+              <Text style={{ color: t.danger, fontWeight: "800", marginBottom: 3 }}>Latest upload needs attention</Text>
+              <Text style={{ color: t.subtext, fontSize: 12, lineHeight: 18 }}>
+                {collectionAttemptHealth.failures.join(" ")} The active collection summary below is kept separate from this failed attempt.
+              </Text>
+            </View>
+          ) : null}
           <Text style={{ color: t.text, fontWeight: "700", marginBottom: 4 }}>
-            {uploadedCollectionCount > 0
-              ? `${uploadedCollectionCount.toLocaleString()} titles imported`
-              : "No collection imported"}
+            {collectionHealth
+              ? collectionHealth.status === "ready"
+                ? `Collection ready: ${collectionHealth.metrics.usableTitles.toLocaleString()} titles imported`
+                : collectionHealth.status === "ready_with_warnings"
+                  ? `Collection ready with warnings: ${collectionHealth.metrics.usableTitles.toLocaleString()} titles imported`
+                  : "Collection needs attention"
+              : uploadedCollectionCount > 0
+                ? `${uploadedCollectionCount.toLocaleString()} titles imported`
+                : "No collection imported"}
           </Text>
+          {collectionVersion ? (
+            <Text style={{ color: t.subtext, fontSize: 12, marginBottom: 6 }}>
+              Current collection: {collectionVersion.importedCount.toLocaleString()} titles · uploaded{" "}
+              {new Date(collectionVersion.uploadedAt).toLocaleDateString()} · import v2
+            </Text>
+          ) : null}
+          {collectionHealth ? (
+            <>
+              <Text style={{ color: t.subtext, fontSize: 13, marginBottom: 4 }}>
+                {coveragePercent(collectionHealth.metrics.descriptionsPresent, collectionHealth.metrics.usableTitles)} descriptions ·{" "}
+                {coveragePercent(collectionHealth.metrics.coversResolvable, collectionHealth.metrics.usableTitles)} covers ·{" "}
+                {coveragePercent(collectionHealth.metrics.authorsPresent, collectionHealth.metrics.usableTitles)} authors
+              </Text>
+              <Text style={{
+                color: collectionHealth.status === "failed" ? t.danger : collectionHealth.warnings.length ? t.accent : t.success,
+                fontSize: 12,
+                fontWeight: "700",
+                marginBottom: 6,
+              }}>
+                {collectionHealth.failures.length
+                  ? collectionHealth.failures.join(" ")
+                  : collectionHealth.metrics.rejectedRecords > 0
+                    ? `${collectionHealth.metrics.rejectedRecords.toLocaleString()} records need attention`
+                    : "No rejected records"}
+                {" · "}Storage: {collectionHealth.publishStatus.replace(/_/g, " ")}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setCollectionHealthDetailsVisible((current) => !current)}
+                accessibilityRole="button"
+                accessibilityLabel="Toggle collection import health details"
+              >
+                <Text style={{ color: t.accent, fontWeight: "800", fontSize: 12 }}>
+                  {collectionHealthDetailsVisible ? "Hide import details" : "View import details"}
+                </Text>
+              </TouchableOpacity>
+              {collectionHealthDetailsVisible ? (
+                <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: t.cardBorder, paddingTop: 8 }}>
+                  <Text style={{ color: t.subtext, fontSize: 12, lineHeight: 18 }}>
+                    Source: {collectionVersion?.sourceFormat || "unknown"} · Records encountered: {collectionHealth.metrics.totalRecords.toLocaleString()} ·
+                    Imported: {collectionHealth.metrics.importedRecords.toLocaleString()} · Rejected: {collectionHealth.metrics.rejectedRecords.toLocaleString()} ·
+                    Duplicates: {collectionHealth.metrics.duplicateRecords.toLocaleString()} ({Math.round(collectionHealth.metrics.duplicateRate * 100)}%)
+                  </Text>
+                  <Text style={{ color: t.subtext, fontSize: 12, lineHeight: 18 }}>
+                    ISBNs: {collectionHealth.metrics.usableIsbns.toLocaleString()} · Descriptions: {collectionHealth.metrics.descriptionsPresent.toLocaleString()} ·
+                    Covers resolvable: {collectionHealth.metrics.coversResolvable.toLocaleString()} · Call numbers: {collectionHealth.metrics.callNumbersPresent.toLocaleString()} ·
+                    Audience metadata: {collectionHealth.metrics.audienceMetadataPresent.toLocaleString()}
+                  </Text>
+                  <Text style={{ color: t.subtext, fontSize: 12, lineHeight: 18 }}>
+                    Upload: {formatByteCount(collectionHealth.originalUploadBytes)} · Artifact: {formatByteCount(collectionHealth.artifactBytes)} ·
+                    Compressed: {formatByteCount(collectionHealth.compressedArtifactBytes)} · Smoke sample: {collectionHealth.smokeTest?.sampleSize || 0}{" "}
+                    ({collectionHealth.smokeTest?.passed ? "passed" : "needs attention"})
+                  </Text>
+                  {collectionHealth.warnings.map((warning) => (
+                    <Text key={warning} style={{ color: t.accent, fontSize: 12, lineHeight: 18 }}>• {warning}</Text>
+                  ))}
+                </View>
+              ) : null}
+            </>
+          ) : null}
           <Note>
             Upload a CSV or MARC export of your library's holdings. Local Collection recommends only
             from this library's imported titles and cannot run alongside external sources.

@@ -13,10 +13,11 @@
  * written to any public storage backend.
  */
 
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { canonicalLibraryId, libraryIdReadCandidates, YVHS_LIBRARY_ID } from "../libraryIdMigration.js";
+import { collectionContentChecksum } from "../localCollection/health";
 
 // ── Storage mode ──────────────────────────────────────────────────────────────
 
@@ -189,6 +190,9 @@ function canonicalizeLibraryPayload(
   if (payload.metadata && typeof payload.metadata === "object" && !Array.isArray(payload.metadata)) {
     next.metadata = { ...(payload.metadata as Record<string, unknown>), libraryId: YVHS_LIBRARY_ID };
   }
+  if (payload.collectionVersion && typeof payload.collectionVersion === "object" && !Array.isArray(payload.collectionVersion)) {
+    next.collectionVersion = { ...(payload.collectionVersion as Record<string, unknown>), libraryId: YVHS_LIBRARY_ID };
+  }
   return next;
 }
 
@@ -270,9 +274,58 @@ function collectionPtrBlobPathname(libraryId: string): string {
   return `libraries/${safePathSegment(libraryId)}/collection-ptr.json`;
 }
 
+function collectionPointerPrefix(libraryId: string): string {
+  return `libraries/${safePathSegment(libraryId)}/collection-pointers/`;
+}
+
 /** Vercel Blob pathname for the collection artifact. */
 export function collectionBlobPathname(libraryId: string): string {
   return `libraries/${safePathSegment(libraryId)}/collection.json`;
+}
+
+function collectionVersionBlobPathname(libraryId: string, artifactId: string): string {
+  return `libraries/${safePathSegment(libraryId)}/collections/${safePathSegment(artifactId)}.json`;
+}
+
+async function cleanupExpiredCollectionVersions(
+  libraryId: string,
+  activeUrl: string,
+  previousActiveUrl: string | null,
+): Promise<void> {
+  const { del, list } = await import("@vercel/blob");
+  const token = readBlobReadWriteToken();
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  for (const prefix of [
+    `libraries/${safePathSegment(libraryId)}/collections/`,
+    collectionPointerPrefix(libraryId),
+  ]) {
+    const blobs: Array<{ url: string; uploadedAt: Date }> = [];
+    let cursor: string | undefined;
+    do {
+      const page = await list({
+        prefix,
+        limit: 1000,
+        cursor,
+        ...(token ? { token } : {}),
+      });
+      blobs.push(...page.blobs);
+      cursor = page.hasMore ? page.cursor : undefined;
+    } while (cursor);
+    const newestPointerUrl = prefix === collectionPointerPrefix(libraryId)
+      ? [...blobs].sort(
+          (left, right) => new Date(right.uploadedAt).getTime() - new Date(left.uploadedAt).getTime(),
+        )[0]?.url
+      : null;
+    const expiredUrls = blobs
+      .filter((blob) =>
+        blob.url !== activeUrl &&
+        blob.url !== previousActiveUrl &&
+        blob.url !== newestPointerUrl &&
+        new Date(blob.uploadedAt).getTime() < cutoff
+      )
+      .map((blob) => blob.url);
+    if (expiredUrls.length) await del(expiredUrls, token ? { token } : undefined);
+  }
 }
 
 /**
@@ -494,7 +547,8 @@ function validateConfigEnvelope(data: unknown): {
 
 /** Store a pointer to the collection blob URL. */
 async function saveBlobCollectionPtr(libraryId: string, blobUrl: string): Promise<void> {
-  await putBlobJson(collectionPtrBlobPathname(libraryId), {
+  const pointerPath = `${collectionPointerPrefix(libraryId)}${Date.now()}-${randomUUID()}.json`;
+  await putBlobJson(pointerPath, {
     schemaVersion: "collection_ptr_v1",
     libraryId,
     blobUrl,
@@ -503,6 +557,39 @@ async function saveBlobCollectionPtr(libraryId: string, blobUrl: string): Promis
 }
 
 async function loadBlobCollectionUrl(libraryId: string): Promise<string | null> {
+  try {
+    const { list } = await import("@vercel/blob");
+    const token = readBlobReadWriteToken();
+    const pointerBlobs: Array<{ url: string; uploadedAt: Date }> = [];
+    let cursor: string | undefined;
+    do {
+      const pointers = await list({
+        prefix: collectionPointerPrefix(libraryId),
+        limit: 1000,
+        cursor,
+        ...(token ? { token } : {}),
+      });
+      pointerBlobs.push(...pointers.blobs);
+      cursor = pointers.hasMore ? pointers.cursor : undefined;
+    } while (cursor);
+    const newestFirst = pointerBlobs.sort(
+      (left, right) => new Date(right.uploadedAt).getTime() - new Date(left.uploadedAt).getTime(),
+    );
+    for (const pointerBlob of newestFirst) {
+      const pointer = await loadBlobJson(pointerBlob.url);
+      if (pointer && typeof pointer === "object" && !Array.isArray(pointer)) {
+        const blobUrl = (pointer as Record<string, unknown>).blobUrl;
+        if (typeof blobUrl === "string" && blobUrl) return blobUrl;
+      }
+    }
+  } catch (error) {
+    console.warn("[library-sharing][collection][immutable_pointer_lookup_failed]", {
+      libraryId,
+      ...safeBlobExceptionDetails(error),
+    });
+  }
+
+  // Backward compatibility for collections published before immutable pointers.
   const data = await loadBlobJson(collectionPtrBlobPathname(libraryId));
   if (data && typeof data === "object" && !Array.isArray(data)) {
     const ptr = data as Record<string, unknown>;
@@ -551,6 +638,17 @@ function safeLibraryFileName(libraryId: string): string {
 function writeJson(path: string, value: unknown): void {
   ensureDir(dirname(path));
   writeFileSync(path, JSON.stringify(value, null, 2) + "\n", "utf8");
+}
+
+function writeJsonAtomic(path: string, value: unknown): void {
+  ensureDir(dirname(path));
+  const temporaryPath = `${path}.${randomUUID()}.tmp`;
+  try {
+    writeFileSync(temporaryPath, JSON.stringify(value, null, 2) + "\n", { encoding: "utf8", flag: "wx" });
+    renameSync(temporaryPath, path);
+  } finally {
+    if (existsSync(temporaryPath)) unlinkSync(temporaryPath);
+  }
 }
 
 function readJson<T>(path: string): T | null {
@@ -650,7 +748,7 @@ async function saveFileAsset(
   payload: Record<string, unknown>
 ): Promise<void> {
   const stored = kind === "config" ? sanitizeConfigForPublicStorage(payload) : payload;
-  writeJson(filePath(kind, libraryId), { libraryId, updatedAt: new Date().toISOString(), payload: stored });
+  writeJsonAtomic(filePath(kind, libraryId), { libraryId, updatedAt: new Date().toISOString(), payload: stored });
 }
 
 function loadFileAsset(kind: "config" | "collection", libraryId: string): Record<string, unknown> | null {
@@ -1081,10 +1179,105 @@ export async function saveSharedLibraryCollection(
 ): Promise<void> {
   const id = normalizeLibraryId(libraryId);
   if (!id) throw new Error("missing_library_id");
+  const canonicalPayload = canonicalizeLibraryPayload(payload, id);
+  const version = canonicalPayload.collectionVersion;
+  const records = canonicalPayload.records;
+  const isVersioned = version && typeof version === "object" && !Array.isArray(version) &&
+    (version as Record<string, unknown>).schemaVersion === "local_collection_artifact_v2";
+  if (version !== undefined && !isVersioned) throw new Error("invalid_collection_version_metadata");
+  if (isVersioned) {
+    const versionRecord = version as Record<string, unknown>;
+    const artifactId = String(versionRecord.artifactId || "");
+    const expectedChecksum = String(versionRecord.contentChecksum || "");
+    const versionLibraryId = normalizeLibraryId(String(versionRecord.libraryId || "")).toLowerCase();
+    const checksumLibraryId = id.toLowerCase();
+    if (!artifactId || versionLibraryId !== checksumLibraryId || !Array.isArray(records)) {
+      throw new Error("invalid_collection_version_metadata");
+    }
+    const actualChecksum = collectionContentChecksum({ libraryId: checksumLibraryId, records });
+    if (actualChecksum !== expectedChecksum) throw new Error("collection_checksum_mismatch");
+
+    if (storageMode() === "vercel_blob") {
+      const previousActiveUrl = await loadBlobCollectionUrl(id);
+      const versionPath = collectionVersionBlobPathname(id, artifactId);
+      const write = await putBlobJson(versionPath, canonicalPayload, { allowOverwrite: true });
+      let activationAttempted = false;
+      try {
+        const staged = await loadBlobJson(versionPath);
+        if (!staged || typeof staged !== "object" || Array.isArray(staged)) {
+          throw new Error("collection_staged_readback_failed");
+        }
+        const stagedRecord = staged as Record<string, unknown>;
+        const stagedVersion = stagedRecord.collectionVersion as Record<string, unknown> | undefined;
+        if (
+          String(stagedVersion?.artifactId || "") !== artifactId ||
+          collectionContentChecksum({ libraryId: checksumLibraryId, records: stagedRecord.records as unknown[] }) !== expectedChecksum
+        ) {
+          throw new Error("collection_staged_readback_mismatch");
+        }
+        activationAttempted = true;
+        await saveBlobCollectionPtr(id, write.url);
+      } catch (error) {
+        if (!activationAttempted) {
+          const { del } = await import("@vercel/blob");
+          const token = readBlobReadWriteToken();
+          await del(write.url, token ? { token } : undefined);
+        }
+        throw error;
+      }
+      try {
+        await cleanupExpiredCollectionVersions(id, write.url, previousActiveUrl);
+      } catch (error) {
+        console.warn("[library-sharing][collection][version_retention_cleanup_failed]", {
+          libraryId: id,
+          ...safeBlobExceptionDetails(error),
+        });
+      }
+      return;
+    }
+
+    const stagePath = resolve(fileRoot(), "collection-staging", `${safePathSegment(id)}-${safePathSegment(artifactId)}.json`);
+    const previous = loadFileAsset("collection", id);
+    let activeChanged = false;
+    try {
+      writeJson(stagePath, canonicalPayload);
+      const staged = readJson<Record<string, unknown>>(stagePath);
+      if (
+        !staged ||
+        collectionContentChecksum({ libraryId: checksumLibraryId, records: staged.records as unknown[] }) !== expectedChecksum
+      ) {
+        throw new Error("collection_staged_readback_mismatch");
+      }
+      await saveFileAsset("collection", id, canonicalPayload);
+      activeChanged = true;
+      const active = loadFileAsset("collection", id);
+      if (
+        !active ||
+        collectionContentChecksum({ libraryId: checksumLibraryId, records: active.records as unknown[] }) !== expectedChecksum
+      ) {
+        throw new Error("collection_active_readback_mismatch");
+      }
+    } catch (error) {
+      if (activeChanged) {
+        const current = loadFileAsset("collection", id);
+        const currentVersion = current?.collectionVersion as Record<string, unknown> | undefined;
+        if (String(currentVersion?.artifactId || "") === artifactId && previous) {
+          await saveFileAsset("collection", id, previous);
+        } else if (String(currentVersion?.artifactId || "") === artifactId) {
+          const activePath = filePath("collection", id);
+          if (existsSync(activePath)) unlinkSync(activePath);
+        }
+      }
+      throw error;
+    } finally {
+      if (existsSync(stagePath)) unlinkSync(stagePath);
+    }
+    return;
+  }
   if (storageMode() === "vercel_blob") {
-    const write = await putBlobJson(collectionBlobPathname(id), canonicalizeLibraryPayload(payload, id));
+    const write = await putBlobJson(collectionBlobPathname(id), canonicalPayload);
     await saveBlobCollectionPtr(id, write.url);
     return;
   }
-  await saveFileAsset("collection", id, canonicalizeLibraryPayload(payload, id));
+  await saveFileAsset("collection", id, canonicalPayload);
 }

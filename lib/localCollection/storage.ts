@@ -1,8 +1,21 @@
 import type { LocalCollectionArtifact } from "./types";
 import {
+  buildCollectionHealth,
+  collectionContentChecksum,
+  runCollectionSmokeTest,
+} from "./health";
+import type {
+  LocalCollectionHealth,
+  LocalCollectionPublishStatus,
+  LocalCollectionSmokeTest,
+  LocalCollectionVersionMetadata,
+} from "./types";
+import { deterministicHash } from "./hash";
+import {
+  encodeGzipBase64Json,
   loadSharedLibraryCollection,
-  saveCompressedSharedLibraryCollection,
-  saveSharedLibraryCollection,
+  saveCompressedSharedLibraryCollectionWithDiagnostics,
+  saveSharedLibraryCollectionWithDiagnostics,
 } from "../librarySharing/client";
 import { ADMIN_CONFIG_DEFAULT_SCOPE, normalizeAdminDraftScopeId } from "../../constants/brandTheme";
 import { libraryIdReadCandidates, YVHS_LIBRARY_ID } from "../libraryIdMigration.js";
@@ -62,6 +75,8 @@ export type LocalCollectionRecommendationArtifact = {
   deterministicContentHash: string;
   summary: LocalCollectionArtifact["summary"];
   records: LocalCollectionRecommendationRecord[];
+  collectionVersion?: LocalCollectionVersionMetadata;
+  health?: LocalCollectionHealth;
 };
 
 type LocalCollectionSummarySnapshot = {
@@ -70,6 +85,8 @@ type LocalCollectionSummarySnapshot = {
   metadata: LocalCollectionArtifact["metadata"];
   summary: LocalCollectionArtifact["summary"];
   acceptedRecordsCount: number;
+  collectionVersion?: LocalCollectionVersionMetadata;
+  health?: LocalCollectionHealth;
 };
 
 function canUseLocalStorage(): boolean {
@@ -142,16 +159,101 @@ function toRecommendationRecord(record: LocalCollectionArtifact["acceptedRecords
   };
 }
 
-export function buildRecommendationArtifact(artifact: LocalCollectionArtifact): LocalCollectionRecommendationArtifact {
+function safeSourceFilename(value: string): string {
+  return String(value || "collection")
+    .replace(/[^\w.\- ()]/g, "_")
+    .slice(0, 160) || "collection";
+}
+
+function publicArtifactMetadata(
+  metadata: LocalCollectionArtifact["metadata"],
+): LocalCollectionArtifact["metadata"] {
   return {
-    schemaVersion: "local_collection_recommendation_v1",
-    createdAt: new Date().toISOString(),
-    metadata: artifact.metadata,
-    deterministicContentHash: artifact.deterministicContentHash,
-    summary: artifact.summary,
-    records: (artifact.acceptedRecords || [])
-      .map(toRecommendationRecord)
-      .filter((record) => record.localId && record.title && record.author),
+    ...metadata,
+    sourceFilename: safeSourceFilename(metadata.sourceFilename),
+    provenance: metadata.provenance ? {
+      unmappedCsvHeaders: metadata.provenance.unmappedCsvHeaders,
+      marcTags: metadata.provenance.marcTags,
+      unrecognizedMarcTags: metadata.provenance.unrecognizedMarcTags,
+    } : undefined,
+  };
+}
+
+export function buildRecommendationArtifact(
+  artifact: LocalCollectionArtifact,
+  options: {
+    publishStatus?: LocalCollectionPublishStatus;
+    compressedArtifactBytes?: number;
+    smokeTest?: LocalCollectionSmokeTest;
+    previousArtifact?: LocalCollectionVersionMetadata["previousArtifact"];
+  } = {},
+): LocalCollectionRecommendationArtifact {
+  const records = (artifact.acceptedRecords || [])
+    .map(toRecommendationRecord)
+    .filter((record) => record.localId && record.title && record.author);
+  const libraryId = normalizeLocalCollectionScopeId(artifact.metadata.libraryId || "");
+  const createdAt = artifact.metadata.importTimestamp || new Date().toISOString();
+  const contentChecksum = collectionContentChecksum({ libraryId, records });
+  const build = (artifactBytes: number): LocalCollectionRecommendationArtifact => {
+    const health = buildCollectionHealth(artifact, {
+      artifactBytes,
+      compressedArtifactBytes: options.compressedArtifactBytes,
+      publishStatus: options.publishStatus,
+      smokeTest: options.smokeTest,
+    });
+    const collectionVersion: LocalCollectionVersionMetadata = {
+      schemaVersion: "local_collection_artifact_v2",
+      artifactId: `lca_${deterministicHash({ libraryId, createdAt, contentChecksum })}`,
+      libraryId,
+      uploadedAt: createdAt,
+      importerVersion: "local_collection_import_v2",
+      sourceFormat: artifact.metadata.sourceFormat || "csv",
+      sourceFilename: safeSourceFilename(artifact.metadata.sourceFilename),
+      recordCount: Number(artifact.summary.totalRows || 0),
+      importedCount: records.length,
+      contentChecksum,
+      originalUploadBytes: health.originalUploadBytes,
+      artifactBytes: health.artifactBytes,
+      compressedArtifactBytes: health.compressedArtifactBytes,
+      publishStatus: health.publishStatus,
+      healthStatus: health.status,
+      previousArtifact: options.previousArtifact,
+    };
+    return {
+      schemaVersion: "local_collection_recommendation_v1",
+      createdAt,
+      metadata: publicArtifactMetadata(artifact.metadata),
+      deterministicContentHash: artifact.deterministicContentHash,
+      summary: artifact.summary,
+      records,
+      collectionVersion,
+      health,
+    };
+  };
+  let result = build(0);
+  for (let pass = 0; pass < 2; pass += 1) {
+    const measuredBytes = utf8ByteLength(JSON.stringify(result));
+    if (result.health?.artifactBytes === measuredBytes) break;
+    result = build(measuredBytes);
+  }
+  return result;
+}
+
+function artifactWithHealth(
+  artifact: LocalCollectionRecommendationArtifact,
+  health: LocalCollectionHealth,
+): LocalCollectionRecommendationArtifact {
+  return {
+    ...artifact,
+    health,
+    collectionVersion: artifact.collectionVersion ? {
+      ...artifact.collectionVersion,
+      originalUploadBytes: health.originalUploadBytes,
+      artifactBytes: health.artifactBytes,
+      compressedArtifactBytes: health.compressedArtifactBytes,
+      publishStatus: health.publishStatus,
+      healthStatus: health.status,
+    } : undefined,
   };
 }
 
@@ -163,7 +265,7 @@ export function measureSharedLocalCollectionPublishBytes(
   requestUtf8Bytes: number;
   exceedsFunctionLimit: boolean;
 } {
-  const id = String(libraryId || "").trim();
+  const id = normalizeLocalCollectionScopeId(libraryId);
   const recommendationArtifact = buildRecommendationArtifact(artifact);
   const artifactJson = JSON.stringify(recommendationArtifact);
   const requestJson = JSON.stringify({ libraryId: id, artifact: recommendationArtifact });
@@ -176,13 +278,18 @@ export function measureSharedLocalCollectionPublishBytes(
   };
 }
 
-function buildSummarySnapshot(artifact: LocalCollectionArtifact): LocalCollectionSummarySnapshot {
+function buildSummarySnapshot(
+  artifact: LocalCollectionArtifact,
+  recommendationArtifact?: LocalCollectionRecommendationArtifact,
+): LocalCollectionSummarySnapshot {
   return {
     schemaVersion: "local_collection_summary_v1",
     deterministicContentHash: artifact.deterministicContentHash,
     metadata: artifact.metadata,
     summary: artifact.summary,
     acceptedRecordsCount: Number(artifact.summary?.acceptedTitles || 0),
+    collectionVersion: recommendationArtifact?.collectionVersion,
+    health: recommendationArtifact?.health,
   };
 }
 
@@ -306,6 +413,8 @@ function summarySnapshotForArtifact(
     metadata: artifact.metadata,
     summary: artifact.summary,
     acceptedRecordsCount: Array.isArray(artifact.records) ? artifact.records.length : 0,
+    collectionVersion: artifact.collectionVersion,
+    health: artifact.health,
   };
 }
 
@@ -408,27 +517,179 @@ function fromLegacyArtifact(raw: any): LocalCollectionRecommendationArtifact | n
   };
 }
 
-export async function persistLocalCollectionRecommendationArtifact(artifact: LocalCollectionArtifact): Promise<{
+export async function persistLocalCollectionRecommendationArtifact(
+  artifact: LocalCollectionArtifact,
+  options?: { recommendationArtifact?: LocalCollectionRecommendationArtifact },
+): Promise<{
   recordCount: number;
   storage: "indexeddb" | "localstorage";
 }> {
-  const recommendationArtifact = buildRecommendationArtifact(artifact);
-  const summarySnapshot = buildSummarySnapshot(artifact);
+  const adaptedRecords = buildRecommendationArtifact(artifact).records;
+  const recommendationArtifact = options?.recommendationArtifact || buildRecommendationArtifact(artifact, {
+      publishStatus: "local_only",
+      smokeTest: runCollectionSmokeTest(artifact.acceptedRecords, adaptedRecords, adaptedRecords),
+    });
+  const summarySnapshot = buildSummarySnapshot(artifact, recommendationArtifact);
   const scopeId = localCollectionScopeIdFromLibraryId(artifact.metadata?.libraryId || "");
   return persistRecommendationArtifactForScope(recommendationArtifact, summarySnapshot, scopeId);
 }
 
 export async function publishSharedLocalCollectionRecommendationArtifact(libraryId: string, artifact: LocalCollectionArtifact): Promise<boolean> {
-  const id = String(libraryId || "").trim();
-  if (!id) return false;
-  const recommendationArtifact = buildRecommendationArtifact(artifact);
-  const size = measureSharedLocalCollectionPublishBytes(id, artifact);
-  if (size.exceedsFunctionLimit) {
-    return saveCompressedSharedLibraryCollection(id, recommendationArtifact as Record<string, unknown>);
+  return (await publishAndVerifySharedLocalCollectionRecommendationArtifact(libraryId, artifact)).success;
+}
+
+export type LocalCollectionPublishVerificationResult = {
+  success: boolean;
+  artifact: LocalCollectionRecommendationArtifact;
+  health: LocalCollectionHealth;
+  error: string | null;
+  previousArtifact: LocalCollectionVersionMetadata["previousArtifact"] | null;
+  previousArtifactRetained: boolean;
+};
+
+function priorVersionSummary(
+  artifact: Record<string, unknown> | null,
+): LocalCollectionVersionMetadata["previousArtifact"] | undefined {
+  const version = artifact?.collectionVersion;
+  if (!version || typeof version !== "object" || Array.isArray(version)) {
+    if (!artifact || !Array.isArray(artifact.records)) return undefined;
+    const metadata = artifact.metadata && typeof artifact.metadata === "object" && !Array.isArray(artifact.metadata)
+      ? artifact.metadata as Record<string, unknown>
+      : {};
+    const uploadedAt = String(metadata.importTimestamp || artifact.createdAt || "");
+    const contentChecksum = String(artifact.deterministicContentHash || "");
+    if (!uploadedAt || !contentChecksum) return undefined;
+    return {
+      artifactId: `legacy_${contentChecksum}`,
+      uploadedAt,
+      importedCount: artifact.records.length,
+      contentChecksum,
+    };
   }
-  // Persist through the shared API. In vercel_blob mode the API writes to
-  // Vercel Blob server-side; in local_filesystem mode it writes to disk.
-  return saveSharedLibraryCollection(id, recommendationArtifact as Record<string, unknown>);
+  const value = version as Record<string, unknown>;
+  const artifactId = String(value.artifactId || "");
+  const uploadedAt = String(value.uploadedAt || "");
+  const contentChecksum = String(value.contentChecksum || "");
+  if (!artifactId || !uploadedAt || !contentChecksum) return undefined;
+  return {
+    artifactId,
+    uploadedAt,
+    importedCount: Math.max(0, Number(value.importedCount || 0)),
+    contentChecksum,
+  };
+}
+
+function compressedByteLength(base64: string): number {
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor(base64.length * 3 / 4) - padding);
+}
+
+export async function publishAndVerifySharedLocalCollectionRecommendationArtifact(
+  libraryId: string,
+  artifact: LocalCollectionArtifact,
+): Promise<LocalCollectionPublishVerificationResult> {
+  const id = normalizeLocalCollectionScopeId(libraryId);
+  const previousShared = id ? await loadSharedLibraryCollection(id) : null;
+  const previousArtifact = priorVersionSummary(previousShared);
+  let recommendationArtifact = buildRecommendationArtifact(artifact, {
+    publishStatus: "verified",
+    previousArtifact,
+  });
+  const prePublishSmoke = runCollectionSmokeTest(
+    artifact.acceptedRecords,
+    recommendationArtifact.records,
+    recommendationArtifact.records,
+  );
+  const encoded = await encodeGzipBase64Json(recommendationArtifact as unknown as Record<string, unknown>);
+  recommendationArtifact = buildRecommendationArtifact(artifact, {
+    publishStatus: "verified",
+    compressedArtifactBytes: encoded ? compressedByteLength(encoded) : 0,
+    previousArtifact,
+    smokeTest: prePublishSmoke,
+  });
+  if (!id || !prePublishSmoke.passed || recommendationArtifact.health?.status === "failed") {
+    const health = buildCollectionHealth(artifact, {
+      artifactBytes: utf8ByteLength(JSON.stringify(recommendationArtifact)),
+      compressedArtifactBytes: encoded ? compressedByteLength(encoded) : 0,
+      publishStatus: "failed",
+      smokeTest: prePublishSmoke,
+    });
+    return {
+      success: false,
+      artifact: artifactWithHealth(recommendationArtifact, health),
+      health,
+      error: !id
+        ? "missing_library_id"
+        : !prePublishSmoke.passed
+          ? "pre_publish_smoke_test_failed"
+          : "import_health_failed",
+      previousArtifact: previousArtifact || null,
+      previousArtifactRetained: true,
+    };
+  }
+  const artifactJsonBytes = utf8ByteLength(JSON.stringify(recommendationArtifact));
+  const requestBytes = utf8ByteLength(JSON.stringify({ libraryId: id, artifact: recommendationArtifact }));
+  const useCompression = requestBytes >= SHARED_COLLECTION_POST_MAX_BYTES;
+  const saveResult = useCompression
+    ? await saveCompressedSharedLibraryCollectionWithDiagnostics(
+        id,
+        recommendationArtifact as unknown as Record<string, unknown>,
+      )
+    : await saveSharedLibraryCollectionWithDiagnostics(
+        id,
+        recommendationArtifact as unknown as Record<string, unknown>,
+      );
+  if (!saveResult.success) {
+    const health = buildCollectionHealth(artifact, {
+      artifactBytes: artifactJsonBytes,
+      compressedArtifactBytes: recommendationArtifact.health?.compressedArtifactBytes,
+      publishStatus: "failed",
+      smokeTest: prePublishSmoke,
+    });
+    return {
+      success: false,
+      artifact: artifactWithHealth(recommendationArtifact, health),
+      health,
+      error: saveResult.error || "shared_publish_failed",
+      previousArtifact: previousArtifact || null,
+      previousArtifactRetained: saveResult.activeArtifactState === "previous_retained",
+    };
+  }
+
+  const readBack = await loadSharedLibraryCollection(id);
+  const readBackArtifact = readBack as LocalCollectionRecommendationArtifact | null;
+  const expectedVersion = recommendationArtifact.collectionVersion;
+  const actualVersion = readBackArtifact?.collectionVersion;
+  const identityMatches = Boolean(
+    expectedVersion &&
+    actualVersion &&
+    actualVersion.libraryId === expectedVersion.libraryId &&
+    actualVersion.artifactId === expectedVersion.artifactId &&
+    actualVersion.contentChecksum === expectedVersion.contentChecksum &&
+    actualVersion.importedCount === expectedVersion.importedCount &&
+    Array.isArray(readBackArtifact?.records) &&
+    collectionContentChecksum({ libraryId: id, records: readBackArtifact.records }) === expectedVersion.contentChecksum
+  );
+  const smokeTest = runCollectionSmokeTest(
+    artifact.acceptedRecords,
+    recommendationArtifact.records,
+    readBackArtifact?.records || [],
+  );
+  const success = identityMatches && smokeTest.passed;
+  const health = buildCollectionHealth(artifact, {
+    artifactBytes: artifactJsonBytes,
+    compressedArtifactBytes: recommendationArtifact.health?.compressedArtifactBytes,
+    publishStatus: success ? "verified" : "failed",
+    smokeTest,
+  });
+  return {
+    success,
+    artifact: artifactWithHealth(recommendationArtifact, health),
+    health,
+    error: success ? null : identityMatches ? "post_publish_smoke_test_failed" : "published_readback_mismatch",
+    previousArtifact: previousArtifact || null,
+    previousArtifactRetained: false,
+  };
 }
 
 export async function loadLocalCollectionRecommendationArtifact(libraryId?: string): Promise<LocalCollectionRecommendationArtifact | null> {
@@ -482,6 +743,7 @@ export function readLocalCollectionAcceptedCountFromLocalStorage(libraryIdOrScop
       if (Number.isFinite(Number(summary.acceptedRecordsCount))) {
         return Math.max(0, Number(summary.acceptedRecordsCount));
       }
+
       if (Number.isFinite(Number(summary?.summary?.acceptedTitles))) {
         return Math.max(0, Number(summary.summary.acceptedTitles));
       }
@@ -496,4 +758,17 @@ export function readLocalCollectionAcceptedCountFromLocalStorage(libraryIdOrScop
     if (recommendation && Array.isArray(recommendation.records)) return recommendation.records.length;
   }
   return 0;
+}
+
+export function readLocalCollectionHealthFromLocalStorage(
+  libraryIdOrScopeId?: string,
+): { health: LocalCollectionHealth; version?: LocalCollectionVersionMetadata } | null {
+  const scopeId = localCollectionScopeIdFromLibraryId(libraryIdOrScopeId);
+  for (const candidateScopeId of libraryIdReadCandidates(scopeId)) {
+    const summary = localStorageGetJson<LocalCollectionSummarySnapshot>(
+      localCollectionSummaryStorageKeyForExactScope(candidateScopeId),
+    );
+    if (summary?.health) return { health: summary.health, version: summary.collectionVersion };
+  }
+  return null;
 }

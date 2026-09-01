@@ -13,6 +13,10 @@ import type {
   LocalCollectionWarningCode,
 } from "./types";
 
+function utf8Bytes(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
 export function importLocalCollectionCsv(input: LocalCollectionImportInput): LocalCollectionArtifact {
   const sourceFilename = String(input.sourceFilename || "").trim() || "collection.csv";
   const importTimestamp = String(input.importTimestamp || "").trim() || new Date().toISOString();
@@ -59,12 +63,18 @@ export function importLocalCollectionCsv(input: LocalCollectionImportInput): Loc
 
   const artifactBase: Omit<LocalCollectionArtifact, "deterministicContentHash"> = {
     metadata: {
-      schemaVersion: "local_collection_import_v1",
+      schemaVersion: "local_collection_import_v2",
+      importerVersion: "local_collection_import_v2",
       sourceFormat: "csv",
+      sourceEncoding: "utf-8",
+      originalUploadBytes: utf8Bytes(input.csvText),
       importTimestamp,
       sourceFilename,
       collectionName: input.collectionName,
       libraryId: input.libraryId,
+      provenance: {
+        unmappedCsvHeaders: parsed.headers.filter((_header, index) => !Object.values(headerMap).includes(index)).slice(0, 100),
+      },
     },
     acceptedRecords: deduped.acceptedRecords,
     rejectedRecords: rejected,
@@ -97,6 +107,10 @@ export type {
   LocalCollectionImportInput,
   LocalCollectionMarcImportInput,
   LocalCollectionImportSummary,
+  LocalCollectionHealth,
+  LocalCollectionHealthStatus,
+  LocalCollectionPublishStatus,
+  LocalCollectionVersionMetadata,
   LocalCollectionNormalizedRecord,
   LocalCollectionRejectedRecord,
   LocalCollectionRejectReason,

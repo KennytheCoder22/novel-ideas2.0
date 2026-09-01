@@ -42,6 +42,7 @@ const sourceFiles = {
   localLibrary: readFileSync(resolve(root, "app", "recommender-v2", "sources", "localLibrarySource.ts"), "utf8"),
 };
 const localCollectionStorageSource = readFileSync(resolve(root, "lib", "localCollection", "storage.ts"), "utf8");
+const localCollectionPresentationSource = readFileSync(resolve(root, "lib", "localCollection", "presentation.ts"), "utf8");
 const librarySharingClientSource = readFileSync(resolve(root, "lib", "librarySharing", "client.ts"), "utf8");
 const localCollectionApiSource = readFileSync(resolve(root, "api", "local-collection.ts"), "utf8");
 const adminSource = readFileSync(resolve(root, "app", "app_admin-web.tsx"), "utf8");
@@ -151,13 +152,17 @@ check("all enabled source adapters use existing description metadata", () => {
   assert(sourceFiles.kitsu.includes("description: synopsis || undefined"), "Kitsu synopsis is not forwarded");
   assert(sourceFiles.comicVine.includes("description: description || undefined"), "Comic Vine description is not forwarded");
   assert(sourceFiles.nyt.includes("description: book.description"), "NYT description is not forwarded");
-  assert(sourceFiles.localLibrary.includes("description: record.description"), "Local Collection description is not forwarded");
+  assert(
+    sourceFiles.localLibrary.includes("adaptLocalCollectionSourceRecord") &&
+      localCollectionPresentationSource.includes("description: record.description"),
+    "Local Collection description is not forwarded",
+  );
 });
 
 check("recommendation card exposes complementary About and Save controls", () => {
   assert(swipeSource.includes('accessibilityLabel="About this book"'), "About this book control is missing");
   assert(swipeSource.includes("style={styles.aboutRecommendationButton}"), "upper-left About control style is missing");
-  assert(swipeSource.includes("candidate.displayDescription || candidate.description"), "renderer does not use presentation-safe descriptions");
+  assert(swipeSource.includes("localCollectionDetailDescription(candidate)"), "renderer does not use the shared presentation-safe description adapter");
   assert(swipeSource.includes("style={[styles.saveRecommendationButton, currentRecommendationSaved && styles.saveRecommendationButtonSaved]}"), "existing Save control changed");
   assert(swipeSource.includes('accessibilityLabel={currentRecommendationSaved ? "Saved to My List" : "Save recommendation to My List"}'), "Save behavior accessibility contract changed");
 });
@@ -171,8 +176,8 @@ check("description opens in a closable modal without navigation", () => {
 });
 
 check("oversized description artifacts use authenticated compressed shared publishing", () => {
-  assert(localCollectionStorageSource.includes("size.exceedsFunctionLimit"), "oversized collection routing is missing");
-  assert(localCollectionStorageSource.includes("saveCompressedSharedLibraryCollection"), "oversized collections are not compressed");
+  assert(localCollectionStorageSource.includes("useCompression"), "oversized collection routing is missing");
+  assert(localCollectionStorageSource.includes("saveCompressedSharedLibraryCollectionWithDiagnostics"), "oversized collections are not compressed");
   assert(librarySharingClientSource.includes('new CompressionStream("gzip")'), "browser gzip encoding is missing");
   assert(localCollectionApiSource.includes('body.artifactEncoding !== "gzip-base64"'), "API compressed payload contract is missing");
   assert(localCollectionApiSource.includes("gunzipSync"), "API does not decode compressed artifacts");
@@ -180,7 +185,7 @@ check("oversized description artifacts use authenticated compressed shared publi
   assert(localCollectionApiSource.includes('req.query.compressed'), "API compressed read fallback is missing");
   assert(librarySharingClientSource.includes('searchParams.set("compressed", "1")'), "client does not use compressed private-Blob reads");
   assert(localCollectionApiSource.includes("MAX_DECOMPRESSED_ARTIFACT_BYTES"), "compressed upload expansion limit is missing");
-  assert(adminSource.includes("Shared publish used compressed transfer"), "admin does not report compressed publishing");
+  assert(adminSource.includes("Published and verified using compressed transfer"), "admin does not report compressed publishing");
   assert(!adminSource.includes("Shared publish blocked:"), "admin still blocks description-rich shared artifacts");
 });
 

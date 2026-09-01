@@ -228,8 +228,9 @@ console.log("\n4. Collection upload via server API");
     contains(storage, "export function collectionBlobPathname")
   );
   check(
-    "saveSharedLibraryCollection writes collection.json in vercel_blob mode",
-    contains(storage, "putBlobJson(collectionBlobPathname(id), canonicalizeLibraryPayload(payload, id))")
+    "saveSharedLibraryCollection stages a versioned artifact before activating collection.json",
+    contains(storage, "putBlobJson(versionPath, canonicalPayload") &&
+      contains(storage, "saveBlobCollectionPtr(id, write.url)")
   );
   check(
     "saveSharedLibraryCollection stores the returned URL string, not the full write result",
@@ -379,6 +380,11 @@ console.log("\n8. Blob overwrite / versioning");
     contains(storage, "addRandomSuffix: false") // applies to both config and pointer
   );
   check(
+    "Collection pointer activation uses immutable pointer records",
+    contains(storage, "collectionPointerPrefix") &&
+      contains(storage, "${Date.now()}-${randomUUID()}.json")
+  );
+  check(
     "Config blob includes updatedAt timestamp",
     contains(storage, "updatedAt: new Date().toISOString()")
   );
@@ -393,7 +399,23 @@ console.log("\n8. Blob overwrite / versioning");
   );
   check(
     "Second config save explicitly allows overwrite on the deterministic blob pathname",
-    contains(storage, "allowOverwrite: true") &&
+    contains(storage, "allowOverwrite: true")
+  );
+  check(
+    "Collection pointer activation is the final write after staged read-back verification",
+    contains(storage, "collection_staged_readback_mismatch") &&
+      contains(storage, "await saveBlobCollectionPtr(id, write.url)")
+  );
+  check(
+    "Filesystem collection activation uses atomic replacement",
+    contains(storage, "writeJsonAtomic(filePath(kind, libraryId)")
+  );
+  check(
+    "Version retention cleanup is time-bounded and excludes the active artifact",
+    contains(storage, "cleanupExpiredCollectionVersions") &&
+      contains(storage, "blob.url !== activeUrl") &&
+    contains(storage, "blob.url !== previousActiveUrl") &&
+    contains(storage, "blob.url !== newestPointerUrl") &&
     contains(storage, "putBlobJson(blobPath, wrappedPayload, { allowOverwrite: true })")
   );
 }

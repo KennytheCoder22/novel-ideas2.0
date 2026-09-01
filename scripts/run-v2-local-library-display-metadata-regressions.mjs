@@ -90,6 +90,7 @@ const swipeDeckSource = readFileSync(resolve(ROOT, "screens", "SwipeDeckScreen.t
 const openLibraryFromTagsSource = readFileSync(resolve(ROOT, "screens", "swipe", "openLibraryFromTags.ts"), "utf8");
 const adminSource = readFileSync(resolve(ROOT, "app", "app_admin-web.tsx"), "utf8");
 const localSource = readFileSync(resolve(ROOT, "app", "recommender-v2", "sources", "localLibrarySource.ts"), "utf8");
+const localPresentationSource = readFileSync(resolve(ROOT, "lib", "localCollection", "presentation.ts"), "utf8");
 const swipeDeckFile = ts.createSourceFile("SwipeDeckScreen.tsx", swipeDeckSource, ts.ScriptTarget.ES2020, true, ts.ScriptKind.TSX);
 
 function extractFunctionText(sourceFile, name) {
@@ -207,13 +208,14 @@ async function runAdapter(records) {
 
 console.log("\nS1: structural UI/admin checks");
 check("S1-a source adapter forwards shelving + call + sub-location aliases", () => {
-  assert(localSource.includes("coverUrl: record.coverUrl"), "source must forward coverUrl");
-  assert(localSource.includes("description: record.description"), "source must forward normalized local description");
-  assert(localSource.includes("callNumber: record.callNumber"), "source must forward callNumber");
-  assert(localSource.includes("subLocation: record.shelvingLocation || record.localPlacement"), "source must prefer shelvingLocation for student-facing shelf label");
-  assert(localSource.includes("shelvingLocation: record.shelvingLocation"), "source must forward shelvingLocation");
-  assert(localSource.includes("isbn13: record.isbn13"), "source must forward isbn13 for presentation-only cover enrichment");
-  assert(localSource.includes("marcHoldings: record.marcHoldings"), "source must preserve MARC holdings metadata");
+  assert(localSource.includes("adaptLocalCollectionSourceRecord"), "source must use the shared Local Collection adapter");
+  assert(localPresentationSource.includes("coverUrl: record.coverUrl"), "source must forward coverUrl");
+  assert(localPresentationSource.includes("description: record.description"), "source must forward normalized local description");
+  assert(localPresentationSource.includes("callNumber: record.callNumber"), "source must forward callNumber");
+  assert(localPresentationSource.includes("subLocation: record.shelvingLocation || record.localPlacement"), "source must prefer shelvingLocation for student-facing shelf label");
+  assert(localPresentationSource.includes("shelvingLocation: record.shelvingLocation"), "source must forward shelvingLocation");
+  assert(localPresentationSource.includes("isbn13: record.isbn13"), "source must forward isbn13 for presentation-only cover enrichment");
+  assert(localPresentationSource.includes("marcHoldings: record.marcHoldings"), "source must preserve MARC holdings metadata");
 });
 check("S1-b SwipeDeckScreen maps local metadata onto displayed doc", () => {
   assert(swipeDeckSource.includes("candidate.coverUrl ??"), "normalizeRecommenderV2Items must prefer candidate.coverUrl");

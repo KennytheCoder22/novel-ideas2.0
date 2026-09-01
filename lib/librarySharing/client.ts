@@ -414,20 +414,75 @@ export async function loadSharedLibraryCollection(libraryId: string): Promise<Re
  * local development).
  */
 export async function saveSharedLibraryCollection(libraryId: string, artifact: Record<string, unknown>): Promise<boolean> {
+  return (await saveSharedLibraryCollectionWithDiagnostics(libraryId, artifact)).success;
+}
+
+export type SharedLibraryCollectionSaveResult = {
+  success: boolean;
+  httpStatus: number | null;
+  error: string | null;
+  activeArtifactState: "activated_verified" | "previous_retained" | "unknown" | null;
+};
+
+async function postCollection(
+  url: string,
+  body: Record<string, unknown>,
+  context: string,
+): Promise<SharedLibraryCollectionSaveResult> {
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+    return {
+      success: response.ok && payload?.success === true,
+      httpStatus: response.status,
+      error: typeof payload?.error === "string" ? payload.error : null,
+      activeArtifactState:
+        payload?.activeArtifactState === "activated_verified" ||
+        payload?.activeArtifactState === "previous_retained" ||
+        payload?.activeArtifactState === "unknown"
+          ? payload.activeArtifactState
+          : null,
+    };
+  } catch {
+    console.warn(`[library-sharing][client][${context}] request_error`, { url });
+    return { success: false, httpStatus: null, error: "request_failed", activeArtifactState: "unknown" };
+  }
+}
+
+export async function saveSharedLibraryCollectionWithDiagnostics(
+  libraryId: string,
+  artifact: Record<string, unknown>,
+): Promise<SharedLibraryCollectionSaveResult> {
   const url = sharedApiUrl("/api/local-collection", libraryId);
-  if (!url) return false;
-  return postJson(url, { libraryId, artifact }, "saveSharedLibraryCollection");
+  if (!url) return { success: false, httpStatus: null, error: "invalid_request_url", activeArtifactState: "previous_retained" };
+  return postCollection(url, { libraryId, artifact }, "saveSharedLibraryCollection");
 }
 
 export async function saveCompressedSharedLibraryCollection(
   libraryId: string,
   artifact: Record<string, unknown>,
 ): Promise<boolean> {
+  return (await saveCompressedSharedLibraryCollectionWithDiagnostics(libraryId, artifact)).success;
+}
+
+export async function saveCompressedSharedLibraryCollectionWithDiagnostics(
+  libraryId: string,
+  artifact: Record<string, unknown>,
+): Promise<SharedLibraryCollectionSaveResult> {
   const url = sharedApiUrl("/api/local-collection", libraryId);
-  if (!url) return false;
+  if (!url) return { success: false, httpStatus: null, error: "invalid_request_url", activeArtifactState: "previous_retained" };
   const artifactGzipBase64 = await encodeGzipBase64Json(artifact);
-  if (!artifactGzipBase64) return false;
+  if (!artifactGzipBase64) {
+    return { success: false, httpStatus: null, error: "compression_failed", activeArtifactState: "previous_retained" };
+  }
   const body = { libraryId, artifactEncoding: "gzip-base64", artifactGzipBase64 };
-  if (utf8ByteLength(JSON.stringify(body)) >= 4 * 1024 * 1024) return false;
-  return postJson(url, body, "saveCompressedSharedLibraryCollection");
+  if (utf8ByteLength(JSON.stringify(body)) >= 4 * 1024 * 1024) {
+    return { success: false, httpStatus: 413, error: "compressed_request_too_large", activeArtifactState: "previous_retained" };
+  }
+  return postCollection(url, body, "saveCompressedSharedLibraryCollection");
 }
