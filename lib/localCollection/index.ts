@@ -117,5 +117,16 @@ export type {
   LocalCollectionSourceFormat,
   LocalCollectionWarningCode,
 } from "./types";
+export {
+  buildRejectedRecordsReport,
+  rejectedRecordsReportPages,
+  rejectedRecordsReportToCsv,
+} from "./rejectedRecords";
+export type {
+  LocalCollectionRejectedRecordDiagnostic,
+  LocalCollectionRejectedRecordsReport,
+  LocalCollectionRejectedRecordsPage,
+  RejectedRecordFixability,
+} from "./rejectedRecords";
 
 export { importLocalCollectionMarc };

@@ -13,11 +13,15 @@
  * written to any public storage backend.
  */
 
-import { createHash, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { canonicalLibraryId, libraryIdReadCandidates, YVHS_LIBRARY_ID } from "../libraryIdMigration.js";
 import { collectionContentChecksum } from "../localCollection/health";
+import {
+  rejectedRecordsPageChecksum,
+  type LocalCollectionRejectedRecordsPage,
+} from "../localCollection/rejectedRecords";
 
 // ── Storage mode ──────────────────────────────────────────────────────────────
 
@@ -287,10 +291,71 @@ function collectionVersionBlobPathname(libraryId: string, artifactId: string): s
   return `libraries/${safePathSegment(libraryId)}/collections/${safePathSegment(artifactId)}.json`;
 }
 
+function collectionDiagnosticsBlobPathname(libraryId: string, artifactId: string, offset: number): string {
+  return `libraries/${safePathSegment(libraryId)}/private/collection-diagnostics/${safePathSegment(artifactId)}-${offset}.json`;
+}
+
+type EncryptedCollectionDiagnostics = {
+  schemaVersion: "encrypted_collection_diagnostics_v1";
+  iv: string;
+  authTag: string;
+  ciphertext: string;
+};
+
+function collectionDiagnosticsEncryptionKey(): Buffer {
+  const secret = String(process.env.ADMIN_SESSION_SECRET || readBlobReadWriteToken()).trim();
+  if (!secret) throw new Error("missing_collection_diagnostics_encryption_secret");
+  return createHash("sha256").update(`novelideas:collection-diagnostics:${secret}`).digest();
+}
+
+function encryptCollectionDiagnostics(report: LocalCollectionRejectedRecordsPage): EncryptedCollectionDiagnostics {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", collectionDiagnosticsEncryptionKey(), iv);
+  const ciphertext = Buffer.concat([
+    cipher.update(JSON.stringify(report), "utf8"),
+    cipher.final(),
+  ]);
+  return {
+    schemaVersion: "encrypted_collection_diagnostics_v1",
+    iv: iv.toString("base64"),
+    authTag: cipher.getAuthTag().toString("base64"),
+    ciphertext: ciphertext.toString("base64"),
+  };
+}
+
+function decryptCollectionDiagnostics(value: unknown): LocalCollectionRejectedRecordsPage | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const envelope = value as Record<string, unknown>;
+  if (
+    envelope.schemaVersion !== "encrypted_collection_diagnostics_v1" ||
+    typeof envelope.iv !== "string" ||
+    typeof envelope.authTag !== "string" ||
+    typeof envelope.ciphertext !== "string"
+  ) {
+    return null;
+  }
+  try {
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      collectionDiagnosticsEncryptionKey(),
+      Buffer.from(envelope.iv, "base64"),
+    );
+    decipher.setAuthTag(Buffer.from(envelope.authTag, "base64"));
+    const json = Buffer.concat([
+      decipher.update(Buffer.from(envelope.ciphertext, "base64")),
+      decipher.final(),
+    ]).toString("utf8");
+    return JSON.parse(json) as LocalCollectionRejectedRecordsPage;
+  } catch {
+    return null;
+  }
+}
+
 async function cleanupExpiredCollectionVersions(
   libraryId: string,
   activeUrl: string,
   previousActiveUrl: string | null,
+  activeArtifactId: string,
 ): Promise<void> {
   const { del, list } = await import("@vercel/blob");
   const token = readBlobReadWriteToken();
@@ -298,6 +363,7 @@ async function cleanupExpiredCollectionVersions(
   for (const prefix of [
     `libraries/${safePathSegment(libraryId)}/collections/`,
     collectionPointerPrefix(libraryId),
+    `libraries/${safePathSegment(libraryId)}/private/collection-diagnostics/`,
   ]) {
     const blobs: Array<{ url: string; uploadedAt: Date }> = [];
     let cursor: string | undefined;
@@ -316,11 +382,17 @@ async function cleanupExpiredCollectionVersions(
           (left, right) => new Date(right.uploadedAt).getTime() - new Date(left.uploadedAt).getTime(),
         )[0]?.url
       : null;
+    const activeDiagnosticMarker = `/${safePathSegment(activeArtifactId)}-`;
+    const previousDiagnosticMarker = previousActiveUrl
+      ? `/${safePathSegment(previousActiveUrl.split("/").pop()?.replace(/\.json$/i, "") || "")}-`
+      : "";
     const expiredUrls = blobs
       .filter((blob) =>
         blob.url !== activeUrl &&
         blob.url !== previousActiveUrl &&
         blob.url !== newestPointerUrl &&
+        !blob.url.includes(activeDiagnosticMarker) &&
+        (!previousDiagnosticMarker || !blob.url.includes(previousDiagnosticMarker)) &&
         new Date(blob.uploadedAt).getTime() < cutoff
       )
       .map((blob) => blob.url);
@@ -1168,6 +1240,122 @@ export async function loadSharedLibraryCollectionPayload(
   return null;
 }
 
+export async function loadSharedLibraryCollectionRejectedRecordsPage(
+  libraryId: string,
+  artifactId: string,
+  offset: number,
+): Promise<LocalCollectionRejectedRecordsPage | null> {
+  const id = normalizeLibraryId(libraryId);
+  const safeArtifactId = safePathSegment(artifactId);
+  if (!id || !artifactId || safeArtifactId !== artifactId.toLowerCase() || !Number.isInteger(offset) || offset < 0) return null;
+  const raw = storageMode() === "vercel_blob"
+    ? decryptCollectionDiagnostics(await loadBlobJson(collectionDiagnosticsBlobPathname(id, artifactId, offset)))
+    : readJson<LocalCollectionRejectedRecordsPage>(
+        resolve(fileRoot(), "collection-diagnostics", safePathSegment(id), `${safeArtifactId}-${offset}.json`),
+      );
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const report = raw as LocalCollectionRejectedRecordsPage;
+  const pageRecordCount = Array.isArray(report.records) ? report.records.length : -1;
+  const pageFitsReport = Number.isInteger(report.rejectedCount) &&
+    report.rejectedCount >= 0 &&
+    ((report.rejectedCount === 0 && offset === 0 && pageRecordCount === 0) ||
+      (offset < report.rejectedCount &&
+        pageRecordCount > 0 &&
+        offset + pageRecordCount <= report.rejectedCount));
+  return report.schemaVersion === "local_collection_rejected_records_v1" &&
+    normalizeLibraryId(report.libraryId).toLowerCase() === id.toLowerCase() &&
+    report.artifactId === artifactId &&
+    report.offset === offset &&
+    Number.isInteger(report.duplicatesMerged) &&
+    report.duplicatesMerged >= 0 &&
+    Array.isArray(report.records) &&
+    report.records.length <= 100 &&
+    pageFitsReport &&
+    rejectedRecordsPageChecksum({
+      schemaVersion: report.schemaVersion,
+      libraryId: report.libraryId,
+      artifactId: report.artifactId,
+      createdAt: report.createdAt,
+      rejectedCount: report.rejectedCount,
+      duplicatesMerged: report.duplicatesMerged,
+      records: report.records,
+      reportChecksum: report.reportChecksum,
+      offset: report.offset,
+    }) === report.pageChecksum
+    ? report
+    : null;
+}
+
+export async function saveSharedLibraryCollectionRejectedRecordsPage(
+  libraryId: string,
+  report: LocalCollectionRejectedRecordsPage,
+): Promise<void> {
+  const id = normalizeLibraryId(libraryId);
+  const pageRecordCount = Array.isArray(report.records) ? report.records.length : -1;
+  const pageFitsReport = Number.isInteger(report.rejectedCount) &&
+    report.rejectedCount >= 0 &&
+    ((report.rejectedCount === 0 && report.offset === 0 && pageRecordCount === 0) ||
+      (report.offset < report.rejectedCount &&
+        pageRecordCount > 0 &&
+        report.offset + pageRecordCount <= report.rejectedCount));
+  if (
+    !id ||
+    report.schemaVersion !== "local_collection_rejected_records_v1" ||
+    normalizeLibraryId(report.libraryId).toLowerCase() !== id.toLowerCase() ||
+    !report.artifactId ||
+    safePathSegment(report.artifactId) !== report.artifactId.toLowerCase() ||
+    !Number.isInteger(report.rejectedCount) ||
+    report.rejectedCount < 0 ||
+    !Number.isInteger(report.duplicatesMerged) ||
+    report.duplicatesMerged < 0 ||
+    !Number.isInteger(report.offset) ||
+    report.offset < 0 ||
+    !Array.isArray(report.records) ||
+    report.records.length > 100 ||
+    !pageFitsReport ||
+    rejectedRecordsPageChecksum({
+      schemaVersion: report.schemaVersion,
+      libraryId: report.libraryId,
+      artifactId: report.artifactId,
+      createdAt: report.createdAt,
+      rejectedCount: report.rejectedCount,
+      duplicatesMerged: report.duplicatesMerged,
+      records: report.records,
+      reportChecksum: report.reportChecksum,
+      offset: report.offset,
+    }) !== report.pageChecksum
+  ) {
+    throw new Error("invalid_collection_rejected_records_report");
+  }
+  if (storageMode() === "vercel_blob") {
+    await putBlobJson(
+      collectionDiagnosticsBlobPathname(id, report.artifactId, report.offset),
+      encryptCollectionDiagnostics(report),
+      { allowOverwrite: true },
+    );
+    return;
+  }
+  writeJsonAtomic(
+    resolve(fileRoot(), "collection-diagnostics", safePathSegment(id), `${safePathSegment(report.artifactId)}-${report.offset}.json`),
+    report,
+  );
+}
+
+function cleanupExpiredFileCollectionDiagnostics(
+  libraryId: string,
+  protectedArtifactIds: string[],
+): void {
+  const directory = resolve(fileRoot(), "collection-diagnostics", safePathSegment(libraryId));
+  if (!existsSync(directory)) return;
+  const protectedPrefixes = protectedArtifactIds.filter(Boolean).map((id) => `${safePathSegment(id)}-`);
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  for (const name of readdirSync(directory)) {
+    if (protectedPrefixes.some((prefix) => name.startsWith(prefix)) || !name.endsWith(".json")) continue;
+    const path = resolve(directory, name);
+    if (statSync(path).mtimeMs < cutoff) unlinkSync(path);
+  }
+}
+
 /**
  * Server-side collection save.
  * In vercel_blob mode, writes the collection artifact to a deterministic blob
@@ -1179,7 +1367,9 @@ export async function saveSharedLibraryCollection(
 ): Promise<void> {
   const id = normalizeLibraryId(libraryId);
   if (!id) throw new Error("missing_library_id");
-  const canonicalPayload = canonicalizeLibraryPayload(payload, id);
+  const canonicalInput = { ...canonicalizeLibraryPayload(payload, id) };
+  delete canonicalInput.adminRejectedRecordsReport;
+  const canonicalPayload = canonicalInput;
   const version = canonicalPayload.collectionVersion;
   const records = canonicalPayload.records;
   const isVersioned = version && typeof version === "object" && !Array.isArray(version) &&
@@ -1226,7 +1416,7 @@ export async function saveSharedLibraryCollection(
         throw error;
       }
       try {
-        await cleanupExpiredCollectionVersions(id, write.url, previousActiveUrl);
+        await cleanupExpiredCollectionVersions(id, write.url, previousActiveUrl, artifactId);
       } catch (error) {
         console.warn("[library-sharing][collection][version_retention_cleanup_failed]", {
           libraryId: id,
@@ -1257,6 +1447,11 @@ export async function saveSharedLibraryCollection(
       ) {
         throw new Error("collection_active_readback_mismatch");
       }
+      const previousVersion = previous?.collectionVersion as Record<string, unknown> | undefined;
+      cleanupExpiredFileCollectionDiagnostics(id, [
+        artifactId,
+        String(previousVersion?.artifactId || ""),
+      ]);
     } catch (error) {
       if (activeChanged) {
         const current = loadFileAsset("collection", id);

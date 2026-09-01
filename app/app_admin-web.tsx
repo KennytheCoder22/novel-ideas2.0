@@ -26,6 +26,12 @@ import {
 } from "../lib/localCollection/storage";
 import type { LocalCollectionHealth, LocalCollectionVersionMetadata } from "../lib/localCollection/types";
 import {
+  rejectedRecordsReportToCsv,
+  type LocalCollectionRejectedRecordsReport,
+} from "../lib/localCollection/rejectedRecords";
+import {
+  loadSharedLibraryCollection,
+  loadSharedLibraryCollectionRejectedRecords,
   loadSharedLibraryConfigWithDiagnostics,
   saveSharedLibraryConfigWithDiagnostics,
   type SharedLibraryConfigSaveDiagnostics,
@@ -877,6 +883,15 @@ export default function AdminWebScreen() {
   const [collectionAttemptHealth, setCollectionAttemptHealth] = useState<LocalCollectionHealth | null>(null);
   const [collectionVersion, setCollectionVersion] = useState<LocalCollectionVersionMetadata | null>(null);
   const [collectionHealthDetailsVisible, setCollectionHealthDetailsVisible] = useState(false);
+  const [rejectedRecordsReport, setRejectedRecordsReport] = useState<LocalCollectionRejectedRecordsReport | null>(null);
+  const [expandedRejectedRecordId, setExpandedRejectedRecordId] = useState<string | null>(null);
+  const [showAllRejectedRecords, setShowAllRejectedRecords] = useState(false);
+  const activeRejectedRecordsReport =
+    rejectedRecordsReport?.artifactId === collectionVersion?.artifactId ? rejectedRecordsReport : null;
+  const visibleRejectedRecords = useMemo(
+    () => activeRejectedRecordsReport?.records.slice(0, showAllRejectedRecords ? undefined : 25) || [],
+    [activeRejectedRecordsReport, showAllRejectedRecords],
+  );
 
   useEffect(() => {
     if (!isWeb || typeof localStorage === "undefined") {
@@ -887,6 +902,7 @@ export default function AdminWebScreen() {
     const initialCount = readScopedUploadedCollectionCount(localStorage, adminDraftScopeId);
     setUploadedCollectionCount(initialCount);
     setCollectionAttemptHealth(null);
+    setRejectedRecordsReport(null);
     void loadLocalCollectionRecommendationArtifact(
       adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE ? undefined : adminDraftScopeId
     ).then((artifact) => {
@@ -895,10 +911,12 @@ export default function AdminWebScreen() {
         setUploadedCollectionCount(initialCount);
         setCollectionHealth(null);
         setCollectionVersion(null);
+        setRejectedRecordsReport(null);
         return;
       }
       setCollectionHealth(artifact.health || null);
       setCollectionVersion(artifact.collectionVersion || null);
+      setRejectedRecordsReport(artifact.adminRejectedRecordsReport || null);
       const acceptedCount = Number(artifact.summary?.acceptedTitles || 0);
       if (Number.isFinite(acceptedCount) && acceptedCount >= 0) {
         setUploadedCollectionCount(acceptedCount);
@@ -912,6 +930,51 @@ export default function AdminWebScreen() {
       cancelled = true;
     };
   }, [adminDraftScopeId, isWeb]);
+
+  useEffect(() => {
+    if (
+      !adminAuthorizationValid ||
+      adminAuthorization.mode === "local" ||
+      adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE ||
+      !collectionVersion?.artifactId
+    ) {
+      return;
+    }
+    let cancelled = false;
+    void loadSharedLibraryCollectionRejectedRecords(adminDraftScopeId).then(async (report) => {
+      if (cancelled) return;
+      if (
+        report &&
+        report.schemaVersion === "local_collection_rejected_records_v1" &&
+        report.libraryId.toLowerCase() === adminDraftScopeId.toLowerCase() &&
+        report.artifactId === collectionVersion.artifactId &&
+        Array.isArray(report.records)
+      ) {
+        setRejectedRecordsReport(report);
+      } else if (report) {
+        const hostedArtifact = await loadSharedLibraryCollection(adminDraftScopeId);
+        if (cancelled) return;
+        const hostedVersion = hostedArtifact?.collectionVersion as LocalCollectionVersionMetadata | undefined;
+        if (hostedVersion?.artifactId === report.artifactId) {
+          setCollectionVersion(hostedVersion);
+          setCollectionHealth((hostedArtifact?.health as LocalCollectionHealth | undefined) || null);
+          setRejectedRecordsReport(report);
+        } else {
+          setRejectedRecordsReport(null);
+        }
+      } else {
+        setRejectedRecordsReport(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    adminAuthorization.mode,
+    adminAuthorizationValid,
+    adminDraftScopeId,
+    collectionVersion?.artifactId,
+  ]);
 
   // Derived
   const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
@@ -1083,6 +1146,8 @@ export default function AdminWebScreen() {
       const file = input.files?.[0];
       if (!file) return;
       setCollectionAttemptHealth(null);
+      setExpandedRejectedRecordId(null);
+      setShowAllRejectedRecords(false);
       const sourceFilename = file.name || "collection.csv";
       const isMarcUpload = /\.(mrc|marc|001)$/i.test(sourceFilename);
       setImportStatus({ phase: 'reading', pct: 5, label: 'Reading file…' });
@@ -1143,6 +1208,7 @@ export default function AdminWebScreen() {
                 setCollectionHealth(publishResult.health);
                 setCollectionAttemptHealth(null);
                 setCollectionVersion(publishResult.artifact.collectionVersion || null);
+                setRejectedRecordsReport(publishResult.artifact.adminRejectedRecordsReport || null);
                 sharedPublishNote = size.exceedsFunctionLimit
                   ? ` Published and verified using compressed transfer.`
                   : ` Published and verified from durable read-back.`;
@@ -1174,6 +1240,7 @@ export default function AdminWebScreen() {
               setCollectionHealth(localArtifact?.health || null);
               setCollectionAttemptHealth(null);
               setCollectionVersion(localArtifact?.collectionVersion || null);
+              setRejectedRecordsReport(localArtifact?.adminRejectedRecordsReport || null);
             }
             localStorage.setItem(
               localCollectionImportReportStorageKeyForScope(adminDraftScopeId),
@@ -1214,6 +1281,19 @@ export default function AdminWebScreen() {
     };
     input.click();
   };
+
+  const onDownloadRejectedRecords = useCallback(() => {
+    if (!activeRejectedRecordsReport || typeof document === "undefined" || typeof URL === "undefined") return;
+    const csv = rejectedRecordsReportToCsv(activeRejectedRecordsReport);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const safeLibraryId = activeRejectedRecordsReport.libraryId.replace(/[^a-z0-9_-]/gi, "-");
+    anchor.href = url;
+    anchor.download = `${safeLibraryId}-${activeRejectedRecordsReport.artifactId}-rejected-records.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [activeRejectedRecordsReport]);
 
   // ---------------------------------------------------------------------------
   // Save / Discard
@@ -2066,6 +2146,96 @@ export default function AdminWebScreen() {
                   {collectionHealth.warnings.map((warning) => (
                     <Text key={warning} style={{ color: t.accent, fontSize: 12, lineHeight: 18 }}>• {warning}</Text>
                   ))}
+                  <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: t.cardBorder, paddingTop: 10 }}>
+                    <Text style={{ color: t.text, fontWeight: "800", marginBottom: 3 }}>Rejected Records</Text>
+                    {activeRejectedRecordsReport ? (
+                      <>
+                        <Text style={{ color: t.subtext, fontSize: 12, marginBottom: 8 }}>
+                          {activeRejectedRecordsReport.rejectedCount.toLocaleString()} rejected record
+                          {activeRejectedRecordsReport.rejectedCount === 1 ? "" : "s"} from artifact {activeRejectedRecordsReport.artifactId}
+                        </Text>
+                        {activeRejectedRecordsReport.records.length ? (
+                          <>
+                            <TouchableOpacity
+                              style={[styles.btn, { alignSelf: "flex-start", borderColor: t.accentBorder, backgroundColor: t.inputBg, marginBottom: 8 }]}
+                              onPress={onDownloadRejectedRecords}
+                              accessibilityRole="button"
+                              accessibilityLabel="Download Rejected Records CSV"
+                            >
+                              <Text style={[styles.btnText, { color: t.text }]}>Download Rejected Records CSV</Text>
+                            </TouchableOpacity>
+                            {visibleRejectedRecords.map((record) => {
+                              const expanded = expandedRejectedRecordId === record.diagnosticId;
+                              return (
+                                <View
+                                  key={record.diagnosticId}
+                                  style={{ borderWidth: 1, borderColor: t.cardBorder, borderRadius: 8, padding: 9, marginBottom: 7 }}
+                                >
+                                  <TouchableOpacity
+                                    onPress={() => setExpandedRejectedRecordId(expanded ? null : record.diagnosticId)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`${expanded ? "Hide" : "Show"} details for ${record.title || record.sourceIdentifier}`}
+                                  >
+                                    <Text style={{ color: t.text, fontWeight: "700" }}>
+                                      {record.title || "Untitled source record"}
+                                    </Text>
+                                    <Text style={{ color: t.subtext, fontSize: 12, marginTop: 2 }}>
+                                      {[record.author, record.isbn, record.callNumber].filter(Boolean).join(" · ") || record.sourceIdentifier}
+                                    </Text>
+                                    <Text style={{ color: t.danger, fontSize: 12, fontWeight: "700", marginTop: 3 }}>
+                                      {record.reasonLabel}
+                                    </Text>
+                                    <Text style={{ color: t.subtext, fontSize: 12, marginTop: 2 }}>
+                                      {record.fixabilityLabel} · {record.sourceIdentifier}
+                                    </Text>
+                                  </TouchableOpacity>
+                                  {expanded ? (
+                                    <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: t.cardBorder }}>
+                                      <Text style={{ color: t.subtext, fontSize: 12, lineHeight: 18 }}>
+                                        Reason code: {record.reasonCode}{"\n"}
+                                        Detail: {record.detail}{"\n"}
+                                        Control number: {record.controlNumber || "Not available"}{"\n"}
+                                        Source row: {record.sourceRowNumber || "Not available"}
+                                      </Text>
+                                      {record.rawDetails ? (
+                                        <Text style={{ color: t.muted, fontSize: 11, lineHeight: 16, marginTop: 6 }}>
+                                          Source fields: {Object.entries(record.rawDetails)
+                                            .map(([key, value]) => `${key}: ${value || "(empty)"}`)
+                                            .join(" · ")}
+                                        </Text>
+                                      ) : null}
+                                    </View>
+                                  ) : null}
+                                </View>
+                              );
+                            })}
+                            {!showAllRejectedRecords && activeRejectedRecordsReport.records.length > visibleRejectedRecords.length ? (
+                              <TouchableOpacity
+                                onPress={() => setShowAllRejectedRecords(true)}
+                                accessibilityRole="button"
+                                accessibilityLabel="Show all rejected records"
+                              >
+                                <Text style={{ color: t.accent, fontWeight: "800", fontSize: 12 }}>
+                                  Show all {activeRejectedRecordsReport.records.length.toLocaleString()} rejected records
+                                </Text>
+                              </TouchableOpacity>
+                            ) : null}
+                          </>
+                        ) : (
+                          <Text style={{ color: t.success, fontSize: 12 }}>No records were rejected.</Text>
+                        )}
+                        {activeRejectedRecordsReport.duplicatesMerged > 0 ? (
+                          <Text style={{ color: t.subtext, fontSize: 12, marginTop: 10 }}>
+                            Duplicates merged: {activeRejectedRecordsReport.duplicatesMerged.toLocaleString()} (informational; not rejected)
+                          </Text>
+                        ) : null}
+                      </>
+                    ) : (
+                      <Text style={{ color: t.subtext, fontSize: 12 }}>
+                        No rejected-record report is available for this collection version.
+                      </Text>
+                    )}
+                  </View>
                 </View>
               ) : null}
             </>

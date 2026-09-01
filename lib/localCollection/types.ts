@@ -168,6 +168,8 @@ export interface LocalCollectionVersionMetadata {
   compressedArtifactBytes: number;
   publishStatus: LocalCollectionPublishStatus;
   healthStatus: LocalCollectionHealthStatus;
+  rejectedRecordCount?: number;
+  duplicatesMerged?: number;
   previousArtifact?: {
     artifactId: string;
     uploadedAt: string;

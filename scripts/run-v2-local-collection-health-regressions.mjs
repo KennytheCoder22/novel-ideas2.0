@@ -253,10 +253,17 @@ check(
 
 const filesystemId = `health-storage-${process.pid}`;
 const filesystemPath = resolve(ROOT, "scripts/output/library-sharing/collections", `${filesystemId}.json`);
+let filesystemDiagnosticsPath = "";
 try {
   const initial = buildRecommendationArtifact(csvArtifact(filesystemId, [
     "Stored One,Writer One,Stored description,9780306406157,FIC ONE,Teen,",
   ]), { publishStatus: "verified" });
+  filesystemDiagnosticsPath = resolve(
+    ROOT,
+    "scripts/output/library-sharing/collection-diagnostics",
+    filesystemId,
+    `${initial.collectionVersion.artifactId}.json`,
+  );
   await saveSharedLibraryCollection(filesystemId, initial);
   const bad = {
     ...initial,
@@ -271,15 +278,23 @@ try {
 
   const mixedCaseId = `MixedCase${process.pid}`;
   const mixedCasePath = resolve(ROOT, "scripts/output/library-sharing/collections", `${mixedCaseId}.json`);
+  let mixedCaseDiagnosticsPath = "";
   try {
     const mixedCaseArtifact = buildRecommendationArtifact(csvArtifact(mixedCaseId.toLowerCase(), [
       "Mixed Case Library,Writer One,Stored description,9780306406157,FIC ONE,Teen,",
     ]), { publishStatus: "verified" });
+    mixedCaseDiagnosticsPath = resolve(
+      ROOT,
+      "scripts/output/library-sharing/collection-diagnostics",
+      mixedCaseId.toLowerCase(),
+      `${mixedCaseArtifact.collectionVersion.artifactId}.json`,
+    );
     await saveSharedLibraryCollection(mixedCaseId, mixedCaseArtifact);
     const mixedCaseStored = await loadSharedLibraryCollectionPayload(mixedCaseId);
     check(mixedCaseStored?.records?.length === 1, "mixed-case hosted IDs use the same canonical checksum identity");
   } finally {
     if (existsSync(mixedCasePath)) unlinkSync(mixedCasePath);
+    if (mixedCaseDiagnosticsPath && existsSync(mixedCaseDiagnosticsPath)) unlinkSync(mixedCaseDiagnosticsPath);
   }
   const retained = await loadSharedLibraryCollectionPayload(filesystemId);
   check(checksumRejected, "server rejects a checksum mismatch");
@@ -296,6 +311,7 @@ try {
   check(invalidVersionRejected, "malformed or unknown version metadata cannot bypass checksum verification");
 } finally {
   if (existsSync(filesystemPath)) unlinkSync(filesystemPath);
+  if (filesystemDiagnosticsPath && existsSync(filesystemDiagnosticsPath)) unlinkSync(filesystemDiagnosticsPath);
 }
 
 const adminSource = readFileSync(resolve(ROOT, "app/app_admin-web.tsx"), "utf8");

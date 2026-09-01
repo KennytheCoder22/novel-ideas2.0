@@ -12,6 +12,10 @@ import type {
 } from "./types";
 import { deterministicHash } from "./hash";
 import {
+  buildRejectedRecordsReport,
+  type LocalCollectionRejectedRecordsReport,
+} from "./rejectedRecords";
+import {
   encodeGzipBase64Json,
   loadSharedLibraryCollection,
   saveCompressedSharedLibraryCollectionWithDiagnostics,
@@ -77,6 +81,7 @@ export type LocalCollectionRecommendationArtifact = {
   records: LocalCollectionRecommendationRecord[];
   collectionVersion?: LocalCollectionVersionMetadata;
   health?: LocalCollectionHealth;
+  adminRejectedRecordsReport?: LocalCollectionRejectedRecordsReport;
 };
 
 type LocalCollectionSummarySnapshot = {
@@ -217,6 +222,8 @@ export function buildRecommendationArtifact(
       compressedArtifactBytes: health.compressedArtifactBytes,
       publishStatus: health.publishStatus,
       healthStatus: health.status,
+      rejectedRecordCount: artifact.rejectedRecords.filter((record) => record.reason !== "duplicate_merged").length,
+      duplicatesMerged: Number(artifact.summary.mergedDuplicatesOrCopies || 0),
       previousArtifact: options.previousArtifact,
     };
     return {
@@ -228,6 +235,7 @@ export function buildRecommendationArtifact(
       records,
       collectionVersion,
       health,
+      adminRejectedRecordsReport: buildRejectedRecordsReport(artifact, libraryId, collectionVersion.artifactId),
     };
   };
   let result = build(0);

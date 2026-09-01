@@ -1,4 +1,11 @@
 import { canonicalLibraryId } from "../libraryIdMigration.js";
+import {
+  rejectedRecordsPageChecksum,
+  rejectedRecordsReportPages,
+  rejectedRecordsReportChecksum,
+  type LocalCollectionRejectedRecordsPage,
+  type LocalCollectionRejectedRecordsReport,
+} from "../localCollection/rejectedRecords";
 
 function sharedApiUrl(path: string, libraryId: string): string | null {
   const id = canonicalLibraryId(libraryId);
@@ -408,6 +415,77 @@ export async function loadSharedLibraryCollection(libraryId: string): Promise<Re
   return null;
 }
 
+function isRejectedRecordsReport(value: unknown): value is LocalCollectionRejectedRecordsReport {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.schemaVersion !== "local_collection_rejected_records_v1" ||
+    typeof candidate.libraryId !== "string" ||
+    typeof candidate.artifactId !== "string" ||
+    typeof candidate.reportChecksum !== "string" ||
+    !Array.isArray(candidate.records)
+  ) ? false : true;
+}
+
+function isRejectedRecordsPage(value: unknown, expectedOffset: number): value is LocalCollectionRejectedRecordsPage {
+  if (!isRejectedRecordsReport(value)) return false;
+  const page = value as LocalCollectionRejectedRecordsPage;
+  if (
+    page.offset !== expectedOffset ||
+    !Number.isInteger(page.offset) ||
+    page.records.length > 100 ||
+    typeof page.pageChecksum !== "string"
+  ) return false;
+  const { pageChecksum, ...pageBase } = page;
+  return rejectedRecordsPageChecksum(pageBase) === pageChecksum;
+}
+
+export async function loadSharedLibraryCollectionRejectedRecords(
+  libraryId: string,
+): Promise<LocalCollectionRejectedRecordsReport | null> {
+  const baseUrl = sharedApiUrl("/api/local-collection-diagnostics", libraryId);
+  if (!baseUrl) return null;
+  let report: LocalCollectionRejectedRecordsReport | null = null;
+  const records: LocalCollectionRejectedRecordsReport["records"] = [];
+  let offset = 0;
+  do {
+    const url = new URL(baseUrl);
+    url.searchParams.set("offset", String(offset));
+    url.searchParams.set("limit", "100");
+    const payload = await readJson(url.toString(), "loadSharedLibraryCollectionRejectedRecords");
+    if (payload?.report === null && offset === 0) return null;
+    if (!isRejectedRecordsPage(payload?.report, offset)) return null;
+    const page = payload.report;
+    if (
+      report &&
+      (page.libraryId !== report.libraryId ||
+        page.artifactId !== report.artifactId ||
+        page.reportChecksum !== report.reportChecksum)
+    ) {
+      return null;
+    }
+    if (!report) {
+      const { offset: _offset, pageChecksum: _pageChecksum, ...reportBase } = page;
+      report = reportBase;
+    }
+    records.push(...page.records);
+    if (!page.records.length) break;
+    offset += page.records.length;
+  } while (report && records.length < report.rejectedCount);
+  if (!report || records.length !== report.rejectedCount) return null;
+  const complete = { ...report, records };
+  const checksum = rejectedRecordsReportChecksum({
+    schemaVersion: complete.schemaVersion,
+    libraryId: complete.libraryId,
+    artifactId: complete.artifactId,
+    createdAt: complete.createdAt,
+    rejectedCount: complete.rejectedCount,
+    duplicatesMerged: complete.duplicatesMerged,
+    records: complete.records,
+  });
+  return checksum === complete.reportChecksum ? complete : null;
+}
+
 /**
  * POST the full collection artifact as a request body. The API persists it
  * according to active storage mode (Vercel Blob in production, filesystem in
@@ -454,13 +532,70 @@ async function postCollection(
   }
 }
 
+async function prepareHostedCollectionArtifact(
+  libraryId: string,
+  artifact: Record<string, unknown>,
+): Promise<{ artifact: Record<string, unknown>; failure: SharedLibraryCollectionSaveResult | null }> {
+  const publicArtifact = { ...artifact };
+  const candidate = publicArtifact.adminRejectedRecordsReport;
+  delete publicArtifact.adminRejectedRecordsReport;
+  if (candidate === undefined) return { artifact: publicArtifact, failure: null };
+  if (!isRejectedRecordsReport(candidate)) {
+    return {
+      artifact: publicArtifact,
+      failure: { success: false, httpStatus: 400, error: "invalid_collection_rejected_records_report", activeArtifactState: "previous_retained" },
+    };
+  }
+  const version = publicArtifact.collectionVersion;
+  const artifactId = version && typeof version === "object" && !Array.isArray(version)
+    ? String((version as Record<string, unknown>).artifactId || "")
+    : "";
+  if (
+    canonicalLibraryId(candidate.libraryId) !== canonicalLibraryId(libraryId) ||
+    !artifactId ||
+    candidate.artifactId !== artifactId ||
+    rejectedRecordsReportChecksum({
+      schemaVersion: candidate.schemaVersion,
+      libraryId: candidate.libraryId,
+      artifactId: candidate.artifactId,
+      createdAt: candidate.createdAt,
+      rejectedCount: candidate.rejectedCount,
+      duplicatesMerged: candidate.duplicatesMerged,
+      records: candidate.records,
+    }) !== candidate.reportChecksum
+  ) {
+    return {
+      artifact: publicArtifact,
+      failure: { success: false, httpStatus: 400, error: "invalid_collection_rejected_records_report", activeArtifactState: "previous_retained" },
+    };
+  }
+  const diagnosticsUrl = sharedApiUrl("/api/local-collection-diagnostics", libraryId);
+  if (!diagnosticsUrl) {
+    return {
+      artifact: publicArtifact,
+      failure: { success: false, httpStatus: null, error: "invalid_request_url", activeArtifactState: "previous_retained" },
+    };
+  }
+  for (const reportPage of rejectedRecordsReportPages(candidate)) {
+    const result = await postCollection(
+      diagnosticsUrl,
+      { libraryId, reportPage },
+      "saveSharedLibraryCollectionRejectedRecordsPage",
+    );
+    if (!result.success) return { artifact: publicArtifact, failure: result };
+  }
+  return { artifact: publicArtifact, failure: null };
+}
+
 export async function saveSharedLibraryCollectionWithDiagnostics(
   libraryId: string,
   artifact: Record<string, unknown>,
 ): Promise<SharedLibraryCollectionSaveResult> {
   const url = sharedApiUrl("/api/local-collection", libraryId);
   if (!url) return { success: false, httpStatus: null, error: "invalid_request_url", activeArtifactState: "previous_retained" };
-  return postCollection(url, { libraryId, artifact }, "saveSharedLibraryCollection");
+  const prepared = await prepareHostedCollectionArtifact(libraryId, artifact);
+  if (prepared.failure) return prepared.failure;
+  return postCollection(url, { libraryId, artifact: prepared.artifact }, "saveSharedLibraryCollection");
 }
 
 export async function saveCompressedSharedLibraryCollection(
@@ -476,7 +611,9 @@ export async function saveCompressedSharedLibraryCollectionWithDiagnostics(
 ): Promise<SharedLibraryCollectionSaveResult> {
   const url = sharedApiUrl("/api/local-collection", libraryId);
   if (!url) return { success: false, httpStatus: null, error: "invalid_request_url", activeArtifactState: "previous_retained" };
-  const artifactGzipBase64 = await encodeGzipBase64Json(artifact);
+  const prepared = await prepareHostedCollectionArtifact(libraryId, artifact);
+  if (prepared.failure) return prepared.failure;
+  const artifactGzipBase64 = await encodeGzipBase64Json(prepared.artifact);
   if (!artifactGzipBase64) {
     return { success: false, httpStatus: null, error: "compression_failed", activeArtifactState: "previous_retained" };
   }

@@ -49,6 +49,7 @@ const homePage = source("app/(tabs)/index.tsx");
 const adminSession = source("lib/adminSession.ts");
 const configApi = source("api/library-config.ts");
 const collectionApi = source("api/local-collection.ts");
+const collectionDiagnosticsApi = source("api/local-collection-diagnostics.ts");
 
 check(adminPage.includes('status: "loading" | "authorized" | "pin_required" | "reenrollment_required"'),
   "direct Librarian Settings route is authorization-gated");
@@ -85,11 +86,14 @@ check(configApi.includes("hasAuthorizedAdminSession(req, libraryId)"),
   "configuration writes validate a library-scoped server session");
 check(collectionApi.includes("hasAuthorizedAdminSession(req, libraryId)"),
   "collection writes validate a library-scoped server session");
+check(collectionDiagnosticsApi.includes("hasAuthorizedAdminSession(req, libraryId)"),
+  "rejected-record diagnostics validate a library-scoped server session");
 
 const storage = require(resolve(ROOT, "lib/librarySharing/storage.ts"));
 const authorization = require(resolve(ROOT, "lib/adminAuthorizationServer.ts"));
 const configHandler = require(resolve(ROOT, "api/library-config.ts")).default;
 const collectionHandler = require(resolve(ROOT, "api/local-collection.ts")).default;
+const collectionDiagnosticsHandler = require(resolve(ROOT, "api/local-collection-diagnostics.ts")).default;
 const authHandler = require(resolve(ROOT, "api/admin-auth.ts")).default;
 
 const libraryId = `auth-regression-${process.pid}`;
@@ -108,6 +112,7 @@ const cleanupPaths = [
   resolve(ROOT, "scripts/output/library-sharing/configs", `${safeName(reenrollmentLibraryId)}.json`),
   resolve(ROOT, "scripts/output/library-sharing/configs", `${safeName(concurrentReenrollmentLibraryId)}.json`),
   resolve(ROOT, "scripts/output/library-sharing/admin-verifiers", `${safeName(libraryId)}.json`),
+  resolve(ROOT, "scripts/output/library-sharing/admin-verifiers", `${safeName(otherLibraryId)}.json`),
   resolve(ROOT, "scripts/output/library-sharing/admin-verifiers", `${safeName(aliasTargetLibraryId)}.json`),
   resolve(ROOT, "scripts/output/library-sharing/admin-verifiers", `${safeName(reenrollmentLibraryId)}.json`),
   resolve(ROOT, "scripts/output/library-sharing/admin-verifiers", `${safeName(concurrentReenrollmentLibraryId)}.json`),
@@ -155,6 +160,24 @@ try {
     body: { libraryId, artifact: {} },
   }, collectionResponse);
   check(collectionResponse.statusCode === 403, "privileged collection publish without authorization is rejected");
+
+  await storage.saveSharedLibraryConfig(otherLibraryId, {
+    library: { id: otherLibraryId, name: "Other Protected Library" },
+    branding: { libraryId: otherLibraryId, libraryName: "Other Protected Library" },
+    admin: { pinEnabled: true, pin: "654321" },
+  });
+  await authorization.saveAdminPinVerifier(otherLibraryId, "654321");
+  const crossLibraryDiagnosticsResponse = mockResponse();
+  await collectionDiagnosticsHandler({
+    method: "GET",
+    headers: requestWithCookie.headers,
+    query: { libraryId: otherLibraryId },
+    body: {},
+  }, crossLibraryDiagnosticsResponse);
+  check(
+    crossLibraryDiagnosticsResponse.statusCode === 403,
+    "admin session for Library A cannot read Library B rejected-record diagnostics",
+  );
 
   const wrongPinResponse = mockResponse();
   await authHandler({
