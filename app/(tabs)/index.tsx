@@ -2071,11 +2071,17 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   }
                   const targetLibraryId = String(props.libraryId || config?.library?.id || config?.branding?.libraryId || "");
                   if (Platform.OS === "web" && targetLibraryId) {
+                    const adminRoute = `/app_admin-web?libraryId=${encodeURIComponent(targetLibraryId)}`;
                     const result = await verifyHostedAdminPin(targetLibraryId, adminPinEntry);
                     if (!result.authorized) {
-                      setAdminPinError(result.error === "admin_pin_reenrollment_required"
-                        ? "This library's PIN must be securely re-enrolled."
-                        : "Incorrect PIN.");
+                      if (result.error === "admin_pin_reenrollment_required") {
+                        setShowAdminPinPrompt(false);
+                        setAdminPinEntry("");
+                        setAdminPinError(null);
+                        router.push(adminRoute as any);
+                        return;
+                      }
+                      setAdminPinError("Incorrect PIN.");
                       return;
                     }
                   } else {
@@ -2089,8 +2095,8 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   setAdminPinEntry("");
                   setAdminPinError(null);
                   if (Platform.OS === "web") {
-                    const adminRoute = props.libraryId
-                      ? `/app_admin-web?libraryId=${encodeURIComponent(String(props.libraryId))}`
+                    const adminRoute = targetLibraryId
+                      ? `/app_admin-web?libraryId=${encodeURIComponent(targetLibraryId)}`
                       : "/app_admin-web";
                     router.push(adminRoute as any);
                   } else {

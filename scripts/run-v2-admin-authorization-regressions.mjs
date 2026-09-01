@@ -60,6 +60,13 @@ check(homePage.includes("if (adminPinEnabled)") && homePage.includes("verifyHost
   "menu entry challenges whenever PIN protection is enabled");
 check(homePage.includes('setAdminPinError("Incorrect PIN.")'),
   "wrong menu PIN does not open settings");
+check(
+  homePage.includes('if (result.error === "admin_pin_reenrollment_required")') &&
+    homePage.includes("router.push(adminRoute as any)") &&
+    adminPage.includes('placeholder="Deployment recovery secret"') &&
+    adminPage.includes("reenrollHostedAdminPin(adminDraftScopeId, authorizationPin, authorizationRecoverySecret)"),
+  "home re-enrollment response reaches the existing usable admin enrollment UI",
+);
 check(adminSession.includes("window.sessionStorage") && !adminSession.includes("document.cookie"),
   "downloaded unlock is tab-session scoped and cannot create a server cookie");
 check(
