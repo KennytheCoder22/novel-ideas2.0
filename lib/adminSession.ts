@@ -19,6 +19,16 @@ function normalizedLibraryId(libraryId: string): string {
   return normalizeHostedLibraryId(libraryId);
 }
 
+export function isDownloadedAdminRuntime(): boolean {
+  if (typeof window === "undefined") return false;
+  const protocol = String(window.location?.protocol || "").toLowerCase();
+  const hostname = String(window.location?.hostname || "").toLowerCase();
+  return protocol === "file:" ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1";
+}
+
 function localSessionKey(libraryId: string): string {
   return `${ADMIN_SESSION_STORAGE_KEY}:${normalizedLibraryId(libraryId) || "default"}`;
 }

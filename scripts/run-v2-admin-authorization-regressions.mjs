@@ -62,6 +62,18 @@ check(homePage.includes('setAdminPinError("Incorrect PIN.")'),
   "wrong menu PIN does not open settings");
 check(adminSession.includes("window.sessionStorage") && !adminSession.includes("document.cookie"),
   "downloaded unlock is tab-session scoped and cannot create a server cookie");
+check(
+  adminSession.includes('protocol === "file:"') &&
+    adminSession.includes('hostname === "localhost"') &&
+    adminPage.includes('status: "unavailable"') &&
+    adminPage.includes("if (!isDownloadedAdminRuntime())"),
+  "hosted authorization failure stays locked instead of falling back to local mode",
+);
+check(
+  adminPage.includes('sharedLibraryId && adminAuthorization.mode !== "local"') &&
+    adminPage.includes('nextLibraryId && adminAuthorization.mode !== "local"'),
+  "authorized downloaded saves remain local and do not require hosted APIs",
+);
 check(configApi.includes("hasAuthorizedAdminSession(req, libraryId)"),
   "configuration writes validate a library-scoped server session");
 check(collectionApi.includes("hasAuthorizedAdminSession(req, libraryId)"),

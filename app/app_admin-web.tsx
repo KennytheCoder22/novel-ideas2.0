@@ -51,6 +51,7 @@ import { LibrarianSetupGuideModal } from "../components/admin/LibrarianSetupGuid
 import {
   activateLocalAdminSession,
   getHostedAdminAuthorization,
+  isDownloadedAdminRuntime,
   isLocalAdminSessionActive,
   reenrollHostedAdminPin,
   verifyHostedAdminPin,
@@ -613,7 +614,7 @@ export default function AdminWebScreen() {
     return loadConfigForScope().next;
   });
   const [adminAuthorization, setAdminAuthorization] = useState<{
-    status: "loading" | "authorized" | "pin_required" | "reenrollment_required";
+    status: "loading" | "authorized" | "pin_required" | "reenrollment_required" | "unavailable";
     mode: "hosted" | "local" | "open";
     libraryId: string;
   }>({
@@ -640,6 +641,14 @@ export default function AdminWebScreen() {
           status: hosted.authorized
             ? "authorized"
             : hosted.verifierConfigured ? "pin_required" : "reenrollment_required",
+          mode: "hosted",
+          libraryId: adminDraftScopeId,
+        });
+        return;
+      }
+      if (!isDownloadedAdminRuntime()) {
+        setAdminAuthorization({
+          status: "unavailable",
           mode: "hosted",
           libraryId: adminDraftScopeId,
         });
@@ -1078,7 +1087,7 @@ export default function AdminWebScreen() {
             setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
             const sharedLibraryId = resolveLibraryId(config);
             let sharedPublishNote = "";
-            if (sharedLibraryId) {
+            if (sharedLibraryId && adminAuthorization.mode !== "local") {
               const size = measureSharedLocalCollectionPublishBytes(sharedLibraryId, artifact);
               console.info("[local-collection] shared publish bytes", {
                 libraryId: sharedLibraryId,
@@ -1176,7 +1185,7 @@ export default function AdminWebScreen() {
       const payloadUtf8Bytes =
         typeof TextEncoder !== "undefined" ? new TextEncoder().encode(serializedNext).length : serializedNext.length;
 
-      if (nextLibraryId) {
+      if (nextLibraryId && adminAuthorization.mode !== "local") {
         console.info("[app_admin-web] save_click", {
           libraryId: nextLibraryId,
           payloadUtf8Bytes,
@@ -1402,6 +1411,8 @@ export default function AdminWebScreen() {
           <Text style={{ color: reenrollmentRequired ? t.danger : t.subtext, marginTop: 12, textAlign: "center" }}>
             {adminAuthorization.status === "loading"
               ? "Checking Admin PIN authorization..."
+              : adminAuthorization.status === "unavailable"
+                ? "Admin authorization is unavailable. Settings remain locked."
               : reenrollmentRequired
                 ? "This library's Admin PIN must be securely re-enrolled before hosted settings can be opened."
                 : "Enter the six-digit Admin PIN to continue."}
