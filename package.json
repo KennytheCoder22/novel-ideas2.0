@@ -75,6 +75,7 @@
     "test:mobile-swipe-containment": "node scripts/run-mobile-swipe-containment-regressions.mjs",
     "test:real-session-overlap-audit": "node scripts/run-real-session-overlap-audit-regressions.mjs",
     "test:v2:admin-save-discard": "node scripts/run-v2-admin-save-discard-regressions.mjs",
+    "test:v2:admin-authorization": "node scripts/run-v2-admin-authorization-regressions.mjs",
     "test:librarian-setup-guide": "node scripts/run-librarian-setup-guide-regressions.mjs",
     "test:pwa-install": "node scripts/run-pwa-install-regressions.mjs",
     "test:v2:hosted-library-context-leakage": "node scripts/run-v2-hosted-library-context-leakage-regressions.mjs",

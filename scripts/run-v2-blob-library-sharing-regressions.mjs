@@ -540,7 +540,7 @@ console.log("\n11. Hosted-library diagnostics and correlation IDs");
   );
   check(
     "diagnostics endpoint is admin-gated or preview-gated",
-    contains(diagnosticsApi, "hasAdminSessionCookie") &&
+    contains(diagnosticsApi, "hasAuthorizedAdminSession(req, libraryId)") &&
     contains(diagnosticsApi, "isPreviewAcceptanceEnvironmentEnabled")
   );
   check(
@@ -582,8 +582,9 @@ console.log("\n11. Hosted-library diagnostics and correlation IDs");
     contains(homeScreen, "isPreviewAcceptanceEnvironmentEnabled")
   );
   check(
-    "admin session helper exports cookie name for server gating",
-    contains(adminSession, "ADMIN_SESSION_COOKIE_NAME")
+    "client session helper cannot mint the server authorization cookie",
+    !contains(adminSession, "document.cookie") &&
+    contains(readSrc("lib/adminAuthorizationServer.ts"), "HttpOnly; Secure; SameSite=Strict")
   );
 }
 

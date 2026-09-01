@@ -261,6 +261,10 @@ function configBlobPathname(libraryId: string): string {
   return `libraries/${safePathSegment(libraryId)}/config.json`;
 }
 
+function adminVerifierBlobPathname(libraryId: string): string {
+  return `libraries/${safePathSegment(libraryId)}/admin-verifier.json`;
+}
+
 /** Vercel Blob pathname for the collection pointer (small pointer to the actual collection blob). */
 function collectionPtrBlobPathname(libraryId: string): string {
   return `libraries/${safePathSegment(libraryId)}/collection-ptr.json`;
@@ -393,6 +397,7 @@ async function putBlobJson(
       if (isPrivateStoreAccessError(firstError)) {
         return runAttempt("explicit_blob_read_write_token", "private", { token });
       }
+
     }
   }
 
@@ -408,8 +413,25 @@ async function putBlobJson(
     if (isPrivateStoreAccessError(error)) {
       return runAttempt("sdk_default_token_resolution", "private");
     }
+
     throw error;
   }
+}
+
+async function putPrivateBlobJson(
+  pathname: string,
+  value: unknown,
+  allowOverwrite: boolean = true,
+): Promise<void> {
+  const { put } = await import("@vercel/blob");
+  const token = readBlobReadWriteToken();
+  await put(pathname, JSON.stringify(value), {
+    access: "private",
+    addRandomSuffix: false,
+    ...(allowOverwrite ? { allowOverwrite: true } : {}),
+    contentType: "application/json",
+    ...(token ? { token } : {}),
+  });
 }
 
 // ── Vercel Blob: config ───────────────────────────────────────────────────────
@@ -540,12 +562,86 @@ function readJson<T>(path: string): T | null {
   }
 }
 
-function filePath(kind: "config" | "collection", libraryId: string): string {
+function filePath(kind: "config" | "collection" | "admin-verifier", libraryId: string): string {
   return resolve(
     fileRoot(),
-    kind === "config" ? "configs" : "collections",
+    kind === "config" ? "configs" : kind === "collection" ? "collections" : "admin-verifiers",
     `${safeLibraryFileName(libraryId)}.json`
   );
+}
+
+export type SharedLibraryAdminVerifier = {
+  version: 1;
+  salt: string;
+  hash: string;
+};
+
+export async function loadSharedLibraryAdminVerifier(libraryId: string): Promise<SharedLibraryAdminVerifier | null> {
+  const id = normalizeLibraryId(libraryId);
+  if (!id) return null;
+  const raw = storageMode() === "vercel_blob"
+    ? await loadBlobJson(adminVerifierBlobPathname(id))
+    : readJson<SharedLibraryAdminVerifier>(filePath("admin-verifier", id));
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const verifier = raw as Record<string, unknown>;
+  return verifier.version === 1 && typeof verifier.salt === "string" && typeof verifier.hash === "string"
+    ? verifier as SharedLibraryAdminVerifier
+    : null;
+}
+
+export async function saveSharedLibraryAdminVerifier(
+  libraryId: string,
+  verifier: SharedLibraryAdminVerifier,
+): Promise<void> {
+  const id = normalizeLibraryId(libraryId);
+  if (!id) throw new Error("missing_library_id");
+  if (storageMode() === "vercel_blob") {
+    await putPrivateBlobJson(adminVerifierBlobPathname(id), verifier);
+    return;
+  }
+  writeJson(filePath("admin-verifier", id), verifier);
+}
+
+export async function createSharedLibraryAdminVerifier(
+  libraryId: string,
+  verifier: SharedLibraryAdminVerifier,
+): Promise<boolean> {
+  const id = normalizeLibraryId(libraryId);
+  if (!id) throw new Error("missing_library_id");
+  if (storageMode() === "vercel_blob") {
+    try {
+      await putPrivateBlobJson(adminVerifierBlobPathname(id), verifier, false);
+      return true;
+    } catch (error) {
+      if (await loadSharedLibraryAdminVerifier(id)) return false;
+      throw error;
+    }
+  }
+  const path = filePath("admin-verifier", id);
+  ensureDir(dirname(path));
+  try {
+    writeFileSync(path, JSON.stringify(verifier, null, 2) + "\n", { encoding: "utf8", flag: "wx" });
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === "EEXIST") return false;
+    throw error;
+  }
+}
+
+export async function deleteSharedLibraryAdminVerifier(libraryId: string): Promise<void> {
+  const id = normalizeLibraryId(libraryId);
+  if (!id) return;
+  if (storageMode() === "vercel_blob") {
+    const { del } = await import("@vercel/blob");
+    const token = readBlobReadWriteToken();
+    await del(adminVerifierBlobPathname(id), token ? { token } : undefined);
+    return;
+  }
+  const path = filePath("admin-verifier", id);
+  if (existsSync(path)) {
+    const { unlinkSync } = await import("node:fs");
+    unlinkSync(path);
+  }
 }
 
 async function saveFileAsset(

@@ -35,6 +35,7 @@ You can start developing by editing the files inside the **app** directory. This
 - Offline source comparison architecture and workflow are documented in [`docs/SOURCE_COMPARISON_HARNESS.md`](docs/SOURCE_COMPARISON_HARNESS.md).
 - Owner analytics requires server-only `OWNER_ANALYTICS_PASSWORD` and `OWNER_ANALYTICS_SESSION_SECRET` environment variables. Do not expose either through an `EXPO_PUBLIC_*` variable.
 - Anonymous recommendation-session audits use the existing private Vercel Blob store through `BLOB_READ_WRITE_TOKEN`; they do not require Postgres.
+- Hosted Librarian Settings sessions use server-only `ADMIN_SESSION_SECRET` (falling back to `BLOB_READ_WRITE_TOKEN`). Set a separate server-only `ADMIN_PIN_RECOVERY_SECRET` of at least 24 characters only when an existing PIN-protected library must enroll its private verifier after upgrading.
 
 ## Quick quality checks
 

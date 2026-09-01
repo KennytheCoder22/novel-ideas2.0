@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ADMIN_SESSION_COOKIE_NAME } from "../lib/adminSession";
+import {
+  adminPinProtectionState,
+  hasAuthorizedAdminSession,
+  removeAdminPinVerifier,
+  saveAdminPinVerifier,
+} from "../lib/adminAuthorizationServer";
 import libraryPwaBranding from "../lib/libraryPwaBranding.js";
 import {
   diagnoseSharedLibraryConfig,
@@ -18,11 +23,6 @@ const {
   readLibraryLogoBuffer,
   renderLibraryPwaIcon,
 } = libraryPwaBranding;
-
-function hasAdminSessionCookie(req: VercelRequest): boolean {
-  const cookie = String(req.headers.cookie || "");
-  return cookie.split(";").some((part) => part.trim().startsWith(`${ADMIN_SESSION_COOKIE_NAME}=1`));
-}
 
 function readLibraryId(req: VercelRequest): string {
   const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
@@ -96,7 +96,8 @@ function redirectToFallbackIcon(
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const correlationId = correlationIdFromRequest(req);
-  const libraryId = readLibraryId(req);
+  const requestedLibraryId = readLibraryId(req);
+  const libraryId = normalizeHostedLibraryId(requestedLibraryId);
   const format = readFormat(req);
   const trace = libraryId ? getSharedLibraryConfigStorageTrace(libraryId) : null;
   console.info("[api/library-config] route_entered", {
@@ -211,8 +212,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const hasAdminSession = hasAdminSessionCookie(req);
-    if (!hasAdminSession) {
+    const existingProtection = await adminPinProtectionState(libraryId);
+    const hasAdminSession = hasAuthorizedAdminSession(req, libraryId);
+    if (existingProtection.pinEnabled && !hasAdminSession) {
       console.warn("[api/library-config][POST] unauthorized", {
         correlationId,
         libraryId,
@@ -232,7 +234,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       return sendJson(res, 400, { error: "missing_or_invalid_config", correlationId }, correlationId);
     }
-    const normalizedLibraryId = normalizeHostedLibraryId(libraryId);
+    const admin = (config as Record<string, unknown>).admin;
+    const nextAdmin = admin && typeof admin === "object" && !Array.isArray(admin)
+      ? admin as Record<string, unknown>
+      : {};
+    const nextPinEnabled = nextAdmin.pinEnabled === true;
+    const nextPin = typeof nextAdmin.pin === "string" ? nextAdmin.pin.trim() : "";
+    if (nextPinEnabled && !/^\d{6}$/.test(nextPin) && !existingProtection.verifierConfigured) {
+      return sendJson(res, 400, { error: "admin_pin_required", correlationId }, correlationId);
+    }
+    const normalizedLibraryId = libraryId;
     if (normalizedLibraryId.length < MIN_NEW_LIBRARY_ID_LENGTH) {
       const existingConfig = await loadSharedLibraryConfigPayload(normalizedLibraryId, { correlationId });
       if (!existingConfig) {
@@ -258,6 +269,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       payloadUtf8Bytes,
     });
     await saveSharedLibraryConfig(libraryId, config as Record<string, unknown>, { correlationId });
+    if (nextPinEnabled && /^\d{6}$/.test(nextPin)) {
+      await saveAdminPinVerifier(libraryId, nextPin);
+    } else if (!nextPinEnabled) {
+      await removeAdminPinVerifier(libraryId);
+    }
     console.info("[api/library-config][POST] save_success", {
       ...(trace || getSharedLibraryConfigStorageTrace(libraryId)),
       correlationId,

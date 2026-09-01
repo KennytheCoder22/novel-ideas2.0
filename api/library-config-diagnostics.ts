@@ -1,12 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ADMIN_SESSION_COOKIE_NAME } from "../lib/adminSession";
+import { hasAuthorizedAdminSession } from "../lib/adminAuthorizationServer";
 import { diagnoseSharedLibraryConfig } from "../lib/librarySharing/storage";
 import { isPreviewAcceptanceEnvironmentEnabled } from "../lib/previewAcceptanceHarness";
-
-function hasAdminSessionCookie(req: VercelRequest): boolean {
-  const cookie = String(req.headers.cookie || "");
-  return cookie.split(";").some((part) => part.trim().startsWith(`${ADMIN_SESSION_COOKIE_NAME}=1`));
-}
 
 function correlationIdFromRequest(req: VercelRequest): string {
   const fromHeader = String(req.headers["x-correlation-id"] || "").trim();
@@ -36,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!libraryId) {
       return sendJson(res, 400, { error: "missing_library_id", correlationId }, correlationId);
     }
-    if (!hasAdminSessionCookie(req) && !isPreviewAcceptanceEnvironmentEnabled()) {
+    if (!hasAuthorizedAdminSession(req, libraryId) && !isPreviewAcceptanceEnvironmentEnabled()) {
       return sendJson(res, 403, { error: "unauthorized", correlationId }, correlationId);
     }
     console.info("[api/library-config-diagnostics][GET] route_entered", {

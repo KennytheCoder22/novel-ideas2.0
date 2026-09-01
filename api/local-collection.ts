@@ -1,16 +1,15 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { gzipSync, gunzipSync } from "node:zlib";
-import { ADMIN_SESSION_COOKIE_NAME } from "../lib/adminSession";
+import {
+  adminPinProtectionState,
+  hasAuthorizedAdminSession,
+} from "../lib/adminAuthorizationServer";
 import {
   loadSharedLibraryCollectionPayload,
   loadSharedLibraryCollectionResult,
   saveSharedLibraryCollection,
 } from "../lib/librarySharing/storage";
-
-function hasAdminSessionCookie(req: VercelRequest): boolean {
-  const cookie = String(req.headers.cookie || "");
-  return cookie.split(";").some((part) => part.trim().startsWith(`${ADMIN_SESSION_COOKIE_NAME}=1`));
-}
+import { normalizeHostedLibraryId } from "../lib/savedLibraries";
 
 function readLibraryId(req: VercelRequest): string {
   const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
@@ -52,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "method_not_allowed" });
   }
 
-  const libraryId = readLibraryId(req);
+  const libraryId = normalizeHostedLibraryId(readLibraryId(req));
   if (!libraryId) {
     return res.status(400).json({ error: "missing_library_id" });
   }
@@ -86,7 +85,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    if (!hasAdminSessionCookie(req)) {
+    const protection = await adminPinProtectionState(libraryId);
+    if (protection.pinEnabled && !hasAuthorizedAdminSession(req, libraryId)) {
       return res.status(403).json({ error: "unauthorized" });
     }
     const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};

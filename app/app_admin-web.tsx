@@ -48,7 +48,13 @@ import { PatronColorPickerField } from "../components/PatronColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
 import { LibrarianSetupGuideModal } from "../components/admin/LibrarianSetupGuideModal";
-import { activateAdminSession, isAdminSessionActive } from "../lib/adminSession";
+import {
+  activateLocalAdminSession,
+  getHostedAdminAuthorization,
+  isLocalAdminSessionActive,
+  reenrollHostedAdminPin,
+  verifyHostedAdminPin,
+} from "../lib/adminSession";
 import { getRuntimeLibraryId, getRuntimeLibraryName } from "../constants/runtimeConfig";
 import {
   isPreviewAcceptanceHarnessEnabled,
@@ -606,6 +612,51 @@ export default function AdminWebScreen() {
   const [config, setConfig] = useState<any>(() => {
     return loadConfigForScope().next;
   });
+  const [adminAuthorization, setAdminAuthorization] = useState<{
+    status: "loading" | "authorized" | "pin_required" | "reenrollment_required";
+    mode: "hosted" | "local" | "open";
+    libraryId: string;
+  }>({
+    status: adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE ? "authorized" : "loading",
+    mode: "open",
+    libraryId: adminDraftScopeId,
+  });
+  const [authorizationPin, setAuthorizationPin] = useState("");
+  const [authorizationRecoverySecret, setAuthorizationRecoverySecret] = useState("");
+  const [authorizationError, setAuthorizationError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE) {
+      setAdminAuthorization({ status: "authorized", mode: "open", libraryId: adminDraftScopeId });
+      return () => { cancelled = true; };
+    }
+    setAdminAuthorization({ status: "loading", mode: "open", libraryId: adminDraftScopeId });
+    void (async () => {
+      const hosted = await getHostedAdminAuthorization(adminDraftScopeId);
+      if (cancelled) return;
+      if (hosted) {
+        setAdminAuthorization({
+          status: hosted.authorized
+            ? "authorized"
+            : hosted.verifierConfigured ? "pin_required" : "reenrollment_required",
+          mode: "hosted",
+          libraryId: adminDraftScopeId,
+        });
+        return;
+      }
+      const pinEnabled = config?.admin?.pinEnabled === true;
+      setAdminAuthorization({
+        status: !pinEnabled || isLocalAdminSessionActive(adminDraftScopeId) ? "authorized" : "pin_required",
+        mode: pinEnabled ? "local" : "open",
+        libraryId: adminDraftScopeId,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [adminDraftScopeId, config?.admin?.pinEnabled]);
+  const adminAuthorizationValid =
+    adminAuthorization.status === "authorized" &&
+    adminAuthorization.libraryId === adminDraftScopeId;
 
   // Derive initial hex colors from config once
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -710,7 +761,11 @@ export default function AdminWebScreen() {
         finalStateLibraryId: resolveLibraryId(next),
       });
     } catch {}
-    if (!hadDraft && adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
+    if (
+      adminAuthorizationValid &&
+      !hadDraft &&
+      adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE
+    ) {
       setAdminScopeLoading(true);
       void (async () => {
         try {
@@ -760,7 +815,7 @@ export default function AdminWebScreen() {
     return () => {
       cancelled = true;
     };
-  }, [loadConfigForScope, adminDraftStorageKey, explicitLibraryIdParam, runtimeLibraryId, runtimeLibraryName, adminDraftScopeId]);
+  }, [loadConfigForScope, adminDraftStorageKey, explicitLibraryIdParam, runtimeLibraryId, runtimeLibraryName, adminDraftScopeId, adminAuthorizationValid]);
 
   useEffect(() => {
     const configChanged = JSON.stringify(config) !== savedConfigRef.current;
@@ -973,6 +1028,10 @@ export default function AdminWebScreen() {
   // ---------------------------------------------------------------------------
 
   const onUploadCollectionWeb = () => {
+    if (!adminAuthorizationValid) {
+      setAuthorizationError("Enter the Admin PIN before importing a collection.");
+      return;
+    }
     if (!isWeb || typeof document === "undefined" || typeof localStorage === "undefined") {
       Alert.alert("Upload unavailable", "Collection upload is available on desktop web.");
       return;
@@ -1008,7 +1067,6 @@ export default function AdminWebScreen() {
                 collectionName,
                 libraryId: adminDraftScopeId,
               });
-              localStorage.removeItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId));
             } else {
               artifact = importLocalCollectionCsv({
                 csvText: String(reader.result || ""),
@@ -1016,10 +1074,8 @@ export default function AdminWebScreen() {
                 collectionName,
                 libraryId: adminDraftScopeId,
               });
-              localStorage.setItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId), String(reader.result || ""));
             }
             setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
-            await persistLocalCollectionRecommendationArtifact(artifact);
             const sharedLibraryId = resolveLibraryId(config);
             let sharedPublishNote = "";
             if (sharedLibraryId) {
@@ -1035,9 +1091,15 @@ export default function AdminWebScreen() {
                   ? ` Shared publish used compressed transfer for ${formatByteCount(size.artifactUtf8Bytes)} artifact.`
                   : ` Shared publish payload: artifact ${formatByteCount(size.artifactUtf8Bytes)}, request ${formatByteCount(size.requestUtf8Bytes)}.`;
               } else {
-                sharedPublishNote = " Shared publish failed. Re-save after checking deployment logs.";
+                throw new Error("shared_collection_publish_failed");
               }
             }
+            if (isMarcUpload) {
+              localStorage.removeItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId));
+            } else {
+              localStorage.setItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId), String(reader.result || ""));
+            }
+            await persistLocalCollectionRecommendationArtifact(artifact);
             localStorage.setItem(
               localCollectionImportReportStorageKeyForScope(adminDraftScopeId),
               JSON.stringify(artifact.summary)
@@ -1080,6 +1142,10 @@ export default function AdminWebScreen() {
 
   const persistDraftConfig = useCallback(async (configOverride?: any) => {
     try {
+      if (!adminAuthorizationValid) {
+        setAuthorizationError("Enter the Admin PIN before saving changes.");
+        return false;
+      }
       setSaveErrorDetails(null);
       const next = deepClone(configOverride ?? config);
       const effectiveFontColor = autoFontColor ? autoChooseFontColor(mainColorHex) : fontColorHex;
@@ -1110,19 +1176,11 @@ export default function AdminWebScreen() {
       const payloadUtf8Bytes =
         typeof TextEncoder !== "undefined" ? new TextEncoder().encode(serializedNext).length : serializedNext.length;
 
-      if (isWeb && typeof localStorage !== "undefined") {
-        localStorage.setItem(targetDraftStorageKey, serializedNext);
-        applyWebHighlightColor(next?.branding?.highlightColorHex || highlightColorHex);
-        dispatchAdminConfigSavedWebEvent(targetDraftStorageKey, serializedNext);
-      }
       if (nextLibraryId) {
-        activateAdminSession("admin_web_save");
-        const adminSessionActiveAfterSaveActivation = isAdminSessionActive();
         console.info("[app_admin-web] save_click", {
           libraryId: nextLibraryId,
           payloadUtf8Bytes,
           adminDraftStorageKey: targetDraftStorageKey,
-          adminSessionActiveAfterSaveActivation,
         });
         const sharedSave = await saveSharedLibraryConfigWithDiagnostics(nextLibraryId, next as Record<string, unknown>);
         if (!sharedSave.success) {
@@ -1139,6 +1197,11 @@ export default function AdminWebScreen() {
         if (resolveAdminDraftScopeId(nextLibraryId) !== adminDraftScopeId) {
           router.replace(`/app_admin-web?libraryId=${encodeURIComponent(nextLibraryId)}` as any);
         }
+      }
+      if (isWeb && typeof localStorage !== "undefined") {
+        localStorage.setItem(targetDraftStorageKey, serializedNext);
+        applyWebHighlightColor(next?.branding?.highlightColorHex || highlightColorHex);
+        dispatchAdminConfigSavedWebEvent(targetDraftStorageKey, serializedNext);
       }
 
       setConfig(next);
@@ -1171,7 +1234,7 @@ export default function AdminWebScreen() {
       });
       return false;
     }
-  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb, libraryId, adminDraftScopeId, explicitLibraryIdFromRoute]);
+  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb, libraryId, adminDraftScopeId, explicitLibraryIdFromRoute, adminAuthorizationValid]);
 
   const onSave = useCallback(() => {
     void persistDraftConfig();
@@ -1327,6 +1390,97 @@ export default function AdminWebScreen() {
   const createNewLibrary = () => {
     router.replace("/app_admin-web" as any);
   };
+
+  if (!adminAuthorizationValid) {
+    const reenrollmentRequired = adminAuthorization.status === "reenrollment_required";
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: t.appBg, padding: 24 }}>
+        <View style={[styles.wrap, { maxWidth: 460, borderColor: t.cardBorder, backgroundColor: t.cardBg }]}>
+          <Text style={{ color: t.text, fontSize: 22, fontWeight: "900", textAlign: "center" }}>
+            Librarian Settings
+          </Text>
+          <Text style={{ color: reenrollmentRequired ? t.danger : t.subtext, marginTop: 12, textAlign: "center" }}>
+            {adminAuthorization.status === "loading"
+              ? "Checking Admin PIN authorization..."
+              : reenrollmentRequired
+                ? "This library's Admin PIN must be securely re-enrolled before hosted settings can be opened."
+                : "Enter the six-digit Admin PIN to continue."}
+          </Text>
+          {adminAuthorization.status === "pin_required" || reenrollmentRequired ? (
+            <>
+              {reenrollmentRequired ? (
+                <TextInput
+                  value={authorizationRecoverySecret}
+                  onChangeText={(value) => {
+                    setAuthorizationRecoverySecret(value);
+                    setAuthorizationError("");
+                  }}
+                  secureTextEntry
+                  placeholder="Deployment recovery secret"
+                  placeholderTextColor={t.muted}
+                  style={[styles.input, { marginTop: 18, color: t.text, borderColor: t.inputBorder, backgroundColor: t.inputBg }]}
+                  accessibilityLabel="Admin PIN recovery secret"
+                />
+              ) : null}
+              <TextInput
+                value={authorizationPin}
+                onChangeText={(value) => {
+                  setAuthorizationPin(value.replace(/\D/g, "").slice(0, 6));
+                  setAuthorizationError("");
+                }}
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={6}
+                placeholder="6-digit PIN"
+                placeholderTextColor={t.muted}
+                style={[styles.input, { marginTop: reenrollmentRequired ? 10 : 18, color: t.text, borderColor: t.inputBorder, backgroundColor: t.inputBg }]}
+                accessibilityLabel="Admin PIN"
+              />
+              {authorizationError ? <Text style={{ color: t.danger, marginTop: 10 }}>{authorizationError}</Text> : null}
+              <TouchableOpacity
+                style={[styles.btn, { marginTop: 14, borderColor: t.accentBorder, backgroundColor: t.accent }]}
+                onPress={() => {
+                  void (async () => {
+                    if (!/^\d{6}$/.test(authorizationPin)) {
+                      setAuthorizationError("Enter the complete six-digit PIN.");
+                      return;
+                    }
+                    if (adminAuthorization.mode === "hosted") {
+                      const result = reenrollmentRequired
+                        ? await reenrollHostedAdminPin(adminDraftScopeId, authorizationPin, authorizationRecoverySecret)
+                        : await verifyHostedAdminPin(adminDraftScopeId, authorizationPin);
+                      if (!result.authorized) {
+                        setAuthorizationError(result.error === "admin_pin_reenrollment_required"
+                          ? "This PIN must be re-enrolled by the library administrator."
+                          : "Incorrect PIN.");
+                        return;
+                      }
+                    } else {
+                      const expectedPin = String(config?.admin?.pin || "");
+                      if (authorizationPin !== expectedPin) {
+                        setAuthorizationError("Incorrect PIN.");
+                        return;
+                      }
+                      activateLocalAdminSession(adminDraftScopeId, "admin_route");
+                    }
+                    setAuthorizationPin("");
+                    setAuthorizationRecoverySecret("");
+                    setAuthorizationError("");
+                    setAdminAuthorization((current) => ({ ...current, status: "authorized" }));
+                  })();
+                }}
+              >
+                <Text style={[styles.btnText, { color: t.accentTextOn }]}>Unlock Settings</Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
+          <TouchableOpacity style={[styles.btn, { marginTop: 12, borderColor: t.cardBorder }]} onPress={() => router.replace("/")}>
+            <Text style={[styles.btnText, { color: t.text }]}>Return Home</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (adminScopeLoading) {
     return (
