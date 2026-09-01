@@ -12,7 +12,9 @@ const core = read("features/recommendation-games/media-mania/mediaManiaCore.mjs"
 const catalog = read("features/recommendation-games/media-mania/mediaManiaCatalog.ts");
 const artwork = read("features/recommendation-games/media-mania/mediaManiaArtwork.ts");
 const persistence = read("features/recommendation-games/media-mania/mediaManiaPersistence.ts");
-const gameSources = [screen, core, catalog, artwork, persistence].join("\n");
+const evidenceStorage = read("lib/mediaMania/evidenceStorage.ts");
+const evidenceApi = read("api/media-mania-events.ts");
+const gameSources = [screen, core, catalog, artwork, persistence, evidenceStorage, evidenceApi].join("\n");
 
 assert.match(menu, />Librarian Review<\/Text>/, "Librarian Review menu entry must remain");
 assert.match(menu, />Play Recommendation Games<\/Text>/, "Recommendation Games menu entry missing");
@@ -29,6 +31,7 @@ assert.doesNotMatch(gameSources, /TasteFeedbackEvent|tasteProfileBuilder|Recomme
 assert.match(persistence, /novelideas_media_mania_v1/, "game-specific storage key missing");
 assert.match(persistence, /media_mania_save_v1/, "save schema must be versioned");
 assert.match(core, /media_mania_event_v1/, "raw-event schema must be versioned");
+assert.match(core, /media_mania_event_v2/, "current raw-event schema must be explicitly versioned");
 assert.match(core, /activeAgeBand: state\.ageBand/, "raw events must preserve the active age band");
 assert.match(core, /eligibleMediaManiaCatalog\(catalog, state\.ageBand\)/, "age eligibility must run before candidate selection");
 assert.match(screen, /NOT IN THIS BAND/, "sources without a trusted age pool must fail closed in the UI");
@@ -61,6 +64,21 @@ assert.match(screen, /compact && styles\.candidateColumn/, "mode-colored cards m
 assert.match(screen, /FIRST DISLIKE ROUND/, "first-negative-round hint missing");
 assert.match(screen, /Undo last choice/, "undo control missing");
 assert.match(core, /round_choice_undone/, "undo must preserve an explicit raw reversal event");
+assert.match(core, /round_presented/, "every generated round must preserve presentation evidence");
+assert.match(core, /replacementItem/, "candidate replacements must preserve the item shown next");
+assert.match(core, /session_continued/, "refresh continuation must be explicit");
+assert.match(core, /session_exited/, "detectable exits must be explicit");
+assert.match(screen, /commitInFlight/, "rapid actions must be serialized");
+assert.match(screen, /durable sync will retry/, "durable failures must be visible");
+assert.match(persistence, /await write[\s\S]*syncMediaManiaEvents/, "gameplay must save locally before durable synchronization");
+assert.match(persistence, /createMediaManiaStorageInstanceId/, "browser tabs must receive isolated resumable storage identities");
+assert.match(persistence, /legacy-claim/, "the first tab must migrate the pre-isolation local save");
+assert.match(evidenceStorage, /media-mania\/evidence\/v1/, "durable evidence must use a Media-Mania-specific storage path");
+assert.match(evidenceStorage, /aes-256-gcm/, "durable evidence must be encrypted");
+assert.match(evidenceStorage, /duplicates/, "durable writes must identify duplicate submissions");
+assert.doesNotMatch(evidenceStorage, /human-review|local-collection/i, "Media Mania evidence storage must remain logically separate");
+assert.match(evidenceApi, /isTrustedRequestOrigin/, "production ingestion must reject cross-origin submissions");
+assert.match(evidenceApi, /loadSharedLibraryConfigPayload/, "hosted ingestion must reject unknown library scopes");
 assert.match(catalog, /staticMediaManiaArtworkUrl/, "catalog must use the existing pre-resolved artwork map");
 assert.match(artwork, /wikipedia|google_books|open_library/, "dynamic artwork fallbacks missing");
 assert.match(screen, /ARTWORK UNAVAILABLE/, "failed image state missing");

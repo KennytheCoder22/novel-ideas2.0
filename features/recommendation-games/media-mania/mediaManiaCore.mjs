@@ -1,6 +1,6 @@
 export const MEDIA_MANIA_GAME_ID = "media_mania";
 export const MEDIA_MANIA_GAME_VERSION = 1;
-export const MEDIA_MANIA_EVENT_SCHEMA_VERSION = "media_mania_event_v1";
+export const MEDIA_MANIA_EVENT_SCHEMA_VERSION = "media_mania_event_v2";
 export const MEDIA_MANIA_STATE_SCHEMA_VERSION = "media_mania_state_v1";
 export const MEDIA_MANIA_UNLOCK_SCORE = 60;
 export const MEDIA_MANIA_SOURCES = Object.freeze(["books", "movies", "tv", "games", "youtube", "anime", "podcasts"]);
@@ -131,6 +131,7 @@ function baseEvent(state, action, timestampMs) {
     action,
     playerId: state.playerId,
     sessionId: state.sessionId,
+    libraryId: state.libraryId || "default",
     startingMediaSource: state.startingSource,
     activeMediaSources: state.activeSources.slice(),
     activeAgeBand: state.ageBand,
@@ -157,21 +158,57 @@ function roundEvidence(round) {
   };
 }
 
+function roundPresentedEvent(state, round, timestampMs) {
+  return {
+    ...baseEvent(state, "round_presented", timestampMs),
+    ...roundEvidence(round),
+    scoreDelta: 0,
+  };
+}
+
 function withEvents(state, events, timestampMs) {
   return { ...state, nextEventSequence: state.nextEventSequence + events.length, updatedAt: new Date(timestampMs).toISOString() };
 }
 
-export function createMediaManiaState({ playerId, sessionId, ageBand = "teens", nowMs = Date.now() }) {
+export function createMediaManiaState({ playerId, sessionId, libraryId = "default", ageBand = "teens", nowMs = Date.now() }) {
   if (!playerId || !sessionId) throw new Error("Media Mania requires playerId and sessionId.");
   assertAgeBand(ageBand);
   const timestamp = new Date(nowMs).toISOString();
   return {
     schemaVersion: MEDIA_MANIA_STATE_SCHEMA_VERSION, gameId: MEDIA_MANIA_GAME_ID, gameVersion: MEDIA_MANIA_GAME_VERSION,
-    playerId, sessionId, ageBand, startingSource: null, activeSources: [], positiveItemIds: [], negativeItemIds: [],
+    playerId, sessionId, libraryId, ageBand, startingSource: null, activeSources: [], positiveItemIds: [], negativeItemIds: [],
     familiarItemIds: [], unknownItemIds: [], tasteScore: 0, completedRoundCount: 0,
     unlockStatus: "locked", unlockOptions: [], currentRound: null, lastChoiceUndo: null, nextEventSequence: 1,
     createdAt: timestamp, updatedAt: timestamp,
   };
+}
+
+export function recordMediaManiaSessionStarted(state, options = {}) {
+  const nowMs = options.nowMs ?? Date.now();
+  const event = { ...baseEvent(state, "session_started", nowMs), scoreDelta: 0 };
+  return { state: withEvents(state, [event], nowMs), events: [event] };
+}
+
+export function recordMediaManiaSessionContinued(state, options = {}) {
+  const nowMs = options.nowMs ?? Date.now();
+  const event = {
+    ...baseEvent(state, "session_continued", nowMs),
+    resumedRoundId: state.currentRound?.id || null,
+    completedRoundCount: state.completedRoundCount,
+    scoreDelta: 0,
+  };
+  return { state: withEvents(state, [event], nowMs), events: [event] };
+}
+
+export function recordMediaManiaSessionExited(state, options = {}) {
+  const nowMs = options.nowMs ?? Date.now();
+  const event = {
+    ...baseEvent(state, "session_exited", nowMs),
+    activeRoundId: state.currentRound?.id || null,
+    completedRoundCount: state.completedRoundCount,
+    scoreDelta: 0,
+  };
+  return { state: withEvents(state, [event], nowMs), events: [event] };
 }
 
 export function startMediaMania(state, source, catalog, options = {}) {
@@ -182,7 +219,12 @@ export function startMediaMania(state, source, catalog, options = {}) {
   const started = { ...state, startingSource: source, activeSources: [source] };
   const event = { ...baseEvent(started, "starting_source_selected", nowMs), selectedMediaSource: source, scoreDelta: 0 };
   const next = withEvents(started, [event], nowMs);
-  return { state: { ...next, currentRound: makeRound(next, catalog, random, nowMs + 1) }, events: [event] };
+  const currentRound = makeRound(next, catalog, random, nowMs + 1);
+  const presented = roundPresentedEvent(next, currentRound, nowMs + 1);
+  return {
+    state: { ...withEvents(next, [presented], nowMs + 1), currentRound },
+    events: [event, presented],
+  };
 }
 
 export function changeMediaManiaAgeBand(state, ageBand, catalog, options = {}) {
@@ -215,9 +257,15 @@ export function changeMediaManiaAgeBand(state, ageBand, catalog, options = {}) {
     selectedAgeBand: ageBand,
     scoreDelta: 0,
   };
-  const next = withEvents(reset, [event], nowMs);
-  if (next.startingSource) next.currentRound = makeRound(next, catalog, random, nowMs + 1);
-  return { state: next, events: [event] };
+  let next = withEvents(reset, [event], nowMs);
+  const events = [event];
+  if (next.startingSource) {
+    const currentRound = makeRound(next, catalog, random, nowMs + 1);
+    const presented = roundPresentedEvent(next, currentRound, nowMs + 1);
+    next = { ...withEvents(next, [presented], nowMs + 1), currentRound };
+    events.push(presented);
+  }
+  return { state: next, events };
 }
 
 export function chooseMediaManiaCandidate(state, candidateId, catalog, options = {}) {
@@ -230,7 +278,16 @@ export function chooseMediaManiaCandidate(state, candidateId, catalog, options =
   const isDislike = round.roundType === "DISLIKE";
   const scoreDelta = (isDislike ? MEDIA_MANIA_SCORE_RULES.dislike : MEDIA_MANIA_SCORE_RULES.like) + (round.isCrossMedia ? MEDIA_MANIA_SCORE_RULES.crossMediaBonus : 0);
   const tasteScore = state.tasteScore + scoreDelta;
-  const event = { ...baseEvent({ ...state, tasteScore }, "round_completed", nowMs), ...roundEvidence(round), responseTimeMs: Math.max(0, nowMs - round.startedAtMs), selectedItem: snap(selected), scoreDelta, tasteScore };
+  const event = {
+    ...baseEvent({ ...state, tasteScore }, "round_completed", nowMs),
+    ...roundEvidence(round),
+    responseTimeMs: Math.max(0, nowMs - round.startedAtMs),
+    selectedItem: snap(selected),
+    scoreDelta,
+    tasteScoreBefore: state.tasteScore,
+    tasteScoreAfter: tasteScore,
+    tasteScore,
+  };
   const nextState = {
     ...state,
     lastChoiceUndo: {
@@ -260,8 +317,13 @@ export function chooseMediaManiaCandidate(state, candidateId, catalog, options =
     nextState.unlockOptions = shuffle(eligible, random).slice(0, 3);
     events.push({ ...baseEvent({ ...nextState, nextEventSequence: state.nextEventSequence + 1 }, "source_unlock_offered", nowMs), roundId: round.id, eligibleMediaSources: eligible, offeredMediaSources: nextState.unlockOptions.slice(), scoreDelta: 0, tasteScore });
   }
-  const persisted = withEvents(nextState, events, nowMs);
-  if (persisted.unlockStatus !== "offered") persisted.currentRound = makeRound(persisted, catalog, random, nowMs + 1);
+  let persisted = withEvents(nextState, events, nowMs);
+  if (persisted.unlockStatus !== "offered") {
+    const currentRound = makeRound(persisted, catalog, random, nowMs + 1);
+    const presented = roundPresentedEvent(persisted, currentRound, nowMs + 1);
+    persisted = { ...withEvents(persisted, [presented], nowMs + 1), currentRound };
+    events.push(presented);
+  }
   return { state: persisted, events };
 }
 
@@ -272,13 +334,23 @@ export function markMediaManiaCandidateUnknown(state, candidateId, catalog, opti
   if (candidateIndex < 0) throw new Error("Unknown candidate is not in this round.");
   const random = options.random || Math.random;
   const nowMs = options.nowMs ?? Date.now();
-  const event = { ...baseEvent(state, "candidate_marked_unknown", nowMs), ...roundEvidence(round), responseTimeMs: Math.max(0, nowMs - round.startedAtMs), familiarityActions: [{ item: snap(round.candidates[candidateIndex]), familiarity: "unknown" }], scoreDelta: 0 };
   const unknownItemIds = unique([...state.unknownItemIds, candidateId]);
   const displayed = round.candidates.map((item) => item.id);
   const replacements = poolFor({ ...state, unknownItemIds }, catalog, round.basisItems, displayed).filter((item) => !displayed.includes(item.id));
   if (!replacements.length) throw new Error("Media Mania could not replace the unknown candidate.");
   const candidates = round.candidates.slice();
   candidates[candidateIndex] = replacements[randomIndex(replacements.length, random)];
+  const replacementItem = candidates[candidateIndex];
+  const event = {
+    ...baseEvent(state, "candidate_marked_unknown", nowMs),
+    ...roundEvidence(round),
+    responseTimeMs: Math.max(0, nowMs - round.startedAtMs),
+    familiarityActions: [{ item: snap(round.candidates[candidateIndex]), familiarity: "unknown" }],
+    replacedCandidateId: candidateId,
+    replacementItem: snap(replacementItem),
+    replacementPresentationOrder: candidates.map((item) => item.id),
+    scoreDelta: 0,
+  };
   const next = withEvents({ ...state, unknownItemIds, lastChoiceUndo: null }, [event], nowMs);
   return { state: { ...next, currentRound: { ...round, candidates, presentationOrder: candidates.map((item) => item.id) } }, events: [event] };
 }
@@ -290,9 +362,22 @@ export function markMediaManiaBasisUnknown(state, basisItemId, catalog, options 
   if (!basis) throw new Error("Unknown basis item is not in this round.");
   const random = options.random || Math.random;
   const nowMs = options.nowMs ?? Date.now();
-  const event = { ...baseEvent(state, "basis_marked_unknown", nowMs), ...roundEvidence(round), responseTimeMs: Math.max(0, nowMs - round.startedAtMs), familiarityActions: [{ item: snap(basis), familiarity: "unknown" }], scoreDelta: 0 };
-  const next = withEvents({ ...state, unknownItemIds: unique([...state.unknownItemIds, basisItemId]), lastChoiceUndo: null }, [event], nowMs);
-  return { state: { ...next, currentRound: makeRound(next, catalog, random, nowMs + 1, [basisItemId]) }, events: [event] };
+  const changed = { ...state, unknownItemIds: unique([...state.unknownItemIds, basisItemId]), lastChoiceUndo: null };
+  const nextRound = makeRound(changed, catalog, random, nowMs + 1, [basisItemId]);
+  const event = {
+    ...baseEvent(state, "basis_marked_unknown", nowMs),
+    ...roundEvidence(round),
+    responseTimeMs: Math.max(0, nowMs - round.startedAtMs),
+    familiarityActions: [{ item: snap(basis), familiarity: "unknown" }],
+    replacementRound: roundEvidence(nextRound),
+    scoreDelta: 0,
+  };
+  const next = withEvents(changed, [event], nowMs);
+  const presented = roundPresentedEvent(next, nextRound, nowMs + 1);
+  return {
+    state: { ...withEvents(next, [presented], nowMs + 1), currentRound: nextRound },
+    events: [event, presented],
+  };
 }
 
 export function resolveMediaManiaUnlock(state, selectedSource, catalog, options = {}) {
@@ -308,8 +393,12 @@ export function resolveMediaManiaUnlock(state, selectedSource, catalog, options 
   if (accepted) validateCatalog(catalog, nextState.activeSources, state.ageBand);
   const event = { ...baseEvent(nextState, accepted ? "source_unlock_selected" : "source_unlock_declined", nowMs), offeredMediaSources: state.unlockOptions.slice(), selectedMediaSource: selectedSource, scoreDelta: 0 };
   const persisted = withEvents(nextState, [event], nowMs);
-  persisted.currentRound = makeRound(persisted, catalog, random, nowMs + 1);
-  return { state: persisted, events: [event] };
+  const currentRound = makeRound(persisted, catalog, random, nowMs + 1);
+  const presented = roundPresentedEvent(persisted, currentRound, nowMs + 1);
+  return {
+    state: { ...withEvents(persisted, [presented], nowMs + 1), currentRound },
+    events: [event, presented],
+  };
 }
 
 export function undoLastMediaManiaChoice(state, options = {}) {
@@ -338,21 +427,34 @@ export function undoLastMediaManiaChoice(state, options = {}) {
     familiarityActions: [],
     responseTimeMs: null,
     scoreDelta: -undo.scoreDelta,
+    tasteScoreBefore: state.tasteScore,
+    tasteScoreAfter: restored.tasteScore,
     tasteScore: restored.tasteScore,
+    restoredRound: roundEvidence(restored.currentRound),
   };
-  return { state: withEvents(restored, [event], nowMs), events: [event] };
+  const next = withEvents(restored, [event], nowMs);
+  const presented = roundPresentedEvent(next, restored.currentRound, nowMs);
+  return {
+    state: withEvents(next, [presented], nowMs),
+    events: [event, presented],
+  };
 }
 export function serializeMediaManiaEvent(event) {
-  if (event?.schemaVersion !== MEDIA_MANIA_EVENT_SCHEMA_VERSION) throw new Error("Invalid Media Mania event schema.");
+  if (!["media_mania_event_v1", MEDIA_MANIA_EVENT_SCHEMA_VERSION].includes(event?.schemaVersion)) {
+    throw new Error("Invalid Media Mania event schema.");
+  }
   return JSON.stringify(event);
 }
 
 export function restoreMediaManiaState(value) {
   if (!value || value.schemaVersion !== MEDIA_MANIA_STATE_SCHEMA_VERSION) return null;
   if (value.gameId !== MEDIA_MANIA_GAME_ID || value.gameVersion !== MEDIA_MANIA_GAME_VERSION) return null;
-  if (MEDIA_MANIA_AGE_BANDS.includes(value.ageBand)) return value;
+  if (MEDIA_MANIA_AGE_BANDS.includes(value.ageBand)) {
+    return { ...value, libraryId: value.libraryId || "default" };
+  }
   return {
     ...value,
+    libraryId: value.libraryId || "default",
     ageBand: "teens",
     startingSource: null,
     activeSources: [],

@@ -9,7 +9,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "test:swipe-controls": "node --test screens/swipe/webSwipeControls.test.mjs",
-    "test:media-mania": "node --test features/recommendation-games/media-mania/mediaManiaCore.test.mjs && node --import tsx --test features/recommendation-games/media-mania/mediaManiaCatalog.test.ts",
+    "test:media-mania": "node --test features/recommendation-games/media-mania/mediaManiaCore.test.mjs && node --import tsx --test features/recommendation-games/media-mania/mediaManiaCatalog.test.ts features/recommendation-games/media-mania/mediaManiaEvidence.test.ts",
     "test:media-mania:integration": "node scripts/run-media-mania-integration-regressions.mjs",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",

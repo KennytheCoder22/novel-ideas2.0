@@ -4,11 +4,11 @@ export type MediaManiaCatalogItem = { id: string; source: string; mediaSource: M
 export type ItemSnapshot = { id: string; source: string; mediaSource: MediaManiaSource; title: string; creator: string };
 export type MediaManiaRound = { id: string; roundNumber: number; roundType: "LIKE" | "DISLIKE"; startedAtMs: number; activeSources: MediaManiaSource[]; ageBand: MediaManiaAgeBand; basisItems: MediaManiaCatalogItem[]; visiblePositiveContext: ItemSnapshot[]; visibleNegativeContext: ItemSnapshot[]; candidates: MediaManiaCatalogItem[]; presentationOrder: string[]; candidateStrategyId: string; isCrossMedia: boolean };
 export type MediaManiaChoiceUndo = { completedEventId: string; round: MediaManiaRound; selectedItem: ItemSnapshot; roundType: "LIKE" | "DISLIKE"; scoreDelta: number; priorPositiveItemIds: string[]; priorNegativeItemIds: string[]; priorFamiliarItemIds: string[]; priorTasteScore: number; priorCompletedRoundCount: number; priorUnlockStatus: "locked" | "offered" | "accepted" | "declined"; priorUnlockOptions: MediaManiaSource[] };
-export type MediaManiaState = { schemaVersion: "media_mania_state_v1"; gameId: "media_mania"; gameVersion: 1; playerId: string; sessionId: string; ageBand: MediaManiaAgeBand; startingSource: MediaManiaSource | null; activeSources: MediaManiaSource[]; positiveItemIds: string[]; negativeItemIds: string[]; familiarItemIds: string[]; unknownItemIds: string[]; tasteScore: number; completedRoundCount: number; unlockStatus: "locked" | "offered" | "accepted" | "declined"; unlockOptions: MediaManiaSource[]; currentRound: MediaManiaRound | null; lastChoiceUndo?: MediaManiaChoiceUndo | null; nextEventSequence: number; createdAt: string; updatedAt: string };
-export type MediaManiaEvent = Record<string, unknown> & { schemaVersion: "media_mania_event_v1"; gameId: "media_mania"; gameVersion: 1; eventId: string; action: string };
+export type MediaManiaState = { schemaVersion: "media_mania_state_v1"; gameId: "media_mania"; gameVersion: 1; playerId: string; sessionId: string; libraryId: string; ageBand: MediaManiaAgeBand; startingSource: MediaManiaSource | null; activeSources: MediaManiaSource[]; positiveItemIds: string[]; negativeItemIds: string[]; familiarItemIds: string[]; unknownItemIds: string[]; tasteScore: number; completedRoundCount: number; unlockStatus: "locked" | "offered" | "accepted" | "declined"; unlockOptions: MediaManiaSource[]; currentRound: MediaManiaRound | null; lastChoiceUndo?: MediaManiaChoiceUndo | null; nextEventSequence: number; createdAt: string; updatedAt: string };
+export type MediaManiaEvent = Record<string, unknown> & { schemaVersion: "media_mania_event_v1" | "media_mania_event_v2"; gameId: "media_mania"; gameVersion: 1; eventId: string; action: string };
 export const MEDIA_MANIA_GAME_ID: "media_mania";
 export const MEDIA_MANIA_GAME_VERSION: 1;
-export const MEDIA_MANIA_EVENT_SCHEMA_VERSION: "media_mania_event_v1";
+export const MEDIA_MANIA_EVENT_SCHEMA_VERSION: "media_mania_event_v2";
 export const MEDIA_MANIA_STATE_SCHEMA_VERSION: "media_mania_state_v1";
 export const MEDIA_MANIA_UNLOCK_SCORE: number;
 export const MEDIA_MANIA_SOURCES: readonly MediaManiaSource[];
@@ -18,7 +18,10 @@ export const MEDIA_MANIA_AGE_BAND_LABELS: Readonly<Record<MediaManiaAgeBand, str
 export const MEDIA_MANIA_SCORE_RULES: Readonly<{ like: number; dislike: number; crossMediaBonus: number; unfamiliarity: number }>;
 type Options = { random?: () => number; nowMs?: number };
 type Result = { state: MediaManiaState; events: MediaManiaEvent[] };
-export function createMediaManiaState(input: { playerId: string; sessionId: string; ageBand?: MediaManiaAgeBand; nowMs?: number }): MediaManiaState;
+export function createMediaManiaState(input: { playerId: string; sessionId: string; libraryId?: string; ageBand?: MediaManiaAgeBand; nowMs?: number }): MediaManiaState;
+export function recordMediaManiaSessionStarted(state: MediaManiaState, options?: Pick<Options, "nowMs">): Result;
+export function recordMediaManiaSessionContinued(state: MediaManiaState, options?: Pick<Options, "nowMs">): Result;
+export function recordMediaManiaSessionExited(state: MediaManiaState, options?: Pick<Options, "nowMs">): Result;
 export function eligibleMediaManiaCatalog(catalog: MediaManiaCatalogItem[], ageBand: MediaManiaAgeBand): MediaManiaCatalogItem[];
 export function availableMediaManiaSources(catalog: MediaManiaCatalogItem[], ageBand: MediaManiaAgeBand): MediaManiaSource[];
 export function startMediaMania(state: MediaManiaState, source: MediaManiaSource, catalog: MediaManiaCatalogItem[], options?: Options): Result;

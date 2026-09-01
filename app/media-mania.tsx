@@ -14,6 +14,9 @@ import {
   createMediaManiaState,
   markMediaManiaBasisUnknown,
   markMediaManiaCandidateUnknown,
+  recordMediaManiaSessionContinued,
+  recordMediaManiaSessionExited,
+  recordMediaManiaSessionStarted,
   resolveMediaManiaUnlock,
   startMediaMania,
   undoLastMediaManiaChoice,
@@ -23,7 +26,12 @@ import {
   type MediaManiaSource,
   type MediaManiaState,
 } from "../features/recommendation-games/media-mania/mediaManiaCore.mjs";
-import { createMediaManiaSessionId, loadMediaManiaSave, saveMediaMania } from "../features/recommendation-games/media-mania/mediaManiaPersistence";
+import {
+  createMediaManiaSessionId,
+  createMediaManiaStorageInstanceId,
+  loadMediaManiaSave,
+  saveMediaMania,
+} from "../features/recommendation-games/media-mania/mediaManiaPersistence";
 import { initialMediaManiaArtworkCandidates, resolveMediaManiaArtwork, type MediaManiaArtworkCandidate } from "../features/recommendation-games/media-mania/mediaManiaArtwork";
 import { getSwipeCardFallbackImage } from "../assets/swipeCardFallback";
 
@@ -42,6 +50,10 @@ const normalizeAgeBand = (value: unknown): MediaManiaAgeBand => {
     ? normalized as MediaManiaAgeBand
     : "teens";
 };
+const durablePersistenceNotice = (error: string | null) =>
+  error === "durable_endpoint_unavailable"
+    ? "Gameplay is saved on this device."
+    : "Gameplay is saved on this device; durable sync will retry.";
 
 function MediaArtwork({ item }: { item: MediaManiaCatalogItem }) {
   const meta = SOURCE_META[item.mediaSource];
@@ -102,6 +114,10 @@ export default function MediaManiaScreen() {
   const playerId = String(params.playerId || "media-mania-player");
   const libraryId = String(params.libraryId || "default");
   const initialAgeBand = normalizeAgeBand(params.ageBand);
+  const storageInstanceId = useMemo(
+    () => createMediaManiaStorageInstanceId(playerId, libraryId),
+    [libraryId, playerId],
+  );
   const { width } = useWindowDimensions();
   const compact = width < 760;
   const [state, setState] = useState<MediaManiaState | null>(null);
@@ -113,26 +129,49 @@ export default function MediaManiaScreen() {
   const [showDislikeHint, setShowDislikeHint] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(true);
+  const [persistenceNotice, setPersistenceNotice] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commitInFlight = useRef(false);
   const roundTransitionOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     let cancelled = false;
-    void loadMediaManiaSave(playerId, libraryId).then((saved) => {
-      if (cancelled) return;
-      if (saved) {
-        setState(saved.state);
-        setEvents(saved.events);
-      } else {
-        setState(createMediaManiaState({ playerId, sessionId: createMediaManiaSessionId(), ageBand: initialAgeBand }));
+    void (async () => {
+      try {
+        const saved = await loadMediaManiaSave(playerId, libraryId, storageInstanceId);
+        const lifecycle = saved
+          ? recordMediaManiaSessionContinued(saved.state)
+          : recordMediaManiaSessionStarted(createMediaManiaState({
+              playerId,
+              sessionId: createMediaManiaSessionId(),
+              libraryId,
+              ageBand: initialAgeBand,
+            }));
+        const nextEvents = [...(saved?.events || []), ...lifecycle.events];
+        const persisted = await saveMediaMania(playerId, libraryId, lifecycle.state, nextEvents, storageInstanceId);
+        if (cancelled) return;
+        setState(lifecycle.state);
+        setEvents(nextEvents);
+        setPersistenceNotice(persisted.durableSynced ? null : durablePersistenceNotice(persisted.durableError));
+      } catch {
+        if (cancelled) return;
+        const lifecycle = recordMediaManiaSessionStarted(createMediaManiaState({
+          playerId,
+          sessionId: createMediaManiaSessionId(),
+          libraryId,
+          ageBand: initialAgeBand,
+        }));
+        setState(lifecycle.state);
+        setEvents(lifecycle.events);
+        setPersistenceNotice("Media Mania could not read or write saved gameplay on this device.");
       }
       setLoading(false);
-    });
+    })();
     return () => {
       cancelled = true;
       if (flashTimer.current) clearTimeout(flashTimer.current);
     };
-  }, [initialAgeBand, libraryId, playerId]);
+  }, [initialAgeBand, libraryId, playerId, storageInstanceId]);
 
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotionEnabled);
@@ -154,26 +193,41 @@ export default function MediaManiaScreen() {
     }).start();
   }, [reduceMotionEnabled, roundTransitionOpacity, state?.currentRound?.id]);
 
-  async function commit(result: { state: MediaManiaState; events: MediaManiaEvent[] }, delay = 0, message?: string) {
+  async function commit(result: { state: MediaManiaState; events: MediaManiaEvent[] }, delay = 0, message?: string): Promise<boolean> {
+    if (commitInFlight.current) return false;
+    commitInFlight.current = true;
+    setLocked(true);
     const nextEvents = [...events, ...result.events];
-    setEvents(nextEvents);
-    await saveMediaMania(playerId, libraryId, result.state, nextEvents);
-    if (!delay) {
-      setState(result.state);
-      return;
-    }
-    setFlash(message || "Taste captured!");
-    flashTimer.current = setTimeout(() => {
-      setState(result.state);
-      setFlash(null);
+    try {
+      const persisted = await saveMediaMania(playerId, libraryId, result.state, nextEvents, storageInstanceId);
+      setEvents(nextEvents);
+      setPersistenceNotice(persisted.durableSynced ? null : durablePersistenceNotice(persisted.durableError));
+      if (!delay) {
+        setState(result.state);
+        setLocked(false);
+        commitInFlight.current = false;
+        return true;
+      }
+      setFlash(message || "Taste captured!");
+      flashTimer.current = setTimeout(() => {
+        setState(result.state);
+        setFlash(null);
+        setSelectedCandidateId(null);
+        setLocked(false);
+        commitInFlight.current = false;
+      }, delay);
+      return true;
+    } catch {
       setSelectedCandidateId(null);
       setLocked(false);
-    }, delay);
+      commitInFlight.current = false;
+      setPersistenceNotice("This choice was not saved. Please try again.");
+      return false;
+    }
   }
 
   function choose(candidateId: string) {
-    if (!state || !state.currentRound || locked) return;
-    setLocked(true);
+    if (!state || !state.currentRound || locked || commitInFlight.current) return;
     setSelectedCandidateId(candidateId);
     const result = chooseMediaManiaCandidate(state, candidateId, MEDIA_MANIA_CATALOG);
     const delta = Number(result.events[0]?.scoreDelta || 0);
@@ -182,24 +236,28 @@ export default function MediaManiaScreen() {
   }
 
   function unknownCandidate(candidateId: string) {
-    if (!state || locked) return;
+    if (!state || locked || commitInFlight.current) return;
     void commit(markMediaManiaCandidateUnknown(state, candidateId, MEDIA_MANIA_CATALOG));
   }
 
   function undoLastChoice() {
-    if (!state?.lastChoiceUndo || locked) return;
-    setLocked(true);
-    void commit(undoLastMediaManiaChoice(state)).finally(() => setLocked(false));
+    if (!state?.lastChoiceUndo || locked || commitInFlight.current) return;
+    void commit(undoLastMediaManiaChoice(state));
   }
 
   function unknownBasis(basisId: string) {
-    if (!state || locked) return;
+    if (!state || locked || commitInFlight.current) return;
     void commit(markMediaManiaBasisUnknown(state, basisId, MEDIA_MANIA_CATALOG));
   }
 
   function selectAgeBand(ageBand: MediaManiaAgeBand) {
-    if (!state || locked || state.ageBand === ageBand) return;
+    if (!state || locked || commitInFlight.current || state.ageBand === ageBand) return;
     void commit(changeMediaManiaAgeBand(state, ageBand, MEDIA_MANIA_CATALOG));
+  }
+
+  async function exitGame() {
+    if (!state || commitInFlight.current) return;
+    if (await commit(recordMediaManiaSessionExited(state))) router.back();
   }
 
   useEffect(() => {
@@ -226,7 +284,7 @@ export default function MediaManiaScreen() {
         const basis = state.currentRound.basisItems[0];
         if (basis) unknownBasis(basis.id);
       } else if (event.key === "Escape") {
-        router.back();
+        void exitGame();
       }
     };
     document.addEventListener("keydown", onKeyDown);
@@ -250,8 +308,9 @@ export default function MediaManiaScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.startContent}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => router.back()} style={styles.backButton}><Text style={styles.backText}>{"< NovelIdeas"}</Text></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => void exitGame()} style={styles.backButton}><Text style={styles.backText}>{"< NovelIdeas"}</Text></TouchableOpacity>
           <Text style={styles.eyebrow}>RECOMMENDATION GAMES</Text>
+          {persistenceNotice ? <Text accessibilityRole="alert" style={styles.persistenceNotice}>{persistenceNotice}</Text> : null}
           <Text style={styles.startTitle}>{"Let's get ready to play Media Mania!"}</Text>
           <AgeBandControl ageBand={state.ageBand} onChange={selectAgeBand} />
           <Text style={styles.startSubtitle}>Where would you like to start?</Text>
@@ -262,7 +321,7 @@ export default function MediaManiaScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`Start with ${MEDIA_MANIA_SOURCE_LABELS[source]}`}
                 accessibilityState={{ disabled: !availableSources.includes(source) }}
-                disabled={!availableSources.includes(source)}
+                disabled={locked || !availableSources.includes(source)}
                 style={[styles.sourceCard, { borderColor: SOURCE_META[source].color }, !availableSources.includes(source) && styles.sourceCardDisabled]}
                 onPress={() => void commit(startMediaMania(state, source, MEDIA_MANIA_CATALOG))}
               >
@@ -282,6 +341,7 @@ export default function MediaManiaScreen() {
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.unlockContent}>
           <Text style={styles.unlockIcon}>+</Text>
+          {persistenceNotice ? <Text accessibilityRole="alert" style={styles.persistenceNotice}>{persistenceNotice}</Text> : null}
           <Text style={styles.unlockTitle}>New media unlocked!</Text>
           <Text style={styles.unlockSubtitle}>Choose a new world to mix into your taste - or keep playing your current one.</Text>
           <AgeBandControl ageBand={state.ageBand} onChange={selectAgeBand} compact />
@@ -308,12 +368,13 @@ export default function MediaManiaScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.gameContent} keyboardShouldPersistTaps="handled">
         <View style={styles.topBar}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => router.back()} style={styles.backButton}><Text style={styles.backText}>{"< Back"}</Text></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => void exitGame()} style={styles.backButton}><Text style={styles.backText}>{"< Back"}</Text></TouchableOpacity>
           <Text style={styles.logo}>MEDIA <Text style={styles.logoAccent}>MANIA</Text></Text>
           <View style={styles.roundMeta}>
             <Text style={styles.roundLabel}>{MEDIA_MANIA_AGE_BAND_LABELS[state.ageBand].toUpperCase()}</Text>
             <Text style={styles.roundLabel}>ROUND {round.roundNumber}</Text>
           </View>
+          {persistenceNotice ? <Text accessibilityRole="alert" style={styles.persistenceNotice}>{persistenceNotice}</Text> : null}
         </View>
         <AgeBandControl ageBand={state.ageBand} onChange={selectAgeBand} compact />
         <Animated.View
@@ -475,6 +536,7 @@ const styles = StyleSheet.create({
   candidateCopy: { padding: 15 }, mediaPill: { fontSize: 11, fontWeight: "900", letterSpacing: 1.3 }, candidateTitle: { color: "#f8fafc", fontSize: 21, lineHeight: 25, fontWeight: "900", marginTop: 7 }, candidateCreator: { color: "#91a7c0", marginTop: 7, fontWeight: "700" },
   undoButton: { minHeight: 44, alignSelf: "center", justifyContent: "center", paddingHorizontal: 16, marginTop: 10, borderWidth: 1, borderColor: "#7890ad", borderRadius: 999 }, undoText: { color: "#d6e5f5", fontWeight: "900" },
   unknownCandidate: { minHeight: 48, alignItems: "center", justifyContent: "center", marginTop: 7 }, unknownText: { color: "#9fb2ca", fontWeight: "800", fontSize: 13 }, keyboardHint: { color: "#657e9c", textAlign: "center", marginTop: 18, fontSize: 12 },
+  persistenceNotice: { color: "#fde68a", backgroundColor: "#422006", borderColor: "#a16207", borderWidth: 1, borderRadius: 10, padding: 10, textAlign: "center", fontWeight: "800", marginVertical: 8 },
   hintBackdrop: { flex: 1, backgroundColor: "rgba(3, 10, 20, 0.86)", alignItems: "center", justifyContent: "center", padding: 24 }, hintCard: { width: "100%", maxWidth: 480, borderRadius: 24, borderWidth: 3, borderColor: "#fb7185", backgroundColor: "#3b1220", padding: 26, alignItems: "center" }, hintEyebrow: { color: "#fecdd3", fontSize: 14, fontWeight: "900", letterSpacing: 2 }, hintTitle: { color: "#fff", fontSize: 28, lineHeight: 34, fontWeight: "900", textAlign: "center", marginTop: 10 }, hintCopy: { color: "#ffe4e6", fontSize: 17, lineHeight: 24, textAlign: "center", marginTop: 10 }, hintButton: { minHeight: 52, marginTop: 22, borderRadius: 999, backgroundColor: "#fb7185", paddingHorizontal: 22, justifyContent: "center" }, hintButtonText: { color: "#310b16", fontWeight: "900", fontSize: 16 },
   flash: { position: "absolute", top: "42%", alignSelf: "center", borderRadius: 999, borderWidth: 3, paddingVertical: 16, paddingHorizontal: 28 }, flashLike: { backgroundColor: "#5ee1b7", borderColor: "#d1fae5" }, flashDislike: { backgroundColor: "#be3458", borderColor: "#fecdd3" }, flashText: { color: "#06241d", fontWeight: "900", fontSize: 20 }, flashTextDislike: { color: "#fff1f2" },
   unlockContent: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 }, unlockIcon: { color: "#fbbf24", fontSize: 70 }, unlockTitle: { color: "#f8fafc", fontSize: 38, fontWeight: "900", textAlign: "center" }, unlockSubtitle: { color: "#9fb2ca", fontSize: 18, lineHeight: 25, textAlign: "center", maxWidth: 650, marginTop: 12 }, unlockOptions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 14, marginTop: 28 }, unlockCard: { width: 190, minHeight: 155, borderWidth: 2, borderRadius: 22, backgroundColor: "#0d233d", alignItems: "center", justifyContent: "center" }, continueButton: { minHeight: 48, justifyContent: "center", marginTop: 25, paddingHorizontal: 18 }, continueText: { color: "#b8c8dc", fontWeight: "800" },

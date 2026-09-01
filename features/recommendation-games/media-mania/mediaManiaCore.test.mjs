@@ -217,6 +217,8 @@ test("versioned state restores while foreign schemas are rejected", () => {
   const state = start();
   assert.equal(restoreMediaManiaState(JSON.parse(JSON.stringify(state))).sessionId, state.sessionId);
   assert.equal(restoreMediaManiaState({ ...state, schemaVersion: "human_review_record_v1" }), null);
+  const currentEvent = chooseFirst(state, 3_000).events[0];
+  assert.doesNotThrow(() => serializeMediaManiaEvent({ ...currentEvent, schemaVersion: "media_mania_event_v1" }));
 });
 
 test("legacy Media Mania state restarts safely in Teens instead of preserving a mixed round", () => {
