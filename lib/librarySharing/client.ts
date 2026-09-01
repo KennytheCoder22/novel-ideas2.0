@@ -134,6 +134,24 @@ async function postJson(url: string, body: Record<string, unknown>, context: str
   }
 }
 
+export async function encodeGzipBase64Json(value: Record<string, unknown>): Promise<string | null> {
+  if (typeof CompressionStream === "undefined" || typeof btoa === "undefined") return null;
+  try {
+    const compressedStream = new Blob([JSON.stringify(value)], { type: "application/json" })
+      .stream()
+      .pipeThrough(new CompressionStream("gzip"));
+    const bytes = new Uint8Array(await new Response(compressedStream).arrayBuffer());
+    const chunks: string[] = [];
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)));
+    }
+    return btoa(chunks.join(""));
+  } catch {
+    return null;
+  }
+}
+
 export type SharedLibraryConfigSaveDiagnostics = {
   timestamp: string;
   requestUrl: string;
@@ -377,13 +395,13 @@ export async function loadSharedLibraryCollection(libraryId: string): Promise<Re
       return canonicalizeCollectionArtifact(artifact, libraryId);
     }
 
-    // Private Blob stores reject browser requests to the CDN URL. The collection
-    // upload cap keeps the artifact small enough for this same-origin API fallback.
-    const inlineUrl = new URL(url);
-    inlineUrl.searchParams.set("inline", "1");
-    const inlinePayload = await readJson(inlineUrl.toString(), "loadSharedLibraryCollectionInlineFallback");
-    if (inlinePayload?.artifact && typeof inlinePayload.artifact === "object" && !Array.isArray(inlinePayload.artifact)) {
-      return canonicalizeCollectionArtifact(inlinePayload.artifact as Record<string, unknown>, libraryId);
+    // Private Blob stores reject browser requests to the CDN URL. Use a compressed
+    // same-origin response so description-rich collections stay below function limits.
+    const compressedUrl = new URL(url);
+    compressedUrl.searchParams.set("compressed", "1");
+    const compressedPayload = await readJson(compressedUrl.toString(), "loadSharedLibraryCollectionCompressedFallback");
+    if (compressedPayload?.artifact && typeof compressedPayload.artifact === "object" && !Array.isArray(compressedPayload.artifact)) {
+      return canonicalizeCollectionArtifact(compressedPayload.artifact as Record<string, unknown>, libraryId);
     }
   }
 
@@ -399,4 +417,17 @@ export async function saveSharedLibraryCollection(libraryId: string, artifact: R
   const url = sharedApiUrl("/api/local-collection", libraryId);
   if (!url) return false;
   return postJson(url, { libraryId, artifact }, "saveSharedLibraryCollection");
+}
+
+export async function saveCompressedSharedLibraryCollection(
+  libraryId: string,
+  artifact: Record<string, unknown>,
+): Promise<boolean> {
+  const url = sharedApiUrl("/api/local-collection", libraryId);
+  if (!url) return false;
+  const artifactGzipBase64 = await encodeGzipBase64Json(artifact);
+  if (!artifactGzipBase64) return false;
+  const body = { libraryId, artifactEncoding: "gzip-base64", artifactGzipBase64 };
+  if (utf8ByteLength(JSON.stringify(body)) >= 4 * 1024 * 1024) return false;
+  return postJson(url, body, "saveCompressedSharedLibraryCollection");
 }

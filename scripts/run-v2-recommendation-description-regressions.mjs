@@ -1,7 +1,9 @@
 import { createRequire } from "node:module";
+import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
@@ -28,6 +30,7 @@ const {
   cleanRecommendationDescription,
   recommendationDescriptionExcerpt,
 } = require(resolve(root, "screens", "swipe", "recommendationDescription.ts"));
+const { encodeGzipBase64Json } = require(resolve(root, "lib", "librarySharing", "client.ts"));
 
 const swipeSource = readFileSync(resolve(root, "screens", "SwipeDeckScreen.tsx"), "utf8");
 const sourceFiles = {
@@ -38,6 +41,10 @@ const sourceFiles = {
   nyt: readFileSync(resolve(root, "app", "recommender-v2", "sources", "nytSource.ts"), "utf8"),
   localLibrary: readFileSync(resolve(root, "app", "recommender-v2", "sources", "localLibrarySource.ts"), "utf8"),
 };
+const localCollectionStorageSource = readFileSync(resolve(root, "lib", "localCollection", "storage.ts"), "utf8");
+const librarySharingClientSource = readFileSync(resolve(root, "lib", "librarySharing", "client.ts"), "utf8");
+const localCollectionApiSource = readFileSync(resolve(root, "api", "local-collection.ts"), "utf8");
+const adminSource = readFileSync(resolve(root, "app", "app_admin-web.tsx"), "utf8");
 
 let passed = 0;
 let failed = 0;
@@ -86,6 +93,23 @@ check("presentation excerpt is bounded to five sentences", () => {
 
 check("missing descriptions use the explicit fallback", () => {
   assert(recommendationDescriptionExcerpt("") === DESCRIPTION_FALLBACK, "missing-description fallback changed");
+});
+
+check("Local Collection items without descriptions remain explicitly empty", () => {
+  const [candidate] = normalizeSourceResults([{
+    source: "localLibrary",
+    status: "succeeded",
+    rawItems: [{
+      id: "local:without-description",
+      title: "Local Book Without Summary",
+      authors: ["Known Local Author"],
+      formats: ["book"],
+    }],
+    diagnostics: { source: "localLibrary", status: "succeeded", planned: true, attempted: true, timedOut: false, rawCount: 1, queries: [] },
+  }]);
+  assert(candidate?.description === undefined, "missing local description entered scoring metadata");
+  assert(candidate?.displayDescription === undefined, "missing local description was fabricated");
+  assert(recommendationDescriptionExcerpt(candidate?.displayDescription) === DESCRIPTION_FALLBACK, "missing local description did not use the graceful fallback");
 });
 
 check("CSV summary aliases persist into recommendation records", () => {
@@ -144,6 +168,33 @@ check("description opens in a closable modal without navigation", () => {
   assert(swipeSource.includes("}, [currentRecKey]);"), "description modal does not reset when the recommendation changes");
   assert(swipeSource.includes("recommendationDescriptionScroll"), "long descriptions are not scroll-contained");
   assert(!/About this book[\s\S]{0,500}(?:router\.|Linking\.)/.test(swipeSource), "description control navigates away");
+});
+
+check("oversized description artifacts use authenticated compressed shared publishing", () => {
+  assert(localCollectionStorageSource.includes("size.exceedsFunctionLimit"), "oversized collection routing is missing");
+  assert(localCollectionStorageSource.includes("saveCompressedSharedLibraryCollection"), "oversized collections are not compressed");
+  assert(librarySharingClientSource.includes('new CompressionStream("gzip")'), "browser gzip encoding is missing");
+  assert(localCollectionApiSource.includes('body.artifactEncoding !== "gzip-base64"'), "API compressed payload contract is missing");
+  assert(localCollectionApiSource.includes("gunzipSync"), "API does not decode compressed artifacts");
+  assert(localCollectionApiSource.includes("gzipSync"), "API does not compress private-Blob fallback responses");
+  assert(localCollectionApiSource.includes('req.query.compressed'), "API compressed read fallback is missing");
+  assert(librarySharingClientSource.includes('searchParams.set("compressed", "1")'), "client does not use compressed private-Blob reads");
+  assert(localCollectionApiSource.includes("MAX_DECOMPRESSED_ARTIFACT_BYTES"), "compressed upload expansion limit is missing");
+  assert(adminSource.includes("Shared publish used compressed transfer"), "admin does not report compressed publishing");
+  assert(!adminSource.includes("Shared publish blocked:"), "admin still blocks description-rich shared artifacts");
+});
+
+const compressedFixture = await encodeGzipBase64Json({
+  schemaVersion: "local_collection_recommendation_v1",
+  records: [{ localId: "local-1", title: "Known Local Book", description: "A catalog summary survives compressed publishing." }],
+});
+check("compressed shared publishing preserves description content", () => {
+  assert(typeof compressedFixture === "string" && compressedFixture.length > 0, "fixture was not compressed");
+  const decoded = JSON.parse(gunzipSync(Buffer.from(compressedFixture, "base64")).toString("utf8"));
+  assert(
+    decoded.records[0].description === "A catalog summary survives compressed publishing.",
+    "description changed during compressed transport",
+  );
 });
 
 console.log(`\nRecommendation description regressions: ${passed} passed, ${failed} failed`);

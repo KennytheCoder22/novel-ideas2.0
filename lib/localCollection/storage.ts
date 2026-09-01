@@ -1,5 +1,9 @@
 import type { LocalCollectionArtifact } from "./types";
-import { loadSharedLibraryCollection, saveSharedLibraryCollection } from "../librarySharing/client";
+import {
+  loadSharedLibraryCollection,
+  saveCompressedSharedLibraryCollection,
+  saveSharedLibraryCollection,
+} from "../librarySharing/client";
 import { ADMIN_CONFIG_DEFAULT_SCOPE, normalizeAdminDraftScopeId } from "../../constants/brandTheme";
 import { libraryIdReadCandidates, YVHS_LIBRARY_ID } from "../libraryIdMigration.js";
 
@@ -418,6 +422,10 @@ export async function publishSharedLocalCollectionRecommendationArtifact(library
   const id = String(libraryId || "").trim();
   if (!id) return false;
   const recommendationArtifact = buildRecommendationArtifact(artifact);
+  const size = measureSharedLocalCollectionPublishBytes(id, artifact);
+  if (size.exceedsFunctionLimit) {
+    return saveCompressedSharedLibraryCollection(id, recommendationArtifact as Record<string, unknown>);
+  }
   // Persist through the shared API. In vercel_blob mode the API writes to
   // Vercel Blob server-side; in local_filesystem mode it writes to disk.
   return saveSharedLibraryCollection(id, recommendationArtifact as Record<string, unknown>);

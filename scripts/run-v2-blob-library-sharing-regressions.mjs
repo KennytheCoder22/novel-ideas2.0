@@ -308,9 +308,9 @@ console.log("\n6. Client loadSharedLibraryCollection handles both response shape
     contains(client, "payload.artifactUrl") && contains(client, "readJsonAny")
   );
   check(
-    "loadSharedLibraryCollection falls back to same-origin inline payload when CDN access is private",
-    contains(client, 'inlineUrl.searchParams.set("inline", "1")') &&
-    contains(client, "loadSharedLibraryCollectionInlineFallback")
+    "loadSharedLibraryCollection falls back to a compressed same-origin payload when CDN access is private",
+    contains(client, 'compressedUrl.searchParams.set("compressed", "1")') &&
+    contains(client, "loadSharedLibraryCollectionCompressedFallback")
   );
   check(
     "readJsonAny fetches without credentials (cross-origin CDN URL)",

@@ -22,7 +22,6 @@ import {
   persistLocalCollectionRecommendationArtifact,
   publishSharedLocalCollectionRecommendationArtifact,
   readLocalCollectionAcceptedCountFromLocalStorage,
-  SHARED_COLLECTION_POST_MAX_BYTES,
 } from "../lib/localCollection/storage";
 import {
   loadSharedLibraryConfigWithDiagnostics,
@@ -1030,19 +1029,13 @@ export default function AdminWebScreen() {
                 artifactUtf8Bytes: size.artifactUtf8Bytes,
                 requestUtf8Bytes: size.requestUtf8Bytes,
               });
-              if (size.requestUtf8Bytes >= SHARED_COLLECTION_POST_MAX_BYTES) {
-                sharedPublishNote =
-                  ` Shared publish blocked: request payload is ${formatByteCount(size.requestUtf8Bytes)} `
-                  + `(limit ${formatByteCount(SHARED_COLLECTION_POST_MAX_BYTES)}).`;
+              const published = await publishSharedLocalCollectionRecommendationArtifact(sharedLibraryId, artifact);
+              if (published) {
+                sharedPublishNote = size.exceedsFunctionLimit
+                  ? ` Shared publish used compressed transfer for ${formatByteCount(size.artifactUtf8Bytes)} artifact.`
+                  : ` Shared publish payload: artifact ${formatByteCount(size.artifactUtf8Bytes)}, request ${formatByteCount(size.requestUtf8Bytes)}.`;
               } else {
-                const published = await publishSharedLocalCollectionRecommendationArtifact(sharedLibraryId, artifact);
-                if (published) {
-                  sharedPublishNote =
-                    ` Shared publish payload: artifact ${formatByteCount(size.artifactUtf8Bytes)}, `
-                    + `request ${formatByteCount(size.requestUtf8Bytes)}.`;
-                } else {
-                  sharedPublishNote = " Shared publish failed. Re-save after checking deployment logs.";
-                }
+                sharedPublishNote = " Shared publish failed. Re-save after checking deployment logs.";
               }
             }
             localStorage.setItem(
