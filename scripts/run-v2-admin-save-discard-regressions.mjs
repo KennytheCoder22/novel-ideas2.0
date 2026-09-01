@@ -170,10 +170,15 @@ function simulateSave(config, colorState, options = {}) {
   return { ok: true, route: null, savedConfig: next, effectiveFontColor };
 }
 
+function adminReturnRoute(libraryId = "") {
+  const normalized = String(libraryId || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
+  return normalized ? `/${normalized === "y" ? "yvhs" : normalized}` : "/";
+}
+
 function simulateSaveAndReturn(config, colorState, options = {}) {
   const result = simulateSave(config, colorState, options);
   if (!result.ok) return result;
-  return { ...result, route: "/" };
+  return { ...result, route: adminReturnRoute(options.libraryId) };
 }
 
 // Simulate loading from "localStorage" after a page refresh.
@@ -244,7 +249,7 @@ checks.push(check("R0_close_bypasses_save_validation_and_warns_only_when_dirty",
   const closeSource = closeStart >= 0 && closeEnd > closeStart ? adminWebSrc.slice(closeStart, closeEnd) : "";
   assert(closeSource.includes("if (!isDirty)"), "unchanged settings must close immediately");
   assert(closeSource.includes("window.confirm(message)"), "dirty settings must ask before discarding");
-  assert(closeSource.includes('router.replace("/")'), "Close must return to the main page");
+  assert(closeSource.includes("router.replace(adminReturnRoute as any)"), "Close must return to the scoped public page");
   assert(!closeSource.includes("persistDraftConfig"), "Close must not invoke save or validation");
 }));
 
@@ -272,6 +277,17 @@ checks.push(check("R2_save_return_persists_and_routes_home", () => {
   assert(savedConfig.branding.mainColorHex === "#22c55e", "mainColorHex not persisted");
   const { colors: loaded } = simulateLoad(JSON.stringify(savedConfig));
   assert(loaded.mainColorHex === "#22c55e", "mainColorHex not loaded after refresh");
+}));
+
+checks.push(check("R2a_hosted_save_return_preserves_library_route", () => {
+  const cfg = { branding: {}, theme: {} };
+  const colors = { mainColorHex: "#22c55e", highlightColorHex: "#fbbf24", fontColorHex: "#ffffff", autoFontColor: true };
+  assert(simulateSaveAndReturn(cfg, colors, { libraryId: "yvhs" }).route === "/yvhs", "YVHS admin must return to /yvhs");
+  assert(
+    simulateSaveAndReturn(cfg, colors, { libraryId: "north-branch" }).route === "/north-branch",
+    "arbitrary hosted admin must return to its own route",
+  );
+  assert(simulateSaveAndReturn(cfg, colors).route === "/", "generic admin must retain the / fallback");
 }));
 
 // R3 – Main UI reflects the saved configuration immediately
@@ -313,7 +329,11 @@ checks.push(check("R4_save_failure_does_not_navigate_away", () => {
     adminWebSrc.indexOf("const onDiscard")
   );
   assert(saveReturnBlock.includes("await persistDraftConfig()") && saveReturnBlock.includes("return;"), "Save & Return must stop on save failure");
-  assert(saveReturnBlock.includes('router.replace("/")'), "Save & Return must route to / on success");
+  assert(saveReturnBlock.includes("router.replace(adminReturnRoute as any)"), "Save & Return must use the scoped route on success");
+  assert(
+    saveReturnBlock.indexOf("await persistDraftConfig()") < saveReturnBlock.indexOf("router.replace(adminReturnRoute as any)"),
+    "Save & Return must finish persistence before navigation",
+  );
 }));
 
 // R5 – Save Changes remains in place
@@ -474,7 +494,10 @@ checks.push(check("structural_sticky_bar_shows_post_save_confirmation", () => {
 }));
 
 checks.push(check("structural_save_return_routes_home", () => {
-  assert(adminWebSrc.includes('router.replace("/")'), 'Save & Return must navigate with router.replace("/")');
+  assert(
+    adminWebSrc.includes('return hostedLibraryId ? `/${encodeURIComponent(hostedLibraryId)}` : "/";'),
+    "admin return route must preserve hosted library context with a generic fallback",
+  );
 }));
 
 checks.push(check("structural_main_ui_no_admin_draft_sync", () => {

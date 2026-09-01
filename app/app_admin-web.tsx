@@ -527,6 +527,10 @@ export default function AdminWebScreen() {
     () => adminConfigStorageKeyForScope(adminDraftScopeId),
     [adminDraftScopeId]
   );
+  const adminReturnRoute = useMemo(() => {
+    const hostedLibraryId = normalizeHostedLibraryId(explicitLibraryIdFromRoute);
+    return hostedLibraryId ? `/${encodeURIComponent(hostedLibraryId)}` : "/";
+  }, [explicitLibraryIdFromRoute]);
   const previewAcceptanceFlag = Array.isArray(params[PREVIEW_ACCEPTANCE_QUERY_PARAM])
     ? params[PREVIEW_ACCEPTANCE_QUERY_PARAM][0]
     : params[PREVIEW_ACCEPTANCE_QUERY_PARAM];
@@ -1252,27 +1256,27 @@ export default function AdminWebScreen() {
   const onSaveAndReturn = useCallback(() => {
     void (async () => {
       if (!(await persistDraftConfig())) return;
-      router.replace("/");
+      router.replace(adminReturnRoute as any);
     })();
-  }, [persistDraftConfig]);
+  }, [adminReturnRoute, persistDraftConfig]);
 
   const onClose = useCallback(() => {
     if (!isDirty) {
-      router.replace("/");
+      router.replace(adminReturnRoute as any);
       return;
     }
 
     const message = "You have unsaved Librarian Settings changes. Close and discard them?";
     if (typeof window !== "undefined") {
-      if (window.confirm(message)) router.replace("/");
+      if (window.confirm(message)) router.replace(adminReturnRoute as any);
       return;
     }
 
     Alert.alert("Discard unsaved changes?", message, [
       { text: "Keep Editing", style: "cancel" },
-      { text: "Discard", style: "destructive", onPress: () => router.replace("/") },
+      { text: "Discard", style: "destructive", onPress: () => router.replace(adminReturnRoute as any) },
     ]);
-  }, [isDirty]);
+  }, [adminReturnRoute, isDirty]);
 
   const preparePreviewAcceptancePin = useCallback(() => {
     setPreviewAcceptanceHarnessEnabled(true);
@@ -1485,7 +1489,10 @@ export default function AdminWebScreen() {
               </TouchableOpacity>
             </>
           ) : null}
-          <TouchableOpacity style={[styles.btn, { marginTop: 12, borderColor: t.cardBorder }]} onPress={() => router.replace("/")}>
+          <TouchableOpacity
+            style={[styles.btn, { marginTop: 12, borderColor: t.cardBorder }]}
+            onPress={() => router.replace(adminReturnRoute as any)}
+          >
             <Text style={[styles.btnText, { color: t.text }]}>Return Home</Text>
           </TouchableOpacity>
         </View>
