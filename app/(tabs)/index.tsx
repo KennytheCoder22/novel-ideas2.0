@@ -2163,6 +2163,11 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     } as any);
   }
 
+  function openRecommendationGames() {
+    closeHeaderMenu();
+    router.push("/games/last-bookshop" as any);
+  }
+
   function openDeveloperTip() {
     closeHeaderMenu();
     Linking.openURL("https://venmo.com/u/ken-bragg").catch(() => {
@@ -2387,6 +2392,9 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={openTestingInvite}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Librarian Review</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerMenuItem} onPress={openRecommendationGames}>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Play Recommendation Games</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/how-it-works")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How to Use NovelIdeas</Text>
