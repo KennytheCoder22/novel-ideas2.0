@@ -2186,6 +2186,18 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     } as any);
   }
 
+  function openRecommendationGames() {
+    closeHeaderMenu();
+    router.push({
+      pathname: "/games",
+      params: {
+        playerId: patronId,
+        libraryId: props.libraryId || "default",
+        ageBand: deck === "k2" ? "kids" : deck === "36" ? "preteens" : deck === "adult" ? "adults" : "teens",
+      },
+    } as any);
+  }
+
   function openDeveloperTip() {
     closeHeaderMenu();
     Linking.openURL("https://venmo.com/u/ken-bragg").catch(() => {
@@ -2413,20 +2425,10 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerMenuItem}
-              accessibilityLabel="Play Recommendation Games"
-              onPress={() => {
-                closeHeaderMenu();
-                router.push({
-                  pathname: "/media-mania",
-                  params: {
-                    playerId: patronId,
-                    libraryId: props.libraryId || "default",
-                    ageBand: deck === "k2" ? "kids" : deck === "36" ? "preteens" : deck === "adult" ? "adults" : "teens",
-                  },
-                } as any);
-              }}
+              accessibilityLabel="Games"
+              onPress={openRecommendationGames}
             >
-              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Play Recommendation Games</Text>
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Games</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/how-it-works")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How to Use NovelIdeas</Text>

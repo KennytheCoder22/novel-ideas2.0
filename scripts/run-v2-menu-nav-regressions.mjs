@@ -88,6 +88,15 @@ const adminSectionSource =
   console.log("PASS: Librarian Review retains the existing /testing route");
 }
 
+// Recommendation Games is visibly separate from Librarian Review.
+{
+  assertIncludes(menuFnSource, ">Games</Text>", "Games must have a separate public menu entry");
+  assertIncludes(indexSource, 'pathname: "/games"', "Games must open the game chooser");
+  assertNotIncludes(menuFnSource, "Play Recommendation Games", "retired game menu label must not remain");
+  assertIncludes(menuFnSource, "Librarian Review", "Librarian Review must remain available beside Games");
+  console.log("PASS: Games remains separate from Librarian Review");
+}
+
 // NM3: Send Feedback routes to /feedback.
 {
   assertIncludes(menuFnSource, 'openInfoScreen("/feedback")', "NM3: Send Feedback must call openInfoScreen('/feedback')");
@@ -245,4 +254,4 @@ const adminSectionSource =
   console.log("PASS NM15: no live TouchableOpacity items in admin section (all hidden)");
 }
 
-console.log("\nAll menu-nav destination regressions passed (18/18).");
+console.log("\nAll menu-nav destination regressions passed (20/20).");

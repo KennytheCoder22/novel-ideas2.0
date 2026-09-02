@@ -26,6 +26,8 @@ export default function RootLayout() {
         <Stack.Screen name="app_admin-web" options={{ headerShown: false }} />
         <Stack.Screen name="admin/human-review" options={{ headerShown: false }} />
         <Stack.Screen name="testing" options={{ headerShown: false }} />
+        <Stack.Screen name="games/index" options={{ headerShown: false }} />
+        <Stack.Screen name="games/last-bookshop" options={{ headerShown: false }} />
         <Stack.Screen name="customize-my-experience" options={{ headerShown: false }} />
         <Stack.Screen name="media-mania" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />

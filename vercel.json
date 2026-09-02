@@ -46,6 +46,10 @@
       "destination": "/"
     },
     {
+      "source": "/games/:path*",
+      "destination": "/"
+    },
+    {
       "source": "/how-it-works",
       "destination": "/"
     },
