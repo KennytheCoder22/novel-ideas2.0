@@ -94,6 +94,20 @@ export default function RecommendationGamesRoute() {
               },
             } as any)}
           />
+          <GameCard
+            eyebrow="KINETIC ALCHEMY"
+            title="The Alchemist's Cascade"
+            description="Chain strange ingredients through a twelve-recipe campaign of falling sparks and impossible brews."
+            detail="True match-three play | Four authored realms | Balanced catalyst choices"
+            colors={["#25202d", "#f6c957"]}
+            onPress={() => router.push({
+              pathname: "/games/alchemists-cascade",
+              params: {
+                ...(params.playerId ? { playerId: params.playerId } : {}),
+                ...(params.libraryId ? { libraryId: params.libraryId } : {}),
+              },
+            } as any)}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

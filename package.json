@@ -63,6 +63,7 @@
     "test:v2:testing-route": "node scripts/run-v2-testing-route-regressions.mjs",
     "test:last-bookshop": "node scripts/run-last-bookshop-regressions.mjs",
     "test:unwritten-map": "node scripts/run-unwritten-map-regressions.mjs",
+    "test:alchemists-cascade": "node scripts/run-alchemists-cascade-regressions.mjs",
     "test:testing-navigation": "node scripts/run-testing-navigation-regressions.mjs",
     "test:testing-patron-controls": "node scripts/run-testing-patron-controls-regressions.mjs",
     "test:rating-star-rendering": "node scripts/run-rating-star-rendering-regressions.mjs",
