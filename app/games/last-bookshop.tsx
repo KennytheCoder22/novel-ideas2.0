@@ -2,7 +2,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   ActivityIndicator,
+  Animated,
+  Easing,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -311,6 +314,168 @@ function ChoiceChip({
   );
 }
 
+function CharmGlyph({ charm, active }: { charm: PitchCharm; active: boolean }) {
+  const color = active ? "#f6d69f" : "#b09aa8";
+  if (charm === "mood") {
+    return (
+      <View style={styles.charmGlyph}>
+        <View style={[styles.charmMoon, { backgroundColor: color }]}>
+          <View style={styles.charmMoonCutout} />
+        </View>
+      </View>
+    );
+  }
+  if (charm === "world") {
+    return (
+      <View style={styles.charmGlyph}>
+        <View style={[styles.charmWorld, { borderColor: color }]}>
+          <View style={[styles.charmWorldMeridian, { borderColor: color }]} />
+          <View style={[styles.charmWorldHorizon, { backgroundColor: color }]} />
+        </View>
+      </View>
+    );
+  }
+  if (charm === "pace") {
+    return (
+      <View style={styles.charmGlyph}>
+        <View style={[styles.charmPaceLine, styles.charmPaceLineLong, { backgroundColor: color }]} />
+        <View style={[styles.charmPaceLine, styles.charmPaceLineShort, { backgroundColor: color }]} />
+        <View style={[styles.charmPaceLine, styles.charmPaceLineMedium, { backgroundColor: color }]} />
+      </View>
+    );
+  }
+  return (
+    <View style={styles.charmGlyph}>
+      <View style={[styles.charmSpark, { borderColor: color }]} />
+      <View style={[styles.charmSparkSmall, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
+function PitchCharmChoice({
+  charm,
+  active,
+  onPress,
+}: {
+  charm: (typeof PITCH_CHARMS)[number];
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.charmChoice, active && styles.charmChoiceActive]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={`Pitch charm: ${charm.label}. ${charm.description}`}
+    >
+      <View style={[styles.charmMedallion, active && styles.charmMedallionActive]}>
+        <CharmGlyph charm={charm.id} active={active} />
+      </View>
+      <Text style={[styles.charmChoiceLabel, active && styles.charmChoiceLabelActive]}>{charm.label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function CandleSelector({
+  value,
+  onChange,
+}: {
+  value: ConfidenceLevel | null;
+  onChange: (value: ConfidenceLevel) => void;
+}) {
+  const flameMotion = useRef(new Animated.Value(0)).current;
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    flameMotion.stopAnimation();
+    if (!value || reduceMotion) {
+      flameMotion.setValue(value ? 0.5 : 0);
+      return;
+    }
+    const duration = value === "low" ? 260 : value === "medium" ? 900 : 520;
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(flameMotion, {
+          toValue: 1,
+          duration,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(flameMotion, {
+          toValue: 0,
+          duration,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [flameMotion, reduceMotion, value]);
+
+  const intensity = value || "low";
+  const scaleYRange = intensity === "low" ? [0.72, 1.08] : intensity === "medium" ? [0.96, 1.04] : [0.9, 1.16];
+  const driftRange = intensity === "low" ? [-2.4, 2.4] : intensity === "medium" ? [-0.4, 0.4] : [-1.2, 1.2];
+  const flameScale = intensity === "low" ? 0.72 : intensity === "medium" ? 1 : 1.34;
+
+  return (
+    <View>
+      <View style={styles.candleStage} accessibilityLabel={value ? `${value} confidence candle` : "Unlit confidence candle"}>
+        <Animated.View
+          style={[
+            styles.candleGlow,
+            {
+              opacity: value
+                ? flameMotion.interpolate({ inputRange: [0, 1], outputRange: [0.2, intensity === "high" ? 0.58 : 0.38] })
+                : 0.08,
+              transform: [{ scale: flameScale }],
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.candleFlame,
+            intensity === "high" && styles.candleFlameBlazing,
+            {
+              opacity: value ? 1 : 0.22,
+              transform: [
+                { translateX: flameMotion.interpolate({ inputRange: [0, 1], outputRange: driftRange }) },
+                { scale: flameScale },
+                { scaleY: flameMotion.interpolate({ inputRange: [0, 1], outputRange: scaleYRange }) },
+                { rotate: "45deg" },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.candleFlameCore} />
+        </Animated.View>
+        <View style={styles.candleWick} />
+        <View style={styles.candleBody}>
+          <View style={styles.candleWaxDrip} />
+        </View>
+        <View style={styles.candleHolder} />
+      </View>
+      <View style={styles.chipRow}>
+        {(["low", "medium", "high"] as ConfidenceLevel[]).map((confidence) => (
+          <ChoiceChip
+            key={confidence}
+            active={value === confidence}
+            label={confidence === "low" ? "Flicker" : confidence === "medium" ? "Steady" : "Blazing"}
+            onPress={() => onChange(confidence)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function CounterScreen({
   encounter,
   selectedIds,
@@ -365,12 +530,12 @@ function CounterScreen({
         <View style={styles.optionBlock}>
           <Text style={styles.optionHeading}>Choose a pitch charm</Text>
           <Text style={styles.optionHelp}>What makes your predicted book the right one?</Text>
-          <View style={styles.chipRow}>
+          <View style={styles.charmRow}>
             {PITCH_CHARMS.map((charm) => (
-              <ChoiceChip
+              <PitchCharmChoice
                 key={charm.id}
+                charm={charm}
                 active={pitchCharm === charm.id}
-                label={charm.label}
                 onPress={() => onCharm(charm.id)}
               />
             ))}
@@ -382,16 +547,7 @@ function CounterScreen({
         <View style={styles.optionBlock}>
           <Text style={styles.optionHeading}>Set the candle</Text>
           <Text style={styles.optionHelp}>How certain is your shopkeeper&apos;s instinct?</Text>
-          <View style={styles.chipRow}>
-            {(["low", "medium", "high"] as ConfidenceLevel[]).map((value) => (
-              <ChoiceChip
-                key={value}
-                active={confidence === value}
-                label={value === "low" ? "Flicker" : value === "medium" ? "Steady" : "Blazing"}
-                onPress={() => onConfidence(value)}
-              />
-            ))}
-          </View>
+          <CandleSelector value={confidence} onChange={onConfidence} />
         </View>
       </View>
       <TouchableOpacity
@@ -884,6 +1040,34 @@ const styles = StyleSheet.create({
   choiceChipActive: { borderColor: "#d2a05f", backgroundColor: "#51372e" },
   choiceChipText: { color: "#aa9ca7", fontSize: 12, fontWeight: "800" },
   choiceChipTextActive: { color: "#f4d9ad" },
+  charmRow: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
+  charmChoice: { minWidth: 76, flexGrow: 1, minHeight: 104, padding: 9, borderWidth: 1, borderColor: "#55444d", borderRadius: 5, alignItems: "center", justifyContent: "center", backgroundColor: "#211a24" },
+  charmChoiceActive: { borderColor: "#d2a05f", backgroundColor: "#4b332d" },
+  charmMedallion: { width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: "#695463", backgroundColor: "#17131b", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 5, shadowOffset: { width: 0, height: 3 } },
+  charmMedallionActive: { borderColor: "#e2b773", backgroundColor: "#382824", shadowColor: "#e2a85c", shadowOpacity: 0.5, shadowRadius: 9 },
+  charmChoiceLabel: { color: "#aa9ca7", fontSize: 11, fontWeight: "900", letterSpacing: 0.7, marginTop: 7, textTransform: "uppercase" },
+  charmChoiceLabelActive: { color: "#f4d9ad" },
+  charmGlyph: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
+  charmMoon: { width: 27, height: 27, borderRadius: 14 },
+  charmMoonCutout: { position: "absolute", width: 24, height: 24, borderRadius: 12, backgroundColor: "#17131b", left: 10, top: -3 },
+  charmWorld: { width: 31, height: 31, borderRadius: 16, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  charmWorldMeridian: { width: 14, height: 31, borderRadius: 8, borderWidth: 1 },
+  charmWorldHorizon: { position: "absolute", width: 29, height: 1 },
+  charmPaceLine: { height: 3, borderRadius: 2, marginVertical: 3, alignSelf: "flex-start" },
+  charmPaceLineLong: { width: 34 },
+  charmPaceLineMedium: { width: 25, marginLeft: 5 },
+  charmPaceLineShort: { width: 19, marginLeft: 12 },
+  charmSpark: { width: 24, height: 24, borderWidth: 2, transform: [{ rotate: "45deg" }] },
+  charmSparkSmall: { position: "absolute", width: 7, height: 7, right: 1, top: 2, transform: [{ rotate: "45deg" }] },
+  candleStage: { height: 134, alignItems: "center", justifyContent: "flex-end", marginBottom: 10, overflow: "visible" },
+  candleGlow: { position: "absolute", bottom: 55, width: 78, height: 78, borderRadius: 39, backgroundColor: "#f2a94b" },
+  candleFlame: { position: "absolute", bottom: 77, width: 24, height: 34, borderTopLeftRadius: 18, borderTopRightRadius: 4, borderBottomLeftRadius: 4, borderBottomRightRadius: 18, backgroundColor: "#f2a13b", zIndex: 3, alignItems: "center", justifyContent: "center" },
+  candleFlameBlazing: { backgroundColor: "#ffb52e" },
+  candleFlameCore: { width: 8, height: 16, borderRadius: 5, backgroundColor: "#fff3bd", opacity: 0.88 },
+  candleWick: { width: 2, height: 13, backgroundColor: "#5b4438", zIndex: 2 },
+  candleBody: { width: 48, height: 72, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, backgroundColor: "#d8bd8a", borderWidth: 1, borderColor: "#9f7e57", overflow: "hidden" },
+  candleWaxDrip: { position: "absolute", top: -5, left: 8, width: 13, height: 26, borderRadius: 7, backgroundColor: "#ead5aa" },
+  candleHolder: { width: 76, height: 8, borderRadius: 4, backgroundColor: "#6d4d3d", borderWidth: 1, borderColor: "#a27a55" },
   charmDescription: { color: "#c3aa85", fontSize: 11, fontStyle: "italic", marginTop: 10 },
   resultGlow: { padding: 18, borderRadius: 72, backgroundColor: "rgba(211, 153, 81, 0.12)", marginBottom: 12 },
   resultName: { color: "#a7927d", fontSize: 12, letterSpacing: 1.2, fontWeight: "800", textTransform: "uppercase" },
