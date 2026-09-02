@@ -439,6 +439,11 @@ checks.push(check("marc_import_maps_852_collection_and_multi_copy_counts", () =>
   const result = runMarcImport(record);
   assert(result.summary.totalRows === 1, "marc_total_rows");
   assert(result.summary.acceptedTitles === 1, "marc_accepted_titles");
+  assert(result.summary.titlesWithDescriptions === 1, "marc_description_health_count");
+  assert(result.summary.titlesWithCallNumbers === 1, "marc_call_number_health_count");
+  assert(result.summary.titlesWithAudienceOrShelfMetadata === 1, "marc_audience_health_count");
+  assert(result.metadata.sourceEncoding === "utf-8", "marc_utf8_encoding_not_detected");
+  assert(result.metadata.originalUploadBytes === record.byteLength, "marc_original_size_not_recorded");
   const accepted = result.acceptedRecords[0];
   assert(accepted.copies === 2, "marc_copies_from_852_count");
   assert(accepted.shelvingLocation === "Historical Fiction", "marc_collection_from_852b");
@@ -452,6 +457,57 @@ checks.push(check("marc_import_maps_852_collection_and_multi_copy_counts", () =>
     recommendationArtifact.records[0].description === accepted.description,
     "marc_520_description_not_persisted_to_recommendation_artifact",
   );
+}));
+
+checks.push(check("marc_import_detects_ala_marc_leader", () => {
+  const record = buildMarcRecord({
+    control001: "fol00ala001",
+    title: "ALA MARC Record",
+    author: "Writer, Taylor.",
+    isbn13: "9780306406157",
+    pubYear: "2026",
+    audience: "Teen",
+    description: "A legacy-encoded record.",
+    holdings: [{
+      copyId: "20000123",
+      locationCode: "YVHS",
+      collection: "Fiction",
+      callNumber: "FIC WRI",
+    }],
+  });
+  record[9] = " ".charCodeAt(0);
+  const result = runMarcImport(record, "ala-marc-export.mrc");
+  assert(result.metadata.sourceEncoding === "marc-8", "ala_marc_encoding_not_detected");
+  assert(result.summary.acceptedTitles === 1, "ala_marc_record_not_imported");
+}));
+
+checks.push(check("marc_import_rejects_non_ascii_marc8_without_corrupting_text", () => {
+  const record = buildMarcRecord({
+    control001: "fol00ala002",
+    title: "ALA Encoded Record",
+    author: "Writer, Rene.",
+    isbn13: "9780306406157",
+    pubYear: "2026",
+    audience: "Teen",
+    description: "Legacy encoded text.",
+    holdings: [],
+  });
+  record[9] = " ".charCodeAt(0);
+  const nonAsciiOffset = record.indexOf("A".charCodeAt(0));
+  assert(nonAsciiOffset > 24, "ala_fixture_data_offset_not_found");
+  record[nonAsciiOffset] = 0xe9;
+  const result = runMarcImport(record, "non-ascii-ala-marc.mrc");
+  assert(result.summary.acceptedTitles === 0, "non_ascii_marc8_should_not_import_corrupted_text");
+  assert(result.rejectedRecords[0]?.reason === "unsupported_source_encoding", "non_ascii_marc8_rejection_not_reported");
+}));
+
+checks.push(check("marc_import_counts_each_malformed_record", () => {
+  const malformed = new Uint8Array(24);
+  malformed.fill("0".charCodeAt(0));
+  malformed[23] = 0x1d;
+  const result = runMarcImport(concatUint8([malformed, malformed]), "malformed-records.mrc");
+  assert(result.summary.totalRows === 2, "malformed_marc_total_not_counted");
+  assert(result.summary.rejectedRows === 2, "malformed_marc_rejections_not_counted");
 }));
 
 checks.push(check("marc_import_missing_852b_keeps_record_with_warning_path", () => {

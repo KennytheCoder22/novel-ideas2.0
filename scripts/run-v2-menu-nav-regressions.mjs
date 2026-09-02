@@ -90,10 +90,11 @@ const adminSectionSource =
 
 // Recommendation Games is visibly separate from Librarian Review.
 {
-  assertIncludes(menuFnSource, "Play Recommendation Games", "Recommendation Games must have a separate public menu entry");
-  assertIncludes(indexSource, 'router.push("/games/last-bookshop"', "Recommendation Games must open The Last Bookshop");
-  assertIncludes(menuFnSource, "Librarian Review", "Librarian Review must remain available beside Recommendation Games");
-  console.log("PASS: Recommendation Games remains separate from Librarian Review");
+  assertIncludes(menuFnSource, ">Games</Text>", "Games must have a separate public menu entry");
+  assertIncludes(indexSource, 'pathname: "/games"', "Games must open the game chooser");
+  assertNotIncludes(menuFnSource, "Play Recommendation Games", "retired game menu label must not remain");
+  assertIncludes(menuFnSource, "Librarian Review", "Librarian Review must remain available beside Games");
+  console.log("PASS: Games remains separate from Librarian Review");
 }
 
 // NM3: Send Feedback routes to /feedback.

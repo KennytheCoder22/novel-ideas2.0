@@ -17,14 +17,21 @@ import configFile from "../NovelIdeas.json";
 import { COLLECTION_OPPORTUNITIES_DESCRIPTION } from "../constants/deploymentCapabilities";
 import { importLocalCollectionCsv, importLocalCollectionMarc } from "../lib/localCollection";
 import {
+  buildRecommendationArtifact,
   loadLocalCollectionRecommendationArtifact,
   measureSharedLocalCollectionPublishBytes,
   persistLocalCollectionRecommendationArtifact,
-  publishSharedLocalCollectionRecommendationArtifact,
+  publishAndVerifySharedLocalCollectionRecommendationArtifact,
   readLocalCollectionAcceptedCountFromLocalStorage,
-  SHARED_COLLECTION_POST_MAX_BYTES,
 } from "../lib/localCollection/storage";
+import type { LocalCollectionHealth, LocalCollectionVersionMetadata } from "../lib/localCollection/types";
 import {
+  rejectedRecordsReportToCsv,
+  type LocalCollectionRejectedRecordsReport,
+} from "../lib/localCollection/rejectedRecords";
+import {
+  loadSharedLibraryCollection,
+  loadSharedLibraryCollectionRejectedRecords,
   loadSharedLibraryConfigWithDiagnostics,
   saveSharedLibraryConfigWithDiagnostics,
   type SharedLibraryConfigSaveDiagnostics,
@@ -49,7 +56,14 @@ import { PatronColorPickerField } from "../components/PatronColorPickerField";
 import { ThemePreviewPanel } from "../components/admin/ThemePreviewPanel";
 import { CollapsibleSection } from "../components/admin/CollapsibleSection";
 import { LibrarianSetupGuideModal } from "../components/admin/LibrarianSetupGuideModal";
-import { activateAdminSession, isAdminSessionActive } from "../lib/adminSession";
+import {
+  activateLocalAdminSession,
+  getHostedAdminAuthorization,
+  isDownloadedAdminRuntime,
+  isLocalAdminSessionActive,
+  reenrollHostedAdminPin,
+  verifyHostedAdminPin,
+} from "../lib/adminSession";
 import { getRuntimeLibraryId, getRuntimeLibraryName } from "../constants/runtimeConfig";
 import {
   isPreviewAcceptanceHarnessEnabled,
@@ -272,8 +286,24 @@ function localCollectionImportErrorMessage(error: unknown): string {
   return "Import failed. Check the file and try again.";
 }
 
+function localCollectionPublishErrorMessage(error: string | null): string {
+  if (error === "compression_failed") return "compression failed";
+  if (error === "compressed_request_too_large") return "the compressed artifact exceeds the upload limit";
+  if (error === "collection_checksum_mismatch") return "the stored checksum did not match";
+  if (error?.includes("readback") || error?.includes("read_back")) return "stored-artifact read-back failed";
+  if (error === "request_failed") return "the durable storage request could not be confirmed";
+  return error || "verification failed";
+}
+
 function formatByteCount(bytes: number): string {
-  return `${Math.max(0, Math.floor(bytes)).toLocaleString()} bytes`;
+  const value = Math.max(0, Math.floor(bytes));
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${value.toLocaleString()} bytes`;
+}
+
+function coveragePercent(count: number, total: number): string {
+  return total > 0 ? `${Math.round(count / total * 100)}%` : "0%";
 }
 
 function hasSavedAdminPin(cfg: any): boolean {
@@ -521,6 +551,10 @@ export default function AdminWebScreen() {
     () => adminConfigStorageKeyForScope(adminDraftScopeId),
     [adminDraftScopeId]
   );
+  const adminReturnRoute = useMemo(() => {
+    const hostedLibraryId = normalizeHostedLibraryId(explicitLibraryIdFromRoute);
+    return hostedLibraryId ? `/${encodeURIComponent(hostedLibraryId)}` : "/";
+  }, [explicitLibraryIdFromRoute]);
   const previewAcceptanceFlag = Array.isArray(params[PREVIEW_ACCEPTANCE_QUERY_PARAM])
     ? params[PREVIEW_ACCEPTANCE_QUERY_PARAM][0]
     : params[PREVIEW_ACCEPTANCE_QUERY_PARAM];
@@ -607,6 +641,59 @@ export default function AdminWebScreen() {
   const [config, setConfig] = useState<any>(() => {
     return loadConfigForScope().next;
   });
+  const [adminAuthorization, setAdminAuthorization] = useState<{
+    status: "loading" | "authorized" | "pin_required" | "reenrollment_required" | "unavailable";
+    mode: "hosted" | "local" | "open";
+    libraryId: string;
+  }>({
+    status: adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE ? "authorized" : "loading",
+    mode: "open",
+    libraryId: adminDraftScopeId,
+  });
+  const [authorizationPin, setAuthorizationPin] = useState("");
+  const [authorizationRecoverySecret, setAuthorizationRecoverySecret] = useState("");
+  const [authorizationError, setAuthorizationError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE) {
+      setAdminAuthorization({ status: "authorized", mode: "open", libraryId: adminDraftScopeId });
+      return () => { cancelled = true; };
+    }
+    setAdminAuthorization({ status: "loading", mode: "open", libraryId: adminDraftScopeId });
+    void (async () => {
+      const hosted = await getHostedAdminAuthorization(adminDraftScopeId);
+      if (cancelled) return;
+      if (hosted) {
+        setAdminAuthorization({
+          status: hosted.authorized
+            ? "authorized"
+            : hosted.verifierConfigured ? "pin_required" : "reenrollment_required",
+          mode: "hosted",
+          libraryId: adminDraftScopeId,
+        });
+        return;
+      }
+      if (!isDownloadedAdminRuntime()) {
+        setAdminAuthorization({
+          status: "unavailable",
+          mode: "hosted",
+          libraryId: adminDraftScopeId,
+        });
+        return;
+      }
+      const pinEnabled = config?.admin?.pinEnabled === true;
+      setAdminAuthorization({
+        status: !pinEnabled || isLocalAdminSessionActive(adminDraftScopeId) ? "authorized" : "pin_required",
+        mode: pinEnabled ? "local" : "open",
+        libraryId: adminDraftScopeId,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [adminDraftScopeId, config?.admin?.pinEnabled]);
+  const adminAuthorizationValid =
+    adminAuthorization.status === "authorized" &&
+    adminAuthorization.libraryId === adminDraftScopeId;
 
   // Derive initial hex colors from config once
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -711,7 +798,11 @@ export default function AdminWebScreen() {
         finalStateLibraryId: resolveLibraryId(next),
       });
     } catch {}
-    if (!hadDraft && adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE) {
+    if (
+      adminAuthorizationValid &&
+      !hadDraft &&
+      adminDraftScopeId !== ADMIN_CONFIG_DEFAULT_SCOPE
+    ) {
       setAdminScopeLoading(true);
       void (async () => {
         try {
@@ -761,7 +852,7 @@ export default function AdminWebScreen() {
     return () => {
       cancelled = true;
     };
-  }, [loadConfigForScope, adminDraftStorageKey, explicitLibraryIdParam, runtimeLibraryId, runtimeLibraryName, adminDraftScopeId]);
+  }, [loadConfigForScope, adminDraftStorageKey, explicitLibraryIdParam, runtimeLibraryId, runtimeLibraryName, adminDraftScopeId, adminAuthorizationValid]);
 
   useEffect(() => {
     const configChanged = JSON.stringify(config) !== savedConfigRef.current;
@@ -788,6 +879,19 @@ export default function AdminWebScreen() {
       return readScopedUploadedCollectionCount(localStorage, adminDraftScopeId);
     } catch { return 0; }
   });
+  const [collectionHealth, setCollectionHealth] = useState<LocalCollectionHealth | null>(null);
+  const [collectionAttemptHealth, setCollectionAttemptHealth] = useState<LocalCollectionHealth | null>(null);
+  const [collectionVersion, setCollectionVersion] = useState<LocalCollectionVersionMetadata | null>(null);
+  const [collectionHealthDetailsVisible, setCollectionHealthDetailsVisible] = useState(false);
+  const [rejectedRecordsReport, setRejectedRecordsReport] = useState<LocalCollectionRejectedRecordsReport | null>(null);
+  const [expandedRejectedRecordId, setExpandedRejectedRecordId] = useState<string | null>(null);
+  const [showAllRejectedRecords, setShowAllRejectedRecords] = useState(false);
+  const activeRejectedRecordsReport =
+    rejectedRecordsReport?.artifactId === collectionVersion?.artifactId ? rejectedRecordsReport : null;
+  const visibleRejectedRecords = useMemo(
+    () => activeRejectedRecordsReport?.records.slice(0, showAllRejectedRecords ? undefined : 25) || [],
+    [activeRejectedRecordsReport, showAllRejectedRecords],
+  );
 
   useEffect(() => {
     if (!isWeb || typeof localStorage === "undefined") {
@@ -797,14 +901,22 @@ export default function AdminWebScreen() {
     let cancelled = false;
     const initialCount = readScopedUploadedCollectionCount(localStorage, adminDraftScopeId);
     setUploadedCollectionCount(initialCount);
+    setCollectionAttemptHealth(null);
+    setRejectedRecordsReport(null);
     void loadLocalCollectionRecommendationArtifact(
       adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE ? undefined : adminDraftScopeId
     ).then((artifact) => {
       if (cancelled) return;
       if (!artifact) {
         setUploadedCollectionCount(initialCount);
+        setCollectionHealth(null);
+        setCollectionVersion(null);
+        setRejectedRecordsReport(null);
         return;
       }
+      setCollectionHealth(artifact.health || null);
+      setCollectionVersion(artifact.collectionVersion || null);
+      setRejectedRecordsReport(artifact.adminRejectedRecordsReport || null);
       const acceptedCount = Number(artifact.summary?.acceptedTitles || 0);
       if (Number.isFinite(acceptedCount) && acceptedCount >= 0) {
         setUploadedCollectionCount(acceptedCount);
@@ -818,6 +930,51 @@ export default function AdminWebScreen() {
       cancelled = true;
     };
   }, [adminDraftScopeId, isWeb]);
+
+  useEffect(() => {
+    if (
+      !adminAuthorizationValid ||
+      adminAuthorization.mode === "local" ||
+      adminDraftScopeId === ADMIN_CONFIG_DEFAULT_SCOPE ||
+      !collectionVersion?.artifactId
+    ) {
+      return;
+    }
+    let cancelled = false;
+    void loadSharedLibraryCollectionRejectedRecords(adminDraftScopeId).then(async (report) => {
+      if (cancelled) return;
+      if (
+        report &&
+        report.schemaVersion === "local_collection_rejected_records_v1" &&
+        report.libraryId.toLowerCase() === adminDraftScopeId.toLowerCase() &&
+        report.artifactId === collectionVersion.artifactId &&
+        Array.isArray(report.records)
+      ) {
+        setRejectedRecordsReport(report);
+      } else if (report) {
+        const hostedArtifact = await loadSharedLibraryCollection(adminDraftScopeId);
+        if (cancelled) return;
+        const hostedVersion = hostedArtifact?.collectionVersion as LocalCollectionVersionMetadata | undefined;
+        if (hostedVersion?.artifactId === report.artifactId) {
+          setCollectionVersion(hostedVersion);
+          setCollectionHealth((hostedArtifact?.health as LocalCollectionHealth | undefined) || null);
+          setRejectedRecordsReport(report);
+        } else {
+          setRejectedRecordsReport(null);
+        }
+      } else {
+        setRejectedRecordsReport(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    adminAuthorization.mode,
+    adminAuthorizationValid,
+    adminDraftScopeId,
+    collectionVersion?.artifactId,
+  ]);
 
   // Derived
   const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
@@ -974,6 +1131,10 @@ export default function AdminWebScreen() {
   // ---------------------------------------------------------------------------
 
   const onUploadCollectionWeb = () => {
+    if (!adminAuthorizationValid) {
+      setAuthorizationError("Enter the Admin PIN before importing a collection.");
+      return;
+    }
     if (!isWeb || typeof document === "undefined" || typeof localStorage === "undefined") {
       Alert.alert("Upload unavailable", "Collection upload is available on desktop web.");
       return;
@@ -984,6 +1145,9 @@ export default function AdminWebScreen() {
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return;
+      setCollectionAttemptHealth(null);
+      setExpandedRejectedRecordId(null);
+      setShowAllRejectedRecords(false);
       const sourceFilename = file.name || "collection.csv";
       const isMarcUpload = /\.(mrc|marc|001)$/i.test(sourceFilename);
       setImportStatus({ phase: 'reading', pct: 5, label: 'Reading file…' });
@@ -1009,7 +1173,6 @@ export default function AdminWebScreen() {
                 collectionName,
                 libraryId: adminDraftScopeId,
               });
-              localStorage.removeItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId));
             } else {
               artifact = importLocalCollectionCsv({
                 csvText: String(reader.result || ""),
@@ -1017,37 +1180,75 @@ export default function AdminWebScreen() {
                 collectionName,
                 libraryId: adminDraftScopeId,
               });
-              localStorage.setItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId), String(reader.result || ""));
+            }
+            const preflightArtifact = buildRecommendationArtifact(artifact, { publishStatus: "local_only" });
+            if (preflightArtifact.health?.status === "failed") {
+              setCollectionAttemptHealth(preflightArtifact.health);
+              setImportStatus({
+                phase: "error",
+                pct: 0,
+                label: `Collection import failed. ${preflightArtifact.health.failures.join(" ")}`,
+              });
+              return;
             }
             setImportStatus({ phase: 'saving', pct: 92, label: 'Saving…' });
-            await persistLocalCollectionRecommendationArtifact(artifact);
             const sharedLibraryId = resolveLibraryId(config);
             let sharedPublishNote = "";
-            if (sharedLibraryId) {
+            let verifiedRecommendationArtifact;
+            if (sharedLibraryId && adminAuthorization.mode !== "local") {
               const size = measureSharedLocalCollectionPublishBytes(sharedLibraryId, artifact);
               console.info("[local-collection] shared publish bytes", {
                 libraryId: sharedLibraryId,
                 artifactUtf8Bytes: size.artifactUtf8Bytes,
                 requestUtf8Bytes: size.requestUtf8Bytes,
               });
-              if (size.requestUtf8Bytes >= SHARED_COLLECTION_POST_MAX_BYTES) {
-                sharedPublishNote =
-                  ` Shared publish blocked: request payload is ${formatByteCount(size.requestUtf8Bytes)} `
-                  + `(limit ${formatByteCount(SHARED_COLLECTION_POST_MAX_BYTES)}).`;
+              const publishResult = await publishAndVerifySharedLocalCollectionRecommendationArtifact(sharedLibraryId, artifact);
+              if (publishResult.success) {
+                verifiedRecommendationArtifact = publishResult.artifact;
+                setCollectionHealth(publishResult.health);
+                setCollectionAttemptHealth(null);
+                setCollectionVersion(publishResult.artifact.collectionVersion || null);
+                setRejectedRecordsReport(publishResult.artifact.adminRejectedRecordsReport || null);
+                sharedPublishNote = size.exceedsFunctionLimit
+                  ? ` Published and verified using compressed transfer.`
+                  : ` Published and verified from durable read-back.`;
               } else {
-                const published = await publishSharedLocalCollectionRecommendationArtifact(sharedLibraryId, artifact);
-                if (published) {
-                  sharedPublishNote =
-                    ` Shared publish payload: artifact ${formatByteCount(size.artifactUtf8Bytes)}, `
-                    + `request ${formatByteCount(size.requestUtf8Bytes)}.`;
-                } else {
-                  sharedPublishNote = " Shared publish failed. Re-save after checking deployment logs.";
-                }
+                setCollectionAttemptHealth(publishResult.health);
+                const previous = publishResult.previousArtifact;
+                setImportStatus({
+                  phase: "error",
+                  pct: 0,
+                  label: publishResult.previousArtifactRetained
+                    ? previous
+                      ? `New upload failed (${localCollectionPublishErrorMessage(publishResult.error)}). Previous collection remains active: ${previous.importedCount.toLocaleString()} titles from ${new Date(previous.uploadedAt).toLocaleDateString()}.`
+                      : `New upload failed (${localCollectionPublishErrorMessage(publishResult.error)}). No collection was activated.`
+                    : `The upload could not be fully verified (${localCollectionPublishErrorMessage(publishResult.error)}). Reload Librarian Settings to confirm which collection is active.`,
+                });
+                return;
               }
+            }
+            if (isMarcUpload) {
+              localStorage.removeItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId));
+            } else {
+              localStorage.setItem(localCollectionCsvStorageKeyForScope(adminDraftScopeId), String(reader.result || ""));
+            }
+            await persistLocalCollectionRecommendationArtifact(artifact, {
+              recommendationArtifact: verifiedRecommendationArtifact,
+            });
+            if (!verifiedRecommendationArtifact) {
+              const localArtifact = await loadLocalCollectionRecommendationArtifact(adminDraftScopeId);
+              setCollectionHealth(localArtifact?.health || null);
+              setCollectionAttemptHealth(null);
+              setCollectionVersion(localArtifact?.collectionVersion || null);
+              setRejectedRecordsReport(localArtifact?.adminRejectedRecordsReport || null);
             }
             localStorage.setItem(
               localCollectionImportReportStorageKeyForScope(adminDraftScopeId),
-              JSON.stringify(artifact.summary)
+              JSON.stringify({
+                summary: artifact.summary,
+                health: verifiedRecommendationArtifact?.health || null,
+                collectionVersion: verifiedRecommendationArtifact?.collectionVersion || null,
+              })
             );
             setUploadedCollectionCount(artifact.summary.acceptedTitles);
             // Mark collection as available (supported) but do NOT auto-enable the source toggle.
@@ -1081,12 +1282,29 @@ export default function AdminWebScreen() {
     input.click();
   };
 
+  const onDownloadRejectedRecords = useCallback(() => {
+    if (!activeRejectedRecordsReport || typeof document === "undefined" || typeof URL === "undefined") return;
+    const csv = rejectedRecordsReportToCsv(activeRejectedRecordsReport);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const safeLibraryId = activeRejectedRecordsReport.libraryId.replace(/[^a-z0-9_-]/gi, "-");
+    anchor.href = url;
+    anchor.download = `${safeLibraryId}-${activeRejectedRecordsReport.artifactId}-rejected-records.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [activeRejectedRecordsReport]);
+
   // ---------------------------------------------------------------------------
   // Save / Discard
   // ---------------------------------------------------------------------------
 
   const persistDraftConfig = useCallback(async (configOverride?: any) => {
     try {
+      if (!adminAuthorizationValid) {
+        setAuthorizationError("Enter the Admin PIN before saving changes.");
+        return false;
+      }
       setSaveErrorDetails(null);
       const next = deepClone(configOverride ?? config);
       const effectiveFontColor = autoFontColor ? autoChooseFontColor(mainColorHex) : fontColorHex;
@@ -1117,19 +1335,11 @@ export default function AdminWebScreen() {
       const payloadUtf8Bytes =
         typeof TextEncoder !== "undefined" ? new TextEncoder().encode(serializedNext).length : serializedNext.length;
 
-      if (isWeb && typeof localStorage !== "undefined") {
-        localStorage.setItem(targetDraftStorageKey, serializedNext);
-        applyWebHighlightColor(next?.branding?.highlightColorHex || highlightColorHex);
-        dispatchAdminConfigSavedWebEvent(targetDraftStorageKey, serializedNext);
-      }
-      if (nextLibraryId) {
-        activateAdminSession("admin_web_save");
-        const adminSessionActiveAfterSaveActivation = isAdminSessionActive();
+      if (nextLibraryId && adminAuthorization.mode !== "local") {
         console.info("[app_admin-web] save_click", {
           libraryId: nextLibraryId,
           payloadUtf8Bytes,
           adminDraftStorageKey: targetDraftStorageKey,
-          adminSessionActiveAfterSaveActivation,
         });
         const sharedSave = await saveSharedLibraryConfigWithDiagnostics(nextLibraryId, next as Record<string, unknown>);
         if (!sharedSave.success) {
@@ -1146,6 +1356,11 @@ export default function AdminWebScreen() {
         if (resolveAdminDraftScopeId(nextLibraryId) !== adminDraftScopeId) {
           router.replace(`/app_admin-web?libraryId=${encodeURIComponent(nextLibraryId)}` as any);
         }
+      }
+      if (isWeb && typeof localStorage !== "undefined") {
+        localStorage.setItem(targetDraftStorageKey, serializedNext);
+        applyWebHighlightColor(next?.branding?.highlightColorHex || highlightColorHex);
+        dispatchAdminConfigSavedWebEvent(targetDraftStorageKey, serializedNext);
       }
 
       setConfig(next);
@@ -1178,7 +1393,7 @@ export default function AdminWebScreen() {
       });
       return false;
     }
-  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb, libraryId, adminDraftScopeId, explicitLibraryIdFromRoute]);
+  }, [config, autoFontColor, mainColorHex, highlightColorHex, fontColorHex, isWeb, libraryId, adminDraftScopeId, explicitLibraryIdFromRoute, adminAuthorizationValid]);
 
   const onSave = useCallback(() => {
     void persistDraftConfig();
@@ -1187,27 +1402,27 @@ export default function AdminWebScreen() {
   const onSaveAndReturn = useCallback(() => {
     void (async () => {
       if (!(await persistDraftConfig())) return;
-      router.replace("/");
+      router.replace(adminReturnRoute as any);
     })();
-  }, [persistDraftConfig]);
+  }, [adminReturnRoute, persistDraftConfig]);
 
   const onClose = useCallback(() => {
     if (!isDirty) {
-      router.replace("/");
+      router.replace(adminReturnRoute as any);
       return;
     }
 
     const message = "You have unsaved Librarian Settings changes. Close and discard them?";
     if (typeof window !== "undefined") {
-      if (window.confirm(message)) router.replace("/");
+      if (window.confirm(message)) router.replace(adminReturnRoute as any);
       return;
     }
 
     Alert.alert("Discard unsaved changes?", message, [
       { text: "Keep Editing", style: "cancel" },
-      { text: "Discard", style: "destructive", onPress: () => router.replace("/") },
+      { text: "Discard", style: "destructive", onPress: () => router.replace(adminReturnRoute as any) },
     ]);
-  }, [isDirty]);
+  }, [adminReturnRoute, isDirty]);
 
   const preparePreviewAcceptancePin = useCallback(() => {
     setPreviewAcceptanceHarnessEnabled(true);
@@ -1334,6 +1549,102 @@ export default function AdminWebScreen() {
   const createNewLibrary = () => {
     router.replace("/app_admin-web" as any);
   };
+
+  if (!adminAuthorizationValid) {
+    const reenrollmentRequired = adminAuthorization.status === "reenrollment_required";
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: t.appBg, padding: 24 }}>
+        <View style={[styles.wrap, { maxWidth: 460, borderColor: t.cardBorder, backgroundColor: t.cardBg }]}>
+          <Text style={{ color: t.text, fontSize: 22, fontWeight: "900", textAlign: "center" }}>
+            Librarian Settings
+          </Text>
+          <Text style={{ color: reenrollmentRequired ? t.danger : t.subtext, marginTop: 12, textAlign: "center" }}>
+            {adminAuthorization.status === "loading"
+              ? "Checking Admin PIN authorization..."
+              : adminAuthorization.status === "unavailable"
+                ? "Admin authorization is unavailable. Settings remain locked."
+              : reenrollmentRequired
+                ? "This library's Admin PIN must be securely re-enrolled before hosted settings can be opened."
+                : "Enter the six-digit Admin PIN to continue."}
+          </Text>
+          {adminAuthorization.status === "pin_required" || reenrollmentRequired ? (
+            <>
+              {reenrollmentRequired ? (
+                <TextInput
+                  value={authorizationRecoverySecret}
+                  onChangeText={(value) => {
+                    setAuthorizationRecoverySecret(value);
+                    setAuthorizationError("");
+                  }}
+                  secureTextEntry
+                  placeholder="Deployment recovery secret"
+                  placeholderTextColor={t.muted}
+                  style={[styles.input, { marginTop: 18, color: t.text, borderColor: t.inputBorder, backgroundColor: t.inputBg }]}
+                  accessibilityLabel="Admin PIN recovery secret"
+                />
+              ) : null}
+              <TextInput
+                value={authorizationPin}
+                onChangeText={(value) => {
+                  setAuthorizationPin(value.replace(/\D/g, "").slice(0, 6));
+                  setAuthorizationError("");
+                }}
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={6}
+                placeholder="6-digit PIN"
+                placeholderTextColor={t.muted}
+                style={[styles.input, { marginTop: reenrollmentRequired ? 10 : 18, color: t.text, borderColor: t.inputBorder, backgroundColor: t.inputBg }]}
+                accessibilityLabel="Admin PIN"
+              />
+              {authorizationError ? <Text style={{ color: t.danger, marginTop: 10 }}>{authorizationError}</Text> : null}
+              <TouchableOpacity
+                style={[styles.btn, { marginTop: 14, borderColor: t.accentBorder, backgroundColor: t.accent }]}
+                onPress={() => {
+                  void (async () => {
+                    if (!/^\d{6}$/.test(authorizationPin)) {
+                      setAuthorizationError("Enter the complete six-digit PIN.");
+                      return;
+                    }
+                    if (adminAuthorization.mode === "hosted") {
+                      const result = reenrollmentRequired
+                        ? await reenrollHostedAdminPin(adminDraftScopeId, authorizationPin, authorizationRecoverySecret)
+                        : await verifyHostedAdminPin(adminDraftScopeId, authorizationPin);
+                      if (!result.authorized) {
+                        setAuthorizationError(result.error === "admin_pin_reenrollment_required"
+                          ? "This PIN must be re-enrolled by the library administrator."
+                          : "Incorrect PIN.");
+                        return;
+                      }
+                    } else {
+                      const expectedPin = String(config?.admin?.pin || "");
+                      if (authorizationPin !== expectedPin) {
+                        setAuthorizationError("Incorrect PIN.");
+                        return;
+                      }
+                      activateLocalAdminSession(adminDraftScopeId, "admin_route");
+                    }
+                    setAuthorizationPin("");
+                    setAuthorizationRecoverySecret("");
+                    setAuthorizationError("");
+                    setAdminAuthorization((current) => ({ ...current, status: "authorized" }));
+                  })();
+                }}
+              >
+                <Text style={[styles.btnText, { color: t.accentTextOn }]}>Unlock Settings</Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
+          <TouchableOpacity
+            style={[styles.btn, { marginTop: 12, borderColor: t.cardBorder }]}
+            onPress={() => router.replace(adminReturnRoute as any)}
+          >
+            <Text style={[styles.btnText, { color: t.text }]}>Return Home</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (adminScopeLoading) {
     return (
@@ -1761,11 +2072,174 @@ export default function AdminWebScreen() {
         <SectionTitle>E. Local Collection</SectionTitle>
 
         <View style={[styles.infoCard, { borderColor: t.cardBorder, backgroundColor: t.inputBg }]}>
+          {collectionAttemptHealth?.status === "failed" ? (
+            <View style={{ borderWidth: 1, borderColor: t.danger, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+              <Text style={{ color: t.danger, fontWeight: "800", marginBottom: 3 }}>Latest upload needs attention</Text>
+              <Text style={{ color: t.subtext, fontSize: 12, lineHeight: 18 }}>
+                {collectionAttemptHealth.failures.join(" ")} The active collection summary below is kept separate from this failed attempt.
+              </Text>
+            </View>
+          ) : null}
           <Text style={{ color: t.text, fontWeight: "700", marginBottom: 4 }}>
-            {uploadedCollectionCount > 0
-              ? `${uploadedCollectionCount.toLocaleString()} titles imported`
-              : "No collection imported"}
+            {collectionHealth
+              ? collectionHealth.status === "ready"
+                ? `Collection ready: ${collectionHealth.metrics.usableTitles.toLocaleString()} titles imported`
+                : collectionHealth.status === "ready_with_warnings"
+                  ? `Collection ready with warnings: ${collectionHealth.metrics.usableTitles.toLocaleString()} titles imported`
+                  : "Collection needs attention"
+              : uploadedCollectionCount > 0
+                ? `${uploadedCollectionCount.toLocaleString()} titles imported`
+                : "No collection imported"}
           </Text>
+          {collectionVersion ? (
+            <Text style={{ color: t.subtext, fontSize: 12, marginBottom: 6 }}>
+              Current collection: {collectionVersion.importedCount.toLocaleString()} titles · uploaded{" "}
+              {new Date(collectionVersion.uploadedAt).toLocaleDateString()} · import v2
+            </Text>
+          ) : null}
+          {collectionHealth ? (
+            <>
+              <Text style={{ color: t.subtext, fontSize: 13, marginBottom: 4 }}>
+                {coveragePercent(collectionHealth.metrics.descriptionsPresent, collectionHealth.metrics.usableTitles)} descriptions ·{" "}
+                {coveragePercent(collectionHealth.metrics.coversResolvable, collectionHealth.metrics.usableTitles)} covers ·{" "}
+                {coveragePercent(collectionHealth.metrics.authorsPresent, collectionHealth.metrics.usableTitles)} authors
+              </Text>
+              <Text style={{
+                color: collectionHealth.status === "failed" ? t.danger : collectionHealth.warnings.length ? t.accent : t.success,
+                fontSize: 12,
+                fontWeight: "700",
+                marginBottom: 6,
+              }}>
+                {collectionHealth.failures.length
+                  ? collectionHealth.failures.join(" ")
+                  : collectionHealth.metrics.rejectedRecords > 0
+                    ? `${collectionHealth.metrics.rejectedRecords.toLocaleString()} records need attention`
+                    : "No rejected records"}
+                {" · "}Storage: {collectionHealth.publishStatus.replace(/_/g, " ")}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setCollectionHealthDetailsVisible((current) => !current)}
+                accessibilityRole="button"
+                accessibilityLabel="Toggle collection import health details"
+              >
+                <Text style={{ color: t.accent, fontWeight: "800", fontSize: 12 }}>
+                  {collectionHealthDetailsVisible ? "Hide import details" : "View import details"}
+                </Text>
+              </TouchableOpacity>
+              {collectionHealthDetailsVisible ? (
+                <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: t.cardBorder, paddingTop: 8 }}>
+                  <Text style={{ color: t.subtext, fontSize: 12, lineHeight: 18 }}>
+                    Source: {collectionVersion?.sourceFormat || "unknown"} · Records encountered: {collectionHealth.metrics.totalRecords.toLocaleString()} ·
+                    Imported: {collectionHealth.metrics.importedRecords.toLocaleString()} · Rejected: {collectionHealth.metrics.rejectedRecords.toLocaleString()} ·
+                    Duplicates: {collectionHealth.metrics.duplicateRecords.toLocaleString()} ({Math.round(collectionHealth.metrics.duplicateRate * 100)}%)
+                  </Text>
+                  <Text style={{ color: t.subtext, fontSize: 12, lineHeight: 18 }}>
+                    ISBNs: {collectionHealth.metrics.usableIsbns.toLocaleString()} · Descriptions: {collectionHealth.metrics.descriptionsPresent.toLocaleString()} ·
+                    Covers resolvable: {collectionHealth.metrics.coversResolvable.toLocaleString()} · Call numbers: {collectionHealth.metrics.callNumbersPresent.toLocaleString()} ·
+                    Audience metadata: {collectionHealth.metrics.audienceMetadataPresent.toLocaleString()}
+                  </Text>
+                  <Text style={{ color: t.subtext, fontSize: 12, lineHeight: 18 }}>
+                    Upload: {formatByteCount(collectionHealth.originalUploadBytes)} · Artifact: {formatByteCount(collectionHealth.artifactBytes)} ·
+                    Compressed: {formatByteCount(collectionHealth.compressedArtifactBytes)} · Smoke sample: {collectionHealth.smokeTest?.sampleSize || 0}{" "}
+                    ({collectionHealth.smokeTest?.passed ? "passed" : "needs attention"})
+                  </Text>
+                  {collectionHealth.warnings.map((warning) => (
+                    <Text key={warning} style={{ color: t.accent, fontSize: 12, lineHeight: 18 }}>• {warning}</Text>
+                  ))}
+                  <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: t.cardBorder, paddingTop: 10 }}>
+                    <Text style={{ color: t.text, fontWeight: "800", marginBottom: 3 }}>Rejected Records</Text>
+                    {activeRejectedRecordsReport ? (
+                      <>
+                        <Text style={{ color: t.subtext, fontSize: 12, marginBottom: 8 }}>
+                          {activeRejectedRecordsReport.rejectedCount.toLocaleString()} rejected record
+                          {activeRejectedRecordsReport.rejectedCount === 1 ? "" : "s"} from artifact {activeRejectedRecordsReport.artifactId}
+                        </Text>
+                        {activeRejectedRecordsReport.records.length ? (
+                          <>
+                            <TouchableOpacity
+                              style={[styles.btn, { alignSelf: "flex-start", borderColor: t.accentBorder, backgroundColor: t.inputBg, marginBottom: 8 }]}
+                              onPress={onDownloadRejectedRecords}
+                              accessibilityRole="button"
+                              accessibilityLabel="Download Rejected Records CSV"
+                            >
+                              <Text style={[styles.btnText, { color: t.text }]}>Download Rejected Records CSV</Text>
+                            </TouchableOpacity>
+                            {visibleRejectedRecords.map((record) => {
+                              const expanded = expandedRejectedRecordId === record.diagnosticId;
+                              return (
+                                <View
+                                  key={record.diagnosticId}
+                                  style={{ borderWidth: 1, borderColor: t.cardBorder, borderRadius: 8, padding: 9, marginBottom: 7 }}
+                                >
+                                  <TouchableOpacity
+                                    onPress={() => setExpandedRejectedRecordId(expanded ? null : record.diagnosticId)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`${expanded ? "Hide" : "Show"} details for ${record.title || record.sourceIdentifier}`}
+                                  >
+                                    <Text style={{ color: t.text, fontWeight: "700" }}>
+                                      {record.title || "Untitled source record"}
+                                    </Text>
+                                    <Text style={{ color: t.subtext, fontSize: 12, marginTop: 2 }}>
+                                      {[record.author, record.isbn, record.callNumber].filter(Boolean).join(" · ") || record.sourceIdentifier}
+                                    </Text>
+                                    <Text style={{ color: t.danger, fontSize: 12, fontWeight: "700", marginTop: 3 }}>
+                                      {record.reasonLabel}
+                                    </Text>
+                                    <Text style={{ color: t.subtext, fontSize: 12, marginTop: 2 }}>
+                                      {record.fixabilityLabel} · {record.sourceIdentifier}
+                                    </Text>
+                                  </TouchableOpacity>
+                                  {expanded ? (
+                                    <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: t.cardBorder }}>
+                                      <Text style={{ color: t.subtext, fontSize: 12, lineHeight: 18 }}>
+                                        Reason code: {record.reasonCode}{"\n"}
+                                        Detail: {record.detail}{"\n"}
+                                        Control number: {record.controlNumber || "Not available"}{"\n"}
+                                        Source row: {record.sourceRowNumber || "Not available"}
+                                      </Text>
+                                      {record.rawDetails ? (
+                                        <Text style={{ color: t.muted, fontSize: 11, lineHeight: 16, marginTop: 6 }}>
+                                          Source fields: {Object.entries(record.rawDetails)
+                                            .map(([key, value]) => `${key}: ${value || "(empty)"}`)
+                                            .join(" · ")}
+                                        </Text>
+                                      ) : null}
+                                    </View>
+                                  ) : null}
+                                </View>
+                              );
+                            })}
+                            {!showAllRejectedRecords && activeRejectedRecordsReport.records.length > visibleRejectedRecords.length ? (
+                              <TouchableOpacity
+                                onPress={() => setShowAllRejectedRecords(true)}
+                                accessibilityRole="button"
+                                accessibilityLabel="Show all rejected records"
+                              >
+                                <Text style={{ color: t.accent, fontWeight: "800", fontSize: 12 }}>
+                                  Show all {activeRejectedRecordsReport.records.length.toLocaleString()} rejected records
+                                </Text>
+                              </TouchableOpacity>
+                            ) : null}
+                          </>
+                        ) : (
+                          <Text style={{ color: t.success, fontSize: 12 }}>No records were rejected.</Text>
+                        )}
+                        {activeRejectedRecordsReport.duplicatesMerged > 0 ? (
+                          <Text style={{ color: t.subtext, fontSize: 12, marginTop: 10 }}>
+                            Duplicates merged: {activeRejectedRecordsReport.duplicatesMerged.toLocaleString()} (informational; not rejected)
+                          </Text>
+                        ) : null}
+                      </>
+                    ) : (
+                      <Text style={{ color: t.subtext, fontSize: 12 }}>
+                        No rejected-record report is available for this collection version.
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ) : null}
+            </>
+          ) : null}
           <Note>
             Upload a CSV or MARC export of your library's holdings. Local Collection recommends only
             from this library's imported titles and cannot run alongside external sources.

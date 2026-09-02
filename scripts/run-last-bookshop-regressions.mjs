@@ -41,14 +41,20 @@ class MemoryStorage {
 async function main() {
   const checks = [];
   const appSource = readFileSync(resolve(root, "app/games/last-bookshop.tsx"), "utf8");
+  const hubSource = readFileSync(resolve(root, "app/games/index.tsx"), "utf8");
   const menuSource = readFileSync(resolve(root, "app/(tabs)/index.tsx"), "utf8");
   const layoutSource = readFileSync(resolve(root, "app/_layout.tsx"), "utf8");
   const contractSource = readFileSync(resolve(root, "lib/recommendationGames/lastBookshop.ts"), "utf8");
   const humanReviewSource = readFileSync(resolve(root, "screens/swipe/humanReviewContract.ts"), "utf8");
   const vercel = JSON.parse(readFileSync(resolve(root, "vercel.json"), "utf8"));
 
-  assert(menuSource.includes("Play Recommendation Games"), "game menu entry missing");
-  assert(menuSource.includes('router.push("/games/last-bookshop"'), "game menu route missing");
+  assert(menuSource.includes(">Games</Text>"), "Games menu entry missing");
+  assert(!menuSource.includes("Play Recommendation Games"), "retired game menu label must not remain");
+  assert(menuSource.includes('pathname: "/games"'), "game menu must open the game chooser");
+  assert(hubSource.includes("Media Mania"), "game chooser must preserve Media Mania");
+  assert(hubSource.includes("The Last Bookshop"), "game chooser must include The Last Bookshop");
+  assert(hubSource.includes('pathname: "/media-mania"'), "Media Mania route missing from game chooser");
+  assert(hubSource.includes('router.push("/games/last-bookshop"'), "Last Bookshop route missing from game chooser");
   assert(menuSource.includes("Librarian Review"), "Librarian Review must remain separate");
   assert(layoutSource.includes('name="games/last-bookshop"'), "game route is not registered");
   assert(vercel.rewrites.some((rewrite) => rewrite.source === "/games/:path*" && rewrite.destination === "/"), "game SPA rewrite missing");

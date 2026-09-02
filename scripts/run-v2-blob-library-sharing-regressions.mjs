@@ -228,8 +228,9 @@ console.log("\n4. Collection upload via server API");
     contains(storage, "export function collectionBlobPathname")
   );
   check(
-    "saveSharedLibraryCollection writes collection.json in vercel_blob mode",
-    contains(storage, "putBlobJson(collectionBlobPathname(id), canonicalizeLibraryPayload(payload, id))")
+    "saveSharedLibraryCollection stages a versioned artifact before activating collection.json",
+    contains(storage, "putBlobJson(versionPath, canonicalPayload") &&
+      contains(storage, "saveBlobCollectionPtr(id, write.url)")
   );
   check(
     "saveSharedLibraryCollection stores the returned URL string, not the full write result",
@@ -308,9 +309,9 @@ console.log("\n6. Client loadSharedLibraryCollection handles both response shape
     contains(client, "payload.artifactUrl") && contains(client, "readJsonAny")
   );
   check(
-    "loadSharedLibraryCollection falls back to same-origin inline payload when CDN access is private",
-    contains(client, 'inlineUrl.searchParams.set("inline", "1")') &&
-    contains(client, "loadSharedLibraryCollectionInlineFallback")
+    "loadSharedLibraryCollection falls back to a compressed same-origin payload when CDN access is private",
+    contains(client, 'compressedUrl.searchParams.set("compressed", "1")') &&
+    contains(client, "loadSharedLibraryCollectionCompressedFallback")
   );
   check(
     "readJsonAny fetches without credentials (cross-origin CDN URL)",
@@ -379,6 +380,11 @@ console.log("\n8. Blob overwrite / versioning");
     contains(storage, "addRandomSuffix: false") // applies to both config and pointer
   );
   check(
+    "Collection pointer activation uses immutable pointer records",
+    contains(storage, "collectionPointerPrefix") &&
+      contains(storage, "${Date.now()}-${randomUUID()}.json")
+  );
+  check(
     "Config blob includes updatedAt timestamp",
     contains(storage, "updatedAt: new Date().toISOString()")
   );
@@ -393,7 +399,23 @@ console.log("\n8. Blob overwrite / versioning");
   );
   check(
     "Second config save explicitly allows overwrite on the deterministic blob pathname",
-    contains(storage, "allowOverwrite: true") &&
+    contains(storage, "allowOverwrite: true")
+  );
+  check(
+    "Collection pointer activation is the final write after staged read-back verification",
+    contains(storage, "collection_staged_readback_mismatch") &&
+      contains(storage, "await saveBlobCollectionPtr(id, write.url)")
+  );
+  check(
+    "Filesystem collection activation uses atomic replacement",
+    contains(storage, "writeJsonAtomic(filePath(kind, libraryId)")
+  );
+  check(
+    "Version retention cleanup is time-bounded and excludes the active artifact",
+    contains(storage, "cleanupExpiredCollectionVersions") &&
+      contains(storage, "blob.url !== activeUrl") &&
+    contains(storage, "blob.url !== previousActiveUrl") &&
+    contains(storage, "blob.url !== newestPointerUrl") &&
     contains(storage, "putBlobJson(blobPath, wrappedPayload, { allowOverwrite: true })")
   );
 }
@@ -540,7 +562,7 @@ console.log("\n11. Hosted-library diagnostics and correlation IDs");
   );
   check(
     "diagnostics endpoint is admin-gated or preview-gated",
-    contains(diagnosticsApi, "hasAdminSessionCookie") &&
+    contains(diagnosticsApi, "hasAuthorizedAdminSession(req, libraryId)") &&
     contains(diagnosticsApi, "isPreviewAcceptanceEnvironmentEnabled")
   );
   check(
@@ -582,8 +604,9 @@ console.log("\n11. Hosted-library diagnostics and correlation IDs");
     contains(homeScreen, "isPreviewAcceptanceEnvironmentEnabled")
   );
   check(
-    "admin session helper exports cookie name for server gating",
-    contains(adminSession, "ADMIN_SESSION_COOKIE_NAME")
+    "client session helper cannot mint the server authorization cookie",
+    !contains(adminSession, "document.cookie") &&
+    contains(readSrc("lib/adminAuthorizationServer.ts"), "HttpOnly; Secure; SameSite=Strict")
   );
 }
 

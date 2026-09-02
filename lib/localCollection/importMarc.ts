@@ -27,7 +27,7 @@ interface ParsedMarcRecord {
 const RECORD_TERMINATOR = 0x1d;
 const FIELD_TERMINATOR = 0x1e;
 const SUBFIELD_DELIMITER = 0x1f;
-const decoder = new TextDecoder("utf-8");
+let decoder = new TextDecoder("utf-8");
 
 function clean(value: unknown): string {
   return String(value || "").replace(/\s+/g, " ").trim();
@@ -333,7 +333,41 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
   const sourceFilename = String(input.sourceFilename || "").trim() || "collection.mrc";
   const importTimestamp = String(input.importTimestamp || "").trim() || new Date().toISOString();
   const bytes = toUint8Array(input.marcBinary);
+  const sourceEncoding = bytes.length > 9 && String.fromCharCode(bytes[9] || 0x20) === "a" ? "utf-8" : "marc-8";
+  decoder = new TextDecoder(sourceEncoding === "utf-8" ? "utf-8" : "windows-1252");
   const { records, malformedCount } = parseMarcRecords(bytes);
+  const marc8HasNonAsciiData = sourceEncoding === "marc-8" && bytes.some((value) => value >= 0x80);
+  if (marc8HasNonAsciiData) {
+    const rejectedCount = Math.max(1, records.length + malformedCount);
+    const rejectedRecords: LocalCollectionRejectedRecord[] = Array.from({ length: rejectedCount }, (_, index) => ({
+      rowNumber: index + 2,
+      reason: "unsupported_source_encoding",
+      detail: "Non-ASCII MARC-8/ANSEL data requires a UTF-8 MARC export before it can be imported safely.",
+    }));
+    const summary = buildSummary(rejectedCount, [], rejectedRecords, 0, 0);
+    const metadata: LocalCollectionArtifact["metadata"] = {
+      schemaVersion: "local_collection_import_v2",
+      importerVersion: "local_collection_import_v2",
+      sourceFormat: "marc21",
+      sourceEncoding,
+      originalUploadBytes: bytes.byteLength,
+      importTimestamp,
+      sourceFilename,
+      collectionName: input.collectionName,
+      libraryId: input.libraryId,
+    };
+    const artifactBase: Omit<LocalCollectionArtifact, "deterministicContentHash"> = {
+      metadata,
+      acceptedRecords: [],
+      rejectedRecords,
+      warnings: [],
+      summary,
+    };
+    return {
+      ...artifactBase,
+      deterministicContentHash: deterministicHash(artifactBase),
+    };
+  }
 
   const headers = [
     "title",
@@ -371,7 +405,11 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
     const holdings = record.dataFields["852"] || [];
     const primaryHolding = holdings.find((field) => firstSubfield(field, "b")) || holdings[0];
     const shelvingLocation = firstSubfield(primaryHolding, "b") || "";
-    const callNumber = firstSubfield(primaryHolding, "h") || "";
+    const callNumber = firstSubfield(primaryHolding, "h") ||
+      [firstSubfield(record.dataFields["090"]?.[0], "a"), firstSubfield(record.dataFields["090"]?.[0], "b")].filter(Boolean).join(" ") ||
+      firstSubfield(record.dataFields["099"]?.[0], "a") ||
+      [firstSubfield(record.dataFields["050"]?.[0], "a"), firstSubfield(record.dataFields["050"]?.[0], "b")].filter(Boolean).join(" ") ||
+      "";
     const packedValues = holdings.map((field) => firstSubfield(field, "x")).filter((v): v is string => Boolean(v));
     const availability = parseAvailabilityFromPacked(packedValues[0]) || packedValues[0] || "";
     const localPlacement = firstSubfield(record.dataFields["900"]?.[0], "a") || "";
@@ -424,38 +462,61 @@ export function importLocalCollectionMarc(input: LocalCollectionMarcImportInput)
     if (normalized.warnings.length) warnings.push(...normalized.warnings);
   }
 
-  if (records.length === 0) {
+  if (records.length === 0 && malformedCount === 0) {
     rejected.push({
       reason: "unsupported_record_shape",
       detail: "no MARC records could be parsed from the file",
     });
   }
   if (malformedCount > 0) {
-    rejected.push({
-      reason: "malformed_row",
-      detail: `encountered ${malformedCount} malformed MARC record(s) during parse`,
-    });
+    for (let index = 0; index < malformedCount; index += 1) {
+      rejected.push({
+        reason: "malformed_row",
+        detail: `MARC record ${records.length + index + 1} was malformed and safely skipped.`,
+      });
+    }
   }
 
   const deduped = dedupeAcceptedRecords(accepted);
   rejected.push(...deduped.duplicateRejects);
 
   const summary = buildSummary(
-    records.length,
+    records.length + malformedCount,
     deduped.acceptedRecords,
     rejected,
     deduped.mergedDuplicatesOrCopies,
     warnings.length
   );
+  const knownMarcTags = new Set(["001", "020", "100", "110", "111", "245", "260", "264", "520", "521", "650", "655", "700", "852", "856", "900"]);
+  const marcTags = Array.from(new Set(records.flatMap((record) => [
+    ...Object.keys(record.controlFields),
+    ...Object.keys(record.dataFields),
+  ]))).sort();
+  const unrecognizedMarcTags = marcTags.filter((tag) => !knownMarcTags.has(tag));
+  const sampleUnrecognizedMarcFields = records.flatMap((record) =>
+    unrecognizedMarcTags.flatMap((tag) => (record.dataFields[tag] || []).map((field) => ({
+      recordNumber: record.recordNumber,
+      tag,
+      values: field.subfields.map((subfield) => `${subfield.code}:${subfield.value}`).filter(Boolean),
+    })))
+  ).slice(0, 20);
 
   const artifactBase: Omit<LocalCollectionArtifact, "deterministicContentHash"> = {
     metadata: {
-      schemaVersion: "local_collection_import_v1",
+      schemaVersion: "local_collection_import_v2",
+      importerVersion: "local_collection_import_v2",
       sourceFormat: "marc21",
+      sourceEncoding,
+      originalUploadBytes: bytes.byteLength,
       importTimestamp,
       sourceFilename,
       collectionName: input.collectionName,
       libraryId: input.libraryId,
+      provenance: {
+        marcTags,
+        unrecognizedMarcTags,
+        sampleUnrecognizedMarcFields,
+      },
     },
     acceptedRecords: deduped.acceptedRecords,
     rejectedRecords: rejected,

@@ -33,6 +33,7 @@ import adultDeck from "../data/swipeDecks/adult";
 import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
 import { shouldShowTestingEvaluation } from "./swipe/testingControls.mjs";
 import { recommendationDescriptionExcerpt } from "./swipe/recommendationDescription";
+import { localCollectionDetailDescription } from "../lib/localCollection/presentation";
 import coverUrlsMap from '../assets/coverUrls.json';
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { runRecommenderV2 } from "../app/recommender-v2";
@@ -2518,7 +2519,7 @@ function handleLeft(card?: SwipeDeckCard | null) {
         title: candidate.title,
         author_name: candidate.creators.length ? candidate.creators : [],
         source: candidate.source,
-        description: candidate.displayDescription || candidate.description,
+        description: localCollectionDetailDescription(candidate),
         first_publish_year: (candidate.publicationYear as number | undefined) ?? ((candidate.raw as any)?.first_publish_year as number | undefined),
         cover_i:
           (candidate.raw as any)?.cover_i ??

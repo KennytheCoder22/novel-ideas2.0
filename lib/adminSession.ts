@@ -1,118 +1,144 @@
-const ADMIN_SESSION_STORAGE_KEY = "novelideas_admin_session_v1";
+const ADMIN_SESSION_STORAGE_KEY = "novelideas_admin_session_v2";
 const ADMIN_PENDING_ROUTE_STORAGE_KEY = "novelideas_admin_pending_admin_route_v1";
-export const ADMIN_SESSION_COOKIE_NAME = "novelideas_admin_session_v1";
 
-function isWebRuntime(): boolean {
-  return typeof window !== "undefined";
-}
+export type HostedAdminAuthorization = {
+  pinEnabled: boolean;
+  verifierConfigured: boolean;
+  authorized: boolean;
+};
 
 function storage(): Storage | null {
   try {
-    if (!isWebRuntime()) return null;
-    return window.sessionStorage;
+    return typeof window === "undefined" ? null : window.sessionStorage;
   } catch {
     return null;
   }
 }
 
-function setCookie(name: string, value: string, expires?: string): void {
-  try {
-    if (typeof document === "undefined") return;
-    const expiry = expires ? `; expires=${expires}` : "";
-    document.cookie = `${name}=${value}; path=/; SameSite=Lax${expiry}`;
-  } catch {
-    // ignore browser storage failures
-  }
+function normalizedLibraryId(libraryId: string): string {
+  return normalizeHostedLibraryId(libraryId);
 }
 
-function readCookie(name: string): string {
-  try {
-    if (typeof document === "undefined") return "";
-    const needle = `${name}=`;
-    const parts = String(document.cookie || "").split(";");
-    for (const part of parts) {
-      const trimmed = part.trim();
-      if (trimmed.startsWith(needle)) return trimmed.slice(needle.length);
-    }
-  } catch {
-    // ignore browser storage failures
-  }
-  return "";
+export function isDownloadedAdminRuntime(): boolean {
+  if (typeof window === "undefined") return false;
+  const protocol = String(window.location?.protocol || "").toLowerCase();
+  const hostname = String(window.location?.hostname || "").toLowerCase();
+  return protocol === "file:" ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1";
 }
 
-function clearCookie(name: string): void {
-  setCookie(name, "", "Thu, 01 Jan 1970 00:00:00 GMT");
+function localSessionKey(libraryId: string): string {
+  return `${ADMIN_SESSION_STORAGE_KEY}:${normalizedLibraryId(libraryId) || "default"}`;
 }
 
-function normalizePendingRoute(path: string): string {
-  const normalized = String(path || "").trim();
-  if (normalized === "/admin/human-review") return normalized;
-  return "/app_admin-web";
-}
-
-export function activateAdminSession(source: string = "menu"): void {
-  const session = {
-    version: 1,
+export function activateLocalAdminSession(libraryId: string, source: string = "menu"): void {
+  storage()?.setItem(localSessionKey(libraryId), JSON.stringify({
+    version: 2,
     source,
     activatedAt: new Date().toISOString(),
-  };
-  try {
-    storage()?.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify(session));
-  } catch {
-    // ignore browser storage failures
-  }
-  setCookie(ADMIN_SESSION_COOKIE_NAME, "1");
+  }));
+}
+
+export function isLocalAdminSessionActive(libraryId: string): boolean {
+  return Boolean(storage()?.getItem(localSessionKey(libraryId)));
 }
 
 export function isAdminSessionActive(): boolean {
-  try {
-    const raw = storage()?.getItem(ADMIN_SESSION_STORAGE_KEY);
-    if (raw) return true;
-  } catch {
-    // ignore browser storage failures
+  const sessionStorage = storage();
+  if (!sessionStorage) return false;
+  for (let index = 0; index < sessionStorage.length; index += 1) {
+    if (String(sessionStorage.key(index) || "").startsWith(`${ADMIN_SESSION_STORAGE_KEY}:`)) return true;
   }
-  return readCookie(ADMIN_SESSION_COOKIE_NAME) === "1";
+  return false;
 }
 
-export function clearAdminSession(): void {
+export function clearLocalAdminSession(libraryId: string): void {
+  storage()?.removeItem(localSessionKey(libraryId));
+}
+
+export async function getHostedAdminAuthorization(libraryId: string): Promise<HostedAdminAuthorization | null> {
+  const id = normalizedLibraryId(libraryId);
+  if (!id || typeof window === "undefined" || !window.location?.origin) return null;
   try {
-    storage()?.removeItem(ADMIN_SESSION_STORAGE_KEY);
+    const response = await fetch(`/api/admin-auth?libraryId=${encodeURIComponent(id)}`, {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    return await response.json() as HostedAdminAuthorization;
   } catch {
-    // ignore browser storage failures
+    return null;
   }
-  clearCookie(ADMIN_SESSION_COOKIE_NAME);
+}
+
+export async function verifyHostedAdminPin(libraryId: string, pin: string): Promise<{
+  authorized: boolean;
+  error?: string;
+}> {
+  try {
+    const response = await fetch("/api/admin-auth", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ libraryId: normalizedLibraryId(libraryId), pin }),
+    });
+    const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+    return {
+      authorized: response.ok && payload?.authorized === true,
+      error: typeof payload?.error === "string" ? payload.error : undefined,
+    };
+  } catch {
+    return { authorized: false, error: "authorization_unavailable" };
+  }
+}
+
+export async function reenrollHostedAdminPin(
+  libraryId: string,
+  pin: string,
+  recoverySecret: string,
+): Promise<{ authorized: boolean; error?: string }> {
+  try {
+    const response = await fetch("/api/admin-auth", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "reenroll",
+        libraryId: normalizedLibraryId(libraryId),
+        pin,
+        recoverySecret,
+      }),
+    });
+    const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+    return {
+      authorized: response.ok && payload?.authorized === true,
+      error: typeof payload?.error === "string" ? payload.error : undefined,
+    };
+  } catch {
+    return { authorized: false, error: "authorization_unavailable" };
+  }
+}
+
+function normalizePendingRoute(path: string): string {
+  return String(path || "").trim() === "/admin/human-review" ? "/admin/human-review" : "/app_admin-web";
 }
 
 export function setPendingAdminRoute(path: string): void {
-  try {
-    storage()?.setItem(ADMIN_PENDING_ROUTE_STORAGE_KEY, normalizePendingRoute(path));
-  } catch {
-    // ignore browser storage failures
-  }
+  storage()?.setItem(ADMIN_PENDING_ROUTE_STORAGE_KEY, normalizePendingRoute(path));
 }
 
 export function getPendingAdminRoute(): string {
-  try {
-    return normalizePendingRoute(storage()?.getItem(ADMIN_PENDING_ROUTE_STORAGE_KEY) || "");
-  } catch {
-    return "/app_admin-web";
-  }
+  return normalizePendingRoute(storage()?.getItem(ADMIN_PENDING_ROUTE_STORAGE_KEY) || "");
 }
 
 export function hasPendingAdminRoute(): boolean {
-  try {
-    return Boolean(storage()?.getItem(ADMIN_PENDING_ROUTE_STORAGE_KEY));
-  } catch {
-    return false;
-  }
+  return Boolean(storage()?.getItem(ADMIN_PENDING_ROUTE_STORAGE_KEY));
 }
 
 export function clearPendingAdminRoute(): void {
-  try {
-    storage()?.removeItem(ADMIN_PENDING_ROUTE_STORAGE_KEY);
-  } catch {
-    // ignore browser storage failures
-  }
+  storage()?.removeItem(ADMIN_PENDING_ROUTE_STORAGE_KEY);
 }
 
 export function consumePendingAdminRoute(): string {
@@ -120,3 +146,4 @@ export function consumePendingAdminRoute(): string {
   clearPendingAdminRoute();
   return next;
 }
+import { normalizeHostedLibraryId } from "./savedLibraries";

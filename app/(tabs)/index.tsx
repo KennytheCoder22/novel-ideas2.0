@@ -39,7 +39,11 @@ import {
   type HighlightKey,
   type TitleTextKey
 } from "../../constants/brandTheme";
-import { isAdminSessionActive } from "../../lib/adminSession";
+import {
+  activateLocalAdminSession,
+  isAdminSessionActive,
+  verifyHostedAdminPin,
+} from "../../lib/adminSession";
 import { usePwaInstall } from "../../hooks/use-pwa-install";
 import { updatePwaDocumentBranding } from "../../lib/pwaRuntime";
 import {
@@ -1853,7 +1857,6 @@ export function HomeScreen(props: { libraryId?: string } = {}) {
 
   const adminPinEnabled: boolean = !!config?.admin?.pinEnabled;
   const adminPin: string = typeof config?.admin?.pin === "string" ? config.admin.pin : "";
-  const adminPinReady: boolean = adminPinEnabled && /^\d{6}$/.test(adminPin);
 
   
 const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
@@ -2061,25 +2064,45 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
                   backgroundColor: theme.accent,
                 }}
                 onPress={() => {
+                  void (async () => {
                   if (adminPinEntry.length !== 6) {
                     setAdminPinError("Please enter all 6 digits.");
                     return;
                   }
-                  if (adminPinEntry !== adminPin) {
-                    setAdminPinError("Incorrect PIN.");
-                    return;
+                  const targetLibraryId = String(props.libraryId || config?.library?.id || config?.branding?.libraryId || "");
+                  if (Platform.OS === "web" && targetLibraryId) {
+                    const adminRoute = `/app_admin-web?libraryId=${encodeURIComponent(targetLibraryId)}`;
+                    const result = await verifyHostedAdminPin(targetLibraryId, adminPinEntry);
+                    if (!result.authorized) {
+                      if (result.error === "admin_pin_reenrollment_required") {
+                        setShowAdminPinPrompt(false);
+                        setAdminPinEntry("");
+                        setAdminPinError(null);
+                        router.push(adminRoute as any);
+                        return;
+                      }
+                      setAdminPinError("Incorrect PIN.");
+                      return;
+                    }
+                  } else {
+                    if (adminPinEntry !== adminPin) {
+                      setAdminPinError("Incorrect PIN.");
+                      return;
+                    }
+                    activateLocalAdminSession(targetLibraryId, "menu");
                   }
                   setShowAdminPinPrompt(false);
                   setAdminPinEntry("");
                   setAdminPinError(null);
                   if (Platform.OS === "web") {
-                    const adminRoute = props.libraryId
-                      ? `/app_admin-web?libraryId=${encodeURIComponent(String(props.libraryId))}`
+                    const adminRoute = targetLibraryId
+                      ? `/app_admin-web?libraryId=${encodeURIComponent(targetLibraryId)}`
                       : "/app_admin-web";
                     router.push(adminRoute as any);
                   } else {
                     setAdminUnlocked(true);
                   }
+                  })();
                 }}
               >
                 <Text style={{ color: theme.accentTextOn, fontWeight: "900" }}>Unlock</Text>
@@ -2094,7 +2117,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   function openAdminEntry(source: "menu" | "easter_egg" = "menu") {
     const unlockMenu = source === "easter_egg";
-    if (adminPinReady) {
+    if (adminPinEnabled) {
       setAdminPinEntry("");
       setAdminPinError(null);
       setShowAdminPinPrompt(true);
@@ -2165,7 +2188,14 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   function openRecommendationGames() {
     closeHeaderMenu();
-    router.push("/games/last-bookshop" as any);
+    router.push({
+      pathname: "/games",
+      params: {
+        playerId: patronId,
+        libraryId: props.libraryId || "default",
+        ageBand: deck === "k2" ? "kids" : deck === "36" ? "preteens" : deck === "adult" ? "adults" : "teens",
+      },
+    } as any);
   }
 
   function openDeveloperTip() {
@@ -2393,8 +2423,12 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             <TouchableOpacity style={styles.headerMenuItem} onPress={openTestingInvite}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Librarian Review</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerMenuItem} onPress={openRecommendationGames}>
-              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Play Recommendation Games</Text>
+            <TouchableOpacity
+              style={styles.headerMenuItem}
+              accessibilityLabel="Games"
+              onPress={openRecommendationGames}
+            >
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Games</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/how-it-works")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How to Use NovelIdeas</Text>

@@ -1,4 +1,5 @@
 import { loadLocalCollectionRecommendationArtifact, type LocalCollectionRecommendationRecord } from "../../../lib/localCollection/storage";
+import { adaptLocalCollectionSourceRecord } from "../../../lib/localCollection/presentation";
 import type { AgeBandV2, SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
 import { getRuntimeLibraryId } from "../../../constants/runtimeConfig";
 
@@ -267,43 +268,14 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
       const audienceBand = context.profile.localLibraryCurationTrusted
         ? undefined
         : inferAudienceBand(record);
-      return {
-        id: `localLibrary:${record.localId}`,
-        sourceId: record.localId,
-        title: record.title,
-        authors: [record.author],
-        description: record.description,
-        publicationYear: record.publicationYear,
-        formats: ["book"],
-        genres: [record.shelvingLocation, record.audience].filter(Boolean),
-        themes: [record.localPlacement].filter(Boolean),
-        maturityBand: audienceBand,
+      return adaptLocalCollectionSourceRecord(record, {
         audienceBand,
-        coverUrl: record.coverUrl,
-        sourceUrl: undefined,
         queryText: row.queryText || fallbackQuery,
-        originalPlannedQuery: row.queryText || fallbackQuery,
-        queryFamily: "local_collection_text_match",
-        queryCascadeIndex: 0,
-        localCollectionTieBreakOrder: context.diversitySeed
+        tieBreakOrder: context.diversitySeed
           ? stableRecordOrder(record, context.diversitySeed)
           : undefined,
         facets: row.facets.length ? row.facets : fallbackFacets,
-        callNumber: record.callNumber,
-        subLocation: record.shelvingLocation || record.localPlacement,
-        shelvingLocation: record.shelvingLocation,
-        localPlacement: record.localPlacement,
-        localCollectionCallNumber: record.callNumber,
-        localCollectionPlacement: record.localPlacement,
-        localCollectionAvailability: record.availability,
-        localCollectionCopies: record.copies,
-        isbn: record.isbn13 || record.isbn10,
-        isbn10: record.isbn10,
-        isbn13: record.isbn13,
-        localCollectionIsbn10: record.isbn10,
-        localCollectionIsbn13: record.isbn13,
-        marcHoldings: record.marcHoldings,
-      };
+      });
     });
 
     const fetches: SourceFetchDiagnosticV2[] = [{
