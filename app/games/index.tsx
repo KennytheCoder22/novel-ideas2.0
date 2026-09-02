@@ -80,6 +80,14 @@ export default function RecommendationGamesRoute() {
             colors={["#2a1d2d", "#d39a51"]}
             onPress={() => router.push("/games/last-bookshop" as any)}
           />
+          <GameCard
+            eyebrow="PIXEL WORLD ADVENTURE"
+            title="The Unwritten Map"
+            description="Cross a tiny mysterious country where every road, discovery, and decision changes your journey."
+            detail="Top-down exploration | Four story encounters | Persistent map"
+            colors={["#1b2a1d", "#cadb83"]}
+            onPress={() => router.push("/games/unwritten-map" as any)}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
