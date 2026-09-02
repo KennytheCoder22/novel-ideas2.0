@@ -83,10 +83,16 @@ export default function RecommendationGamesRoute() {
           <GameCard
             eyebrow="PIXEL WORLD ADVENTURE"
             title="The Unwritten Map"
-            description="Cross a tiny mysterious country where every road, discovery, and decision changes your journey."
-            detail="Top-down exploration | Four story encounters | Persistent map"
+            description="Cross five mysterious regions, meet curious inhabitants, and turn a blank country into your own story."
+            detail="Handheld-style exploration | 12 story encounters | Persistent field journal"
             colors={["#1b2a1d", "#cadb83"]}
-            onPress={() => router.push("/games/unwritten-map" as any)}
+            onPress={() => router.push({
+              pathname: "/games/unwritten-map",
+              params: {
+                ...(params.playerId ? { playerId: params.playerId } : {}),
+                ...(params.libraryId ? { libraryId: params.libraryId } : {}),
+              },
+            } as any)}
           />
         </View>
       </ScrollView>
