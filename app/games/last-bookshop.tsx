@@ -15,6 +15,18 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import Svg, {
+  Circle,
+  Defs,
+  Ellipse,
+  G,
+  LinearGradient as SvgLinearGradient,
+  Line,
+  Path,
+  RadialGradient,
+  Rect,
+  Stop,
+} from "react-native-svg";
 import {
   LAST_BOOKSHOP_PROGRESS_KEY,
   PITCH_CHARMS,
@@ -293,62 +305,99 @@ function ShelvesScreen({
   );
 }
 
-function ChoiceChip({
-  active,
-  label,
-  onPress,
-}: {
-  active: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.choiceChip, active && styles.choiceChipActive]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-    >
-      <Text style={[styles.choiceChipText, active && styles.choiceChipTextActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function CharmGlyph({ charm, active }: { charm: PitchCharm; active: boolean }) {
-  const color = active ? "#f6d69f" : "#b09aa8";
+function CharmIllustration({ charm, active }: { charm: PitchCharm; active: boolean }) {
+  const glow = active ? "#ffd98d" : "#c69a64";
   if (charm === "mood") {
     return (
-      <View style={styles.charmGlyph}>
-        <View style={[styles.charmMoon, { backgroundColor: color }]}>
-          <View style={styles.charmMoonCutout} />
-        </View>
-      </View>
+      <Svg width="100%" height="100%" viewBox="0 0 120 92" accessibilityElementsHidden>
+        <Defs>
+          <SvgLinearGradient id="ribbon" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor="#7d405b" />
+            <Stop offset="0.48" stopColor="#3f172e" />
+            <Stop offset="1" stopColor="#aa6578" />
+          </SvgLinearGradient>
+          <RadialGradient id="ribbonGlow">
+            <Stop offset="0" stopColor={glow} stopOpacity="0.42" />
+            <Stop offset="1" stopColor="#1b111d" stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Ellipse cx="60" cy="45" rx="55" ry="38" fill="url(#ribbonGlow)" />
+        <Path d="M56 42C41 18 10 17 13 39c3 20 28 18 43 7Z" fill="url(#ribbon)" stroke="#c48191" strokeWidth="1.3" />
+        <Path d="M64 42c15-24 46-25 43-3-3 20-28 18-43 7Z" fill="url(#ribbon)" stroke="#c48191" strokeWidth="1.3" />
+        <Path d="M54 49 31 84l24-10 7-25Z" fill="url(#ribbon)" stroke="#93566d" strokeWidth="1.2" />
+        <Path d="m66 49 23 35-24-10-7-25Z" fill="url(#ribbon)" stroke="#93566d" strokeWidth="1.2" />
+        <Ellipse cx="60" cy="44" rx="12" ry="10" fill="#4b1d33" stroke="#d09aa5" strokeWidth="1.4" />
+        <Path d="M23 35c9-7 20-4 29 6M97 35c-9-7-20-4-29 6" fill="none" stroke="#e2a9b4" strokeOpacity="0.48" strokeWidth="1.2" />
+      </Svg>
     );
   }
   if (charm === "world") {
     return (
-      <View style={styles.charmGlyph}>
-        <View style={[styles.charmWorld, { borderColor: color }]}>
-          <View style={[styles.charmWorldMeridian, { borderColor: color }]} />
-          <View style={[styles.charmWorldHorizon, { backgroundColor: color }]} />
-        </View>
-      </View>
+      <Svg width="100%" height="100%" viewBox="0 0 120 92" accessibilityElementsHidden>
+        <Defs>
+          <RadialGradient id="compassFace">
+            <Stop offset="0" stopColor="#7d5a2e" />
+            <Stop offset="0.62" stopColor="#2f241c" />
+            <Stop offset="1" stopColor="#110f12" />
+          </RadialGradient>
+          <SvgLinearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor="#f1c878" />
+            <Stop offset="0.5" stopColor="#8a5a24" />
+            <Stop offset="1" stopColor="#dfaa52" />
+          </SvgLinearGradient>
+        </Defs>
+        <Path d="M30 21c5-16 27-17 33-3" fill="none" stroke="#8c653a" strokeWidth="4" strokeLinecap="round" />
+        <Circle cx="61" cy="49" r="35" fill="url(#compassFace)" stroke="url(#brass)" strokeWidth="5" />
+        <Circle cx="61" cy="49" r="27" fill="none" stroke="#c18e46" strokeOpacity="0.55" strokeWidth="1.2" />
+        <Line x1="61" y1="20" x2="61" y2="78" stroke="#927044" strokeWidth="1" />
+        <Line x1="32" y1="49" x2="90" y2="49" stroke="#927044" strokeWidth="1" />
+        <Path d="m61 26 8 25-8-4-8 4Z" fill="#f4d28c" />
+        <Path d="m61 72-8-23 8 4 8-4Z" fill="#a63e35" />
+        <Circle cx="61" cy="49" r="4.5" fill="#d8aa5b" stroke="#f6dda4" strokeWidth="1" />
+        <Path d="M26 33c-8 9-10 22-5 34" fill="none" stroke={glow} strokeOpacity="0.55" strokeWidth="1.5" />
+      </Svg>
     );
   }
   if (charm === "pace") {
     return (
-      <View style={styles.charmGlyph}>
-        <View style={[styles.charmPaceLine, styles.charmPaceLineLong, { backgroundColor: color }]} />
-        <View style={[styles.charmPaceLine, styles.charmPaceLineShort, { backgroundColor: color }]} />
-        <View style={[styles.charmPaceLine, styles.charmPaceLineMedium, { backgroundColor: color }]} />
-      </View>
+      <Svg width="100%" height="100%" viewBox="0 0 120 92" accessibilityElementsHidden>
+        <Defs>
+          <SvgLinearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor="#f4e4c7" />
+            <Stop offset="0.42" stopColor="#8f827c" />
+            <Stop offset="0.7" stopColor="#ded1bd" />
+            <Stop offset="1" stopColor="#665a5a" />
+          </SvgLinearGradient>
+        </Defs>
+        <Ellipse cx="58" cy="54" rx="50" ry="28" fill={glow} fillOpacity="0.12" />
+        <Circle cx="36" cy="33" r="15" fill="none" stroke="url(#silver)" strokeWidth="5" />
+        <Circle cx="36" cy="33" r="6" fill="none" stroke="#c6b8aa" strokeWidth="2" />
+        <Path d="m48 43 38 30 7-8-7-6 7-8-8-7-8 7-6-5-6 6-24-19Z" fill="url(#silver)" stroke="#eee1c9" strokeOpacity="0.7" strokeWidth="1.2" strokeLinejoin="round" />
+        <Path d="M47 38 89 71" stroke="#fff1d4" strokeOpacity="0.5" strokeWidth="1.3" />
+        <Circle cx="23" cy="22" r="2" fill="#f4d998" />
+        <Circle cx="93" cy="31" r="1.5" fill="#f4d998" />
+      </Svg>
     );
   }
   return (
-    <View style={styles.charmGlyph}>
-      <View style={[styles.charmSpark, { borderColor: color }]} />
-      <View style={[styles.charmSparkSmall, { backgroundColor: color }]} />
-    </View>
+    <Svg width="100%" height="100%" viewBox="0 0 120 92" accessibilityElementsHidden>
+      <Defs>
+        <SvgLinearGradient id="wing" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0" stopColor="#d9b98b" />
+          <Stop offset="0.5" stopColor="#745b4b" />
+          <Stop offset="1" stopColor="#2f2830" />
+        </SvgLinearGradient>
+      </Defs>
+      <Ellipse cx="60" cy="48" rx="46" ry="32" fill={glow} fillOpacity="0.1" />
+      <Path d="M57 45C46 12 15 9 8 24c14 3 21 15 17 30 13 0 24-4 32-9Z" fill="url(#wing)" stroke="#dcc39c" strokeWidth="1.2" />
+      <Path d="M63 45c11-33 42-36 49-21-14 3-21 15-17 30-13 0-24-4-32-9Z" fill="url(#wing)" stroke="#dcc39c" strokeWidth="1.2" />
+      <Path d="M55 51C42 48 22 56 17 76c17 2 33-6 42-20ZM65 51c13-3 33 5 38 25-17 2-33-6-42-20Z" fill="#4d4040" stroke="#a48a6d" strokeWidth="1.2" />
+      <Path d="M54 39 25 23m29 23-29 8m41-15 29-16M66 46l29 8M53 56 22 17m42-17L85 73" stroke="#e0c397" strokeOpacity="0.42" strokeWidth="1.1" />
+      <Ellipse cx="60" cy="51" rx="4" ry="18" fill="#291d22" stroke="#b09373" strokeWidth="1" />
+      <Path d="M59 34C53 25 49 24 46 22m15 12c6-9 10-10 13-12" fill="none" stroke="#bda17c" strokeWidth="1.2" strokeLinecap="round" />
+      <Circle cx="30" cy="31" r="4" fill="#2b2025" stroke="#c4a77f" strokeWidth="1" />
+      <Circle cx="90" cy="31" r="4" fill="#2b2025" stroke="#c4a77f" strokeWidth="1" />
+    </Svg>
   );
 }
 
@@ -363,17 +412,83 @@ function PitchCharmChoice({
 }) {
   return (
     <TouchableOpacity
-      style={[styles.charmChoice, active && styles.charmChoiceActive]}
+      style={[
+        styles.charmChoice,
+        charm.id === "surprise" && styles.charmChoiceWide,
+        active && styles.charmChoiceActive,
+      ]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={`Pitch charm: ${charm.label}. ${charm.description}`}
     >
-      <View style={[styles.charmMedallion, active && styles.charmMedallionActive]}>
-        <CharmGlyph charm={charm.id} active={active} />
+      <View style={[styles.charmArtwork, active && styles.charmArtworkActive]}>
+        <CharmIllustration charm={charm.id} active={active} />
       </View>
       <Text style={[styles.charmChoiceLabel, active && styles.charmChoiceLabelActive]}>{charm.label}</Text>
     </TouchableOpacity>
+  );
+}
+
+function CandleIllustration({
+  confidence,
+  active,
+  flameMotion,
+}: {
+  confidence: ConfidenceLevel;
+  active: boolean;
+  flameMotion: Animated.Value;
+}) {
+  const isLow = confidence === "low";
+  const isHigh = confidence === "high";
+  const bodyHeight = isLow ? 40 : isHigh ? 76 : 58;
+  const bodyY = 104 - bodyHeight;
+  const flameScale = isLow ? 0.72 : isHigh ? 1.3 : 1;
+  return (
+    <View style={styles.candleIllustration}>
+      <Animated.View
+        style={[
+          styles.candleSvgWrap,
+          {
+            transform: [
+              { translateX: active ? flameMotion.interpolate({ inputRange: [0, 1], outputRange: [-1.4, 1.4] }) : 0 },
+              { scaleY: active ? flameMotion.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.03] }) : 1 },
+            ],
+          },
+        ]}
+      >
+        <Svg width="100%" height="100%" viewBox="0 0 80 120" accessibilityElementsHidden>
+          <Defs>
+            <SvgLinearGradient id={`wax-${confidence}`} x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0" stopColor="#8e5d28" />
+              <Stop offset="0.24" stopColor="#e1aa58" />
+              <Stop offset="0.64" stopColor="#b77732" />
+              <Stop offset="1" stopColor="#6f431e" />
+            </SvgLinearGradient>
+            <RadialGradient id={`flame-${confidence}`}>
+              <Stop offset="0" stopColor="#fffbd0" />
+              <Stop offset="0.35" stopColor="#ffd05c" />
+              <Stop offset="1" stopColor="#e65d1d" />
+            </RadialGradient>
+          </Defs>
+          {active ? <Ellipse cx="40" cy={bodyY - 8} rx={isHigh ? 29 : 22} ry={isHigh ? 32 : 25} fill="#f59b32" fillOpacity={isHigh ? 0.18 : 0.1} /> : null}
+          <Ellipse cx="40" cy="108" rx={isHigh ? 30 : 24} ry="6" fill="#3c241c" />
+          <Rect x={isHigh ? 22 : 25} y={bodyY} width={isHigh ? 36 : 30} height={bodyHeight} rx="5" fill={`url(#wax-${confidence})`} stroke="#e0ad62" strokeOpacity="0.55" />
+          <Path d={`M${isHigh ? 28 : 30} ${bodyY}c3 7 7 4 9 13 3-11 8-5 13-13Z`} fill="#f0c477" fillOpacity="0.9" />
+          <Line x1="40" y1={bodyY} x2="40" y2={bodyY - 8} stroke="#4b2f24" strokeWidth="2" />
+          <G transform={`translate(40 ${bodyY - 15}) scale(${flameScale})`}>
+            <Path d="M0-18C13-6 8 7 0 10-8 7-11-4 0-18Z" fill={`url(#flame-${confidence})`} />
+            <Path d="M0-8C5-2 3 5 0 6-4 4-4 0 0-8Z" fill="#fff5bb" />
+          </G>
+          {isHigh ? (
+            <>
+              <Path d="M18 61c-8-10-7-21 1-28-2 11 3 17 8 23Z" fill="#ef6b22" fillOpacity="0.72" />
+              <Path d="M62 58c8-11 7-22-1-30 2 12-3 18-8 24Z" fill="#ef6b22" fillOpacity="0.72" />
+            </>
+          ) : null}
+        </Svg>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -420,57 +535,27 @@ function CandleSelector({
     return () => animation.stop();
   }, [flameMotion, reduceMotion, value]);
 
-  const intensity = value || "low";
-  const scaleYRange = intensity === "low" ? [0.72, 1.08] : intensity === "medium" ? [0.96, 1.04] : [0.9, 1.16];
-  const driftRange = intensity === "low" ? [-2.4, 2.4] : intensity === "medium" ? [-0.4, 0.4] : [-1.2, 1.2];
-  const flameScale = intensity === "low" ? 0.72 : intensity === "medium" ? 1 : 1.34;
-
   return (
-    <View>
-      <View style={styles.candleStage} accessibilityLabel={value ? `${value} confidence candle` : "Unlit confidence candle"}>
-        <Animated.View
-          style={[
-            styles.candleGlow,
-            {
-              opacity: value
-                ? flameMotion.interpolate({ inputRange: [0, 1], outputRange: [0.2, intensity === "high" ? 0.58 : 0.38] })
-                : 0.08,
-              transform: [{ scale: flameScale }],
-            },
-          ]}
-        />
-        <Animated.View
-          style={[
-            styles.candleFlame,
-            intensity === "high" && styles.candleFlameBlazing,
-            {
-              opacity: value ? 1 : 0.22,
-              transform: [
-                { translateX: flameMotion.interpolate({ inputRange: [0, 1], outputRange: driftRange }) },
-                { scale: flameScale },
-                { scaleY: flameMotion.interpolate({ inputRange: [0, 1], outputRange: scaleYRange }) },
-                { rotate: "45deg" },
-              ],
-            },
-          ]}
-        >
-          <View style={styles.candleFlameCore} />
-        </Animated.View>
-        <View style={styles.candleWick} />
-        <View style={styles.candleBody}>
-          <View style={styles.candleWaxDrip} />
-        </View>
-        <View style={styles.candleHolder} />
-      </View>
-      <View style={styles.chipRow}>
-        {(["low", "medium", "high"] as ConfidenceLevel[]).map((confidence) => (
-          <ChoiceChip
+    <View style={styles.candleChoices}>
+      {(["low", "medium", "high"] as ConfidenceLevel[]).map((confidence) => {
+        const active = value === confidence;
+        const label = confidence === "low" ? "Flicker" : confidence === "medium" ? "Steady" : "Blazing";
+        return (
+          <TouchableOpacity
             key={confidence}
-            active={value === confidence}
-            label={confidence === "low" ? "Flicker" : confidence === "medium" ? "Steady" : "Blazing"}
+            style={[styles.candleChoice, active && styles.candleChoiceActive]}
             onPress={() => onChange(confidence)}
-          />
-        ))}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`${label}, ${confidence} confidence`}
+          >
+            <CandleIllustration confidence={confidence} active={active} flameMotion={flameMotion} />
+            <Text style={[styles.candleChoiceLabel, active && styles.candleChoiceLabelActive]}>{label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+      <View pointerEvents="none" style={styles.candleTableEdge}>
+        <View style={styles.candleTableHighlight} />
       </View>
     </View>
   );
@@ -501,6 +586,7 @@ function CounterScreen({
   const ready = Boolean(predictedId && confidence && pitchCharm);
   return (
     <View style={styles.sceneWide}>
+      <View pointerEvents="none" style={styles.counterAmbientGlow} />
       <Text style={styles.sceneChapter}>THE COUNTER</Text>
       <Text style={styles.counterPrompt}>Which story will {customer.name.split(" ")[0]} carry into the night?</Text>
       <View style={styles.counterBooks}>
@@ -975,7 +1061,16 @@ const styles = StyleSheet.create({
   beginButtonText: { color: "#fff4d9", fontSize: 16, fontWeight: "900", letterSpacing: 0.8 },
   titleHint: { color: "#74697c", fontSize: 11, fontStyle: "italic", marginTop: 14 },
   scene: { width: "100%", maxWidth: 700, alignSelf: "center", paddingTop: 36, alignItems: "center" },
-  sceneWide: { width: "100%", maxWidth: 1040, alignSelf: "center", paddingTop: 30 },
+  sceneWide: { width: "100%", maxWidth: 1040, alignSelf: "center", paddingTop: 30, position: "relative" },
+  counterAmbientGlow: {
+    position: "absolute",
+    top: 38,
+    left: "15%",
+    right: "15%",
+    height: 420,
+    borderRadius: 210,
+    backgroundColor: "rgba(171, 103, 48, 0.045)",
+  },
   sceneChapter: { color: "#b98b51", fontSize: 11, letterSpacing: 2.4, fontWeight: "900", marginBottom: 22, textAlign: "center" },
   customerRow: { width: "100%", flexDirection: "row", alignItems: "center", marginBottom: 20 },
   portrait: { width: 112, height: 132, borderWidth: 2, borderRadius: 56, backgroundColor: "#241c29", overflow: "hidden", alignItems: "center", position: "relative" },
@@ -1031,44 +1126,98 @@ const styles = StyleSheet.create({
   counterBookTitle: { color: "#e9d7ba", fontSize: 13, fontWeight: "900", textAlign: "center", marginTop: 10, minHeight: 34 },
   counterPick: { color: "#796c77", fontSize: 9, fontWeight: "900", letterSpacing: 1.2, marginTop: 8 },
   counterPickActive: { color: "#e2ae66" },
-  counterOptions: { width: "100%", maxWidth: 780, alignSelf: "center", flexDirection: "row", flexWrap: "wrap", gap: 14 },
-  optionBlock: { flexGrow: 1, flexBasis: 330, backgroundColor: "#1a161e", borderWidth: 1, borderColor: "#40343f", padding: 16 },
-  optionHeading: { color: "#dec8a8", fontSize: 15, fontWeight: "900" },
-  optionHelp: { color: "#8e818d", fontSize: 12, marginTop: 4, marginBottom: 12 },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  choiceChip: { minHeight: 42, paddingHorizontal: 13, borderWidth: 1, borderColor: "#55444d", borderRadius: 3, alignItems: "center", justifyContent: "center", backgroundColor: "#241c25" },
-  choiceChipActive: { borderColor: "#d2a05f", backgroundColor: "#51372e" },
-  choiceChipText: { color: "#aa9ca7", fontSize: 12, fontWeight: "800" },
-  choiceChipTextActive: { color: "#f4d9ad" },
-  charmRow: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  charmChoice: { minWidth: 76, flexGrow: 1, minHeight: 104, padding: 9, borderWidth: 1, borderColor: "#55444d", borderRadius: 5, alignItems: "center", justifyContent: "center", backgroundColor: "#211a24" },
-  charmChoiceActive: { borderColor: "#d2a05f", backgroundColor: "#4b332d" },
-  charmMedallion: { width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: "#695463", backgroundColor: "#17131b", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 5, shadowOffset: { width: 0, height: 3 } },
-  charmMedallionActive: { borderColor: "#e2b773", backgroundColor: "#382824", shadowColor: "#e2a85c", shadowOpacity: 0.5, shadowRadius: 9 },
-  charmChoiceLabel: { color: "#aa9ca7", fontSize: 11, fontWeight: "900", letterSpacing: 0.7, marginTop: 7, textTransform: "uppercase" },
+  counterOptions: { width: "100%", maxWidth: 900, alignSelf: "center", flexDirection: "row", flexWrap: "wrap", gap: 14 },
+  optionBlock: {
+    flexGrow: 1,
+    flexBasis: 390,
+    backgroundColor: "#1c161f",
+    borderWidth: 1,
+    borderColor: "#554138",
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  optionHeading: { color: "#efd5aa", fontSize: 16, fontWeight: "900" },
+  optionHelp: { color: "#a5949d", fontSize: 12, lineHeight: 18, marginTop: 4, marginBottom: 12 },
+  charmRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  charmChoice: {
+    minWidth: 96,
+    flexBasis: 96,
+    flexGrow: 1,
+    minHeight: 136,
+    paddingHorizontal: 8,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: "#59464f",
+    borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#211922",
+  },
+  charmChoiceWide: { minWidth: "100%", flexBasis: "100%", minHeight: 120 },
+  charmChoiceActive: {
+    borderColor: "#d8a55f",
+    backgroundColor: "#38251f",
+    shadowColor: "#e7a957",
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+  },
+  charmArtwork: {
+    width: "100%",
+    maxWidth: 118,
+    height: 88,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(122, 92, 91, 0.32)",
+  },
+  charmArtworkActive: { borderBottomColor: "rgba(227, 171, 93, 0.58)" },
+  charmChoiceLabel: { color: "#b9a7af", fontSize: 10, lineHeight: 14, fontWeight: "900", letterSpacing: 0.55, marginTop: 8, textTransform: "uppercase", textAlign: "center" },
   charmChoiceLabelActive: { color: "#f4d9ad" },
-  charmGlyph: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
-  charmMoon: { width: 27, height: 27, borderRadius: 14 },
-  charmMoonCutout: { position: "absolute", width: 24, height: 24, borderRadius: 12, backgroundColor: "#17131b", left: 10, top: -3 },
-  charmWorld: { width: 31, height: 31, borderRadius: 16, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  charmWorldMeridian: { width: 14, height: 31, borderRadius: 8, borderWidth: 1 },
-  charmWorldHorizon: { position: "absolute", width: 29, height: 1 },
-  charmPaceLine: { height: 3, borderRadius: 2, marginVertical: 3, alignSelf: "flex-start" },
-  charmPaceLineLong: { width: 34 },
-  charmPaceLineMedium: { width: 25, marginLeft: 5 },
-  charmPaceLineShort: { width: 19, marginLeft: 12 },
-  charmSpark: { width: 24, height: 24, borderWidth: 2, transform: [{ rotate: "45deg" }] },
-  charmSparkSmall: { position: "absolute", width: 7, height: 7, right: 1, top: 2, transform: [{ rotate: "45deg" }] },
-  candleStage: { height: 134, alignItems: "center", justifyContent: "flex-end", marginBottom: 10, overflow: "visible" },
-  candleGlow: { position: "absolute", bottom: 55, width: 78, height: 78, borderRadius: 39, backgroundColor: "#f2a94b" },
-  candleFlame: { position: "absolute", bottom: 77, width: 24, height: 34, borderTopLeftRadius: 18, borderTopRightRadius: 4, borderBottomLeftRadius: 4, borderBottomRightRadius: 18, backgroundColor: "#f2a13b", zIndex: 3, alignItems: "center", justifyContent: "center" },
-  candleFlameBlazing: { backgroundColor: "#ffb52e" },
-  candleFlameCore: { width: 8, height: 16, borderRadius: 5, backgroundColor: "#fff3bd", opacity: 0.88 },
-  candleWick: { width: 2, height: 13, backgroundColor: "#5b4438", zIndex: 2 },
-  candleBody: { width: 48, height: 72, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, backgroundColor: "#d8bd8a", borderWidth: 1, borderColor: "#9f7e57", overflow: "hidden" },
-  candleWaxDrip: { position: "absolute", top: -5, left: 8, width: 13, height: 26, borderRadius: 7, backgroundColor: "#ead5aa" },
-  candleHolder: { width: 76, height: 8, borderRadius: 4, backgroundColor: "#6d4d3d", borderWidth: 1, borderColor: "#a27a55" },
-  charmDescription: { color: "#c3aa85", fontSize: 11, fontStyle: "italic", marginTop: 10 },
+  candleChoices: { minHeight: 166, flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: 8, position: "relative", paddingBottom: 4 },
+  candleChoice: {
+    flex: 1,
+    minWidth: 92,
+    maxWidth: 128,
+    minHeight: 158,
+    paddingHorizontal: 5,
+    paddingTop: 2,
+    paddingBottom: 9,
+    borderWidth: 1,
+    borderColor: "transparent",
+    borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    zIndex: 2,
+  },
+  candleChoiceActive: {
+    borderColor: "#c88a43",
+    backgroundColor: "rgba(104, 60, 32, 0.28)",
+    shadowColor: "#ef9f3b",
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  candleIllustration: { width: 80, height: 120 },
+  candleSvgWrap: { width: 80, height: 120 },
+  candleChoiceLabel: {
+    minWidth: 78,
+    color: "#b9a7af",
+    fontSize: 11,
+    fontWeight: "900",
+    textAlign: "center",
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: "#59464f",
+    borderRadius: 3,
+    backgroundColor: "#211922",
+  },
+  candleChoiceLabelActive: { color: "#ffe1aa", borderColor: "#d9a050", backgroundColor: "#5a3927" },
+  candleTableEdge: { position: "absolute", left: 2, right: 2, bottom: 0, height: 7, borderRadius: 4, backgroundColor: "#5b3827" },
+  candleTableHighlight: { height: 2, marginHorizontal: 3, backgroundColor: "#a06e47", opacity: 0.75 },
+  charmDescription: { color: "#d0b58e", fontSize: 11, lineHeight: 17, fontStyle: "italic", marginTop: 10 },
   resultGlow: { padding: 18, borderRadius: 72, backgroundColor: "rgba(211, 153, 81, 0.12)", marginBottom: 12 },
   resultName: { color: "#a7927d", fontSize: 12, letterSpacing: 1.2, fontWeight: "800", textTransform: "uppercase" },
   resultTitle: { color: "#f0d9b5", fontSize: 28, fontWeight: "900", textAlign: "center", marginTop: 4, marginBottom: 18 },

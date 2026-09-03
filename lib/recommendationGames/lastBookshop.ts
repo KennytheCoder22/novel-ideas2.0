@@ -469,10 +469,10 @@ export const LAST_BOOKSHOP_ENCOUNTERS: LastBookshopEncounter[] = [
 ];
 
 export const PITCH_CHARMS: { id: PitchCharm; label: string; description: string }[] = [
-  { id: "mood", label: "Velvet Ribbon", description: "The feeling is the key." },
-  { id: "world", label: "Brass Compass", description: "The world will draw them in." },
-  { id: "pace", label: "Silver Key", description: "The rhythm fits tonight." },
-  { id: "surprise", label: "Moth Wing", description: "The unexpected choice may win." },
+  { id: "mood", label: "Atmospheric", description: "A story for the feeling it leaves behind." },
+  { id: "world", label: "Transportive", description: "A world they will want to disappear into." },
+  { id: "pace", label: "Gripping", description: "A breathless story that refuses to let go." },
+  { id: "surprise", label: "Unexpected", description: "An unusual story whose mystery is the invitation." },
 ];
 
 export function createAnonymousPlayerId(now = Date.now(), random = Math.random()): string {

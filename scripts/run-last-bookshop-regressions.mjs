@@ -67,10 +67,15 @@ async function main() {
   assert(appSource.includes("Night 3 Complete") || appSource.includes("Night {completedNight} Complete"), "night progression missing");
   assert(appSource.includes('document.title = "The Last Bookshop"'), "browser title must preserve the game fiction");
   assert(appSource.includes("function PitchCharmChoice"), "pitch charms must render as visual choices");
-  assert(appSource.includes("function CharmGlyph"), "pitch charms must have distinct illustrated glyphs");
+  assert(appSource.includes("function CharmIllustration"), "pitch charms must have distinct illustrated artwork");
+  assert(appSource.includes("function CandleIllustration"), "confidence choices must have distinct illustrated candles");
   assert(appSource.includes("function CandleSelector"), "confidence must use a visible candle control");
   assert(appSource.includes("Animated.loop"), "the confidence candle flame must animate");
   assert(appSource.includes("isReduceMotionEnabled"), "candle animation must honor reduced-motion preferences");
+  assert(
+    game.PITCH_CHARMS.every((charm) => !["Velvet Ribbon", "Brass Compass", "Silver Key", "Moth Wing"].includes(charm.label)),
+    "pitch charms must be labeled by represented vibe rather than object name",
+  );
   assert(game.LAST_BOOKSHOP_CUSTOMERS.length === 5, "vertical slice must contain five recurring patrons");
   assert(game.LAST_BOOKSHOP_WORKS.length >= 18, "vertical slice inventory is too small");
   assert(game.LAST_BOOKSHOP_ENCOUNTERS.length === 9, "vertical slice must contain three encounters per night");
