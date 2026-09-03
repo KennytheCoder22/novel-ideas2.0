@@ -29,7 +29,7 @@ type EncryptedEvidenceEnvelope = {
 export interface MediaManiaEvidenceStore {
   read(pathname: string): Promise<unknown | null>;
   put(pathname: string, value: unknown): Promise<void>;
-  list(prefix: string): Promise<string[]>;
+  list(prefix: string, maxRecords?: number): Promise<string[]>;
 }
 
 const ACTIONS = new Set([
@@ -307,17 +307,40 @@ export function createMediaManiaBlobStore(): MediaManiaEvidenceStore {
       }
       throw firstError || new Error("media_mania_blob_write_failed");
     },
-    async list(prefix) {
+    async list(prefix, maxRecords = Number.MAX_SAFE_INTEGER) {
       const { list } = await import("@vercel/blob");
       const paths: string[] = [];
       let cursor: string | undefined;
       do {
-        const page = await list({ prefix, limit: 1000, cursor, token });
-        paths.push(...page.blobs.map((blob) => blob.pathname));
+        const page = await list({ prefix, limit: Math.min(1000, maxRecords - paths.length), cursor, token });
+        paths.push(...page.blobs.map((blob) => blob.pathname).slice(0, maxRecords - paths.length));
         cursor = page.hasMore ? page.cursor : undefined;
-      } while (cursor);
+      } while (cursor && paths.length < maxRecords);
       return paths;
     },
+  };
+}
+
+/** Owner analysis only: decrypts bounded records without exposing envelopes to the client. A single
+ * corrupt or undecryptable record is counted as malformed rather than failing the whole read, and
+ * hitting `maxRecords` is reported as `truncated` so callers never imply complete coverage. */
+export async function listMediaManiaEvidenceForAnalysis(
+  maxRecords: number,
+  store: MediaManiaEvidenceStore = createMediaManiaBlobStore(),
+): Promise<{ events: MediaManiaEvidenceEvent[]; malformedRecords: number; truncated: boolean }> {
+  const paths = await store.list(`${EVIDENCE_PREFIX}/`, maxRecords);
+  const events: MediaManiaEvidenceEvent[] = [];
+  let malformedRecords = 0;
+  for (const pathname of paths) {
+    const raw = await store.read(pathname).catch(() => null);
+    const event = raw ? decryptEvent(raw) : null;
+    if (!event) { malformedRecords += 1; continue; }
+    events.push(event);
+  }
+  return {
+    events: events.sort((left, right) => left.timestamp.localeCompare(right.timestamp) || left.eventId.localeCompare(right.eventId)),
+    malformedRecords,
+    truncated: maxRecords > 0 && paths.length >= maxRecords,
   };
 }
 

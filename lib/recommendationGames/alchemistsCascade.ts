@@ -533,6 +533,10 @@ const CATALYST_COPY = [
     },
   },
 ] as const;
+/** Read-only export of the catalyst copy library for illustrative, non-gameplay-affecting use
+ * (e.g. developer screenshot fixtures) so any preview surface can show real catalyst titles
+ * instead of fabricated placeholder names. */
+export const CASCADE_CATALYST_COPY = CATALYST_COPY;
 
 function hashText(input: string): number {
   let value = 2166136261;
