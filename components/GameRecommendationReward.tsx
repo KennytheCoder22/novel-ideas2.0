@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import type { GameRecommendationResponse } from "../lib/recommendationGames/gameRecommendationFeedback";
 import { computeGameRecommendationRewardLayout } from "../lib/recommendationGames/gameRecommendationRewardLayout";
+import { safeGameRecommendationReason } from "../lib/recommendationGames/gameRecommendationReason";
 
 export type GameRecommendationRewardCadence = "first" | "later";
 
@@ -119,7 +120,7 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
               <View style={{ flex: 1, gap: 6, minWidth: 0 }}>
                 <Text style={{ color: "#fbf7ff", fontSize: 18, lineHeight: 23, fontWeight: "800" }}>{book.title}</Text>
                 {book.author ? <Text style={{ color: "#c8bfe0", fontSize: 14, lineHeight: 19 }}>{book.author}</Text> : null}
-                <Text style={{ color: "#d9d2ee", fontSize: 14, lineHeight: 20 }}>{book.reason}</Text>
+                <Text style={{ color: "#d9d2ee", fontSize: 14, lineHeight: 20 }}>{safeGameRecommendationReason(book.reason)}</Text>
               </View>
             </View>
 

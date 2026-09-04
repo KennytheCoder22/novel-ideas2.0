@@ -24,10 +24,54 @@ test("media mania adapter maps positive/negative catalog item IDs to like/dislik
   });
   assert.equal(signals.length, 2);
   assert.equal(signals[0].action, "like");
-  assert.deepEqual(signals[0].tags, ["tone:cozy", "pace:slow"]);
+  assert.deepEqual(signals[0].tones, ["cozy"]);
+  assert.deepEqual(signals[0].tags, ["slow-paced"]);
   assert.equal(signals[1].action, "dislike");
-  assert.deepEqual(signals[1].tags, ["tone:tense"]);
+  assert.deepEqual(signals[1].tones, ["tense"]);
   assert.equal(MEDIA_MANIA_EVIDENCE_MODE, "cross_media");
+});
+
+test("media mania adapter routes prefixed production traits into supported recommender fields", () => {
+  const [signal] = adaptMediaManiaEvidenceToSignals({
+    newPositiveItemIds: ["picture-book"],
+    newNegativeItemIds: [],
+    catalog: [{
+      id: "picture-book",
+      source: "deck",
+      mediaSource: "books",
+      title: "The Very Hungry Caterpillar",
+      traitKeys: [
+        "genre:animals",
+        "tone:gentle",
+        "theme:imagination",
+        "format:picture_book",
+        "vibe:cozy",
+        "pacing:low",
+        "publisher:example",
+      ],
+    }],
+  });
+  assert.deepEqual(signal.genres, ["animals"]);
+  assert.deepEqual(signal.tones, ["gentle", "cozy"]);
+  assert.deepEqual(signal.themes, ["imagination"]);
+  assert.deepEqual(signal.tags, ["slow-paced"]);
+  assert.equal(signal.format, "book");
+});
+
+test("media mania adapter does not mislabel unsupported screen formats as books", () => {
+  const [signal] = adaptMediaManiaEvidenceToSignals({
+    newPositiveItemIds: [],
+    newNegativeItemIds: ["tv-series"],
+    catalog: [{
+      id: "tv-series",
+      source: "deck",
+      mediaSource: "tv",
+      title: "Sesame Street",
+      traitKeys: ["format:series", "genre:comedy"],
+    }],
+  });
+  assert.equal(signal.format, undefined);
+  assert.deepEqual(signal.genres, ["comedy"]);
 });
 
 test("media mania adapter silently skips ids that are not in the provided catalog slice", () => {
@@ -53,7 +97,12 @@ test("last bookshop adapter derives signals only from the selected works, predic
   });
   assert.equal(signals.length, 3);
   assert.ok(signals.every((signal) => signal.action === "like"));
-  assert.ok(signals.every((signal) => signal.tags?.includes("pitch:mood")));
+  assert.ok(signals.every((signal) => signal.format === "book"));
+  assert.deepEqual(signals[0].genres, ["mystery"]);
+  assert.deepEqual(signals[0].tones, ["cozy"]);
+  assert.deepEqual(signals[0].tags, []);
+  assert.deepEqual(signals[1].tones, ["tense", "atmospheric"]);
+  assert.deepEqual(signals[2].genres, ["adventure"]);
   const predicted = signals.find((signal) => signal.id === "work-2");
   assert.equal(predicted?.weight, 1.5);
   const notPredicted = signals.find((signal) => signal.id === "work-1");
@@ -67,8 +116,9 @@ test("unwritten map adapter derives one semantic signal from the selected option
     option: { id: "option-a", label: "Follow the music", tags: ["curious", "gentle"], tasteVector: { novelty: 2, structure: -1 } },
   });
   assert.equal(signal.action, "like");
-  assert.deepEqual(signal.tags, ["curious", "gentle"]);
-  assert.deepEqual(signal.themes?.sort(), ["novelty:high", "structure:low"].sort());
+  assert.deepEqual(signal.tags, []);
+  assert.deepEqual(signal.tones, ["gentle"]);
+  assert.deepEqual(signal.themes?.sort(), ["curious", "exploratory", "surprising"].sort());
   assert.equal(signal.id, "unwritten-map:scenario-1:option-a");
   assert.equal(UNWRITTEN_MAP_EVIDENCE_MODE, "semantic_only");
 });
@@ -81,8 +131,9 @@ test("alchemist's cascade adapter derives one semantic signal from an eligible b
     tasteVector: { intensity: 2, pace: 1, humor: 1 },
   });
   assert.equal(signal.action, "like");
-  assert.deepEqual(signal.tags, ["bold", "playful", "kinetic"]);
-  assert.deepEqual(signal.themes?.sort(), ["intensity:high", "pace:high", "humor:high"].sort());
+  assert.deepEqual(signal.tags, ["fast-paced"]);
+  assert.deepEqual(signal.genres, ["comedy"]);
+  assert.deepEqual(signal.tones?.sort(), ["adventurous", "humorous", "playful"].sort());
   assert.equal(signal.id, "alchemists-cascade:catalyst:hearth-song");
   assert.equal(ALCHEMISTS_CASCADE_EVIDENCE_MODE, "semantic_only");
 });
