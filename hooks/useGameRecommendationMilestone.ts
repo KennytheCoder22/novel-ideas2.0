@@ -13,7 +13,6 @@ import type { AgeBandV2, SwipeSignalV2 } from "../app/recommender-v2";
 import {
   clearPendingReward,
   isBookAlreadySeen,
-  mergeNativeEvidence,
   retractNativeEvidence,
   recordFamiliarBook,
   resetGameRecommendationSession,
@@ -21,8 +20,8 @@ import {
   type GameRecommendationIntegrationStateV1,
 } from "../lib/recommendationGames/gameRecommendationIntegrationState";
 import {
-  attemptGameRecommendationMilestone,
   GAME_RECOMMENDATION_EVIDENCE_SNAPSHOT_VERSION,
+  processGameRecommendationEvidence,
 } from "../lib/recommendationGames/gameRecommendationEngine";
 import type { MilestoneEvaluation } from "../lib/recommendationGames/gameRecommendationMilestones";
 import {
@@ -194,19 +193,11 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
   const processEvidence = useCallback(async (notification: EvidenceNotification) => {
     if (!stateRef.current) return;
     const { nativeEvidenceId, signals, evaluateMilestone } = notification;
-    let state = mergeNativeEvidence(stateRef.current, nativeEvidenceId, signals);
-    if (state.pendingReward) {
-      await persist(state);
-      return;
-    }
-    const milestone = evaluateMilestone(state.lastMilestoneEvidenceCount);
-    if (!milestone) {
-      await persist(state);
-      return;
-    }
-    const outcome = await attemptGameRecommendationMilestone({
-      state,
-      milestone,
+    const outcome = await processGameRecommendationEvidence({
+      state: stateRef.current,
+      nativeEvidenceId,
+      signals,
+      evaluateMilestone,
       evidenceMode: args.evidenceMode,
       ageBand: args.ageBand,
       enabledSources: gameRouteSourceFlagsToEnabledSources(args.sourceFlags),
@@ -214,8 +205,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
       library: { libraryId: args.libraryId, localCollectionOnly: args.localCollectionOnly },
       runRecommender: runRecommenderV2,
     });
-    state = outcome.state;
-    await persist(state);
+    await persist(outcome.state);
     if (outcome.status === "shown") {
       setPendingReward({
         cadence: outcome.cadence,

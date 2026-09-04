@@ -264,6 +264,28 @@ test("coverless and anime candidates are skipped so rewards always render as boo
   assert.equal(outcome.book.title, "Third Candidate");
 });
 
+test("production Open Library raw cover metadata resolves into reward cover art", async () => {
+  const outcome = await attemptGameRecommendationMilestone({
+    state: initialState(),
+    milestone: mediaManiaMilestone(6, 0),
+    evidenceMode: "cross_media",
+    ageBand: "teens",
+    enabledSources: { openLibrary: true },
+    runRecommender: fixedRunner([{
+      id: "openLibrary:/works/OL1W",
+      source: "openLibrary",
+      sourceId: "/works/OL1W",
+      title: "Production Result",
+      creators: ["A. Author"],
+      formats: ["book"],
+      raw: { cover_i: 6296761 },
+    }]),
+  });
+  assert.equal(outcome.status, "shown");
+  if (outcome.status !== "shown") return;
+  assert.equal(outcome.coverUrl, "https://covers.openlibrary.org/b/id/6296761-L.jpg");
+});
+
 test("already_read familiarity prevents that book from ever being shown again, without needing a repeat feedback response", async () => {
   let state = initialState();
   state = recordFamiliarBook(state, "atlas-of-small-stars:e-vesper");

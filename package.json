@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "test:swipe-controls": "node --test screens/swipe/webSwipeControls.test.mjs",
     "test:media-mania": "node --test features/recommendation-games/media-mania/mediaManiaCore.test.mjs && node --import tsx --test features/recommendation-games/media-mania/mediaManiaCatalog.test.ts features/recommendation-games/media-mania/mediaManiaEvidence.test.ts",
-    "test:media-mania:integration": "node scripts/run-media-mania-integration-regressions.mjs",
+    "test:media-mania:integration": "node scripts/run-media-mania-integration-regressions.mjs && node --import tsx --test features/recommendation-games/media-mania/mediaManiaRecommendationIntegration.test.ts",
     "test:game-playtest": "node scripts/run-game-playtest-regressions.mjs",
     "test:games-portal": "node scripts/run-games-portal-regressions.mjs",
     "capture:game-playtest": "node scripts/capture-game-playtest-screenshots.mjs",

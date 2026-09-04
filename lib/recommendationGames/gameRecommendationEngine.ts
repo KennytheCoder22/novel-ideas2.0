@@ -7,6 +7,7 @@ import type { AgeBandV2, CandidateFormatV2, SourceIdV2, SwipeSignalV2 } from "..
 import type { MilestoneEvaluation } from "./gameRecommendationMilestones";
 import {
   isMilestoneEligibleForAttempt,
+  mergeNativeEvidence,
   recordFailedAttempt,
   recordMilestoneSucceeded,
   recordShownBook,
@@ -32,7 +33,9 @@ export type GameRecommendationCandidateLike = {
   creators: readonly string[];
   coverUrl?: string | null;
   format?: CandidateFormatV2;
+  formats?: readonly CandidateFormatV2[];
   matchedSignals?: readonly string[];
+  raw?: unknown;
 };
 
 export type GameRecommendationRunResult = {
@@ -82,6 +85,38 @@ function bookIdentityFromCandidate(candidate: GameRecommendationCandidateLike, r
     author: candidate.creators[0] || "",
     rank,
   };
+}
+
+function stringField(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function objectField(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+/** Resolves the same production cover shapes used by the main recommendation UI. Open Library
+ * candidates commonly retain `cover_i` in `raw` without promoting it to top-level `coverUrl`. */
+export function gameRecommendationCoverUrl(candidate: GameRecommendationCandidateLike): string | null {
+  const raw = objectField(candidate.raw);
+  const imageLinks = objectField(raw.imageLinks);
+  const volumeInfoImageLinks = objectField(objectField(raw.volumeInfo).imageLinks);
+  const direct = [
+    candidate.coverUrl,
+    raw.imageUrl,
+    raw.coverImageUrl,
+    raw.coverUrl,
+    raw.cover_url,
+    imageLinks.thumbnail,
+    imageLinks.smallThumbnail,
+    volumeInfoImageLinks.thumbnail,
+    volumeInfoImageLinks.smallThumbnail,
+  ].map(stringField).find(Boolean);
+  if (direct) return direct.replace(/^http:\/\//i, "https://");
+  const coverId = String(raw.cover_i || raw.coverId || "").trim();
+  return coverId ? `https://covers.openlibrary.org/b/id/${encodeURIComponent(coverId)}-L.jpg` : null;
 }
 
 export function createGameRecommendationEvidenceSnapshot(
@@ -156,8 +191,10 @@ export async function attemptGameRecommendationMilestone(args: {
 
   const excluded = new Set([...state.shownBookIdentityIds, ...state.familiarBookIdentityIds]);
   const pickedIndex = result.items.findIndex((candidate) => {
-    const isBookFormat = !candidate.format || candidate.format !== "anime";
-    return isBookFormat && Boolean(candidate.coverUrl) && !excluded.has(canonicalBookIdentity(candidate));
+    const isBookFormat = candidate.format !== "anime" && !candidate.formats?.includes("anime");
+    return isBookFormat
+      && Boolean(gameRecommendationCoverUrl(candidate))
+      && !excluded.has(canonicalBookIdentity(candidate));
   });
   if (pickedIndex === -1) {
     const diagnostic = createGameRecommendationDiagnosticEvent({
@@ -174,6 +211,7 @@ export async function attemptGameRecommendationMilestone(args: {
   }
 
   const candidate = result.items[pickedIndex];
+  const coverUrl = gameRecommendationCoverUrl(candidate);
   const book = bookIdentityFromCandidate(candidate, pickedIndex + 1);
   const cadence: "first" | "later" = state.triggeredMilestoneIds.length === 0 ? "first" : "later";
   const shownAt = now();
@@ -190,7 +228,7 @@ export async function attemptGameRecommendationMilestone(args: {
       ageBand: args.ageBand,
       library: args.library || { libraryId: "default", localCollectionOnly: false },
       book,
-      coverUrl: candidate.coverUrl || "",
+      coverUrl: coverUrl || "",
       milestoneId: milestone.milestoneId,
       milestoneIndex: milestone.milestoneIndex,
       evidenceCount: milestone.evidenceCount,
@@ -204,7 +242,7 @@ export async function attemptGameRecommendationMilestone(args: {
     status: "shown",
     state: nextState,
     book,
-    coverUrl: candidate.coverUrl || null,
+    coverUrl,
     milestoneId: milestone.milestoneId,
     milestoneIndex: milestone.milestoneIndex,
     evidenceCount: milestone.evidenceCount,
@@ -214,4 +252,34 @@ export async function attemptGameRecommendationMilestone(args: {
     cadence,
     shownAt,
   };
+}
+
+/** Shared runtime seam used by the React hook and integration tests: merge one native gameplay
+ * event, evaluate its milestone against durable state, and invoke the production engine adapter. */
+export async function processGameRecommendationEvidence(args: {
+  state: GameRecommendationIntegrationStateV1;
+  nativeEvidenceId: string;
+  signals: readonly SwipeSignalV2[];
+  evaluateMilestone: (lastMilestoneEvidenceCount: number) => MilestoneEvaluation | null;
+  evidenceMode: GameRecommendationEvidenceMode;
+  ageBand: AgeBandV2;
+  enabledSources: Partial<Record<SourceIdV2, boolean>>;
+  library: { libraryId: string; localCollectionOnly: boolean };
+  localLibraryCurationTrusted?: boolean;
+  runRecommender: RunGameRecommender;
+  now?: () => string;
+}): Promise<GameRecommendationEngineOutcome> {
+  const state = mergeNativeEvidence(args.state, args.nativeEvidenceId, args.signals);
+  if (state.pendingReward) return { status: "not_eligible", state };
+  return attemptGameRecommendationMilestone({
+    state,
+    milestone: args.evaluateMilestone(state.lastMilestoneEvidenceCount),
+    evidenceMode: args.evidenceMode,
+    ageBand: args.ageBand,
+    enabledSources: args.enabledSources,
+    library: args.library,
+    localLibraryCurationTrusted: args.localLibraryCurationTrusted,
+    runRecommender: args.runRecommender,
+    now: args.now,
+  });
 }
