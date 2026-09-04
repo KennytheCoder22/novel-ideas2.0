@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
@@ -51,6 +51,11 @@ import {
   queueRecommendationGameEvent,
   type AsyncKeyValueStorage,
 } from "../../lib/recommendationGames/evidenceClient";
+import { GameRecommendationReward } from "../../components/GameRecommendationReward";
+import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
+import { adaptLastBookshopEncounterToSignals, LAST_BOOKSHOP_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
+import { lastBookshopMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
+import { parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 
 type GamePhase = "title" | "arrival" | "shelves" | "counter" | "result" | "night_complete" | "ending";
 
@@ -60,6 +65,7 @@ type RoundResult = {
   reward: { reputation: number; coins: number };
   predictedWorkId: string;
   nextProgress: LastBookshopProgressV1;
+  evidenceEventId: string;
 };
 
 const webStorage: AsyncKeyValueStorage = {
@@ -756,6 +762,8 @@ function EndingScreen({ progress, onRestart }: { progress: LastBookshopProgressV
 }
 
 export default function LastBookshopRoute() {
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+  const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const [progress, setProgress] = useState<LastBookshopProgressV1 | null>(null);
   const [phase, setPhase] = useState<GamePhase>("title");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -767,6 +775,17 @@ export default function LastBookshopRoute() {
   const [storageError, setStorageError] = useState("");
   const gameSessionIdRef = useRef(`lbs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`);
   const encounterStartedAtRef = useRef(Date.now());
+  const gameRecommendationMilestone = useGameRecommendationMilestone({
+    game: "the_last_bookshop",
+    gameLabel: "The Last Bookshop",
+    playerId: routeConfig.playerId,
+    gameSessionId: gameSessionIdRef.current,
+    libraryId: routeConfig.libraryId,
+    ageBand: routeConfig.ageBand,
+    sourceFlags: routeConfig.sourceFlags,
+    localCollectionOnly: routeConfig.localCollectionOnly,
+    evidenceMode: LAST_BOOKSHOP_EVIDENCE_MODE,
+  });
 
   const persistProgress = useCallback(async (next: LastBookshopProgressV1) => {
     await gameStorage.setItem(LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(next));
@@ -852,13 +871,24 @@ export default function LastBookshopRoute() {
       return;
     }
     setStorageError("");
-    setRoundResult({ encounter, outcome, reward, predictedWorkId: predictedId, nextProgress });
+    setRoundResult({ encounter, outcome, reward, predictedWorkId: predictedId, nextProgress, evidenceEventId: event.eventId });
     setProgress(nextProgress);
     setPhase("result");
     void flushRecommendationGameEvents(gameStorage, sendRecommendationGameEvent).catch(() => {
       setStorageError("This visit is saved locally, but its sealed letter is still waiting to be sent.");
     });
-  }, [confidence, encounter, persistProgress, pitchCharm, predictedId, progress, selectedIds]);
+    const signals = adaptLastBookshopEncounterToSignals({
+      selectedWorkIds: selectedIds,
+      predictedWorkId: predictedId,
+      pitchCharm,
+      works: selectedIds.map((workId) => getWork(workId)),
+    });
+    void gameRecommendationMilestone.notifyEvidence(
+      event.eventId,
+      signals,
+      () => null,
+    );
+  }, [confidence, encounter, gameRecommendationMilestone, persistProgress, pitchCharm, predictedId, progress, selectedIds]);
 
   const continueAfterResult = useCallback(() => {
     if (!roundResult) return;
@@ -870,13 +900,18 @@ export default function LastBookshopRoute() {
     setConfidence(null);
     setPitchCharm(null);
     setRoundResult(null);
-    if (next.night > 3) setPhase("ending");
-    else if (next.night !== previousNight) setPhase("night_complete");
-    else {
+    if (next.night > 3 || next.night !== previousNight) {
+      setPhase(next.night > 3 ? "ending" : "night_complete");
+      void gameRecommendationMilestone.notifyEvidence(
+        roundResult.evidenceEventId,
+        [],
+        (lastMilestoneEvidenceCount) => lastBookshopMilestone(next.completedEncounterIds.length, lastMilestoneEvidenceCount),
+      );
+    } else {
       setPhase("arrival");
       encounterStartedAtRef.current = Date.now();
     }
-  }, [roundResult]);
+  }, [gameRecommendationMilestone, roundResult]);
 
   const continueAfterNight = useCallback(() => {
     setPhase("arrival");
@@ -892,6 +927,9 @@ export default function LastBookshopRoute() {
       setStorageError("The ledger could not begin a new story. Check device storage and try again.");
       return;
     }
+    const nextGameSessionId = `lbs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+    gameSessionIdRef.current = nextGameSessionId;
+    await gameRecommendationMilestone.resetSession(nextGameSessionId);
     setStorageError("");
     setProgress(next);
     setLoadedExistingProgress(false);
@@ -902,7 +940,7 @@ export default function LastBookshopRoute() {
     setRoundResult(null);
     setPhase("arrival");
     encounterStartedAtRef.current = Date.now();
-  }, [persistProgress, progress]);
+  }, [gameRecommendationMilestone, persistProgress, progress]);
 
   if (!progress) {
     return (
@@ -976,6 +1014,23 @@ export default function LastBookshopRoute() {
           <NightCompleteScreen completedNight={progress.night - 1} progress={progress} onContinue={continueAfterNight} />
         ) : null}
       </ScrollView>
+      {gameRecommendationMilestone.pendingReward ? (
+        <GameRecommendationReward
+          visible
+          cadence={gameRecommendationMilestone.pendingReward.cadence}
+          gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
+          book={{
+            title: gameRecommendationMilestone.pendingReward.book.title,
+            author: gameRecommendationMilestone.pendingReward.book.author,
+            coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+            reason: gameRecommendationMilestone.pendingReward.reason,
+          }}
+          onRespond={(response) => gameRecommendationMilestone.respond(
+            response,
+            phase === "night_complete" ? continueAfterNight : () => undefined,
+          )}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

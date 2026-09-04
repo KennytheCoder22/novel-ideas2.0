@@ -28,6 +28,7 @@ import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
 import { MyListModal } from "../../components/MyListModal";
+import { buildGameRouteSourceParams, type GameRouteSourceFlags } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 import {
   applyWebHighlightColor,
   autoChooseFontColor,
@@ -2188,12 +2189,22 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
   function openRecommendationGames() {
     closeHeaderMenu();
+    const activeSourceEnabled = deckSourceEnabled[deck] || sourceEnabled;
+    const gameRouteSourceFlags: GameRouteSourceFlags = {
+      googleBooks: activeSourceEnabled.googleBooks,
+      openLibrary: activeSourceEnabled.openLibrary,
+      localLibrary: activeSourceEnabled.localLibrary && localLibrarySupported,
+      kitsu: activeSourceEnabled.kitsu,
+      comicVine: activeSourceEnabled.gcd,
+      nyt: activeSourceEnabled.nyt,
+    };
     router.push({
       pathname: "/games",
       params: {
         playerId: patronId,
         libraryId: props.libraryId || "default",
         ageBand: deck === "k2" ? "kids" : deck === "36" ? "preteens" : deck === "adult" ? "adults" : "teens",
+        ...buildGameRouteSourceParams(gameRouteSourceFlags),
       },
     } as any);
   }

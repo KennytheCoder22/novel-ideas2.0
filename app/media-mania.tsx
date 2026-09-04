@@ -34,6 +34,12 @@ import {
 } from "../features/recommendation-games/media-mania/mediaManiaPersistence";
 import { initialMediaManiaArtworkCandidates, resolveMediaManiaArtwork, type MediaManiaArtworkCandidate } from "../features/recommendation-games/media-mania/mediaManiaArtwork";
 import { getSwipeCardFallbackImage } from "../assets/swipeCardFallback";
+import { GameRecommendationReward } from "../components/GameRecommendationReward";
+import { useGameRecommendationMilestone } from "../hooks/useGameRecommendationMilestone";
+import { adaptMediaManiaEvidenceToSignals, MEDIA_MANIA_EVIDENCE_MODE } from "../lib/recommendationGames/gameRecommendationEvidenceAdapters";
+import { mediaManiaMilestone } from "../lib/recommendationGames/gameRecommendationMilestones";
+import { parseGameRouteConfig, type GameRouteParams } from "../lib/recommendationGames/gameRecommendationRouteConfig";
+import type { AgeBandV2 } from "../app/recommender-v2";
 
 const SOURCE_META: Record<MediaManiaSource, { icon: string; color: string }> = {
   books: { icon: "BK", color: "#8b5cf6" }, movies: { icon: "MV", color: "#ef4444" },
@@ -54,6 +60,7 @@ const durablePersistenceNotice = (error: string | null) =>
   error === "durable_endpoint_unavailable"
     ? "Gameplay is saved on this device."
     : "Gameplay is saved on this device; durable sync will retry.";
+const mediaManiaAgeBandToV2 = (band: MediaManiaAgeBand): AgeBandV2 => (band === "adults" ? "adult" : band);
 
 function MediaArtwork({ item }: { item: MediaManiaCatalogItem }) {
   const meta = SOURCE_META[item.mediaSource];
@@ -114,6 +121,7 @@ export default function MediaManiaScreen() {
   const playerId = String(params.playerId || "media-mania-player");
   const libraryId = String(params.libraryId || "default");
   const initialAgeBand = normalizeAgeBand(params.ageBand);
+  const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const storageInstanceId = useMemo(
     () => createMediaManiaStorageInstanceId(playerId, libraryId),
     [libraryId, playerId],
@@ -133,6 +141,17 @@ export default function MediaManiaScreen() {
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const commitInFlight = useRef(false);
   const roundTransitionOpacity = useRef(new Animated.Value(1)).current;
+  const gameRecommendationMilestone = useGameRecommendationMilestone({
+    game: "media_mania",
+    gameLabel: "Media Mania",
+    playerId,
+    gameSessionId: state?.sessionId || "",
+    libraryId,
+    ageBand: mediaManiaAgeBandToV2(state?.ageBand || initialAgeBand),
+    sourceFlags: routeConfig.sourceFlags,
+    localCollectionOnly: routeConfig.localCollectionOnly,
+    evidenceMode: MEDIA_MANIA_EVIDENCE_MODE,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -226,13 +245,28 @@ export default function MediaManiaScreen() {
     }
   }
 
-  function choose(candidateId: string) {
+  async function choose(candidateId: string) {
     if (!state || !state.currentRound || locked || commitInFlight.current) return;
     setSelectedCandidateId(candidateId);
+    const round = state.currentRound;
     const result = chooseMediaManiaCandidate(state, candidateId, MEDIA_MANIA_CATALOG);
     const delta = Number(result.events[0]?.scoreDelta || 0);
-    const message = state.currentRound.roundType === "DISLIKE" ? `Skip - not for me  +${delta}` : `My pick - fits me  +${delta}`;
-    void commit(result, 360, message);
+    const message = round.roundType === "DISLIKE" ? `Skip - not for me  +${delta}` : `My pick - fits me  +${delta}`;
+    if (!await commit(result, 360, message)) return;
+    const roundCompleted = result.events.find((event) => event.action === "round_completed");
+    if (roundCompleted?.eventId) {
+      const isDislike = round.roundType === "DISLIKE";
+      const signals = adaptMediaManiaEvidenceToSignals({
+        newPositiveItemIds: isDislike ? [] : [candidateId],
+        newNegativeItemIds: isDislike ? [candidateId] : [],
+        catalog: MEDIA_MANIA_CATALOG,
+      });
+      await gameRecommendationMilestone.notifyEvidence(
+        String(roundCompleted.eventId),
+        signals,
+        (lastMilestoneEvidenceCount) => mediaManiaMilestone(result.state.completedRoundCount, lastMilestoneEvidenceCount),
+      );
+    }
   }
 
   function unknownCandidate(candidateId: string) {
@@ -240,9 +274,12 @@ export default function MediaManiaScreen() {
     void commit(markMediaManiaCandidateUnknown(state, candidateId, MEDIA_MANIA_CATALOG));
   }
 
-  function undoLastChoice() {
+  async function undoLastChoice() {
     if (!state?.lastChoiceUndo || locked || commitInFlight.current) return;
-    void commit(undoLastMediaManiaChoice(state));
+    const nativeEvidenceId = state.lastChoiceUndo.completedEventId;
+    if (await commit(undoLastMediaManiaChoice(state))) {
+      await gameRecommendationMilestone.retractEvidence(nativeEvidenceId);
+    }
   }
 
   function unknownBasis(basisId: string) {
@@ -250,9 +287,11 @@ export default function MediaManiaScreen() {
     void commit(markMediaManiaBasisUnknown(state, basisId, MEDIA_MANIA_CATALOG));
   }
 
-  function selectAgeBand(ageBand: MediaManiaAgeBand) {
+  async function selectAgeBand(ageBand: MediaManiaAgeBand) {
     if (!state || locked || commitInFlight.current || state.ageBand === ageBand) return;
-    void commit(changeMediaManiaAgeBand(state, ageBand, MEDIA_MANIA_CATALOG));
+    if (await commit(changeMediaManiaAgeBand(state, ageBand, MEDIA_MANIA_CATALOG))) {
+      await gameRecommendationMilestone.resetSession(state.sessionId);
+    }
   }
 
   async function exitGame() {
@@ -423,7 +462,7 @@ export default function MediaManiaScreen() {
                     accessibilityState={{ selected }}
                     disabled={locked || showDislikeHint}
                     activeOpacity={0.68}
-                    onPress={() => choose(candidate.id)}
+                    onPress={() => void choose(candidate.id)}
                     style={[
                       styles.candidateCard,
                       dislikeRound ? styles.candidateCardDislike : styles.candidateCardLike,
@@ -458,6 +497,20 @@ export default function MediaManiaScreen() {
         </View>
       </Modal>
       {flash ? <View pointerEvents="none" style={[styles.flash, dislikeRound ? styles.flashDislike : styles.flashLike]}><Text style={[styles.flashText, dislikeRound && styles.flashTextDislike]}>{flash}</Text></View> : null}
+      {gameRecommendationMilestone.pendingReward ? (
+        <GameRecommendationReward
+          visible
+          cadence={gameRecommendationMilestone.pendingReward.cadence}
+          gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
+          book={{
+            title: gameRecommendationMilestone.pendingReward.book.title,
+            author: gameRecommendationMilestone.pendingReward.book.author,
+            coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+            reason: gameRecommendationMilestone.pendingReward.reason,
+          }}
+          onRespond={(response) => gameRecommendationMilestone.respond(response, () => undefined)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

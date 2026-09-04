@@ -53,8 +53,9 @@ async function main() {
   assert(menuSource.includes('pathname: "/games"'), "game menu must open the game chooser");
   assert(hubSource.includes("Media Mania"), "game chooser must preserve Media Mania");
   assert(hubSource.includes("The Last Bookshop"), "game chooser must include The Last Bookshop");
-  assert(hubSource.includes('pathname: "/media-mania"'), "Media Mania route missing from game chooser");
-  assert(hubSource.includes('router.push("/games/last-bookshop"'), "Last Bookshop route missing from game chooser");
+  assert(hubSource.includes('route: "/media-mania"'), "Media Mania route missing from game chooser");
+  assert(hubSource.includes('route: "/games/last-bookshop"'), "Last Bookshop route missing from game chooser");
+  assert(hubSource.includes("router.push({ pathname: game.route, params: forwardedParams }"), "game chooser must forward shared context");
   assert(menuSource.includes("Librarian Review"), "Librarian Review must remain separate");
   assert(layoutSource.includes('name="games/last-bookshop"'), "game route is not registered");
   assert(vercel.rewrites.some((rewrite) => rewrite.source === "/games/:path*" && rewrite.destination === "/"), "game SPA rewrite missing");

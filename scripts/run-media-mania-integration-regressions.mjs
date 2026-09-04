@@ -20,7 +20,8 @@ const gameSources = [screen, core, catalog, artwork, persistence, evidenceStorag
 assert.match(menu, />Librarian Review<\/Text>/, "Librarian Review menu entry must remain");
 assert.match(menu, />Games<\/Text>/, "Games menu entry missing");
 assert.match(menu, /pathname: "\/games"/, "menu must open the game chooser");
-assert.match(gameHub, /pathname: "\/media-mania"/, "game chooser must open Media Mania");
+assert.match(gameHub, /route: "\/media-mania"/, "game chooser must configure Media Mania");
+assert.match(gameHub, /router\.push\(\{ pathname: game\.route, params: forwardedParams \}/, "game chooser must open configured routes with shared context");
 assert.match(gameHub, /The Last Bookshop/, "game chooser must preserve The Last Bookshop");
 assert.match(layout, /name="media-mania"/, "Media Mania route must be registered");
 assert.match(screen, /Let's get ready to play Media Mania!/, "starting invitation missing");
