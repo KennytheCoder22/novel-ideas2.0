@@ -22,6 +22,7 @@ import type {
   GameRecommendationEvidenceMode,
   GameRecommendationEvidenceSnapshot,
 } from "./gameRecommendationFeedback";
+import { gameRecommendationDescription } from "./gameRecommendationDescription";
 
 export const GAME_RECOMMENDATION_EVIDENCE_SNAPSHOT_VERSION = "v1";
 
@@ -32,6 +33,8 @@ export type GameRecommendationCandidateLike = {
   title: string;
   creators: readonly string[];
   coverUrl?: string | null;
+  description?: string | null;
+  displayDescription?: string | null;
   format?: CandidateFormatV2;
   formats?: readonly CandidateFormatV2[];
   matchedSignals?: readonly string[];
@@ -58,6 +61,7 @@ export type GameRecommendationEngineOutcome =
       book: GameRecommendationBookIdentity;
       // Presentation-only: never part of the durable `game_recommendation_feedback_v1` contract.
       coverUrl: string | null;
+      description: string | null;
       milestoneId: string;
       milestoneIndex: number;
       evidenceCount: number;
@@ -212,6 +216,7 @@ export async function attemptGameRecommendationMilestone(args: {
 
   const candidate = result.items[pickedIndex];
   const coverUrl = gameRecommendationCoverUrl(candidate);
+  const description = gameRecommendationDescription(candidate);
   const book = bookIdentityFromCandidate(candidate, pickedIndex + 1);
   const cadence: "first" | "later" = state.triggeredMilestoneIds.length === 0 ? "first" : "later";
   const shownAt = now();
@@ -229,6 +234,8 @@ export async function attemptGameRecommendationMilestone(args: {
       library: args.library || { libraryId: "default", localCollectionOnly: false },
       book,
       coverUrl: coverUrl || "",
+      description: description?.text,
+      descriptionProvenance: description?.provenance,
       milestoneId: milestone.milestoneId,
       milestoneIndex: milestone.milestoneIndex,
       evidenceCount: milestone.evidenceCount,
@@ -243,6 +250,7 @@ export async function attemptGameRecommendationMilestone(args: {
     state: nextState,
     book,
     coverUrl,
+    description: description?.text || null,
     milestoneId: milestone.milestoneId,
     milestoneIndex: milestone.milestoneIndex,
     evidenceCount: milestone.evidenceCount,

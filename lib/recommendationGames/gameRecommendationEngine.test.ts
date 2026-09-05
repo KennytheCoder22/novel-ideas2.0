@@ -28,7 +28,16 @@ import {
 } from "./gameRecommendationFeedback";
 
 const CANDIDATES: GameRecommendationCandidateLike[] = [
-  { id: "googleBooks:1", source: "googleBooks", sourceId: "1", title: "Atlas of Small Stars", creators: ["E. Vesper"], coverUrl: "https://example.test/1.jpg", matchedSignals: ["cozy mystery"] },
+  {
+    id: "googleBooks:1",
+    source: "googleBooks",
+    sourceId: "1",
+    title: "Atlas of Small Stars",
+    creators: ["E. Vesper"],
+    coverUrl: "https://example.test/1.jpg",
+    displayDescription: "<p>A young cartographer discovers an impossible constellation &amp; follows it home.</p>",
+    matchedSignals: ["cozy mystery"],
+  },
   { id: "googleBooks:2", source: "googleBooks", sourceId: "2", title: "Neon Skyline", creators: ["R. Cole"], coverUrl: "https://example.test/2.jpg" },
   { id: "googleBooks:3", source: "googleBooks", sourceId: "3", title: "Third Candidate", creators: ["A. Author"], coverUrl: "https://example.test/3.jpg" },
 ];
@@ -78,14 +87,21 @@ test("a full deterministic flow: play -> milestone -> reward -> response -> cont
   if (outcome.status !== "shown") return;
   assert.equal(outcome.book.title, "Atlas of Small Stars");
   assert.equal(outcome.book.rank, 1);
+  assert.equal(outcome.description, "A young cartographer discovers an impossible constellation & follows it home.");
   assert.equal(outcome.milestoneId, "media_mania:1");
   assert.equal(outcome.cadence, "first");
   assert.equal(outcome.state.pendingReward?.book.id, outcome.book.id);
+  assert.equal(outcome.state.pendingReward?.description, outcome.description);
+  assert.deepEqual(outcome.state.pendingReward?.descriptionProvenance, {
+    source: "googleBooks",
+    field: "displayDescription",
+  });
   const restoredWhileAwaitingResponse = restoreGameRecommendationIntegrationState(
     JSON.stringify(outcome.state),
     { game: "media_mania", anonymousPlayerId: "patron-abc", gameSessionId: "mm-session-2" },
   );
   assert.equal(restoredWhileAwaitingResponse.pendingReward?.book.id, outcome.book.id);
+  assert.equal(restoredWhileAwaitingResponse.pendingReward?.description, outcome.description);
   assert.equal(restoredWhileAwaitingResponse.pendingReward?.gameSessionId, "mm-session-1");
   state = outcome.state;
 

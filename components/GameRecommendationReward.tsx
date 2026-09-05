@@ -1,7 +1,7 @@
 // Shared reward component for the game-recommendation-milestone loop. Every recommendation game
 // (Media Mania, The Last Bookshop, The Unwritten Map, The Alchemist's Cascade) renders the same
 // component so the reward moment always looks and behaves identically: a real production book
-// cover/title/author/reason, no star ratings, four prominent accessible response buttons, and
+// cover/title/author/description/reason, no star ratings, four prominent accessible response buttons, and
 // subtle foreshadowing of a future recommendation without a progress bar.
 import {
   Image,
@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import type { GameRecommendationResponse } from "../lib/recommendationGames/gameRecommendationFeedback";
 import { computeGameRecommendationRewardLayout } from "../lib/recommendationGames/gameRecommendationRewardLayout";
-import { safeGameRecommendationReason } from "../lib/recommendationGames/gameRecommendationReason";
+import { gameRecommendationRewardContent } from "../lib/recommendationGames/gameRecommendationRewardContent";
 
 export type GameRecommendationRewardCadence = "first" | "later";
 
@@ -23,6 +23,7 @@ export type GameRecommendationRewardBook = {
   title: string;
   author: string;
   coverUrl?: string | null;
+  description?: string | null;
   reason: string;
 };
 
@@ -52,6 +53,7 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
 
   const eyebrow = cadence === "first" ? "Taste unlocked!" : "Your taste is taking shape.";
   const headline = cadence === "first" ? "Here's our first guess." : "We know you better now. Try this.";
+  const content = gameRecommendationRewardContent(book);
 
   function handleRespond(event: GestureResponderEvent | undefined, response: GameRecommendationResponse) {
     event?.preventDefault?.();
@@ -71,7 +73,8 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
         testID="game-recommendation-reward-backdrop"
       >
         <ScrollView
-          contentContainerStyle={{ width: "100%", maxWidth: 560 }}
+          style={{ width: "100%", maxWidth: 560, maxHeight: "94%" }}
+          contentContainerStyle={{ width: "100%" }}
           keyboardShouldPersistTaps="handled"
         >
           <View
@@ -120,7 +123,22 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
               <View style={{ flex: 1, gap: 6, minWidth: 0 }}>
                 <Text style={{ color: "#fbf7ff", fontSize: 18, lineHeight: 23, fontWeight: "800" }}>{book.title}</Text>
                 {book.author ? <Text style={{ color: "#c8bfe0", fontSize: 14, lineHeight: 19 }}>{book.author}</Text> : null}
-                <Text style={{ color: "#d9d2ee", fontSize: 14, lineHeight: 20 }}>{safeGameRecommendationReason(book.reason)}</Text>
+                {content.description ? (
+                  <View style={{ gap: 3, marginTop: 6 }}>
+                    <Text style={{ color: "#a99fc5", fontSize: 11, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                      {content.description.label}
+                    </Text>
+                    <Text testID="game-recommendation-book-description" style={{ color: "#e9e3f5", fontSize: 14, lineHeight: 20 }}>
+                      {content.description.text}
+                    </Text>
+                  </View>
+                ) : null}
+                <View style={{ gap: 3, marginTop: 6 }}>
+                  <Text style={{ color: "#a99fc5", fontSize: 11, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                    {content.reason.label}
+                  </Text>
+                  <Text style={{ color: "#d9d2ee", fontSize: 14, lineHeight: 20 }}>{content.reason.text}</Text>
+                </View>
               </View>
             </View>
 

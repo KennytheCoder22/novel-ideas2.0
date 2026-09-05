@@ -1023,6 +1023,7 @@ export default function LastBookshopRoute() {
             title: gameRecommendationMilestone.pendingReward.book.title,
             author: gameRecommendationMilestone.pendingReward.book.author,
             coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+            description: gameRecommendationMilestone.pendingReward.description,
             reason: gameRecommendationMilestone.pendingReward.reason,
           }}
           onRespond={(response) => gameRecommendationMilestone.respond(

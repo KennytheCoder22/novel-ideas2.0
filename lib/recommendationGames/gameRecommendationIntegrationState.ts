@@ -14,6 +14,10 @@ import {
   type GameRecommendationEvidenceSnapshot,
   type RecommendationGameId,
 } from "./gameRecommendationFeedback";
+import {
+  isGameRecommendationDescriptionProvenance,
+  type GameRecommendationDescriptionProvenance,
+} from "./gameRecommendationDescription";
 
 export const GAME_RECOMMENDATION_INTEGRATION_STATE_SCHEMA = "game_recommendation_integration_state_v1" as const;
 
@@ -24,6 +28,8 @@ export type PersistedGameRecommendationReward = {
   library: { libraryId: string; localCollectionOnly: boolean };
   book: GameRecommendationBookIdentity;
   coverUrl: string;
+  description?: string;
+  descriptionProvenance?: GameRecommendationDescriptionProvenance;
   milestoneId: string;
   milestoneIndex: number;
   evidenceCount: number;
@@ -213,6 +219,9 @@ function isPendingReward(value: unknown): value is PersistedGameRecommendationRe
       && typeof reward.library.localCollectionOnly === "boolean")
     && Boolean(reward.book && typeof reward.book === "object")
     && typeof reward.coverUrl === "string"
+    && (reward.description === undefined || typeof reward.description === "string")
+    && (reward.descriptionProvenance === undefined
+      || isGameRecommendationDescriptionProvenance(reward.descriptionProvenance))
     && typeof reward.milestoneId === "string"
     && Number.isInteger(reward.milestoneIndex) && Number(reward.milestoneIndex) > 0
     && Number.isInteger(reward.evidenceCount) && Number(reward.evidenceCount) >= 0

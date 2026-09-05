@@ -126,6 +126,7 @@ export type GameRecommendationRewardPayload = {
   gameLabel: string;
   book: GameRecommendationBookIdentity;
   coverUrl: string | null;
+  description: string | null;
   reason: string;
   milestoneId: string;
   milestoneIndex: number;
@@ -301,6 +302,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
           ...restoredReward,
           gameLabel: args.gameLabel,
           coverUrl: restoredReward.coverUrl,
+          description: restoredReward.description || null,
           reason: gameRecommendationReasonFromMatchedSignals(restoredReward.matchedSignals),
         });
       }
@@ -418,6 +420,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
           gameLabel: args.gameLabel,
           book: outcome.book,
           coverUrl: outcome.coverUrl,
+          description: outcome.description,
           reason: gameRecommendationReasonFromMatchedSignals(outcome.matchedSignals),
           milestoneId: outcome.milestoneId,
           milestoneIndex: outcome.milestoneIndex,

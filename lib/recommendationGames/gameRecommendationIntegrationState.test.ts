@@ -116,6 +116,54 @@ test("restoring persisted state round-trips accumulated history and rehydrates t
   assert.equal(restored.adaptedSignals.length, 1);
 });
 
+test("persisted pending rewards restore with or without optional description metadata", () => {
+  const pendingReward = {
+    cadence: "first" as const,
+    gameSessionId: "mm-session-1",
+    ageBand: "teens" as const,
+    library: { libraryId: "default", localCollectionOnly: false },
+    book: {
+      id: "atlas:e-vesper",
+      source: "googleBooks",
+      sourceId: "1",
+      title: "Atlas",
+      author: "E. Vesper",
+      rank: 1,
+    },
+    coverUrl: "https://example.test/atlas.jpg",
+    description: "A real source-provided premise.",
+    descriptionProvenance: { source: "googleBooks", field: "displayDescription" as const },
+    milestoneId: "media_mania:1",
+    milestoneIndex: 1,
+    evidenceCount: 6,
+    evidenceMode: "cross_media" as const,
+    evidenceSnapshot: {
+      signalCount: 6,
+      positiveSignalCount: 3,
+      negativeSignalCount: 3,
+      sources: ["media_mania"],
+      semanticTags: ["imaginative"],
+    },
+    matchedSignals: ["imaginative"],
+    shownAt: "2026-01-01T00:00:00.000Z",
+  };
+  const withDescription = { ...initial(), pendingReward };
+  const restoredWithDescription = restoreGameRecommendationIntegrationState(
+    JSON.stringify(withDescription),
+    { game: "media_mania", anonymousPlayerId: "patron-abc", gameSessionId: "mm-session-2" },
+  );
+  assert.equal(restoredWithDescription.pendingReward?.description, pendingReward.description);
+  assert.deepEqual(restoredWithDescription.pendingReward?.descriptionProvenance, pendingReward.descriptionProvenance);
+
+  const { description: _description, descriptionProvenance: _provenance, ...legacyReward } = pendingReward;
+  const restoredWithoutDescription = restoreGameRecommendationIntegrationState(
+    JSON.stringify({ ...initial(), pendingReward: legacyReward }),
+    { game: "media_mania", anonymousPlayerId: "patron-abc", gameSessionId: "mm-session-2" },
+  );
+  assert.ok(restoredWithoutDescription.pendingReward);
+  assert.equal(restoredWithoutDescription.pendingReward?.description, undefined);
+});
+
 test("restoring corrupt, mismatched, or missing persisted state falls back to a fresh initial state", () => {
   const expected = { game: "media_mania" as const, anonymousPlayerId: "patron-abc", gameSessionId: "mm-session-2" };
   assert.deepEqual(restoreGameRecommendationIntegrationState(null, expected), createInitialGameRecommendationIntegrationState(expected));
