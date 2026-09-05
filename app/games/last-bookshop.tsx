@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -46,6 +47,7 @@ import {
   type LastBookshopProgressV1,
   type PitchCharm,
 } from "../../lib/recommendationGames/lastBookshop";
+import { lastBookshopPortraitForCustomer } from "../../lib/recommendationGames/lastBookshopPortraits";
 import {
   flushRecommendationGameEvents,
   queueRecommendationGameEvent,
@@ -177,8 +179,39 @@ function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgres
 
 function CustomerPortrait({ encounter }: { encounter: LastBookshopEncounter }) {
   const customer = getCustomer(encounter.customerId);
+  const { width } = useWindowDimensions();
+  const [failedCustomerId, setFailedCustomerId] = useState("");
+  const source = lastBookshopPortraitForCustomer(customer.id);
+  const showArtwork = Boolean(source) && failedCustomerId !== customer.id;
+  const artworkSize = width < 480
+    ? { width: 116, height: 100, borderRadius: 50 }
+    : { width: 142, height: 120, borderRadius: 60 };
+  const accessibilityLabel = `Portrait of ${customer.name}, ${customer.role}`;
+
+  if (showArtwork && source) {
+    return (
+      <View style={[styles.portraitArtworkFrame, artworkSize]}>
+        <Image
+          source={source}
+          style={styles.portraitArtwork}
+          resizeMode="contain"
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={accessibilityLabel}
+          accessibilityIgnoresInvertColors
+          onError={() => setFailedCustomerId(customer.id)}
+        />
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.portrait, { borderColor: customer.portraitColor }]}>
+    <View
+      style={[styles.portrait, { borderColor: customer.portraitColor }]}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={accessibilityLabel}
+    >
       <View style={[styles.portraitHair, { backgroundColor: customer.portraitColor }]} />
       <View style={styles.portraitFace}>
         <View style={styles.portraitEyes}>
@@ -1129,6 +1162,8 @@ const styles = StyleSheet.create({
   },
   sceneChapter: { color: "#b98b51", fontSize: 11, letterSpacing: 2.4, fontWeight: "900", marginBottom: 22, textAlign: "center" },
   customerRow: { width: "100%", flexDirection: "row", alignItems: "center", marginBottom: 20 },
+  portraitArtworkFrame: { backgroundColor: "transparent", overflow: "hidden", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  portraitArtwork: { width: "100%", height: "100%" },
   portrait: { width: 112, height: 132, borderWidth: 2, borderRadius: 56, backgroundColor: "#241c29", overflow: "hidden", alignItems: "center", position: "relative" },
   portraitHair: { position: "absolute", width: 74, height: 76, borderRadius: 38, top: 16, opacity: 0.72 },
   portraitFace: { width: 54, height: 67, borderRadius: 27, backgroundColor: "#c99575", marginTop: 34, alignItems: "center", paddingTop: 24 },

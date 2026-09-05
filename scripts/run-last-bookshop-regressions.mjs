@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,9 +21,13 @@ require.extensions[".ts"] = (module, filename) => {
   }).outputText;
   module._compile(output, filename);
 };
+require.extensions[".webp"] = (module, filename) => {
+  module.exports = filename;
+};
 
 const game = require(resolve(root, "lib/recommendationGames/lastBookshop.ts"));
 const evidence = require(resolve(root, "lib/recommendationGames/evidenceClient.ts"));
+const portraits = require(resolve(root, "lib/recommendationGames/lastBookshopPortraits.ts"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -81,6 +86,36 @@ async function main() {
   assert(game.LAST_BOOKSHOP_WORKS.length >= 18, "vertical slice inventory is too small");
   assert(game.LAST_BOOKSHOP_ENCOUNTERS.length === 9, "vertical slice must contain three encounters per night");
   checks.push("playable_vertical_slice");
+
+  const expectedPortraits = {
+    mara: "mara-venn.webp",
+    orin: "orin-bell.webp",
+    kit: "kit-wren.webp",
+    elsie: "elsie-thorn.webp",
+    bram: "bram-hearth.webp",
+  };
+  const customerIds = game.LAST_BOOKSHOP_CUSTOMERS.map((customer) => customer.id);
+  assert(
+    JSON.stringify([...customerIds].sort()) === JSON.stringify(Object.keys(expectedPortraits).sort()),
+    "every authored patron must have exactly one portrait mapping",
+  );
+  const portraitPaths = customerIds.map((customerId) => {
+    const portraitPath = portraits.lastBookshopPortraitForCustomer(customerId);
+    assert(typeof portraitPath === "string", `portrait mapping missing for ${customerId}`);
+    assert(portraitPath.endsWith(expectedPortraits[customerId]), `portrait mapping is incorrect for ${customerId}`);
+    assert(existsSync(portraitPath), `portrait asset does not exist for ${customerId}`);
+    const bytes = readFileSync(portraitPath);
+    assert(bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP", `${customerId} portrait must be WebP`);
+    assert(statSync(portraitPath).size < 100_000, `${customerId} portrait exceeds the web payload budget`);
+    return { portraitPath, hash: createHash("sha256").update(bytes).digest("hex") };
+  });
+  assert(new Set(portraitPaths.map(({ portraitPath }) => portraitPath)).size === 5, "all five patrons must map to distinct portrait assets");
+  assert(new Set(portraitPaths.map(({ hash }) => hash)).size === 5, "all five portrait assets must contain distinct artwork");
+  assert(portraits.lastBookshopPortraitForCustomer("unknown") === null, "unmapped patrons must use the abstract fallback");
+  assert(appSource.includes('resizeMode="contain"'), "patron artwork must preserve its authored framing");
+  assert(appSource.includes("accessibilityLabel={accessibilityLabel}"), "patron portraits must expose an accessibility label");
+  assert(appSource.includes("onError={() => setFailedCustomerId(customer.id)}"), "patron artwork must retain the abstract fallback on load failure");
+  checks.push("customer_portrait_assets");
 
   assert(contractSource.includes('"recommendation_game_event_v1"'), "game event schema missing");
   assert(!contractSource.includes("TasteFeedbackEvent"), "game evidence must not overload TasteFeedbackEvent");
