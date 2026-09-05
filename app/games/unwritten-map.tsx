@@ -56,6 +56,11 @@ import {
   transactUnwrittenMapMovement,
 } from "../../lib/recommendationGames/unwrittenMapEvidenceClient";
 import type { AsyncKeyValueStorage } from "../../lib/recommendationGames/evidenceClient";
+import { GameRecommendationReward } from "../../components/GameRecommendationReward";
+import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
+import { adaptUnwrittenMapChoiceToSignal, UNWRITTEN_MAP_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
+import { unwrittenMapMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
+import { buildGameRouteSourceParams, parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 
 type GamePhase = "title" | "map" | "encounter" | "result" | "complete";
 
@@ -408,7 +413,8 @@ function CompleteScreen(props: {
 }
 
 export default function UnwrittenMapRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string }>();
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+  const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const { width, height } = useWindowDimensions();
   const scopeKey = useMemo(() => storageScopeKey(params.libraryId, params.playerId), [params.libraryId, params.playerId]);
   const saveKey = useMemo(() => scopedSaveKey(scopeKey), [scopeKey]);
@@ -453,6 +459,17 @@ export default function UnwrittenMapRoute() {
   const columns = width < 520 ? 9 : width < 820 ? 11 : 13;
   const rows = height < 700 ? 7 : 9;
   const tileSize = Math.max(28, Math.min(44, Math.floor((Math.min(width, 760) - 28) / columns)));
+  const gameRecommendationMilestone = useGameRecommendationMilestone({
+    game: "unwritten_map",
+    gameLabel: "The Unwritten Map",
+    playerId: routeConfig.playerId,
+    gameSessionId: gameSessionIdRef.current,
+    libraryId: routeConfig.libraryId,
+    ageBand: routeConfig.ageBand,
+    sourceFlags: routeConfig.sourceFlags,
+    localCollectionOnly: routeConfig.localCollectionOnly,
+    evidenceMode: UNWRITTEN_MAP_EVIDENCE_MODE,
+  });
 
   const updateSaveState = useCallback((next: UnwrittenMapSaveV2) => {
     saveRef.current = next;
@@ -870,6 +887,15 @@ export default function UnwrittenMapRoute() {
       setResultSkipped(!selected);
       phaseRef.current = "result";
       setPhase("result");
+      if (selected && resultDecisionRef.current) {
+        const preferenceBearingChoiceCount = durableSave.decisions.filter((decision) => decision.kind === "choice").length;
+        const signal = adaptUnwrittenMapChoiceToSignal({ scenarioId: activeScenario.id, option: selected });
+        void gameRecommendationMilestone.notifyEvidence(
+          resultDecisionRef.current.presentationId,
+          [signal],
+          (lastMilestoneEvidenceCount) => unwrittenMapMilestone(preferenceBearingChoiceCount, lastMilestoneEvidenceCount),
+        );
+      }
     } catch (error) {
       if (error instanceof Error && error.message === "scenario_already_completed") {
         operationIdsRef.current.delete(operationKey);
@@ -885,7 +911,7 @@ export default function UnwrittenMapRoute() {
       setSubmitting(false);
       releaseOperation();
     }
-  }, [acquireOperation, activeScenario, presentedChoices, queueSaveCommit, releaseOperation, reloadDurableJourney]);
+  }, [acquireOperation, activeScenario, gameRecommendationMilestone, presentedChoices, queueSaveCommit, releaseOperation, reloadDurableJourney]);
 
   const continueFromResult = useCallback(async () => {
     if (!acquireOperation()) return;
@@ -1002,6 +1028,7 @@ export default function UnwrittenMapRoute() {
         });
         return { event, nextSave: undoMostRecentOutcome(current, event.eventId) };
       });
+      await gameRecommendationMilestone.retractEvidence(latestDecision.presentationId);
       completionEmittedRef.current = false;
       phaseRef.current = "map";
       setPhase("map");
@@ -1021,7 +1048,7 @@ export default function UnwrittenMapRoute() {
       setUndoing(false);
       releaseOperation();
     }
-  }, [acquireOperation, queueSaveCommit, releaseOperation, reloadDurableJourney]);
+  }, [acquireOperation, gameRecommendationMilestone, queueSaveCommit, releaseOperation, reloadDurableJourney]);
 
   const leaveJourney = useCallback(async () => {
     if (lifecyclePendingRef.current || !acquireOperation()) return;
@@ -1045,6 +1072,8 @@ export default function UnwrittenMapRoute() {
         params: {
           ...(params.playerId ? { playerId: params.playerId } : {}),
           ...(params.libraryId ? { libraryId: params.libraryId } : {}),
+          ageBand: routeConfig.ageBand,
+          ...buildGameRouteSourceParams(routeConfig.sourceFlags),
         },
       } as never);
     } catch {
@@ -1054,7 +1083,7 @@ export default function UnwrittenMapRoute() {
       setLifecyclePending(false);
       releaseOperation();
     }
-  }, [acquireOperation, clearMovementState, params.libraryId, params.playerId, queueSaveCommit, releaseOperation, resolvePendingCompletionForTerminalAction]);
+  }, [acquireOperation, clearMovementState, params.libraryId, params.playerId, queueSaveCommit, releaseOperation, resolvePendingCompletionForTerminalAction, routeConfig.ageBand, routeConfig.sourceFlags]);
 
   const resetJourney = useCallback(() => {
     if (!acquireOperation()) return;
@@ -1076,7 +1105,9 @@ export default function UnwrittenMapRoute() {
           fresh,
         ));
         clearMovementState();
-        gameSessionIdRef.current = createGameSessionId();
+        const nextGameSessionId = createGameSessionId();
+        gameSessionIdRef.current = nextGameSessionId;
+        await gameRecommendationMilestone.resetSession(nextGameSessionId);
         completionEmittedRef.current = false;
         updateCompletionPending(false);
         stepsThisSessionRef.current = 0;
@@ -1114,7 +1145,7 @@ export default function UnwrittenMapRoute() {
       { text: "Cancel", style: "cancel", onPress: releaseReset },
       { text: "Reset", style: "destructive", onPress: () => void performReset() },
     ], { cancelable: false });
-  }, [acquireOperation, clearMovementState, libraryScopeId, releaseOperation, resolvePendingCompletionForTerminalAction, scopeKey, updateCompletionPending, updateSaveState]);
+  }, [acquireOperation, clearMovementState, gameRecommendationMilestone, libraryScopeId, releaseOperation, resolvePendingCompletionForTerminalAction, scopeKey, updateCompletionPending, updateSaveState]);
 
   const currentRegion = useMemo(() => save ? regionAt(save.position) : { id: "", name: "" }, [save]);
 
@@ -1212,6 +1243,21 @@ export default function UnwrittenMapRoute() {
         )}
       </ScrollView>
       {showPrivacy ? <View style={styles.overlay}><PrivacyNote onClose={() => setShowPrivacy(false)} /></View> : null}
+      {gameRecommendationMilestone.pendingReward ? (
+        <GameRecommendationReward
+          visible
+          cadence={gameRecommendationMilestone.pendingReward.cadence}
+          gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
+          book={{
+            title: gameRecommendationMilestone.pendingReward.book.title,
+            author: gameRecommendationMilestone.pendingReward.book.author,
+            coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+            description: gameRecommendationMilestone.pendingReward.description,
+            reason: gameRecommendationMilestone.pendingReward.reason,
+          }}
+          onRespond={(response) => gameRecommendationMilestone.respond(response, () => void continueFromResult())}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

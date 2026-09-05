@@ -1316,7 +1316,8 @@ async function main() {
   const route = readFileSync(resolve(root, "app/games/alchemists-cascade.tsx"), "utf8");
   const hub = readFileSync(resolve(root, "app/games/index.tsx"), "utf8");
   const layout = readFileSync(resolve(root, "app/_layout.tsx"), "utf8");
-  assert(hub.includes("The Alchemist's Cascade") && hub.includes('pathname: "/games/alchemists-cascade"'), "games hub integration missing");
+  assert(hub.includes("The Alchemist’s Cascade") && hub.includes('route: "/games/alchemists-cascade"'), "games hub integration missing");
+  assert(hub.includes("router.push({ pathname: game.route, params: forwardedParams }"), "games hub context forwarding missing");
   assert(layout.includes('name="games/alchemists-cascade"'), "layout route registration missing");
   assert(route.includes("onPress={() => onCell(at)}") && route.includes('document.addEventListener("keydown"') && route.includes("accessibilityLabel={`Row"), "touch, keyboard, and cell accessibility wiring missing");
   assert(route.includes("What the cauldron remembers") && route.includes("IP addresses") && route.includes("never count as taste"), "privacy disclosure is incomplete");

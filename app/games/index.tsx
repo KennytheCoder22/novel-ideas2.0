@@ -12,6 +12,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  buildGameRouteSourceParams,
+  parseGameRouteConfig,
+  type GameRouteParams,
+} from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 
 type GameId = "media-mania" | "last-bookshop" | "unwritten-map" | "alchemists-cascade";
 
@@ -196,30 +201,20 @@ function GameCard({
 
 export default function RecommendationGamesRoute() {
   const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+  const routeConfig = parseGameRouteConfig(params as GameRouteParams);
 
   function launchGame(game: GameCardConfig) {
-    if (game.id === "media-mania") {
-      router.push({
-        pathname: game.route,
-        params: {
-          playerId: params.playerId || "media-mania-player",
-          libraryId: params.libraryId || "default",
-          ageBand: params.ageBand || "teens",
-        },
-      } as any);
-      return;
-    }
-    if (game.id === "unwritten-map" || game.id === "alchemists-cascade") {
-      router.push({
-        pathname: game.route,
-        params: {
-          ...(params.playerId ? { playerId: params.playerId } : {}),
-          ...(params.libraryId ? { libraryId: params.libraryId } : {}),
-        },
-      } as any);
-      return;
-    }
-    router.push(game.route as any);
+    const forwardedParams = {
+      playerId: routeConfig.playerId,
+      libraryId: routeConfig.libraryId,
+      // Forward the raw ageBand string unchanged (not the normalized AgeBandV2 form) so each
+      // game route's own age-band vocabulary (e.g. Media Mania's plural "adults") keeps working
+      // exactly as before; every route separately derives the shared AgeBandV2 via
+      // `parseGameRouteConfig` from this same raw param.
+      ageBand: String(params.ageBand || "teens"),
+      ...buildGameRouteSourceParams(routeConfig.sourceFlags),
+    };
+    router.push({ pathname: game.route, params: forwardedParams } as any);
   }
 
   return (

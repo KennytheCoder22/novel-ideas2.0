@@ -56,6 +56,11 @@ import {
   transactCascade,
 } from "../../lib/recommendationGames/alchemistsCascadeEvidenceClient";
 import type { AsyncKeyValueStorage } from "../../lib/recommendationGames/evidenceClient";
+import { GameRecommendationReward } from "../../components/GameRecommendationReward";
+import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
+import { adaptAlchemistsCascadeCatalystToSignal, ALCHEMISTS_CASCADE_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
+import { alchemistsCascadeMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
+import { buildGameRouteSourceParams, parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 
 type Phase = "loading" | "title" | "campaign" | "catalyst" | "play" | "pause" | "help" | "result";
 const STALE_SESSION_NOTICE = "This game changed in another tab. The latest save was reloaded; your action was not applied.";
@@ -229,7 +234,8 @@ function PrivacyPanel({ onClose }: { onClose: () => void }) {
 }
 
 export default function AlchemistsCascadeRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string }>();
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+  const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const scope = useMemo(() => createCascadeScope(params.playerId, params.libraryId), [params.playerId, params.libraryId]);
   const sessionId = useRef(id("cascade-session"));
   const lastTimestamp = useRef<string | null>(null);
@@ -247,6 +253,17 @@ export default function AlchemistsCascadeRoute() {
   const helpReturn = useRef<Phase>("title");
   const comboPulse = useRef(new Animated.Value(1)).current;
   const { width } = useWindowDimensions();
+  const gameRecommendationMilestone = useGameRecommendationMilestone({
+    game: "alchemists_cascade",
+    gameLabel: "The Alchemist's Cascade",
+    playerId: routeConfig.playerId,
+    gameSessionId: save?.gameSessionId || "",
+    libraryId: routeConfig.libraryId,
+    ageBand: routeConfig.ageBand,
+    sourceFlags: routeConfig.sourceFlags,
+    localCollectionOnly: routeConfig.localCollectionOnly,
+    evidenceMode: ALCHEMISTS_CASCADE_EVIDENCE_MODE,
+  });
 
   const activeConfig = save?.activeLevel
     ? CASCADE_LEVELS.find((level) => level.id === save.activeLevel?.levelId) || null
@@ -425,10 +442,12 @@ export default function AlchemistsCascadeRoute() {
         params: {
           ...(params.playerId ? { playerId: params.playerId } : {}),
           ...(params.libraryId ? { libraryId: params.libraryId } : {}),
+          ageBand: routeConfig.ageBand,
+          ...buildGameRouteSourceParams(routeConfig.sourceFlags),
         },
       } as never);
     }
-  }, [flush, mutate, now, params.libraryId, params.playerId, save]);
+  }, [flush, mutate, now, params.libraryId, params.playerId, routeConfig.ageBand, routeConfig.sourceFlags, save]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
@@ -695,6 +714,15 @@ export default function AlchemistsCascadeRoute() {
         };
       });
       setSave(next);
+      if (option) {
+        const uniqueCompletedLevelCount = Object.keys(next.levelStars).length;
+        const signals = eligibility.eligible ? [adaptAlchemistsCascadeCatalystToSignal(option)] : [];
+        void gameRecommendationMilestone.notifyEvidence(
+          `${next.gameSessionId}:catalyst:${next.catalystOccasion}`,
+          signals,
+          (lastMilestoneEvidenceCount) => alchemistsCascadeMilestone(uniqueCompletedLevelCount, lastMilestoneEvidenceCount),
+        );
+      }
       if (next.activeLevel && activeLevelPhase(next.activeLevel, activeConfig) === "won") {
         setPhase("result");
       } else if (next.tutorialSeen && save.tutorialSeen) {
@@ -712,7 +740,7 @@ export default function AlchemistsCascadeRoute() {
       actionLock.current = false;
       setBusy(false);
     }
-  }, [activeConfig, board, busy, catalystChoices, choiceStarted, mutate, now, save]);
+  }, [activeConfig, board, busy, catalystChoices, choiceStarted, gameRecommendationMilestone, mutate, now, save]);
 
   const attemptSwap = useCallback(async (from: Coordinate, to: Coordinate) => {
     if (!save?.activeLevel || !activeConfig || busy || actionLock.current
@@ -865,6 +893,14 @@ export default function AlchemistsCascadeRoute() {
         }
         const terminal = activeLevelPhase(nextActive, activeConfig);
         if (terminal === "won" || terminal === "lost") setPhase("result");
+        if (terminal === "won") {
+          const uniqueCompletedLevelCount = Object.keys(next.levelStars).length;
+          void gameRecommendationMilestone.notifyEvidence(
+            `${next.gameSessionId}:level-completed:${activeConfig.id}`,
+            [],
+            (lastMilestoneEvidenceCount) => alchemistsCascadeMilestone(uniqueCompletedLevelCount, lastMilestoneEvidenceCount),
+          );
+        }
       }
     } catch (error) {
       if (!isStaleCascadeError(error)) {
@@ -874,7 +910,7 @@ export default function AlchemistsCascadeRoute() {
       actionLock.current = false;
       setBusy(false);
     }
-  }, [activeConfig, busy, comboPulse, mutate, now, reducedMotion, save]);
+  }, [activeConfig, busy, comboPulse, gameRecommendationMilestone, mutate, now, reducedMotion, save]);
 
   const onCell = useCallback((at: Coordinate) => {
     if (busy || phase !== "play" || !save?.activeLevel || !activeConfig
@@ -1006,6 +1042,7 @@ export default function AlchemistsCascadeRoute() {
           };
         });
         sessionId.current = fresh.gameSessionId;
+        await gameRecommendationMilestone.resetSession(fresh.gameSessionId);
         setSave(fresh);
         setPhase("title");
         setSyncWarning(null);
@@ -1025,7 +1062,7 @@ export default function AlchemistsCascadeRoute() {
         { text: "Reset", style: "destructive", onPress: () => void perform() },
       ]);
     }
-  }, [mutate, now, save]);
+  }, [gameRecommendationMilestone, mutate, now, save]);
 
   if (phase === "loading") {
     return <SafeAreaView style={styles.loading}><ActivityIndicator color="#F6C957" /><Text style={styles.loadingText}>Warming the copper...</Text></SafeAreaView>;
@@ -1182,6 +1219,21 @@ export default function AlchemistsCascadeRoute() {
             {syncWarning ? <Text style={styles.warning}>{syncWarning}</Text> : null}
           </ScrollView>
         )}
+        {gameRecommendationMilestone.pendingReward ? (
+          <GameRecommendationReward
+            visible
+            cadence={gameRecommendationMilestone.pendingReward.cadence}
+            gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
+            book={{
+              title: gameRecommendationMilestone.pendingReward.book.title,
+              author: gameRecommendationMilestone.pendingReward.book.author,
+              coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+              description: gameRecommendationMilestone.pendingReward.description,
+              reason: gameRecommendationMilestone.pendingReward.reason,
+            }}
+            onRespond={(response) => gameRecommendationMilestone.respond(response, () => undefined)}
+          />
+        ) : null}
       </SafeAreaView>
     );
   }
@@ -1204,6 +1256,21 @@ export default function AlchemistsCascadeRoute() {
             {won ? <TouchableOpacity style={styles.secondaryButton} onPress={() => void retry()}><Text style={styles.secondaryButtonText}>BREW AGAIN</Text></TouchableOpacity> : <TouchableOpacity style={styles.secondaryButton} onPress={() => void returnToCampaign()}><Text style={styles.secondaryButtonText}>RETURN TO THE ATLAS</Text></TouchableOpacity>}
           </View>
         </View>
+        {gameRecommendationMilestone.pendingReward ? (
+          <GameRecommendationReward
+            visible
+            cadence={gameRecommendationMilestone.pendingReward.cadence}
+            gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
+            book={{
+              title: gameRecommendationMilestone.pendingReward.book.title,
+              author: gameRecommendationMilestone.pendingReward.book.author,
+              coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+              description: gameRecommendationMilestone.pendingReward.description,
+              reason: gameRecommendationMilestone.pendingReward.reason,
+            }}
+            onRespond={(response) => gameRecommendationMilestone.respond(response, () => void returnToCampaign())}
+          />
+        ) : null}
       </SafeAreaView>
     );
   }

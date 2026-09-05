@@ -135,8 +135,8 @@ async function main() {
   const evidenceSource = readFileSync(resolve(root, "lib/recommendationGames/unwrittenMapEvidenceClient.ts"), "utf8");
   const apiSource = readFileSync(resolve(root, "api/unwritten-map-event.ts"), "utf8");
 
-  assert(hubSource.includes("The Unwritten Map") && hubSource.includes("12 story encounters"), "games hub V2 copy missing");
-  assert(hubSource.includes('pathname: "/games/unwritten-map"'), "games hub route/context forwarding missing");
+  assert(hubSource.includes("The Unwritten Map") && hubSource.includes('route: "/games/unwritten-map"'), "games hub card missing");
+  assert(hubSource.includes("router.push({ pathname: game.route, params: forwardedParams }"), "games hub route/context forwarding missing");
   assert(layoutSource.includes('name="games/unwritten-map"'), "map game route is not registered");
   assert(routeSource.includes('document.title = "The Unwritten Map"'), "browser title must preserve game fiction");
   assert(routeSource.includes('router.replace({') && routeSource.includes('...(params.playerId ? { playerId: params.playerId } : {})')
@@ -1815,7 +1815,8 @@ async function main() {
     && routeSource.includes('AppState.addEventListener("change"'), "web and native lifecycle movement cancellation missing");
   assert(routeSource.includes("useEffect(() => () => clearMovementState(false)")
     && routeSource.includes("heldKeysRef.current.clear()"), "unmount must clear native and web held movement state");
-  assert(routeSource.includes("gameSessionIdRef.current = createGameSessionId()")
+  assert(routeSource.includes("const nextGameSessionId = createGameSessionId()")
+    && routeSource.includes("gameSessionIdRef.current = nextGameSessionId")
     && routeSource.includes("completionEmittedRef.current = false")
     && routeSource.includes("stepsThisSessionRef.current = 0"), "new maps must reset every session identity/counter");
   const beginSource = routeSource.slice(routeSource.indexOf("const beginJourney"), routeSource.indexOf("const recordOutcome"));

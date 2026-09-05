@@ -1,11 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -46,11 +47,17 @@ import {
   type LastBookshopProgressV1,
   type PitchCharm,
 } from "../../lib/recommendationGames/lastBookshop";
+import { lastBookshopPortraitForCustomer } from "../../lib/recommendationGames/lastBookshopPortraits";
 import {
   flushRecommendationGameEvents,
   queueRecommendationGameEvent,
   type AsyncKeyValueStorage,
 } from "../../lib/recommendationGames/evidenceClient";
+import { GameRecommendationReward } from "../../components/GameRecommendationReward";
+import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
+import { adaptLastBookshopEncounterToSignals, LAST_BOOKSHOP_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
+import { lastBookshopMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
+import { parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 
 type GamePhase = "title" | "arrival" | "shelves" | "counter" | "result" | "night_complete" | "ending";
 
@@ -60,6 +67,7 @@ type RoundResult = {
   reward: { reputation: number; coins: number };
   predictedWorkId: string;
   nextProgress: LastBookshopProgressV1;
+  evidenceEventId: string;
 };
 
 const webStorage: AsyncKeyValueStorage = {
@@ -171,8 +179,39 @@ function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgres
 
 function CustomerPortrait({ encounter }: { encounter: LastBookshopEncounter }) {
   const customer = getCustomer(encounter.customerId);
+  const { width } = useWindowDimensions();
+  const [failedCustomerId, setFailedCustomerId] = useState("");
+  const source = lastBookshopPortraitForCustomer(customer.id);
+  const showArtwork = Boolean(source) && failedCustomerId !== customer.id;
+  const artworkSize = width < 480
+    ? { width: 116, height: 100, borderRadius: 50 }
+    : { width: 142, height: 120, borderRadius: 60 };
+  const accessibilityLabel = `Portrait of ${customer.name}, ${customer.role}`;
+
+  if (showArtwork && source) {
+    return (
+      <View style={[styles.portraitArtworkFrame, artworkSize]}>
+        <Image
+          source={source}
+          style={styles.portraitArtwork}
+          resizeMode="contain"
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={accessibilityLabel}
+          accessibilityIgnoresInvertColors
+          onError={() => setFailedCustomerId(customer.id)}
+        />
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.portrait, { borderColor: customer.portraitColor }]}>
+    <View
+      style={[styles.portrait, { borderColor: customer.portraitColor }]}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={accessibilityLabel}
+    >
       <View style={[styles.portraitHair, { backgroundColor: customer.portraitColor }]} />
       <View style={styles.portraitFace}>
         <View style={styles.portraitEyes}>
@@ -756,6 +795,8 @@ function EndingScreen({ progress, onRestart }: { progress: LastBookshopProgressV
 }
 
 export default function LastBookshopRoute() {
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+  const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const [progress, setProgress] = useState<LastBookshopProgressV1 | null>(null);
   const [phase, setPhase] = useState<GamePhase>("title");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -767,6 +808,17 @@ export default function LastBookshopRoute() {
   const [storageError, setStorageError] = useState("");
   const gameSessionIdRef = useRef(`lbs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`);
   const encounterStartedAtRef = useRef(Date.now());
+  const gameRecommendationMilestone = useGameRecommendationMilestone({
+    game: "the_last_bookshop",
+    gameLabel: "The Last Bookshop",
+    playerId: routeConfig.playerId,
+    gameSessionId: gameSessionIdRef.current,
+    libraryId: routeConfig.libraryId,
+    ageBand: routeConfig.ageBand,
+    sourceFlags: routeConfig.sourceFlags,
+    localCollectionOnly: routeConfig.localCollectionOnly,
+    evidenceMode: LAST_BOOKSHOP_EVIDENCE_MODE,
+  });
 
   const persistProgress = useCallback(async (next: LastBookshopProgressV1) => {
     await gameStorage.setItem(LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(next));
@@ -852,13 +904,24 @@ export default function LastBookshopRoute() {
       return;
     }
     setStorageError("");
-    setRoundResult({ encounter, outcome, reward, predictedWorkId: predictedId, nextProgress });
+    setRoundResult({ encounter, outcome, reward, predictedWorkId: predictedId, nextProgress, evidenceEventId: event.eventId });
     setProgress(nextProgress);
     setPhase("result");
     void flushRecommendationGameEvents(gameStorage, sendRecommendationGameEvent).catch(() => {
       setStorageError("This visit is saved locally, but its sealed letter is still waiting to be sent.");
     });
-  }, [confidence, encounter, persistProgress, pitchCharm, predictedId, progress, selectedIds]);
+    const signals = adaptLastBookshopEncounterToSignals({
+      selectedWorkIds: selectedIds,
+      predictedWorkId: predictedId,
+      pitchCharm,
+      works: selectedIds.map((workId) => getWork(workId)),
+    });
+    void gameRecommendationMilestone.notifyEvidence(
+      event.eventId,
+      signals,
+      () => null,
+    );
+  }, [confidence, encounter, gameRecommendationMilestone, persistProgress, pitchCharm, predictedId, progress, selectedIds]);
 
   const continueAfterResult = useCallback(() => {
     if (!roundResult) return;
@@ -870,13 +933,18 @@ export default function LastBookshopRoute() {
     setConfidence(null);
     setPitchCharm(null);
     setRoundResult(null);
-    if (next.night > 3) setPhase("ending");
-    else if (next.night !== previousNight) setPhase("night_complete");
-    else {
+    if (next.night > 3 || next.night !== previousNight) {
+      setPhase(next.night > 3 ? "ending" : "night_complete");
+      void gameRecommendationMilestone.notifyEvidence(
+        roundResult.evidenceEventId,
+        [],
+        (lastMilestoneEvidenceCount) => lastBookshopMilestone(next.completedEncounterIds.length, lastMilestoneEvidenceCount),
+      );
+    } else {
       setPhase("arrival");
       encounterStartedAtRef.current = Date.now();
     }
-  }, [roundResult]);
+  }, [gameRecommendationMilestone, roundResult]);
 
   const continueAfterNight = useCallback(() => {
     setPhase("arrival");
@@ -892,6 +960,9 @@ export default function LastBookshopRoute() {
       setStorageError("The ledger could not begin a new story. Check device storage and try again.");
       return;
     }
+    const nextGameSessionId = `lbs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+    gameSessionIdRef.current = nextGameSessionId;
+    await gameRecommendationMilestone.resetSession(nextGameSessionId);
     setStorageError("");
     setProgress(next);
     setLoadedExistingProgress(false);
@@ -902,7 +973,7 @@ export default function LastBookshopRoute() {
     setRoundResult(null);
     setPhase("arrival");
     encounterStartedAtRef.current = Date.now();
-  }, [persistProgress, progress]);
+  }, [gameRecommendationMilestone, persistProgress, progress]);
 
   if (!progress) {
     return (
@@ -976,6 +1047,24 @@ export default function LastBookshopRoute() {
           <NightCompleteScreen completedNight={progress.night - 1} progress={progress} onContinue={continueAfterNight} />
         ) : null}
       </ScrollView>
+      {gameRecommendationMilestone.pendingReward ? (
+        <GameRecommendationReward
+          visible
+          cadence={gameRecommendationMilestone.pendingReward.cadence}
+          gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
+          book={{
+            title: gameRecommendationMilestone.pendingReward.book.title,
+            author: gameRecommendationMilestone.pendingReward.book.author,
+            coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+            description: gameRecommendationMilestone.pendingReward.description,
+            reason: gameRecommendationMilestone.pendingReward.reason,
+          }}
+          onRespond={(response) => gameRecommendationMilestone.respond(
+            response,
+            phase === "night_complete" ? continueAfterNight : () => undefined,
+          )}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -1073,6 +1162,8 @@ const styles = StyleSheet.create({
   },
   sceneChapter: { color: "#b98b51", fontSize: 11, letterSpacing: 2.4, fontWeight: "900", marginBottom: 22, textAlign: "center" },
   customerRow: { width: "100%", flexDirection: "row", alignItems: "center", marginBottom: 20 },
+  portraitArtworkFrame: { backgroundColor: "transparent", overflow: "hidden", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  portraitArtwork: { width: "100%", height: "100%" },
   portrait: { width: 112, height: 132, borderWidth: 2, borderRadius: 56, backgroundColor: "#241c29", overflow: "hidden", alignItems: "center", position: "relative" },
   portraitHair: { position: "absolute", width: 74, height: 76, borderRadius: 38, top: 16, opacity: 0.72 },
   portraitFace: { width: 54, height: 67, borderRadius: 27, backgroundColor: "#c99575", marginTop: 34, alignItems: "center", paddingTop: 24 },
