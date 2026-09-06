@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -69,6 +70,8 @@ import {
 } from "../../lib/recommendationGames/alchemistsCascadeTitleArtwork";
 import {
   ALCHEMISTS_CASCADE_ATLAS_ARTWORK,
+  ALCHEMISTS_CASCADE_REALM_VISUALS,
+  ALCHEMISTS_CASCADE_RECIPE_VISUALS,
   computeAlchemistsCascadeAtlasLayout,
 } from "../../lib/recommendationGames/alchemistsCascadeAtlasArtwork";
 
@@ -548,12 +551,22 @@ const ATLAS_REALM_SURFACES: Record<string, string> = {
     "astral-kitchen": "#292342",
 };
 
+const ATLAS_REALM_TILE_SURFACES: Record<string, string> = {
+    "copper-garden": "#24150E",
+    "tidal-archive": "#0B282D",
+    "laughing-volcano": "#2A1412",
+    "astral-kitchen": "#1B1730",
+};
+
 function AtlasLevelButton({
     level,
     unlocked,
     stars,
     busy,
     compact,
+    accent,
+    surface,
+    current,
     onPress,
   }: {
     level: LevelConfig;
@@ -561,11 +574,15 @@ function AtlasLevelButton({
     stars: number;
     busy: boolean;
     compact: boolean;
+    accent: string;
+    surface: string;
+    current: boolean;
     onPress: () => void;
   }) {
     const [focused, setFocused] = useState(false);
     const [hovered, setHovered] = useState(false);
     const disabled = !unlocked || busy;
+    const visual = ALCHEMISTS_CASCADE_RECIPE_VISUALS[level.id];
     const stateLabel = unlocked
       ? stars > 0
         ? `${stars} of 3 stars, available to replay`
@@ -588,14 +605,48 @@ function AtlasLevelButton({
         style={({ pressed }: { pressed: boolean }) => [
           styles.atlasLevel,
           compact && styles.atlasLevelCompact,
+          { backgroundColor: surface, borderColor: unlocked ? `${accent}99` : "#4A4140" },
           !unlocked && styles.atlasLevelLocked,
-          (focused || hovered) && unlocked && styles.atlasLevelActive,
+          current && [styles.atlasLevelCurrent, { borderColor: accent, shadowColor: accent }],
+          (focused || hovered) && unlocked && [styles.atlasLevelActive, { borderColor: accent, shadowColor: accent }],
           pressed && styles.atlasLevelPressed,
         ]}
       >
-        <Text style={[styles.atlasLevelNumber, compact && styles.atlasLevelNumberCompact]}>
-          {unlocked ? level.number : "◆"}
-        </Text>
+        <View style={styles.atlasLevelTopline}>
+          <Text style={[styles.atlasLevelNumber, compact && styles.atlasLevelNumberCompact]}>
+            {level.number}
+          </Text>
+          {stars > 0 ? (
+            <MaterialCommunityIcons
+              name="replay"
+              size={compact ? 12 : 15}
+              color={accent}
+              accessible={false}
+            />
+          ) : !unlocked ? (
+            <MaterialCommunityIcons
+              name="lock"
+              size={compact ? 11 : 14}
+              color="#9A8D86"
+              accessible={false}
+            />
+          ) : null}
+        </View>
+        <View
+          style={[
+            styles.atlasGlyphWell,
+            compact && styles.atlasGlyphWellCompact,
+            { borderColor: `${accent}66`, backgroundColor: `${accent}12` },
+          ]}
+          accessible={false}
+        >
+          <MaterialCommunityIcons
+            name={visual.icon}
+            size={compact ? 34 : 44}
+            color={unlocked ? accent : "#8B817D"}
+            accessible={false}
+          />
+        </View>
         <Text
           style={[styles.atlasLevelName, compact && styles.atlasLevelNameCompact]}
           numberOfLines={compact ? 2 : 3}
@@ -604,9 +655,10 @@ function AtlasLevelButton({
         >
           {level.name}
         </Text>
-        <Text style={[styles.atlasLevelStatus, !unlocked && styles.atlasLevelStatusLocked]}>
-          {unlocked ? `${"★".repeat(stars)}${"☆".repeat(3 - stars)}` : "LOCKED"}
+        <Text style={[styles.atlasLevelStars, !unlocked && styles.atlasLevelStarsLocked]}>
+          {"★".repeat(stars)}{"☆".repeat(3 - stars)}
         </Text>
+        {!unlocked ? <Text style={styles.atlasLevelStatusLocked}>LOCKED</Text> : null}
       </Pressable>
     );
   }
@@ -625,6 +677,7 @@ function AtlasRealmPanel({
     onOpenLevel: (level: LevelConfig) => void;
   }) {
     const levels = CASCADE_LEVELS.filter((level) => level.realmId === realm.id);
+    const realmVisual = ALCHEMISTS_CASCADE_REALM_VISUALS[realm.id];
     return (
       <View
         style={[
@@ -634,27 +687,63 @@ function AtlasRealmPanel({
         ]}
         accessibilityRole="summary"
       >
-        <Text style={[styles.atlasRealmTitle, compact && styles.atlasRealmTitleCompact, { color: realm.accent }]}>
-          {realm.name}
-        </Text>
-        <Text
-          style={[styles.atlasRealmFiction, compact && styles.atlasRealmFictionCompact]}
-          numberOfLines={compact ? 1 : undefined}
-        >
-          {realm.fiction}
-        </Text>
-        <View style={[styles.atlasLevelRow, compact && styles.atlasLevelRowCompact]}>
-          {levels.map((level) => (
-            <AtlasLevelButton
-              key={level.id}
-              level={level}
-              unlocked={level.number <= save.unlockedLevel}
-              stars={save.levelStars[level.id] || 0}
-              busy={busy}
-              compact={compact}
-              onPress={() => onOpenLevel(level)}
+        <View
+          pointerEvents="none"
+          style={[styles.atlasRealmInnerFrame, { borderColor: `${realm.accent}66` }]}
+        />
+        <View style={styles.atlasRealmHeading}>
+          <View
+            style={[
+              styles.atlasRealmMotif,
+              compact && styles.atlasRealmMotifCompact,
+              { borderColor: `${realm.accent}88`, backgroundColor: `${realm.accent}12` },
+            ]}
+            accessible={false}
+          >
+            <MaterialCommunityIcons
+              name={realmVisual.icon}
+              size={compact ? 27 : 34}
+              color={realm.accent}
+              accessible={false}
             />
-          ))}
+          </View>
+          <View style={styles.atlasRealmHeadingCopy}>
+            <Text style={[styles.atlasRealmTitle, compact && styles.atlasRealmTitleCompact, { color: realm.accent }]}>
+              {realm.name}
+            </Text>
+            <Text
+              style={[styles.atlasRealmFiction, compact && styles.atlasRealmFictionCompact]}
+              numberOfLines={compact ? 1 : undefined}
+            >
+              {realm.fiction}
+            </Text>
+          </View>
+        </View>
+        <View
+          pointerEvents="none"
+          style={[styles.atlasRealmRule, { backgroundColor: `${realm.accent}77` }]}
+        >
+          <View style={[styles.atlasRealmRuleDiamond, { backgroundColor: realm.accent }]} />
+        </View>
+        <View style={[styles.atlasLevelRow, compact && styles.atlasLevelRowCompact]}>
+          {levels.map((level) => {
+            const unlocked = level.number <= save.unlockedLevel;
+            const stars = save.levelStars[level.id] || 0;
+            return (
+              <AtlasLevelButton
+                key={level.id}
+                level={level}
+                unlocked={unlocked}
+                stars={stars}
+                busy={busy}
+                compact={compact}
+                accent={realm.accent}
+                surface={ATLAS_REALM_TILE_SURFACES[realm.id]}
+                current={unlocked && stars === 0 && level.number === save.unlockedLevel}
+                onPress={() => onOpenLevel(level)}
+              />
+            );
+          })}
         </View>
       </View>
     );
@@ -2062,44 +2151,88 @@ const styles = StyleSheet.create({
   atlasCinematicRealmPosition: { position: "absolute" },
   atlasRealm: {
     width: "100%",
-    borderWidth: 1,
-    borderRadius: 5,
+    borderWidth: 2,
+    borderRadius: 8,
     padding: 14,
+    overflow: "hidden",
     shadowColor: "#000",
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
   },
-  atlasRealmCompact: { height: "100%", paddingHorizontal: 11, paddingVertical: 8 },
-  atlasRealmTitle: { fontSize: 24, lineHeight: 29, fontWeight: "900", textAlign: "center" },
-  atlasRealmTitleCompact: { fontSize: 18, lineHeight: 21 },
-  atlasRealmFiction: { color: "#E6D8C5", fontSize: 13, lineHeight: 18, marginTop: 3, marginBottom: 12, textAlign: "center" },
-  atlasRealmFictionCompact: { fontSize: 10, lineHeight: 13, marginTop: 1, marginBottom: 6 },
+  atlasRealmCompact: { height: "100%", paddingHorizontal: 10, paddingVertical: 7 },
+  atlasRealmInnerFrame: {
+    position: "absolute",
+    inset: 4,
+    borderWidth: 1,
+    borderRadius: 5,
+  },
+  atlasRealmHeading: { minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  atlasRealmHeadingCopy: { flexShrink: 1, alignItems: "center" },
+  atlasRealmMotif: {
+    width: 50,
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasRealmMotifCompact: { width: 34, height: 34, borderRadius: 17 },
+  atlasRealmTitle: { fontSize: 24, lineHeight: 29, fontWeight: "900", textAlign: "center", textShadowColor: "#00000099", textShadowRadius: 4 },
+  atlasRealmTitleCompact: { fontSize: 17, lineHeight: 20 },
+  atlasRealmFiction: { color: "#F2E4D0", fontSize: 13, lineHeight: 18, marginTop: 3, textAlign: "center" },
+  atlasRealmFictionCompact: { fontSize: 9, lineHeight: 11, marginTop: 0 },
+  atlasRealmRule: {
+    height: 1,
+    marginHorizontal: 18,
+    marginTop: 7,
+    marginBottom: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasRealmRuleDiamond: { width: 6, height: 6, transform: [{ rotate: "45deg" }] },
   atlasLevelRow: { flexDirection: "row", gap: 8 },
   atlasLevelRowCompact: { flex: 1 },
   atlasLevel: {
     flex: 1,
     minWidth: 0,
     minHeight: 100,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#866B48",
-    borderRadius: 4,
+    borderRadius: 6,
     backgroundColor: "#17151A",
     paddingHorizontal: 8,
     paddingVertical: 7,
     alignItems: "center",
     justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
-  atlasLevelCompact: { minHeight: 44, paddingHorizontal: 4, paddingVertical: 3 },
-  atlasLevelLocked: { borderColor: "#4A4140", backgroundColor: "#211D20", opacity: 0.72 },
-  atlasLevelActive: { borderColor: "#FFE19A", backgroundColor: "#30251B" },
+  atlasLevelCompact: { minHeight: 44, paddingHorizontal: 5, paddingVertical: 4 },
+  atlasLevelLocked: { opacity: 0.58 },
+  atlasLevelCurrent: { borderWidth: 2, shadowOpacity: 0.85, shadowRadius: 10, elevation: 5 },
+  atlasLevelActive: { borderWidth: 2, shadowOpacity: 0.9, shadowRadius: 11, elevation: 6 },
   atlasLevelPressed: { backgroundColor: "#4A3320", transform: [{ scale: 0.98 }] },
+  atlasLevelTopline: { width: "100%", minHeight: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   atlasLevelNumber: { color: "#F6C957", fontSize: 14, fontWeight: "900" },
   atlasLevelNumberCompact: { fontSize: 11 },
-  atlasLevelName: { color: "#F7E8CE", fontSize: 13, lineHeight: 16, fontWeight: "800", textAlign: "center" },
-  atlasLevelNameCompact: { fontSize: 10, lineHeight: 12 },
-  atlasLevelStatus: { color: "#F6C957", fontSize: 12, letterSpacing: 1, fontWeight: "800" },
-  atlasLevelStatusLocked: { color: "#A79A91", fontSize: 9, letterSpacing: 0.6 },
+  atlasGlyphWell: {
+    width: 62,
+    height: 54,
+    borderWidth: 1,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 3,
+  },
+  atlasGlyphWellCompact: { width: 45, height: 39, borderRadius: 20, marginVertical: 1 },
+  atlasLevelName: { color: "#FFF1D8", fontSize: 13, lineHeight: 16, fontWeight: "900", textAlign: "center", textShadowColor: "#000000CC", textShadowRadius: 3 },
+  atlasLevelNameCompact: { fontSize: 10, lineHeight: 11 },
+  atlasLevelStars: { color: "#FFD465", fontSize: 13, letterSpacing: 1.5, fontWeight: "900", textShadowColor: "#00000099", textShadowRadius: 3 },
+  atlasLevelStarsLocked: { color: "#9A8D86" },
+  atlasLevelStatusLocked: { color: "#A79A91", fontSize: 8, lineHeight: 9, letterSpacing: 0.7, fontWeight: "900" },
   atlasCinematicNotes: {
     position: "absolute",
     minWidth: 44,

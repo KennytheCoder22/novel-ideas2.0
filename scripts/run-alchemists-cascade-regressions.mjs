@@ -1379,6 +1379,22 @@ async function main() {
   assert(Object.keys(desktopAtlasLayout.realms).length === 4
     && Object.values(desktopAtlasLayout.realms).every((bounds) => bounds.width > 300 && bounds.height > 200),
   "desktop Recipe Atlas must reserve four full live realm panels");
+  const recipeVisuals = atlasArtwork.ALCHEMISTS_CASCADE_RECIPE_VISUALS;
+  const realmVisuals = atlasArtwork.ALCHEMISTS_CASCADE_REALM_VISUALS;
+  const recipeVisualEntries = game.CASCADE_LEVELS.map((level) => recipeVisuals[level.id]);
+  const iconGlyphMap = JSON.parse(readFileSync(resolve(
+    root,
+    "node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialCommunityIcons.json",
+  ), "utf8"));
+  assert(recipeVisualEntries.length === 12
+    && recipeVisualEntries.every((visual) => visual && iconGlyphMap[visual.icon]),
+  "all twelve recipes must map to a supported deterministic vector glyph");
+  assert(new Set(recipeVisualEntries.map((visual) => visual.icon)).size === 12
+    && new Set(recipeVisualEntries.map((visual) => visual.motif)).size === 12,
+  "every authored recipe must retain a distinct intentional glyph and motif");
+  assert(game.CASCADE_REALMS.every((realm) => realmVisuals[realm.id] && iconGlyphMap[realmVisuals[realm.id].icon])
+    && new Set(game.CASCADE_REALMS.map((realm) => realmVisuals[realm.id].motif)).size === 4,
+  "each realm must retain a supported decorative folio motif");
   const mobileAtlasLayout = atlasArtwork.computeAlchemistsCascadeAtlasLayout(390, 844);
   assert(mobileAtlasLayout.mode === "stacked"
     && mobileAtlasLayout.header.height
@@ -1397,12 +1413,19 @@ async function main() {
     && route.includes("level.number <= save.unlockedLevel")
     && route.includes("save.levelStars[level.id] || 0")
     && route.includes('testID={`alchemists-cascade-atlas-${level.id}`}')
-    && route.includes("accessibilityState={{ disabled }}"),
-  "all twelve real recipes must retain dynamic availability, stars, and accessible controls");
+    && route.includes("accessibilityState={{ disabled }}")
+    && route.includes("disabled={disabled}")
+    && route.includes("onPress={onPress}")
+    && route.includes('name={visual.icon}')
+    && route.includes("current={unlocked && stars === 0 && level.number === save.unlockedLevel}")
+    && route.includes('name="lock"')
+    && route.includes('name="replay"'),
+  "all twelve illustrated recipes must retain live handlers, lock, stars, replay, focus, and accessibility state");
   assert(route.includes("const totalStars = Object.values(props.save.levelStars)")
     && route.includes("{props.syncWarning ? (")
     && !route.includes("3 cauldron notes waiting to sync."),
   "Atlas totals and sync state must be live without baked sample-state copy");
+  checks.push("atlas_recipe_glyphs_and_live_state");
   checks.push("atlas_artwork_live_dynamic_state");
   assert(route.includes("onPress={() => onCell(at)}") && route.includes('document.addEventListener("keydown"') && route.includes("accessibilityLabel={`Row"), "touch, keyboard, and cell accessibility wiring missing");
   assert(route.includes("What the cauldron remembers") && route.includes("IP addresses") && route.includes("never count as taste"), "privacy disclosure is incomplete");

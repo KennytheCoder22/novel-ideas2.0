@@ -1,5 +1,49 @@
 import type { ImageSourcePropType } from "react-native";
 
+export type AlchemistsCascadeAtlasIcon =
+  | "sprout"
+  | "tree-outline"
+  | "weather-rainy"
+  | "book-open-page-variant-outline"
+  | "waves"
+  | "circle-double"
+  | "fire"
+  | "chili-mild"
+  | "volcano"
+  | "bowl-mix-outline"
+  | "moon-waning-crescent"
+  | "flask-outline"
+  | "leaf"
+  | "star-four-points-outline";
+
+export const ALCHEMISTS_CASCADE_RECIPE_VISUALS: Record<
+  string,
+  { icon: AlchemistsCascadeAtlasIcon; motif: string }
+> = {
+  "level-1": { icon: "sprout", motif: "new-growth" },
+  "level-2": { icon: "tree-outline", motif: "deep-roots" },
+  "level-3": { icon: "weather-rainy", motif: "copper-rain" },
+  "level-4": { icon: "book-open-page-variant-outline", motif: "salt-page" },
+  "level-5": { icon: "waves", motif: "returning-tide" },
+  "level-6": { icon: "circle-double", motif: "luminous-pearl" },
+  "level-7": { icon: "fire", motif: "laughing-cinders" },
+  "level-8": { icon: "chili-mild", motif: "pepper-comet" },
+  "level-9": { icon: "volcano", motif: "grinning-crater" },
+  "level-10": { icon: "bowl-mix-outline", motif: "star-soup" },
+  "level-11": { icon: "moon-waning-crescent", motif: "midnight-preparation" },
+  "level-12": { icon: "flask-outline", motif: "bright-flask" },
+};
+
+export const ALCHEMISTS_CASCADE_REALM_VISUALS: Record<
+  string,
+  { icon: AlchemistsCascadeAtlasIcon; motif: string }
+> = {
+  "copper-garden": { icon: "leaf", motif: "garden-leaves" },
+  "tidal-archive": { icon: "waves", motif: "tidal-wave" },
+  "laughing-volcano": { icon: "volcano", motif: "volcanic-ridge" },
+  "astral-kitchen": { icon: "star-four-points-outline", motif: "astral-stars" },
+};
+
 export const ALCHEMISTS_CASCADE_ATLAS_ARTWORK: ImageSourcePropType = require(
   "../../assets/games/alchemists-cascade/recipe-atlas.webp",
 );
