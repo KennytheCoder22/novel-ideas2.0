@@ -21,7 +21,7 @@ import {
 } from "../lib/recommendationGames/gameRecommendationIntegrationState";
 import {
   GAME_RECOMMENDATION_EVIDENCE_SNAPSHOT_VERSION,
-  processGameRecommendationEvidence,
+  processDurableGameRecommendationEvidence,
 } from "../lib/recommendationGames/gameRecommendationEngine";
 import type { MilestoneEvaluation } from "../lib/recommendationGames/gameRecommendationMilestones";
 import {
@@ -137,6 +137,7 @@ export type GameRecommendationRewardPayload = {
   gameSessionId: string;
   ageBand: AgeBandV2;
   library: { libraryId: string; localCollectionOnly: boolean };
+  nativeEvidenceId: string | null;
 };
 
 export type UseGameRecommendationMilestoneArgs = {
@@ -304,6 +305,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
           coverUrl: restoredReward.coverUrl,
           description: restoredReward.description || null,
           reason: gameRecommendationReasonFromMatchedSignals(restoredReward.matchedSignals),
+          nativeEvidenceId: null,
         });
       }
       readyRef.current = true;
@@ -329,7 +331,6 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
   }, [args.ageBand, args.game, args.gameLabel, args.playerId, args.libraryId, args.gameSessionId, currentScopeId]);
 
   const persist = useCallback(async (state: GameRecommendationIntegrationStateV1, scopeId: string): Promise<boolean> => {
-    if (activeScopeRef.current !== scopeId) return false;
     const historyScope = {
       anonymousPlayerId: args.playerId,
       libraryId: args.libraryId,
@@ -344,23 +345,25 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
     } catch (error) {
       console.warn("[game-recommendation] shared_history_read_failed", error);
     }
-    if (activeScopeRef.current !== scopeId) return false;
     const synchronized = synchronizeGameRecommendationHistory(latestHistory, state);
     try {
-      await Promise.all([
-        gameRecommendationStorage.setItem(
-          integrationStateStorageKey(args.game, args.playerId, args.libraryId, args.ageBand),
-          JSON.stringify(synchronized.state),
-        ),
-        gameRecommendationStorage.setItem(
-          gameRecommendationHistoryStorageKey(historyScope),
-          JSON.stringify(synchronized.history),
-        ),
-      ]);
+      await gameRecommendationStorage.setItem(
+        integrationStateStorageKey(args.game, args.playerId, args.libraryId, args.ageBand),
+        JSON.stringify(synchronized.state),
+      );
     } catch (error) {
-      // Best-effort: an integration-state write failure must not interrupt play. Progress toward
-      // the next milestone simply is not remembered if the app closes before the next write.
       console.warn("[game-recommendation] integration_state_write_failed", error);
+      throw error;
+    }
+    try {
+      await gameRecommendationStorage.setItem(
+        gameRecommendationHistoryStorageKey(historyScope),
+        JSON.stringify(synchronized.history),
+      );
+    } catch (error) {
+      // The game-scoped state remains the durable source for this reward. Shared history is
+      // reconstructed from it on the next synchronization, so this must not hide a valid reward.
+      console.warn("[game-recommendation] shared_history_write_failed", error);
     }
     if (activeScopeRef.current !== scopeId) return false;
     stateRef.current = synchronized.state;
@@ -400,20 +403,28 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
       } catch (error) {
         console.warn("[game-recommendation] shared_history_read_failed", error);
       }
-      const outcome = await processGameRecommendationEvidence({
-        state: currentState,
-        nativeEvidenceId,
-        signals,
-        evaluateMilestone,
-        evidenceMode: args.evidenceMode,
-        ageBand: args.ageBand,
-        enabledSources: gameRouteSourceFlagsToEnabledSources(args.sourceFlags),
-        localLibraryCurationTrusted: args.localCollectionOnly,
-        library: { libraryId: args.libraryId, localCollectionOnly: args.localCollectionOnly },
-        runRecommender: runRecommenderV2,
-      });
+      let outcome;
+      try {
+        outcome = await processDurableGameRecommendationEvidence({
+          state: currentState,
+          nativeEvidenceId,
+          signals,
+          evaluateMilestone,
+          evidenceMode: args.evidenceMode,
+          ageBand: args.ageBand,
+          enabledSources: gameRouteSourceFlagsToEnabledSources(args.sourceFlags),
+          localLibraryCurationTrusted: args.localCollectionOnly,
+          library: { libraryId: args.libraryId, localCollectionOnly: args.localCollectionOnly },
+          runRecommender: runRecommenderV2,
+          persist: async (state) => {
+            await persist(state, notification.scopeId);
+          },
+        });
+      } catch (error) {
+        console.warn("[game-recommendation] durable_processing_failed", error);
+        return;
+      }
       if (activeScopeRef.current !== notification.scopeId) return;
-      if (!await persist(outcome.state, notification.scopeId)) return;
       if (outcome.status === "shown") {
         setPendingReward({
           cadence: outcome.cadence,
@@ -431,6 +442,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
           gameSessionId: args.gameSessionId,
           ageBand: args.ageBand,
           library: { libraryId: args.libraryId, localCollectionOnly: args.localCollectionOnly },
+          nativeEvidenceId,
         });
         return;
       }

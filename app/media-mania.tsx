@@ -40,6 +40,11 @@ import { adaptMediaManiaEvidenceToSignals, MEDIA_MANIA_EVIDENCE_MODE } from "../
 import { mediaManiaMilestone } from "../lib/recommendationGames/gameRecommendationMilestones";
 import { parseGameRouteConfig, type GameRouteParams } from "../lib/recommendationGames/gameRecommendationRouteConfig";
 import type { AgeBandV2 } from "../app/recommender-v2";
+import {
+  isMediaManiaGameplayKeyboardBlocked,
+  normalizeMediaManiaAgeBand,
+  reconcileMediaManiaRouteAge,
+} from "../features/recommendation-games/media-mania/mediaManiaUiGuards";
 
 const SOURCE_META: Record<MediaManiaSource, { icon: string; color: string }> = {
   books: { icon: "BK", color: "#8b5cf6" }, movies: { icon: "MV", color: "#ef4444" },
@@ -50,12 +55,6 @@ const SOURCE_META: Record<MediaManiaSource, { icon: string; color: string }> = {
 
 const catalogById = new Map(MEDIA_MANIA_CATALOG.map((item) => [item.id, item]));
 const titleFor = (id: string) => catalogById.get(id)?.title || "Unknown title";
-const normalizeAgeBand = (value: unknown): MediaManiaAgeBand => {
-  const normalized = String(value || "").trim().toLowerCase();
-  return MEDIA_MANIA_AGE_BANDS.includes(normalized as MediaManiaAgeBand)
-    ? normalized as MediaManiaAgeBand
-    : "teens";
-};
 const durablePersistenceNotice = (error: string | null) =>
   error === "durable_endpoint_unavailable"
     ? "Gameplay is saved on this device."
@@ -120,7 +119,7 @@ export default function MediaManiaScreen() {
   const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
   const playerId = String(params.playerId || "media-mania-player");
   const libraryId = String(params.libraryId || "default");
-  const initialAgeBand = normalizeAgeBand(params.ageBand);
+  const initialAgeBand = normalizeMediaManiaAgeBand(params.ageBand);
   const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const storageInstanceId = useMemo(
     () => createMediaManiaStorageInstanceId(playerId, libraryId),
@@ -158,15 +157,18 @@ export default function MediaManiaScreen() {
     void (async () => {
       try {
         const saved = await loadMediaManiaSave(playerId, libraryId, storageInstanceId);
+        const routedSave = saved
+          ? reconcileMediaManiaRouteAge(saved.state, initialAgeBand, MEDIA_MANIA_CATALOG)
+          : null;
         const lifecycle = saved
-          ? recordMediaManiaSessionContinued(saved.state)
+          ? recordMediaManiaSessionContinued(routedSave?.state || saved.state)
           : recordMediaManiaSessionStarted(createMediaManiaState({
               playerId,
               sessionId: createMediaManiaSessionId(),
               libraryId,
               ageBand: initialAgeBand,
             }));
-        const nextEvents = [...(saved?.events || []), ...lifecycle.events];
+        const nextEvents = [...(saved?.events || []), ...(routedSave?.events || []), ...lifecycle.events];
         const persisted = await saveMediaMania(playerId, libraryId, lifecycle.state, nextEvents, storageInstanceId);
         if (cancelled) return;
         setState(lifecycle.state);
@@ -310,17 +312,26 @@ export default function MediaManiaScreen() {
   useEffect(() => {
     if (Platform.OS !== "web" || typeof document === "undefined") return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat || locked || showDislikeHint || !state?.currentRound || state.unlockStatus === "offered") return;
+      const round = state?.currentRound;
+      if (!round) return;
+      if (isMediaManiaGameplayKeyboardBlocked({
+        repeat: event.repeat,
+        locked,
+        hintVisible: showDislikeHint,
+        recommendationRewardVisible: Boolean(gameRecommendationMilestone.pendingReward),
+        hasCurrentRound: true,
+        unlockOffered: state?.unlockStatus === "offered",
+      })) return;
       if (["1", "2", "3"].includes(event.key)) {
         event.preventDefault();
-        const candidate = state.currentRound.candidates[Number(event.key) - 1];
+        const candidate = round.candidates[Number(event.key) - 1];
         if (candidate) {
           if (event.shiftKey) unknownCandidate(candidate.id);
           else choose(candidate.id);
         }
       } else if (event.key.toLowerCase() === "r") {
         event.preventDefault();
-        const basis = state.currentRound.basisItems[0];
+        const basis = round.basisItems[0];
         if (basis) unknownBasis(basis.id);
       } else if (event.key === "Escape") {
         void exitGame();

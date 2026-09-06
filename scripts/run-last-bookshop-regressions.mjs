@@ -26,6 +26,7 @@ require.extensions[".webp"] = (module, filename) => {
 };
 
 const game = require(resolve(root, "lib/recommendationGames/lastBookshop.ts"));
+const progressStorage = require(resolve(root, "lib/recommendationGames/lastBookshopProgressStorage.ts"));
 const evidence = require(resolve(root, "lib/recommendationGames/evidenceClient.ts"));
 const portraits = require(resolve(root, "lib/recommendationGames/lastBookshopPortraits.ts"));
 const titleArtwork = require(resolve(root, "lib/recommendationGames/lastBookshopTitleArtwork.ts"));
@@ -158,6 +159,109 @@ async function main() {
   const recovered = game.restoreLastBookshopProgress(JSON.stringify({ ...initial, encounterIndex: 999 }));
   assert(recovered.encounterIndex === 2, "out-of-range encounter progress must recover to a playable step");
   checks.push("progress_round_trip");
+
+  const patronScopeA = progressStorage.lastBookshopProgressScopeKey({
+    playerId: "patron-a",
+    libraryId: "north",
+    ageBand: "teens",
+  });
+  const patronScopeB = progressStorage.lastBookshopProgressScopeKey({
+    playerId: "patron-b",
+    libraryId: "north",
+    ageBand: "teens",
+  });
+  const adultScopeA = progressStorage.lastBookshopProgressScopeKey({
+    playerId: "patron-a",
+    libraryId: "north",
+    ageBand: "adult",
+  });
+  assert(patronScopeA !== patronScopeB && patronScopeA !== adultScopeA,
+    "progress scopes must isolate patron and age context");
+  const scopedStorage = new MemoryStorage();
+  const patronAProgress = game.advanceLastBookshopProgress(
+    initial,
+    game.LAST_BOOKSHOP_ENCOUNTERS[0],
+    { reputation: 3, coins: 2 },
+  );
+  await scopedStorage.setItem(
+    progressStorage.scopedLastBookshopProgressKey(patronScopeA),
+    JSON.stringify(patronAProgress),
+  );
+  assert((await progressStorage.loadLastBookshopProgressForScope(scopedStorage, {
+    scopeKey: patronScopeA,
+  }))?.completedEncounterIds.length === 1, "the same patron must restore its completed encounters");
+  assert(await progressStorage.loadLastBookshopProgressForScope(scopedStorage, {
+    scopeKey: patronScopeB,
+  }) === null, "one patron must not inherit another patron's milestone progress");
+
+  const migrationStorage = new MemoryStorage();
+  await migrationStorage.setItem(game.LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(patronAProgress));
+  const migrated = await progressStorage.loadLastBookshopProgressForScope(migrationStorage, {
+    scopeKey: patronScopeA,
+  });
+  assert(migrated?.anonymousPlayerId === initial.anonymousPlayerId,
+    "the normal routed patron must retain legacy progress and its embedded anonymous identity");
+  assert(await progressStorage.loadLastBookshopProgressForScope(migrationStorage, {
+    scopeKey: patronScopeB,
+  }) === null, "a legacy global save must never be cross-claimed by another scope");
+  assert(game.restoreLastBookshopProgress(await migrationStorage.getItem(game.LAST_BOOKSHOP_PROGRESS_KEY)) !== null,
+    "legacy migration must preserve the original save");
+  const deviceMigrationStorage = new MemoryStorage();
+  await deviceMigrationStorage.setItem(game.LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(patronAProgress));
+  assert((await progressStorage.loadLastBookshopProgressForScope(deviceMigrationStorage, {
+    scopeKey: patronScopeA,
+  }))?.anonymousPlayerId === initial.anonymousPlayerId,
+  "an unscoped device route may safely retain its own legacy ledger");
+  const sharedMigrationValues = new Map();
+  const storageView = () => ({
+    getItem: async (key) => sharedMigrationValues.get(key) ?? null,
+    setItem: async (key, value) => {
+      sharedMigrationValues.set(key, value);
+    },
+  });
+  const migrationTabA = storageView();
+  const migrationTabB = storageView();
+  await migrationTabA.setItem(game.LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(patronAProgress));
+  const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: {} });
+  let crossTabClaims;
+  try {
+    crossTabClaims = await Promise.all([
+      progressStorage.loadLastBookshopProgressForScope(migrationTabA, { scopeKey: patronScopeA }),
+      progressStorage.loadLastBookshopProgressForScope(migrationTabB, { scopeKey: patronScopeB }),
+    ]);
+  } finally {
+    if (previousNavigator) Object.defineProperty(globalThis, "navigator", previousNavigator);
+    else Reflect.deleteProperty(globalThis, "navigator");
+  }
+  assert(crossTabClaims.filter(Boolean).length === 1,
+    "concurrent tabs must not copy one legacy save into two patron scopes");
+  const markerFailureValues = new Map();
+  const markerFailureStorage = {
+    getItem: async (key) => markerFailureValues.get(key) ?? null,
+    setItem: async (key, value) => {
+      if (key === progressStorage.LAST_BOOKSHOP_PROGRESS_MIGRATION_KEY
+        && JSON.parse(value).status === "complete") {
+        throw new Error("injected_marker_completion_failure");
+      }
+      markerFailureValues.set(key, value);
+    },
+  };
+  await markerFailureStorage.setItem(game.LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(patronAProgress));
+  const markerFailureResult = await progressStorage.loadLastBookshopProgressForScope(
+    markerFailureStorage,
+    { scopeKey: patronScopeA },
+  );
+  assert(markerFailureResult?.completedEncounterIds.length === 1
+    && game.restoreLastBookshopProgress(
+      await markerFailureStorage.getItem(progressStorage.scopedLastBookshopProgressKey(patronScopeA)),
+    )?.completedEncounterIds.length === 1,
+  "a failed migration completion marker must not erase the durable migrated ledger");
+  assert(appSource.includes("lastBookshopProgressScopeKey")
+    && appSource.includes("loadLastBookshopProgressForScope")
+    && appSource.includes("routeConfig.ageBand"),
+  "the route must load patron, library, and age-scoped progress");
+  checks.push("patron_scoped_progress_and_safe_migration");
 
   const encounter = game.LAST_BOOKSHOP_ENCOUNTERS[0];
   const selected = ["atlas-of-small-stars", "iron-suns", "tea-at-worlds-end"];

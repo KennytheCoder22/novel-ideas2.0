@@ -198,6 +198,22 @@ async function main() {
   assert(event.explorationContext.preferenceInference === "none_from_exploration", "movement must be explicitly non-preference telemetry");
   assert(!game.normalizeUnwrittenMapEventV2({ ...event, email: "not-allowed@example.com" }), "event allowlist must reject personal/unknown fields");
   assert(!game.isUnwrittenMapEventV2({ ...event, chosenOption: { ...event.chosenOption, label: "changed" } }), "snapshots are identity-bound");
+  const originatingDecision = game.applyMapOutcome(
+    game.startEncounterAttempt(save, scenario.id),
+    {
+      scenarioId: scenario.id,
+      kind: "choice",
+      optionId: event.chosenOption.id,
+      outcomeEvidence: { kind: "durable_event", schemaVersion: event.schemaVersion, eventId: event.eventId },
+      presentationId: event.presentationId,
+      attempt: 1,
+    },
+  ).decisions[0];
+  const newerDecision = { ...originatingDecision, presentationId: "later-encounter-presentation" };
+  assert(game.isUnwrittenMapRecommendationContinuationCurrent(event.presentationId, originatingDecision)
+    && !game.isUnwrittenMapRecommendationContinuationCurrent(event.presentationId, newerDecision)
+    && !game.isUnwrittenMapRecommendationContinuationCurrent(event.presentationId, null),
+  "a delayed recommendation continuation must remain bound to its originating decision");
   checks.push("semantic_choice_evidence_and_counterbalancing");
 
   const { choices } = presentation(save, scenario);
@@ -1842,6 +1858,12 @@ async function main() {
     && routeSource.includes("reloadAfterStaleCompletion")
     && routeSource.includes("This map changed in another session before completion"),
   "result continuation must recheck durable completion before entering complete and reload a stale session");
+  assert(continueSource.includes("expectedPresentationId")
+    && continueSource.includes('phaseRef.current !== "result"')
+    && continueSource.includes("isUnwrittenMapRecommendationContinuationCurrent")
+    && routeSource.includes("gameRecommendationMilestone.pendingReward?.nativeEvidenceId")
+    && routeSource.includes("continueFromResult(originatingDecisionId)"),
+  "a delayed recommendation response must not clear a newer encounter or result");
   assert(routeSource.includes("RETRY FINAL FIELD NOTE")
     && routeSource.includes("completionPendingRef.current")
     && routeSource.includes("updateCompletionPending(true)")

@@ -1,10 +1,19 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { put } from "@vercel/blob";
-import { normalizeGameRecommendationFeedbackEventV1 } from "../lib/recommendationGames/gameRecommendationFeedback";
+import { get, put } from "@vercel/blob";
+import {
+  gameRecommendationFeedbackStoragePath,
+  normalizeGameRecommendationFeedbackEventV1,
+} from "../lib/recommendationGames/gameRecommendationFeedback";
 
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 30;
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+async function readExisting(pathname: string, token: string): Promise<string | null> {
+  const existing = await get(pathname, { access: "private", token, useCache: false });
+  if (!existing || existing.statusCode !== 200 || !existing.stream) return null;
+  return new Response(existing.stream).text();
+}
 
 function requestOriginMatchesHost(req: VercelRequest): boolean {
   const origin = String(req.headers.origin || "");
@@ -61,20 +70,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "invalid_game_recommendation_feedback_event" });
   }
 
-  const safeGame = event.game.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60);
-  const safeLibrary = event.library.libraryId.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 100);
-  const safePlayer = event.anonymousPlayerId.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 100);
-  const safeEvent = event.eventId.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 200);
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  const pathname = gameRecommendationFeedbackStoragePath(event);
+  const serialized = JSON.stringify(event);
   try {
+    const existing = await readExisting(pathname, token);
+    if (existing !== null) {
+      if (existing !== serialized) {
+        return res.status(409).json({ error: "game_recommendation_feedback_revision_conflict" });
+      }
+      return res.status(200).json({ status: "accepted", eventId: event.eventId, idempotentReplay: true });
+    }
     await put(
-      `recommendation-games/feedback/v1/${safeLibrary}/${safeGame}/${safePlayer}/${safeEvent}.json`,
-      JSON.stringify(event),
+      pathname,
+      serialized,
       {
         access: "private",
         addRandomSuffix: false,
-        allowOverwrite: true,
+        allowOverwrite: false,
         contentType: "application/json",
-        token: process.env.BLOB_READ_WRITE_TOKEN,
+        token,
       },
     );
     return res.status(201).json({
@@ -83,6 +98,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       storageMode: "durable_blob",
     });
   } catch (error) {
+    const existing = await readExisting(pathname, token).catch(() => null);
+    if (existing === serialized) {
+      return res.status(200).json({ status: "accepted", eventId: event.eventId, idempotentReplay: true });
+    }
     console.error("[game-recommendation-feedback] event_write_failed", error);
     return res.status(500).json({ error: "game_recommendation_feedback_event_write_failed" });
   }

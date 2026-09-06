@@ -21,7 +21,7 @@ async function postJson(path: string, body: unknown, env: GameRecommendationHttp
       body: JSON.stringify(body),
     });
     const payload = await response.json().catch(() => null);
-    return response.status === 201 && payload?.status === "accepted";
+    return (response.status === 200 || response.status === 201) && payload?.status === "accepted";
   } catch {
     return false;
   }

@@ -30,7 +30,6 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import {
-  LAST_BOOKSHOP_PROGRESS_KEY,
   PITCH_CHARMS,
   advanceLastBookshopProgress,
   calculateRoundReward,
@@ -41,13 +40,17 @@ import {
   getEncountersForNight,
   getWork,
   resolveEncounterOutcome,
-  restoreLastBookshopProgress,
   type ConfidenceLevel,
   type EncounterOutcome,
   type LastBookshopEncounter,
   type LastBookshopProgressV1,
   type PitchCharm,
 } from "../../lib/recommendationGames/lastBookshop";
+import {
+  lastBookshopProgressScopeKey,
+  loadLastBookshopProgressForScope,
+  scopedLastBookshopProgressKey,
+} from "../../lib/recommendationGames/lastBookshopProgressStorage";
 import { lastBookshopPortraitForCustomer } from "../../lib/recommendationGames/lastBookshopPortraits";
 import {
   LAST_BOOKSHOP_TITLE_ARTWORK,
@@ -902,6 +905,11 @@ function EndingScreen({ progress, onRestart }: { progress: LastBookshopProgressV
 export default function LastBookshopRoute() {
   const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
   const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
+  const progressScopeKey = useMemo(() => lastBookshopProgressScopeKey({
+    playerId: routeConfig.playerId,
+    libraryId: routeConfig.libraryId,
+    ageBand: routeConfig.ageBand,
+  }), [routeConfig.ageBand, routeConfig.libraryId, routeConfig.playerId]);
   const [progress, setProgress] = useState<LastBookshopProgressV1 | null>(null);
   const [phase, setPhase] = useState<GamePhase>("title");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -926,17 +934,27 @@ export default function LastBookshopRoute() {
   });
 
   const persistProgress = useCallback(async (next: LastBookshopProgressV1) => {
-    await gameStorage.setItem(LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(next));
-  }, []);
+    await gameStorage.setItem(scopedLastBookshopProgressKey(progressScopeKey), JSON.stringify(next));
+  }, [progressScopeKey]);
 
   useEffect(() => {
     let active = true;
+    setProgress(null);
+    setLoadedExistingProgress(false);
+    setPhase("title");
+    setSelectedIds([]);
+    setPredictedId("");
+    setConfidence(null);
+    setPitchCharm(null);
+    setRoundResult(null);
     const previousTitle = Platform.OS === "web" && typeof document !== "undefined" ? document.title : "";
     if (Platform.OS === "web" && typeof document !== "undefined") document.title = "The Last Bookshop";
     void (async () => {
       let existing: LastBookshopProgressV1 | null = null;
       try {
-        existing = restoreLastBookshopProgress(await gameStorage.getItem(LAST_BOOKSHOP_PROGRESS_KEY));
+        existing = await loadLastBookshopProgressForScope(gameStorage, {
+          scopeKey: progressScopeKey,
+        });
       } catch {
         if (active) setStorageError("The shop ledger is unavailable. This visit may not survive closing the game.");
       }
@@ -963,7 +981,7 @@ export default function LastBookshopRoute() {
       active = false;
       if (Platform.OS === "web" && typeof document !== "undefined") document.title = previousTitle;
     };
-  }, [persistProgress]);
+  }, [persistProgress, progressScopeKey]);
 
   const encounter = useMemo(() => {
     if (!progress || progress.night > 3) return null;

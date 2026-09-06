@@ -24,6 +24,7 @@ import {
   createInitialUnwrittenMapSave,
   createSessionEvent,
   createUnwrittenMapPlayerId,
+  isUnwrittenMapRecommendationContinuationCurrent,
   isUnwrittenMapJourneyComplete,
   monotonicUnwrittenMapTimestamp,
   orderedChoices,
@@ -913,7 +914,11 @@ export default function UnwrittenMapRoute() {
     }
   }, [acquireOperation, activeScenario, gameRecommendationMilestone, presentedChoices, queueSaveCommit, releaseOperation, reloadDurableJourney]);
 
-  const continueFromResult = useCallback(async () => {
+  const continueFromResult = useCallback(async (expectedPresentationId?: string) => {
+    if (expectedPresentationId && (
+      phaseRef.current !== "result"
+      || !isUnwrittenMapRecommendationContinuationCurrent(expectedPresentationId, resultDecisionRef.current)
+    )) return;
     if (!acquireOperation()) return;
     const current = saveRef.current;
     if (!current) {
@@ -1255,7 +1260,12 @@ export default function UnwrittenMapRoute() {
             description: gameRecommendationMilestone.pendingReward.description,
             reason: gameRecommendationMilestone.pendingReward.reason,
           }}
-          onRespond={(response) => gameRecommendationMilestone.respond(response, () => void continueFromResult())}
+          onRespond={(response) => {
+            const originatingDecisionId = gameRecommendationMilestone.pendingReward?.nativeEvidenceId;
+            gameRecommendationMilestone.respond(response, () => {
+              if (originatingDecisionId) void continueFromResult(originatingDecisionId);
+            });
+          }}
         />
       ) : null}
     </SafeAreaView>

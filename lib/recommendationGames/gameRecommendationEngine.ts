@@ -74,6 +74,11 @@ export type GameRecommendationEngineOutcome =
   | { status: "empty" | "error"; state: GameRecommendationIntegrationStateV1; diagnostic: GameRecommendationDiagnosticEventV1 }
   | { status: "not_eligible"; state: GameRecommendationIntegrationStateV1 };
 
+export type PreparedGameRecommendationEvidence = {
+  state: GameRecommendationIntegrationStateV1;
+  milestone: MilestoneEvaluation | null;
+};
+
 function canonicalBookIdentity(candidate: GameRecommendationCandidateLike): string {
   const title = candidate.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const author = (candidate.creators[0] || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -262,6 +267,55 @@ export async function attemptGameRecommendationMilestone(args: {
   };
 }
 
+export function prepareGameRecommendationEvidence(args: {
+  state: GameRecommendationIntegrationStateV1;
+  nativeEvidenceId: string;
+  signals: readonly SwipeSignalV2[];
+  evaluateMilestone: (lastMilestoneEvidenceCount: number) => MilestoneEvaluation | null;
+}): PreparedGameRecommendationEvidence {
+  const state = mergeNativeEvidence(args.state, args.nativeEvidenceId, args.signals);
+  return {
+    state,
+    milestone: state.pendingReward
+      ? null
+      : args.evaluateMilestone(state.lastMilestoneEvidenceCount),
+  };
+}
+
+export async function processDurableGameRecommendationEvidence(args: {
+  state: GameRecommendationIntegrationStateV1;
+  nativeEvidenceId: string;
+  signals: readonly SwipeSignalV2[];
+  evaluateMilestone: (lastMilestoneEvidenceCount: number) => MilestoneEvaluation | null;
+  evidenceMode: GameRecommendationEvidenceMode;
+  ageBand: AgeBandV2;
+  enabledSources: Partial<Record<SourceIdV2, boolean>>;
+  library: { libraryId: string; localCollectionOnly: boolean };
+  localLibraryCurationTrusted?: boolean;
+  runRecommender: RunGameRecommender;
+  persist: (state: GameRecommendationIntegrationStateV1) => Promise<void>;
+  now?: () => string;
+}): Promise<GameRecommendationEngineOutcome> {
+  const prepared = prepareGameRecommendationEvidence(args);
+  // Native evidence is durable before any network work begins. The post-generation write below
+  // is equally unconditional so navigation can suppress stale UI without losing the outcome.
+  await args.persist(prepared.state);
+  if (!prepared.milestone) return { status: "not_eligible", state: prepared.state };
+  const outcome = await attemptGameRecommendationMilestone({
+    state: prepared.state,
+    milestone: prepared.milestone,
+    evidenceMode: args.evidenceMode,
+    ageBand: args.ageBand,
+    enabledSources: args.enabledSources,
+    library: args.library,
+    localLibraryCurationTrusted: args.localLibraryCurationTrusted,
+    runRecommender: args.runRecommender,
+    now: args.now,
+  });
+  await args.persist(outcome.state);
+  return outcome;
+}
+
 /** Shared runtime seam used by the React hook and integration tests: merge one native gameplay
  * event, evaluate its milestone against durable state, and invoke the production engine adapter. */
 export async function processGameRecommendationEvidence(args: {
@@ -277,11 +331,11 @@ export async function processGameRecommendationEvidence(args: {
   runRecommender: RunGameRecommender;
   now?: () => string;
 }): Promise<GameRecommendationEngineOutcome> {
-  const state = mergeNativeEvidence(args.state, args.nativeEvidenceId, args.signals);
-  if (state.pendingReward) return { status: "not_eligible", state };
+  const prepared = prepareGameRecommendationEvidence(args);
+  if (!prepared.milestone) return { status: "not_eligible", state: prepared.state };
   return attemptGameRecommendationMilestone({
-    state,
-    milestone: args.evaluateMilestone(state.lastMilestoneEvidenceCount),
+    state: prepared.state,
+    milestone: prepared.milestone,
     evidenceMode: args.evidenceMode,
     ageBand: args.ageBand,
     enabledSources: args.enabledSources,

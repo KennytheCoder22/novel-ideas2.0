@@ -7,6 +7,24 @@
 // reward shown at a milestone.
 export const GAME_RECOMMENDATION_FEEDBACK_SCHEMA = "game_recommendation_feedback_v1" as const;
 
+function safeFeedbackPathSegment(value: string, maxLength: number): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, maxLength);
+}
+
+export function gameRecommendationFeedbackStoragePath(event: GameRecommendationFeedbackEventV1): string {
+  const revision = event.continuedAt
+    ? `continued-${safeFeedbackPathSegment(event.continuedAt, 60)}`
+    : "response";
+  return [
+    "recommendation-games/feedback/v1",
+    safeFeedbackPathSegment(event.library.libraryId, 100),
+    safeFeedbackPathSegment(event.game, 60),
+    safeFeedbackPathSegment(event.anonymousPlayerId, 100),
+    safeFeedbackPathSegment(event.eventId, 200),
+    `${revision}.json`,
+  ].join("/");
+}
+
 export type RecommendationGameId =
   | "media_mania"
   | "the_last_bookshop"
