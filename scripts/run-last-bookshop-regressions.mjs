@@ -28,6 +28,7 @@ require.extensions[".webp"] = (module, filename) => {
 const game = require(resolve(root, "lib/recommendationGames/lastBookshop.ts"));
 const evidence = require(resolve(root, "lib/recommendationGames/evidenceClient.ts"));
 const portraits = require(resolve(root, "lib/recommendationGames/lastBookshopPortraits.ts"));
+const titleArtwork = require(resolve(root, "lib/recommendationGames/lastBookshopTitleArtwork.ts"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -86,6 +87,32 @@ async function main() {
   assert(game.LAST_BOOKSHOP_WORKS.length >= 18, "vertical slice inventory is too small");
   assert(game.LAST_BOOKSHOP_ENCOUNTERS.length === 9, "vertical slice must contain three encounters per night");
   checks.push("playable_vertical_slice");
+
+  const titleArtworkPath = titleArtwork.LAST_BOOKSHOP_TITLE_ARTWORK;
+  assert(typeof titleArtworkPath === "string" && titleArtworkPath.endsWith("title-screen.webp"), "real title artwork mapping missing");
+  assert(existsSync(titleArtworkPath), "real title artwork asset does not exist");
+  const titleArtworkBytes = readFileSync(titleArtworkPath);
+  assert(
+    titleArtworkBytes.subarray(0, 4).toString("ascii") === "RIFF"
+      && titleArtworkBytes.subarray(8, 12).toString("ascii") === "WEBP",
+    "title artwork must be WebP",
+  );
+  assert(statSync(titleArtworkPath).size < 400_000, "title artwork exceeds the web payload budget");
+  const desktopTitleLayout = titleArtwork.computeLastBookshopTitleArtworkLayout(1920, 1080);
+  assert(desktopTitleLayout.mode === "cinematic", "desktop title artwork must use the full cinematic layout");
+  assert(Math.abs(desktopTitleLayout.stage.width / desktopTitleLayout.stage.height - 1672 / 941) < 0.001, "desktop artwork aspect ratio drifted");
+  assert(desktopTitleLayout.button.height >= 44 && desktopTitleLayout.button.width >= 44, "desktop title button target is too small");
+  const mobileTitleLayout = titleArtwork.computeLastBookshopTitleArtworkLayout(390, 844);
+  assert(mobileTitleLayout.mode === "mobile", "portrait viewport must use the deliberate mobile treatment");
+  assert(mobileTitleLayout.button.height >= 44 && mobileTitleLayout.button.width >= 160, "mobile title button target is not readable or touch-safe");
+  assert(mobileTitleLayout.button.left >= 0 && mobileTitleLayout.button.left + mobileTitleLayout.button.width <= mobileTitleLayout.stage.width, "mobile title button overflows horizontally");
+  assert(appSource.includes("source={LAST_BOOKSHOP_TITLE_ARTWORK}"), "title screen does not render the real artwork");
+  assert(appSource.includes('testID="last-bookshop-title-begin"'), "interactive baked-button overlay missing");
+  assert(appSource.includes("accessibilityLabel={buttonLabel}"), "title button accessibility label missing");
+  assert(appSource.includes('layout.mode === "mobile" || hasProgress'), "saved progress must expose a visible continue treatment");
+  assert(appSource.includes("onError={() => setArtworkFailed(true)}"), "title artwork failure fallback missing");
+  assert(appSource.includes("return <AbstractTitleScreen"), "abstract title scene is not retained as the failure fallback");
+  checks.push("title_screen_artwork");
 
   const expectedPortraits = {
     mara: "mara-venn.webp",

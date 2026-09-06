@@ -8,6 +8,7 @@ import {
   Easing,
   Image,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -48,6 +49,10 @@ import {
   type PitchCharm,
 } from "../../lib/recommendationGames/lastBookshop";
 import { lastBookshopPortraitForCustomer } from "../../lib/recommendationGames/lastBookshopPortraits";
+import {
+  LAST_BOOKSHOP_TITLE_ARTWORK,
+  computeLastBookshopTitleArtworkLayout,
+} from "../../lib/recommendationGames/lastBookshopTitleArtwork";
 import {
   flushRecommendationGameEvents,
   queueRecommendationGameEvent,
@@ -146,7 +151,7 @@ function ShopHeader({
   );
 }
 
-function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgress: boolean }) {
+function AbstractTitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgress: boolean }) {
   return (
     <View style={styles.titleScreen}>
       <View style={styles.moon}>
@@ -169,10 +174,110 @@ function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgres
       <Text style={styles.titleTagline}>
         Listen closely. Choose three stories. Send each midnight visitor home with the one they need.
       </Text>
-      <TouchableOpacity style={styles.beginButton} onPress={onBegin} accessibilityRole="button">
+      <TouchableOpacity
+        style={styles.beginButton}
+        onPress={onBegin}
+        accessibilityRole="button"
+        accessibilityLabel={hasProgress ? "Continue your journey" : "Turn the Key"}
+      >
         <Text style={styles.beginButtonText}>{hasProgress ? "Continue the Night" : "Turn the Key"}</Text>
       </TouchableOpacity>
       <Text style={styles.titleHint}>The shop remembers every kindness.</Text>
+    </View>
+  );
+}
+
+function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgress: boolean }) {
+  const { width, height } = useWindowDimensions();
+  const [artworkFailed, setArtworkFailed] = useState(false);
+  const [buttonFocused, setButtonFocused] = useState(false);
+  const [buttonHovered, setButtonHovered] = useState(false);
+  const layout = computeLastBookshopTitleArtworkLayout(width, height);
+  const buttonLabel = hasProgress ? "Continue your journey" : "Turn the Key";
+  const showVisibleButton = layout.mode === "mobile" || hasProgress;
+
+  if (artworkFailed) return <AbstractTitleScreen onBegin={onBegin} hasProgress={hasProgress} />;
+
+  const artwork = (
+    <View
+      style={[
+        styles.titleArtworkStage,
+        { width: layout.stage.width, height: layout.stage.height },
+      ]}
+    >
+      <Image
+        source={LAST_BOOKSHOP_TITLE_ARTWORK}
+        style={styles.titleArtworkImage}
+        resizeMode="contain"
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel="A warmly lit bookshop storefront at night"
+        accessibilityIgnoresInvertColors
+        onError={() => setArtworkFailed(true)}
+      />
+      <Pressable
+        testID="last-bookshop-title-begin"
+        accessibilityRole="button"
+        accessibilityLabel={buttonLabel}
+        accessibilityHint="Enter The Last Bookshop and meet the next visitor"
+        onPress={onBegin}
+        onFocus={() => setButtonFocused(true)}
+        onBlur={() => setButtonFocused(false)}
+        onHoverIn={() => setButtonHovered(true)}
+        onHoverOut={() => setButtonHovered(false)}
+        style={({ pressed }: { pressed: boolean }) => [
+          styles.titleArtworkButton,
+          {
+            left: layout.button.left,
+            top: layout.button.top,
+            width: layout.button.width,
+            height: layout.button.height,
+          },
+          showVisibleButton && styles.titleArtworkButtonVisible,
+          (buttonFocused || buttonHovered) && (
+            showVisibleButton ? styles.titleArtworkButtonVisibleActive : styles.titleArtworkButtonActive
+          ),
+          pressed && styles.titleArtworkButtonPressed,
+        ]}
+      >
+        <Text
+          style={[
+            styles.titleArtworkButtonText,
+            !showVisibleButton && styles.visuallyHidden,
+          ]}
+        >
+          {buttonLabel}
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  if (layout.mode === "mobile") {
+    return (
+      <ScrollView
+        style={styles.titleArtworkMobileScroll}
+        contentContainerStyle={styles.titleArtworkMobileContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {artwork}
+        <View style={styles.titleArtworkMobileCopy}>
+          <Text accessibilityRole="header" style={styles.titleArtworkMobileTitle}>The Last Bookshop</Text>
+          <Text style={styles.titleArtworkMobileInstructions}>
+            Listen closely. Choose three stories. Send each midnight visitor home with the one they need.
+          </Text>
+          <Text style={styles.titleArtworkMobileHint}>The shop remembers every kindness.</Text>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <View style={styles.titleArtworkDesktop}>
+      {artwork}
+      <View style={styles.visuallyHidden} pointerEvents="none">
+        <Text accessibilityRole="header">The Last Bookshop</Text>
+        <Text>Listen closely. Choose three stories. Send each midnight visitor home with the one they need.</Text>
+      </View>
     </View>
   );
 }
@@ -1107,6 +1212,57 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
+  titleArtworkDesktop: {
+    flex: 1,
+    backgroundColor: "#0d0a12",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  titleArtworkMobileScroll: { flex: 1, backgroundColor: "#0d0a12" },
+  titleArtworkMobileContent: { flexGrow: 1, alignItems: "center", justifyContent: "flex-start", paddingBottom: 24 },
+  titleArtworkStage: { position: "relative", alignSelf: "center", backgroundColor: "#0d0a12", overflow: "hidden" },
+  titleArtworkImage: { position: "absolute", inset: 0, width: "100%", height: "100%" },
+  titleArtworkButton: {
+    position: "absolute",
+    borderWidth: 3,
+    borderColor: "transparent",
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  titleArtworkButtonVisible: {
+    backgroundColor: "rgba(153, 76, 49, 0.94)",
+    borderColor: "#e5b66d",
+    shadowColor: "#000",
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  titleArtworkButtonActive: {
+    borderColor: "#ffe0a2",
+    backgroundColor: "rgba(205, 128, 76, 0.28)",
+  },
+  titleArtworkButtonVisibleActive: {
+    borderColor: "#ffe0a2",
+    backgroundColor: "rgba(177, 90, 55, 0.98)",
+  },
+  titleArtworkButtonPressed: {
+    backgroundColor: "rgba(116, 53, 38, 0.72)",
+    transform: [{ scale: 0.985 }],
+  },
+  titleArtworkButtonText: { color: "#fff1cf", fontSize: 17, fontWeight: "900", letterSpacing: 0.3 },
+  titleArtworkMobileCopy: {
+    alignSelf: "stretch",
+    maxWidth: 520,
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 20,
+  },
+  titleArtworkMobileTitle: { color: "#f1ddb8", fontSize: 27, lineHeight: 33, fontWeight: "900", textAlign: "center" },
+  titleArtworkMobileInstructions: { color: "#d7c8b1", fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 10 },
+  titleArtworkMobileHint: { color: "#9b8a9f", fontSize: 12, lineHeight: 17, fontStyle: "italic", textAlign: "center", marginTop: 10 },
+  visuallyHidden: { position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" },
   moon: {
     position: "absolute",
     top: 58,
