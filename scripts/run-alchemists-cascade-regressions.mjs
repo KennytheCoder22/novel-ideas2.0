@@ -28,6 +28,7 @@ const quota = require(resolve(root, "lib/recommendationGames/alchemistsCascadeQu
 const api = require(resolve(root, "api/alchemists-cascade-event.ts"));
 const titleArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeTitleArtwork.ts"));
 const atlasArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeAtlasArtwork.ts"));
+const whisperArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeWhisperArtwork.ts"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -1363,6 +1364,53 @@ async function main() {
     && route.includes('? "CONTINUE"'),
   "title fallback and visible saved-progress treatment must remain wired");
   checks.push("title_artwork_controls_and_fallback");
+  const whisperArtworkPath = whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_ARTWORK;
+  assert(typeof whisperArtworkPath === "string" && whisperArtworkPath.endsWith("first-whisper.webp")
+    && existsSync(whisperArtworkPath),
+  "real First Whisper artwork mapping missing");
+  const whisperArtworkBytes = readFileSync(whisperArtworkPath);
+  assert(whisperArtworkBytes.subarray(0, 4).toString("ascii") === "RIFF"
+    && whisperArtworkBytes.subarray(8, 12).toString("ascii") === "WEBP"
+    && statSync(whisperArtworkPath).size < 400_000,
+  "First Whisper artwork must be an optimized WebP");
+  const catalystIds = game.CASCADE_CATALYST_COPY.map((option) => option.id);
+  assert(catalystIds.join("|") === "hearth-song|lunar-proof|wild-distillation",
+    "First Whisper must retain the three exact authored catalyst identities");
+  assert(catalystIds.every((id) => {
+    const artworkPath = whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_OPTION_ARTWORK[id];
+    return typeof artworkPath === "string"
+      && artworkPath.endsWith(`first-whisper-${id}.webp`)
+      && existsSync(artworkPath)
+      && statSync(artworkPath).size < 60_000;
+  }), "each catalyst must map to its own optimized authorized potion crop");
+  assert(new Set(catalystIds.map((id) => whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_OPTION_ICONS[id])).size === 3,
+    "each catalyst must retain a distinct visual sigil");
+  const whisperDesktop = whisperArtwork.computeAlchemistsCascadeWhisperLayout(1920, 1080);
+  const whisperChromebook = whisperArtwork.computeAlchemistsCascadeWhisperLayout(1366, 768);
+  const whisperMobile = whisperArtwork.computeAlchemistsCascadeWhisperLayout(390, 844);
+  assert(whisperDesktop.mode === "cinematic" && whisperChromebook.mode === "cinematic"
+    && whisperDesktop.cards.length === 3
+    && whisperDesktop.cards.every((bounds) => bounds.width >= 275 && bounds.height >= 460),
+  "desktop First Whisper must preserve three full live card regions");
+  assert(whisperMobile.mode === "stacked"
+    && whisperMobile.header.height
+      < whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_BOUNDS.cards[0].top
+        * (Math.max(390, 760) / whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_ARTWORK_SIZE.width),
+  "narrow First Whisper header must crop before baked catalyst controls");
+  assert(route.includes("function CascadeWhisperScreen")
+    && route.includes("return <AbstractCascadeWhisperScreen")
+    && route.includes("source={ALCHEMISTS_CASCADE_WHISPER_ARTWORK}")
+    && route.includes("ALCHEMISTS_CASCADE_WHISPER_OPTION_ARTWORK[option.id]")
+    && route.includes('testID={`alchemists-cascade-whisper-${option.id}`}')
+    && route.includes('testID="alchemists-cascade-whisper-back"')
+    && route.includes('testID="alchemists-cascade-whisper-fate"')
+    && route.includes("onBack={() => void returnToCampaign()}")
+    && route.includes("onChoose={(option) => void chooseCatalyst(option)}")
+    && route.includes("onPress={() => props.onChoose(null)}")
+    && route.includes("accessibilityState={{ disabled: busy }}")
+    && route.includes("Same calibrated seven-ingredient effect."),
+  "First Whisper artwork, live options, Back, fate, accessibility, and fallback must remain wired");
+  checks.push("whisper_artwork_live_controls_and_fallback");
   const atlasArtworkPath = atlasArtwork.ALCHEMISTS_CASCADE_ATLAS_ARTWORK;
   assert(typeof atlasArtworkPath === "string" && atlasArtworkPath.endsWith("recipe-atlas.webp"),
     "real Recipe Atlas artwork mapping missing");

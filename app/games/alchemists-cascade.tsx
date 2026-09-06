@@ -74,6 +74,12 @@ import {
   ALCHEMISTS_CASCADE_RECIPE_VISUALS,
   computeAlchemistsCascadeAtlasLayout,
 } from "../../lib/recommendationGames/alchemistsCascadeAtlasArtwork";
+import {
+  ALCHEMISTS_CASCADE_WHISPER_ARTWORK,
+  ALCHEMISTS_CASCADE_WHISPER_OPTION_ARTWORK,
+  ALCHEMISTS_CASCADE_WHISPER_OPTION_ICONS,
+  computeAlchemistsCascadeWhisperLayout,
+} from "../../lib/recommendationGames/alchemistsCascadeWhisperArtwork";
 
 type Phase = "loading" | "title" | "campaign" | "catalyst" | "play" | "pause" | "help" | "result";
 const STALE_SESSION_NOTICE = "This game changed in another tab. The latest save was reloaded; your action was not applied.";
@@ -534,6 +540,342 @@ function CascadeTitleScreen(props: CascadeTitleScreenProps) {
     </View>
   );
 }
+
+type CascadeWhisperScreenProps = {
+  options: CatalystOption[];
+  busy: boolean;
+  fallbackBackground: string;
+  onBack: () => void;
+  onChoose: (option: CatalystOption | null) => void;
+};
+
+function WhisperOptionCard({
+    option,
+    busy,
+    compact,
+    stacked,
+    onChoose,
+    onArtworkError,
+  }: {
+    option: CatalystOption;
+    busy: boolean;
+    compact: boolean;
+    stacked: boolean;
+    onChoose: () => void;
+    onArtworkError: () => void;
+  }) {
+    const [focused, setFocused] = useState(false);
+    const [hovered, setHovered] = useState(false);
+    const color = option.manifestation.color;
+    return (
+      <Pressable
+        testID={`alchemists-cascade-whisper-${option.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={`${option.title}. ${option.copy} ${option.manifestation.outcomeText} Same calibrated seven-ingredient effect.`}
+        accessibilityHint="Choose this equally calibrated infusion and begin the recipe"
+        accessibilityState={{ disabled: busy }}
+        disabled={busy}
+        onPress={onChoose}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        style={({ pressed }: { pressed: boolean }) => [
+          styles.whisperCard,
+          compact && styles.whisperCardCompact,
+          stacked && styles.whisperCardStacked,
+          { borderColor: `${color}CC`, shadowColor: color },
+          (focused || hovered) && styles.whisperCardActive,
+          pressed && styles.whisperCardPressed,
+          busy && styles.disabled,
+        ]}
+      >
+        <View
+          pointerEvents="none"
+          style={[styles.whisperCardInnerFrame, { borderColor: `${color}55` }]}
+        />
+        <View
+          style={[
+            styles.whisperCardSigil,
+            compact && styles.whisperCardSigilCompact,
+            { borderColor: `${color}AA`, backgroundColor: "#11131B" },
+          ]}
+          accessible={false}
+        >
+          <MaterialCommunityIcons
+            name={ALCHEMISTS_CASCADE_WHISPER_OPTION_ICONS[option.id]}
+            size={compact ? 24 : 30}
+            color={color}
+            accessible={false}
+          />
+        </View>
+        <Image
+          source={ALCHEMISTS_CASCADE_WHISPER_OPTION_ARTWORK[option.id]}
+          style={[styles.whisperCardArt, compact && styles.whisperCardArtCompact]}
+          resizeMode="cover"
+          accessible={false}
+          accessibilityElementsHidden
+          accessibilityIgnoresInvertColors
+          onError={onArtworkError}
+        />
+        <View style={[styles.whisperCardCopy, compact && styles.whisperCardCopyCompact]}>
+          <Text
+            style={[
+              styles.whisperCardTitle,
+              compact && styles.whisperCardTitleCompact,
+              { color },
+            ]}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.72}
+          >
+            {option.title}
+          </Text>
+          <Text style={[styles.whisperCardDescription, compact && styles.whisperCardDescriptionCompact]}>
+            {option.copy}
+          </Text>
+          <View style={[styles.whisperCardRule, { backgroundColor: `${color}88` }]} />
+          <Text style={[styles.whisperCardOutcome, compact && styles.whisperCardOutcomeCompact]}>
+            {option.manifestation.outcomeText}
+          </Text>
+          <View style={[styles.whisperCardCalibration, { backgroundColor: `${color}18` }]}>
+            <Text style={[styles.whisperCardCalibrationText, compact && styles.whisperCardCalibrationTextCompact]}>
+              SAME CALIBRATED{"\n"}SEVEN-INGREDIENT EFFECT
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+    );
+  }
+
+function AbstractCascadeWhisperScreen({
+    options,
+    busy,
+    fallbackBackground,
+    onBack,
+    onChoose,
+  }: CascadeWhisperScreenProps) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: fallbackBackground }]}>
+        <ScrollView contentContainerStyle={styles.choiceScreen}>
+          <Pressable
+            testID="alchemists-cascade-whisper-back-fallback"
+            accessibilityRole="button"
+            accessibilityLabel="Back to the Recipe Atlas"
+            accessibilityHint="Return without choosing an infusion"
+            accessibilityState={{ disabled: busy }}
+            disabled={busy}
+            onPress={onBack}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.whisperFallbackBack,
+              pressed && styles.whisperControlPressed,
+              busy && styles.disabled,
+            ]}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={20} color="#FBE8BD" accessible={false} />
+            <Text style={styles.whisperBackText}>BACK</Text>
+          </Pressable>
+          <Text style={styles.choiceTitle}>Choose the first whisper</Text>
+          <Text style={styles.choiceCopy}>Three equally measured infusions wait beside the flask. Choose the flavor of this opening, or let fate stir.</Text>
+          <View style={styles.choiceList}>
+            {options.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                testID={`alchemists-cascade-whisper-fallback-${option.id}`}
+                style={[styles.choiceOption, { borderColor: option.manifestation.color }]}
+                onPress={() => onChoose(option)}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityHint="Choose this equally calibrated infusion and begin the recipe"
+                accessibilityState={{ disabled: busy }}
+                accessibilityLabel={`${option.title}. ${option.copy} ${option.manifestation.outcomeText} Same calibrated seven-ingredient effect.`}
+              >
+                <Text style={[styles.choiceOptionTitle, { color: option.manifestation.color }]}>
+                  {option.manifestation.symbol} {option.title}
+                </Text>
+                <Text style={styles.choiceOptionCopy}>{option.copy}</Text>
+                <Text style={styles.choiceOutcome}>{option.manifestation.outcomeText}</Text>
+                <Text style={styles.choiceMechanic}>Same calibrated seven-ingredient effect</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            testID="alchemists-cascade-whisper-fate-fallback"
+            style={styles.fateButton}
+            onPress={() => onChoose(null)}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Let fate decide — begin without an infusion"
+            accessibilityHint="Begin with no preference recorded"
+            accessibilityState={{ disabled: busy }}
+          >
+            <Text style={styles.fateText}>LET FATE DECIDE — BEGIN WITHOUT AN INFUSION</Text>
+          </TouchableOpacity>
+          <Text style={styles.balanceNote}>Each offered infusion is calibrated to the same seven-ingredient strength.</Text>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+function CascadeWhisperScreen(props: CascadeWhisperScreenProps) {
+    const { width, height } = useWindowDimensions();
+    const [artworkFailed, setArtworkFailed] = useState(false);
+    const [backFocused, setBackFocused] = useState(false);
+    const [backHovered, setBackHovered] = useState(false);
+    const [fateFocused, setFateFocused] = useState(false);
+    const [fateHovered, setFateHovered] = useState(false);
+    const layout = computeAlchemistsCascadeWhisperLayout(width, height);
+
+    if (artworkFailed) return <AbstractCascadeWhisperScreen {...props} />;
+
+    const backButton = (
+      <Pressable
+        testID="alchemists-cascade-whisper-back"
+        accessibilityRole="button"
+        accessibilityLabel="Back to the Recipe Atlas"
+        accessibilityHint="Return without choosing an infusion"
+        accessibilityState={{ disabled: props.busy }}
+        disabled={props.busy}
+        onPress={props.onBack}
+        onFocus={() => setBackFocused(true)}
+        onBlur={() => setBackFocused(false)}
+        onHoverIn={() => setBackHovered(true)}
+        onHoverOut={() => setBackHovered(false)}
+        style={({ pressed }: { pressed: boolean }) => [
+          layout.mode === "cinematic" ? styles.whisperCinematicBack : styles.whisperStackedBack,
+          layout.mode === "cinematic" && layout.back,
+          (backFocused || backHovered) && styles.whisperControlActive,
+          pressed && styles.whisperControlPressed,
+          props.busy && styles.disabled,
+        ]}
+      >
+        {layout.mode === "stacked" ? (
+          <>
+            <MaterialCommunityIcons name="arrow-left" size={18} color="#FBE8BD" accessible={false} />
+            <Text style={styles.whisperBackText}>BACK</Text>
+          </>
+        ) : null}
+      </Pressable>
+    );
+
+    const fateButton = (
+      <Pressable
+        testID="alchemists-cascade-whisper-fate"
+        accessibilityRole="button"
+        accessibilityLabel="Let fate decide — begin without an infusion"
+        accessibilityHint="Begin with no preference recorded"
+        accessibilityState={{ disabled: props.busy }}
+        disabled={props.busy}
+        onPress={() => props.onChoose(null)}
+        onFocus={() => setFateFocused(true)}
+        onBlur={() => setFateFocused(false)}
+        onHoverIn={() => setFateHovered(true)}
+        onHoverOut={() => setFateHovered(false)}
+        style={({ pressed }: { pressed: boolean }) => [
+          layout.mode === "cinematic" ? styles.whisperCinematicFate : styles.whisperStackedFate,
+          layout.mode === "cinematic" && layout.fate,
+          (fateFocused || fateHovered) && styles.whisperControlActive,
+          pressed && styles.whisperControlPressed,
+          props.busy && styles.disabled,
+        ]}
+      >
+        {layout.mode === "stacked" ? (
+          <>
+            <MaterialCommunityIcons name="dice-multiple-outline" size={22} color="#F6C957" accessible={false} />
+            <Text style={styles.whisperFateText}>LET FATE DECIDE — BEGIN WITHOUT AN INFUSION</Text>
+          </>
+        ) : null}
+      </Pressable>
+    );
+
+    if (layout.mode === "stacked") {
+      return (
+        <SafeAreaView style={styles.whisperStackedSafe}>
+          <ScrollView
+            style={styles.whisperStackedScroll}
+            contentContainerStyle={styles.whisperStackedContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={[styles.whisperHeaderCrop, { width: layout.header.width, height: layout.header.height }]}>
+              <Image
+                source={ALCHEMISTS_CASCADE_WHISPER_ARTWORK}
+                style={{
+                  position: "absolute",
+                  left: layout.header.imageLeft,
+                  top: 0,
+                  width: Math.max(layout.header.width, 760),
+                  height: layout.header.imageHeight,
+                }}
+                resizeMode="contain"
+                accessible={false}
+                accessibilityElementsHidden
+                accessibilityIgnoresInvertColors
+                onError={() => setArtworkFailed(true)}
+              />
+            </View>
+            <View style={styles.whisperStackedIntro}>
+              {backButton}
+              <Text accessibilityRole="header" style={styles.whisperStackedTitle}>Choose the first whisper</Text>
+              <Text style={styles.whisperStackedDescription}>
+                Three equally measured infusions wait beside the flask. Choose the flavor of this opening, or let fate stir.
+              </Text>
+            </View>
+            <View style={styles.whisperStackedCards}>
+              {props.options.map((option) => (
+                <WhisperOptionCard
+                  key={option.id}
+                  option={option}
+                  busy={props.busy}
+                  compact={false}
+                  stacked
+                  onChoose={() => props.onChoose(option)}
+                  onArtworkError={() => setArtworkFailed(true)}
+                />
+              ))}
+            </View>
+            {fateButton}
+            <Text style={styles.whisperStackedBalance}>
+              Each offered infusion is calibrated to the same seven-ingredient strength.
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      );
+    }
+
+    return (
+      <SafeAreaView style={styles.whisperCinematic}>
+        <View style={[styles.whisperCinematicStage, layout.stage]}>
+          <Image
+            source={ALCHEMISTS_CASCADE_WHISPER_ARTWORK}
+            style={styles.whisperCinematicImage}
+            resizeMode="contain"
+            accessible={false}
+            accessibilityElementsHidden
+            accessibilityIgnoresInvertColors
+            onError={() => setArtworkFailed(true)}
+          />
+          <View style={styles.visuallyHidden} pointerEvents="none">
+            <Text accessibilityRole="header">Choose the first whisper</Text>
+            <Text>Three equally measured infusions wait beside the flask. Choose the flavor of this opening, or let fate stir.</Text>
+          </View>
+          {backButton}
+          {props.options.map((option, index) => (
+            <View key={option.id} style={[styles.whisperCinematicCardPosition, layout.cards[index]]}>
+              <WhisperOptionCard
+                option={option}
+                busy={props.busy}
+                compact={layout.compact}
+                stacked={false}
+                onChoose={() => props.onChoose(option)}
+                onArtworkError={() => setArtworkFailed(true)}
+              />
+            </View>
+          ))}
+          {fateButton}
+        </View>
+      </SafeAreaView>
+    );
+  }
 
 type CascadeAtlasScreenProps = {
     save: CascadeSaveV1;
@@ -1847,35 +2189,13 @@ export default function AlchemistsCascadeRoute() {
 
   if (phase === "catalyst" && save?.activeLevel && activeConfig) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: activeRealm.background }]}>
-        <ScrollView contentContainerStyle={styles.choiceScreen}>
-          <Text style={styles.choiceTitle}>Choose the first whisper</Text>
-          <Text style={styles.choiceCopy}>Three equally measured infusions wait beside the flask. Choose the flavor of this opening, or let fate stir.</Text>
-          <View style={styles.choiceList}>
-            {catalystChoices.map((option) => (
-              <TouchableOpacity
-                key={option.id}
-                style={[styles.choiceOption, { borderColor: option.manifestation.color }]}
-                onPress={() => void chooseCatalyst(option)}
-                disabled={busy}
-                accessibilityRole="button"
-                accessibilityLabel={`${option.title}. ${option.copy} ${option.manifestation.outcomeText}`}
-              >
-                <Text style={[styles.choiceOptionTitle, { color: option.manifestation.color }]}>
-                  {option.manifestation.symbol} {option.title}
-                </Text>
-                <Text style={styles.choiceOptionCopy}>{option.copy}</Text>
-                <Text style={styles.choiceOutcome}>{option.manifestation.outcomeText}</Text>
-                <Text style={styles.choiceMechanic}>Same calibrated seven-ingredient effect</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TouchableOpacity style={styles.fateButton} onPress={() => void chooseCatalyst(null)} disabled={busy}>
-            <Text style={styles.fateText}>LET FATE DECIDE — BEGIN WITHOUT AN INFUSION</Text>
-          </TouchableOpacity>
-          <Text style={styles.balanceNote}>Each offered infusion is calibrated to the same seven-ingredient strength.</Text>
-        </ScrollView>
-      </SafeAreaView>
+      <CascadeWhisperScreen
+        options={catalystChoices}
+        busy={busy}
+        fallbackBackground={activeRealm.background}
+        onBack={() => void returnToCampaign()}
+        onChoose={(option) => void chooseCatalyst(option)}
+      />
     );
   }
 
@@ -2322,6 +2642,208 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     textAlign: "center",
+  },
+  whisperCinematic: {
+    flex: 1,
+    backgroundColor: "#090A10",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  whisperCinematicStage: {
+    position: "relative",
+    overflow: "hidden",
+    backgroundColor: "#090A10",
+  },
+  whisperCinematicImage: { position: "absolute", inset: 0, width: "100%", height: "100%" },
+  whisperCinematicBack: {
+    position: "absolute",
+    minWidth: 44,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "transparent",
+    borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  whisperCinematicCardPosition: { position: "absolute" },
+  whisperCinematicFate: {
+    position: "absolute",
+    minWidth: 44,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "transparent",
+    borderRadius: 4,
+  },
+  whisperCard: {
+    width: "100%",
+    height: "100%",
+    minHeight: 44,
+    borderWidth: 1.5,
+    borderRadius: 7,
+    backgroundColor: "#10121A",
+    overflow: "hidden",
+    alignItems: "center",
+    shadowOpacity: 0.38,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  whisperCardCompact: { borderRadius: 5 },
+  whisperCardStacked: { height: "auto", minHeight: 470, maxWidth: 520, alignSelf: "center" },
+  whisperCardInnerFrame: {
+    position: "absolute",
+    inset: 5,
+    borderWidth: 1,
+    borderRadius: 4,
+    zIndex: 3,
+  },
+  whisperCardSigil: {
+    position: "absolute",
+    top: 5,
+    zIndex: 4,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  whisperCardSigilCompact: { width: 38, height: 38, borderRadius: 19, top: 3 },
+  whisperCardArt: { width: "100%", height: "49%" },
+  whisperCardArtCompact: { height: "48%" },
+  whisperCardCopy: {
+    flex: 1,
+    width: "100%",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  whisperCardCopyCompact: { paddingHorizontal: 8, paddingTop: 5, paddingBottom: 6 },
+  whisperCardTitle: {
+    color: "#F7E8CE",
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: "900",
+    textAlign: "center",
+    textShadowColor: "#000000CC",
+    textShadowRadius: 4,
+  },
+  whisperCardTitleCompact: { fontSize: 16, lineHeight: 19 },
+  whisperCardDescription: { color: "#F2E8DC", fontSize: 14, lineHeight: 19, textAlign: "center" },
+  whisperCardDescriptionCompact: { fontSize: 11, lineHeight: 14 },
+  whisperCardRule: { width: 76, height: 1, marginVertical: 5 },
+  whisperCardOutcome: { color: "#D8CEC2", fontSize: 13, lineHeight: 18, fontStyle: "italic", textAlign: "center" },
+  whisperCardOutcomeCompact: { fontSize: 10, lineHeight: 13 },
+  whisperCardCalibration: {
+    width: "100%",
+    minHeight: 42,
+    borderRadius: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 5,
+  },
+  whisperCardCalibrationText: {
+    color: "#E7DCCB",
+    fontSize: 11,
+    lineHeight: 15,
+    letterSpacing: 0.8,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  whisperCardCalibrationTextCompact: { fontSize: 8, lineHeight: 10, letterSpacing: 0.5 },
+  whisperCardActive: { borderWidth: 2.5, shadowOpacity: 0.9, shadowRadius: 16, elevation: 7 },
+  whisperCardPressed: { opacity: 0.86, transform: [{ scale: 0.985 }] },
+  whisperControlActive: {
+    borderColor: "#FFE5A6",
+    backgroundColor: "rgba(246, 201, 87, 0.18)",
+    shadowColor: "#F6C957",
+    shadowOpacity: 0.85,
+    shadowRadius: 10,
+  },
+  whisperControlPressed: { opacity: 0.78, transform: [{ scale: 0.98 }] },
+  whisperBackText: { color: "#FBE8BD", fontSize: 14, fontWeight: "900", letterSpacing: 0.8 },
+  whisperFallbackBack: {
+    minWidth: 110,
+    minHeight: 48,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "#9B7442",
+    borderRadius: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingHorizontal: 14,
+    marginBottom: 18,
+  },
+  whisperStackedSafe: { flex: 1, backgroundColor: "#090A10" },
+  whisperStackedScroll: { flex: 1, backgroundColor: "#090A10" },
+  whisperStackedContent: { flexGrow: 1, alignItems: "center", paddingBottom: 36 },
+  whisperHeaderCrop: { position: "relative", overflow: "hidden", backgroundColor: "#090A10" },
+  whisperStackedIntro: {
+    width: "100%",
+    maxWidth: 760,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    alignItems: "center",
+  },
+  whisperStackedBack: {
+    minWidth: 104,
+    minHeight: 46,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "#9B7442",
+    borderRadius: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingHorizontal: 13,
+  },
+  whisperStackedTitle: {
+    color: "#FFF1D5",
+    fontSize: 30,
+    lineHeight: 36,
+    fontWeight: "900",
+    textAlign: "center",
+    marginTop: 10,
+  },
+  whisperStackedDescription: {
+    color: "#E6DACA",
+    maxWidth: 620,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+    marginTop: 7,
+  },
+  whisperStackedCards: { width: "100%", maxWidth: 560, paddingHorizontal: 14, gap: 14, marginTop: 18 },
+  whisperStackedFate: {
+    width: "100%",
+    maxWidth: 540,
+    minHeight: 54,
+    marginTop: 18,
+    borderWidth: 1,
+    borderColor: "#B68B4D",
+    borderRadius: 5,
+    backgroundColor: "#14141B",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+  },
+  whisperFateText: { flexShrink: 1, color: "#FBE8BD", fontSize: 12, fontWeight: "900", textAlign: "center" },
+  whisperStackedBalance: {
+    color: "#BEB3A4",
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: "center",
+    paddingHorizontal: 18,
+    marginTop: 10,
   },
   overlayScroll: { flexGrow: 1, padding: 22, justifyContent: "center", alignItems: "center" },
   sheet: { width: "100%", maxWidth: 620, backgroundColor: "#252A36", borderRadius: 6, padding: 24, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 10 } },
