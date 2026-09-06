@@ -27,6 +27,7 @@ const evidence = require(resolve(root, "lib/recommendationGames/alchemistsCascad
 const quota = require(resolve(root, "lib/recommendationGames/alchemistsCascadeQuota.ts"));
 const api = require(resolve(root, "api/alchemists-cascade-event.ts"));
 const titleArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeTitleArtwork.ts"));
+const atlasArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeAtlasArtwork.ts"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -1362,6 +1363,47 @@ async function main() {
     && route.includes('? "CONTINUE"'),
   "title fallback and visible saved-progress treatment must remain wired");
   checks.push("title_artwork_controls_and_fallback");
+  const atlasArtworkPath = atlasArtwork.ALCHEMISTS_CASCADE_ATLAS_ARTWORK;
+  assert(typeof atlasArtworkPath === "string" && atlasArtworkPath.endsWith("recipe-atlas.webp"),
+    "real Recipe Atlas artwork mapping missing");
+  assert(existsSync(atlasArtworkPath), "real Recipe Atlas artwork asset does not exist");
+  const atlasArtworkBytes = readFileSync(atlasArtworkPath);
+  assert(atlasArtworkBytes.subarray(0, 4).toString("ascii") === "RIFF"
+    && atlasArtworkBytes.subarray(8, 12).toString("ascii") === "WEBP",
+  "Recipe Atlas artwork must be WebP");
+  assert(statSync(atlasArtworkPath).size < 400_000, "Recipe Atlas artwork exceeds the web payload budget");
+  const desktopAtlasLayout = atlasArtwork.computeAlchemistsCascadeAtlasLayout(1920, 1080);
+  assert(desktopAtlasLayout.mode === "cinematic"
+    && Math.abs(desktopAtlasLayout.stage.width / desktopAtlasLayout.stage.height - 1672 / 941) < 0.001,
+  "desktop Recipe Atlas must preserve the full authored composition");
+  assert(Object.keys(desktopAtlasLayout.realms).length === 4
+    && Object.values(desktopAtlasLayout.realms).every((bounds) => bounds.width > 300 && bounds.height > 200),
+  "desktop Recipe Atlas must reserve four full live realm panels");
+  const mobileAtlasLayout = atlasArtwork.computeAlchemistsCascadeAtlasLayout(390, 844);
+  assert(mobileAtlasLayout.mode === "stacked"
+    && mobileAtlasLayout.header.height
+      < atlasArtwork.ALCHEMISTS_CASCADE_ATLAS_BOUNDS.realms["copper-garden"].top
+        * (Math.max(390, 760) / atlasArtwork.ALCHEMISTS_CASCADE_ATLAS_ARTWORK_SIZE.width),
+  "narrow Atlas header must crop before baked sample recipe state");
+  assert(route.includes("source={ALCHEMISTS_CASCADE_ATLAS_ARTWORK}")
+    && route.includes("return <AbstractCascadeAtlasScreen")
+    && route.includes('testID="alchemists-cascade-atlas-exit"')
+    && route.includes('testID="alchemists-cascade-atlas-stars"')
+    && route.includes('testID="alchemists-cascade-atlas-notes"')
+    && route.includes('testID="alchemists-cascade-atlas-sync"'),
+  "Recipe Atlas live artwork surfaces and fallback must remain wired");
+  assert(route.includes("CASCADE_REALMS.map((realm)")
+    && route.includes("CASCADE_LEVELS.filter((level) => level.realmId === realm.id)")
+    && route.includes("level.number <= save.unlockedLevel")
+    && route.includes("save.levelStars[level.id] || 0")
+    && route.includes('testID={`alchemists-cascade-atlas-${level.id}`}')
+    && route.includes("accessibilityState={{ disabled }}"),
+  "all twelve real recipes must retain dynamic availability, stars, and accessible controls");
+  assert(route.includes("const totalStars = Object.values(props.save.levelStars)")
+    && route.includes("{props.syncWarning ? (")
+    && !route.includes("3 cauldron notes waiting to sync."),
+  "Atlas totals and sync state must be live without baked sample-state copy");
+  checks.push("atlas_artwork_live_dynamic_state");
   assert(route.includes("onPress={() => onCell(at)}") && route.includes('document.addEventListener("keydown"') && route.includes("accessibilityLabel={`Row"), "touch, keyboard, and cell accessibility wiring missing");
   assert(route.includes("What the cauldron remembers") && route.includes("IP addresses") && route.includes("never count as taste"), "privacy disclosure is incomplete");
   assert(route.includes('eventType: "campaign_reset"') && route.includes("sessionId.current = fresh.gameSessionId")

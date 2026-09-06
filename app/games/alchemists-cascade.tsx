@@ -67,6 +67,10 @@ import {
   ALCHEMISTS_CASCADE_TITLE_ARTWORK,
   computeAlchemistsCascadeTitleArtworkLayout,
 } from "../../lib/recommendationGames/alchemistsCascadeTitleArtwork";
+import {
+  ALCHEMISTS_CASCADE_ATLAS_ARTWORK,
+  computeAlchemistsCascadeAtlasLayout,
+} from "../../lib/recommendationGames/alchemistsCascadeAtlasArtwork";
 
 type Phase = "loading" | "title" | "campaign" | "catalyst" | "play" | "pause" | "help" | "result";
 const STALE_SESSION_NOTICE = "This game changed in another tab. The latest save was reloaded; your action was not applied.";
@@ -527,6 +531,357 @@ function CascadeTitleScreen(props: CascadeTitleScreenProps) {
     </View>
   );
 }
+
+type CascadeAtlasScreenProps = {
+    save: CascadeSaveV1;
+    busy: boolean;
+    syncWarning: string | null;
+    onExit: () => void;
+    onOpenLevel: (level: LevelConfig) => void;
+    onOpenNotes: () => void;
+};
+
+const ATLAS_REALM_SURFACES: Record<string, string> = {
+    "copper-garden": "#3A2415",
+    "tidal-archive": "#12363B",
+    "laughing-volcano": "#431E18",
+    "astral-kitchen": "#292342",
+};
+
+function AtlasLevelButton({
+    level,
+    unlocked,
+    stars,
+    busy,
+    compact,
+    onPress,
+  }: {
+    level: LevelConfig;
+    unlocked: boolean;
+    stars: number;
+    busy: boolean;
+    compact: boolean;
+    onPress: () => void;
+  }) {
+    const [focused, setFocused] = useState(false);
+    const [hovered, setHovered] = useState(false);
+    const disabled = !unlocked || busy;
+    const stateLabel = unlocked
+      ? stars > 0
+        ? `${stars} of 3 stars, available to replay`
+        : "available, not yet completed"
+      : "locked";
+
+    return (
+      <Pressable
+        testID={`alchemists-cascade-atlas-${level.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={`${level.name}, recipe ${level.number}, ${stateLabel}`}
+        accessibilityHint={unlocked ? "Open this recipe" : undefined}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={onPress}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        style={({ pressed }: { pressed: boolean }) => [
+          styles.atlasLevel,
+          compact && styles.atlasLevelCompact,
+          !unlocked && styles.atlasLevelLocked,
+          (focused || hovered) && unlocked && styles.atlasLevelActive,
+          pressed && styles.atlasLevelPressed,
+        ]}
+      >
+        <Text style={[styles.atlasLevelNumber, compact && styles.atlasLevelNumberCompact]}>
+          {unlocked ? level.number : "◆"}
+        </Text>
+        <Text
+          style={[styles.atlasLevelName, compact && styles.atlasLevelNameCompact]}
+          numberOfLines={compact ? 2 : 3}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {level.name}
+        </Text>
+        <Text style={[styles.atlasLevelStatus, !unlocked && styles.atlasLevelStatusLocked]}>
+          {unlocked ? `${"★".repeat(stars)}${"☆".repeat(3 - stars)}` : "LOCKED"}
+        </Text>
+      </Pressable>
+    );
+  }
+
+function AtlasRealmPanel({
+    realm,
+    save,
+    busy,
+    compact,
+    onOpenLevel,
+  }: {
+    realm: (typeof CASCADE_REALMS)[number];
+    save: CascadeSaveV1;
+    busy: boolean;
+    compact: boolean;
+    onOpenLevel: (level: LevelConfig) => void;
+  }) {
+    const levels = CASCADE_LEVELS.filter((level) => level.realmId === realm.id);
+    return (
+      <View
+        style={[
+          styles.atlasRealm,
+          compact && styles.atlasRealmCompact,
+          { backgroundColor: ATLAS_REALM_SURFACES[realm.id], borderColor: realm.accent },
+        ]}
+        accessibilityRole="summary"
+      >
+        <Text style={[styles.atlasRealmTitle, compact && styles.atlasRealmTitleCompact, { color: realm.accent }]}>
+          {realm.name}
+        </Text>
+        <Text
+          style={[styles.atlasRealmFiction, compact && styles.atlasRealmFictionCompact]}
+          numberOfLines={compact ? 1 : undefined}
+        >
+          {realm.fiction}
+        </Text>
+        <View style={[styles.atlasLevelRow, compact && styles.atlasLevelRowCompact]}>
+          {levels.map((level) => (
+            <AtlasLevelButton
+              key={level.id}
+              level={level}
+              unlocked={level.number <= save.unlockedLevel}
+              stars={save.levelStars[level.id] || 0}
+              busy={busy}
+              compact={compact}
+              onPress={() => onOpenLevel(level)}
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+function AbstractCascadeAtlasScreen({
+    save,
+    busy,
+    syncWarning,
+    onExit,
+    onOpenLevel,
+    onOpenNotes,
+  }: CascadeAtlasScreenProps) {
+    return (
+      <>
+        <View style={styles.gameHeader}>
+          <TouchableOpacity style={styles.headerButton} onPress={onExit} disabled={busy} accessibilityRole="button">
+            <Text style={styles.headerButtonText}>EXIT</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>THE RECIPE ATLAS</Text>
+          <Text style={styles.starTotal}>★ {Object.values(save.levelStars).reduce((sum, value) => sum + value, 0)}</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.campaign}>
+          {CASCADE_REALMS.map((realm) => (
+            <View key={realm.id} style={[styles.realmSection, { backgroundColor: realm.surface, borderColor: realm.accent }]}>
+              <Text style={[styles.realmTitle, { color: realm.accent }]}>{realm.name}</Text>
+              <Text style={styles.realmFiction}>{realm.fiction}</Text>
+              <View style={styles.levelRow}>
+                {CASCADE_LEVELS.filter((level) => level.realmId === realm.id).map((level) => {
+                  const unlocked = level.number <= save.unlockedLevel;
+                  const stars = save.levelStars[level.id] || 0;
+                  return (
+                    <TouchableOpacity
+                      key={level.id}
+                      style={[styles.levelTile, !unlocked && styles.levelLocked]}
+                      disabled={!unlocked || busy}
+                      onPress={() => onOpenLevel(level)}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: !unlocked || busy }}
+                      accessibilityLabel={`${level.name}, level ${level.number}, ${unlocked ? `${stars} stars` : "locked"}`}
+                    >
+                      <Text style={styles.levelNumber}>{unlocked ? level.number : "◆"}</Text>
+                      <Text style={styles.levelName}>{level.name}</Text>
+                      <Text style={styles.levelStars}>{"★".repeat(stars)}{"☆".repeat(3 - stars)}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.textButton} onPress={onOpenNotes} accessibilityRole="button">
+            <Text style={styles.textButtonText}>Open field notes</Text>
+          </TouchableOpacity>
+          {syncWarning ? <Text style={styles.warning} accessibilityRole="alert">{syncWarning}</Text> : null}
+        </ScrollView>
+      </>
+    );
+  }
+
+function CascadeAtlasScreen(props: CascadeAtlasScreenProps) {
+    const { width, height } = useWindowDimensions();
+    const [artworkFailed, setArtworkFailed] = useState(false);
+    const layout = computeAlchemistsCascadeAtlasLayout(width, height);
+    const totalStars = Object.values(props.save.levelStars).reduce((sum, value) => sum + value, 0);
+
+    if (artworkFailed) return <AbstractCascadeAtlasScreen {...props} />;
+
+    if (layout.mode === "stacked") {
+      return (
+        <ScrollView
+          style={styles.atlasStackedScroll}
+          contentContainerStyle={styles.atlasStackedContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.atlasHeaderCrop, { width: layout.header.width, height: layout.header.height }]}>
+            <Image
+              source={ALCHEMISTS_CASCADE_ATLAS_ARTWORK}
+              style={{
+                position: "absolute",
+                left: layout.header.imageLeft,
+                top: 0,
+                width: Math.max(layout.header.width, 760),
+                height: layout.header.imageHeight,
+              }}
+              resizeMode="contain"
+              accessible={false}
+              accessibilityElementsHidden
+              accessibilityIgnoresInvertColors
+              onError={() => setArtworkFailed(true)}
+            />
+          </View>
+          <View style={styles.atlasStackedToolbar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Exit Recipe Atlas"
+              accessibilityHint="Save and return to Games"
+              accessibilityState={{ disabled: props.busy }}
+              disabled={props.busy}
+              onPress={props.onExit}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.atlasToolbarButton,
+                pressed && styles.atlasControlPressed,
+                props.busy && styles.disabled,
+              ]}
+            >
+              <Text style={styles.atlasToolbarButtonText}>EXIT</Text>
+            </Pressable>
+            <Text accessibilityRole="header" style={styles.atlasStackedTitle}>THE RECIPE ATLAS</Text>
+            <View style={styles.atlasStarTotal} accessible accessibilityLabel={`${totalStars} total stars`}>
+              <Text style={styles.atlasStarTotalText}>★ {totalStars}</Text>
+            </View>
+          </View>
+          <View style={styles.atlasStackedRealms}>
+            {CASCADE_REALMS.map((realm) => (
+              <AtlasRealmPanel
+                key={realm.id}
+                realm={realm}
+                save={props.save}
+                busy={props.busy}
+                compact={false}
+                onOpenLevel={props.onOpenLevel}
+              />
+            ))}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open field notes"
+            accessibilityHint="Open the apprentice's brewing instructions"
+            onPress={props.onOpenNotes}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.atlasNotesButtonStacked,
+              pressed && styles.atlasControlPressed,
+            ]}
+          >
+            <Text style={styles.atlasNotesText}>▣  Open field notes</Text>
+          </Pressable>
+          {props.syncWarning ? (
+            <Text style={styles.atlasSyncBannerStacked} accessibilityRole="alert">{props.syncWarning}</Text>
+          ) : null}
+        </ScrollView>
+      );
+    }
+
+    return (
+      <View style={styles.atlasCinematic}>
+        <View style={[styles.atlasCinematicStage, layout.stage]}>
+          <Image
+            source={ALCHEMISTS_CASCADE_ATLAS_ARTWORK}
+            style={styles.atlasCinematicImage}
+            resizeMode="contain"
+            accessible={false}
+            accessibilityElementsHidden
+            accessibilityIgnoresInvertColors
+            onError={() => setArtworkFailed(true)}
+          />
+          <View style={styles.visuallyHidden} pointerEvents="none">
+            <Text accessibilityRole="header">The Recipe Atlas</Text>
+            <Text>Four paths. Twelve recipes. Infinite possibilities.</Text>
+          </View>
+          <Pressable
+            testID="alchemists-cascade-atlas-exit"
+            accessibilityRole="button"
+            accessibilityLabel="Exit Recipe Atlas"
+            accessibilityHint="Save and return to Games"
+            accessibilityState={{ disabled: props.busy }}
+            disabled={props.busy}
+            onPress={props.onExit}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.atlasCinematicExit,
+              layout.exit,
+              pressed && styles.atlasControlPressed,
+              props.busy && styles.disabled,
+            ]}
+          >
+            <Text style={styles.atlasCinematicExitText}>EXIT</Text>
+          </Pressable>
+          <View
+            testID="alchemists-cascade-atlas-stars"
+            style={[styles.atlasCinematicStars, layout.stars]}
+            accessible
+            accessibilityLabel={`${totalStars} total stars`}
+          >
+            <Text style={styles.atlasCinematicStarsText}>★ {totalStars}</Text>
+          </View>
+          {CASCADE_REALMS.map((realm) => (
+            <View key={realm.id} style={[styles.atlasCinematicRealmPosition, layout.realms[realm.id as keyof typeof layout.realms]]}>
+              <AtlasRealmPanel
+                realm={realm}
+                save={props.save}
+                busy={props.busy}
+                compact
+                onOpenLevel={props.onOpenLevel}
+              />
+            </View>
+          ))}
+          <Pressable
+            testID="alchemists-cascade-atlas-notes"
+            accessibilityRole="button"
+            accessibilityLabel="Open field notes"
+            accessibilityHint="Open the apprentice's brewing instructions"
+            onPress={props.onOpenNotes}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.atlasCinematicNotes,
+              layout.notes,
+              pressed && styles.atlasControlPressed,
+            ]}
+          >
+            <Text style={styles.atlasNotesText}>▣  Open field notes</Text>
+          </Pressable>
+          <View
+            testID="alchemists-cascade-atlas-sync"
+            style={[
+              styles.atlasCinematicSyncMask,
+              layout.sync,
+              !props.syncWarning && styles.atlasCinematicSyncMaskEmpty,
+            ]}
+          >
+            {props.syncWarning ? (
+              <Text style={styles.atlasCinematicSyncText} accessibilityRole="alert" numberOfLines={2}>
+                {props.syncWarning}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      </View>
+    );
+  }
 
 export default function AlchemistsCascadeRoute() {
   const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
@@ -1389,41 +1744,14 @@ export default function AlchemistsCascadeRoute() {
   if (phase === "campaign" && save) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.gameHeader}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => void saveExit()} disabled={busy}><Text style={styles.headerButtonText}>EXIT</Text></TouchableOpacity>
-          <Text style={styles.headerTitle}>THE RECIPE ATLAS</Text>
-          <Text style={styles.starTotal}>★ {Object.values(save.levelStars).reduce((sum, value) => sum + value, 0)}</Text>
-        </View>
-        <ScrollView contentContainerStyle={styles.campaign}>
-          {CASCADE_REALMS.map((realm) => (
-            <View key={realm.id} style={[styles.realmSection, { backgroundColor: realm.surface, borderColor: realm.accent }]}>
-              <Text style={[styles.realmTitle, { color: realm.accent }]}>{realm.name}</Text>
-              <Text style={styles.realmFiction}>{realm.fiction}</Text>
-              <View style={styles.levelRow}>
-                {CASCADE_LEVELS.filter((level) => level.realmId === realm.id).map((level) => {
-                  const unlocked = level.number <= save.unlockedLevel;
-                  const stars = save.levelStars[level.id] || 0;
-                  return (
-                    <TouchableOpacity
-                      key={level.id}
-                      style={[styles.levelTile, !unlocked && styles.levelLocked]}
-                      disabled={!unlocked || busy}
-                      onPress={() => void openLevel(level)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${level.name}, level ${level.number}, ${unlocked ? `${stars} stars` : "locked"}`}
-                    >
-                      <Text style={styles.levelNumber}>{unlocked ? level.number : "◆"}</Text>
-                      <Text style={styles.levelName}>{level.name}</Text>
-                      <Text style={styles.levelStars}>{"★".repeat(stars)}{"☆".repeat(3 - stars)}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          ))}
-          <TouchableOpacity style={styles.textButton} onPress={() => openHelp("campaign")}><Text style={styles.textButtonText}>Open field notes</Text></TouchableOpacity>
-          {syncWarning ? <Text style={styles.warning}>{syncWarning}</Text> : null}
-        </ScrollView>
+        <CascadeAtlasScreen
+          save={save}
+          busy={busy}
+          syncWarning={syncWarning}
+          onExit={() => void saveExit()}
+          onOpenLevel={(level) => void openLevel(level)}
+          onOpenNotes={() => openHelp("campaign")}
+        />
       </SafeAreaView>
     );
   }
@@ -1704,6 +2032,164 @@ const styles = StyleSheet.create({
   levelNumber: { color: "#F6C957", fontSize: 18, fontWeight: "900" },
   levelName: { color: "#F3EADE", fontSize: 14, fontWeight: "800" },
   levelStars: { color: "#F6C957", letterSpacing: 2 },
+  atlasCinematic: { flex: 1, backgroundColor: "#100D10", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  atlasCinematicStage: { position: "relative", overflow: "hidden", backgroundColor: "#100D10" },
+  atlasCinematicImage: { position: "absolute", inset: 0, width: "100%", height: "100%" },
+  atlasCinematicExit: {
+    position: "absolute",
+    minWidth: 44,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#B68B4D",
+    borderRadius: 4,
+    backgroundColor: "#161419",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasCinematicExitText: { color: "#FBE8BD", fontSize: 15, fontWeight: "900", letterSpacing: 0.8 },
+  atlasCinematicStars: {
+    position: "absolute",
+    minWidth: 44,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#B68B4D",
+    borderRadius: 4,
+    backgroundColor: "#161419",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasCinematicStarsText: { color: "#FFD06A", fontSize: 18, fontWeight: "900" },
+  atlasCinematicRealmPosition: { position: "absolute" },
+  atlasRealm: {
+    width: "100%",
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  atlasRealmCompact: { height: "100%", paddingHorizontal: 11, paddingVertical: 8 },
+  atlasRealmTitle: { fontSize: 24, lineHeight: 29, fontWeight: "900", textAlign: "center" },
+  atlasRealmTitleCompact: { fontSize: 18, lineHeight: 21 },
+  atlasRealmFiction: { color: "#E6D8C5", fontSize: 13, lineHeight: 18, marginTop: 3, marginBottom: 12, textAlign: "center" },
+  atlasRealmFictionCompact: { fontSize: 10, lineHeight: 13, marginTop: 1, marginBottom: 6 },
+  atlasLevelRow: { flexDirection: "row", gap: 8 },
+  atlasLevelRowCompact: { flex: 1 },
+  atlasLevel: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: "#866B48",
+    borderRadius: 4,
+    backgroundColor: "#17151A",
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  atlasLevelCompact: { minHeight: 44, paddingHorizontal: 4, paddingVertical: 3 },
+  atlasLevelLocked: { borderColor: "#4A4140", backgroundColor: "#211D20", opacity: 0.72 },
+  atlasLevelActive: { borderColor: "#FFE19A", backgroundColor: "#30251B" },
+  atlasLevelPressed: { backgroundColor: "#4A3320", transform: [{ scale: 0.98 }] },
+  atlasLevelNumber: { color: "#F6C957", fontSize: 14, fontWeight: "900" },
+  atlasLevelNumberCompact: { fontSize: 11 },
+  atlasLevelName: { color: "#F7E8CE", fontSize: 13, lineHeight: 16, fontWeight: "800", textAlign: "center" },
+  atlasLevelNameCompact: { fontSize: 10, lineHeight: 12 },
+  atlasLevelStatus: { color: "#F6C957", fontSize: 12, letterSpacing: 1, fontWeight: "800" },
+  atlasLevelStatusLocked: { color: "#A79A91", fontSize: 9, letterSpacing: 0.6 },
+  atlasCinematicNotes: {
+    position: "absolute",
+    minWidth: 44,
+    minHeight: 44,
+    borderRadius: 4,
+    backgroundColor: "#171419",
+    borderWidth: 1,
+    borderColor: "#80663C",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasNotesText: { color: "#F2CC77", fontSize: 13, fontWeight: "800", textDecorationLine: "underline", textAlign: "center" },
+  atlasCinematicSyncMask: {
+    position: "absolute",
+    backgroundColor: "#2D1B13",
+    borderWidth: 1,
+    borderColor: "#6E4225",
+    borderRadius: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  atlasCinematicSyncText: { color: "#FFD58C", fontSize: 11, lineHeight: 14, textAlign: "center" },
+  atlasCinematicSyncMaskEmpty: { borderColor: "transparent", backgroundColor: "#25150F" },
+  atlasControlPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
+  atlasStackedScroll: { flex: 1, backgroundColor: "#100D10" },
+  atlasStackedContent: { flexGrow: 1, paddingBottom: 34, alignItems: "center" },
+  atlasHeaderCrop: { position: "relative", overflow: "hidden", backgroundColor: "#100D10" },
+  atlasStackedToolbar: {
+    width: "100%",
+    maxWidth: 920,
+    minHeight: 62,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  atlasToolbarButton: {
+    minWidth: 70,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#A57B42",
+    borderRadius: 4,
+    backgroundColor: "#171419",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10,
+  },
+  atlasToolbarButtonText: { color: "#FBE8BD", fontSize: 12, fontWeight: "900", letterSpacing: 0.8 },
+  atlasStackedTitle: { flex: 1, color: "#F7D79A", fontSize: 20, fontWeight: "900", textAlign: "center" },
+  atlasStarTotal: {
+    minWidth: 70,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#A57B42",
+    borderRadius: 4,
+    backgroundColor: "#171419",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasStarTotalText: { color: "#FFD06A", fontSize: 17, fontWeight: "900" },
+  atlasStackedRealms: { width: "100%", maxWidth: 920, paddingHorizontal: 14, gap: 14 },
+  atlasNotesButtonStacked: {
+    width: "100%",
+    maxWidth: 420,
+    minHeight: 48,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#80663C",
+    borderRadius: 4,
+    backgroundColor: "#171419",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasSyncBannerStacked: {
+    color: "#FFD58C",
+    backgroundColor: "#2D1B13",
+    borderWidth: 1,
+    borderColor: "#6E4225",
+    borderRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginTop: 12,
+    maxWidth: 560,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
+  },
   overlayScroll: { flexGrow: 1, padding: 22, justifyContent: "center", alignItems: "center" },
   sheet: { width: "100%", maxWidth: 620, backgroundColor: "#252A36", borderRadius: 6, padding: 24, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 10 } },
   resultSheet: { width: "100%", maxWidth: 560, backgroundColor: "#252A36", borderWidth: 1, borderRadius: 6, padding: 26, alignItems: "center" },
