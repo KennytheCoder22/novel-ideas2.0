@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,11 +18,15 @@ require.extensions[".ts"] = (module, filename) => {
   }).outputText;
   module._compile(output, filename);
 };
+require.extensions[".webp"] = (module, filename) => {
+  module.exports = filename;
+};
 
 const game = require(resolve(root, "lib/recommendationGames/alchemistsCascade.ts"));
 const evidence = require(resolve(root, "lib/recommendationGames/alchemistsCascadeEvidenceClient.ts"));
 const quota = require(resolve(root, "lib/recommendationGames/alchemistsCascadeQuota.ts"));
 const api = require(resolve(root, "api/alchemists-cascade-event.ts"));
+const titleArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeTitleArtwork.ts"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -1319,6 +1323,45 @@ async function main() {
   assert(hub.includes("The Alchemist’s Cascade") && hub.includes('route: "/games/alchemists-cascade"'), "games hub integration missing");
   assert(hub.includes("router.push({ pathname: game.route, params: forwardedParams }"), "games hub context forwarding missing");
   assert(layout.includes('name="games/alchemists-cascade"'), "layout route registration missing");
+  const titleArtworkPath = titleArtwork.ALCHEMISTS_CASCADE_TITLE_ARTWORK;
+  assert(typeof titleArtworkPath === "string" && titleArtworkPath.endsWith("title-screen.webp"), "real title artwork mapping missing");
+  assert(existsSync(titleArtworkPath), "real title artwork asset does not exist");
+  const titleArtworkBytes = readFileSync(titleArtworkPath);
+  assert(titleArtworkBytes.subarray(0, 4).toString("ascii") === "RIFF"
+    && titleArtworkBytes.subarray(8, 12).toString("ascii") === "WEBP",
+  "title artwork must be WebP");
+  assert(statSync(titleArtworkPath).size < 400_000, "title artwork exceeds the web payload budget");
+  const desktopTitleLayout = titleArtwork.computeAlchemistsCascadeTitleArtworkLayout(1920, 1080);
+  assert(desktopTitleLayout.mode === "cinematic"
+    && Math.abs(desktopTitleLayout.stage.width / desktopTitleLayout.stage.height - 1672 / 941) < 0.001,
+  "desktop title artwork must preserve the full authored aspect ratio");
+  assert(Object.values(desktopTitleLayout.controls).every((control) => control.width >= 44 && control.height >= 44),
+    "every desktop title control must retain a touch-safe target");
+  const mobileTitleLayout = titleArtwork.computeAlchemistsCascadeTitleArtworkLayout(390, 844);
+  assert(mobileTitleLayout.mode === "mobile" && mobileTitleLayout.stage.width === 390,
+    "portrait title artwork must use the deliberate full-width mobile treatment");
+  assert(mobileTitleLayout.stage.height < titleArtwork.ALCHEMISTS_CASCADE_TITLE_CONTROL_BOUNDS.primary.top
+    * (mobileTitleLayout.stage.width / titleArtwork.ALCHEMISTS_CASCADE_TITLE_ARTWORK_SIZE.width),
+  "portrait artwork must crop before baked controls so every apparent control is functional");
+  const compactTitleLayout = titleArtwork.computeAlchemistsCascadeTitleArtworkLayout(844, 390);
+  assert(compactTitleLayout.mode === "compact"
+    && compactTitleLayout.controls.primary.top + compactTitleLayout.controls.primary.height
+      <= compactTitleLayout.controls.help.top
+    && compactTitleLayout.controls.primary.top + compactTitleLayout.controls.primary.height
+      <= compactTitleLayout.controls.memory.top,
+  "short landscape viewports must keep live artwork controls visible and non-overlapping");
+  assert(route.includes("source={ALCHEMISTS_CASCADE_TITLE_ARTWORK}")
+    && route.includes('testID="alchemists-cascade-title-primary"')
+    && route.includes('testID="alchemists-cascade-title-help"')
+    && route.includes('testID="alchemists-cascade-title-memory"'),
+  "title artwork and desktop interaction overlays must remain wired");
+  assert(route.includes("onError={() => setArtworkFailed(true)}")
+    && route.includes("return <AbstractCascadeTitleScreen")
+    && route.includes("props.hasProgress || props.busy")
+    && route.includes("const primaryVisibleLabel")
+    && route.includes('? "CONTINUE"'),
+  "title fallback and visible saved-progress treatment must remain wired");
+  checks.push("title_artwork_controls_and_fallback");
   assert(route.includes("onPress={() => onCell(at)}") && route.includes('document.addEventListener("keydown"') && route.includes("accessibilityLabel={`Row"), "touch, keyboard, and cell accessibility wiring missing");
   assert(route.includes("What the cauldron remembers") && route.includes("IP addresses") && route.includes("never count as taste"), "privacy disclosure is incomplete");
   assert(route.includes('eventType: "campaign_reset"') && route.includes("sessionId.current = fresh.gameSessionId")

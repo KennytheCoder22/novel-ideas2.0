@@ -7,7 +7,9 @@ import {
   Alert,
   Animated,
   AppState,
+  Image,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -61,6 +63,10 @@ import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendatio
 import { adaptAlchemistsCascadeCatalystToSignal, ALCHEMISTS_CASCADE_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
 import { alchemistsCascadeMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
 import { buildGameRouteSourceParams, parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
+import {
+  ALCHEMISTS_CASCADE_TITLE_ARTWORK,
+  computeAlchemistsCascadeTitleArtworkLayout,
+} from "../../lib/recommendationGames/alchemistsCascadeTitleArtwork";
 
 type Phase = "loading" | "title" | "campaign" | "catalyst" | "play" | "pause" | "help" | "result";
 const STALE_SESSION_NOTICE = "This game changed in another tab. The latest save was reloaded; your action was not applied.";
@@ -229,6 +235,295 @@ function PrivacyPanel({ onClose }: { onClose: () => void }) {
       <TouchableOpacity style={styles.secondaryButton} onPress={onClose} accessibilityRole="button">
         <Text style={styles.secondaryButtonText}>CLOSE THE LEDGER</Text>
       </TouchableOpacity>
+    </View>
+  );
+}
+
+type CascadeTitleScreenProps = {
+  busy: boolean;
+  hasProgress: boolean;
+  ready: boolean;
+  syncWarning: string | null;
+  onBegin: () => void;
+  onHelp: () => void;
+  onMemory: () => void;
+  onReset: () => void;
+};
+
+function AbstractCascadeTitleScreen({
+  busy,
+  hasProgress,
+  ready,
+  syncWarning,
+  onBegin,
+  onHelp,
+  onMemory,
+  onReset,
+}: CascadeTitleScreenProps) {
+  return (
+    <ScrollView contentContainerStyle={styles.titleScreen}>
+      <View style={styles.titleSigil}>
+        <View style={styles.sigilRing}><Text style={styles.sigilMark}>✦</Text></View>
+        <View style={styles.sigilLine} />
+      </View>
+      <Text style={styles.title}>THE ALCHEMIST&apos;S{"\n"}CASCADE</Text>
+      <Text style={styles.titleCopy}>A kinetic campaign of strange ingredients, chain reactions, and twelve recipes that should not exist.</Text>
+      <TouchableOpacity
+        style={[styles.primaryButton, busy && styles.disabled]}
+        disabled={busy || !ready}
+        onPress={onBegin}
+        accessibilityRole="button"
+        accessibilityLabel={hasProgress ? "Continue the experiment" : "Light the first flame"}
+      >
+        <Text style={styles.primaryButtonText}>{busy ? "OPENING THE VIAL..." : hasProgress ? "CONTINUE THE EXPERIMENT" : "LIGHT THE FIRST FLAME"}</Text>
+      </TouchableOpacity>
+      <View style={styles.titleActions}>
+        <TouchableOpacity style={styles.textButton} onPress={onHelp} accessibilityRole="button">
+          <Text style={styles.textButtonText}>How to brew</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.textButton} onPress={onMemory} accessibilityRole="button">
+          <Text style={styles.textButtonText}>What the cauldron remembers</Text>
+        </TouchableOpacity>
+        {hasProgress ? (
+          <TouchableOpacity style={styles.textButton} onPress={onReset} accessibilityRole="button">
+            <Text style={styles.dangerText}>Reset campaign</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+      {syncWarning ? <Text style={styles.warning} accessibilityRole="alert">{syncWarning}</Text> : null}
+    </ScrollView>
+  );
+}
+
+function CascadeTitleScreen(props: CascadeTitleScreenProps) {
+  const { width, height } = useWindowDimensions();
+  const [artworkFailed, setArtworkFailed] = useState(false);
+  const [focusedControl, setFocusedControl] = useState("");
+  const [hoveredControl, setHoveredControl] = useState("");
+  const layout = computeAlchemistsCascadeTitleArtworkLayout(width, height);
+  const primaryLabel = props.hasProgress ? "Continue the experiment" : "Light the first flame";
+  const primaryVisibleLabel = props.busy
+    ? "OPENING THE VIAL..."
+    : props.hasProgress
+      ? "CONTINUE"
+      : "LIGHT THE FIRST FLAME";
+  const showVisiblePrimary = props.hasProgress || props.busy;
+
+  if (artworkFailed) return <AbstractCascadeTitleScreen {...props} />;
+
+  const artwork = (
+    <View
+      style={[
+        styles.cascadeTitleArtworkStage,
+        { width: layout.stage.width, height: layout.stage.height },
+      ]}
+    >
+      <Image
+        source={ALCHEMISTS_CASCADE_TITLE_ARTWORK}
+        style={[styles.cascadeTitleArtworkImage, { height: layout.imageHeight }]}
+        resizeMode="contain"
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel="A moonlit alchemy laboratory filled with books, bottles, and a glowing workbench"
+        accessibilityIgnoresInvertColors
+        onError={() => setArtworkFailed(true)}
+      />
+      {layout.mode !== "mobile" ? (
+        <>
+          <Pressable
+            testID="alchemists-cascade-title-primary"
+            accessibilityRole="button"
+            accessibilityLabel={primaryLabel}
+            accessibilityHint="Open the recipe atlas and continue the campaign"
+            accessibilityState={{ disabled: props.busy || !props.ready }}
+            disabled={props.busy || !props.ready}
+            onPress={props.onBegin}
+            onFocus={() => setFocusedControl("primary")}
+            onBlur={() => setFocusedControl("")}
+            onHoverIn={() => setHoveredControl("primary")}
+            onHoverOut={() => setHoveredControl("")}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.cascadeTitleArtworkControl,
+              layout.controls.primary,
+              showVisiblePrimary && styles.cascadeTitleArtworkPrimaryVisible,
+              (focusedControl === "primary" || hoveredControl === "primary")
+                && (showVisiblePrimary
+                  ? styles.cascadeTitleArtworkPrimaryVisibleActive
+                  : styles.cascadeTitleArtworkControlActive),
+              pressed && (
+                showVisiblePrimary
+                  ? styles.cascadeTitleArtworkPrimaryVisiblePressed
+                  : styles.cascadeTitleArtworkControlPressed
+              ),
+              (props.busy || !props.ready) && styles.disabled,
+            ]}
+          >
+            <Text
+              style={[styles.cascadeTitleArtworkPrimaryText, !showVisiblePrimary && styles.visuallyHidden]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.65}
+            >
+              {primaryVisibleLabel}
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="alchemists-cascade-title-help"
+            accessibilityRole="button"
+            accessibilityLabel="How to brew"
+            accessibilityHint="Open the apprentice's field notes"
+            onPress={props.onHelp}
+            onFocus={() => setFocusedControl("help")}
+            onBlur={() => setFocusedControl("")}
+            onHoverIn={() => setHoveredControl("help")}
+            onHoverOut={() => setHoveredControl("")}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.cascadeTitleArtworkControl,
+              styles.cascadeTitleArtworkLink,
+              layout.controls.help,
+              (focusedControl === "help" || hoveredControl === "help") && styles.cascadeTitleArtworkControlActive,
+              pressed && styles.cascadeTitleArtworkControlPressed,
+            ]}
+          >
+            <Text style={styles.visuallyHidden}>How to brew</Text>
+          </Pressable>
+          <Pressable
+            testID="alchemists-cascade-title-memory"
+            accessibilityRole="button"
+            accessibilityLabel="What the cauldron remembers"
+            accessibilityHint="Open the anonymous gameplay data notice"
+            onPress={props.onMemory}
+            onFocus={() => setFocusedControl("memory")}
+            onBlur={() => setFocusedControl("")}
+            onHoverIn={() => setHoveredControl("memory")}
+            onHoverOut={() => setHoveredControl("")}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.cascadeTitleArtworkControl,
+              styles.cascadeTitleArtworkLink,
+              layout.controls.memory,
+              (focusedControl === "memory" || hoveredControl === "memory") && styles.cascadeTitleArtworkControlActive,
+              pressed && styles.cascadeTitleArtworkControlPressed,
+            ]}
+          >
+            <Text style={styles.visuallyHidden}>What the cauldron remembers</Text>
+          </Pressable>
+          {props.hasProgress ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Reset campaign"
+              onPress={props.onReset}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.cascadeTitleArtworkReset,
+                pressed && styles.cascadeTitleArtworkControlPressed,
+              ]}
+            >
+              <Text style={styles.cascadeTitleArtworkResetText}>Reset campaign</Text>
+            </Pressable>
+          ) : null}
+          {props.syncWarning ? (
+            <Text style={styles.cascadeTitleArtworkWarning} accessibilityRole="alert">{props.syncWarning}</Text>
+          ) : null}
+        </>
+      ) : null}
+    </View>
+  );
+
+  if (layout.mode === "mobile") {
+    return (
+      <ScrollView
+        style={styles.cascadeTitleArtworkMobileScroll}
+        contentContainerStyle={styles.cascadeTitleArtworkMobileContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {artwork}
+        <View style={styles.cascadeTitleArtworkMobileCopy}>
+          <Text accessibilityRole="header" style={styles.cascadeTitleArtworkMobileTitle}>The Alchemist&apos;s Cascade</Text>
+          <Text style={styles.cascadeTitleArtworkMobileDescription}>
+            A kinetic campaign of strange ingredients, chain reactions, and twelve recipes that should not exist.
+          </Text>
+          <Pressable
+            testID="alchemists-cascade-title-primary-mobile"
+            accessibilityRole="button"
+            accessibilityLabel={primaryLabel}
+            accessibilityHint="Open the recipe atlas and continue the campaign"
+            accessibilityState={{ disabled: props.busy || !props.ready }}
+            disabled={props.busy || !props.ready}
+            onPress={props.onBegin}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.cascadeTitleMobilePrimary,
+              pressed && styles.cascadeTitleMobileControlPressed,
+              (props.busy || !props.ready) && styles.disabled,
+            ]}
+          >
+            <Text
+              style={styles.cascadeTitleMobilePrimaryText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
+              {props.busy ? "OPENING THE VIAL..." : primaryLabel.toUpperCase()}
+            </Text>
+          </Pressable>
+          <View style={styles.cascadeTitleMobileActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="How to brew"
+              accessibilityHint="Open the apprentice's field notes"
+              onPress={props.onHelp}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.cascadeTitleMobileSecondary,
+                pressed && styles.cascadeTitleMobileControlPressed,
+              ]}
+            >
+              <Text style={styles.cascadeTitleMobileSecondaryText}>How to brew</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="What the cauldron remembers"
+              accessibilityHint="Open the anonymous gameplay data notice"
+              onPress={props.onMemory}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.cascadeTitleMobileSecondary,
+                pressed && styles.cascadeTitleMobileControlPressed,
+              ]}
+            >
+              <Text style={styles.cascadeTitleMobileSecondaryText}>What the cauldron remembers</Text>
+            </Pressable>
+          </View>
+          {props.hasProgress ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Reset campaign" onPress={props.onReset} style={styles.cascadeTitleMobileReset}>
+              <Text style={styles.dangerText}>Reset campaign</Text>
+            </Pressable>
+          ) : null}
+          {props.syncWarning ? <Text style={styles.warning} accessibilityRole="alert">{props.syncWarning}</Text> : null}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  if (layout.mode === "compact") {
+    return (
+      <ScrollView
+        style={styles.cascadeTitleArtworkCompactScroll}
+        contentContainerStyle={styles.cascadeTitleArtworkCompactContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {artwork}
+        <View style={styles.visuallyHidden} pointerEvents="none">
+          <Text accessibilityRole="header">The Alchemist&apos;s Cascade</Text>
+          <Text>A kinetic campaign of strange ingredients, chain reactions, and twelve recipes that should not exist.</Text>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <View style={styles.cascadeTitleArtworkDesktop}>
+      {artwork}
+      <View style={styles.visuallyHidden} pointerEvents="none">
+        <Text accessibilityRole="header">The Alchemist&apos;s Cascade</Text>
+        <Text>A kinetic campaign of strange ingredients, chain reactions, and twelve recipes that should not exist.</Text>
+      </View>
     </View>
   );
 }
@@ -1077,23 +1372,16 @@ export default function AlchemistsCascadeRoute() {
   if (phase === "title") {
     return (
       <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.titleScreen}>
-          <View style={styles.titleSigil}>
-            <View style={styles.sigilRing}><Text style={styles.sigilMark}>✦</Text></View>
-            <View style={styles.sigilLine} />
-          </View>
-          <Text style={styles.title}>THE ALCHEMIST&apos;S{"\n"}CASCADE</Text>
-          <Text style={styles.titleCopy}>A kinetic campaign of strange ingredients, chain reactions, and twelve recipes that should not exist.</Text>
-          <TouchableOpacity style={[styles.primaryButton, busy && styles.disabled]} disabled={busy || !save} onPress={() => void begin()} accessibilityRole="button">
-            <Text style={styles.primaryButtonText}>{busy ? "OPENING THE VIAL..." : save?.playSessionCount ? "CONTINUE THE EXPERIMENT" : "LIGHT THE FIRST FLAME"}</Text>
-          </TouchableOpacity>
-          <View style={styles.titleActions}>
-            <TouchableOpacity style={styles.textButton} onPress={() => openHelp("title")}><Text style={styles.textButtonText}>How to brew</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.textButton} onPress={() => setPrivacy(true)}><Text style={styles.textButtonText}>What the cauldron remembers</Text></TouchableOpacity>
-            {save?.playSessionCount ? <TouchableOpacity style={styles.textButton} onPress={reset}><Text style={styles.dangerText}>Reset campaign</Text></TouchableOpacity> : null}
-          </View>
-          {syncWarning ? <Text style={styles.warning} accessibilityRole="alert">{syncWarning}</Text> : null}
-        </ScrollView>
+        <CascadeTitleScreen
+          busy={busy}
+          hasProgress={Boolean(save?.playSessionCount)}
+          ready={Boolean(save)}
+          syncWarning={syncWarning}
+          onBegin={() => void begin()}
+          onHelp={() => openHelp("title")}
+          onMemory={() => setPrivacy(true)}
+          onReset={reset}
+        />
       </SafeAreaView>
     );
   }
@@ -1284,6 +1572,107 @@ const styles = StyleSheet.create({
   loadingText: { color: "#E9DFCE", fontSize: 14, fontWeight: "700" },
   centered: { flex: 1, padding: 22, justifyContent: "center", alignItems: "center" },
   titleScreen: { flexGrow: 1, minHeight: 650, alignItems: "center", justifyContent: "center", padding: 28, backgroundColor: "#161922" },
+  cascadeTitleArtworkDesktop: { flex: 1, backgroundColor: "#0D0B11", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  cascadeTitleArtworkCompactScroll: { flex: 1, backgroundColor: "#0D0B11" },
+  cascadeTitleArtworkCompactContent: { flexGrow: 1, alignItems: "center", justifyContent: "flex-start" },
+  cascadeTitleArtworkMobileScroll: { flex: 1, backgroundColor: "#0D0B11" },
+  cascadeTitleArtworkMobileContent: { flexGrow: 1, alignItems: "center", justifyContent: "flex-start", paddingBottom: 28 },
+  cascadeTitleArtworkStage: { position: "relative", alignSelf: "center", backgroundColor: "#0D0B11", overflow: "hidden" },
+  cascadeTitleArtworkImage: { position: "absolute", top: 0, left: 0, width: "100%" },
+  cascadeTitleArtworkControl: {
+    position: "absolute",
+    borderWidth: 3,
+    borderColor: "transparent",
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cascadeTitleArtworkLink: { borderRadius: 4 },
+  cascadeTitleArtworkControlActive: {
+    borderColor: "#FFE19A",
+    backgroundColor: "rgba(246, 201, 87, 0.16)",
+  },
+  cascadeTitleArtworkControlPressed: {
+    backgroundColor: "rgba(122, 72, 24, 0.55)",
+    transform: [{ scale: 0.985 }],
+  },
+  cascadeTitleArtworkPrimaryVisible: {
+    backgroundColor: "#F0AE3D",
+    borderColor: "#FFE09A",
+    shadowColor: "#000",
+    shadowOpacity: 0.42,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  cascadeTitleArtworkPrimaryVisibleActive: {
+    backgroundColor: "#FFC650",
+    borderColor: "#FFF0B6",
+  },
+  cascadeTitleArtworkPrimaryVisiblePressed: {
+    backgroundColor: "#C8862F",
+    transform: [{ scale: 0.985 }],
+  },
+  cascadeTitleArtworkPrimaryText: { color: "#1E1609", fontSize: 17, fontWeight: "900", letterSpacing: 0.8, textAlign: "center" },
+  cascadeTitleArtworkReset: {
+    position: "absolute",
+    right: 18,
+    bottom: 16,
+    minHeight: 44,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "rgba(242, 154, 148, 0.62)",
+    borderRadius: 5,
+    backgroundColor: "rgba(18, 13, 17, 0.82)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cascadeTitleArtworkResetText: { color: "#F5B2AA", fontSize: 12, fontWeight: "800" },
+  cascadeTitleArtworkWarning: {
+    position: "absolute",
+    left: "25%",
+    right: "25%",
+    bottom: 16,
+    color: "#FFD49C",
+    backgroundColor: "rgba(59, 42, 32, 0.94)",
+    padding: 10,
+    borderRadius: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "center",
+  },
+  cascadeTitleArtworkMobileCopy: { alignSelf: "stretch", maxWidth: 560, alignItems: "center", paddingHorizontal: 22, paddingTop: 20 },
+  cascadeTitleArtworkMobileTitle: { color: "#FFF1CF", fontSize: 27, lineHeight: 33, fontWeight: "900", textAlign: "center" },
+  cascadeTitleArtworkMobileDescription: { color: "#D7C8AF", fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 9 },
+  cascadeTitleMobilePrimary: {
+    width: "100%",
+    maxWidth: 390,
+    minHeight: 52,
+    marginTop: 20,
+    paddingHorizontal: 18,
+    borderWidth: 2,
+    borderColor: "#FFE09A",
+    borderRadius: 6,
+    backgroundColor: "#F0AE3D",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cascadeTitleMobilePrimaryText: { color: "#1E1609", fontSize: 14, fontWeight: "900", letterSpacing: 0.8, textAlign: "center" },
+  cascadeTitleMobileActions: { alignSelf: "stretch", marginTop: 10, gap: 8 },
+  cascadeTitleMobileSecondary: {
+    alignSelf: "stretch",
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#80683D",
+    borderRadius: 5,
+    backgroundColor: "#1C1A20",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cascadeTitleMobileSecondaryText: { color: "#F3D794", fontSize: 14, textDecorationLine: "underline", textAlign: "center" },
+  cascadeTitleMobileControlPressed: { opacity: 0.8, transform: [{ scale: 0.99 }] },
+  cascadeTitleMobileReset: { minHeight: 44, marginTop: 8, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" },
+  visuallyHidden: { position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" },
   titleSigil: { width: 220, height: 150, alignItems: "center", justifyContent: "center", marginBottom: 10 },
   sigilRing: { width: 122, height: 122, borderRadius: 61, borderWidth: 2, borderColor: "#F6C957", alignItems: "center", justifyContent: "center", backgroundColor: "#252A36" },
   sigilMark: { color: "#F6C957", fontSize: 58 },
