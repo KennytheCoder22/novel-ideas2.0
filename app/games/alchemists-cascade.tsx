@@ -1,13 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
   Alert,
   Animated,
   AppState,
+  Easing,
   Image,
   Platform,
   Pressable,
@@ -52,6 +53,15 @@ import {
   type TimingBucket,
 } from "../../lib/recommendationGames/alchemistsCascade";
 import {
+  buildCascadePresentationPlan,
+  CASCADE_CLEAR_PULSE_COUNT,
+  CASCADE_PRESENTATION_TIMINGS,
+  createCascadePresentationTiles,
+  settleCascadePresentationTiles,
+  type CascadePresentationPhase,
+  type CascadePresentationTile,
+} from "../../lib/recommendationGames/alchemistsCascadePresentation";
+import {
   flushCascadeEvents,
   initializeCascadeSave,
   loadCascadeSave,
@@ -80,6 +90,11 @@ import {
   ALCHEMISTS_CASCADE_WHISPER_OPTION_ICONS,
   computeAlchemistsCascadeWhisperLayout,
 } from "../../lib/recommendationGames/alchemistsCascadeWhisperArtwork";
+import {
+  ALCHEMISTS_CASCADE_GAMEPLAY_ARTWORK,
+  ALCHEMISTS_CASCADE_GAMEPLAY_MOBILE_ARTWORK,
+  computeAlchemistsCascadeGameplayLayout,
+} from "../../lib/recommendationGames/alchemistsCascadeGameplayArtwork";
 
 type Phase = "loading" | "title" | "campaign" | "catalyst" | "play" | "pause" | "help" | "result";
 const STALE_SESSION_NOTICE = "This game changed in another tab. The latest save was reloaded; your action was not applied.";
@@ -217,6 +232,202 @@ function BoardView({
     </View>
   );
 }
+
+function AnimatedIngredientTile({
+    tile,
+    size,
+    gap,
+    selected,
+    disabled,
+    phase,
+    clearing,
+    motionDuration,
+    clearDuration,
+    onPress,
+  }: {
+    tile: CascadePresentationTile;
+    size: number;
+    gap: number;
+    selected: boolean;
+    disabled: boolean;
+    phase: CascadePresentationPhase;
+    clearing: boolean;
+    motionDuration: number;
+    clearDuration: number;
+    onPress: () => void;
+  }) {
+    const translateX = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(0)).current;
+    const opacity = useRef(new Animated.Value(1)).current;
+    const scale = useRef(new Animated.Value(1)).current;
+    const animation = useRef<Animated.CompositeAnimation | null>(null);
+    const unit = size + gap;
+    const ingredient = INGREDIENTS[tile.cell.kind];
+    const specialLabel = tile.cell.special === "none" ? "" : `, ${tile.cell.special} catalyst`;
+
+    useLayoutEffect(() => {
+      animation.current?.stop();
+      translateX.setValue(0);
+      translateY.setValue(0);
+      opacity.setValue(1);
+      scale.setValue(1);
+
+      if ((phase === "swapping" || phase === "falling")
+        && (tile.fromRow !== tile.row || tile.fromColumn !== tile.column || tile.refill)) {
+        translateX.setValue((tile.fromColumn - tile.column) * unit);
+        translateY.setValue((tile.fromRow - tile.row) * unit);
+        animation.current = Animated.parallel([
+          Animated.timing(translateX, {
+            toValue: 0,
+            duration: motionDuration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: motionDuration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]);
+        animation.current.start();
+      } else if (phase === "clearing" && clearing) {
+        const pulseDuration = Math.max(
+          1,
+          Math.floor(clearDuration / (CASCADE_CLEAR_PULSE_COUNT * 2 + 1)),
+        );
+        const pulses = Array.from({ length: CASCADE_CLEAR_PULSE_COUNT }, () => [
+          Animated.parallel([
+            Animated.timing(opacity, { toValue: 0.22, duration: pulseDuration, useNativeDriver: false }),
+            Animated.timing(scale, { toValue: 1.09, duration: pulseDuration, useNativeDriver: false }),
+          ]),
+          Animated.parallel([
+            Animated.timing(opacity, { toValue: 1, duration: pulseDuration, useNativeDriver: false }),
+            Animated.timing(scale, { toValue: 0.96, duration: pulseDuration, useNativeDriver: false }),
+          ]),
+        ]).flat();
+        animation.current = Animated.sequence([
+          ...pulses,
+          Animated.parallel([
+            Animated.timing(opacity, { toValue: 0, duration: pulseDuration, useNativeDriver: false }),
+            Animated.timing(scale, { toValue: 0, duration: pulseDuration, useNativeDriver: false }),
+          ]),
+        ]);
+        animation.current.start();
+      }
+
+      return () => animation.current?.stop();
+    }, [
+      clearDuration,
+      clearing,
+      motionDuration,
+      opacity,
+      phase,
+      scale,
+      tile.column,
+      tile.fromColumn,
+      tile.fromRow,
+      tile.refill,
+      tile.row,
+      translateX,
+      translateY,
+      unit,
+    ]);
+
+    return (
+      <Animated.View
+        testID={`alchemists-cascade-presented-${tile.id}`}
+        style={[
+          styles.presentedCellPosition,
+          {
+            left: tile.column * unit,
+            top: tile.row * unit,
+            width: size,
+            height: size,
+            opacity,
+            transform: [{ translateX }, { translateY }, { scale }],
+          },
+          clearing && styles.presentedCellClearing,
+          tile.refill && styles.presentedCellRefill,
+        ]}
+      >
+        <TouchableOpacity
+          testID={`alchemists-cascade-cell-${tile.row}-${tile.column}`}
+          style={[
+            styles.cell,
+            styles.cinematicCell,
+            { width: size, height: size, backgroundColor: ingredient.color },
+            selected && styles.cellSelected,
+            tile.cell.special !== "none" && styles.cellSpecial,
+          ]}
+          disabled={disabled}
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityState={{ disabled }}
+          accessibilityLabel={`Row ${tile.row + 1}, column ${tile.column + 1}, ${ingredient.name}${specialLabel}`}
+          accessibilityHint={selected ? "Selected. Choose an adjacent ingredient to swap." : "Select, then choose an adjacent ingredient."}
+        >
+          <View style={[styles.cinematicCellShine, { backgroundColor: `${ingredient.ink}18` }]} pointerEvents="none" />
+          <Text style={[styles.cellSymbol, styles.cinematicCellSymbol, { color: ingredient.ink, fontSize: Math.max(19, size * 0.4) }]}>
+            {ingredient.symbol}
+          </Text>
+          {tile.cell.special !== "none" ? (
+            <View style={tile.cell.special === "row" ? styles.specialRow : tile.cell.special === "column" ? styles.specialColumn : styles.specialBurst} />
+          ) : null}
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+
+function PresentationBoardView({
+    tiles,
+    width,
+    selected,
+    disabled,
+    phase,
+    clearingTileIds,
+    motionDuration,
+    clearDuration,
+    onCell,
+  }: {
+    tiles: CascadePresentationTile[];
+    width: number;
+    selected: Coordinate | null;
+    disabled: boolean;
+    phase: CascadePresentationPhase;
+    clearingTileIds: string[];
+    motionDuration: number;
+    clearDuration: number;
+    onCell: (at: Coordinate) => void;
+  }) {
+    const gap = width < 390 ? 3 : 5;
+    const cellSize = Math.floor((width - gap * 6) / 7);
+    const boardSize = cellSize * 7 + gap * 6;
+    const clearing = new Set(clearingTileIds);
+    return (
+      <View
+        style={[styles.cinematicBoard, { width: boardSize, height: boardSize }]}
+        accessibilityLabel="Alchemy cascade board, seven rows by seven columns"
+        accessibilityState={{ disabled }}
+      >
+        {tiles.map((tile) => (
+          <AnimatedIngredientTile
+            key={tile.id}
+            tile={tile}
+            size={cellSize}
+            gap={gap}
+            selected={selected?.row === tile.row && selected.column === tile.column}
+            disabled={disabled}
+            phase={phase}
+            clearing={clearing.has(tile.id)}
+            motionDuration={motionDuration}
+            clearDuration={clearDuration}
+            onPress={() => onCell({ row: tile.row, column: tile.column })}
+          />
+        ))}
+      </View>
+    );
+  }
 
 function HelpPanel({ onClose }: { onClose: () => void }) {
   return (
@@ -1314,6 +1525,398 @@ function CascadeAtlasScreen(props: CascadeAtlasScreenProps) {
     );
   }
 
+type CascadeGameplayScreenProps = {
+ board: Board;
+ tiles: CascadePresentationTile[];
+ animationPhase: CascadePresentationPhase;
+ clearingTileIds: string[];
+ reducedMotion: boolean;
+ busy: boolean;
+ save: CascadeSaveV1;
+ activeConfig: LevelConfig;
+ activeRealm: (typeof CASCADE_REALMS)[number];
+ selected: Coordinate | null;
+ message: string;
+ syncWarning: string | null;
+ comboPulse: Animated.Value;
+ onPause: () => void;
+ onHelp: () => void;
+ onCell: (at: Coordinate) => void;
+};
+
+function GameplayStatus({
+   save,
+   activeConfig,
+   goalDone,
+   compact,
+   comboPulse,
+ }: {
+   save: CascadeSaveV1;
+   activeConfig: LevelConfig;
+   goalDone: boolean;
+   compact: boolean;
+   comboPulse: Animated.Value;
+ }) {
+   return (
+     <View style={[styles.gameplayStatus, compact && styles.gameplayStatusCompact]}>
+       <View style={styles.gameplayStatusItem}>
+         <Text style={[styles.gameplayStatusLabel, compact && styles.gameplayStatusLabelCompact]}>MOVES</Text>
+         <Text style={[styles.gameplayMovesValue, compact && styles.gameplayStatusValueCompact]}>
+           {save.activeLevel!.movesRemaining}
+         </Text>
+       </View>
+       <Animated.View style={[styles.gameplayStatusItem, { transform: [{ scale: comboPulse }] }]}>
+         <Text style={[styles.gameplayStatusLabel, compact && styles.gameplayStatusLabelCompact]}>SCORE</Text>
+         <Text style={[styles.gameplayScoreValue, compact && styles.gameplayStatusValueCompact]}>
+           {save.activeLevel!.score.toLocaleString()}
+         </Text>
+         <Text style={[styles.gameplayTargetText, compact && styles.gameplayTargetTextCompact]}>
+           of {activeConfig.scoreTarget.toLocaleString()}
+         </Text>
+       </Animated.View>
+       <View style={styles.gameplayStatusItem}>
+         <Text style={[styles.gameplayStatusLabel, compact && styles.gameplayStatusLabelCompact]}>BREW</Text>
+         <Text style={[styles.gameplayBrewValue, compact && styles.gameplayBrewValueCompact]}>
+           {goalDone ? "READY" : "ACTIVE"}
+         </Text>
+         <MaterialCommunityIcons
+           name={goalDone ? "check-decagram" : "star-four-points"}
+           size={compact ? 13 : 18}
+           color="#78E690"
+           accessible={false}
+         />
+       </View>
+     </View>
+   );
+ }
+
+function GameplayGoals({
+   save,
+   activeConfig,
+   compact,
+ }: {
+   save: CascadeSaveV1;
+   activeConfig: LevelConfig;
+   compact: boolean;
+ }) {
+   return (
+     <View style={[styles.gameplayGoals, compact && styles.gameplayGoalsCompact]}>
+       {activeConfig.goals.map((goal) => {
+         const ingredient = INGREDIENTS[goal.kind];
+         const current = save.activeLevel!.collected[goal.kind];
+         return (
+           <View key={ingredient.id} style={[styles.gameplayGoal, compact && styles.gameplayGoalCompact]}>
+             <View style={[styles.gameplayGoalDot, { backgroundColor: ingredient.color }]}>
+               <Text style={[styles.gameplayGoalSymbol, { color: ingredient.ink }]}>{ingredient.symbol}</Text>
+             </View>
+             <Text style={[styles.gameplayGoalText, compact && styles.gameplayGoalTextCompact]} numberOfLines={1}>
+               {ingredient.name}
+             </Text>
+             <Text style={[
+               styles.gameplayGoalCount,
+               compact && styles.gameplayGoalCountCompact,
+               current >= goal.target && styles.goalDone,
+             ]}>
+               {Math.min(current, goal.target)}/{goal.target}
+             </Text>
+           </View>
+         );
+       })}
+     </View>
+   );
+ }
+
+function gameplayPhaseMessage(
+ phase: CascadePresentationPhase,
+ busy: boolean,
+ message: string,
+): string {
+ if (!busy) return message;
+ if (phase === "swapping") return "The chosen ingredients trade places...";
+ if (phase === "clearing") return "Matched ingredients flicker out of existence...";
+ if (phase === "falling") return "The remaining ingredients fall as the flask refills...";
+ return "The mixture turns...";
+}
+
+function presentationMatchesBoard(tiles: CascadePresentationTile[], board: Board): boolean {
+ if (tiles.length !== board.length * board[0].length) return false;
+ return tiles.every((tile) => {
+   const cell = board[tile.row]?.[tile.column];
+   return cell?.kind === tile.cell.kind && cell.special === tile.cell.special;
+ });
+}
+
+function AbstractCascadeGameplayScreen(props: CascadeGameplayScreenProps) {
+   const { width } = useWindowDimensions();
+   const goalDone = levelWon(props.save.activeLevel!, props.activeConfig);
+   return (
+     <>
+       <View style={[styles.gameHeader, { borderBottomColor: props.activeRealm.accent }]}>
+         <TouchableOpacity
+           style={styles.headerButton}
+           onPress={props.onPause}
+           disabled={props.busy}
+           accessibilityRole="button"
+           accessibilityState={{ disabled: props.busy }}
+         >
+           <Text style={styles.headerButtonText}>PAUSE</Text>
+         </TouchableOpacity>
+         <View style={styles.gameHeaderCenter}>
+           <Text style={styles.levelHeader}>{props.activeConfig.name}</Text>
+           <Text style={styles.realmHeader}>{props.activeRealm.name}</Text>
+         </View>
+         <TouchableOpacity
+           style={styles.headerButton}
+           onPress={props.onHelp}
+           disabled={props.busy}
+           accessibilityRole="button"
+           accessibilityState={{ disabled: props.busy }}
+         >
+           <Text style={styles.headerButtonText}>HELP</Text>
+         </TouchableOpacity>
+       </View>
+       <ScrollView contentContainerStyle={styles.playScreen}>
+         <View style={styles.statusRail}>
+           <View><Text style={styles.statusLabel}>MOVES</Text><Text style={styles.movesValue}>{props.save.activeLevel!.movesRemaining}</Text></View>
+           <Animated.View style={{ transform: [{ scale: props.comboPulse }] }}><Text style={styles.statusLabel}>SCORE</Text><Text style={styles.scoreValue}>{props.save.activeLevel!.score.toLocaleString()}</Text><Text style={styles.targetText}>of {props.activeConfig.scoreTarget.toLocaleString()}</Text></Animated.View>
+           <View><Text style={styles.statusLabel}>BREW</Text><Text style={styles.brewValue}>{goalDone ? "READY" : "ACTIVE"}</Text></View>
+         </View>
+         <View style={styles.goals}>
+           {props.activeConfig.goals.map((goal) => {
+             const ingredient = INGREDIENTS[goal.kind];
+             const current = props.save.activeLevel!.collected[goal.kind];
+             return (
+               <View key={ingredient.id} style={styles.goal}>
+                 <View style={[styles.goalDot, { backgroundColor: ingredient.color }]}><Text style={{ color: ingredient.ink }}>{ingredient.symbol}</Text></View>
+                 <Text style={styles.goalText}>{ingredient.name}</Text>
+                 <Text style={[styles.goalCount, current >= goal.target && styles.goalDone]}>{Math.min(current, goal.target)}/{goal.target}</Text>
+               </View>
+             );
+           })}
+         </View>
+         <BoardView
+           board={props.board}
+           width={Math.min(width - 24, 510)}
+           selected={props.selected}
+           onCell={props.onCell}
+         />
+         <Text style={styles.feedback} accessibilityLiveRegion="polite">
+           {gameplayPhaseMessage(props.animationPhase, props.busy, props.message)}
+         </Text>
+         {props.syncWarning ? <Text style={styles.warning}>{props.syncWarning}</Text> : null}
+       </ScrollView>
+     </>
+   );
+ }
+
+function CascadeGameplayScreen(props: CascadeGameplayScreenProps) {
+   const { width, height } = useWindowDimensions();
+   const [artworkFailed, setArtworkFailed] = useState(false);
+   const [pauseFocused, setPauseFocused] = useState(false);
+   const [pauseHovered, setPauseHovered] = useState(false);
+   const [helpFocused, setHelpFocused] = useState(false);
+   const [helpHovered, setHelpHovered] = useState(false);
+   const layout = computeAlchemistsCascadeGameplayLayout(width, height);
+   const goalDone = levelWon(props.save.activeLevel!, props.activeConfig);
+   const timing = props.reducedMotion
+     ? CASCADE_PRESENTATION_TIMINGS.reduced
+     : CASCADE_PRESENTATION_TIMINGS.standard;
+   const phaseMessage = gameplayPhaseMessage(props.animationPhase, props.busy, props.message);
+
+   if (artworkFailed) return <AbstractCascadeGameplayScreen {...props} />;
+
+   const pauseButton = (
+     <Pressable
+       testID="alchemists-cascade-gameplay-pause"
+       accessibilityRole="button"
+       accessibilityLabel="Pause"
+       accessibilityHint="Pause the current recipe"
+       accessibilityState={{ disabled: props.busy }}
+       disabled={props.busy}
+       onPress={props.onPause}
+       onFocus={() => setPauseFocused(true)}
+       onBlur={() => setPauseFocused(false)}
+       onHoverIn={() => setPauseHovered(true)}
+       onHoverOut={() => setPauseHovered(false)}
+       style={({ pressed }: { pressed: boolean }) => [
+         layout.mode === "cinematic" ? styles.gameplayCinematicControl : styles.gameplayStackedControl,
+         layout.mode === "cinematic" && layout.pause,
+         (pauseFocused || pauseHovered) && styles.gameplayControlActive,
+         pressed && styles.gameplayControlPressed,
+         props.busy && styles.disabled,
+       ]}
+     >
+       {layout.mode === "stacked" ? (
+         <>
+           <MaterialCommunityIcons name="pause" size={18} color="#FBE8BD" accessible={false} />
+           <Text style={styles.gameplayControlText}>PAUSE</Text>
+         </>
+       ) : null}
+     </Pressable>
+   );
+   const helpButton = (
+     <Pressable
+       testID="alchemists-cascade-gameplay-help"
+       accessibilityRole="button"
+       accessibilityLabel="Help"
+       accessibilityHint="Open the apprentice's field notes"
+       accessibilityState={{ disabled: props.busy }}
+       disabled={props.busy}
+       onPress={props.onHelp}
+       onFocus={() => setHelpFocused(true)}
+       onBlur={() => setHelpFocused(false)}
+       onHoverIn={() => setHelpHovered(true)}
+       onHoverOut={() => setHelpHovered(false)}
+       style={({ pressed }: { pressed: boolean }) => [
+         layout.mode === "cinematic" ? styles.gameplayCinematicControl : styles.gameplayStackedControl,
+         layout.mode === "cinematic" && layout.help,
+         (helpFocused || helpHovered) && styles.gameplayControlActive,
+         pressed && styles.gameplayControlPressed,
+         props.busy && styles.disabled,
+       ]}
+     >
+       {layout.mode === "stacked" ? (
+         <>
+           <MaterialCommunityIcons name="help-circle-outline" size={18} color="#FBE8BD" accessible={false} />
+           <Text style={styles.gameplayControlText}>HELP</Text>
+         </>
+       ) : null}
+     </Pressable>
+   );
+
+   if (layout.mode === "stacked") {
+     const boardWidth = Math.min(width - 24, 600);
+     return (
+       <ScrollView
+         style={styles.gameplayStackedScroll}
+         contentContainerStyle={styles.gameplayStackedContent}
+         showsVerticalScrollIndicator={false}
+       >
+         <Image
+           source={ALCHEMISTS_CASCADE_GAMEPLAY_MOBILE_ARTWORK}
+           style={styles.gameplayMobileArtwork}
+           resizeMode="cover"
+           accessible={false}
+           accessibilityElementsHidden
+           accessibilityIgnoresInvertColors
+           onError={() => setArtworkFailed(true)}
+         />
+         <View style={styles.gameplayStackedHeader}>
+           {pauseButton}
+           <View style={styles.gameplayStackedTitleCopy}>
+             <Text accessibilityRole="header" style={styles.gameplayStackedTitle}>{props.activeConfig.name}</Text>
+             <Text style={[styles.gameplayStackedRealm, { color: props.activeRealm.accent }]}>{props.activeRealm.name}</Text>
+           </View>
+           {helpButton}
+         </View>
+         <GameplayStatus
+           save={props.save}
+           activeConfig={props.activeConfig}
+           goalDone={goalDone}
+           compact={false}
+           comboPulse={props.comboPulse}
+         />
+         <GameplayGoals save={props.save} activeConfig={props.activeConfig} compact={false} />
+         <PresentationBoardView
+           tiles={props.tiles}
+           width={boardWidth}
+           selected={props.selected}
+           disabled={props.busy}
+           phase={props.animationPhase}
+           clearingTileIds={props.clearingTileIds}
+           motionDuration={props.animationPhase === "swapping" ? timing.swapMs : timing.fallMs}
+           clearDuration={timing.clearMs}
+           onCell={props.onCell}
+         />
+         <Text
+           testID="alchemists-cascade-animation-phase"
+           style={styles.gameplayStackedInstruction}
+           accessibilityLiveRegion="polite"
+         >
+           {phaseMessage}
+         </Text>
+         {props.syncWarning ? (
+           <Text testID="alchemists-cascade-gameplay-sync" style={styles.gameplayStackedSync} accessibilityRole="alert">
+             {props.syncWarning}
+           </Text>
+         ) : null}
+       </ScrollView>
+     );
+   }
+
+   const boardWidth = Math.max(1, layout.board.width - 14);
+   return (
+     <View style={styles.gameplayCinematic}>
+       <View style={[styles.gameplayCinematicStage, layout.stage]}>
+         <Image
+           source={ALCHEMISTS_CASCADE_GAMEPLAY_ARTWORK}
+           style={styles.gameplayCinematicImage}
+           resizeMode="contain"
+           accessible={false}
+           accessibilityElementsHidden
+           accessibilityIgnoresInvertColors
+           onError={() => setArtworkFailed(true)}
+         />
+         {pauseButton}
+         {helpButton}
+         <View style={[styles.gameplayCinematicTitle, layout.title]}>
+           <Text accessibilityRole="header" style={styles.gameplayCinematicTitleText}>{props.activeConfig.name}</Text>
+           <Text style={[styles.gameplayCinematicRealmText, { color: props.activeRealm.accent }]}>{props.activeRealm.name}</Text>
+         </View>
+         <View style={[styles.gameplayCinematicStatus, layout.status]}>
+           <GameplayStatus
+             save={props.save}
+             activeConfig={props.activeConfig}
+             goalDone={goalDone}
+             compact
+             comboPulse={props.comboPulse}
+           />
+         </View>
+         <View style={[styles.gameplayCinematicGoals, layout.goals]}>
+           <GameplayGoals save={props.save} activeConfig={props.activeConfig} compact />
+         </View>
+         <View style={[styles.gameplayCinematicBoardPosition, layout.board]}>
+           <PresentationBoardView
+             tiles={props.tiles}
+             width={boardWidth}
+             selected={props.selected}
+             disabled={props.busy}
+             phase={props.animationPhase}
+             clearingTileIds={props.clearingTileIds}
+             motionDuration={props.animationPhase === "swapping" ? timing.swapMs : timing.fallMs}
+             clearDuration={timing.clearMs}
+             onCell={props.onCell}
+           />
+         </View>
+         <View style={[styles.gameplayCinematicInstruction, layout.instruction]}>
+           <Text
+             testID="alchemists-cascade-animation-phase"
+             style={styles.gameplayCinematicInstructionText}
+             accessibilityLiveRegion="polite"
+             numberOfLines={2}
+           >
+             {phaseMessage}
+           </Text>
+         </View>
+         <View
+           testID="alchemists-cascade-gameplay-sync"
+           style={[
+             styles.gameplayCinematicSync,
+             layout.sync,
+             !props.syncWarning && styles.gameplayCinematicSyncEmpty,
+           ]}
+         >
+           {props.syncWarning ? (
+             <Text style={styles.gameplayCinematicSyncText} accessibilityRole="alert" numberOfLines={2}>
+               {props.syncWarning}
+             </Text>
+           ) : null}
+         </View>
+       </View>
+     </View>
+   );
+ }
+
 export default function AlchemistsCascadeRoute() {
   const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
   const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
@@ -1331,9 +1934,15 @@ export default function AlchemistsCascadeRoute() {
   const [choiceStarted, setChoiceStarted] = useState(Date.now());
   const [privacy, setPrivacy] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [presentationTiles, setPresentationTiles] = useState<CascadePresentationTile[]>([]);
+  const [presentationPhase, setPresentationPhase] = useState<CascadePresentationPhase>("settled");
+  const [clearingTileIds, setClearingTileIds] = useState<string[]>([]);
+  const presentationTilesRef = useRef<CascadePresentationTile[]>([]);
+  const presentationSeed = useRef(0);
+  const presentationGeneration = useRef(0);
+  const presentationWaits = useRef(new Map<ReturnType<typeof setTimeout>, (valid: boolean) => void>());
   const helpReturn = useRef<Phase>("title");
   const comboPulse = useRef(new Animated.Value(1)).current;
-  const { width } = useWindowDimensions();
   const gameRecommendationMilestone = useGameRecommendationMilestone({
     game: "alchemists_cascade",
     gameLabel: "The Alchemist's Cascade",
@@ -1349,7 +1958,8 @@ export default function AlchemistsCascadeRoute() {
   const activeConfig = save?.activeLevel
     ? CASCADE_LEVELS.find((level) => level.id === save.activeLevel?.levelId) || null
     : null;
-  const board = save?.activeLevel ? decodeBoard(save.activeLevel.board) : null;
+  const encodedBoard = save?.activeLevel?.board || null;
+  const board = useMemo(() => encodedBoard ? decodeBoard(encodedBoard) : null, [encodedBoard]);
   const activeRealm = activeConfig ? realmFor(activeConfig) : CASCADE_REALMS[0];
   const catalystChoices = useMemo(
     () => board && save && activeConfig
@@ -1363,6 +1973,78 @@ export default function AlchemistsCascadeRoute() {
     lastTimestamp.current = value;
     return value;
   }, []);
+
+  const commitPresentationTiles = useCallback((tiles: CascadePresentationTile[]) => {
+    presentationTilesRef.current = tiles;
+    setPresentationTiles(tiles);
+  }, []);
+
+  const waitForPresentation = useCallback((durationMs: number, generation: number) => (
+    new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        presentationWaits.current.delete(timer);
+        resolve(presentationGeneration.current === generation);
+      }, durationMs);
+      presentationWaits.current.set(timer, resolve);
+    })
+  ), []);
+
+  const runPresentationPlan = useCallback(async (
+    currentBoard: Board,
+    result: ReturnType<typeof applySwap>,
+    from: Coordinate,
+    to: Coordinate,
+  ): Promise<boolean> => {
+    if (!result.valid) return true;
+    const generation = ++presentationGeneration.current;
+    const timing = reducedMotion
+      ? CASCADE_PRESENTATION_TIMINGS.reduced
+      : CASCADE_PRESENTATION_TIMINGS.standard;
+    const initialTiles = presentationMatchesBoard(presentationTilesRef.current, currentBoard)
+      ? presentationTilesRef.current
+      : createCascadePresentationTiles(currentBoard, ++presentationSeed.current);
+    const plan = buildCascadePresentationPlan({
+      initialTiles,
+      from,
+      to,
+      steps: result.steps,
+      finalBoard: result.board,
+      generation: ++presentationSeed.current,
+    });
+
+    setClearingTileIds([]);
+    setPresentationPhase("swapping");
+    commitPresentationTiles(plan.swapTiles);
+    if (!await waitForPresentation(timing.swapMs, generation)) return false;
+
+    for (const step of plan.steps) {
+      commitPresentationTiles(step.beforeTiles);
+      setClearingTileIds(step.clearingTileIds);
+      setPresentationPhase("clearing");
+      if (!await waitForPresentation(timing.clearMs, generation)) return false;
+
+      setClearingTileIds([]);
+      const cleared = new Set(step.clearingTileIds);
+      commitPresentationTiles(step.beforeTiles.filter((tile) => !cleared.has(tile.id)));
+      if (!await waitForPresentation(reducedMotion ? 1 : 24, generation)) return false;
+
+      setPresentationPhase("falling");
+      commitPresentationTiles(step.afterTiles);
+      if (!await waitForPresentation(timing.fallMs, generation)) return false;
+      commitPresentationTiles(settleCascadePresentationTiles(step.afterTiles));
+    }
+
+    if (plan.reshuffled) {
+      setPresentationPhase("falling");
+      commitPresentationTiles(plan.finalTiles);
+      if (!await waitForPresentation(timing.fallMs, generation)) return false;
+    }
+
+    setClearingTileIds([]);
+    setPresentationPhase("settled");
+    commitPresentationTiles(settleCascadePresentationTiles(plan.finalTiles));
+    return true;
+  }, [commitPresentationTiles, reducedMotion, waitForPresentation]);
 
   const send = useCallback(async (event: CascadeEvidenceEvent) => {
     if (Platform.OS !== "web" && !nativeApiOrigin) return false;
@@ -1472,6 +2154,26 @@ export default function AlchemistsCascadeRoute() {
     const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReducedMotion);
     return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    const waits = presentationWaits.current;
+    return () => {
+      presentationGeneration.current += 1;
+      waits.forEach((resolve, timer) => {
+        clearTimeout(timer);
+        resolve(false);
+      });
+      waits.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!board || busy || phase !== "play") return;
+    if (presentationMatchesBoard(presentationTilesRef.current, board)) return;
+    setClearingTileIds([]);
+    setPresentationPhase("settled");
+    commitPresentationTiles(createCascadePresentationTiles(board, ++presentationSeed.current));
+  }, [board, busy, commitPresentationTiles, phase]);
 
   useEffect(() => {
     if (Platform.OS !== "web" || typeof document === "undefined") return;
@@ -1827,6 +2529,10 @@ export default function AlchemistsCascadeRoute() {
     if (!save?.activeLevel || !activeConfig || busy || actionLock.current
       || activeLevelPhase(save.activeLevel, activeConfig) !== "play") return;
     const expected = captureCascadeExpectedState(save);
+    const presentationMove: {
+      board?: Board;
+      result?: ReturnType<typeof applySwap>;
+    } = {};
     actionLock.current = true;
     setBusy(true);
     setSelected(null);
@@ -1840,6 +2546,8 @@ export default function AlchemistsCascadeRoute() {
         const currentBoard = decodeBoard(active.board);
         if (!currentBoard) throw new Error("invalid_saved_board");
         const result = applySwap(currentBoard, active.rngState, from, to, activeConfig.goals);
+        presentationMove.board = currentBoard;
+        presentationMove.result = result;
         const attemptedAt = now();
         const attempted = makeEvent({
           save: current, eventType: "move_attempted", at: attemptedAt,
@@ -1963,6 +2671,24 @@ export default function AlchemistsCascadeRoute() {
       });
       const nextActive = next.activeLevel!;
       const previousScore = save.activeLevel.score;
+      const terminal = activeLevelPhase(nextActive, activeConfig);
+      if (terminal === "won") {
+        const uniqueCompletedLevelCount = Object.keys(next.levelStars).length;
+        void gameRecommendationMilestone.notifyEvidence(
+          `${next.gameSessionId}:level-completed:${activeConfig.id}`,
+          [],
+          (lastMilestoneEvidenceCount) => alchemistsCascadeMilestone(uniqueCompletedLevelCount, lastMilestoneEvidenceCount),
+        );
+      }
+      if (presentationMove.board && presentationMove.result?.valid) {
+        const animationCompleted = await runPresentationPlan(
+          presentationMove.board,
+          presentationMove.result,
+          from,
+          to,
+        );
+        if (!animationCompleted) return;
+      }
       if (nextActive.movesRemaining === save.activeLevel.movesRemaining) {
         setMessage("That pairing refuses to brew. No move was spent.");
       } else {
@@ -1972,16 +2698,7 @@ export default function AlchemistsCascadeRoute() {
           comboPulse.setValue(1.12);
           Animated.spring(comboPulse, { toValue: 1, friction: 5, useNativeDriver: true }).start();
         }
-        const terminal = activeLevelPhase(nextActive, activeConfig);
         if (terminal === "won" || terminal === "lost") setPhase("result");
-        if (terminal === "won") {
-          const uniqueCompletedLevelCount = Object.keys(next.levelStars).length;
-          void gameRecommendationMilestone.notifyEvidence(
-            `${next.gameSessionId}:level-completed:${activeConfig.id}`,
-            [],
-            (lastMilestoneEvidenceCount) => alchemistsCascadeMilestone(uniqueCompletedLevelCount, lastMilestoneEvidenceCount),
-          );
-        }
       }
     } catch (error) {
       if (!isStaleCascadeError(error)) {
@@ -1991,7 +2708,7 @@ export default function AlchemistsCascadeRoute() {
       actionLock.current = false;
       setBusy(false);
     }
-  }, [activeConfig, busy, comboPulse, gameRecommendationMilestone, mutate, now, reducedMotion, save]);
+  }, [activeConfig, busy, comboPulse, gameRecommendationMilestone, mutate, now, reducedMotion, runPresentationPlan, save]);
 
   const onCell = useCallback((at: Coordinate) => {
     if (busy || phase !== "play" || !save?.activeLevel || !activeConfig
@@ -2200,51 +2917,49 @@ export default function AlchemistsCascadeRoute() {
   }
 
   if ((phase === "play" || phase === "pause") && save?.activeLevel && activeConfig && board) {
-    const goalDone = levelWon(save.activeLevel, activeConfig);
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: activeRealm.background }]}>
-        <View style={[styles.gameHeader, { borderBottomColor: activeRealm.accent }]}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => setPhase(phase === "pause" ? "play" : "pause")} accessibilityRole="button">
-            <Text style={styles.headerButtonText}>{phase === "pause" ? "RESUME" : "PAUSE"}</Text>
-          </TouchableOpacity>
-          <View style={styles.gameHeaderCenter}><Text style={styles.levelHeader}>{activeConfig.name}</Text><Text style={styles.realmHeader}>{activeRealm.name}</Text></View>
-          <TouchableOpacity style={styles.headerButton} onPress={() => openHelp("play")}><Text style={styles.headerButtonText}>HELP</Text></TouchableOpacity>
-        </View>
         {phase === "pause" ? (
-          <View style={styles.centered}>
-            <View style={styles.sheet}>
-              <Text style={styles.sheetTitle}>The flame holds steady</Text>
-              <Text style={styles.lead}>Your exact board and the next refill are sealed in the save vial.</Text>
-              <TouchableOpacity style={styles.primaryButton} onPress={() => setPhase("play")}><Text style={styles.primaryButtonText}>RETURN TO THE FLASK</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => void saveExit()}><Text style={styles.secondaryButtonText}>{busy ? "SAVING..." : "SAVE & EXIT"}</Text></TouchableOpacity>
+          <>
+            <View style={[styles.gameHeader, { borderBottomColor: activeRealm.accent }]}>
+              <TouchableOpacity style={styles.headerButton} onPress={() => setPhase("play")} accessibilityRole="button">
+                <Text style={styles.headerButtonText}>RESUME</Text>
+              </TouchableOpacity>
+              <View style={styles.gameHeaderCenter}><Text style={styles.levelHeader}>{activeConfig.name}</Text><Text style={styles.realmHeader}>{activeRealm.name}</Text></View>
+              <TouchableOpacity style={styles.headerButton} onPress={() => openHelp("play")}><Text style={styles.headerButtonText}>HELP</Text></TouchableOpacity>
             </View>
-          </View>
+            <View style={styles.centered}>
+              <View style={styles.sheet}>
+                <Text style={styles.sheetTitle}>The flame holds steady</Text>
+                <Text style={styles.lead}>Your exact board and the next refill are sealed in the save vial.</Text>
+                <TouchableOpacity style={styles.primaryButton} onPress={() => setPhase("play")}><Text style={styles.primaryButtonText}>RETURN TO THE FLASK</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => void saveExit()}><Text style={styles.secondaryButtonText}>{busy ? "SAVING..." : "SAVE & EXIT"}</Text></TouchableOpacity>
+              </View>
+            </View>
+          </>
         ) : (
-          <ScrollView contentContainerStyle={styles.playScreen}>
-            <View style={styles.statusRail}>
-              <View><Text style={styles.statusLabel}>MOVES</Text><Text style={styles.movesValue}>{save.activeLevel.movesRemaining}</Text></View>
-              <Animated.View style={{ transform: [{ scale: comboPulse }] }}><Text style={styles.statusLabel}>SCORE</Text><Text style={styles.scoreValue}>{save.activeLevel.score.toLocaleString()}</Text><Text style={styles.targetText}>of {activeConfig.scoreTarget.toLocaleString()}</Text></Animated.View>
-              <View><Text style={styles.statusLabel}>BREW</Text><Text style={styles.brewValue}>{goalDone ? "READY" : "ACTIVE"}</Text></View>
-            </View>
-            <View style={styles.goals}>
-              {activeConfig.goals.map((goal) => {
-                const ingredient = INGREDIENTS[goal.kind];
-                const current = save.activeLevel!.collected[goal.kind];
-                return (
-                  <View key={ingredient.id} style={styles.goal}>
-                    <View style={[styles.goalDot, { backgroundColor: ingredient.color }]}><Text style={{ color: ingredient.ink }}>{ingredient.symbol}</Text></View>
-                    <Text style={styles.goalText}>{ingredient.name}</Text>
-                    <Text style={[styles.goalCount, current >= goal.target && styles.goalDone]}>{Math.min(current, goal.target)}/{goal.target}</Text>
-                  </View>
-                );
-              })}
-            </View>
-            <BoardView board={board} width={Math.min(width - 24, 510)} selected={selected} onCell={onCell} />
-            <Text style={styles.feedback} accessibilityLiveRegion="polite">{busy ? "The mixture turns..." : message}</Text>
-            {syncWarning ? <Text style={styles.warning}>{syncWarning}</Text> : null}
-          </ScrollView>
+          <CascadeGameplayScreen
+            board={board}
+            tiles={presentationTiles.length
+              ? presentationTiles
+              : createCascadePresentationTiles(board, presentationSeed.current)}
+            animationPhase={presentationPhase}
+            clearingTileIds={clearingTileIds}
+            reducedMotion={reducedMotion}
+            busy={busy}
+            save={save}
+            activeConfig={activeConfig}
+            activeRealm={activeRealm}
+            selected={selected}
+            message={message}
+            syncWarning={syncWarning}
+            comboPulse={comboPulse}
+            onPause={() => setPhase("pause")}
+            onHelp={() => openHelp("play")}
+            onCell={onCell}
+          />
         )}
-        {gameRecommendationMilestone.pendingReward ? (
+        {!busy && gameRecommendationMilestone.pendingReward ? (
           <GameRecommendationReward
             visible
             cadence={gameRecommendationMilestone.pendingReward.cadence}
@@ -2866,6 +3581,254 @@ const styles = StyleSheet.create({
   fateButton: { minHeight: 48, marginTop: 18, padding: 12, alignItems: "center", justifyContent: "center" },
   fateText: { color: "#E8D8B6", fontSize: 12, fontWeight: "900", textDecorationLine: "underline", textAlign: "center" },
   balanceNote: { color: "#958E84", fontSize: 11, textAlign: "center" },
+  gameplayCinematic: {
+    flex: 1,
+    backgroundColor: "#08090E",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  gameplayCinematicStage: { position: "relative", overflow: "hidden", backgroundColor: "#08090E" },
+  gameplayCinematicImage: { position: "absolute", inset: 0, width: "100%", height: "100%" },
+  gameplayCinematicControl: {
+    position: "absolute",
+    zIndex: 12,
+    minHeight: 44,
+    minWidth: 58,
+    borderWidth: 2,
+    borderColor: "transparent",
+    borderRadius: 7,
+  },
+  gameplayControlActive: {
+    borderColor: "#FFF0BE",
+    backgroundColor: "rgba(246, 201, 87, 0.13)",
+    shadowColor: "#F6C957",
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+  },
+  gameplayControlPressed: { opacity: 0.76, transform: [{ scale: 0.97 }] },
+  gameplayCinematicTitle: {
+    position: "absolute",
+    zIndex: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#11131D",
+    borderWidth: 1,
+    borderColor: "#7B542A",
+    borderRadius: 7,
+    paddingHorizontal: 12,
+  },
+  gameplayCinematicTitleText: {
+    color: "#FFF1D3",
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: "900",
+    textAlign: "center",
+    textShadowColor: "#000",
+    textShadowRadius: 4,
+  },
+  gameplayCinematicRealmText: { fontSize: 11, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase" },
+  gameplayCinematicStatus: {
+    position: "absolute",
+    zIndex: 5,
+    backgroundColor: "#11131D",
+    borderWidth: 1,
+    borderColor: "#604622",
+    borderRadius: 6,
+    paddingHorizontal: 10,
+  },
+  gameplayStatus: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  gameplayStatusCompact: { height: "100%", paddingVertical: 2 },
+  gameplayStatusItem: { minWidth: 80, alignItems: "center", justifyContent: "center" },
+  gameplayStatusLabel: { color: "#BAAE9B", fontSize: 10, fontWeight: "900", letterSpacing: 1.5, textAlign: "center" },
+  gameplayStatusLabelCompact: { fontSize: 8, letterSpacing: 1.1 },
+  gameplayMovesValue: { color: "#FFF0D5", fontSize: 28, lineHeight: 31, fontWeight: "900", textAlign: "center" },
+  gameplayScoreValue: { color: "#F6C957", fontSize: 23, lineHeight: 27, fontWeight: "900", textAlign: "center" },
+  gameplayStatusValueCompact: { fontSize: 18, lineHeight: 20 },
+  gameplayTargetText: { color: "#ADA18E", fontSize: 10, textAlign: "center" },
+  gameplayTargetTextCompact: { fontSize: 8 },
+  gameplayBrewValue: { color: "#78E690", fontSize: 13, fontWeight: "900", textAlign: "center" },
+  gameplayBrewValueCompact: { fontSize: 10 },
+  gameplayCinematicGoals: {
+    position: "absolute",
+    zIndex: 5,
+    backgroundColor: "#11131D",
+    borderWidth: 1,
+    borderColor: "#604622",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+  },
+  gameplayGoals: { width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+  gameplayGoalsCompact: { height: "100%", alignItems: "center", gap: 5 },
+  gameplayGoal: {
+    minWidth: 155,
+    flexGrow: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 5,
+    backgroundColor: "#20232E",
+    padding: 8,
+    gap: 7,
+  },
+  gameplayGoalCompact: { minWidth: 122, height: "82%", paddingVertical: 2, paddingHorizontal: 6, gap: 5 },
+  gameplayGoalDot: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gameplayGoalSymbol: { fontSize: 16, fontWeight: "900" },
+  gameplayGoalText: { flex: 1, color: "#EDE2D0", fontSize: 12, fontWeight: "700" },
+  gameplayGoalTextCompact: { fontSize: 9 },
+  gameplayGoalCount: { color: "#FFF2D8", fontSize: 13, fontWeight: "900" },
+  gameplayGoalCountCompact: { fontSize: 10 },
+  gameplayCinematicBoardPosition: {
+    position: "absolute",
+    zIndex: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#090B10",
+    borderWidth: 2,
+    borderColor: "#8E6332",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.72,
+    shadowRadius: 18,
+  },
+  cinematicBoard: {
+    position: "relative",
+    backgroundColor: "#0B0C12",
+    borderWidth: 7,
+    borderColor: "#3C2819",
+    borderRadius: 9,
+    overflow: "hidden",
+    shadowColor: "#F0A949",
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+  },
+  presentedCellPosition: { position: "absolute" },
+  presentedCellClearing: {
+    zIndex: 5,
+    shadowColor: "#FFF0A8",
+    shadowOpacity: 1,
+    shadowRadius: 16,
+  },
+  presentedCellRefill: { zIndex: 4 },
+  cinematicCell: {
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.27)",
+    shadowColor: "#000",
+    shadowOpacity: 0.72,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  cinematicCellShine: {
+    position: "absolute",
+    top: 3,
+    left: 4,
+    right: 4,
+    height: "30%",
+    borderRadius: 8,
+    opacity: 0.75,
+  },
+  cinematicCellSymbol: {
+    textShadowColor: "rgba(255,255,255,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  gameplayCinematicInstruction: {
+    position: "absolute",
+    zIndex: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#11131D",
+    borderWidth: 1,
+    borderColor: "#604622",
+    borderRadius: 6,
+    paddingHorizontal: 12,
+  },
+  gameplayCinematicInstructionText: {
+    color: "#F4E8D4",
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  gameplayCinematicSync: {
+    position: "absolute",
+    zIndex: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#17151B",
+    borderWidth: 1,
+    borderColor: "#8B6534",
+    borderRadius: 7,
+    paddingHorizontal: 10,
+  },
+  gameplayCinematicSyncEmpty: { borderColor: "transparent", backgroundColor: "#14131A" },
+  gameplayCinematicSyncText: { color: "#F5DCA6", fontSize: 11, lineHeight: 14, fontWeight: "800", textAlign: "center" },
+  gameplayStackedScroll: { flex: 1, backgroundColor: "#090A10" },
+  gameplayStackedContent: { flexGrow: 1, alignItems: "center", paddingBottom: 38 },
+  gameplayMobileArtwork: { width: "100%", height: 150, opacity: 0.72 },
+  gameplayStackedHeader: {
+    width: "100%",
+    maxWidth: 620,
+    minHeight: 70,
+    marginTop: -8,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  gameplayStackedControl: {
+    minWidth: 76,
+    minHeight: 46,
+    borderWidth: 1,
+    borderColor: "#9B7442",
+    borderRadius: 5,
+    backgroundColor: "#17151C",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+  },
+  gameplayControlText: { color: "#FBE8BD", fontSize: 11, fontWeight: "900" },
+  gameplayStackedTitleCopy: { flex: 1, alignItems: "center" },
+  gameplayStackedTitle: { color: "#FFF0D6", fontSize: 19, lineHeight: 23, fontWeight: "900", textAlign: "center" },
+  gameplayStackedRealm: { fontSize: 10, fontWeight: "900", letterSpacing: 1.1, textTransform: "uppercase", textAlign: "center" },
+  gameplayStackedInstruction: {
+    minHeight: 48,
+    maxWidth: 620,
+    color: "#F4E8D4",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "800",
+    textAlign: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  gameplayStackedSync: {
+    maxWidth: 620,
+    color: "#F2C983",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "800",
+    textAlign: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
   gameHeaderCenter: { flex: 1, alignItems: "center", paddingHorizontal: 8 },
   levelHeader: { color: "#F8EFDF", fontSize: 16, fontWeight: "900", textAlign: "center" },
   realmHeader: { color: "#AFA89B", fontSize: 10, marginTop: 2, textAlign: "center" },
