@@ -27,6 +27,20 @@ assert.match(layout, /name="media-mania"/, "Media Mania route must be registered
 assert.match(screen, /Let's get ready to play Media Mania!/, "starting invitation missing");
 assert.match(screen, /Where would you like to start\?/, "starting-source prompt missing");
 assert.match(screen, /Active age band:/, "active age-band control missing");
+assert.match(screen, /testID="media-mania-entry"/, "cinematic entry state missing");
+assert.match(screen, /testID="media-mania-lobby"/, "medium-selection lobby state missing");
+assert.match(screen, /testID="media-mania-gameplay"/, "neon gameplay state missing");
+assert.match(screen, /Build your taste lineup\./, "entry promise missing");
+assert.match(screen, /BUILD MY LINEUP/, "entry-to-lobby control missing");
+assert.match(screen, /require\("\.\.\/assets\/games\/media-mania\.webp"\)/, "Media Mania atmosphere must use the optimized repository artwork");
+assert.match(screen, /MEDIA_MOTIFS[\s\S]*"music-note"[\s\S]*"microphone-outline"/, "entry environment must represent music and podcasts");
+assert.match(screen, /SOURCE_META\[source\]\.icon/, "medium cards must render live source iconography");
+assert.match(screen, /MEDIA_MANIA_SOURCE_LABELS\[source\]/, "medium cards must render live source names");
+assert.match(screen, /accessibilityLabel=\{`Add \$\{MEDIA_MANIA_SOURCE_LABELS\[source\]\} to this game`\}/,
+  "unlock medium choices must expose button names");
+assert.match(screen, /accessibilityLabel=\{`Keep playing \$\{MEDIA_MANIA_SOURCE_LABELS\[state\.startingSource\]\}`\}/,
+  "the unlock decline control must expose a button name");
+assert.doesNotMatch(screen, /da3be234|clipboard\.png|Friday Night Lights|Ted Lasso/, "reference screenshot paths and sample values must not be baked into the screen");
 assert.match(menu, /ageBand: deck === "k2" \? "kids"/, "Media Mania must inherit the current NovelIdeas age band");
 for (const source of ["Books", "Movies", "TV", "Games", "YouTube", "Anime", "Podcasts"]) assert.match(screen, new RegExp(`\\b${source}\\b`, "i"));
 
