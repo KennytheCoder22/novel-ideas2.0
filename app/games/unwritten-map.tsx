@@ -20,7 +20,6 @@ import {
 import {
   UNWRITTEN_MAP_SCENARIOS,
   applyMapOutcome,
-  cameraOrigin,
   createChoiceMadeEvent,
   createChoiceUndoneEvent,
   createEncounterSkippedEvent,
@@ -47,6 +46,7 @@ import {
   type UnwrittenMapEventV2,
   type UnwrittenMapSaveV2,
 } from "../../lib/recommendationGames/unwrittenMap";
+import { unwrittenMapArtworkFrame } from "../../lib/recommendationGames/unwrittenMapPresentation";
 import {
   flushUnwrittenMapEvents,
   initializeUnwrittenMapJourney,
@@ -116,8 +116,9 @@ function usePrefersReducedMotion(): boolean {
   return reduceMotion;
 }
 
-function CartographyBackdrop({ page = "map" }: { page?: "entry" | "map" | "journal" }) {
-  const journal = page === "journal";
+function CartographyBackdrop({ page = "map", mossmere = false }: { page?: "entry" | "map" | "journal" | "result"; mossmere?: boolean }) {
+  const result = page === "result";
+  const journal = page === "journal" || result;
   const entry = page === "entry";
   return (
     <View
@@ -129,6 +130,10 @@ function CartographyBackdrop({ page = "map" }: { page?: "entry" | "map" | "journ
       <Image
         source={entry
           ? require("../../assets/games/unwritten-map/entry-left.webp")
+          : result && mossmere
+            ? require("../../assets/games/unwritten-map/result-mossmere-left.webp")
+          : mossmere
+            ? require("../../assets/games/unwritten-map/encounter-mossmere-left.webp")
           : journal
             ? require("../../assets/games/unwritten-map/journal-left.webp")
             : require("../../assets/games/unwritten-map/entry-left.webp")}
@@ -139,6 +144,10 @@ function CartographyBackdrop({ page = "map" }: { page?: "entry" | "map" | "journ
       <Image
         source={entry
           ? require("../../assets/games/unwritten-map/entry-right.webp")
+          : result && mossmere
+            ? require("../../assets/games/unwritten-map/result-mossmere-right.webp")
+          : mossmere
+            ? require("../../assets/games/unwritten-map/encounter-mossmere-right.webp")
           : journal
             ? require("../../assets/games/unwritten-map/journal-right.webp")
             : require("../../assets/games/unwritten-map/entry-right.webp")}
@@ -146,7 +155,15 @@ function CartographyBackdrop({ page = "map" }: { page?: "entry" | "map" | "journ
         contentFit="cover"
         accessibilityElementsHidden
       />
-      <View style={styles.parchmentWash} />
+      {result && mossmere ? (
+        <Image
+          source={require("../../assets/games/unwritten-map/result-mossmere-bottom.webp")}
+          style={styles.resultBackdropBottom}
+          contentFit="cover"
+          accessibilityElementsHidden
+        />
+      ) : null}
+      <View style={[styles.parchmentWash, result && mossmere && styles.resultParchmentWash]} />
       <View style={styles.edgeVignette} />
     </View>
   );
@@ -185,6 +202,93 @@ function LandmarkSprite({ scenario, completed }: { scenario: MapScenario; comple
   );
 }
 
+const ENCOUNTER_TYPE_ICONS: Record<MapScenario["type"], keyof typeof MaterialCommunityIcons.glyphMap> = {
+  community: "account-group-outline",
+  mystery: "weather-night",
+  craft: "hammer-wrench",
+  wonder: "star-four-points-outline",
+  expedition: "compass-outline",
+};
+
+const RESULT_CLOSING_LINES: Record<MapScenario["type"], string> = {
+  community: "Every gathering leaves a new trail of stories.",
+  mystery: "Look closer. The world always has more to say.",
+  craft: "Patient hands can redraw the shape of a journey.",
+  wonder: "Curiosity turns ordinary places into extraordinary discoveries.",
+  expedition: "Every distant path begins with one brave mark.",
+};
+
+function resultClosingLine(scenario: MapScenario, choice: MapChoice | null) {
+  if (!choice) return "An open circle is still a place worth remembering.";
+  const motif = `${choice.id} ${choice.tags.join(" ")}`;
+  if (/experiment|investigative|scholarly|puzzle/.test(motif)) return "Curiosity turns ordinary places into extraordinary discoveries.";
+  if (/quiet|observant|reflective|patient/.test(motif)) return "The quietest details often tell the longest stories.";
+  if (/music|dance|art|creative|spectacle/.test(motif)) return "A shared wonder can brighten every path home.";
+  return RESULT_CLOSING_LINES[scenario.type];
+}
+
+function choiceMotifIcon(choice: MapChoice): keyof typeof MaterialCommunityIcons.glyphMap {
+  const motif = `${choice.id} ${choice.tags.join(" ")}`;
+  if (/music|song|melody|dance/.test(motif)) return "music-note";
+  if (/book|journal|lore|scholarly/.test(motif)) return "book-open-page-variant-outline";
+  if (/craft|mechanical|repair|gear|build|mend/.test(motif)) return "tools";
+  if (/storm|weather|lightning|cloud/.test(motif)) return "weather-lightning";
+  if (/sea|water|ferry|raft/.test(motif)) return "sail-boat";
+  if (/community|social|ensemble|friendly/.test(motif)) return "account-group-outline";
+  if (/puzzle|riddle|investigative|challenge/.test(motif)) return "puzzle-outline";
+  if (/quiet|reflective|patient|observant/.test(motif)) return "eye-outline";
+  if (/flight|adventure|kinetic|race/.test(motif)) return "weather-windy";
+  if (/art|paint|visual|spectacle|creative/.test(motif)) return "palette-outline";
+  return "star-four-points-outline";
+}
+
+function FrogChoiceIllustration({ choiceId }: { choiceId: string }) {
+  const [failed, setFailed] = useState(false);
+  const source = choiceId === "hear-frogs"
+    ? require("../../assets/games/unwritten-map/frog-hear.webp")
+    : choiceId === "night-pageant"
+      ? require("../../assets/games/unwritten-map/frog-pageant.webp")
+      : choiceId === "moon-experiment"
+        ? require("../../assets/games/unwritten-map/frog-experiment.webp")
+        : choiceId === "grand-speech"
+          ? require("../../assets/games/unwritten-map/frog-speech.webp")
+          : null;
+  return source && !failed ? (
+    <Image source={source} style={styles.frogChoiceArt} contentFit="contain" onError={() => setFailed(true)} accessibilityElementsHidden />
+  ) : (
+    <View style={styles.frogChoiceFallback}>
+      <MaterialCommunityIcons name="paw" size={32} color="#4e6c35" />
+    </View>
+  );
+}
+
+function FrogResultIllustration({ choiceId }: { choiceId: string }) {
+  const [failed, setFailed] = useState(false);
+  const source = choiceId === "hear-frogs"
+    ? require("../../assets/games/unwritten-map/result-frog-hear.webp")
+    : choiceId === "night-pageant"
+      ? require("../../assets/games/unwritten-map/result-frog-pageant.webp")
+      : choiceId === "moon-experiment"
+        ? require("../../assets/games/unwritten-map/result-moon-frog.webp")
+        : choiceId === "grand-speech"
+          ? require("../../assets/games/unwritten-map/result-frog-speech.webp")
+          : null;
+  return source && !failed ? (
+    <Image
+      source={source}
+      style={styles.resultIllustrationArt}
+      contentFit="cover"
+      onError={() => setFailed(true)}
+      accessibilityElementsHidden
+    />
+  ) : (
+    <View style={styles.resultMotif}>
+      <MaterialCommunityIcons name="paw" size={68} color="#4e6c35" />
+      <MaterialCommunityIcons name="moon-waning-crescent" size={38} color={INK} />
+    </View>
+  );
+}
+
 function WorldTile({
   x, y, size, save, walkingFrame,
 }: { x: number; y: number; size: number; save: UnwrittenMapSaveV2; walkingFrame: number }) {
@@ -210,7 +314,7 @@ function WorldTile({
 }
 
 function WorldMap({
-  save, tileSize, columns, rows, walkingFrame, bumpDirection, onActivate, onDeactivate,
+  save, tileSize, columns, rows, walkingFrame, bumpDirection, compact, focused, onActivate, onDeactivate,
 }: {
   save: UnwrittenMapSaveV2;
   tileSize: number;
@@ -218,17 +322,20 @@ function WorldMap({
   rows: number;
   walkingFrame: number;
   bumpDirection: MapDirection | null;
+  compact: boolean;
+  focused: boolean;
   onActivate: () => void;
   onDeactivate: () => void;
 }) {
-  const origin = cameraOrigin(save.position, columns, rows);
+  const [boardArtFailed, setBoardArtFailed] = useState(false);
+  const { origin, ...artworkFrame } = unwrittenMapArtworkFrame(save.position, columns, rows, tileSize);
   const bumpTransform = bumpDirection === "left" ? { translateX: -3 }
     : bumpDirection === "right" ? { translateX: 3 }
       : bumpDirection === "up" ? { translateY: -3 }
         : bumpDirection === "down" ? { translateY: 3 } : undefined;
   return (
     <View
-      style={[styles.viewport, { width: columns * tileSize + 8, height: rows * tileSize + 8 }]}
+      style={[styles.viewport, focused && styles.viewportFocused, { width: columns * tileSize + 8, height: rows * tileSize + 8 }]}
       accessibilityLabel="The Unwritten Map overworld. Focus to use arrow or WASD controls."
       accessibilityRole="image"
       focusable
@@ -236,12 +343,24 @@ function WorldMap({
       onBlur={onDeactivate}
       onTouchStart={onActivate}
     >
-      <Image
-        source={require("../../assets/games/unwritten-map/world-map.webp")}
-        style={styles.worldMapArt}
-        contentFit="cover"
-        accessibilityElementsHidden
-      />
+      {!boardArtFailed ? (
+        <View
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.worldArtworkPlane, artworkFrame]}
+        >
+          <Image
+            source={compact
+              ? require("../../assets/games/unwritten-map/board-map-mobile.webp")
+              : require("../../assets/games/unwritten-map/board-map.webp")}
+            style={styles.worldMapArt}
+            contentFit="fill"
+            onError={() => setBoardArtFailed(true)}
+            accessibilityElementsHidden
+          />
+        </View>
+      ) : null}
       <View pointerEvents="none" style={styles.mapArtVeil} />
       <View style={bumpTransform ? [styles.worldMap, { transform: [bumpTransform] }] : styles.worldMap}>
         {Array.from({ length: rows }, (_, rowOffset) => {
@@ -323,17 +442,37 @@ function GameHeader({ save, onLeave, leaving }: { save: UnwrittenMapSaveV2; onLe
 function TitleScreen({
   hasProgress, onBegin, onPrivacy, onReset, beginning, compact,
 }: { hasProgress: boolean; onBegin: () => void; onPrivacy: () => void; onReset: () => void; beginning: boolean; compact: boolean }) {
+  const [entryArtFailed, setEntryArtFailed] = useState(false);
   return (
     <ScrollView contentContainerStyle={styles.titleScreen}>
-      <CartographyBackdrop page="entry" />
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={styles.entryBackdrop}
+      >
+        {!entryArtFailed ? (
+          <Image
+            source={require("../../assets/games/unwritten-map/entry-tabletop.webp")}
+            style={styles.entryBackdropArt}
+            contentFit="cover"
+            onError={() => setEntryArtFailed(true)}
+            accessibilityElementsHidden
+          />
+        ) : (
+          <View style={styles.entryArtFallback}>
+            <Image
+              source={require("../../assets/games/unwritten-map/world-map.webp")}
+              style={styles.entryFallbackMap}
+              contentFit="cover"
+              accessibilityElementsHidden
+            />
+            <MaterialCommunityIcons name="compass-rose" size={120} color="rgba(67,49,25,0.3)" />
+          </View>
+        )}
+        <View style={styles.entryBackdropVignette} />
+      </View>
       <View style={[styles.titleMap, compact && styles.titleMapCompact]}>
-        <Image
-          source={require("../../assets/games/unwritten-map/world-map.webp")}
-          style={styles.titleMapArt}
-          contentFit="cover"
-          accessibilityElementsHidden
-        />
-        <View style={styles.titleMapVeil} />
         <View style={styles.titleContent}>
           <View style={styles.titleKickerRow}>
             <View style={styles.titleRule} />
@@ -358,7 +497,6 @@ function TitleScreen({
           </TouchableOpacity> : null}
         </View>
       </View>
-      <Text style={styles.entryQuote}>“Some places aren&apos;t on any map. That&apos;s where the best stories live.”</Text>
     </ScrollView>
   );
 }
@@ -386,17 +524,39 @@ function EncounterPanel({
   onChoose: (choice: MapChoice) => void;
   onSkip: () => void;
 }) {
+  const frogEncounter = scenario.id === "frog-parliament";
+  const [encounterArtFailed, setEncounterArtFailed] = useState(false);
   return (
     <View style={styles.fieldPage}>
       <View pointerEvents="none" accessibilityElementsHidden style={styles.fieldSketch}>
         <MaterialCommunityIcons name="feather" size={90} color="rgba(81,53,25,0.12)" />
       </View>
-      <View style={styles.dialogueLocation}>
-        <View style={[styles.locationSwatch, { backgroundColor: scenario.color }]} />
-        <Text style={styles.dialogueLocationText}>{scenario.location.toUpperCase()} · {scenario.type.toUpperCase()}</Text>
+      <View style={styles.encounterLead}>
+        <View style={styles.encounterLeadCopy}>
+          <View style={styles.dialogueLocation}>
+            <View style={[styles.locationSwatch, { backgroundColor: scenario.color }]} />
+            <Text style={styles.dialogueLocationText}>{scenario.location.toUpperCase()} · {scenario.type.toUpperCase()}</Text>
+          </View>
+          <Text style={styles.dialogueTitle}>{scenario.title}</Text>
+          <Text style={styles.dialoguePrompt}>{scenario.prompt}</Text>
+        </View>
+        <View style={[styles.encounterIllustration, { borderColor: scenario.color }]}>
+          {frogEncounter && !encounterArtFailed ? (
+            <Image
+              source={require("../../assets/games/unwritten-map/frog-encounter.webp")}
+              style={styles.encounterIllustrationArt}
+              contentFit="cover"
+              onError={() => setEncounterArtFailed(true)}
+              accessibilityElementsHidden
+            />
+          ) : (
+            <View style={[styles.encounterMotif, { backgroundColor: `${scenario.color}24` }]}>
+              <MaterialCommunityIcons name={ENCOUNTER_TYPE_ICONS[scenario.type]} size={62} color={scenario.color} />
+              <MaterialCommunityIcons name="feather" size={28} color={INK} />
+            </View>
+          )}
+        </View>
       </View>
-      <Text style={styles.dialogueTitle}>{scenario.title}</Text>
-      <Text style={styles.dialoguePrompt}>{scenario.prompt}</Text>
       <View style={styles.inkDivider}><View style={styles.inkLine} /><MaterialCommunityIcons name="leaf-maple" size={18} color={INK} /><View style={styles.inkLine} /></View>
       <View style={styles.choiceGrid}>
         {choices.map((item, index) => (
@@ -409,6 +569,13 @@ function EncounterPanel({
             accessibilityLabel={`Option ${index + 1}: ${item.label}. ${item.description}`}
           >
             <View style={styles.choiceNumberSeal}><Text style={styles.choiceNumber}>{index + 1}</Text></View>
+            {frogEncounter ? (
+              <FrogChoiceIllustration choiceId={item.id} />
+            ) : (
+              <View style={[styles.choiceMotif, { borderColor: scenario.color }]}>
+                <MaterialCommunityIcons name={choiceMotifIcon(item)} size={31} color={scenario.color} />
+              </View>
+            )}
             <View style={styles.choiceCopy}><Text style={styles.choiceLabel}>{item.label}</Text><Text style={styles.choiceDescription}>{item.description}</Text></View>
           </TouchableOpacity>
         ))}
@@ -424,17 +591,47 @@ function EncounterPanel({
 function ResultPanel({
   scenario, choice, skipped, onContinue, pending,
 }: { scenario: MapScenario; choice: MapChoice | null; skipped: boolean; onContinue: () => void; pending: boolean }) {
+  const mossmere = scenario.id === "frog-parliament";
+  const motifIcon = choice ? choiceMotifIcon(choice) : "map-marker-outline";
   return (
-    <View style={styles.fieldPage}>
-      <MaterialCommunityIcons name={skipped ? "map-marker-outline" : "fountain-pen-tip"} size={38} color={INK} />
-      <Text style={styles.resultStamp}>{skipped ? "LANDMARK NOTED" : "STORY ADDED TO MAP"}</Text>
-      <Text style={styles.dialogueTitle}>{scenario.location}</Text>
-      {choice ? <><Text style={styles.resultChoice}>{choice.label}</Text><Text style={styles.resultText}>{choice.result}</Text></> : (
-        <Text style={styles.resultText}>You mark the place with a small open circle. It can remain a possibility, without meaning anything more.</Text>
-      )}
-      <TouchableOpacity style={[styles.primaryButton, pending && styles.buttonDisabled]} disabled={pending} onPress={onContinue} accessibilityRole="button">
-        <Text style={styles.primaryButtonText}>RETURN TO THE ROAD</Text>
+    <View style={styles.resultCard}>
+      <View style={styles.resultLead}>
+        <View style={styles.resultLeadCopy}>
+          <View style={styles.resultEyebrow}>
+            <MaterialCommunityIcons name={skipped ? "map-marker-outline" : "feather"} size={22} color="#6e522b" />
+            <Text style={styles.resultStamp}>{skipped ? "LANDMARK NOTED" : "STORY ADDED TO MAP"}</Text>
+          </View>
+          <Text style={styles.resultEncounterTitle}>{scenario.title}</Text>
+          <Text style={[styles.resultChoice, { color: scenario.color }]}>
+            {(choice?.label || "OPEN POSSIBILITY").toUpperCase()}
+          </Text>
+        </View>
+        <View style={[styles.resultIllustration, { borderColor: scenario.color }]}>
+          {mossmere && choice ? (
+            <FrogResultIllustration choiceId={choice.id} />
+          ) : (
+            <View style={[styles.resultMotif, { backgroundColor: `${scenario.color}20` }]}>
+              <MaterialCommunityIcons name={ENCOUNTER_TYPE_ICONS[scenario.type]} size={70} color={scenario.color} />
+              <MaterialCommunityIcons name={motifIcon} size={34} color={INK} />
+            </View>
+          )}
+        </View>
+      </View>
+      <View style={styles.resultRule}><View style={styles.resultRuleLine} /><MaterialCommunityIcons name="sprout" size={19} color={scenario.color} /><View style={styles.resultRuleLine} /></View>
+      <Text style={styles.resultText}>
+        {choice?.result || "You mark the place with a small open circle. It can remain a possibility, without meaning anything more."}
+      </Text>
+      <TouchableOpacity
+        style={[styles.resultContinue, pending && styles.buttonDisabled]}
+        disabled={pending}
+        onPress={onContinue}
+        accessibilityRole="button"
+        accessibilityLabel="Return to the road"
+      >
+        <Text style={styles.resultContinueText}>RETURN TO THE ROAD</Text>
+        <MaterialCommunityIcons name="arrow-right" size={19} color="#f6e7b3" />
       </TouchableOpacity>
+      <Text style={styles.resultClosing}>“{resultClosingLine(scenario, choice)}”</Text>
     </View>
   );
 }
@@ -551,8 +748,8 @@ export default function UnwrittenMapRoute() {
   const operationIdsRef = useRef(new Map<string, string>());
   const movementOperationRef = useRef<string | null>(null);
   const moveRef = useRef<(direction: MapDirection) => void>(() => undefined);
-  const columns = width < 520 ? 9 : width < 820 ? 11 : 13;
-  const rows = height < 700 ? 7 : 9;
+  const columns = width < 520 ? 9 : width < 900 ? 11 : width < 1500 ? 13 : 15;
+  const rows = height < 700 ? 7 : height < 900 ? 9 : 11;
   const tileSize = Math.max(28, Math.min(54, Math.floor((Math.min(width, 920) - 40) / columns)));
   const compactLayout = width < 700;
   const gameRecommendationMilestone = useGameRecommendationMilestone({
@@ -1293,7 +1490,10 @@ export default function UnwrittenMapRoute() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <CartographyBackdrop page={phase === "map" ? "map" : "journal"} />
+      <CartographyBackdrop
+        page={phase === "map" ? "map" : phase === "result" ? "result" : "journal"}
+        mossmere={phase !== "map" && activeScenario?.id === "frog-parliament"}
+      />
       <GameHeader save={save} onLeave={() => void leaveJourney()} leaving={operationPending} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.hud}>
@@ -1316,6 +1516,8 @@ export default function UnwrittenMapRoute() {
             <WorldMap
               save={save} tileSize={tileSize} columns={columns} rows={rows} walkingFrame={reduceMotion ? 0 : walkingFrame}
               bumpDirection={reduceMotion ? null : bumpDirection}
+              compact={compactLayout}
+              focused={mapFocused}
               onActivate={() => setMapFocused(true)}
               onDeactivate={() => {
                 setMapFocused(false);
@@ -1387,7 +1589,9 @@ const styles = StyleSheet.create({
   edgeArt: { position: "absolute", top: 0, bottom: 0, width: "27%", height: "100%", opacity: 0.92 },
   edgeArtLeft: { left: 0 },
   edgeArtRight: { right: 0 },
+  resultBackdropBottom: { position: "absolute", left: "17%", right: "17%", bottom: 0, width: "66%", height: 150, opacity: 0.94 },
   parchmentWash: { ...StyleSheet.absoluteFillObject, left: "17%", right: "17%", backgroundColor: "rgba(220,195,137,0.93)" },
+  resultParchmentWash: { backgroundColor: "rgba(220,195,137,0.56)" },
   edgeVignette: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(31,24,14,0.13)" },
   loading: { flex: 1, zIndex: 2, alignItems: "center", justifyContent: "center", padding: 24 },
   loadingText: { color: INK, fontFamily: "Georgia", fontSize: 13, fontWeight: "800", letterSpacing: 2, marginTop: 14, textAlign: "center" },
@@ -1403,12 +1607,15 @@ const styles = StyleSheet.create({
   headerProgress: { minWidth: 70, minHeight: 46, paddingHorizontal: 8, borderWidth: 1.5, borderColor: "#d6be7b", borderRadius: 3, backgroundColor: "#22362a", alignItems: "center", justifyContent: "center" },
   headerProgressValue: { color: PARCHMENT, fontFamily: "Georgia", fontSize: 15, fontWeight: "900" },
   headerProgressLabel: { color: "#baa66e", fontSize: 7, fontWeight: "900", letterSpacing: 1.2 },
-  titleScreen: { flexGrow: 1, minHeight: 680, alignItems: "center", justifyContent: "center", paddingHorizontal: 18, paddingVertical: 28 },
-  titleMap: { width: "88%", maxWidth: 900, minHeight: 560, borderWidth: 2, borderColor: "#745322", borderRadius: 7, backgroundColor: PARCHMENT, overflow: "hidden", position: "relative", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.68, shadowRadius: 24, shadowOffset: { width: 0, height: 12 } },
-  titleMapCompact: { width: "100%", minHeight: 620 },
-  titleMapArt: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%", opacity: 0.68 },
-  titleMapVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(244,224,169,0.54)" },
-  titleContent: { width: "88%", maxWidth: 650, alignItems: "center", paddingHorizontal: 18, paddingVertical: 30, borderWidth: 1, borderColor: "rgba(87,59,28,0.34)", backgroundColor: "rgba(240,221,166,0.86)" },
+  titleScreen: { flexGrow: 1, minHeight: 680, alignItems: "center", justifyContent: "center", paddingHorizontal: 18, paddingVertical: 24, backgroundColor: "#17150f" },
+  entryBackdrop: { ...StyleSheet.absoluteFillObject, overflow: "hidden", backgroundColor: "#1a160f" },
+  entryBackdropArt: { width: "100%", height: "100%" },
+  entryBackdropVignette: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(21,15,9,0.09)" },
+  entryArtFallback: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: "#c9b278" },
+  entryFallbackMap: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%", opacity: 0.5 },
+  titleMap: { zIndex: 2, width: "76%", maxWidth: 860, minHeight: 600, alignItems: "center", justifyContent: "center" },
+  titleMapCompact: { width: "100%", minHeight: 720 },
+  titleContent: { width: "90%", maxWidth: 690, alignItems: "center", paddingHorizontal: 24, paddingVertical: 30, borderWidth: 1, borderColor: "rgba(87,59,28,0.16)", borderRadius: 10, backgroundColor: "rgba(239,217,163,0.38)" },
   titleKickerRow: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9 },
   titleRule: { width: "12%", maxWidth: 70, height: 1, backgroundColor: "#725629" },
   titleKicker: { color: INK, fontFamily: "Georgia", fontSize: 11, fontWeight: "900", letterSpacing: 2.2, textAlign: "center" },
@@ -1416,7 +1623,6 @@ const styles = StyleSheet.create({
   titleLogoCompact: { fontSize: 39, lineHeight: 43 },
   titleCopy: { color: "#3f2d1c", fontFamily: "Georgia", fontSize: 16, lineHeight: 24, fontWeight: "600", textAlign: "center", maxWidth: 540, marginVertical: 18 },
   titleHint: { color: "#66502d", fontSize: 11, lineHeight: 16, marginTop: 13, textAlign: "center" },
-  entryQuote: { zIndex: 2, maxWidth: 500, color: PARCHMENT, backgroundColor: "rgba(41,31,18,0.88)", fontFamily: "Georgia", fontSize: 14, lineHeight: 21, fontStyle: "italic", textAlign: "center", paddingHorizontal: 22, paddingVertical: 11, marginTop: 14, borderRadius: 4 },
   primaryButton: { minWidth: 220, minHeight: 50, paddingHorizontal: 20, borderWidth: 2, borderColor: "#d3b66d", borderRadius: 4, backgroundColor: "#2e4a36", flexDirection: "row", gap: 9, alignItems: "center", justifyContent: "center", marginTop: 9, shadowColor: "#000", shadowOpacity: 0.42, shadowOffset: { width: 3, height: 4 }, shadowRadius: 3 },
   primaryButtonText: { color: "#f7e7b0", fontSize: 12, fontWeight: "900", letterSpacing: 1.2 },
   textButton: { minHeight: 44, paddingHorizontal: 18, flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", marginTop: 3 },
@@ -1430,17 +1636,19 @@ const styles = StyleSheet.create({
   hudButton: { minHeight: 44, paddingHorizontal: 12, backgroundColor: "#253b2c", borderWidth: 1.5, borderColor: "#c3aa69", borderRadius: 3, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center" },
   hudButtonText: { color: PARCHMENT, fontSize: 9, fontWeight: "900", letterSpacing: 0.7 },
   viewport: { position: "relative", borderWidth: 6, borderColor: "#4b351d", borderRadius: 5, overflow: "hidden", backgroundColor: SCREEN, shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 12, shadowOffset: { width: 5, height: 7 } },
-  worldMapArt: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%", opacity: 0.72 },
-  mapArtVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(222,203,149,0.12)" },
-  worldMap: { alignSelf: "flex-start" },
+  viewportFocused: { borderColor: "#f1d47e", shadowColor: "#f2c85d", shadowOpacity: 0.78, shadowRadius: 10 },
+  worldArtworkPlane: { position: "absolute", overflow: "hidden" },
+  worldMapArt: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%", opacity: 0.5 },
+  mapArtVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(226,208,157,0.14)" },
+  worldMap: { zIndex: 2, alignSelf: "flex-start" },
   mapRow: { flexDirection: "row" },
   tile: { position: "relative", alignItems: "center", justifyContent: "center", overflow: "visible", borderWidth: 0.35, borderColor: "rgba(81,63,34,0.1)" },
-  treeTile: { backgroundColor: "rgba(66,99,60,0.48)" },
-  grassTile: { backgroundColor: "rgba(178,181,111,0.34)" },
-  pathTile: { backgroundColor: "rgba(220,196,129,0.35)" },
-  waterTile: { backgroundColor: "rgba(85,139,139,0.48)" },
-  sandTile: { backgroundColor: "rgba(208,178,105,0.4)" },
-  mountainTile: { backgroundColor: "rgba(112,115,91,0.48)" },
+  treeTile: { backgroundColor: "rgba(43,82,43,0.68)" },
+  grassTile: { backgroundColor: "rgba(193,190,111,0.5)" },
+  pathTile: { backgroundColor: "rgba(226,197,126,0.58)" },
+  waterTile: { backgroundColor: "rgba(68,139,151,0.68)" },
+  sandTile: { backgroundColor: "rgba(217,181,98,0.6)" },
+  mountainTile: { backgroundColor: "rgba(102,108,91,0.68)" },
   landmark: { position: "absolute", width: "78%", height: "80%", borderWidth: 2, borderColor: "#302416", borderRadius: 4, alignItems: "center", justifyContent: "center", zIndex: 4, shadowColor: "#fff2b0", shadowOpacity: 0.82, shadowRadius: 5 },
   landmarkLabel: { position: "absolute", bottom: -8, color: PARCHMENT, backgroundColor: DARK, fontSize: 6, lineHeight: 10, fontWeight: "900", paddingHorizontal: 3, zIndex: 5 },
   playerSprite: { position: "absolute", width: "70%", height: "92%", alignItems: "center", zIndex: 8, shadowColor: "#fff0a8", shadowOpacity: 0.9, shadowRadius: 5 },
@@ -1470,6 +1678,11 @@ const styles = StyleSheet.create({
   coordinateText: { color: "#775e35", fontSize: 9, fontWeight: "900", marginTop: 10, letterSpacing: 1.4 },
   fieldPage: { position: "relative", width: "100%", maxWidth: 920, minHeight: 430, borderWidth: 2, borderColor: "#765322", borderRadius: 4, backgroundColor: "rgba(242,222,169,0.97)", paddingHorizontal: 24, paddingVertical: 22, marginTop: 6, overflow: "hidden", shadowColor: "#000", shadowOpacity: 0.48, shadowRadius: 13, shadowOffset: { width: 4, height: 7 } },
   fieldSketch: { position: "absolute", right: 12, top: 7 },
+  encounterLead: { width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 16, alignItems: "stretch" },
+  encounterLeadCopy: { flex: 1, minWidth: 245, justifyContent: "center" },
+  encounterIllustration: { width: 310, maxWidth: "100%", minHeight: 152, borderWidth: 1.5, borderRadius: 3, overflow: "hidden", backgroundColor: "rgba(233,210,155,0.72)" },
+  encounterIllustrationArt: { width: "100%", height: "100%" },
+  encounterMotif: { flex: 1, minHeight: 150, flexDirection: "row", gap: 12, alignItems: "center", justifyContent: "center" },
   dialogueLocation: { alignSelf: "flex-start", minHeight: 30, paddingHorizontal: 9, paddingVertical: 5, borderWidth: 1.5, borderColor: INK, flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 10, backgroundColor: "rgba(248,231,184,0.74)" },
   locationSwatch: { width: 12, height: 12, borderWidth: 1, borderColor: INK },
   dialogueLocationText: { color: INK, fontSize: 9, fontWeight: "900", letterSpacing: 1 },
@@ -1481,6 +1694,9 @@ const styles = StyleSheet.create({
   choiceButton: { flexGrow: 1, flexBasis: 350, minWidth: 0, minHeight: 86, borderWidth: 1.5, borderColor: "#765b34", borderRadius: 3, backgroundColor: "rgba(247,229,183,0.78)", padding: 11, flexDirection: "row", alignItems: "flex-start" },
   choiceNumberSeal: { width: 27, height: 27, borderRadius: 14, borderWidth: 1.5, borderColor: INK, marginRight: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#dcc58c" },
   choiceNumber: { color: INK, fontFamily: "Georgia", fontSize: 12, fontWeight: "900" },
+  frogChoiceArt: { width: 70, height: 58, marginRight: 10 },
+  frogChoiceFallback: { width: 70, height: 58, marginRight: 10, alignItems: "center", justifyContent: "center" },
+  choiceMotif: { width: 58, height: 58, marginRight: 10, borderWidth: 1, borderRadius: 29, backgroundColor: "rgba(236,216,168,0.72)", alignItems: "center", justifyContent: "center" },
   choiceCopy: { flex: 1 },
   choiceLabel: { color: INK, fontFamily: "Georgia", fontSize: 14, lineHeight: 18, fontWeight: "900" },
   choiceDescription: { color: "#5b472d", fontSize: 11, lineHeight: 16, marginTop: 4 },
@@ -1488,9 +1704,22 @@ const styles = StyleSheet.create({
   skipText: { color: INK, fontSize: 9, fontWeight: "900", letterSpacing: 0.9 },
   equalNote: { color: "#655033", fontFamily: "Georgia", fontSize: 10, lineHeight: 15, marginTop: 10, textAlign: "center", fontStyle: "italic" },
   buttonDisabled: { opacity: 0.45 },
-  resultStamp: { color: "#805a21", fontSize: 10, fontWeight: "900", letterSpacing: 2, marginTop: 7, marginBottom: 8 },
-  resultChoice: { color: "#4b653f", fontFamily: "Georgia", fontSize: 15, fontWeight: "900", textTransform: "uppercase", marginTop: 7 },
-  resultText: { color: "#4f3d27", fontFamily: "Georgia", fontSize: 16, lineHeight: 24, marginVertical: 17 },
+  resultCard: { width: "100%", maxWidth: 920, minHeight: 430, borderWidth: 2, borderColor: "#765322", borderRadius: 4, backgroundColor: "rgba(246,226,177,0.98)", paddingHorizontal: 34, paddingVertical: 28, marginTop: 8, overflow: "hidden", shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 16, shadowOffset: { width: 4, height: 8 } },
+  resultLead: { width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 20, alignItems: "stretch" },
+  resultLeadCopy: { flex: 1, minWidth: 245, justifyContent: "center" },
+  resultEyebrow: { flexDirection: "row", gap: 9, alignItems: "center", marginBottom: 10 },
+  resultStamp: { color: "#805a21", fontSize: 11, fontWeight: "900", letterSpacing: 2.4 },
+  resultEncounterTitle: { color: "#251d12", fontFamily: "Georgia", fontSize: 31, lineHeight: 37, fontWeight: "900" },
+  resultChoice: { fontFamily: "Georgia", fontSize: 16, lineHeight: 22, fontWeight: "900", marginTop: 8, letterSpacing: 0.5 },
+  resultIllustration: { width: 350, maxWidth: "100%", minHeight: 190, borderWidth: 1.5, borderRadius: 3, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(226,205,153,0.65)" },
+  resultIllustrationArt: { width: "100%", height: "100%" },
+  resultMotif: { width: "100%", minHeight: 188, flexDirection: "row", gap: 14, alignItems: "center", justifyContent: "center" },
+  resultRule: { width: "100%", flexDirection: "row", gap: 10, alignItems: "center", marginTop: 16 },
+  resultRuleLine: { flex: 1, height: 1, backgroundColor: "#8f7a4d" },
+  resultText: { color: "#4f3d27", fontFamily: "Georgia", fontSize: 17, lineHeight: 26, marginVertical: 19 },
+  resultContinue: { width: "100%", minHeight: 58, borderWidth: 1.5, borderColor: "#bba163", borderRadius: 3, backgroundColor: "#234b36", flexDirection: "row", gap: 12, alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.28, shadowRadius: 5, shadowOffset: { width: 2, height: 4 } },
+  resultContinueText: { color: "#f6e7b3", fontSize: 12, fontWeight: "900", letterSpacing: 2 },
+  resultClosing: { color: "#382b1d", fontFamily: "Georgia", fontSize: 14, lineHeight: 21, fontStyle: "italic", textAlign: "center", marginTop: 20 },
   storageError: { width: "100%", maxWidth: 920, color: "#fff1c3", backgroundColor: "#743c2e", borderWidth: 2, borderColor: "#a66043", padding: 11, marginTop: 13, fontSize: 11, lineHeight: 17, textAlign: "center" },
   syncNote: { color: "#4f452f", backgroundColor: "rgba(239,220,167,0.76)", fontSize: 9, marginTop: 14, paddingHorizontal: 9, paddingVertical: 5, textAlign: "center" },
   journal: { width: "100%", maxWidth: 720, borderWidth: 2, borderColor: "#765322", borderRadius: 4, backgroundColor: "rgba(242,222,169,0.98)", padding: 18, marginVertical: 8, shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 10 },
