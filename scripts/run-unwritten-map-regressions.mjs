@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +24,7 @@ require.extensions[".ts"] = (module, filename) => {
 
 const game = require(resolve(root, "lib/recommendationGames/unwrittenMap.ts"));
 const evidence = require(resolve(root, "lib/recommendationGames/unwrittenMapEvidenceClient.ts"));
+const presentationMapping = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentation.ts"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -159,6 +161,21 @@ async function main() {
     assert(origin.x + 9 <= game.UNWRITTEN_MAP_WIDTH && origin.y + 7 <= game.UNWRITTEN_MAP_HEIGHT, "camera cannot reveal beyond world");
   }
   assert(game.samePosition(game.moveOnMap({ x: 0, y: 0 }, "left"), { x: 0, y: 0 }), "blocked movement must preserve position");
+  const centeredArt = presentationMapping.unwrittenMapArtworkFrame(game.UNWRITTEN_MAP_START, 15, 11, 40);
+  assert(centeredArt.origin.x === 7 && centeredArt.origin.y === 5
+    && centeredArt.left === -280 && centeredArt.top === -200
+    && centeredArt.width === game.UNWRITTEN_MAP_WIDTH * 40
+    && centeredArt.height === game.UNWRITTEN_MAP_HEIGHT * 40,
+  "logical camera cells must map deterministically onto the illustrated board plane");
+  const edgeArt = presentationMapping.unwrittenMapArtworkFrame(
+    { x: game.UNWRITTEN_MAP_WIDTH - 1, y: game.UNWRITTEN_MAP_HEIGHT - 1 },
+    15,
+    11,
+    40,
+  );
+  assert(edgeArt.origin.x === game.UNWRITTEN_MAP_WIDTH - 15
+    && edgeArt.origin.y === game.UNWRITTEN_MAP_HEIGHT - 11,
+  "illustrated board panning must clamp to the authoritative logical world");
   checks.push("large_world_camera_and_movement");
 
   assert(game.UNWRITTEN_MAP_SCENARIOS.length >= 12, "V2 requires at least twelve encounters");
@@ -1827,6 +1844,124 @@ async function main() {
   assert(routeSource.includes("walkingFrame") && routeSource.includes("bumpDirection"), "walking animation and bump feedback missing");
   assert(routeSource.includes("NONE OF THESE · KEEP EXPLORING") && routeSource.includes("What the map remembers"), "skip/privacy UX missing");
   assert(routeSource.includes("window.confirm") && routeSource.includes("UNDO LATEST NOTE"), "reset confirmation or journal undo missing");
+  for (const asset of ["entry-left.webp", "entry-right.webp", "world-map.webp", "journal-left.webp", "journal-right.webp"]) {
+    assert(existsSync(resolve(root, "assets/games/unwritten-map", asset)), `missing Unwritten Map presentation asset: ${asset}`);
+    assert(routeSource.includes(`unwritten-map/${asset}`), `Unwritten Map route does not use ${asset}`);
+  }
+  const entrySource = readFileSync(resolve(root, "assets/games/unwritten-map/entry-source.png"));
+  assert(createHash("sha256").update(entrySource).digest("hex")
+    === "8d9042d388c9ca17428bc7da4692716fe43c0ddfce879e8f09d1c57199caede5",
+  "authorized high-resolution entry source must remain byte-for-byte intact");
+  assert(existsSync(resolve(root, "assets/games/unwritten-map/entry-tabletop.webp"))
+    && routeSource.includes("unwritten-map/entry-tabletop.webp"),
+  "optimized high-resolution tabletop entry art must be rendered");
+  assert(!routeSource.includes("source-composite.png") && !routeSource.includes("entry-source.png"),
+    "authorized source images must not render as static game screens");
+  assert(routeSource.includes("entryArtFailed")
+    && routeSource.includes("onError={() => setEntryArtFailed(true)}")
+    && routeSource.includes("entryArtFallback"),
+  "entry artwork must retain an in-app fallback when image loading fails");
+  const boardSource = readFileSync(resolve(root, "assets/games/unwritten-map/board-source.png"));
+  assert(createHash("sha256").update(boardSource).digest("hex")
+    === "0d724c5bb2445fdf328bec3479f445e2be55051b6de8fed6382d1098129e5f4c",
+  "authorized high-resolution board source must remain byte-for-byte intact");
+  const encounterSource = readFileSync(resolve(root, "assets/games/unwritten-map/encounter-source.png"));
+  assert(createHash("sha256").update(encounterSource).digest("hex")
+    === "f4b53f495c4b1bc351b176e38f124cadff7bec5bc8aa784b6628f820ee2440f0",
+  "authorized high-resolution encounter source must remain byte-for-byte intact");
+  const resultSource = readFileSync(resolve(root, "assets/games/unwritten-map/result-source.png"));
+  assert(createHash("sha256").update(resultSource).digest("hex")
+    === "9f64cf191776c42df069b38345e54979bd5d30bcf0034a59d4a6dc5934550d07",
+  "authorized high-resolution result source must remain byte-for-byte intact");
+  const choiceArtSources = [
+    ["choice-hear-source.png", "38eade6ad61b6d337d9c987e4d31c1a82589b2adeab7ce7026fb353a288b7ada"],
+    ["choice-pageant-source.png", "7198da22f8339997b1e76df4f237e755c89daf5ff4a8a92b2571d8841c73963d"],
+    ["choice-speech-source.png", "7729ff8221603f315ddf2f9676fc1464cfa36e759fe59a4cc0723f1e64483241"],
+  ];
+  for (const [asset, hash] of choiceArtSources) {
+    const source = readFileSync(resolve(root, "assets/games/unwritten-map", asset));
+    assert(createHash("sha256").update(source).digest("hex") === hash,
+      `authorized choice source must remain byte-for-byte intact: ${asset}`);
+  }
+  for (const asset of [
+    "board-map.webp",
+    "board-map-mobile.webp",
+    "encounter-mossmere-left.webp",
+    "encounter-mossmere-right.webp",
+    "frog-encounter.webp",
+    "frog-hear.webp",
+    "frog-pageant.webp",
+    "frog-experiment.webp",
+    "frog-speech.webp",
+    "result-mossmere-left.webp",
+    "result-mossmere-right.webp",
+    "result-mossmere-bottom.webp",
+    "result-moon-frog.webp",
+    "result-frog-hear.webp",
+    "result-frog-pageant.webp",
+    "result-frog-speech.webp",
+  ]) {
+    assert(existsSync(resolve(root, "assets/games/unwritten-map", asset)), `missing illustrated board or encounter asset: ${asset}`);
+    assert(routeSource.includes(`unwritten-map/${asset}`), `Unwritten Map route does not use ${asset}`);
+  }
+  assert(!routeSource.includes("board-source.png")
+    && !routeSource.includes("encounter-source.png")
+    && !routeSource.includes("result-source.png")
+    && !routeSource.includes("choice-hear-source.png")
+    && !routeSource.includes("choice-pageant-source.png")
+    && !routeSource.includes("choice-speech-source.png"),
+  "authorized board, encounter, result, and choice source images must not render as static screens");
+  assert(routeSource.includes("unwrittenMapArtworkFrame(save.position, columns, rows, tileSize)")
+    && routeSource.includes("hasPlayer ? <PlayerSprite")
+    && routeSource.includes("scenario ? <LandmarkSprite"),
+  "board art, live player, and live landmarks must share the authoritative logical mapping");
+  assert(!routeSource.includes("BOARD_LABELS")
+    && !routeSource.includes("BOARD_LABEL_COVERS")
+    && routeSource.includes('worldMapArt: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%", opacity: 0.5 }'),
+  "baked board labels must be masked in the optimized asset while authoritative terrain and landmarks remain visually dominant");
+  assert(routeSource.includes("boardArtFailed")
+    && routeSource.includes("board-map-mobile.webp")
+    && routeSource.includes("focused && styles.viewportFocused"),
+  "board must retain a playable fallback, responsive asset, and visible keyboard focus");
+  assert(routeSource.includes('const frogEncounter = scenario.id === "frog-parliament"')
+    && routeSource.includes("FrogChoiceIllustration choiceId={item.id}")
+    && routeSource.includes("choiceMotifIcon(item)")
+    && routeSource.includes("choices.map((item, index) =>"),
+  "frog artwork must stay encounter-specific while every live choice retains its presented identity and order");
+  assert(routeSource.includes("RESULT_CLOSING_LINES[scenario.type]")
+    && routeSource.includes('const mossmere = scenario.id === "frog-parliament"')
+    && routeSource.includes("choice?.result")
+    && routeSource.includes("choice?.label")
+    && routeSource.includes('accessibilityLabel="Return to the road"'),
+  "result layout must map live scenario, choice, consequence, motif, and continuation state without universal sample content");
+  assert(routeSource.includes('choiceId === "hear-frogs"')
+    && routeSource.includes("result-frog-hear.webp")
+    && routeSource.includes('choiceId === "night-pageant"')
+    && routeSource.includes("result-frog-pageant.webp")
+    && routeSource.includes('choiceId === "moon-experiment"')
+    && routeSource.includes("result-moon-frog.webp")
+    && routeSource.includes('choiceId === "grand-speech"')
+    && routeSource.includes("result-frog-speech.webp"),
+  "each Reed Parliament choice ID must map to its exact authored result illustration, independent of displayed option number");
+  assert(routeSource.includes("flexBasis: 350")
+    && routeSource.includes("flexWrap: \"wrap\"")
+    && routeSource.includes("minWidth: 0"),
+  "long encounter choices must wrap from the desktop grid into narrow layouts");
+  assert(routeSource.includes('page={phase === "map" ? "map" : phase === "result" ? "result" : "journal"}')
+    && routeSource.includes('phase === "map" ? (')
+    && routeSource.includes('phase === "encounter" && activeScenario ? (')
+    && routeSource.includes('phase === "result" && activeScenario ? ('),
+  "map, field-note, and result phases must retain distinct live layouts");
+  assert(routeSource.includes("AccessibilityInfo.isReduceMotionEnabled")
+    && routeSource.includes('"reduceMotionChanged"')
+    && routeSource.includes("reduceMotion ? 0 : walkingFrame")
+    && routeSource.includes("reduceMotion ? null : bumpDirection"),
+  "decorative movement must respect reduced-motion preferences");
+  assert(routeSource.includes('accessibilityLabel={hasProgress ? "Continue journey" : "Open the map"}')
+    && routeSource.includes('accessibilityLiveRegion="polite"')
+    && routeSource.includes('importantForAccessibility="no-hide-descendants"'),
+  "restyled live controls and decorative artwork need explicit accessibility semantics");
+  checks.push("illustrated_phase_specific_presentation");
   assert(routeSource.includes('window.addEventListener("blur"') && routeSource.includes('"visibilitychange"')
     && routeSource.includes('AppState.addEventListener("change"'), "web and native lifecycle movement cancellation missing");
   assert(routeSource.includes("useEffect(() => () => clearMovementState(false)")
