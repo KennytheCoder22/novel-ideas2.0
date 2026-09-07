@@ -1,13 +1,17 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
   Alert,
   Animated,
   AppState,
+  Easing,
+  Image,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -49,6 +53,15 @@ import {
   type TimingBucket,
 } from "../../lib/recommendationGames/alchemistsCascade";
 import {
+  buildCascadePresentationPlan,
+  CASCADE_CLEAR_PULSE_COUNT,
+  CASCADE_PRESENTATION_TIMINGS,
+  createCascadePresentationTiles,
+  settleCascadePresentationTiles,
+  type CascadePresentationPhase,
+  type CascadePresentationTile,
+} from "../../lib/recommendationGames/alchemistsCascadePresentation";
+import {
   flushCascadeEvents,
   initializeCascadeSave,
   loadCascadeSave,
@@ -56,6 +69,32 @@ import {
   transactCascade,
 } from "../../lib/recommendationGames/alchemistsCascadeEvidenceClient";
 import type { AsyncKeyValueStorage } from "../../lib/recommendationGames/evidenceClient";
+import { GameRecommendationReward } from "../../components/GameRecommendationReward";
+import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
+import { adaptAlchemistsCascadeCatalystToSignal, ALCHEMISTS_CASCADE_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
+import { alchemistsCascadeMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
+import { buildGameRouteSourceParams, parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
+import {
+  ALCHEMISTS_CASCADE_TITLE_ARTWORK,
+  computeAlchemistsCascadeTitleArtworkLayout,
+} from "../../lib/recommendationGames/alchemistsCascadeTitleArtwork";
+import {
+  ALCHEMISTS_CASCADE_ATLAS_ARTWORK,
+  ALCHEMISTS_CASCADE_REALM_VISUALS,
+  ALCHEMISTS_CASCADE_RECIPE_VISUALS,
+  computeAlchemistsCascadeAtlasLayout,
+} from "../../lib/recommendationGames/alchemistsCascadeAtlasArtwork";
+import {
+  ALCHEMISTS_CASCADE_WHISPER_ARTWORK,
+  ALCHEMISTS_CASCADE_WHISPER_OPTION_ARTWORK,
+  ALCHEMISTS_CASCADE_WHISPER_OPTION_ICONS,
+  computeAlchemistsCascadeWhisperLayout,
+} from "../../lib/recommendationGames/alchemistsCascadeWhisperArtwork";
+import {
+  ALCHEMISTS_CASCADE_GAMEPLAY_ARTWORK,
+  ALCHEMISTS_CASCADE_GAMEPLAY_MOBILE_ARTWORK,
+  computeAlchemistsCascadeGameplayLayout,
+} from "../../lib/recommendationGames/alchemistsCascadeGameplayArtwork";
 
 type Phase = "loading" | "title" | "campaign" | "catalyst" | "play" | "pause" | "help" | "result";
 const STALE_SESSION_NOTICE = "This game changed in another tab. The latest save was reloaded; your action was not applied.";
@@ -194,6 +233,202 @@ function BoardView({
   );
 }
 
+function AnimatedIngredientTile({
+    tile,
+    size,
+    gap,
+    selected,
+    disabled,
+    phase,
+    clearing,
+    motionDuration,
+    clearDuration,
+    onPress,
+  }: {
+    tile: CascadePresentationTile;
+    size: number;
+    gap: number;
+    selected: boolean;
+    disabled: boolean;
+    phase: CascadePresentationPhase;
+    clearing: boolean;
+    motionDuration: number;
+    clearDuration: number;
+    onPress: () => void;
+  }) {
+    const translateX = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(0)).current;
+    const opacity = useRef(new Animated.Value(1)).current;
+    const scale = useRef(new Animated.Value(1)).current;
+    const animation = useRef<Animated.CompositeAnimation | null>(null);
+    const unit = size + gap;
+    const ingredient = INGREDIENTS[tile.cell.kind];
+    const specialLabel = tile.cell.special === "none" ? "" : `, ${tile.cell.special} catalyst`;
+
+    useLayoutEffect(() => {
+      animation.current?.stop();
+      translateX.setValue(0);
+      translateY.setValue(0);
+      opacity.setValue(1);
+      scale.setValue(1);
+
+      if ((phase === "swapping" || phase === "falling")
+        && (tile.fromRow !== tile.row || tile.fromColumn !== tile.column || tile.refill)) {
+        translateX.setValue((tile.fromColumn - tile.column) * unit);
+        translateY.setValue((tile.fromRow - tile.row) * unit);
+        animation.current = Animated.parallel([
+          Animated.timing(translateX, {
+            toValue: 0,
+            duration: motionDuration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: motionDuration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]);
+        animation.current.start();
+      } else if (phase === "clearing" && clearing) {
+        const pulseDuration = Math.max(
+          1,
+          Math.floor(clearDuration / (CASCADE_CLEAR_PULSE_COUNT * 2 + 1)),
+        );
+        const pulses = Array.from({ length: CASCADE_CLEAR_PULSE_COUNT }, () => [
+          Animated.parallel([
+            Animated.timing(opacity, { toValue: 0.22, duration: pulseDuration, useNativeDriver: false }),
+            Animated.timing(scale, { toValue: 1.09, duration: pulseDuration, useNativeDriver: false }),
+          ]),
+          Animated.parallel([
+            Animated.timing(opacity, { toValue: 1, duration: pulseDuration, useNativeDriver: false }),
+            Animated.timing(scale, { toValue: 0.96, duration: pulseDuration, useNativeDriver: false }),
+          ]),
+        ]).flat();
+        animation.current = Animated.sequence([
+          ...pulses,
+          Animated.parallel([
+            Animated.timing(opacity, { toValue: 0, duration: pulseDuration, useNativeDriver: false }),
+            Animated.timing(scale, { toValue: 0, duration: pulseDuration, useNativeDriver: false }),
+          ]),
+        ]);
+        animation.current.start();
+      }
+
+      return () => animation.current?.stop();
+    }, [
+      clearDuration,
+      clearing,
+      motionDuration,
+      opacity,
+      phase,
+      scale,
+      tile.column,
+      tile.fromColumn,
+      tile.fromRow,
+      tile.refill,
+      tile.row,
+      translateX,
+      translateY,
+      unit,
+    ]);
+
+    return (
+      <Animated.View
+        testID={`alchemists-cascade-presented-${tile.id}`}
+        style={[
+          styles.presentedCellPosition,
+          {
+            left: tile.column * unit,
+            top: tile.row * unit,
+            width: size,
+            height: size,
+            opacity,
+            transform: [{ translateX }, { translateY }, { scale }],
+          },
+          clearing && styles.presentedCellClearing,
+          tile.refill && styles.presentedCellRefill,
+        ]}
+      >
+        <TouchableOpacity
+          testID={`alchemists-cascade-cell-${tile.row}-${tile.column}`}
+          style={[
+            styles.cell,
+            styles.cinematicCell,
+            { width: size, height: size, backgroundColor: ingredient.color },
+            selected && styles.cellSelected,
+            tile.cell.special !== "none" && styles.cellSpecial,
+          ]}
+          disabled={disabled}
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityState={{ disabled }}
+          accessibilityLabel={`Row ${tile.row + 1}, column ${tile.column + 1}, ${ingredient.name}${specialLabel}`}
+          accessibilityHint={selected ? "Selected. Choose an adjacent ingredient to swap." : "Select, then choose an adjacent ingredient."}
+        >
+          <View style={[styles.cinematicCellShine, { backgroundColor: `${ingredient.ink}18` }]} pointerEvents="none" />
+          <Text style={[styles.cellSymbol, styles.cinematicCellSymbol, { color: ingredient.ink, fontSize: Math.max(19, size * 0.4) }]}>
+            {ingredient.symbol}
+          </Text>
+          {tile.cell.special !== "none" ? (
+            <View style={tile.cell.special === "row" ? styles.specialRow : tile.cell.special === "column" ? styles.specialColumn : styles.specialBurst} />
+          ) : null}
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+
+function PresentationBoardView({
+    tiles,
+    width,
+    selected,
+    disabled,
+    phase,
+    clearingTileIds,
+    motionDuration,
+    clearDuration,
+    onCell,
+  }: {
+    tiles: CascadePresentationTile[];
+    width: number;
+    selected: Coordinate | null;
+    disabled: boolean;
+    phase: CascadePresentationPhase;
+    clearingTileIds: string[];
+    motionDuration: number;
+    clearDuration: number;
+    onCell: (at: Coordinate) => void;
+  }) {
+    const gap = width < 390 ? 3 : 5;
+    const cellSize = Math.floor((width - gap * 6) / 7);
+    const boardSize = cellSize * 7 + gap * 6;
+    const clearing = new Set(clearingTileIds);
+    return (
+      <View
+        style={[styles.cinematicBoard, { width: boardSize, height: boardSize }]}
+        accessibilityLabel="Alchemy cascade board, seven rows by seven columns"
+        accessibilityState={{ disabled }}
+      >
+        {tiles.map((tile) => (
+          <AnimatedIngredientTile
+            key={tile.id}
+            tile={tile}
+            size={cellSize}
+            gap={gap}
+            selected={selected?.row === tile.row && selected.column === tile.column}
+            disabled={disabled}
+            phase={phase}
+            clearing={clearing.has(tile.id)}
+            motionDuration={motionDuration}
+            clearDuration={clearDuration}
+            onPress={() => onCell({ row: tile.row, column: tile.column })}
+          />
+        ))}
+      </View>
+    );
+  }
+
 function HelpPanel({ onClose }: { onClose: () => void }) {
   return (
     <ScrollView contentContainerStyle={styles.overlayScroll}>
@@ -228,8 +463,1463 @@ function PrivacyPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
+type CascadeTitleScreenProps = {
+  busy: boolean;
+  hasProgress: boolean;
+  ready: boolean;
+  syncWarning: string | null;
+  onBegin: () => void;
+  onHelp: () => void;
+  onMemory: () => void;
+  onReset: () => void;
+};
+
+function AbstractCascadeTitleScreen({
+  busy,
+  hasProgress,
+  ready,
+  syncWarning,
+  onBegin,
+  onHelp,
+  onMemory,
+  onReset,
+}: CascadeTitleScreenProps) {
+  return (
+    <ScrollView contentContainerStyle={styles.titleScreen}>
+      <View style={styles.titleSigil}>
+        <View style={styles.sigilRing}><Text style={styles.sigilMark}>✦</Text></View>
+        <View style={styles.sigilLine} />
+      </View>
+      <Text style={styles.title}>THE ALCHEMIST&apos;S{"\n"}CASCADE</Text>
+      <Text style={styles.titleCopy}>A kinetic campaign of strange ingredients, chain reactions, and twelve recipes that should not exist.</Text>
+      <TouchableOpacity
+        style={[styles.primaryButton, busy && styles.disabled]}
+        disabled={busy || !ready}
+        onPress={onBegin}
+        accessibilityRole="button"
+        accessibilityLabel={hasProgress ? "Continue the experiment" : "Light the first flame"}
+      >
+        <Text style={styles.primaryButtonText}>{busy ? "OPENING THE VIAL..." : hasProgress ? "CONTINUE THE EXPERIMENT" : "LIGHT THE FIRST FLAME"}</Text>
+      </TouchableOpacity>
+      <View style={styles.titleActions}>
+        <TouchableOpacity style={styles.textButton} onPress={onHelp} accessibilityRole="button">
+          <Text style={styles.textButtonText}>How to brew</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.textButton} onPress={onMemory} accessibilityRole="button">
+          <Text style={styles.textButtonText}>What the cauldron remembers</Text>
+        </TouchableOpacity>
+        {hasProgress ? (
+          <TouchableOpacity style={styles.textButton} onPress={onReset} accessibilityRole="button">
+            <Text style={styles.dangerText}>Reset campaign</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+      {syncWarning ? <Text style={styles.warning} accessibilityRole="alert">{syncWarning}</Text> : null}
+    </ScrollView>
+  );
+}
+
+function CascadeTitleScreen(props: CascadeTitleScreenProps) {
+  const { width, height } = useWindowDimensions();
+  const [artworkFailed, setArtworkFailed] = useState(false);
+  const [focusedControl, setFocusedControl] = useState("");
+  const [hoveredControl, setHoveredControl] = useState("");
+  const layout = computeAlchemistsCascadeTitleArtworkLayout(width, height);
+  const primaryLabel = props.hasProgress ? "Continue the experiment" : "Light the first flame";
+  const primaryVisibleLabel = props.busy
+    ? "OPENING THE VIAL..."
+    : props.hasProgress
+      ? "CONTINUE"
+      : "LIGHT THE FIRST FLAME";
+  const showVisiblePrimary = props.hasProgress || props.busy;
+
+  if (artworkFailed) return <AbstractCascadeTitleScreen {...props} />;
+
+  const artwork = (
+    <View
+      style={[
+        styles.cascadeTitleArtworkStage,
+        { width: layout.stage.width, height: layout.stage.height },
+      ]}
+    >
+      <Image
+        source={ALCHEMISTS_CASCADE_TITLE_ARTWORK}
+        style={[styles.cascadeTitleArtworkImage, { height: layout.imageHeight }]}
+        resizeMode="contain"
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel="A moonlit alchemy laboratory filled with books, bottles, and a glowing workbench"
+        accessibilityIgnoresInvertColors
+        onError={() => setArtworkFailed(true)}
+      />
+      {layout.mode !== "mobile" ? (
+        <>
+          <Pressable
+            testID="alchemists-cascade-title-primary"
+            accessibilityRole="button"
+            accessibilityLabel={primaryLabel}
+            accessibilityHint="Open the recipe atlas and continue the campaign"
+            accessibilityState={{ disabled: props.busy || !props.ready }}
+            disabled={props.busy || !props.ready}
+            onPress={props.onBegin}
+            onFocus={() => setFocusedControl("primary")}
+            onBlur={() => setFocusedControl("")}
+            onHoverIn={() => setHoveredControl("primary")}
+            onHoverOut={() => setHoveredControl("")}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.cascadeTitleArtworkControl,
+              layout.controls.primary,
+              showVisiblePrimary && styles.cascadeTitleArtworkPrimaryVisible,
+              (focusedControl === "primary" || hoveredControl === "primary")
+                && (showVisiblePrimary
+                  ? styles.cascadeTitleArtworkPrimaryVisibleActive
+                  : styles.cascadeTitleArtworkControlActive),
+              pressed && (
+                showVisiblePrimary
+                  ? styles.cascadeTitleArtworkPrimaryVisiblePressed
+                  : styles.cascadeTitleArtworkControlPressed
+              ),
+              (props.busy || !props.ready) && styles.disabled,
+            ]}
+          >
+            <Text
+              style={[styles.cascadeTitleArtworkPrimaryText, !showVisiblePrimary && styles.visuallyHidden]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.65}
+            >
+              {primaryVisibleLabel}
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="alchemists-cascade-title-help"
+            accessibilityRole="button"
+            accessibilityLabel="How to brew"
+            accessibilityHint="Open the apprentice's field notes"
+            onPress={props.onHelp}
+            onFocus={() => setFocusedControl("help")}
+            onBlur={() => setFocusedControl("")}
+            onHoverIn={() => setHoveredControl("help")}
+            onHoverOut={() => setHoveredControl("")}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.cascadeTitleArtworkControl,
+              styles.cascadeTitleArtworkLink,
+              layout.controls.help,
+              (focusedControl === "help" || hoveredControl === "help") && styles.cascadeTitleArtworkControlActive,
+              pressed && styles.cascadeTitleArtworkControlPressed,
+            ]}
+          >
+            <Text style={styles.visuallyHidden}>How to brew</Text>
+          </Pressable>
+          <Pressable
+            testID="alchemists-cascade-title-memory"
+            accessibilityRole="button"
+            accessibilityLabel="What the cauldron remembers"
+            accessibilityHint="Open the anonymous gameplay data notice"
+            onPress={props.onMemory}
+            onFocus={() => setFocusedControl("memory")}
+            onBlur={() => setFocusedControl("")}
+            onHoverIn={() => setHoveredControl("memory")}
+            onHoverOut={() => setHoveredControl("")}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.cascadeTitleArtworkControl,
+              styles.cascadeTitleArtworkLink,
+              layout.controls.memory,
+              (focusedControl === "memory" || hoveredControl === "memory") && styles.cascadeTitleArtworkControlActive,
+              pressed && styles.cascadeTitleArtworkControlPressed,
+            ]}
+          >
+            <Text style={styles.visuallyHidden}>What the cauldron remembers</Text>
+          </Pressable>
+          {props.hasProgress ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Reset campaign"
+              onPress={props.onReset}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.cascadeTitleArtworkReset,
+                pressed && styles.cascadeTitleArtworkControlPressed,
+              ]}
+            >
+              <Text style={styles.cascadeTitleArtworkResetText}>Reset campaign</Text>
+            </Pressable>
+          ) : null}
+          {props.syncWarning ? (
+            <Text style={styles.cascadeTitleArtworkWarning} accessibilityRole="alert">{props.syncWarning}</Text>
+          ) : null}
+        </>
+      ) : null}
+    </View>
+  );
+
+  if (layout.mode === "mobile") {
+    return (
+      <ScrollView
+        style={styles.cascadeTitleArtworkMobileScroll}
+        contentContainerStyle={styles.cascadeTitleArtworkMobileContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {artwork}
+        <View style={styles.cascadeTitleArtworkMobileCopy}>
+          <Text accessibilityRole="header" style={styles.cascadeTitleArtworkMobileTitle}>The Alchemist&apos;s Cascade</Text>
+          <Text style={styles.cascadeTitleArtworkMobileDescription}>
+            A kinetic campaign of strange ingredients, chain reactions, and twelve recipes that should not exist.
+          </Text>
+          <Pressable
+            testID="alchemists-cascade-title-primary-mobile"
+            accessibilityRole="button"
+            accessibilityLabel={primaryLabel}
+            accessibilityHint="Open the recipe atlas and continue the campaign"
+            accessibilityState={{ disabled: props.busy || !props.ready }}
+            disabled={props.busy || !props.ready}
+            onPress={props.onBegin}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.cascadeTitleMobilePrimary,
+              pressed && styles.cascadeTitleMobileControlPressed,
+              (props.busy || !props.ready) && styles.disabled,
+            ]}
+          >
+            <Text
+              style={styles.cascadeTitleMobilePrimaryText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
+              {props.busy ? "OPENING THE VIAL..." : primaryLabel.toUpperCase()}
+            </Text>
+          </Pressable>
+          <View style={styles.cascadeTitleMobileActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="How to brew"
+              accessibilityHint="Open the apprentice's field notes"
+              onPress={props.onHelp}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.cascadeTitleMobileSecondary,
+                pressed && styles.cascadeTitleMobileControlPressed,
+              ]}
+            >
+              <Text style={styles.cascadeTitleMobileSecondaryText}>How to brew</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="What the cauldron remembers"
+              accessibilityHint="Open the anonymous gameplay data notice"
+              onPress={props.onMemory}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.cascadeTitleMobileSecondary,
+                pressed && styles.cascadeTitleMobileControlPressed,
+              ]}
+            >
+              <Text style={styles.cascadeTitleMobileSecondaryText}>What the cauldron remembers</Text>
+            </Pressable>
+          </View>
+          {props.hasProgress ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Reset campaign" onPress={props.onReset} style={styles.cascadeTitleMobileReset}>
+              <Text style={styles.dangerText}>Reset campaign</Text>
+            </Pressable>
+          ) : null}
+          {props.syncWarning ? <Text style={styles.warning} accessibilityRole="alert">{props.syncWarning}</Text> : null}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  if (layout.mode === "compact") {
+    return (
+      <ScrollView
+        style={styles.cascadeTitleArtworkCompactScroll}
+        contentContainerStyle={styles.cascadeTitleArtworkCompactContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {artwork}
+        <View style={styles.visuallyHidden} pointerEvents="none">
+          <Text accessibilityRole="header">The Alchemist&apos;s Cascade</Text>
+          <Text>A kinetic campaign of strange ingredients, chain reactions, and twelve recipes that should not exist.</Text>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <View style={styles.cascadeTitleArtworkDesktop}>
+      {artwork}
+      <View style={styles.visuallyHidden} pointerEvents="none">
+        <Text accessibilityRole="header">The Alchemist&apos;s Cascade</Text>
+        <Text>A kinetic campaign of strange ingredients, chain reactions, and twelve recipes that should not exist.</Text>
+      </View>
+    </View>
+  );
+}
+
+type CascadeWhisperScreenProps = {
+  options: CatalystOption[];
+  busy: boolean;
+  fallbackBackground: string;
+  onBack: () => void;
+  onChoose: (option: CatalystOption | null) => void;
+};
+
+function WhisperOptionCard({
+    option,
+    busy,
+    compact,
+    stacked,
+    onChoose,
+    onArtworkError,
+  }: {
+    option: CatalystOption;
+    busy: boolean;
+    compact: boolean;
+    stacked: boolean;
+    onChoose: () => void;
+    onArtworkError: () => void;
+  }) {
+    const [focused, setFocused] = useState(false);
+    const [hovered, setHovered] = useState(false);
+    const color = option.manifestation.color;
+    return (
+      <Pressable
+        testID={`alchemists-cascade-whisper-${option.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={`${option.title}. ${option.copy} ${option.manifestation.outcomeText} Same calibrated seven-ingredient effect.`}
+        accessibilityHint="Choose this equally calibrated infusion and begin the recipe"
+        accessibilityState={{ disabled: busy }}
+        disabled={busy}
+        onPress={onChoose}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        style={({ pressed }: { pressed: boolean }) => [
+          styles.whisperCard,
+          compact && styles.whisperCardCompact,
+          stacked && styles.whisperCardStacked,
+          { borderColor: `${color}CC`, shadowColor: color },
+          (focused || hovered) && styles.whisperCardActive,
+          pressed && styles.whisperCardPressed,
+          busy && styles.disabled,
+        ]}
+      >
+        <View
+          pointerEvents="none"
+          style={[styles.whisperCardInnerFrame, { borderColor: `${color}55` }]}
+        />
+        <View
+          style={[
+            styles.whisperCardSigil,
+            compact && styles.whisperCardSigilCompact,
+            { borderColor: `${color}AA`, backgroundColor: "#11131B" },
+          ]}
+          accessible={false}
+        >
+          <MaterialCommunityIcons
+            name={ALCHEMISTS_CASCADE_WHISPER_OPTION_ICONS[option.id]}
+            size={compact ? 24 : 30}
+            color={color}
+            accessible={false}
+          />
+        </View>
+        <Image
+          source={ALCHEMISTS_CASCADE_WHISPER_OPTION_ARTWORK[option.id]}
+          style={[styles.whisperCardArt, compact && styles.whisperCardArtCompact]}
+          resizeMode="cover"
+          accessible={false}
+          accessibilityElementsHidden
+          accessibilityIgnoresInvertColors
+          onError={onArtworkError}
+        />
+        <View style={[styles.whisperCardCopy, compact && styles.whisperCardCopyCompact]}>
+          <Text
+            style={[
+              styles.whisperCardTitle,
+              compact && styles.whisperCardTitleCompact,
+              { color },
+            ]}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.72}
+          >
+            {option.title}
+          </Text>
+          <Text style={[styles.whisperCardDescription, compact && styles.whisperCardDescriptionCompact]}>
+            {option.copy}
+          </Text>
+          <View style={[styles.whisperCardRule, { backgroundColor: `${color}88` }]} />
+          <Text style={[styles.whisperCardOutcome, compact && styles.whisperCardOutcomeCompact]}>
+            {option.manifestation.outcomeText}
+          </Text>
+          <View style={[styles.whisperCardCalibration, { backgroundColor: `${color}18` }]}>
+            <Text style={[styles.whisperCardCalibrationText, compact && styles.whisperCardCalibrationTextCompact]}>
+              SAME CALIBRATED{"\n"}SEVEN-INGREDIENT EFFECT
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+    );
+  }
+
+function AbstractCascadeWhisperScreen({
+    options,
+    busy,
+    fallbackBackground,
+    onBack,
+    onChoose,
+  }: CascadeWhisperScreenProps) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: fallbackBackground }]}>
+        <ScrollView contentContainerStyle={styles.choiceScreen}>
+          <Pressable
+            testID="alchemists-cascade-whisper-back-fallback"
+            accessibilityRole="button"
+            accessibilityLabel="Back to the Recipe Atlas"
+            accessibilityHint="Return without choosing an infusion"
+            accessibilityState={{ disabled: busy }}
+            disabled={busy}
+            onPress={onBack}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.whisperFallbackBack,
+              pressed && styles.whisperControlPressed,
+              busy && styles.disabled,
+            ]}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={20} color="#FBE8BD" accessible={false} />
+            <Text style={styles.whisperBackText}>BACK</Text>
+          </Pressable>
+          <Text style={styles.choiceTitle}>Choose the first whisper</Text>
+          <Text style={styles.choiceCopy}>Three equally measured infusions wait beside the flask. Choose the flavor of this opening, or let fate stir.</Text>
+          <View style={styles.choiceList}>
+            {options.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                testID={`alchemists-cascade-whisper-fallback-${option.id}`}
+                style={[styles.choiceOption, { borderColor: option.manifestation.color }]}
+                onPress={() => onChoose(option)}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityHint="Choose this equally calibrated infusion and begin the recipe"
+                accessibilityState={{ disabled: busy }}
+                accessibilityLabel={`${option.title}. ${option.copy} ${option.manifestation.outcomeText} Same calibrated seven-ingredient effect.`}
+              >
+                <Text style={[styles.choiceOptionTitle, { color: option.manifestation.color }]}>
+                  {option.manifestation.symbol} {option.title}
+                </Text>
+                <Text style={styles.choiceOptionCopy}>{option.copy}</Text>
+                <Text style={styles.choiceOutcome}>{option.manifestation.outcomeText}</Text>
+                <Text style={styles.choiceMechanic}>Same calibrated seven-ingredient effect</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            testID="alchemists-cascade-whisper-fate-fallback"
+            style={styles.fateButton}
+            onPress={() => onChoose(null)}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Let fate decide — begin without an infusion"
+            accessibilityHint="Begin with no preference recorded"
+            accessibilityState={{ disabled: busy }}
+          >
+            <Text style={styles.fateText}>LET FATE DECIDE — BEGIN WITHOUT AN INFUSION</Text>
+          </TouchableOpacity>
+          <Text style={styles.balanceNote}>Each offered infusion is calibrated to the same seven-ingredient strength.</Text>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+function CascadeWhisperScreen(props: CascadeWhisperScreenProps) {
+    const { width, height } = useWindowDimensions();
+    const [artworkFailed, setArtworkFailed] = useState(false);
+    const [backFocused, setBackFocused] = useState(false);
+    const [backHovered, setBackHovered] = useState(false);
+    const [fateFocused, setFateFocused] = useState(false);
+    const [fateHovered, setFateHovered] = useState(false);
+    const layout = computeAlchemistsCascadeWhisperLayout(width, height);
+
+    if (artworkFailed) return <AbstractCascadeWhisperScreen {...props} />;
+
+    const backButton = (
+      <Pressable
+        testID="alchemists-cascade-whisper-back"
+        accessibilityRole="button"
+        accessibilityLabel="Back to the Recipe Atlas"
+        accessibilityHint="Return without choosing an infusion"
+        accessibilityState={{ disabled: props.busy }}
+        disabled={props.busy}
+        onPress={props.onBack}
+        onFocus={() => setBackFocused(true)}
+        onBlur={() => setBackFocused(false)}
+        onHoverIn={() => setBackHovered(true)}
+        onHoverOut={() => setBackHovered(false)}
+        style={({ pressed }: { pressed: boolean }) => [
+          layout.mode === "cinematic" ? styles.whisperCinematicBack : styles.whisperStackedBack,
+          layout.mode === "cinematic" && layout.back,
+          (backFocused || backHovered) && styles.whisperControlActive,
+          pressed && styles.whisperControlPressed,
+          props.busy && styles.disabled,
+        ]}
+      >
+        {layout.mode === "stacked" ? (
+          <>
+            <MaterialCommunityIcons name="arrow-left" size={18} color="#FBE8BD" accessible={false} />
+            <Text style={styles.whisperBackText}>BACK</Text>
+          </>
+        ) : null}
+      </Pressable>
+    );
+
+    const fateButton = (
+      <Pressable
+        testID="alchemists-cascade-whisper-fate"
+        accessibilityRole="button"
+        accessibilityLabel="Let fate decide — begin without an infusion"
+        accessibilityHint="Begin with no preference recorded"
+        accessibilityState={{ disabled: props.busy }}
+        disabled={props.busy}
+        onPress={() => props.onChoose(null)}
+        onFocus={() => setFateFocused(true)}
+        onBlur={() => setFateFocused(false)}
+        onHoverIn={() => setFateHovered(true)}
+        onHoverOut={() => setFateHovered(false)}
+        style={({ pressed }: { pressed: boolean }) => [
+          layout.mode === "cinematic" ? styles.whisperCinematicFate : styles.whisperStackedFate,
+          layout.mode === "cinematic" && layout.fate,
+          (fateFocused || fateHovered) && styles.whisperControlActive,
+          pressed && styles.whisperControlPressed,
+          props.busy && styles.disabled,
+        ]}
+      >
+        {layout.mode === "stacked" ? (
+          <>
+            <MaterialCommunityIcons name="dice-multiple-outline" size={22} color="#F6C957" accessible={false} />
+            <Text style={styles.whisperFateText}>LET FATE DECIDE — BEGIN WITHOUT AN INFUSION</Text>
+          </>
+        ) : null}
+      </Pressable>
+    );
+
+    if (layout.mode === "stacked") {
+      return (
+        <SafeAreaView style={styles.whisperStackedSafe}>
+          <ScrollView
+            style={styles.whisperStackedScroll}
+            contentContainerStyle={styles.whisperStackedContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={[styles.whisperHeaderCrop, { width: layout.header.width, height: layout.header.height }]}>
+              <Image
+                source={ALCHEMISTS_CASCADE_WHISPER_ARTWORK}
+                style={{
+                  position: "absolute",
+                  left: layout.header.imageLeft,
+                  top: 0,
+                  width: Math.max(layout.header.width, 760),
+                  height: layout.header.imageHeight,
+                }}
+                resizeMode="contain"
+                accessible={false}
+                accessibilityElementsHidden
+                accessibilityIgnoresInvertColors
+                onError={() => setArtworkFailed(true)}
+              />
+            </View>
+            <View style={styles.whisperStackedIntro}>
+              {backButton}
+              <Text accessibilityRole="header" style={styles.whisperStackedTitle}>Choose the first whisper</Text>
+              <Text style={styles.whisperStackedDescription}>
+                Three equally measured infusions wait beside the flask. Choose the flavor of this opening, or let fate stir.
+              </Text>
+            </View>
+            <View style={styles.whisperStackedCards}>
+              {props.options.map((option) => (
+                <WhisperOptionCard
+                  key={option.id}
+                  option={option}
+                  busy={props.busy}
+                  compact={false}
+                  stacked
+                  onChoose={() => props.onChoose(option)}
+                  onArtworkError={() => setArtworkFailed(true)}
+                />
+              ))}
+            </View>
+            {fateButton}
+            <Text style={styles.whisperStackedBalance}>
+              Each offered infusion is calibrated to the same seven-ingredient strength.
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      );
+    }
+
+    return (
+      <SafeAreaView style={styles.whisperCinematic}>
+        <View style={[styles.whisperCinematicStage, layout.stage]}>
+          <Image
+            source={ALCHEMISTS_CASCADE_WHISPER_ARTWORK}
+            style={styles.whisperCinematicImage}
+            resizeMode="contain"
+            accessible={false}
+            accessibilityElementsHidden
+            accessibilityIgnoresInvertColors
+            onError={() => setArtworkFailed(true)}
+          />
+          <View style={styles.visuallyHidden} pointerEvents="none">
+            <Text accessibilityRole="header">Choose the first whisper</Text>
+            <Text>Three equally measured infusions wait beside the flask. Choose the flavor of this opening, or let fate stir.</Text>
+          </View>
+          {backButton}
+          {props.options.map((option, index) => (
+            <View key={option.id} style={[styles.whisperCinematicCardPosition, layout.cards[index]]}>
+              <WhisperOptionCard
+                option={option}
+                busy={props.busy}
+                compact={layout.compact}
+                stacked={false}
+                onChoose={() => props.onChoose(option)}
+                onArtworkError={() => setArtworkFailed(true)}
+              />
+            </View>
+          ))}
+          {fateButton}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+type CascadeAtlasScreenProps = {
+    save: CascadeSaveV1;
+    busy: boolean;
+    syncWarning: string | null;
+    onExit: () => void;
+    onOpenLevel: (level: LevelConfig) => void;
+    onOpenNotes: () => void;
+};
+
+const ATLAS_REALM_SURFACES: Record<string, string> = {
+    "copper-garden": "#3A2415",
+    "tidal-archive": "#12363B",
+    "laughing-volcano": "#431E18",
+    "astral-kitchen": "#292342",
+};
+
+const ATLAS_REALM_TILE_SURFACES: Record<string, string> = {
+    "copper-garden": "#24150E",
+    "tidal-archive": "#0B282D",
+    "laughing-volcano": "#2A1412",
+    "astral-kitchen": "#1B1730",
+};
+
+function AtlasLevelButton({
+    level,
+    unlocked,
+    stars,
+    busy,
+    compact,
+    accent,
+    surface,
+    current,
+    onPress,
+  }: {
+    level: LevelConfig;
+    unlocked: boolean;
+    stars: number;
+    busy: boolean;
+    compact: boolean;
+    accent: string;
+    surface: string;
+    current: boolean;
+    onPress: () => void;
+  }) {
+    const [focused, setFocused] = useState(false);
+    const [hovered, setHovered] = useState(false);
+    const disabled = !unlocked || busy;
+    const visual = ALCHEMISTS_CASCADE_RECIPE_VISUALS[level.id];
+    const stateLabel = unlocked
+      ? stars > 0
+        ? `${stars} of 3 stars, available to replay`
+        : "available, not yet completed"
+      : "locked";
+
+    return (
+      <Pressable
+        testID={`alchemists-cascade-atlas-${level.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={`${level.name}, recipe ${level.number}, ${stateLabel}`}
+        accessibilityHint={unlocked ? "Open this recipe" : undefined}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={onPress}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        style={({ pressed }: { pressed: boolean }) => [
+          styles.atlasLevel,
+          compact && styles.atlasLevelCompact,
+          { backgroundColor: surface, borderColor: unlocked ? `${accent}99` : "#4A4140" },
+          !unlocked && styles.atlasLevelLocked,
+          current && [styles.atlasLevelCurrent, { borderColor: accent, shadowColor: accent }],
+          (focused || hovered) && unlocked && [styles.atlasLevelActive, { borderColor: accent, shadowColor: accent }],
+          pressed && styles.atlasLevelPressed,
+        ]}
+      >
+        <View style={styles.atlasLevelTopline}>
+          <Text style={[styles.atlasLevelNumber, compact && styles.atlasLevelNumberCompact]}>
+            {level.number}
+          </Text>
+          {stars > 0 ? (
+            <MaterialCommunityIcons
+              name="replay"
+              size={compact ? 12 : 15}
+              color={accent}
+              accessible={false}
+            />
+          ) : !unlocked ? (
+            <MaterialCommunityIcons
+              name="lock"
+              size={compact ? 11 : 14}
+              color="#9A8D86"
+              accessible={false}
+            />
+          ) : null}
+        </View>
+        <View
+          style={[
+            styles.atlasGlyphWell,
+            compact && styles.atlasGlyphWellCompact,
+            { borderColor: `${accent}66`, backgroundColor: `${accent}12` },
+          ]}
+          accessible={false}
+        >
+          <MaterialCommunityIcons
+            name={visual.icon}
+            size={compact ? 34 : 44}
+            color={unlocked ? accent : "#8B817D"}
+            accessible={false}
+          />
+        </View>
+        <Text
+          style={[styles.atlasLevelName, compact && styles.atlasLevelNameCompact]}
+          numberOfLines={compact ? 2 : 3}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {level.name}
+        </Text>
+        <Text style={[styles.atlasLevelStars, !unlocked && styles.atlasLevelStarsLocked]}>
+          {"★".repeat(stars)}{"☆".repeat(3 - stars)}
+        </Text>
+        {!unlocked ? <Text style={styles.atlasLevelStatusLocked}>LOCKED</Text> : null}
+      </Pressable>
+    );
+  }
+
+function AtlasRealmPanel({
+    realm,
+    save,
+    busy,
+    compact,
+    onOpenLevel,
+  }: {
+    realm: (typeof CASCADE_REALMS)[number];
+    save: CascadeSaveV1;
+    busy: boolean;
+    compact: boolean;
+    onOpenLevel: (level: LevelConfig) => void;
+  }) {
+    const levels = CASCADE_LEVELS.filter((level) => level.realmId === realm.id);
+    const realmVisual = ALCHEMISTS_CASCADE_REALM_VISUALS[realm.id];
+    return (
+      <View
+        style={[
+          styles.atlasRealm,
+          compact && styles.atlasRealmCompact,
+          { backgroundColor: ATLAS_REALM_SURFACES[realm.id], borderColor: realm.accent },
+        ]}
+        accessibilityRole="summary"
+      >
+        <View
+          pointerEvents="none"
+          style={[styles.atlasRealmInnerFrame, { borderColor: `${realm.accent}66` }]}
+        />
+        <View style={styles.atlasRealmHeading}>
+          <View
+            style={[
+              styles.atlasRealmMotif,
+              compact && styles.atlasRealmMotifCompact,
+              { borderColor: `${realm.accent}88`, backgroundColor: `${realm.accent}12` },
+            ]}
+            accessible={false}
+          >
+            <MaterialCommunityIcons
+              name={realmVisual.icon}
+              size={compact ? 27 : 34}
+              color={realm.accent}
+              accessible={false}
+            />
+          </View>
+          <View style={styles.atlasRealmHeadingCopy}>
+            <Text style={[styles.atlasRealmTitle, compact && styles.atlasRealmTitleCompact, { color: realm.accent }]}>
+              {realm.name}
+            </Text>
+            <Text
+              style={[styles.atlasRealmFiction, compact && styles.atlasRealmFictionCompact]}
+              numberOfLines={compact ? 1 : undefined}
+            >
+              {realm.fiction}
+            </Text>
+          </View>
+        </View>
+        <View
+          pointerEvents="none"
+          style={[styles.atlasRealmRule, { backgroundColor: `${realm.accent}77` }]}
+        >
+          <View style={[styles.atlasRealmRuleDiamond, { backgroundColor: realm.accent }]} />
+        </View>
+        <View style={[styles.atlasLevelRow, compact && styles.atlasLevelRowCompact]}>
+          {levels.map((level) => {
+            const unlocked = level.number <= save.unlockedLevel;
+            const stars = save.levelStars[level.id] || 0;
+            return (
+              <AtlasLevelButton
+                key={level.id}
+                level={level}
+                unlocked={unlocked}
+                stars={stars}
+                busy={busy}
+                compact={compact}
+                accent={realm.accent}
+                surface={ATLAS_REALM_TILE_SURFACES[realm.id]}
+                current={unlocked && stars === 0 && level.number === save.unlockedLevel}
+                onPress={() => onOpenLevel(level)}
+              />
+            );
+          })}
+        </View>
+      </View>
+    );
+  }
+
+function AbstractCascadeAtlasScreen({
+    save,
+    busy,
+    syncWarning,
+    onExit,
+    onOpenLevel,
+    onOpenNotes,
+  }: CascadeAtlasScreenProps) {
+    return (
+      <>
+        <View style={styles.gameHeader}>
+          <TouchableOpacity style={styles.headerButton} onPress={onExit} disabled={busy} accessibilityRole="button">
+            <Text style={styles.headerButtonText}>EXIT</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>THE RECIPE ATLAS</Text>
+          <Text style={styles.starTotal}>★ {Object.values(save.levelStars).reduce((sum, value) => sum + value, 0)}</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.campaign}>
+          {CASCADE_REALMS.map((realm) => (
+            <View key={realm.id} style={[styles.realmSection, { backgroundColor: realm.surface, borderColor: realm.accent }]}>
+              <Text style={[styles.realmTitle, { color: realm.accent }]}>{realm.name}</Text>
+              <Text style={styles.realmFiction}>{realm.fiction}</Text>
+              <View style={styles.levelRow}>
+                {CASCADE_LEVELS.filter((level) => level.realmId === realm.id).map((level) => {
+                  const unlocked = level.number <= save.unlockedLevel;
+                  const stars = save.levelStars[level.id] || 0;
+                  return (
+                    <TouchableOpacity
+                      key={level.id}
+                      style={[styles.levelTile, !unlocked && styles.levelLocked]}
+                      disabled={!unlocked || busy}
+                      onPress={() => onOpenLevel(level)}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: !unlocked || busy }}
+                      accessibilityLabel={`${level.name}, level ${level.number}, ${unlocked ? `${stars} stars` : "locked"}`}
+                    >
+                      <Text style={styles.levelNumber}>{unlocked ? level.number : "◆"}</Text>
+                      <Text style={styles.levelName}>{level.name}</Text>
+                      <Text style={styles.levelStars}>{"★".repeat(stars)}{"☆".repeat(3 - stars)}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.textButton} onPress={onOpenNotes} accessibilityRole="button">
+            <Text style={styles.textButtonText}>Open field notes</Text>
+          </TouchableOpacity>
+          {syncWarning ? <Text style={styles.warning} accessibilityRole="alert">{syncWarning}</Text> : null}
+        </ScrollView>
+      </>
+    );
+  }
+
+function CascadeAtlasScreen(props: CascadeAtlasScreenProps) {
+    const { width, height } = useWindowDimensions();
+    const [artworkFailed, setArtworkFailed] = useState(false);
+    const layout = computeAlchemistsCascadeAtlasLayout(width, height);
+    const totalStars = Object.values(props.save.levelStars).reduce((sum, value) => sum + value, 0);
+
+    if (artworkFailed) return <AbstractCascadeAtlasScreen {...props} />;
+
+    if (layout.mode === "stacked") {
+      return (
+        <ScrollView
+          style={styles.atlasStackedScroll}
+          contentContainerStyle={styles.atlasStackedContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.atlasHeaderCrop, { width: layout.header.width, height: layout.header.height }]}>
+            <Image
+              source={ALCHEMISTS_CASCADE_ATLAS_ARTWORK}
+              style={{
+                position: "absolute",
+                left: layout.header.imageLeft,
+                top: 0,
+                width: Math.max(layout.header.width, 760),
+                height: layout.header.imageHeight,
+              }}
+              resizeMode="contain"
+              accessible={false}
+              accessibilityElementsHidden
+              accessibilityIgnoresInvertColors
+              onError={() => setArtworkFailed(true)}
+            />
+          </View>
+          <View style={styles.atlasStackedToolbar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Exit Recipe Atlas"
+              accessibilityHint="Save and return to Games"
+              accessibilityState={{ disabled: props.busy }}
+              disabled={props.busy}
+              onPress={props.onExit}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.atlasToolbarButton,
+                pressed && styles.atlasControlPressed,
+                props.busy && styles.disabled,
+              ]}
+            >
+              <Text style={styles.atlasToolbarButtonText}>EXIT</Text>
+            </Pressable>
+            <Text accessibilityRole="header" style={styles.atlasStackedTitle}>THE RECIPE ATLAS</Text>
+            <View style={styles.atlasStarTotal} accessible accessibilityLabel={`${totalStars} total stars`}>
+              <Text style={styles.atlasStarTotalText}>★ {totalStars}</Text>
+            </View>
+          </View>
+          <View style={styles.atlasStackedRealms}>
+            {CASCADE_REALMS.map((realm) => (
+              <AtlasRealmPanel
+                key={realm.id}
+                realm={realm}
+                save={props.save}
+                busy={props.busy}
+                compact={false}
+                onOpenLevel={props.onOpenLevel}
+              />
+            ))}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open field notes"
+            accessibilityHint="Open the apprentice's brewing instructions"
+            onPress={props.onOpenNotes}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.atlasNotesButtonStacked,
+              pressed && styles.atlasControlPressed,
+            ]}
+          >
+            <Text style={styles.atlasNotesText}>▣  Open field notes</Text>
+          </Pressable>
+          {props.syncWarning ? (
+            <Text style={styles.atlasSyncBannerStacked} accessibilityRole="alert">{props.syncWarning}</Text>
+          ) : null}
+        </ScrollView>
+      );
+    }
+
+    return (
+      <View style={styles.atlasCinematic}>
+        <View style={[styles.atlasCinematicStage, layout.stage]}>
+          <Image
+            source={ALCHEMISTS_CASCADE_ATLAS_ARTWORK}
+            style={styles.atlasCinematicImage}
+            resizeMode="contain"
+            accessible={false}
+            accessibilityElementsHidden
+            accessibilityIgnoresInvertColors
+            onError={() => setArtworkFailed(true)}
+          />
+          <View style={styles.visuallyHidden} pointerEvents="none">
+            <Text accessibilityRole="header">The Recipe Atlas</Text>
+            <Text>Four paths. Twelve recipes. Infinite possibilities.</Text>
+          </View>
+          <Pressable
+            testID="alchemists-cascade-atlas-exit"
+            accessibilityRole="button"
+            accessibilityLabel="Exit Recipe Atlas"
+            accessibilityHint="Save and return to Games"
+            accessibilityState={{ disabled: props.busy }}
+            disabled={props.busy}
+            onPress={props.onExit}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.atlasCinematicExit,
+              layout.exit,
+              pressed && styles.atlasControlPressed,
+              props.busy && styles.disabled,
+            ]}
+          >
+            <Text style={styles.atlasCinematicExitText}>EXIT</Text>
+          </Pressable>
+          <View
+            testID="alchemists-cascade-atlas-stars"
+            style={[styles.atlasCinematicStars, layout.stars]}
+            accessible
+            accessibilityLabel={`${totalStars} total stars`}
+          >
+            <Text style={styles.atlasCinematicStarsText}>★ {totalStars}</Text>
+          </View>
+          {CASCADE_REALMS.map((realm) => (
+            <View key={realm.id} style={[styles.atlasCinematicRealmPosition, layout.realms[realm.id as keyof typeof layout.realms]]}>
+              <AtlasRealmPanel
+                realm={realm}
+                save={props.save}
+                busy={props.busy}
+                compact
+                onOpenLevel={props.onOpenLevel}
+              />
+            </View>
+          ))}
+          <Pressable
+            testID="alchemists-cascade-atlas-notes"
+            accessibilityRole="button"
+            accessibilityLabel="Open field notes"
+            accessibilityHint="Open the apprentice's brewing instructions"
+            onPress={props.onOpenNotes}
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.atlasCinematicNotes,
+              layout.notes,
+              pressed && styles.atlasControlPressed,
+            ]}
+          >
+            <Text style={styles.atlasNotesText}>▣  Open field notes</Text>
+          </Pressable>
+          <View
+            testID="alchemists-cascade-atlas-sync"
+            style={[
+              styles.atlasCinematicSyncMask,
+              layout.sync,
+              !props.syncWarning && styles.atlasCinematicSyncMaskEmpty,
+            ]}
+          >
+            {props.syncWarning ? (
+              <Text style={styles.atlasCinematicSyncText} accessibilityRole="alert" numberOfLines={2}>
+                {props.syncWarning}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+type CascadeGameplayScreenProps = {
+ board: Board;
+ tiles: CascadePresentationTile[];
+ animationPhase: CascadePresentationPhase;
+ clearingTileIds: string[];
+ reducedMotion: boolean;
+ busy: boolean;
+ save: CascadeSaveV1;
+ activeConfig: LevelConfig;
+ activeRealm: (typeof CASCADE_REALMS)[number];
+ selected: Coordinate | null;
+ message: string;
+ syncWarning: string | null;
+ comboPulse: Animated.Value;
+ onPause: () => void;
+ onHelp: () => void;
+ onCell: (at: Coordinate) => void;
+};
+
+function GameplayStatus({
+   save,
+   activeConfig,
+   goalDone,
+   compact,
+   comboPulse,
+ }: {
+   save: CascadeSaveV1;
+   activeConfig: LevelConfig;
+   goalDone: boolean;
+   compact: boolean;
+   comboPulse: Animated.Value;
+ }) {
+   return (
+     <View style={[styles.gameplayStatus, compact && styles.gameplayStatusCompact]}>
+       <View style={styles.gameplayStatusItem}>
+         <Text style={[styles.gameplayStatusLabel, compact && styles.gameplayStatusLabelCompact]}>MOVES</Text>
+         <Text style={[styles.gameplayMovesValue, compact && styles.gameplayStatusValueCompact]}>
+           {save.activeLevel!.movesRemaining}
+         </Text>
+       </View>
+       <Animated.View style={[styles.gameplayStatusItem, { transform: [{ scale: comboPulse }] }]}>
+         <Text style={[styles.gameplayStatusLabel, compact && styles.gameplayStatusLabelCompact]}>SCORE</Text>
+         <Text style={[styles.gameplayScoreValue, compact && styles.gameplayStatusValueCompact]}>
+           {save.activeLevel!.score.toLocaleString()}
+         </Text>
+         <Text style={[styles.gameplayTargetText, compact && styles.gameplayTargetTextCompact]}>
+           of {activeConfig.scoreTarget.toLocaleString()}
+         </Text>
+       </Animated.View>
+       <View style={styles.gameplayStatusItem}>
+         <Text style={[styles.gameplayStatusLabel, compact && styles.gameplayStatusLabelCompact]}>BREW</Text>
+         <Text style={[styles.gameplayBrewValue, compact && styles.gameplayBrewValueCompact]}>
+           {goalDone ? "READY" : "ACTIVE"}
+         </Text>
+         <MaterialCommunityIcons
+           name={goalDone ? "check-decagram" : "star-four-points"}
+           size={compact ? 13 : 18}
+           color="#78E690"
+           accessible={false}
+         />
+       </View>
+     </View>
+   );
+ }
+
+function GameplayGoals({
+   save,
+   activeConfig,
+   compact,
+ }: {
+   save: CascadeSaveV1;
+   activeConfig: LevelConfig;
+   compact: boolean;
+ }) {
+   return (
+     <View style={[styles.gameplayGoals, compact && styles.gameplayGoalsCompact]}>
+       {activeConfig.goals.map((goal) => {
+         const ingredient = INGREDIENTS[goal.kind];
+         const current = save.activeLevel!.collected[goal.kind];
+         return (
+           <View key={ingredient.id} style={[styles.gameplayGoal, compact && styles.gameplayGoalCompact]}>
+             <View style={[styles.gameplayGoalDot, { backgroundColor: ingredient.color }]}>
+               <Text style={[styles.gameplayGoalSymbol, { color: ingredient.ink }]}>{ingredient.symbol}</Text>
+             </View>
+             <Text style={[styles.gameplayGoalText, compact && styles.gameplayGoalTextCompact]} numberOfLines={1}>
+               {ingredient.name}
+             </Text>
+             <Text style={[
+               styles.gameplayGoalCount,
+               compact && styles.gameplayGoalCountCompact,
+               current >= goal.target && styles.goalDone,
+             ]}>
+               {Math.min(current, goal.target)}/{goal.target}
+             </Text>
+           </View>
+         );
+       })}
+     </View>
+   );
+ }
+
+function gameplayPhaseMessage(
+ phase: CascadePresentationPhase,
+ busy: boolean,
+ message: string,
+): string {
+ if (!busy) return message;
+ if (phase === "swapping") return "The chosen ingredients trade places...";
+ if (phase === "clearing") return "Matched ingredients flicker out of existence...";
+ if (phase === "falling") return "The remaining ingredients fall as the flask refills...";
+ return "The mixture turns...";
+}
+
+function presentationMatchesBoard(tiles: CascadePresentationTile[], board: Board): boolean {
+ if (tiles.length !== board.length * board[0].length) return false;
+ return tiles.every((tile) => {
+   const cell = board[tile.row]?.[tile.column];
+   return cell?.kind === tile.cell.kind && cell.special === tile.cell.special;
+ });
+}
+
+function AbstractCascadeGameplayScreen(props: CascadeGameplayScreenProps) {
+   const { width } = useWindowDimensions();
+   const goalDone = levelWon(props.save.activeLevel!, props.activeConfig);
+   return (
+     <>
+       <View style={[styles.gameHeader, { borderBottomColor: props.activeRealm.accent }]}>
+         <TouchableOpacity
+           style={styles.headerButton}
+           onPress={props.onPause}
+           disabled={props.busy}
+           accessibilityRole="button"
+           accessibilityState={{ disabled: props.busy }}
+         >
+           <Text style={styles.headerButtonText}>PAUSE</Text>
+         </TouchableOpacity>
+         <View style={styles.gameHeaderCenter}>
+           <Text style={styles.levelHeader}>{props.activeConfig.name}</Text>
+           <Text style={styles.realmHeader}>{props.activeRealm.name}</Text>
+         </View>
+         <TouchableOpacity
+           style={styles.headerButton}
+           onPress={props.onHelp}
+           disabled={props.busy}
+           accessibilityRole="button"
+           accessibilityState={{ disabled: props.busy }}
+         >
+           <Text style={styles.headerButtonText}>HELP</Text>
+         </TouchableOpacity>
+       </View>
+       <ScrollView contentContainerStyle={styles.playScreen}>
+         <View style={styles.statusRail}>
+           <View><Text style={styles.statusLabel}>MOVES</Text><Text style={styles.movesValue}>{props.save.activeLevel!.movesRemaining}</Text></View>
+           <Animated.View style={{ transform: [{ scale: props.comboPulse }] }}><Text style={styles.statusLabel}>SCORE</Text><Text style={styles.scoreValue}>{props.save.activeLevel!.score.toLocaleString()}</Text><Text style={styles.targetText}>of {props.activeConfig.scoreTarget.toLocaleString()}</Text></Animated.View>
+           <View><Text style={styles.statusLabel}>BREW</Text><Text style={styles.brewValue}>{goalDone ? "READY" : "ACTIVE"}</Text></View>
+         </View>
+         <View style={styles.goals}>
+           {props.activeConfig.goals.map((goal) => {
+             const ingredient = INGREDIENTS[goal.kind];
+             const current = props.save.activeLevel!.collected[goal.kind];
+             return (
+               <View key={ingredient.id} style={styles.goal}>
+                 <View style={[styles.goalDot, { backgroundColor: ingredient.color }]}><Text style={{ color: ingredient.ink }}>{ingredient.symbol}</Text></View>
+                 <Text style={styles.goalText}>{ingredient.name}</Text>
+                 <Text style={[styles.goalCount, current >= goal.target && styles.goalDone]}>{Math.min(current, goal.target)}/{goal.target}</Text>
+               </View>
+             );
+           })}
+         </View>
+         <BoardView
+           board={props.board}
+           width={Math.min(width - 24, 510)}
+           selected={props.selected}
+           onCell={props.onCell}
+         />
+         <Text style={styles.feedback} accessibilityLiveRegion="polite">
+           {gameplayPhaseMessage(props.animationPhase, props.busy, props.message)}
+         </Text>
+         {props.syncWarning ? <Text style={styles.warning}>{props.syncWarning}</Text> : null}
+       </ScrollView>
+     </>
+   );
+ }
+
+function CascadeGameplayScreen(props: CascadeGameplayScreenProps) {
+   const { width, height } = useWindowDimensions();
+   const [artworkFailed, setArtworkFailed] = useState(false);
+   const [pauseFocused, setPauseFocused] = useState(false);
+   const [pauseHovered, setPauseHovered] = useState(false);
+   const [helpFocused, setHelpFocused] = useState(false);
+   const [helpHovered, setHelpHovered] = useState(false);
+   const layout = computeAlchemistsCascadeGameplayLayout(width, height);
+   const goalDone = levelWon(props.save.activeLevel!, props.activeConfig);
+   const timing = props.reducedMotion
+     ? CASCADE_PRESENTATION_TIMINGS.reduced
+     : CASCADE_PRESENTATION_TIMINGS.standard;
+   const phaseMessage = gameplayPhaseMessage(props.animationPhase, props.busy, props.message);
+
+   if (artworkFailed) return <AbstractCascadeGameplayScreen {...props} />;
+
+   const pauseButton = (
+     <Pressable
+       testID="alchemists-cascade-gameplay-pause"
+       accessibilityRole="button"
+       accessibilityLabel="Pause"
+       accessibilityHint="Pause the current recipe"
+       accessibilityState={{ disabled: props.busy }}
+       disabled={props.busy}
+       onPress={props.onPause}
+       onFocus={() => setPauseFocused(true)}
+       onBlur={() => setPauseFocused(false)}
+       onHoverIn={() => setPauseHovered(true)}
+       onHoverOut={() => setPauseHovered(false)}
+       style={({ pressed }: { pressed: boolean }) => [
+         layout.mode === "cinematic" ? styles.gameplayCinematicControl : styles.gameplayStackedControl,
+         layout.mode === "cinematic" && layout.pause,
+         (pauseFocused || pauseHovered) && styles.gameplayControlActive,
+         pressed && styles.gameplayControlPressed,
+         props.busy && styles.disabled,
+       ]}
+     >
+       {layout.mode === "stacked" ? (
+         <>
+           <MaterialCommunityIcons name="pause" size={18} color="#FBE8BD" accessible={false} />
+           <Text style={styles.gameplayControlText}>PAUSE</Text>
+         </>
+       ) : null}
+     </Pressable>
+   );
+   const helpButton = (
+     <Pressable
+       testID="alchemists-cascade-gameplay-help"
+       accessibilityRole="button"
+       accessibilityLabel="Help"
+       accessibilityHint="Open the apprentice's field notes"
+       accessibilityState={{ disabled: props.busy }}
+       disabled={props.busy}
+       onPress={props.onHelp}
+       onFocus={() => setHelpFocused(true)}
+       onBlur={() => setHelpFocused(false)}
+       onHoverIn={() => setHelpHovered(true)}
+       onHoverOut={() => setHelpHovered(false)}
+       style={({ pressed }: { pressed: boolean }) => [
+         layout.mode === "cinematic" ? styles.gameplayCinematicControl : styles.gameplayStackedControl,
+         layout.mode === "cinematic" && layout.help,
+         (helpFocused || helpHovered) && styles.gameplayControlActive,
+         pressed && styles.gameplayControlPressed,
+         props.busy && styles.disabled,
+       ]}
+     >
+       {layout.mode === "stacked" ? (
+         <>
+           <MaterialCommunityIcons name="help-circle-outline" size={18} color="#FBE8BD" accessible={false} />
+           <Text style={styles.gameplayControlText}>HELP</Text>
+         </>
+       ) : null}
+     </Pressable>
+   );
+
+   if (layout.mode === "stacked") {
+     const boardWidth = Math.min(width - 24, 600);
+     return (
+       <ScrollView
+         style={styles.gameplayStackedScroll}
+         contentContainerStyle={styles.gameplayStackedContent}
+         showsVerticalScrollIndicator={false}
+       >
+         <Image
+           source={ALCHEMISTS_CASCADE_GAMEPLAY_MOBILE_ARTWORK}
+           style={styles.gameplayMobileArtwork}
+           resizeMode="cover"
+           accessible={false}
+           accessibilityElementsHidden
+           accessibilityIgnoresInvertColors
+           onError={() => setArtworkFailed(true)}
+         />
+         <View style={styles.gameplayStackedHeader}>
+           {pauseButton}
+           <View style={styles.gameplayStackedTitleCopy}>
+             <Text accessibilityRole="header" style={styles.gameplayStackedTitle}>{props.activeConfig.name}</Text>
+             <Text style={[styles.gameplayStackedRealm, { color: props.activeRealm.accent }]}>{props.activeRealm.name}</Text>
+           </View>
+           {helpButton}
+         </View>
+         <GameplayStatus
+           save={props.save}
+           activeConfig={props.activeConfig}
+           goalDone={goalDone}
+           compact={false}
+           comboPulse={props.comboPulse}
+         />
+         <GameplayGoals save={props.save} activeConfig={props.activeConfig} compact={false} />
+         <PresentationBoardView
+           tiles={props.tiles}
+           width={boardWidth}
+           selected={props.selected}
+           disabled={props.busy}
+           phase={props.animationPhase}
+           clearingTileIds={props.clearingTileIds}
+           motionDuration={props.animationPhase === "swapping" ? timing.swapMs : timing.fallMs}
+           clearDuration={timing.clearMs}
+           onCell={props.onCell}
+         />
+         <Text
+           testID="alchemists-cascade-animation-phase"
+           style={styles.gameplayStackedInstruction}
+           accessibilityLiveRegion="polite"
+         >
+           {phaseMessage}
+         </Text>
+         {props.syncWarning ? (
+           <Text testID="alchemists-cascade-gameplay-sync" style={styles.gameplayStackedSync} accessibilityRole="alert">
+             {props.syncWarning}
+           </Text>
+         ) : null}
+       </ScrollView>
+     );
+   }
+
+   const boardWidth = Math.max(1, layout.board.width - 14);
+   return (
+     <View style={styles.gameplayCinematic}>
+       <View style={[styles.gameplayCinematicStage, layout.stage]}>
+         <Image
+           source={ALCHEMISTS_CASCADE_GAMEPLAY_ARTWORK}
+           style={styles.gameplayCinematicImage}
+           resizeMode="contain"
+           accessible={false}
+           accessibilityElementsHidden
+           accessibilityIgnoresInvertColors
+           onError={() => setArtworkFailed(true)}
+         />
+         {pauseButton}
+         {helpButton}
+         <View style={[styles.gameplayCinematicTitle, layout.title]}>
+           <Text accessibilityRole="header" style={styles.gameplayCinematicTitleText}>{props.activeConfig.name}</Text>
+           <Text style={[styles.gameplayCinematicRealmText, { color: props.activeRealm.accent }]}>{props.activeRealm.name}</Text>
+         </View>
+         <View style={[styles.gameplayCinematicStatus, layout.status]}>
+           <GameplayStatus
+             save={props.save}
+             activeConfig={props.activeConfig}
+             goalDone={goalDone}
+             compact
+             comboPulse={props.comboPulse}
+           />
+         </View>
+         <View style={[styles.gameplayCinematicGoals, layout.goals]}>
+           <GameplayGoals save={props.save} activeConfig={props.activeConfig} compact />
+         </View>
+         <View style={[styles.gameplayCinematicBoardPosition, layout.board]}>
+           <PresentationBoardView
+             tiles={props.tiles}
+             width={boardWidth}
+             selected={props.selected}
+             disabled={props.busy}
+             phase={props.animationPhase}
+             clearingTileIds={props.clearingTileIds}
+             motionDuration={props.animationPhase === "swapping" ? timing.swapMs : timing.fallMs}
+             clearDuration={timing.clearMs}
+             onCell={props.onCell}
+           />
+         </View>
+         <View style={[styles.gameplayCinematicInstruction, layout.instruction]}>
+           <Text
+             testID="alchemists-cascade-animation-phase"
+             style={styles.gameplayCinematicInstructionText}
+             accessibilityLiveRegion="polite"
+             numberOfLines={2}
+           >
+             {phaseMessage}
+           </Text>
+         </View>
+         <View
+           testID="alchemists-cascade-gameplay-sync"
+           style={[
+             styles.gameplayCinematicSync,
+             layout.sync,
+             !props.syncWarning && styles.gameplayCinematicSyncEmpty,
+           ]}
+         >
+           {props.syncWarning ? (
+             <Text style={styles.gameplayCinematicSyncText} accessibilityRole="alert" numberOfLines={2}>
+               {props.syncWarning}
+             </Text>
+           ) : null}
+         </View>
+       </View>
+     </View>
+   );
+ }
+
 export default function AlchemistsCascadeRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string }>();
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+  const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const scope = useMemo(() => createCascadeScope(params.playerId, params.libraryId), [params.playerId, params.libraryId]);
   const sessionId = useRef(id("cascade-session"));
   const lastTimestamp = useRef<string | null>(null);
@@ -244,14 +1934,32 @@ export default function AlchemistsCascadeRoute() {
   const [choiceStarted, setChoiceStarted] = useState(Date.now());
   const [privacy, setPrivacy] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [presentationTiles, setPresentationTiles] = useState<CascadePresentationTile[]>([]);
+  const [presentationPhase, setPresentationPhase] = useState<CascadePresentationPhase>("settled");
+  const [clearingTileIds, setClearingTileIds] = useState<string[]>([]);
+  const presentationTilesRef = useRef<CascadePresentationTile[]>([]);
+  const presentationSeed = useRef(0);
+  const presentationGeneration = useRef(0);
+  const presentationWaits = useRef(new Map<ReturnType<typeof setTimeout>, (valid: boolean) => void>());
   const helpReturn = useRef<Phase>("title");
   const comboPulse = useRef(new Animated.Value(1)).current;
-  const { width } = useWindowDimensions();
+  const gameRecommendationMilestone = useGameRecommendationMilestone({
+    game: "alchemists_cascade",
+    gameLabel: "The Alchemist's Cascade",
+    playerId: routeConfig.playerId,
+    gameSessionId: save?.gameSessionId || "",
+    libraryId: routeConfig.libraryId,
+    ageBand: routeConfig.ageBand,
+    sourceFlags: routeConfig.sourceFlags,
+    localCollectionOnly: routeConfig.localCollectionOnly,
+    evidenceMode: ALCHEMISTS_CASCADE_EVIDENCE_MODE,
+  });
 
   const activeConfig = save?.activeLevel
     ? CASCADE_LEVELS.find((level) => level.id === save.activeLevel?.levelId) || null
     : null;
-  const board = save?.activeLevel ? decodeBoard(save.activeLevel.board) : null;
+  const encodedBoard = save?.activeLevel?.board || null;
+  const board = useMemo(() => encodedBoard ? decodeBoard(encodedBoard) : null, [encodedBoard]);
   const activeRealm = activeConfig ? realmFor(activeConfig) : CASCADE_REALMS[0];
   const catalystChoices = useMemo(
     () => board && save && activeConfig
@@ -265,6 +1973,78 @@ export default function AlchemistsCascadeRoute() {
     lastTimestamp.current = value;
     return value;
   }, []);
+
+  const commitPresentationTiles = useCallback((tiles: CascadePresentationTile[]) => {
+    presentationTilesRef.current = tiles;
+    setPresentationTiles(tiles);
+  }, []);
+
+  const waitForPresentation = useCallback((durationMs: number, generation: number) => (
+    new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        presentationWaits.current.delete(timer);
+        resolve(presentationGeneration.current === generation);
+      }, durationMs);
+      presentationWaits.current.set(timer, resolve);
+    })
+  ), []);
+
+  const runPresentationPlan = useCallback(async (
+    currentBoard: Board,
+    result: ReturnType<typeof applySwap>,
+    from: Coordinate,
+    to: Coordinate,
+  ): Promise<boolean> => {
+    if (!result.valid) return true;
+    const generation = ++presentationGeneration.current;
+    const timing = reducedMotion
+      ? CASCADE_PRESENTATION_TIMINGS.reduced
+      : CASCADE_PRESENTATION_TIMINGS.standard;
+    const initialTiles = presentationMatchesBoard(presentationTilesRef.current, currentBoard)
+      ? presentationTilesRef.current
+      : createCascadePresentationTiles(currentBoard, ++presentationSeed.current);
+    const plan = buildCascadePresentationPlan({
+      initialTiles,
+      from,
+      to,
+      steps: result.steps,
+      finalBoard: result.board,
+      generation: ++presentationSeed.current,
+    });
+
+    setClearingTileIds([]);
+    setPresentationPhase("swapping");
+    commitPresentationTiles(plan.swapTiles);
+    if (!await waitForPresentation(timing.swapMs, generation)) return false;
+
+    for (const step of plan.steps) {
+      commitPresentationTiles(step.beforeTiles);
+      setClearingTileIds(step.clearingTileIds);
+      setPresentationPhase("clearing");
+      if (!await waitForPresentation(timing.clearMs, generation)) return false;
+
+      setClearingTileIds([]);
+      const cleared = new Set(step.clearingTileIds);
+      commitPresentationTiles(step.beforeTiles.filter((tile) => !cleared.has(tile.id)));
+      if (!await waitForPresentation(reducedMotion ? 1 : 24, generation)) return false;
+
+      setPresentationPhase("falling");
+      commitPresentationTiles(step.afterTiles);
+      if (!await waitForPresentation(timing.fallMs, generation)) return false;
+      commitPresentationTiles(settleCascadePresentationTiles(step.afterTiles));
+    }
+
+    if (plan.reshuffled) {
+      setPresentationPhase("falling");
+      commitPresentationTiles(plan.finalTiles);
+      if (!await waitForPresentation(timing.fallMs, generation)) return false;
+    }
+
+    setClearingTileIds([]);
+    setPresentationPhase("settled");
+    commitPresentationTiles(settleCascadePresentationTiles(plan.finalTiles));
+    return true;
+  }, [commitPresentationTiles, reducedMotion, waitForPresentation]);
 
   const send = useCallback(async (event: CascadeEvidenceEvent) => {
     if (Platform.OS !== "web" && !nativeApiOrigin) return false;
@@ -376,6 +2156,26 @@ export default function AlchemistsCascadeRoute() {
   }, []);
 
   useEffect(() => {
+    const waits = presentationWaits.current;
+    return () => {
+      presentationGeneration.current += 1;
+      waits.forEach((resolve, timer) => {
+        clearTimeout(timer);
+        resolve(false);
+      });
+      waits.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!board || busy || phase !== "play") return;
+    if (presentationMatchesBoard(presentationTilesRef.current, board)) return;
+    setClearingTileIds([]);
+    setPresentationPhase("settled");
+    commitPresentationTiles(createCascadePresentationTiles(board, ++presentationSeed.current));
+  }, [board, busy, commitPresentationTiles, phase]);
+
+  useEffect(() => {
     if (Platform.OS !== "web" || typeof document === "undefined") return;
     const previous = document.title;
     document.title = "The Alchemist's Cascade";
@@ -425,10 +2225,12 @@ export default function AlchemistsCascadeRoute() {
         params: {
           ...(params.playerId ? { playerId: params.playerId } : {}),
           ...(params.libraryId ? { libraryId: params.libraryId } : {}),
+          ageBand: routeConfig.ageBand,
+          ...buildGameRouteSourceParams(routeConfig.sourceFlags),
         },
       } as never);
     }
-  }, [flush, mutate, now, params.libraryId, params.playerId, save]);
+  }, [flush, mutate, now, params.libraryId, params.playerId, routeConfig.ageBand, routeConfig.sourceFlags, save]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
@@ -695,6 +2497,15 @@ export default function AlchemistsCascadeRoute() {
         };
       });
       setSave(next);
+      if (option) {
+        const uniqueCompletedLevelCount = Object.keys(next.levelStars).length;
+        const signals = eligibility.eligible ? [adaptAlchemistsCascadeCatalystToSignal(option)] : [];
+        void gameRecommendationMilestone.notifyEvidence(
+          `${next.gameSessionId}:catalyst:${next.catalystOccasion}`,
+          signals,
+          (lastMilestoneEvidenceCount) => alchemistsCascadeMilestone(uniqueCompletedLevelCount, lastMilestoneEvidenceCount),
+        );
+      }
       if (next.activeLevel && activeLevelPhase(next.activeLevel, activeConfig) === "won") {
         setPhase("result");
       } else if (next.tutorialSeen && save.tutorialSeen) {
@@ -712,12 +2523,16 @@ export default function AlchemistsCascadeRoute() {
       actionLock.current = false;
       setBusy(false);
     }
-  }, [activeConfig, board, busy, catalystChoices, choiceStarted, mutate, now, save]);
+  }, [activeConfig, board, busy, catalystChoices, choiceStarted, gameRecommendationMilestone, mutate, now, save]);
 
   const attemptSwap = useCallback(async (from: Coordinate, to: Coordinate) => {
     if (!save?.activeLevel || !activeConfig || busy || actionLock.current
       || activeLevelPhase(save.activeLevel, activeConfig) !== "play") return;
     const expected = captureCascadeExpectedState(save);
+    const presentationMove: {
+      board?: Board;
+      result?: ReturnType<typeof applySwap>;
+    } = {};
     actionLock.current = true;
     setBusy(true);
     setSelected(null);
@@ -731,6 +2546,8 @@ export default function AlchemistsCascadeRoute() {
         const currentBoard = decodeBoard(active.board);
         if (!currentBoard) throw new Error("invalid_saved_board");
         const result = applySwap(currentBoard, active.rngState, from, to, activeConfig.goals);
+        presentationMove.board = currentBoard;
+        presentationMove.result = result;
         const attemptedAt = now();
         const attempted = makeEvent({
           save: current, eventType: "move_attempted", at: attemptedAt,
@@ -854,6 +2671,24 @@ export default function AlchemistsCascadeRoute() {
       });
       const nextActive = next.activeLevel!;
       const previousScore = save.activeLevel.score;
+      const terminal = activeLevelPhase(nextActive, activeConfig);
+      if (terminal === "won") {
+        const uniqueCompletedLevelCount = Object.keys(next.levelStars).length;
+        void gameRecommendationMilestone.notifyEvidence(
+          `${next.gameSessionId}:level-completed:${activeConfig.id}`,
+          [],
+          (lastMilestoneEvidenceCount) => alchemistsCascadeMilestone(uniqueCompletedLevelCount, lastMilestoneEvidenceCount),
+        );
+      }
+      if (presentationMove.board && presentationMove.result?.valid) {
+        const animationCompleted = await runPresentationPlan(
+          presentationMove.board,
+          presentationMove.result,
+          from,
+          to,
+        );
+        if (!animationCompleted) return;
+      }
       if (nextActive.movesRemaining === save.activeLevel.movesRemaining) {
         setMessage("That pairing refuses to brew. No move was spent.");
       } else {
@@ -863,7 +2698,6 @@ export default function AlchemistsCascadeRoute() {
           comboPulse.setValue(1.12);
           Animated.spring(comboPulse, { toValue: 1, friction: 5, useNativeDriver: true }).start();
         }
-        const terminal = activeLevelPhase(nextActive, activeConfig);
         if (terminal === "won" || terminal === "lost") setPhase("result");
       }
     } catch (error) {
@@ -874,7 +2708,7 @@ export default function AlchemistsCascadeRoute() {
       actionLock.current = false;
       setBusy(false);
     }
-  }, [activeConfig, busy, comboPulse, mutate, now, reducedMotion, save]);
+  }, [activeConfig, busy, comboPulse, gameRecommendationMilestone, mutate, now, reducedMotion, runPresentationPlan, save]);
 
   const onCell = useCallback((at: Coordinate) => {
     if (busy || phase !== "play" || !save?.activeLevel || !activeConfig
@@ -1006,6 +2840,7 @@ export default function AlchemistsCascadeRoute() {
           };
         });
         sessionId.current = fresh.gameSessionId;
+        await gameRecommendationMilestone.resetSession(fresh.gameSessionId);
         setSave(fresh);
         setPhase("title");
         setSyncWarning(null);
@@ -1025,7 +2860,7 @@ export default function AlchemistsCascadeRoute() {
         { text: "Reset", style: "destructive", onPress: () => void perform() },
       ]);
     }
-  }, [mutate, now, save]);
+  }, [gameRecommendationMilestone, mutate, now, save]);
 
   if (phase === "loading") {
     return <SafeAreaView style={styles.loading}><ActivityIndicator color="#F6C957" /><Text style={styles.loadingText}>Warming the copper...</Text></SafeAreaView>;
@@ -1040,23 +2875,16 @@ export default function AlchemistsCascadeRoute() {
   if (phase === "title") {
     return (
       <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.titleScreen}>
-          <View style={styles.titleSigil}>
-            <View style={styles.sigilRing}><Text style={styles.sigilMark}>✦</Text></View>
-            <View style={styles.sigilLine} />
-          </View>
-          <Text style={styles.title}>THE ALCHEMIST&apos;S{"\n"}CASCADE</Text>
-          <Text style={styles.titleCopy}>A kinetic campaign of strange ingredients, chain reactions, and twelve recipes that should not exist.</Text>
-          <TouchableOpacity style={[styles.primaryButton, busy && styles.disabled]} disabled={busy || !save} onPress={() => void begin()} accessibilityRole="button">
-            <Text style={styles.primaryButtonText}>{busy ? "OPENING THE VIAL..." : save?.playSessionCount ? "CONTINUE THE EXPERIMENT" : "LIGHT THE FIRST FLAME"}</Text>
-          </TouchableOpacity>
-          <View style={styles.titleActions}>
-            <TouchableOpacity style={styles.textButton} onPress={() => openHelp("title")}><Text style={styles.textButtonText}>How to brew</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.textButton} onPress={() => setPrivacy(true)}><Text style={styles.textButtonText}>What the cauldron remembers</Text></TouchableOpacity>
-            {save?.playSessionCount ? <TouchableOpacity style={styles.textButton} onPress={reset}><Text style={styles.dangerText}>Reset campaign</Text></TouchableOpacity> : null}
-          </View>
-          {syncWarning ? <Text style={styles.warning} accessibilityRole="alert">{syncWarning}</Text> : null}
-        </ScrollView>
+        <CascadeTitleScreen
+          busy={busy}
+          hasProgress={Boolean(save?.playSessionCount)}
+          ready={Boolean(save)}
+          syncWarning={syncWarning}
+          onBegin={() => void begin()}
+          onHelp={() => openHelp("title")}
+          onMemory={() => setPrivacy(true)}
+          onReset={reset}
+        />
       </SafeAreaView>
     );
   }
@@ -1064,124 +2892,88 @@ export default function AlchemistsCascadeRoute() {
   if (phase === "campaign" && save) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.gameHeader}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => void saveExit()} disabled={busy}><Text style={styles.headerButtonText}>EXIT</Text></TouchableOpacity>
-          <Text style={styles.headerTitle}>THE RECIPE ATLAS</Text>
-          <Text style={styles.starTotal}>★ {Object.values(save.levelStars).reduce((sum, value) => sum + value, 0)}</Text>
-        </View>
-        <ScrollView contentContainerStyle={styles.campaign}>
-          {CASCADE_REALMS.map((realm) => (
-            <View key={realm.id} style={[styles.realmSection, { backgroundColor: realm.surface, borderColor: realm.accent }]}>
-              <Text style={[styles.realmTitle, { color: realm.accent }]}>{realm.name}</Text>
-              <Text style={styles.realmFiction}>{realm.fiction}</Text>
-              <View style={styles.levelRow}>
-                {CASCADE_LEVELS.filter((level) => level.realmId === realm.id).map((level) => {
-                  const unlocked = level.number <= save.unlockedLevel;
-                  const stars = save.levelStars[level.id] || 0;
-                  return (
-                    <TouchableOpacity
-                      key={level.id}
-                      style={[styles.levelTile, !unlocked && styles.levelLocked]}
-                      disabled={!unlocked || busy}
-                      onPress={() => void openLevel(level)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${level.name}, level ${level.number}, ${unlocked ? `${stars} stars` : "locked"}`}
-                    >
-                      <Text style={styles.levelNumber}>{unlocked ? level.number : "◆"}</Text>
-                      <Text style={styles.levelName}>{level.name}</Text>
-                      <Text style={styles.levelStars}>{"★".repeat(stars)}{"☆".repeat(3 - stars)}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          ))}
-          <TouchableOpacity style={styles.textButton} onPress={() => openHelp("campaign")}><Text style={styles.textButtonText}>Open field notes</Text></TouchableOpacity>
-          {syncWarning ? <Text style={styles.warning}>{syncWarning}</Text> : null}
-        </ScrollView>
+        <CascadeAtlasScreen
+          save={save}
+          busy={busy}
+          syncWarning={syncWarning}
+          onExit={() => void saveExit()}
+          onOpenLevel={(level) => void openLevel(level)}
+          onOpenNotes={() => openHelp("campaign")}
+        />
       </SafeAreaView>
     );
   }
 
   if (phase === "catalyst" && save?.activeLevel && activeConfig) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: activeRealm.background }]}>
-        <ScrollView contentContainerStyle={styles.choiceScreen}>
-          <Text style={styles.choiceTitle}>Choose the first whisper</Text>
-          <Text style={styles.choiceCopy}>Three equally measured infusions wait beside the flask. Choose the flavor of this opening, or let fate stir.</Text>
-          <View style={styles.choiceList}>
-            {catalystChoices.map((option) => (
-              <TouchableOpacity
-                key={option.id}
-                style={[styles.choiceOption, { borderColor: option.manifestation.color }]}
-                onPress={() => void chooseCatalyst(option)}
-                disabled={busy}
-                accessibilityRole="button"
-                accessibilityLabel={`${option.title}. ${option.copy} ${option.manifestation.outcomeText}`}
-              >
-                <Text style={[styles.choiceOptionTitle, { color: option.manifestation.color }]}>
-                  {option.manifestation.symbol} {option.title}
-                </Text>
-                <Text style={styles.choiceOptionCopy}>{option.copy}</Text>
-                <Text style={styles.choiceOutcome}>{option.manifestation.outcomeText}</Text>
-                <Text style={styles.choiceMechanic}>Same calibrated seven-ingredient effect</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TouchableOpacity style={styles.fateButton} onPress={() => void chooseCatalyst(null)} disabled={busy}>
-            <Text style={styles.fateText}>LET FATE DECIDE — BEGIN WITHOUT AN INFUSION</Text>
-          </TouchableOpacity>
-          <Text style={styles.balanceNote}>Each offered infusion is calibrated to the same seven-ingredient strength.</Text>
-        </ScrollView>
-      </SafeAreaView>
+      <CascadeWhisperScreen
+        options={catalystChoices}
+        busy={busy}
+        fallbackBackground={activeRealm.background}
+        onBack={() => void returnToCampaign()}
+        onChoose={(option) => void chooseCatalyst(option)}
+      />
     );
   }
 
   if ((phase === "play" || phase === "pause") && save?.activeLevel && activeConfig && board) {
-    const goalDone = levelWon(save.activeLevel, activeConfig);
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: activeRealm.background }]}>
-        <View style={[styles.gameHeader, { borderBottomColor: activeRealm.accent }]}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => setPhase(phase === "pause" ? "play" : "pause")} accessibilityRole="button">
-            <Text style={styles.headerButtonText}>{phase === "pause" ? "RESUME" : "PAUSE"}</Text>
-          </TouchableOpacity>
-          <View style={styles.gameHeaderCenter}><Text style={styles.levelHeader}>{activeConfig.name}</Text><Text style={styles.realmHeader}>{activeRealm.name}</Text></View>
-          <TouchableOpacity style={styles.headerButton} onPress={() => openHelp("play")}><Text style={styles.headerButtonText}>HELP</Text></TouchableOpacity>
-        </View>
         {phase === "pause" ? (
-          <View style={styles.centered}>
-            <View style={styles.sheet}>
-              <Text style={styles.sheetTitle}>The flame holds steady</Text>
-              <Text style={styles.lead}>Your exact board and the next refill are sealed in the save vial.</Text>
-              <TouchableOpacity style={styles.primaryButton} onPress={() => setPhase("play")}><Text style={styles.primaryButtonText}>RETURN TO THE FLASK</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => void saveExit()}><Text style={styles.secondaryButtonText}>{busy ? "SAVING..." : "SAVE & EXIT"}</Text></TouchableOpacity>
+          <>
+            <View style={[styles.gameHeader, { borderBottomColor: activeRealm.accent }]}>
+              <TouchableOpacity style={styles.headerButton} onPress={() => setPhase("play")} accessibilityRole="button">
+                <Text style={styles.headerButtonText}>RESUME</Text>
+              </TouchableOpacity>
+              <View style={styles.gameHeaderCenter}><Text style={styles.levelHeader}>{activeConfig.name}</Text><Text style={styles.realmHeader}>{activeRealm.name}</Text></View>
+              <TouchableOpacity style={styles.headerButton} onPress={() => openHelp("play")}><Text style={styles.headerButtonText}>HELP</Text></TouchableOpacity>
             </View>
-          </View>
+            <View style={styles.centered}>
+              <View style={styles.sheet}>
+                <Text style={styles.sheetTitle}>The flame holds steady</Text>
+                <Text style={styles.lead}>Your exact board and the next refill are sealed in the save vial.</Text>
+                <TouchableOpacity style={styles.primaryButton} onPress={() => setPhase("play")}><Text style={styles.primaryButtonText}>RETURN TO THE FLASK</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => void saveExit()}><Text style={styles.secondaryButtonText}>{busy ? "SAVING..." : "SAVE & EXIT"}</Text></TouchableOpacity>
+              </View>
+            </View>
+          </>
         ) : (
-          <ScrollView contentContainerStyle={styles.playScreen}>
-            <View style={styles.statusRail}>
-              <View><Text style={styles.statusLabel}>MOVES</Text><Text style={styles.movesValue}>{save.activeLevel.movesRemaining}</Text></View>
-              <Animated.View style={{ transform: [{ scale: comboPulse }] }}><Text style={styles.statusLabel}>SCORE</Text><Text style={styles.scoreValue}>{save.activeLevel.score.toLocaleString()}</Text><Text style={styles.targetText}>of {activeConfig.scoreTarget.toLocaleString()}</Text></Animated.View>
-              <View><Text style={styles.statusLabel}>BREW</Text><Text style={styles.brewValue}>{goalDone ? "READY" : "ACTIVE"}</Text></View>
-            </View>
-            <View style={styles.goals}>
-              {activeConfig.goals.map((goal) => {
-                const ingredient = INGREDIENTS[goal.kind];
-                const current = save.activeLevel!.collected[goal.kind];
-                return (
-                  <View key={ingredient.id} style={styles.goal}>
-                    <View style={[styles.goalDot, { backgroundColor: ingredient.color }]}><Text style={{ color: ingredient.ink }}>{ingredient.symbol}</Text></View>
-                    <Text style={styles.goalText}>{ingredient.name}</Text>
-                    <Text style={[styles.goalCount, current >= goal.target && styles.goalDone]}>{Math.min(current, goal.target)}/{goal.target}</Text>
-                  </View>
-                );
-              })}
-            </View>
-            <BoardView board={board} width={Math.min(width - 24, 510)} selected={selected} onCell={onCell} />
-            <Text style={styles.feedback} accessibilityLiveRegion="polite">{busy ? "The mixture turns..." : message}</Text>
-            {syncWarning ? <Text style={styles.warning}>{syncWarning}</Text> : null}
-          </ScrollView>
+          <CascadeGameplayScreen
+            board={board}
+            tiles={presentationTiles.length
+              ? presentationTiles
+              : createCascadePresentationTiles(board, presentationSeed.current)}
+            animationPhase={presentationPhase}
+            clearingTileIds={clearingTileIds}
+            reducedMotion={reducedMotion}
+            busy={busy}
+            save={save}
+            activeConfig={activeConfig}
+            activeRealm={activeRealm}
+            selected={selected}
+            message={message}
+            syncWarning={syncWarning}
+            comboPulse={comboPulse}
+            onPause={() => setPhase("pause")}
+            onHelp={() => openHelp("play")}
+            onCell={onCell}
+          />
         )}
+        {!busy && gameRecommendationMilestone.pendingReward ? (
+          <GameRecommendationReward
+            visible
+            cadence={gameRecommendationMilestone.pendingReward.cadence}
+            gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
+            book={{
+              title: gameRecommendationMilestone.pendingReward.book.title,
+              author: gameRecommendationMilestone.pendingReward.book.author,
+              coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+              description: gameRecommendationMilestone.pendingReward.description,
+              reason: gameRecommendationMilestone.pendingReward.reason,
+            }}
+            onRespond={(response) => gameRecommendationMilestone.respond(response, () => undefined)}
+          />
+        ) : null}
       </SafeAreaView>
     );
   }
@@ -1204,6 +2996,21 @@ export default function AlchemistsCascadeRoute() {
             {won ? <TouchableOpacity style={styles.secondaryButton} onPress={() => void retry()}><Text style={styles.secondaryButtonText}>BREW AGAIN</Text></TouchableOpacity> : <TouchableOpacity style={styles.secondaryButton} onPress={() => void returnToCampaign()}><Text style={styles.secondaryButtonText}>RETURN TO THE ATLAS</Text></TouchableOpacity>}
           </View>
         </View>
+        {gameRecommendationMilestone.pendingReward ? (
+          <GameRecommendationReward
+            visible
+            cadence={gameRecommendationMilestone.pendingReward.cadence}
+            gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
+            book={{
+              title: gameRecommendationMilestone.pendingReward.book.title,
+              author: gameRecommendationMilestone.pendingReward.book.author,
+              coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+              description: gameRecommendationMilestone.pendingReward.description,
+              reason: gameRecommendationMilestone.pendingReward.reason,
+            }}
+            onRespond={(response) => gameRecommendationMilestone.respond(response, () => void returnToCampaign())}
+          />
+        ) : null}
       </SafeAreaView>
     );
   }
@@ -1217,6 +3024,107 @@ const styles = StyleSheet.create({
   loadingText: { color: "#E9DFCE", fontSize: 14, fontWeight: "700" },
   centered: { flex: 1, padding: 22, justifyContent: "center", alignItems: "center" },
   titleScreen: { flexGrow: 1, minHeight: 650, alignItems: "center", justifyContent: "center", padding: 28, backgroundColor: "#161922" },
+  cascadeTitleArtworkDesktop: { flex: 1, backgroundColor: "#0D0B11", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  cascadeTitleArtworkCompactScroll: { flex: 1, backgroundColor: "#0D0B11" },
+  cascadeTitleArtworkCompactContent: { flexGrow: 1, alignItems: "center", justifyContent: "flex-start" },
+  cascadeTitleArtworkMobileScroll: { flex: 1, backgroundColor: "#0D0B11" },
+  cascadeTitleArtworkMobileContent: { flexGrow: 1, alignItems: "center", justifyContent: "flex-start", paddingBottom: 28 },
+  cascadeTitleArtworkStage: { position: "relative", alignSelf: "center", backgroundColor: "#0D0B11", overflow: "hidden" },
+  cascadeTitleArtworkImage: { position: "absolute", top: 0, left: 0, width: "100%" },
+  cascadeTitleArtworkControl: {
+    position: "absolute",
+    borderWidth: 3,
+    borderColor: "transparent",
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cascadeTitleArtworkLink: { borderRadius: 4 },
+  cascadeTitleArtworkControlActive: {
+    borderColor: "#FFE19A",
+    backgroundColor: "rgba(246, 201, 87, 0.16)",
+  },
+  cascadeTitleArtworkControlPressed: {
+    backgroundColor: "rgba(122, 72, 24, 0.55)",
+    transform: [{ scale: 0.985 }],
+  },
+  cascadeTitleArtworkPrimaryVisible: {
+    backgroundColor: "#F0AE3D",
+    borderColor: "#FFE09A",
+    shadowColor: "#000",
+    shadowOpacity: 0.42,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  cascadeTitleArtworkPrimaryVisibleActive: {
+    backgroundColor: "#FFC650",
+    borderColor: "#FFF0B6",
+  },
+  cascadeTitleArtworkPrimaryVisiblePressed: {
+    backgroundColor: "#C8862F",
+    transform: [{ scale: 0.985 }],
+  },
+  cascadeTitleArtworkPrimaryText: { color: "#1E1609", fontSize: 17, fontWeight: "900", letterSpacing: 0.8, textAlign: "center" },
+  cascadeTitleArtworkReset: {
+    position: "absolute",
+    right: 18,
+    bottom: 16,
+    minHeight: 44,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "rgba(242, 154, 148, 0.62)",
+    borderRadius: 5,
+    backgroundColor: "rgba(18, 13, 17, 0.82)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cascadeTitleArtworkResetText: { color: "#F5B2AA", fontSize: 12, fontWeight: "800" },
+  cascadeTitleArtworkWarning: {
+    position: "absolute",
+    left: "25%",
+    right: "25%",
+    bottom: 16,
+    color: "#FFD49C",
+    backgroundColor: "rgba(59, 42, 32, 0.94)",
+    padding: 10,
+    borderRadius: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "center",
+  },
+  cascadeTitleArtworkMobileCopy: { alignSelf: "stretch", maxWidth: 560, alignItems: "center", paddingHorizontal: 22, paddingTop: 20 },
+  cascadeTitleArtworkMobileTitle: { color: "#FFF1CF", fontSize: 27, lineHeight: 33, fontWeight: "900", textAlign: "center" },
+  cascadeTitleArtworkMobileDescription: { color: "#D7C8AF", fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 9 },
+  cascadeTitleMobilePrimary: {
+    width: "100%",
+    maxWidth: 390,
+    minHeight: 52,
+    marginTop: 20,
+    paddingHorizontal: 18,
+    borderWidth: 2,
+    borderColor: "#FFE09A",
+    borderRadius: 6,
+    backgroundColor: "#F0AE3D",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cascadeTitleMobilePrimaryText: { color: "#1E1609", fontSize: 14, fontWeight: "900", letterSpacing: 0.8, textAlign: "center" },
+  cascadeTitleMobileActions: { alignSelf: "stretch", marginTop: 10, gap: 8 },
+  cascadeTitleMobileSecondary: {
+    alignSelf: "stretch",
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#80683D",
+    borderRadius: 5,
+    backgroundColor: "#1C1A20",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cascadeTitleMobileSecondaryText: { color: "#F3D794", fontSize: 14, textDecorationLine: "underline", textAlign: "center" },
+  cascadeTitleMobileControlPressed: { opacity: 0.8, transform: [{ scale: 0.99 }] },
+  cascadeTitleMobileReset: { minHeight: 44, marginTop: 8, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" },
+  visuallyHidden: { position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" },
   titleSigil: { width: 220, height: 150, alignItems: "center", justifyContent: "center", marginBottom: 10 },
   sigilRing: { width: 122, height: 122, borderRadius: 61, borderWidth: 2, borderColor: "#F6C957", alignItems: "center", justifyContent: "center", backgroundColor: "#252A36" },
   sigilMark: { color: "#F6C957", fontSize: 58 },
@@ -1248,6 +3156,410 @@ const styles = StyleSheet.create({
   levelNumber: { color: "#F6C957", fontSize: 18, fontWeight: "900" },
   levelName: { color: "#F3EADE", fontSize: 14, fontWeight: "800" },
   levelStars: { color: "#F6C957", letterSpacing: 2 },
+  atlasCinematic: { flex: 1, backgroundColor: "#100D10", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  atlasCinematicStage: { position: "relative", overflow: "hidden", backgroundColor: "#100D10" },
+  atlasCinematicImage: { position: "absolute", inset: 0, width: "100%", height: "100%" },
+  atlasCinematicExit: {
+    position: "absolute",
+    minWidth: 44,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#B68B4D",
+    borderRadius: 4,
+    backgroundColor: "#161419",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasCinematicExitText: { color: "#FBE8BD", fontSize: 15, fontWeight: "900", letterSpacing: 0.8 },
+  atlasCinematicStars: {
+    position: "absolute",
+    minWidth: 44,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#B68B4D",
+    borderRadius: 4,
+    backgroundColor: "#161419",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasCinematicStarsText: { color: "#FFD06A", fontSize: 18, fontWeight: "900" },
+  atlasCinematicRealmPosition: { position: "absolute" },
+  atlasRealm: {
+    width: "100%",
+    borderWidth: 2,
+    borderRadius: 8,
+    padding: 14,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  atlasRealmCompact: { height: "100%", paddingHorizontal: 10, paddingVertical: 7 },
+  atlasRealmInnerFrame: {
+    position: "absolute",
+    inset: 4,
+    borderWidth: 1,
+    borderRadius: 5,
+  },
+  atlasRealmHeading: { minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  atlasRealmHeadingCopy: { flexShrink: 1, alignItems: "center" },
+  atlasRealmMotif: {
+    width: 50,
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasRealmMotifCompact: { width: 34, height: 34, borderRadius: 17 },
+  atlasRealmTitle: { fontSize: 24, lineHeight: 29, fontWeight: "900", textAlign: "center", textShadowColor: "#00000099", textShadowRadius: 4 },
+  atlasRealmTitleCompact: { fontSize: 17, lineHeight: 20 },
+  atlasRealmFiction: { color: "#F2E4D0", fontSize: 13, lineHeight: 18, marginTop: 3, textAlign: "center" },
+  atlasRealmFictionCompact: { fontSize: 9, lineHeight: 11, marginTop: 0 },
+  atlasRealmRule: {
+    height: 1,
+    marginHorizontal: 18,
+    marginTop: 7,
+    marginBottom: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasRealmRuleDiamond: { width: 6, height: 6, transform: [{ rotate: "45deg" }] },
+  atlasLevelRow: { flexDirection: "row", gap: 8 },
+  atlasLevelRowCompact: { flex: 1 },
+  atlasLevel: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 100,
+    borderWidth: 1.5,
+    borderColor: "#866B48",
+    borderRadius: 6,
+    backgroundColor: "#17151A",
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  atlasLevelCompact: { minHeight: 44, paddingHorizontal: 5, paddingVertical: 4 },
+  atlasLevelLocked: { opacity: 0.58 },
+  atlasLevelCurrent: { borderWidth: 2, shadowOpacity: 0.85, shadowRadius: 10, elevation: 5 },
+  atlasLevelActive: { borderWidth: 2, shadowOpacity: 0.9, shadowRadius: 11, elevation: 6 },
+  atlasLevelPressed: { backgroundColor: "#4A3320", transform: [{ scale: 0.98 }] },
+  atlasLevelTopline: { width: "100%", minHeight: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  atlasLevelNumber: { color: "#F6C957", fontSize: 14, fontWeight: "900" },
+  atlasLevelNumberCompact: { fontSize: 11 },
+  atlasGlyphWell: {
+    width: 62,
+    height: 54,
+    borderWidth: 1,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 3,
+  },
+  atlasGlyphWellCompact: { width: 45, height: 39, borderRadius: 20, marginVertical: 1 },
+  atlasLevelName: { color: "#FFF1D8", fontSize: 13, lineHeight: 16, fontWeight: "900", textAlign: "center", textShadowColor: "#000000CC", textShadowRadius: 3 },
+  atlasLevelNameCompact: { fontSize: 10, lineHeight: 11 },
+  atlasLevelStars: { color: "#FFD465", fontSize: 13, letterSpacing: 1.5, fontWeight: "900", textShadowColor: "#00000099", textShadowRadius: 3 },
+  atlasLevelStarsLocked: { color: "#9A8D86" },
+  atlasLevelStatusLocked: { color: "#A79A91", fontSize: 8, lineHeight: 9, letterSpacing: 0.7, fontWeight: "900" },
+  atlasCinematicNotes: {
+    position: "absolute",
+    minWidth: 44,
+    minHeight: 44,
+    borderRadius: 4,
+    backgroundColor: "#171419",
+    borderWidth: 1,
+    borderColor: "#80663C",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasNotesText: { color: "#F2CC77", fontSize: 13, fontWeight: "800", textDecorationLine: "underline", textAlign: "center" },
+  atlasCinematicSyncMask: {
+    position: "absolute",
+    backgroundColor: "#2D1B13",
+    borderWidth: 1,
+    borderColor: "#6E4225",
+    borderRadius: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  atlasCinematicSyncText: { color: "#FFD58C", fontSize: 11, lineHeight: 14, textAlign: "center" },
+  atlasCinematicSyncMaskEmpty: { borderColor: "transparent", backgroundColor: "#25150F" },
+  atlasControlPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
+  atlasStackedScroll: { flex: 1, backgroundColor: "#100D10" },
+  atlasStackedContent: { flexGrow: 1, paddingBottom: 34, alignItems: "center" },
+  atlasHeaderCrop: { position: "relative", overflow: "hidden", backgroundColor: "#100D10" },
+  atlasStackedToolbar: {
+    width: "100%",
+    maxWidth: 920,
+    minHeight: 62,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  atlasToolbarButton: {
+    minWidth: 70,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#A57B42",
+    borderRadius: 4,
+    backgroundColor: "#171419",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10,
+  },
+  atlasToolbarButtonText: { color: "#FBE8BD", fontSize: 12, fontWeight: "900", letterSpacing: 0.8 },
+  atlasStackedTitle: { flex: 1, color: "#F7D79A", fontSize: 20, fontWeight: "900", textAlign: "center" },
+  atlasStarTotal: {
+    minWidth: 70,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#A57B42",
+    borderRadius: 4,
+    backgroundColor: "#171419",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasStarTotalText: { color: "#FFD06A", fontSize: 17, fontWeight: "900" },
+  atlasStackedRealms: { width: "100%", maxWidth: 920, paddingHorizontal: 14, gap: 14 },
+  atlasNotesButtonStacked: {
+    width: "100%",
+    maxWidth: 420,
+    minHeight: 48,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "#80663C",
+    borderRadius: 4,
+    backgroundColor: "#171419",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atlasSyncBannerStacked: {
+    color: "#FFD58C",
+    backgroundColor: "#2D1B13",
+    borderWidth: 1,
+    borderColor: "#6E4225",
+    borderRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginTop: 12,
+    maxWidth: 560,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
+  },
+  whisperCinematic: {
+    flex: 1,
+    backgroundColor: "#090A10",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  whisperCinematicStage: {
+    position: "relative",
+    overflow: "hidden",
+    backgroundColor: "#090A10",
+  },
+  whisperCinematicImage: { position: "absolute", inset: 0, width: "100%", height: "100%" },
+  whisperCinematicBack: {
+    position: "absolute",
+    minWidth: 44,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "transparent",
+    borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  whisperCinematicCardPosition: { position: "absolute" },
+  whisperCinematicFate: {
+    position: "absolute",
+    minWidth: 44,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "transparent",
+    borderRadius: 4,
+  },
+  whisperCard: {
+    width: "100%",
+    height: "100%",
+    minHeight: 44,
+    borderWidth: 1.5,
+    borderRadius: 7,
+    backgroundColor: "#10121A",
+    overflow: "hidden",
+    alignItems: "center",
+    shadowOpacity: 0.38,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  whisperCardCompact: { borderRadius: 5 },
+  whisperCardStacked: { height: "auto", minHeight: 470, maxWidth: 520, alignSelf: "center" },
+  whisperCardInnerFrame: {
+    position: "absolute",
+    inset: 5,
+    borderWidth: 1,
+    borderRadius: 4,
+    zIndex: 3,
+  },
+  whisperCardSigil: {
+    position: "absolute",
+    top: 5,
+    zIndex: 4,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  whisperCardSigilCompact: { width: 38, height: 38, borderRadius: 19, top: 3 },
+  whisperCardArt: { width: "100%", height: "49%" },
+  whisperCardArtCompact: { height: "48%" },
+  whisperCardCopy: {
+    flex: 1,
+    width: "100%",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  whisperCardCopyCompact: { paddingHorizontal: 8, paddingTop: 5, paddingBottom: 6 },
+  whisperCardTitle: {
+    color: "#F7E8CE",
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: "900",
+    textAlign: "center",
+    textShadowColor: "#000000CC",
+    textShadowRadius: 4,
+  },
+  whisperCardTitleCompact: { fontSize: 16, lineHeight: 19 },
+  whisperCardDescription: { color: "#F2E8DC", fontSize: 14, lineHeight: 19, textAlign: "center" },
+  whisperCardDescriptionCompact: { fontSize: 11, lineHeight: 14 },
+  whisperCardRule: { width: 76, height: 1, marginVertical: 5 },
+  whisperCardOutcome: { color: "#D8CEC2", fontSize: 13, lineHeight: 18, fontStyle: "italic", textAlign: "center" },
+  whisperCardOutcomeCompact: { fontSize: 10, lineHeight: 13 },
+  whisperCardCalibration: {
+    width: "100%",
+    minHeight: 42,
+    borderRadius: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 5,
+  },
+  whisperCardCalibrationText: {
+    color: "#E7DCCB",
+    fontSize: 11,
+    lineHeight: 15,
+    letterSpacing: 0.8,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  whisperCardCalibrationTextCompact: { fontSize: 8, lineHeight: 10, letterSpacing: 0.5 },
+  whisperCardActive: { borderWidth: 2.5, shadowOpacity: 0.9, shadowRadius: 16, elevation: 7 },
+  whisperCardPressed: { opacity: 0.86, transform: [{ scale: 0.985 }] },
+  whisperControlActive: {
+    borderColor: "#FFE5A6",
+    backgroundColor: "rgba(246, 201, 87, 0.18)",
+    shadowColor: "#F6C957",
+    shadowOpacity: 0.85,
+    shadowRadius: 10,
+  },
+  whisperControlPressed: { opacity: 0.78, transform: [{ scale: 0.98 }] },
+  whisperBackText: { color: "#FBE8BD", fontSize: 14, fontWeight: "900", letterSpacing: 0.8 },
+  whisperFallbackBack: {
+    minWidth: 110,
+    minHeight: 48,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "#9B7442",
+    borderRadius: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingHorizontal: 14,
+    marginBottom: 18,
+  },
+  whisperStackedSafe: { flex: 1, backgroundColor: "#090A10" },
+  whisperStackedScroll: { flex: 1, backgroundColor: "#090A10" },
+  whisperStackedContent: { flexGrow: 1, alignItems: "center", paddingBottom: 36 },
+  whisperHeaderCrop: { position: "relative", overflow: "hidden", backgroundColor: "#090A10" },
+  whisperStackedIntro: {
+    width: "100%",
+    maxWidth: 760,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    alignItems: "center",
+  },
+  whisperStackedBack: {
+    minWidth: 104,
+    minHeight: 46,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "#9B7442",
+    borderRadius: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingHorizontal: 13,
+  },
+  whisperStackedTitle: {
+    color: "#FFF1D5",
+    fontSize: 30,
+    lineHeight: 36,
+    fontWeight: "900",
+    textAlign: "center",
+    marginTop: 10,
+  },
+  whisperStackedDescription: {
+    color: "#E6DACA",
+    maxWidth: 620,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+    marginTop: 7,
+  },
+  whisperStackedCards: { width: "100%", maxWidth: 560, paddingHorizontal: 14, gap: 14, marginTop: 18 },
+  whisperStackedFate: {
+    width: "100%",
+    maxWidth: 540,
+    minHeight: 54,
+    marginTop: 18,
+    borderWidth: 1,
+    borderColor: "#B68B4D",
+    borderRadius: 5,
+    backgroundColor: "#14141B",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+  },
+  whisperFateText: { flexShrink: 1, color: "#FBE8BD", fontSize: 12, fontWeight: "900", textAlign: "center" },
+  whisperStackedBalance: {
+    color: "#BEB3A4",
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: "center",
+    paddingHorizontal: 18,
+    marginTop: 10,
+  },
   overlayScroll: { flexGrow: 1, padding: 22, justifyContent: "center", alignItems: "center" },
   sheet: { width: "100%", maxWidth: 620, backgroundColor: "#252A36", borderRadius: 6, padding: 24, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 10 } },
   resultSheet: { width: "100%", maxWidth: 560, backgroundColor: "#252A36", borderWidth: 1, borderRadius: 6, padding: 26, alignItems: "center" },
@@ -1269,6 +3581,254 @@ const styles = StyleSheet.create({
   fateButton: { minHeight: 48, marginTop: 18, padding: 12, alignItems: "center", justifyContent: "center" },
   fateText: { color: "#E8D8B6", fontSize: 12, fontWeight: "900", textDecorationLine: "underline", textAlign: "center" },
   balanceNote: { color: "#958E84", fontSize: 11, textAlign: "center" },
+  gameplayCinematic: {
+    flex: 1,
+    backgroundColor: "#08090E",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  gameplayCinematicStage: { position: "relative", overflow: "hidden", backgroundColor: "#08090E" },
+  gameplayCinematicImage: { position: "absolute", inset: 0, width: "100%", height: "100%" },
+  gameplayCinematicControl: {
+    position: "absolute",
+    zIndex: 12,
+    minHeight: 44,
+    minWidth: 58,
+    borderWidth: 2,
+    borderColor: "transparent",
+    borderRadius: 7,
+  },
+  gameplayControlActive: {
+    borderColor: "#FFF0BE",
+    backgroundColor: "rgba(246, 201, 87, 0.13)",
+    shadowColor: "#F6C957",
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+  },
+  gameplayControlPressed: { opacity: 0.76, transform: [{ scale: 0.97 }] },
+  gameplayCinematicTitle: {
+    position: "absolute",
+    zIndex: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#11131D",
+    borderWidth: 1,
+    borderColor: "#7B542A",
+    borderRadius: 7,
+    paddingHorizontal: 12,
+  },
+  gameplayCinematicTitleText: {
+    color: "#FFF1D3",
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: "900",
+    textAlign: "center",
+    textShadowColor: "#000",
+    textShadowRadius: 4,
+  },
+  gameplayCinematicRealmText: { fontSize: 11, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase" },
+  gameplayCinematicStatus: {
+    position: "absolute",
+    zIndex: 5,
+    backgroundColor: "#11131D",
+    borderWidth: 1,
+    borderColor: "#604622",
+    borderRadius: 6,
+    paddingHorizontal: 10,
+  },
+  gameplayStatus: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  gameplayStatusCompact: { height: "100%", paddingVertical: 2 },
+  gameplayStatusItem: { minWidth: 80, alignItems: "center", justifyContent: "center" },
+  gameplayStatusLabel: { color: "#BAAE9B", fontSize: 10, fontWeight: "900", letterSpacing: 1.5, textAlign: "center" },
+  gameplayStatusLabelCompact: { fontSize: 8, letterSpacing: 1.1 },
+  gameplayMovesValue: { color: "#FFF0D5", fontSize: 28, lineHeight: 31, fontWeight: "900", textAlign: "center" },
+  gameplayScoreValue: { color: "#F6C957", fontSize: 23, lineHeight: 27, fontWeight: "900", textAlign: "center" },
+  gameplayStatusValueCompact: { fontSize: 18, lineHeight: 20 },
+  gameplayTargetText: { color: "#ADA18E", fontSize: 10, textAlign: "center" },
+  gameplayTargetTextCompact: { fontSize: 8 },
+  gameplayBrewValue: { color: "#78E690", fontSize: 13, fontWeight: "900", textAlign: "center" },
+  gameplayBrewValueCompact: { fontSize: 10 },
+  gameplayCinematicGoals: {
+    position: "absolute",
+    zIndex: 5,
+    backgroundColor: "#11131D",
+    borderWidth: 1,
+    borderColor: "#604622",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+  },
+  gameplayGoals: { width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+  gameplayGoalsCompact: { height: "100%", alignItems: "center", gap: 5 },
+  gameplayGoal: {
+    minWidth: 155,
+    flexGrow: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 5,
+    backgroundColor: "#20232E",
+    padding: 8,
+    gap: 7,
+  },
+  gameplayGoalCompact: { minWidth: 122, height: "82%", paddingVertical: 2, paddingHorizontal: 6, gap: 5 },
+  gameplayGoalDot: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gameplayGoalSymbol: { fontSize: 16, fontWeight: "900" },
+  gameplayGoalText: { flex: 1, color: "#EDE2D0", fontSize: 12, fontWeight: "700" },
+  gameplayGoalTextCompact: { fontSize: 9 },
+  gameplayGoalCount: { color: "#FFF2D8", fontSize: 13, fontWeight: "900" },
+  gameplayGoalCountCompact: { fontSize: 10 },
+  gameplayCinematicBoardPosition: {
+    position: "absolute",
+    zIndex: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#090B10",
+    borderWidth: 2,
+    borderColor: "#8E6332",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.72,
+    shadowRadius: 18,
+  },
+  cinematicBoard: {
+    position: "relative",
+    backgroundColor: "#0B0C12",
+    borderWidth: 7,
+    borderColor: "#3C2819",
+    borderRadius: 9,
+    overflow: "hidden",
+    shadowColor: "#F0A949",
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+  },
+  presentedCellPosition: { position: "absolute" },
+  presentedCellClearing: {
+    zIndex: 5,
+    shadowColor: "#FFF0A8",
+    shadowOpacity: 1,
+    shadowRadius: 16,
+  },
+  presentedCellRefill: { zIndex: 4 },
+  cinematicCell: {
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.27)",
+    shadowColor: "#000",
+    shadowOpacity: 0.72,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  cinematicCellShine: {
+    position: "absolute",
+    top: 3,
+    left: 4,
+    right: 4,
+    height: "30%",
+    borderRadius: 8,
+    opacity: 0.75,
+  },
+  cinematicCellSymbol: {
+    textShadowColor: "rgba(255,255,255,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  gameplayCinematicInstruction: {
+    position: "absolute",
+    zIndex: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#11131D",
+    borderWidth: 1,
+    borderColor: "#604622",
+    borderRadius: 6,
+    paddingHorizontal: 12,
+  },
+  gameplayCinematicInstructionText: {
+    color: "#F4E8D4",
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  gameplayCinematicSync: {
+    position: "absolute",
+    zIndex: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#17151B",
+    borderWidth: 1,
+    borderColor: "#8B6534",
+    borderRadius: 7,
+    paddingHorizontal: 10,
+  },
+  gameplayCinematicSyncEmpty: { borderColor: "transparent", backgroundColor: "#14131A" },
+  gameplayCinematicSyncText: { color: "#F5DCA6", fontSize: 11, lineHeight: 14, fontWeight: "800", textAlign: "center" },
+  gameplayStackedScroll: { flex: 1, backgroundColor: "#090A10" },
+  gameplayStackedContent: { flexGrow: 1, alignItems: "center", paddingBottom: 38 },
+  gameplayMobileArtwork: { width: "100%", height: 150, opacity: 0.72 },
+  gameplayStackedHeader: {
+    width: "100%",
+    maxWidth: 620,
+    minHeight: 70,
+    marginTop: -8,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  gameplayStackedControl: {
+    minWidth: 76,
+    minHeight: 46,
+    borderWidth: 1,
+    borderColor: "#9B7442",
+    borderRadius: 5,
+    backgroundColor: "#17151C",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+  },
+  gameplayControlText: { color: "#FBE8BD", fontSize: 11, fontWeight: "900" },
+  gameplayStackedTitleCopy: { flex: 1, alignItems: "center" },
+  gameplayStackedTitle: { color: "#FFF0D6", fontSize: 19, lineHeight: 23, fontWeight: "900", textAlign: "center" },
+  gameplayStackedRealm: { fontSize: 10, fontWeight: "900", letterSpacing: 1.1, textTransform: "uppercase", textAlign: "center" },
+  gameplayStackedInstruction: {
+    minHeight: 48,
+    maxWidth: 620,
+    color: "#F4E8D4",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "800",
+    textAlign: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  gameplayStackedSync: {
+    maxWidth: 620,
+    color: "#F2C983",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "800",
+    textAlign: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
   gameHeaderCenter: { flex: 1, alignItems: "center", paddingHorizontal: 8 },
   levelHeader: { color: "#F8EFDF", fontSize: 16, fontWeight: "900", textAlign: "center" },
   realmHeader: { color: "#AFA89B", fontSize: 10, marginTop: 2, textAlign: "center" },

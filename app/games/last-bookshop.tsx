@@ -1,12 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -28,7 +30,6 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import {
-  LAST_BOOKSHOP_PROGRESS_KEY,
   PITCH_CHARMS,
   advanceLastBookshopProgress,
   calculateRoundReward,
@@ -39,7 +40,6 @@ import {
   getEncountersForNight,
   getWork,
   resolveEncounterOutcome,
-  restoreLastBookshopProgress,
   type ConfidenceLevel,
   type EncounterOutcome,
   type LastBookshopEncounter,
@@ -47,10 +47,25 @@ import {
   type PitchCharm,
 } from "../../lib/recommendationGames/lastBookshop";
 import {
+  lastBookshopProgressScopeKey,
+  loadLastBookshopProgressForScope,
+  scopedLastBookshopProgressKey,
+} from "../../lib/recommendationGames/lastBookshopProgressStorage";
+import { lastBookshopPortraitForCustomer } from "../../lib/recommendationGames/lastBookshopPortraits";
+import {
+  LAST_BOOKSHOP_TITLE_ARTWORK,
+  computeLastBookshopTitleArtworkLayout,
+} from "../../lib/recommendationGames/lastBookshopTitleArtwork";
+import {
   flushRecommendationGameEvents,
   queueRecommendationGameEvent,
   type AsyncKeyValueStorage,
 } from "../../lib/recommendationGames/evidenceClient";
+import { GameRecommendationReward } from "../../components/GameRecommendationReward";
+import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
+import { adaptLastBookshopEncounterToSignals, LAST_BOOKSHOP_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
+import { lastBookshopMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
+import { parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 
 type GamePhase = "title" | "arrival" | "shelves" | "counter" | "result" | "night_complete" | "ending";
 
@@ -60,6 +75,7 @@ type RoundResult = {
   reward: { reputation: number; coins: number };
   predictedWorkId: string;
   nextProgress: LastBookshopProgressV1;
+  evidenceEventId: string;
 };
 
 const webStorage: AsyncKeyValueStorage = {
@@ -138,7 +154,7 @@ function ShopHeader({
   );
 }
 
-function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgress: boolean }) {
+function AbstractTitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgress: boolean }) {
   return (
     <View style={styles.titleScreen}>
       <View style={styles.moon}>
@@ -161,7 +177,12 @@ function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgres
       <Text style={styles.titleTagline}>
         Listen closely. Choose three stories. Send each midnight visitor home with the one they need.
       </Text>
-      <TouchableOpacity style={styles.beginButton} onPress={onBegin} accessibilityRole="button">
+      <TouchableOpacity
+        style={styles.beginButton}
+        onPress={onBegin}
+        accessibilityRole="button"
+        accessibilityLabel={hasProgress ? "Continue your journey" : "Turn the Key"}
+      >
         <Text style={styles.beginButtonText}>{hasProgress ? "Continue the Night" : "Turn the Key"}</Text>
       </TouchableOpacity>
       <Text style={styles.titleHint}>The shop remembers every kindness.</Text>
@@ -169,10 +190,136 @@ function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgres
   );
 }
 
+function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgress: boolean }) {
+  const { width, height } = useWindowDimensions();
+  const [artworkFailed, setArtworkFailed] = useState(false);
+  const [buttonFocused, setButtonFocused] = useState(false);
+  const [buttonHovered, setButtonHovered] = useState(false);
+  const layout = computeLastBookshopTitleArtworkLayout(width, height);
+  const buttonLabel = hasProgress ? "Continue your journey" : "Turn the Key";
+  const showVisibleButton = layout.mode === "mobile" || hasProgress;
+
+  if (artworkFailed) return <AbstractTitleScreen onBegin={onBegin} hasProgress={hasProgress} />;
+
+  const artwork = (
+    <View
+      style={[
+        styles.titleArtworkStage,
+        { width: layout.stage.width, height: layout.stage.height },
+      ]}
+    >
+      <Image
+        source={LAST_BOOKSHOP_TITLE_ARTWORK}
+        style={styles.titleArtworkImage}
+        resizeMode="contain"
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel="A warmly lit bookshop storefront at night"
+        accessibilityIgnoresInvertColors
+        onError={() => setArtworkFailed(true)}
+      />
+      <Pressable
+        testID="last-bookshop-title-begin"
+        accessibilityRole="button"
+        accessibilityLabel={buttonLabel}
+        accessibilityHint="Enter The Last Bookshop and meet the next visitor"
+        onPress={onBegin}
+        onFocus={() => setButtonFocused(true)}
+        onBlur={() => setButtonFocused(false)}
+        onHoverIn={() => setButtonHovered(true)}
+        onHoverOut={() => setButtonHovered(false)}
+        style={({ pressed }: { pressed: boolean }) => [
+          styles.titleArtworkButton,
+          {
+            left: layout.button.left,
+            top: layout.button.top,
+            width: layout.button.width,
+            height: layout.button.height,
+          },
+          showVisibleButton && styles.titleArtworkButtonVisible,
+          (buttonFocused || buttonHovered) && (
+            showVisibleButton ? styles.titleArtworkButtonVisibleActive : styles.titleArtworkButtonActive
+          ),
+          pressed && styles.titleArtworkButtonPressed,
+        ]}
+      >
+        <Text
+          style={[
+            styles.titleArtworkButtonText,
+            !showVisibleButton && styles.visuallyHidden,
+          ]}
+        >
+          {buttonLabel}
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  if (layout.mode === "mobile") {
+    return (
+      <ScrollView
+        style={styles.titleArtworkMobileScroll}
+        contentContainerStyle={styles.titleArtworkMobileContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {artwork}
+        <View style={styles.titleArtworkMobileCopy}>
+          <Text accessibilityRole="header" style={styles.titleArtworkMobileTitle}>The Last Bookshop</Text>
+          <Text style={styles.titleArtworkMobileInstructions}>
+            Listen closely. Choose three stories. Send each midnight visitor home with the one they need.
+          </Text>
+          <Text style={styles.titleArtworkMobileHint}>The shop remembers every kindness.</Text>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <View style={styles.titleArtworkDesktop}>
+      {artwork}
+      <View style={styles.visuallyHidden} pointerEvents="none">
+        <Text accessibilityRole="header">The Last Bookshop</Text>
+        <Text>Listen closely. Choose three stories. Send each midnight visitor home with the one they need.</Text>
+      </View>
+    </View>
+  );
+}
+
 function CustomerPortrait({ encounter }: { encounter: LastBookshopEncounter }) {
   const customer = getCustomer(encounter.customerId);
+  const { width } = useWindowDimensions();
+  const [failedCustomerId, setFailedCustomerId] = useState("");
+  const source = lastBookshopPortraitForCustomer(customer.id);
+  const showArtwork = Boolean(source) && failedCustomerId !== customer.id;
+  const artworkSize = width < 480
+    ? { width: 116, height: 100, borderRadius: 50 }
+    : { width: 142, height: 120, borderRadius: 60 };
+  const accessibilityLabel = `Portrait of ${customer.name}, ${customer.role}`;
+
+  if (showArtwork && source) {
+    return (
+      <View style={[styles.portraitArtworkFrame, artworkSize]}>
+        <Image
+          source={source}
+          style={styles.portraitArtwork}
+          resizeMode="contain"
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={accessibilityLabel}
+          accessibilityIgnoresInvertColors
+          onError={() => setFailedCustomerId(customer.id)}
+        />
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.portrait, { borderColor: customer.portraitColor }]}>
+    <View
+      style={[styles.portrait, { borderColor: customer.portraitColor }]}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={accessibilityLabel}
+    >
       <View style={[styles.portraitHair, { backgroundColor: customer.portraitColor }]} />
       <View style={styles.portraitFace}>
         <View style={styles.portraitEyes}>
@@ -756,6 +903,13 @@ function EndingScreen({ progress, onRestart }: { progress: LastBookshopProgressV
 }
 
 export default function LastBookshopRoute() {
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+  const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
+  const progressScopeKey = useMemo(() => lastBookshopProgressScopeKey({
+    playerId: routeConfig.playerId,
+    libraryId: routeConfig.libraryId,
+    ageBand: routeConfig.ageBand,
+  }), [routeConfig.ageBand, routeConfig.libraryId, routeConfig.playerId]);
   const [progress, setProgress] = useState<LastBookshopProgressV1 | null>(null);
   const [phase, setPhase] = useState<GamePhase>("title");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -767,19 +921,40 @@ export default function LastBookshopRoute() {
   const [storageError, setStorageError] = useState("");
   const gameSessionIdRef = useRef(`lbs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`);
   const encounterStartedAtRef = useRef(Date.now());
+  const gameRecommendationMilestone = useGameRecommendationMilestone({
+    game: "the_last_bookshop",
+    gameLabel: "The Last Bookshop",
+    playerId: routeConfig.playerId,
+    gameSessionId: gameSessionIdRef.current,
+    libraryId: routeConfig.libraryId,
+    ageBand: routeConfig.ageBand,
+    sourceFlags: routeConfig.sourceFlags,
+    localCollectionOnly: routeConfig.localCollectionOnly,
+    evidenceMode: LAST_BOOKSHOP_EVIDENCE_MODE,
+  });
 
   const persistProgress = useCallback(async (next: LastBookshopProgressV1) => {
-    await gameStorage.setItem(LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(next));
-  }, []);
+    await gameStorage.setItem(scopedLastBookshopProgressKey(progressScopeKey), JSON.stringify(next));
+  }, [progressScopeKey]);
 
   useEffect(() => {
     let active = true;
+    setProgress(null);
+    setLoadedExistingProgress(false);
+    setPhase("title");
+    setSelectedIds([]);
+    setPredictedId("");
+    setConfidence(null);
+    setPitchCharm(null);
+    setRoundResult(null);
     const previousTitle = Platform.OS === "web" && typeof document !== "undefined" ? document.title : "";
     if (Platform.OS === "web" && typeof document !== "undefined") document.title = "The Last Bookshop";
     void (async () => {
       let existing: LastBookshopProgressV1 | null = null;
       try {
-        existing = restoreLastBookshopProgress(await gameStorage.getItem(LAST_BOOKSHOP_PROGRESS_KEY));
+        existing = await loadLastBookshopProgressForScope(gameStorage, {
+          scopeKey: progressScopeKey,
+        });
       } catch {
         if (active) setStorageError("The shop ledger is unavailable. This visit may not survive closing the game.");
       }
@@ -806,7 +981,7 @@ export default function LastBookshopRoute() {
       active = false;
       if (Platform.OS === "web" && typeof document !== "undefined") document.title = previousTitle;
     };
-  }, [persistProgress]);
+  }, [persistProgress, progressScopeKey]);
 
   const encounter = useMemo(() => {
     if (!progress || progress.night > 3) return null;
@@ -852,13 +1027,24 @@ export default function LastBookshopRoute() {
       return;
     }
     setStorageError("");
-    setRoundResult({ encounter, outcome, reward, predictedWorkId: predictedId, nextProgress });
+    setRoundResult({ encounter, outcome, reward, predictedWorkId: predictedId, nextProgress, evidenceEventId: event.eventId });
     setProgress(nextProgress);
     setPhase("result");
     void flushRecommendationGameEvents(gameStorage, sendRecommendationGameEvent).catch(() => {
       setStorageError("This visit is saved locally, but its sealed letter is still waiting to be sent.");
     });
-  }, [confidence, encounter, persistProgress, pitchCharm, predictedId, progress, selectedIds]);
+    const signals = adaptLastBookshopEncounterToSignals({
+      selectedWorkIds: selectedIds,
+      predictedWorkId: predictedId,
+      pitchCharm,
+      works: selectedIds.map((workId) => getWork(workId)),
+    });
+    void gameRecommendationMilestone.notifyEvidence(
+      event.eventId,
+      signals,
+      () => null,
+    );
+  }, [confidence, encounter, gameRecommendationMilestone, persistProgress, pitchCharm, predictedId, progress, selectedIds]);
 
   const continueAfterResult = useCallback(() => {
     if (!roundResult) return;
@@ -870,13 +1056,18 @@ export default function LastBookshopRoute() {
     setConfidence(null);
     setPitchCharm(null);
     setRoundResult(null);
-    if (next.night > 3) setPhase("ending");
-    else if (next.night !== previousNight) setPhase("night_complete");
-    else {
+    if (next.night > 3 || next.night !== previousNight) {
+      setPhase(next.night > 3 ? "ending" : "night_complete");
+      void gameRecommendationMilestone.notifyEvidence(
+        roundResult.evidenceEventId,
+        [],
+        (lastMilestoneEvidenceCount) => lastBookshopMilestone(next.completedEncounterIds.length, lastMilestoneEvidenceCount),
+      );
+    } else {
       setPhase("arrival");
       encounterStartedAtRef.current = Date.now();
     }
-  }, [roundResult]);
+  }, [gameRecommendationMilestone, roundResult]);
 
   const continueAfterNight = useCallback(() => {
     setPhase("arrival");
@@ -892,6 +1083,9 @@ export default function LastBookshopRoute() {
       setStorageError("The ledger could not begin a new story. Check device storage and try again.");
       return;
     }
+    const nextGameSessionId = `lbs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+    gameSessionIdRef.current = nextGameSessionId;
+    await gameRecommendationMilestone.resetSession(nextGameSessionId);
     setStorageError("");
     setProgress(next);
     setLoadedExistingProgress(false);
@@ -902,7 +1096,7 @@ export default function LastBookshopRoute() {
     setRoundResult(null);
     setPhase("arrival");
     encounterStartedAtRef.current = Date.now();
-  }, [persistProgress, progress]);
+  }, [gameRecommendationMilestone, persistProgress, progress]);
 
   if (!progress) {
     return (
@@ -976,6 +1170,24 @@ export default function LastBookshopRoute() {
           <NightCompleteScreen completedNight={progress.night - 1} progress={progress} onContinue={continueAfterNight} />
         ) : null}
       </ScrollView>
+      {gameRecommendationMilestone.pendingReward ? (
+        <GameRecommendationReward
+          visible
+          cadence={gameRecommendationMilestone.pendingReward.cadence}
+          gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
+          book={{
+            title: gameRecommendationMilestone.pendingReward.book.title,
+            author: gameRecommendationMilestone.pendingReward.book.author,
+            coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+            description: gameRecommendationMilestone.pendingReward.description,
+            reason: gameRecommendationMilestone.pendingReward.reason,
+          }}
+          onRespond={(response) => gameRecommendationMilestone.respond(
+            response,
+            phase === "night_complete" ? continueAfterNight : () => undefined,
+          )}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -1018,6 +1230,57 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
+  titleArtworkDesktop: {
+    flex: 1,
+    backgroundColor: "#0d0a12",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  titleArtworkMobileScroll: { flex: 1, backgroundColor: "#0d0a12" },
+  titleArtworkMobileContent: { flexGrow: 1, alignItems: "center", justifyContent: "flex-start", paddingBottom: 24 },
+  titleArtworkStage: { position: "relative", alignSelf: "center", backgroundColor: "#0d0a12", overflow: "hidden" },
+  titleArtworkImage: { position: "absolute", inset: 0, width: "100%", height: "100%" },
+  titleArtworkButton: {
+    position: "absolute",
+    borderWidth: 3,
+    borderColor: "transparent",
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  titleArtworkButtonVisible: {
+    backgroundColor: "rgba(153, 76, 49, 0.94)",
+    borderColor: "#e5b66d",
+    shadowColor: "#000",
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  titleArtworkButtonActive: {
+    borderColor: "#ffe0a2",
+    backgroundColor: "rgba(205, 128, 76, 0.28)",
+  },
+  titleArtworkButtonVisibleActive: {
+    borderColor: "#ffe0a2",
+    backgroundColor: "rgba(177, 90, 55, 0.98)",
+  },
+  titleArtworkButtonPressed: {
+    backgroundColor: "rgba(116, 53, 38, 0.72)",
+    transform: [{ scale: 0.985 }],
+  },
+  titleArtworkButtonText: { color: "#fff1cf", fontSize: 17, fontWeight: "900", letterSpacing: 0.3 },
+  titleArtworkMobileCopy: {
+    alignSelf: "stretch",
+    maxWidth: 520,
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 20,
+  },
+  titleArtworkMobileTitle: { color: "#f1ddb8", fontSize: 27, lineHeight: 33, fontWeight: "900", textAlign: "center" },
+  titleArtworkMobileInstructions: { color: "#d7c8b1", fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 10 },
+  titleArtworkMobileHint: { color: "#9b8a9f", fontSize: 12, lineHeight: 17, fontStyle: "italic", textAlign: "center", marginTop: 10 },
+  visuallyHidden: { position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" },
   moon: {
     position: "absolute",
     top: 58,
@@ -1073,6 +1336,8 @@ const styles = StyleSheet.create({
   },
   sceneChapter: { color: "#b98b51", fontSize: 11, letterSpacing: 2.4, fontWeight: "900", marginBottom: 22, textAlign: "center" },
   customerRow: { width: "100%", flexDirection: "row", alignItems: "center", marginBottom: 20 },
+  portraitArtworkFrame: { backgroundColor: "transparent", overflow: "hidden", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  portraitArtwork: { width: "100%", height: "100%" },
   portrait: { width: 112, height: 132, borderWidth: 2, borderRadius: 56, backgroundColor: "#241c29", overflow: "hidden", alignItems: "center", position: "relative" },
   portraitHair: { position: "absolute", width: 74, height: 76, borderRadius: 38, top: 16, opacity: 0.72 },
   portraitFace: { width: 54, height: 67, borderRadius: 27, backgroundColor: "#c99575", marginTop: 34, alignItems: "center", paddingTop: 24 },

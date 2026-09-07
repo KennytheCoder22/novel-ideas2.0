@@ -135,8 +135,8 @@ async function main() {
   const evidenceSource = readFileSync(resolve(root, "lib/recommendationGames/unwrittenMapEvidenceClient.ts"), "utf8");
   const apiSource = readFileSync(resolve(root, "api/unwritten-map-event.ts"), "utf8");
 
-  assert(hubSource.includes("The Unwritten Map") && hubSource.includes("12 story encounters"), "games hub V2 copy missing");
-  assert(hubSource.includes('pathname: "/games/unwritten-map"'), "games hub route/context forwarding missing");
+  assert(hubSource.includes("The Unwritten Map") && hubSource.includes('route: "/games/unwritten-map"'), "games hub card missing");
+  assert(hubSource.includes("router.push({ pathname: game.route, params: forwardedParams }"), "games hub route/context forwarding missing");
   assert(layoutSource.includes('name="games/unwritten-map"'), "map game route is not registered");
   assert(routeSource.includes('document.title = "The Unwritten Map"'), "browser title must preserve game fiction");
   assert(routeSource.includes('router.replace({') && routeSource.includes('...(params.playerId ? { playerId: params.playerId } : {})')
@@ -198,6 +198,22 @@ async function main() {
   assert(event.explorationContext.preferenceInference === "none_from_exploration", "movement must be explicitly non-preference telemetry");
   assert(!game.normalizeUnwrittenMapEventV2({ ...event, email: "not-allowed@example.com" }), "event allowlist must reject personal/unknown fields");
   assert(!game.isUnwrittenMapEventV2({ ...event, chosenOption: { ...event.chosenOption, label: "changed" } }), "snapshots are identity-bound");
+  const originatingDecision = game.applyMapOutcome(
+    game.startEncounterAttempt(save, scenario.id),
+    {
+      scenarioId: scenario.id,
+      kind: "choice",
+      optionId: event.chosenOption.id,
+      outcomeEvidence: { kind: "durable_event", schemaVersion: event.schemaVersion, eventId: event.eventId },
+      presentationId: event.presentationId,
+      attempt: 1,
+    },
+  ).decisions[0];
+  const newerDecision = { ...originatingDecision, presentationId: "later-encounter-presentation" };
+  assert(game.isUnwrittenMapRecommendationContinuationCurrent(event.presentationId, originatingDecision)
+    && !game.isUnwrittenMapRecommendationContinuationCurrent(event.presentationId, newerDecision)
+    && !game.isUnwrittenMapRecommendationContinuationCurrent(event.presentationId, null),
+  "a delayed recommendation continuation must remain bound to its originating decision");
   checks.push("semantic_choice_evidence_and_counterbalancing");
 
   const { choices } = presentation(save, scenario);
@@ -1815,7 +1831,8 @@ async function main() {
     && routeSource.includes('AppState.addEventListener("change"'), "web and native lifecycle movement cancellation missing");
   assert(routeSource.includes("useEffect(() => () => clearMovementState(false)")
     && routeSource.includes("heldKeysRef.current.clear()"), "unmount must clear native and web held movement state");
-  assert(routeSource.includes("gameSessionIdRef.current = createGameSessionId()")
+  assert(routeSource.includes("const nextGameSessionId = createGameSessionId()")
+    && routeSource.includes("gameSessionIdRef.current = nextGameSessionId")
     && routeSource.includes("completionEmittedRef.current = false")
     && routeSource.includes("stepsThisSessionRef.current = 0"), "new maps must reset every session identity/counter");
   const beginSource = routeSource.slice(routeSource.indexOf("const beginJourney"), routeSource.indexOf("const recordOutcome"));
@@ -1841,6 +1858,12 @@ async function main() {
     && routeSource.includes("reloadAfterStaleCompletion")
     && routeSource.includes("This map changed in another session before completion"),
   "result continuation must recheck durable completion before entering complete and reload a stale session");
+  assert(continueSource.includes("expectedPresentationId")
+    && continueSource.includes('phaseRef.current !== "result"')
+    && continueSource.includes("isUnwrittenMapRecommendationContinuationCurrent")
+    && routeSource.includes("gameRecommendationMilestone.pendingReward?.nativeEvidenceId")
+    && routeSource.includes("continueFromResult(originatingDecisionId)"),
+  "a delayed recommendation response must not clear a newer encounter or result");
   assert(routeSource.includes("RETRY FINAL FIELD NOTE")
     && routeSource.includes("completionPendingRef.current")
     && routeSource.includes("updateCompletionPending(true)")

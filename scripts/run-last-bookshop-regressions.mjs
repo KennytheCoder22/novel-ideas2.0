@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,9 +21,15 @@ require.extensions[".ts"] = (module, filename) => {
   }).outputText;
   module._compile(output, filename);
 };
+require.extensions[".webp"] = (module, filename) => {
+  module.exports = filename;
+};
 
 const game = require(resolve(root, "lib/recommendationGames/lastBookshop.ts"));
+const progressStorage = require(resolve(root, "lib/recommendationGames/lastBookshopProgressStorage.ts"));
 const evidence = require(resolve(root, "lib/recommendationGames/evidenceClient.ts"));
+const portraits = require(resolve(root, "lib/recommendationGames/lastBookshopPortraits.ts"));
+const titleArtwork = require(resolve(root, "lib/recommendationGames/lastBookshopTitleArtwork.ts"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -53,8 +60,9 @@ async function main() {
   assert(menuSource.includes('pathname: "/games"'), "game menu must open the game chooser");
   assert(hubSource.includes("Media Mania"), "game chooser must preserve Media Mania");
   assert(hubSource.includes("The Last Bookshop"), "game chooser must include The Last Bookshop");
-  assert(hubSource.includes('pathname: "/media-mania"'), "Media Mania route missing from game chooser");
-  assert(hubSource.includes('router.push("/games/last-bookshop"'), "Last Bookshop route missing from game chooser");
+  assert(hubSource.includes('route: "/media-mania"'), "Media Mania route missing from game chooser");
+  assert(hubSource.includes('route: "/games/last-bookshop"'), "Last Bookshop route missing from game chooser");
+  assert(hubSource.includes("router.push({ pathname: game.route, params: forwardedParams }"), "game chooser must forward shared context");
   assert(menuSource.includes("Librarian Review"), "Librarian Review must remain separate");
   assert(layoutSource.includes('name="games/last-bookshop"'), "game route is not registered");
   assert(vercel.rewrites.some((rewrite) => rewrite.source === "/games/:path*" && rewrite.destination === "/"), "game SPA rewrite missing");
@@ -81,6 +89,62 @@ async function main() {
   assert(game.LAST_BOOKSHOP_ENCOUNTERS.length === 9, "vertical slice must contain three encounters per night");
   checks.push("playable_vertical_slice");
 
+  const titleArtworkPath = titleArtwork.LAST_BOOKSHOP_TITLE_ARTWORK;
+  assert(typeof titleArtworkPath === "string" && titleArtworkPath.endsWith("title-screen.webp"), "real title artwork mapping missing");
+  assert(existsSync(titleArtworkPath), "real title artwork asset does not exist");
+  const titleArtworkBytes = readFileSync(titleArtworkPath);
+  assert(
+    titleArtworkBytes.subarray(0, 4).toString("ascii") === "RIFF"
+      && titleArtworkBytes.subarray(8, 12).toString("ascii") === "WEBP",
+    "title artwork must be WebP",
+  );
+  assert(statSync(titleArtworkPath).size < 400_000, "title artwork exceeds the web payload budget");
+  const desktopTitleLayout = titleArtwork.computeLastBookshopTitleArtworkLayout(1920, 1080);
+  assert(desktopTitleLayout.mode === "cinematic", "desktop title artwork must use the full cinematic layout");
+  assert(Math.abs(desktopTitleLayout.stage.width / desktopTitleLayout.stage.height - 1672 / 941) < 0.001, "desktop artwork aspect ratio drifted");
+  assert(desktopTitleLayout.button.height >= 44 && desktopTitleLayout.button.width >= 44, "desktop title button target is too small");
+  const mobileTitleLayout = titleArtwork.computeLastBookshopTitleArtworkLayout(390, 844);
+  assert(mobileTitleLayout.mode === "mobile", "portrait viewport must use the deliberate mobile treatment");
+  assert(mobileTitleLayout.button.height >= 44 && mobileTitleLayout.button.width >= 160, "mobile title button target is not readable or touch-safe");
+  assert(mobileTitleLayout.button.left >= 0 && mobileTitleLayout.button.left + mobileTitleLayout.button.width <= mobileTitleLayout.stage.width, "mobile title button overflows horizontally");
+  assert(appSource.includes("source={LAST_BOOKSHOP_TITLE_ARTWORK}"), "title screen does not render the real artwork");
+  assert(appSource.includes('testID="last-bookshop-title-begin"'), "interactive baked-button overlay missing");
+  assert(appSource.includes("accessibilityLabel={buttonLabel}"), "title button accessibility label missing");
+  assert(appSource.includes('layout.mode === "mobile" || hasProgress'), "saved progress must expose a visible continue treatment");
+  assert(appSource.includes("onError={() => setArtworkFailed(true)}"), "title artwork failure fallback missing");
+  assert(appSource.includes("return <AbstractTitleScreen"), "abstract title scene is not retained as the failure fallback");
+  checks.push("title_screen_artwork");
+
+  const expectedPortraits = {
+    mara: "mara-venn.webp",
+    orin: "orin-bell.webp",
+    kit: "kit-wren.webp",
+    elsie: "elsie-thorn.webp",
+    bram: "bram-hearth.webp",
+  };
+  const customerIds = game.LAST_BOOKSHOP_CUSTOMERS.map((customer) => customer.id);
+  assert(
+    JSON.stringify([...customerIds].sort()) === JSON.stringify(Object.keys(expectedPortraits).sort()),
+    "every authored patron must have exactly one portrait mapping",
+  );
+  const portraitPaths = customerIds.map((customerId) => {
+    const portraitPath = portraits.lastBookshopPortraitForCustomer(customerId);
+    assert(typeof portraitPath === "string", `portrait mapping missing for ${customerId}`);
+    assert(portraitPath.endsWith(expectedPortraits[customerId]), `portrait mapping is incorrect for ${customerId}`);
+    assert(existsSync(portraitPath), `portrait asset does not exist for ${customerId}`);
+    const bytes = readFileSync(portraitPath);
+    assert(bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP", `${customerId} portrait must be WebP`);
+    assert(statSync(portraitPath).size < 100_000, `${customerId} portrait exceeds the web payload budget`);
+    return { portraitPath, hash: createHash("sha256").update(bytes).digest("hex") };
+  });
+  assert(new Set(portraitPaths.map(({ portraitPath }) => portraitPath)).size === 5, "all five patrons must map to distinct portrait assets");
+  assert(new Set(portraitPaths.map(({ hash }) => hash)).size === 5, "all five portrait assets must contain distinct artwork");
+  assert(portraits.lastBookshopPortraitForCustomer("unknown") === null, "unmapped patrons must use the abstract fallback");
+  assert(appSource.includes('resizeMode="contain"'), "patron artwork must preserve its authored framing");
+  assert(appSource.includes("accessibilityLabel={accessibilityLabel}"), "patron portraits must expose an accessibility label");
+  assert(appSource.includes("onError={() => setFailedCustomerId(customer.id)}"), "patron artwork must retain the abstract fallback on load failure");
+  checks.push("customer_portrait_assets");
+
   assert(contractSource.includes('"recommendation_game_event_v1"'), "game event schema missing");
   assert(!contractSource.includes("TasteFeedbackEvent"), "game evidence must not overload TasteFeedbackEvent");
   assert(!contractSource.includes("human_review_record_v1"), "game evidence must not overload Human Review records");
@@ -95,6 +159,109 @@ async function main() {
   const recovered = game.restoreLastBookshopProgress(JSON.stringify({ ...initial, encounterIndex: 999 }));
   assert(recovered.encounterIndex === 2, "out-of-range encounter progress must recover to a playable step");
   checks.push("progress_round_trip");
+
+  const patronScopeA = progressStorage.lastBookshopProgressScopeKey({
+    playerId: "patron-a",
+    libraryId: "north",
+    ageBand: "teens",
+  });
+  const patronScopeB = progressStorage.lastBookshopProgressScopeKey({
+    playerId: "patron-b",
+    libraryId: "north",
+    ageBand: "teens",
+  });
+  const adultScopeA = progressStorage.lastBookshopProgressScopeKey({
+    playerId: "patron-a",
+    libraryId: "north",
+    ageBand: "adult",
+  });
+  assert(patronScopeA !== patronScopeB && patronScopeA !== adultScopeA,
+    "progress scopes must isolate patron and age context");
+  const scopedStorage = new MemoryStorage();
+  const patronAProgress = game.advanceLastBookshopProgress(
+    initial,
+    game.LAST_BOOKSHOP_ENCOUNTERS[0],
+    { reputation: 3, coins: 2 },
+  );
+  await scopedStorage.setItem(
+    progressStorage.scopedLastBookshopProgressKey(patronScopeA),
+    JSON.stringify(patronAProgress),
+  );
+  assert((await progressStorage.loadLastBookshopProgressForScope(scopedStorage, {
+    scopeKey: patronScopeA,
+  }))?.completedEncounterIds.length === 1, "the same patron must restore its completed encounters");
+  assert(await progressStorage.loadLastBookshopProgressForScope(scopedStorage, {
+    scopeKey: patronScopeB,
+  }) === null, "one patron must not inherit another patron's milestone progress");
+
+  const migrationStorage = new MemoryStorage();
+  await migrationStorage.setItem(game.LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(patronAProgress));
+  const migrated = await progressStorage.loadLastBookshopProgressForScope(migrationStorage, {
+    scopeKey: patronScopeA,
+  });
+  assert(migrated?.anonymousPlayerId === initial.anonymousPlayerId,
+    "the normal routed patron must retain legacy progress and its embedded anonymous identity");
+  assert(await progressStorage.loadLastBookshopProgressForScope(migrationStorage, {
+    scopeKey: patronScopeB,
+  }) === null, "a legacy global save must never be cross-claimed by another scope");
+  assert(game.restoreLastBookshopProgress(await migrationStorage.getItem(game.LAST_BOOKSHOP_PROGRESS_KEY)) !== null,
+    "legacy migration must preserve the original save");
+  const deviceMigrationStorage = new MemoryStorage();
+  await deviceMigrationStorage.setItem(game.LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(patronAProgress));
+  assert((await progressStorage.loadLastBookshopProgressForScope(deviceMigrationStorage, {
+    scopeKey: patronScopeA,
+  }))?.anonymousPlayerId === initial.anonymousPlayerId,
+  "an unscoped device route may safely retain its own legacy ledger");
+  const sharedMigrationValues = new Map();
+  const storageView = () => ({
+    getItem: async (key) => sharedMigrationValues.get(key) ?? null,
+    setItem: async (key, value) => {
+      sharedMigrationValues.set(key, value);
+    },
+  });
+  const migrationTabA = storageView();
+  const migrationTabB = storageView();
+  await migrationTabA.setItem(game.LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(patronAProgress));
+  const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: {} });
+  let crossTabClaims;
+  try {
+    crossTabClaims = await Promise.all([
+      progressStorage.loadLastBookshopProgressForScope(migrationTabA, { scopeKey: patronScopeA }),
+      progressStorage.loadLastBookshopProgressForScope(migrationTabB, { scopeKey: patronScopeB }),
+    ]);
+  } finally {
+    if (previousNavigator) Object.defineProperty(globalThis, "navigator", previousNavigator);
+    else Reflect.deleteProperty(globalThis, "navigator");
+  }
+  assert(crossTabClaims.filter(Boolean).length === 1,
+    "concurrent tabs must not copy one legacy save into two patron scopes");
+  const markerFailureValues = new Map();
+  const markerFailureStorage = {
+    getItem: async (key) => markerFailureValues.get(key) ?? null,
+    setItem: async (key, value) => {
+      if (key === progressStorage.LAST_BOOKSHOP_PROGRESS_MIGRATION_KEY
+        && JSON.parse(value).status === "complete") {
+        throw new Error("injected_marker_completion_failure");
+      }
+      markerFailureValues.set(key, value);
+    },
+  };
+  await markerFailureStorage.setItem(game.LAST_BOOKSHOP_PROGRESS_KEY, JSON.stringify(patronAProgress));
+  const markerFailureResult = await progressStorage.loadLastBookshopProgressForScope(
+    markerFailureStorage,
+    { scopeKey: patronScopeA },
+  );
+  assert(markerFailureResult?.completedEncounterIds.length === 1
+    && game.restoreLastBookshopProgress(
+      await markerFailureStorage.getItem(progressStorage.scopedLastBookshopProgressKey(patronScopeA)),
+    )?.completedEncounterIds.length === 1,
+  "a failed migration completion marker must not erase the durable migrated ledger");
+  assert(appSource.includes("lastBookshopProgressScopeKey")
+    && appSource.includes("loadLastBookshopProgressForScope")
+    && appSource.includes("routeConfig.ageBand"),
+  "the route must load patron, library, and age-scoped progress");
+  checks.push("patron_scoped_progress_and_safe_migration");
 
   const encounter = game.LAST_BOOKSHOP_ENCOUNTERS[0];
   const selected = ["atlas-of-small-stars", "iron-suns", "tea-at-worlds-end"];

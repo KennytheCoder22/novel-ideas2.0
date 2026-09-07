@@ -862,6 +862,17 @@ export function sameUnwrittenMapDecisionIdentity(
     && JSON.stringify(left.outcomeEvidence) === JSON.stringify(right.outcomeEvidence);
 }
 
+export function isUnwrittenMapRecommendationContinuationCurrent(
+  originatingPresentationId: string,
+  currentDecision: UnwrittenMapDecision | null,
+): boolean {
+  return Boolean(
+    originatingPresentationId
+    && currentDecision
+    && currentDecision.presentationId === originatingPresentationId,
+  );
+}
+
 export function updateMapPosition(
   save: UnwrittenMapSaveV2,
   position: MapPosition,

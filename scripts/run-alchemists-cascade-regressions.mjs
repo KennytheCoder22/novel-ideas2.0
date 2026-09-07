@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,11 +18,19 @@ require.extensions[".ts"] = (module, filename) => {
   }).outputText;
   module._compile(output, filename);
 };
+require.extensions[".webp"] = (module, filename) => {
+  module.exports = filename;
+};
 
 const game = require(resolve(root, "lib/recommendationGames/alchemistsCascade.ts"));
 const evidence = require(resolve(root, "lib/recommendationGames/alchemistsCascadeEvidenceClient.ts"));
 const quota = require(resolve(root, "lib/recommendationGames/alchemistsCascadeQuota.ts"));
 const api = require(resolve(root, "api/alchemists-cascade-event.ts"));
+const titleArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeTitleArtwork.ts"));
+const atlasArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeAtlasArtwork.ts"));
+const whisperArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeWhisperArtwork.ts"));
+const gameplayArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeGameplayArtwork.ts"));
+const presentation = require(resolve(root, "lib/recommendationGames/alchemistsCascadePresentation.ts"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -126,6 +134,62 @@ async function main() {
   assert(seed60Result.steps[1].specialsCreated[0].at.row === 2
     && seed60Result.steps[1].specialsCreated[0].at.column === 4,
   "later cascades must place specials at the match midpoint, not a stale swap coordinate");
+  const initialPresentation = presentation.createCascadePresentationTiles(seed60.board, 1);
+  const presentationPlan = presentation.buildCascadePresentationPlan({
+    initialTiles: initialPresentation,
+    from: seed60Move.from,
+    to: seed60Move.to,
+    steps: seed60Result.steps,
+    finalBoard: seed60Result.board,
+    generation: 2,
+  });
+  assert(presentationPlan.steps.length === seed60Result.steps.length
+    && presentationPlan.steps.length > 1,
+  "presentation must preserve the engine's ordered multi-cascade sequence");
+  const initialFromId = initialPresentation.find((tile) =>
+    tile.row === seed60Move.from.row && tile.column === seed60Move.from.column).id;
+  const initialToId = initialPresentation.find((tile) =>
+    tile.row === seed60Move.to.row && tile.column === seed60Move.to.column).id;
+  assert(presentationPlan.swapTiles.find((tile) =>
+    tile.row === seed60Move.to.row && tile.column === seed60Move.to.column).id === initialFromId
+    && presentationPlan.swapTiles.find((tile) =>
+      tile.row === seed60Move.from.row && tile.column === seed60Move.from.column).id === initialToId,
+  "swapped ingredients must retain presentation identity while moving to their new cells");
+  let observedFallingSurvivor = false;
+  presentationPlan.steps.forEach((step, stepIndex) => {
+    const clearingIds = new Set(step.clearingTileIds);
+    const engineCleared = seed60Result.steps[stepIndex].cleared;
+    assert(clearingIds.size === engineCleared.length
+      && engineCleared.every((coordinate) => clearingIds.has(
+        step.beforeTiles.find((tile) => tile.row === coordinate.row && tile.column === coordinate.column).id,
+      )),
+    `cascade ${stepIndex + 1} must blink exactly the engine-cleared stable IDs`);
+    const survivors = new Map(
+      step.beforeTiles.filter((tile) => !clearingIds.has(tile.id)).map((tile) => [tile.id, tile]),
+    );
+    const survivorTiles = step.afterTiles.filter((tile) => !tile.refill);
+    assert(survivorTiles.every((tile) => survivors.has(tile.id) && tile.row - tile.fromRow >= 0),
+      `cascade ${stepIndex + 1} survivors must preserve identity and never rise`);
+    observedFallingSurvivor ||= survivorTiles.some((tile) => tile.row - tile.fromRow > 0);
+    assert(step.afterTiles.filter((tile) => tile.refill).every((tile) =>
+      tile.fromRow < 0 && tile.row > tile.fromRow),
+    `cascade ${stepIndex + 1} refills must originate above their exact destination column`);
+    const settled = presentation.settleCascadePresentationTiles(step.afterTiles);
+    assert(settled.every((tile) =>
+      tile.fromRow === tile.row && tile.fromColumn === tile.column && !tile.refill),
+    `cascade ${stepIndex + 1} must settle presentation-only motion metadata`);
+  });
+  assert(observedFallingSurvivor,
+    "presentation must record the actual positive row displacement of a falling survivor");
+  assert(game.encodeBoard(presentation.cascadePresentationBoard(presentationPlan.finalTiles))
+    === game.encodeBoard(seed60Result.board),
+  "animated presentation must finish on the pure engine's exact final board");
+  assert(presentation.CASCADE_CLEAR_PULSE_COUNT >= 2
+    && presentation.CASCADE_PRESENTATION_TIMINGS.reduced.swapMs <= 1
+    && presentation.CASCADE_PRESENTATION_TIMINGS.reduced.clearMs <= 1
+    && presentation.CASCADE_PRESENTATION_TIMINGS.reduced.fallMs <= 1,
+  "reduced motion must preserve ordered phases while shortening two-pulse clear and fall timing");
+  checks.push("stable_tile_clear_fall_refill_presentation");
   const seed60Swapped = game.cloneBoard(seed60.board);
   [seed60Swapped[seed60Move.from.row][seed60Move.from.column], seed60Swapped[seed60Move.to.row][seed60Move.to.column]]
     = [seed60Swapped[seed60Move.to.row][seed60Move.to.column], seed60Swapped[seed60Move.from.row][seed60Move.from.column]];
@@ -1316,8 +1380,220 @@ async function main() {
   const route = readFileSync(resolve(root, "app/games/alchemists-cascade.tsx"), "utf8");
   const hub = readFileSync(resolve(root, "app/games/index.tsx"), "utf8");
   const layout = readFileSync(resolve(root, "app/_layout.tsx"), "utf8");
-  assert(hub.includes("The Alchemist's Cascade") && hub.includes('pathname: "/games/alchemists-cascade"'), "games hub integration missing");
+  assert(hub.includes("The Alchemist’s Cascade") && hub.includes('route: "/games/alchemists-cascade"'), "games hub integration missing");
+  assert(hub.includes("router.push({ pathname: game.route, params: forwardedParams }"), "games hub context forwarding missing");
   assert(layout.includes('name="games/alchemists-cascade"'), "layout route registration missing");
+  const titleArtworkPath = titleArtwork.ALCHEMISTS_CASCADE_TITLE_ARTWORK;
+  assert(typeof titleArtworkPath === "string" && titleArtworkPath.endsWith("title-screen.webp"), "real title artwork mapping missing");
+  assert(existsSync(titleArtworkPath), "real title artwork asset does not exist");
+  const titleArtworkBytes = readFileSync(titleArtworkPath);
+  assert(titleArtworkBytes.subarray(0, 4).toString("ascii") === "RIFF"
+    && titleArtworkBytes.subarray(8, 12).toString("ascii") === "WEBP",
+  "title artwork must be WebP");
+  assert(statSync(titleArtworkPath).size < 400_000, "title artwork exceeds the web payload budget");
+  const desktopTitleLayout = titleArtwork.computeAlchemistsCascadeTitleArtworkLayout(1920, 1080);
+  assert(desktopTitleLayout.mode === "cinematic"
+    && Math.abs(desktopTitleLayout.stage.width / desktopTitleLayout.stage.height - 1672 / 941) < 0.001,
+  "desktop title artwork must preserve the full authored aspect ratio");
+  assert(Object.values(desktopTitleLayout.controls).every((control) => control.width >= 44 && control.height >= 44),
+    "every desktop title control must retain a touch-safe target");
+  const mobileTitleLayout = titleArtwork.computeAlchemistsCascadeTitleArtworkLayout(390, 844);
+  assert(mobileTitleLayout.mode === "mobile" && mobileTitleLayout.stage.width === 390,
+    "portrait title artwork must use the deliberate full-width mobile treatment");
+  assert(mobileTitleLayout.stage.height < titleArtwork.ALCHEMISTS_CASCADE_TITLE_CONTROL_BOUNDS.primary.top
+    * (mobileTitleLayout.stage.width / titleArtwork.ALCHEMISTS_CASCADE_TITLE_ARTWORK_SIZE.width),
+  "portrait artwork must crop before baked controls so every apparent control is functional");
+  const compactTitleLayout = titleArtwork.computeAlchemistsCascadeTitleArtworkLayout(844, 390);
+  assert(compactTitleLayout.mode === "compact"
+    && compactTitleLayout.controls.primary.top + compactTitleLayout.controls.primary.height
+      <= compactTitleLayout.controls.help.top
+    && compactTitleLayout.controls.primary.top + compactTitleLayout.controls.primary.height
+      <= compactTitleLayout.controls.memory.top,
+  "short landscape viewports must keep live artwork controls visible and non-overlapping");
+  assert(route.includes("source={ALCHEMISTS_CASCADE_TITLE_ARTWORK}")
+    && route.includes('testID="alchemists-cascade-title-primary"')
+    && route.includes('testID="alchemists-cascade-title-help"')
+    && route.includes('testID="alchemists-cascade-title-memory"'),
+  "title artwork and desktop interaction overlays must remain wired");
+  assert(route.includes("onError={() => setArtworkFailed(true)}")
+    && route.includes("return <AbstractCascadeTitleScreen")
+    && route.includes("props.hasProgress || props.busy")
+    && route.includes("const primaryVisibleLabel")
+    && route.includes('? "CONTINUE"'),
+  "title fallback and visible saved-progress treatment must remain wired");
+  checks.push("title_artwork_controls_and_fallback");
+  const whisperArtworkPath = whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_ARTWORK;
+  assert(typeof whisperArtworkPath === "string" && whisperArtworkPath.endsWith("first-whisper.webp")
+    && existsSync(whisperArtworkPath),
+  "real First Whisper artwork mapping missing");
+  const whisperArtworkBytes = readFileSync(whisperArtworkPath);
+  assert(whisperArtworkBytes.subarray(0, 4).toString("ascii") === "RIFF"
+    && whisperArtworkBytes.subarray(8, 12).toString("ascii") === "WEBP"
+    && statSync(whisperArtworkPath).size < 400_000,
+  "First Whisper artwork must be an optimized WebP");
+  const catalystIds = game.CASCADE_CATALYST_COPY.map((option) => option.id);
+  assert(catalystIds.join("|") === "hearth-song|lunar-proof|wild-distillation",
+    "First Whisper must retain the three exact authored catalyst identities");
+  assert(catalystIds.every((id) => {
+    const artworkPath = whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_OPTION_ARTWORK[id];
+    return typeof artworkPath === "string"
+      && artworkPath.endsWith(`first-whisper-${id}.webp`)
+      && existsSync(artworkPath)
+      && statSync(artworkPath).size < 60_000;
+  }), "each catalyst must map to its own optimized authorized potion crop");
+  assert(new Set(catalystIds.map((id) => whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_OPTION_ICONS[id])).size === 3,
+    "each catalyst must retain a distinct visual sigil");
+  const whisperDesktop = whisperArtwork.computeAlchemistsCascadeWhisperLayout(1920, 1080);
+  const whisperChromebook = whisperArtwork.computeAlchemistsCascadeWhisperLayout(1366, 768);
+  const whisperMobile = whisperArtwork.computeAlchemistsCascadeWhisperLayout(390, 844);
+  assert(whisperDesktop.mode === "cinematic" && whisperChromebook.mode === "cinematic"
+    && whisperDesktop.cards.length === 3
+    && whisperDesktop.cards.every((bounds) => bounds.width >= 275 && bounds.height >= 460),
+  "desktop First Whisper must preserve three full live card regions");
+  assert(whisperMobile.mode === "stacked"
+    && whisperMobile.header.height
+      < whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_BOUNDS.cards[0].top
+        * (Math.max(390, 760) / whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_ARTWORK_SIZE.width),
+  "narrow First Whisper header must crop before baked catalyst controls");
+  assert(route.includes("function CascadeWhisperScreen")
+    && route.includes("return <AbstractCascadeWhisperScreen")
+    && route.includes("source={ALCHEMISTS_CASCADE_WHISPER_ARTWORK}")
+    && route.includes("ALCHEMISTS_CASCADE_WHISPER_OPTION_ARTWORK[option.id]")
+    && route.includes('testID={`alchemists-cascade-whisper-${option.id}`}')
+    && route.includes('testID="alchemists-cascade-whisper-back"')
+    && route.includes('testID="alchemists-cascade-whisper-fate"')
+    && route.includes("onBack={() => void returnToCampaign()}")
+    && route.includes("onChoose={(option) => void chooseCatalyst(option)}")
+    && route.includes("onPress={() => props.onChoose(null)}")
+    && route.includes("accessibilityState={{ disabled: busy }}")
+    && route.includes("Same calibrated seven-ingredient effect."),
+  "First Whisper artwork, live options, Back, fate, accessibility, and fallback must remain wired");
+  checks.push("whisper_artwork_live_controls_and_fallback");
+  const atlasArtworkPath = atlasArtwork.ALCHEMISTS_CASCADE_ATLAS_ARTWORK;
+  assert(typeof atlasArtworkPath === "string" && atlasArtworkPath.endsWith("recipe-atlas.webp"),
+    "real Recipe Atlas artwork mapping missing");
+  assert(existsSync(atlasArtworkPath), "real Recipe Atlas artwork asset does not exist");
+  const atlasArtworkBytes = readFileSync(atlasArtworkPath);
+  assert(atlasArtworkBytes.subarray(0, 4).toString("ascii") === "RIFF"
+    && atlasArtworkBytes.subarray(8, 12).toString("ascii") === "WEBP",
+  "Recipe Atlas artwork must be WebP");
+  assert(statSync(atlasArtworkPath).size < 400_000, "Recipe Atlas artwork exceeds the web payload budget");
+  const desktopAtlasLayout = atlasArtwork.computeAlchemistsCascadeAtlasLayout(1920, 1080);
+  assert(desktopAtlasLayout.mode === "cinematic"
+    && Math.abs(desktopAtlasLayout.stage.width / desktopAtlasLayout.stage.height - 1672 / 941) < 0.001,
+  "desktop Recipe Atlas must preserve the full authored composition");
+  assert(Object.keys(desktopAtlasLayout.realms).length === 4
+    && Object.values(desktopAtlasLayout.realms).every((bounds) => bounds.width > 300 && bounds.height > 200),
+  "desktop Recipe Atlas must reserve four full live realm panels");
+  const recipeVisuals = atlasArtwork.ALCHEMISTS_CASCADE_RECIPE_VISUALS;
+  const realmVisuals = atlasArtwork.ALCHEMISTS_CASCADE_REALM_VISUALS;
+  const recipeVisualEntries = game.CASCADE_LEVELS.map((level) => recipeVisuals[level.id]);
+  const iconGlyphMap = JSON.parse(readFileSync(resolve(
+    root,
+    "node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialCommunityIcons.json",
+  ), "utf8"));
+  assert(recipeVisualEntries.length === 12
+    && recipeVisualEntries.every((visual) => visual && iconGlyphMap[visual.icon]),
+  "all twelve recipes must map to a supported deterministic vector glyph");
+  assert(new Set(recipeVisualEntries.map((visual) => visual.icon)).size === 12
+    && new Set(recipeVisualEntries.map((visual) => visual.motif)).size === 12,
+  "every authored recipe must retain a distinct intentional glyph and motif");
+  assert(game.CASCADE_REALMS.every((realm) => realmVisuals[realm.id] && iconGlyphMap[realmVisuals[realm.id].icon])
+    && new Set(game.CASCADE_REALMS.map((realm) => realmVisuals[realm.id].motif)).size === 4,
+  "each realm must retain a supported decorative folio motif");
+  const mobileAtlasLayout = atlasArtwork.computeAlchemistsCascadeAtlasLayout(390, 844);
+  assert(mobileAtlasLayout.mode === "stacked"
+    && mobileAtlasLayout.header.height
+      < atlasArtwork.ALCHEMISTS_CASCADE_ATLAS_BOUNDS.realms["copper-garden"].top
+        * (Math.max(390, 760) / atlasArtwork.ALCHEMISTS_CASCADE_ATLAS_ARTWORK_SIZE.width),
+  "narrow Atlas header must crop before baked sample recipe state");
+  assert(route.includes("source={ALCHEMISTS_CASCADE_ATLAS_ARTWORK}")
+    && route.includes("return <AbstractCascadeAtlasScreen")
+    && route.includes('testID="alchemists-cascade-atlas-exit"')
+    && route.includes('testID="alchemists-cascade-atlas-stars"')
+    && route.includes('testID="alchemists-cascade-atlas-notes"')
+    && route.includes('testID="alchemists-cascade-atlas-sync"'),
+  "Recipe Atlas live artwork surfaces and fallback must remain wired");
+  assert(route.includes("CASCADE_REALMS.map((realm)")
+    && route.includes("CASCADE_LEVELS.filter((level) => level.realmId === realm.id)")
+    && route.includes("level.number <= save.unlockedLevel")
+    && route.includes("save.levelStars[level.id] || 0")
+    && route.includes('testID={`alchemists-cascade-atlas-${level.id}`}')
+    && route.includes("accessibilityState={{ disabled }}")
+    && route.includes("disabled={disabled}")
+    && route.includes("onPress={onPress}")
+    && route.includes('name={visual.icon}')
+    && route.includes("current={unlocked && stars === 0 && level.number === save.unlockedLevel}")
+    && route.includes('name="lock"')
+    && route.includes('name="replay"'),
+  "all twelve illustrated recipes must retain live handlers, lock, stars, replay, focus, and accessibility state");
+  assert(route.includes("const totalStars = Object.values(props.save.levelStars)")
+    && route.includes("{props.syncWarning ? (")
+    && !route.includes("3 cauldron notes waiting to sync."),
+  "Atlas totals and sync state must be live without baked sample-state copy");
+  checks.push("atlas_recipe_glyphs_and_live_state");
+  checks.push("atlas_artwork_live_dynamic_state");
+  const gameplayArtworkPath = gameplayArtwork.ALCHEMISTS_CASCADE_GAMEPLAY_ARTWORK;
+  const gameplayMobileArtworkPath = gameplayArtwork.ALCHEMISTS_CASCADE_GAMEPLAY_MOBILE_ARTWORK;
+  assert(typeof gameplayArtworkPath === "string" && gameplayArtworkPath.endsWith("gameplay-laboratory.webp")
+    && existsSync(gameplayArtworkPath)
+    && statSync(gameplayArtworkPath).size < 400_000,
+  "real Cascade gameplay artwork must be an optimized production WebP");
+  assert(typeof gameplayMobileArtworkPath === "string"
+    && gameplayMobileArtworkPath.endsWith("gameplay-laboratory-mobile.webp")
+    && existsSync(gameplayMobileArtworkPath)
+    && statSync(gameplayMobileArtworkPath).size < 60_000,
+  "mobile Cascade gameplay must use the authorized safe artwork crop");
+  const gameplayArtworkBytes = readFileSync(gameplayArtworkPath);
+  assert(gameplayArtworkBytes.subarray(0, 4).toString("ascii") === "RIFF"
+    && gameplayArtworkBytes.subarray(8, 12).toString("ascii") === "WEBP",
+  "Cascade gameplay artwork must be WebP");
+  const desktopGameplay = gameplayArtwork.computeAlchemistsCascadeGameplayLayout(1920, 1080);
+  const chromebookGameplay = gameplayArtwork.computeAlchemistsCascadeGameplayLayout(1366, 768);
+  const mobileGameplay = gameplayArtwork.computeAlchemistsCascadeGameplayLayout(390, 844);
+  assert(desktopGameplay.mode === "cinematic" && chromebookGameplay.mode === "cinematic"
+    && Math.abs(desktopGameplay.stage.width / desktopGameplay.stage.height - 1312 / 1199) < 0.001
+    && desktopGameplay.board.width >= 560
+    && chromebookGameplay.board.width >= 390,
+  "desktop and Chromebook gameplay must preserve the complete authored laboratory and a playable board");
+  assert(mobileGameplay.mode === "stacked",
+    "narrow gameplay must use readable live vertical controls instead of shrinking baked state");
+  assert(Object.keys(gameplayArtwork.ALCHEMISTS_CASCADE_GAMEPLAY_BOUNDS).sort().join("|")
+    === "board|goals|help|instruction|pause|status|sync|title",
+  "every baked gameplay control and dynamic state region must have an explicit live cover");
+  assert(route.includes("function CascadeGameplayScreen")
+    && route.includes("return <AbstractCascadeGameplayScreen")
+    && route.includes("source={ALCHEMISTS_CASCADE_GAMEPLAY_ARTWORK}")
+    && route.includes("source={ALCHEMISTS_CASCADE_GAMEPLAY_MOBILE_ARTWORK}")
+    && route.includes('testID="alchemists-cascade-gameplay-pause"')
+    && route.includes('testID="alchemists-cascade-gameplay-help"')
+    && route.includes('testID="alchemists-cascade-gameplay-sync"')
+    && route.includes("<PresentationBoardView")
+    && route.includes("tiles={presentationTiles.length")
+    && route.includes('setPresentationPhase("clearing")')
+    && route.includes('setPresentationPhase("falling")')
+    && route.includes("step.beforeTiles.filter")
+    && route.includes("step.afterTiles")
+    && route.includes("accessibilityState={{ disabled: props.busy }}"),
+  "cinematic gameplay must cover baked state with live accessible controls and visible per-tile phases");
+  const attemptSwapSource = route.slice(
+    route.indexOf("const attemptSwap = useCallback"),
+    route.indexOf("const onCell = useCallback"),
+  );
+  assert((attemptSwapSource.match(/\bapplySwap\(/g) || []).length === 1
+    && (attemptSwapSource.match(/\bmutate\(\"move\"/g) || []).length === 1
+    && attemptSwapSource.indexOf("gameRecommendationMilestone.notifyEvidence") >= 0
+    && attemptSwapSource.indexOf("gameRecommendationMilestone.notifyEvidence") < attemptSwapSource.indexOf("await runPresentationPlan")
+    && attemptSwapSource.indexOf("await runPresentationPlan") > attemptSwapSource.indexOf("await mutate")
+    && attemptSwapSource.indexOf("actionLock.current = false") > attemptSwapSource.indexOf("await runPresentationPlan"),
+  "one durable move must notify earned milestones, feed presentation once, and retain the input lock until animation settles");
+  assert(route.includes("CASCADE_CLEAR_PULSE_COUNT")
+    && route.includes("Array.from({ length: CASCADE_CLEAR_PULSE_COUNT }")
+    && route.includes("presentationWaits.current")
+    && route.includes("clearTimeout(timer)")
+    && route.includes("isReduceMotionEnabled"),
+  "clear pulses, cancellable timing, cleanup, and reduced-motion behavior must remain wired");
+  checks.push("gameplay_artwork_live_state_and_animation");
   assert(route.includes("onPress={() => onCell(at)}") && route.includes('document.addEventListener("keydown"') && route.includes("accessibilityLabel={`Row"), "touch, keyboard, and cell accessibility wiring missing");
   assert(route.includes("What the cauldron remembers") && route.includes("IP addresses") && route.includes("never count as taste"), "privacy disclosure is incomplete");
   assert(route.includes('eventType: "campaign_reset"') && route.includes("sessionId.current = fresh.gameSessionId")

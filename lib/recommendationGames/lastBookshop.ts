@@ -5,6 +5,8 @@ export const LAST_BOOKSHOP_EVENT_QUEUE_KEY = "novelideas_recommendation_game_eve
 
 export type ConfidenceLevel = "low" | "medium" | "high";
 export type PitchCharm = "mood" | "world" | "pace" | "surprise";
+export const LAST_BOOKSHOP_CUSTOMER_IDS = ["mara", "orin", "kit", "elsie", "bram"] as const;
+export type LastBookshopCustomerId = typeof LAST_BOOKSHOP_CUSTOMER_IDS[number];
 
 export type LastBookshopWork = {
   id: string;
@@ -19,7 +21,7 @@ export type LastBookshopWork = {
 };
 
 export type LastBookshopCustomer = {
-  id: string;
+  id: LastBookshopCustomerId;
   name: string;
   role: string;
   portraitColor: string;
@@ -29,7 +31,7 @@ export type LastBookshopCustomer = {
 export type LastBookshopEncounter = {
   id: string;
   night: number;
-  customerId: string;
+  customerId: LastBookshopCustomerId;
   request: string;
   clues: string[];
   likes: string[];

@@ -20,7 +20,8 @@ const gameSources = [screen, core, catalog, artwork, persistence, evidenceStorag
 assert.match(menu, />Librarian Review<\/Text>/, "Librarian Review menu entry must remain");
 assert.match(menu, />Games<\/Text>/, "Games menu entry missing");
 assert.match(menu, /pathname: "\/games"/, "menu must open the game chooser");
-assert.match(gameHub, /pathname: "\/media-mania"/, "game chooser must open Media Mania");
+assert.match(gameHub, /route: "\/media-mania"/, "game chooser must configure Media Mania");
+assert.match(gameHub, /router\.push\(\{ pathname: game\.route, params: forwardedParams \}/, "game chooser must open configured routes with shared context");
 assert.match(gameHub, /The Last Bookshop/, "game chooser must preserve The Last Bookshop");
 assert.match(layout, /name="media-mania"/, "Media Mania route must be registered");
 assert.match(screen, /Let's get ready to play Media Mania!/, "starting invitation missing");
@@ -43,6 +44,10 @@ assert.match(catalog, /existing\.ageBands\.push\(ageBand\)/, "cross-band titles 
 assert.doesNotMatch(core, /similarityScore|tasteDistance|recommendationWeight/, "derived scores must not be stored as raw truth");
 
 assert.match(screen, /document\.addEventListener\("keydown"/, "keyboard controls missing");
+const keyboardHandler = screen.slice(screen.indexOf("const onKeyDown"), screen.indexOf('document.addEventListener("keydown"'));
+assert.match(keyboardHandler, /isMediaManiaGameplayKeyboardBlocked/, "gameplay keys must use the shared modal guard");
+assert.match(keyboardHandler, /recommendationRewardVisible: Boolean\(gameRecommendationMilestone\.pendingReward\)/,
+  "gameplay keys must be blocked while the recommendation reward is visible");
 assert.match(screen, /event\.repeat/, "held Chromebook keys must not repeat choices");
 assert.match(screen, /\["1", "2", "3"\]/, "candidate keyboard shortcuts missing");
 assert.match(screen, /event\.shiftKey/, "keyboard unfamiliarity shortcut missing");
@@ -52,6 +57,9 @@ assert.match(screen, /minHeight: 44|minHeight: 48/, "touch targets must be at le
 assert.match(screen, /candidateColumn/, "mobile stacked candidate layout missing");
 assert.match(screen, /I don't know this/, "visible unfamiliarity controls missing");
 assert.match(screen, /testID="media-mania-unlock-progress"/, "unlock progress indicator missing");
+assert.match(screen, /normalizeMediaManiaAgeBand\(params\.ageBand\)/, "route age bands must use the trusted deck normalizer");
+assert.match(screen, /reconcileMediaManiaRouteAge\(saved\.state, initialAgeBand, MEDIA_MANIA_CATALOG\)/,
+  "a saved session must reconcile to the route's trusted age band before continuation");
 
 assert.match(screen, /DISLIKE ROUND/, "negative round label must be unmistakable");
 assert.match(screen, /LIKE ROUND/, "positive round label must be unmistakable");
