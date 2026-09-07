@@ -18,7 +18,7 @@ import {
   type GameRouteParams,
 } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 
-type GameId = "media-mania" | "last-bookshop" | "unwritten-map" | "alchemists-cascade";
+type GameId = "media-mania" | "last-bookshop" | "unwritten-map" | "alchemists-cascade" | "melanies-game";
 
 type GameTheme = {
   accent: string;
@@ -37,11 +37,26 @@ type GameCardConfig = {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   image: ImageSourcePropType;
   imageAlt: string;
-  route: "/media-mania" | "/games/last-bookshop" | "/games/unwritten-map" | "/games/alchemists-cascade";
+  route: "/media-mania" | "/games/last-bookshop" | "/games/unwritten-map" | "/games/alchemists-cascade" | "/games/melanies-game";
   theme: GameTheme;
+  liveArtwork?: "melanies-library";
 };
 
 const GAME_CARDS: GameCardConfig[] = [
+  {
+    id: "melanies-game",
+    title: "Melanie's Game",
+    subtitle: "The Tournament of Stories",
+    duration: "4–7 min",
+    whatYouDo: "Choose, rank, and advance fictional book concepts through a personal tournament.",
+    whatLearns: "Builds nuanced reading-taste evidence before finding real books for you.",
+    icon: "tournament",
+    image: require("../../assets/book_logo.png"),
+    imageAlt: "An open NovelIdeas book marking the entrance to Melanie's premise tournament",
+    route: "/games/melanies-game",
+    theme: { accent: "#59d1c8", bright: "#ffd274", surface: "#12272e", wash: "#29464b" },
+    liveArtwork: "melanies-library",
+  },
   {
     id: "media-mania",
     title: "Media Mania",
@@ -151,7 +166,27 @@ function GameCard({
       ]}
     >
       <View ref={artworkRef} style={styles.artworkFrame}>
-        {artworkVisible ? (
+        {artworkVisible && game.liveArtwork === "melanies-library" ? (
+          <View
+            style={styles.melanieArtwork}
+            accessibilityLabel={game.imageAlt}
+            accessibilityRole="image"
+          >
+            <View style={styles.melanieHalo} />
+            <View style={styles.melanieBookStack}>
+              <View style={[styles.melanieBook, { width: 142, backgroundColor: "#6f321e" }]} />
+              <View style={[styles.melanieBook, { width: 126, backgroundColor: "#183e51" }]} />
+              <View style={[styles.melanieBook, { width: 150, backgroundColor: "#4b263f" }]} />
+              <View style={[styles.melanieBook, { width: 116, backgroundColor: "#7a5425" }]} />
+            </View>
+            <MaterialCommunityIcons name="cat" size={104} color="#151311" style={styles.melanieCat} />
+            <View style={styles.melanieStars}>
+              <Text style={styles.melanieStar}>✦</Text>
+              <Text style={styles.melanieStar}>✦</Text>
+              <Text style={styles.melanieStar}>✦</Text>
+            </View>
+          </View>
+        ) : artworkVisible ? (
           <Image
             source={game.image}
             style={styles.artwork}
@@ -241,7 +276,7 @@ export default function RecommendationGamesRoute() {
             <Text style={styles.spark}>✦</Text>
           </View>
           <Text style={styles.pageTitle}>Choose a Game</Text>
-          <Text style={styles.tagline}>Four ways to play. Four ways to discover your taste.</Text>
+          <Text style={styles.tagline}>Five ways to play. Five ways to discover your taste.</Text>
           <Text style={styles.explainer}>
             Every choice quietly helps NovelIdeas understand which stories and experiences fit you best.
           </Text>
@@ -309,6 +344,31 @@ const styles = StyleSheet.create({
     backgroundColor: "#111827",
   },
   artwork: { width: "100%", height: "100%" },
+  melanieArtwork: {
+    width: "100%",
+    height: "100%",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    backgroundColor: "#071522",
+  },
+  melanieHalo: {
+    position: "absolute",
+    width: 230,
+    height: 230,
+    top: -54,
+    borderRadius: 115,
+    backgroundColor: "#e3a341",
+    opacity: 0.32,
+    shadowColor: "#ffc85c",
+    shadowOpacity: 0.9,
+    shadowRadius: 35,
+  },
+  melanieBookStack: { position: "absolute", bottom: 9, alignItems: "center", gap: 3 },
+  melanieBook: { height: 22, borderRadius: 4, borderWidth: 1, borderColor: "#c88935" },
+  melanieCat: { position: "absolute", bottom: 65, transform: [{ scaleX: -1 }] },
+  melanieStars: { position: "absolute", top: 20, left: 22, right: 22, flexDirection: "row", justifyContent: "space-between" },
+  melanieStar: { color: "#f7c65d", fontSize: 18 },
   imageEdge: { position: "absolute", left: 0, right: 0, bottom: 0, height: 3, opacity: 0.82 },
   cardBody: { minHeight: 232, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 15 },
   cardHeading: { flexDirection: "row", alignItems: "center", gap: 11 },

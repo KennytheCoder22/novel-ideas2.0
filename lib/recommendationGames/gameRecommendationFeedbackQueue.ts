@@ -3,7 +3,9 @@
 // `lib/recommendationGames/evidenceClient.ts`) but scoped to the shared reward-response contract.
 import {
   isGameRecommendationFeedbackEventV1,
+  isGameRecommendationSlateFeedbackEventV1,
   type GameRecommendationFeedbackEventV1,
+  type GameRecommendationSlateFeedbackEventV1,
 } from "./gameRecommendationFeedback";
 import {
   isGameRecommendationDiagnosticEventV1,
@@ -15,6 +17,7 @@ import {
 } from "./crossTabStorageLock";
 
 export const GAME_RECOMMENDATION_FEEDBACK_QUEUE_KEY = "novelideas_game_recommendation_feedback_queue_v1";
+export const GAME_RECOMMENDATION_SLATE_FEEDBACK_QUEUE_KEY = "novelideas_game_recommendation_slate_feedback_queue_v1";
 export const GAME_RECOMMENDATION_DIAGNOSTIC_QUEUE_KEY = "novelideas_game_recommendation_diagnostic_queue_v1";
 
 export type AsyncKeyValueStorage = {
@@ -120,9 +123,18 @@ const diagnosticQueue = createSerializedRecommendationQueue<GameRecommendationDi
   (event) => event.eventId,
 );
 
+const slateFeedbackQueue = createSerializedRecommendationQueue<GameRecommendationSlateFeedbackEventV1>(
+  GAME_RECOMMENDATION_SLATE_FEEDBACK_QUEUE_KEY,
+  isGameRecommendationSlateFeedbackEventV1,
+  (event) => event.eventId,
+);
+
 export const readQueuedGameRecommendationFeedbackEvents = feedbackQueue.read;
 export const queueGameRecommendationFeedbackEvent = feedbackQueue.enqueue;
 export const flushGameRecommendationFeedbackEvents = feedbackQueue.flush;
+export const readQueuedGameRecommendationSlateFeedbackEvents = slateFeedbackQueue.read;
+export const queueGameRecommendationSlateFeedbackEvent = slateFeedbackQueue.enqueue;
+export const flushGameRecommendationSlateFeedbackEvents = slateFeedbackQueue.flush;
 
 export const readQueuedGameRecommendationDiagnosticEvents = diagnosticQueue.read;
 export const queueGameRecommendationDiagnosticEvent = diagnosticQueue.enqueue;

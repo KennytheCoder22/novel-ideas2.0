@@ -6,6 +6,7 @@
 // swipe-deck taste; this describes only the outcome of a single cross-game recommendation
 // reward shown at a milestone.
 export const GAME_RECOMMENDATION_FEEDBACK_SCHEMA = "game_recommendation_feedback_v1" as const;
+export const GAME_RECOMMENDATION_SLATE_FEEDBACK_SCHEMA = "game_recommendation_slate_feedback_v1" as const;
 
 function safeFeedbackPathSegment(value: string, maxLength: number): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, maxLength);
@@ -25,17 +26,29 @@ export function gameRecommendationFeedbackStoragePath(event: GameRecommendationF
   ].join("/");
 }
 
+export function gameRecommendationSlateFeedbackStoragePath(event: GameRecommendationSlateFeedbackEventV1): string {
+  return [
+    "recommendation-games/feedback/slates/v1",
+    safeFeedbackPathSegment(event.library.libraryId, 100),
+    safeFeedbackPathSegment(event.game, 60),
+    safeFeedbackPathSegment(event.anonymousPlayerId, 100),
+    `${safeFeedbackPathSegment(event.eventId, 200)}.json`,
+  ].join("/");
+}
+
 export type RecommendationGameId =
   | "media_mania"
   | "the_last_bookshop"
   | "unwritten_map"
-  | "alchemists_cascade";
+  | "alchemists_cascade"
+  | "melanies_game";
 
 export const RECOMMENDATION_GAME_IDS: readonly RecommendationGameId[] = [
   "media_mania",
   "the_last_bookshop",
   "unwritten_map",
   "alchemists_cascade",
+  "melanies_game",
 ];
 
 export type GameRecommendationAgeBand = "kids" | "preteens" | "teens" | "adult";
@@ -110,6 +123,24 @@ export type GameRecommendationFeedbackEventV1 = {
   shownAt: string;
   respondedAt: string;
   continuedAt: string | null;
+};
+
+export type GameRecommendationSlateFeedbackEventV1 = {
+  schemaVersion: typeof GAME_RECOMMENDATION_SLATE_FEEDBACK_SCHEMA;
+  eventId: string;
+  game: RecommendationGameId;
+  anonymousPlayerId: string;
+  gameSessionId: string;
+  evidenceSnapshotVersion: string;
+  evidenceSnapshot: GameRecommendationEvidenceSnapshot;
+  evidenceMode: GameRecommendationEvidenceMode;
+  recommendations: GameRecommendationBookIdentity[];
+  ranking: string[];
+  preferredBookId: string | null;
+  ageBand: GameRecommendationAgeBand;
+  library: GameRecommendationLibraryContext;
+  shownAt: string;
+  respondedAt: string;
 };
 
 function isNonEmptyString(value: unknown, maxLength: number): value is string {
@@ -209,6 +240,80 @@ export function isGameRecommendationFeedbackEventV1(value: unknown): value is Ga
 
 export function normalizeGameRecommendationFeedbackEventV1(value: unknown): GameRecommendationFeedbackEventV1 | null {
   return isGameRecommendationFeedbackEventV1(value) ? value : null;
+}
+
+const SLATE_EVENT_KEYS = [
+  "schemaVersion", "eventId", "game", "anonymousPlayerId", "gameSessionId",
+  "evidenceSnapshotVersion", "evidenceSnapshot", "evidenceMode", "recommendations",
+  "ranking", "preferredBookId", "ageBand", "library", "shownAt", "respondedAt",
+] as const;
+
+export function isGameRecommendationSlateFeedbackEventV1(
+  value: unknown,
+): value is GameRecommendationSlateFeedbackEventV1 {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const event = value as Record<string, unknown>;
+  if (JSON.stringify(event).length > 12_000 || !exactKeys(event, SLATE_EVENT_KEYS)) return false;
+  if (event.schemaVersion !== GAME_RECOMMENDATION_SLATE_FEEDBACK_SCHEMA) return false;
+  if (!isNonEmptyString(event.eventId, 260)) return false;
+  if (!RECOMMENDATION_GAME_IDS.includes(event.game as RecommendationGameId)) return false;
+  if (!isNonEmptyString(event.anonymousPlayerId, 160) || !isNonEmptyString(event.gameSessionId, 160)) return false;
+  if (!isNonEmptyString(event.evidenceSnapshotVersion, 40) || !isValidEvidenceSnapshot(event.evidenceSnapshot)) return false;
+  if (!GAME_RECOMMENDATION_EVIDENCE_MODES.includes(event.evidenceMode as GameRecommendationEvidenceMode)) return false;
+  if (!Array.isArray(event.recommendations) || event.recommendations.length < 1 || event.recommendations.length > 5
+    || !event.recommendations.every(isValidBookIdentity)) return false;
+  const recommendationIds = new Set((event.recommendations as GameRecommendationBookIdentity[]).map((book) => book.id));
+  if (!Array.isArray(event.ranking) || event.ranking.length !== recommendationIds.size
+    || !event.ranking.every((id) => typeof id === "string" && recommendationIds.has(id))
+    || new Set(event.ranking).size !== event.ranking.length) return false;
+  if (event.preferredBookId !== null
+    && (typeof event.preferredBookId !== "string" || !recommendationIds.has(event.preferredBookId))) return false;
+  if (!GAME_RECOMMENDATION_AGE_BANDS.includes(event.ageBand as GameRecommendationAgeBand)) return false;
+  if (!isValidLibraryContext(event.library) || !isIsoTimestamp(event.shownAt) || !isIsoTimestamp(event.respondedAt)) return false;
+  if (Date.parse(event.respondedAt as string) < Date.parse(event.shownAt as string)) return false;
+  return event.eventId === `${event.gameSessionId}:final-slate`;
+}
+
+export function normalizeGameRecommendationSlateFeedbackEventV1(
+  value: unknown,
+): GameRecommendationSlateFeedbackEventV1 | null {
+  return isGameRecommendationSlateFeedbackEventV1(value) ? value : null;
+}
+
+export function createGameRecommendationSlateFeedbackEvent(args: {
+  game: RecommendationGameId;
+  anonymousPlayerId: string;
+  gameSessionId: string;
+  evidenceSnapshotVersion: string;
+  evidenceSnapshot: GameRecommendationEvidenceSnapshot;
+  evidenceMode: GameRecommendationEvidenceMode;
+  recommendations: GameRecommendationBookIdentity[];
+  ranking: string[];
+  preferredBookId: string | null;
+  ageBand: GameRecommendationAgeBand;
+  library: GameRecommendationLibraryContext;
+  shownAt: string;
+  respondedAt?: string;
+}): GameRecommendationSlateFeedbackEventV1 {
+  const event: GameRecommendationSlateFeedbackEventV1 = {
+    schemaVersion: GAME_RECOMMENDATION_SLATE_FEEDBACK_SCHEMA,
+    eventId: `${args.gameSessionId}:final-slate`,
+    game: args.game,
+    anonymousPlayerId: args.anonymousPlayerId,
+    gameSessionId: args.gameSessionId,
+    evidenceSnapshotVersion: args.evidenceSnapshotVersion,
+    evidenceSnapshot: args.evidenceSnapshot,
+    evidenceMode: args.evidenceMode,
+    recommendations: args.recommendations,
+    ranking: args.ranking,
+    preferredBookId: args.preferredBookId,
+    ageBand: args.ageBand,
+    library: args.library,
+    shownAt: args.shownAt,
+    respondedAt: args.respondedAt || new Date().toISOString(),
+  };
+  if (!isGameRecommendationSlateFeedbackEventV1(event)) throw new Error("invalid_game_recommendation_slate_feedback_event");
+  return event;
 }
 
 /** Builds a validated `game_recommendation_feedback_v1` event. `continuedAt` starts unset because

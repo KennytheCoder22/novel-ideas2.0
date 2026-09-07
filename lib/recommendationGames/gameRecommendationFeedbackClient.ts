@@ -34,6 +34,13 @@ export function sendGameRecommendationFeedbackEvent(
   return postJson("/api/game-recommendation-feedback", event, env);
 }
 
+export function sendGameRecommendationSlateFeedbackEvent(
+  event: unknown,
+  env: GameRecommendationHttpEnvironment,
+): Promise<boolean> {
+  return postJson("/api/game-recommendation-feedback", event, env);
+}
+
 /** Best-effort only: a diagnostic delivery failure must never surface to the player or block
  * gameplay, so callers should not await this on the interactive path. */
 export function sendGameRecommendationDiagnosticEvent(
