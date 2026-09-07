@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 import { createSerializedRecommendationQueue, type AsyncKeyValueStorage } from "./gameRecommendationFeedbackQueue";
 import { isMelanieEvidenceEvent, type MelaniePresentationEvidence } from "./melaniesGame";
 
-export const MELANIES_GAME_EVIDENCE_QUEUE_KEY = "novelideas_melanies_game_evidence_queue_v1";
+export const MELANIES_GAME_EVIDENCE_QUEUE_KEY = "novelideas_melanies_game_evidence_queue_v2";
 
 const webStorage: AsyncKeyValueStorage = {
   async getItem(key) {

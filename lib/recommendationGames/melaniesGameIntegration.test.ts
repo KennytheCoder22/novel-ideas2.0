@@ -10,6 +10,11 @@ import {
 } from "./gameRecommendationFeedback";
 import { normalizeGameRouteAgeBand } from "./gameRecommendationRouteConfig";
 import {
+  loadMelaniesGameFromStorage,
+  saveMelaniesGameToStorage,
+  type MelaniesGameStorage,
+} from "./melaniesGameProgressStorage";
+import {
   adaptMelanieEvidenceToSignals,
   completeMelanieFinal,
   completeMelanieRanking,
@@ -57,7 +62,28 @@ test("new-player copy is exact and no fictional patron is introduced", () => {
   assert(source.includes("flushMelanieEvidence()"));
   assert(source.includes("Let the Tournament Begin"));
   assert(source.includes("ConceptCover"));
+  assert(source.includes("TournamentProgress"));
+  assert(source.includes("library-left.webp"));
+  assert(source.includes("createMelanieCoverArt"));
+  assert(source.includes("finalistPedestal"));
+  assert(source.includes("recommendationCard"));
+  assert(source.includes("minHeight: 44"));
   assert(hookSource.includes("args.sessionScopedEvidence ? args.gameSessionId : undefined"));
+});
+
+test("authorized visual crops are local, optimized, and do not ship whole-screen references", () => {
+  const assetDirectory = path.join(process.cwd(), "assets", "games", "melanies-game");
+  const assets = fs.readdirSync(assetDirectory).sort();
+  assert.deepEqual(assets, [
+    "entry-left.webp",
+    "entry-right.webp",
+    "library-left.webp",
+    "library-right.webp",
+    "portal-library-left.webp",
+    "portal-library-right.webp",
+    "portal-melanie.webp",
+  ]);
+  assert(assets.every((asset) => fs.statSync(path.join(assetDirectory, asset)).size < 80_000));
 });
 
 test("canonical book identities preserve non-Latin titles and authors", () => {
@@ -115,6 +141,71 @@ test("reload restore is exact-context only and rejects legacy or cross-context s
     libraryId: "library-a",
     ageBand: "teens",
   }), null);
+});
+
+test("fresh tabs restore the latest durable context without stale cross-tab overwrite", async () => {
+  const values = new Map<string, string>();
+  const storage: MelaniesGameStorage = {
+    async getItem(key) {
+      return values.get(key) || null;
+    },
+    async setItem(key, value) {
+      values.set(key, value);
+    },
+  };
+  const older = createInitialMelanieGame({
+    anonymousPlayerId: "persistent-player",
+    libraryId: "persistent-library",
+    ageBand: "adult",
+    gameSessionId: "older-session",
+    now: "2026-09-07T10:00:00.000Z",
+  });
+  const newer = createInitialMelanieGame({
+    anonymousPlayerId: "persistent-player",
+    libraryId: "persistent-library",
+    ageBand: "adult",
+    gameSessionId: "newer-session",
+    now: "2026-09-07T11:00:00.000Z",
+  });
+
+  await saveMelaniesGameToStorage(storage, older, "tab-one");
+  await saveMelaniesGameToStorage(storage, newer, "tab-two");
+  await saveMelaniesGameToStorage(
+    storage,
+    { ...older, updatedAt: "2026-09-07T12:00:00.000Z" },
+    "tab-one",
+  );
+
+  assert.equal(
+    (await loadMelaniesGameFromStorage(
+      storage,
+      "persistent-player",
+      "persistent-library",
+      "adult",
+      "fresh-tab",
+    ))?.gameSessionId,
+    "newer-session",
+  );
+  assert.equal(
+    (await loadMelaniesGameFromStorage(
+      storage,
+      "persistent-player",
+      "persistent-library",
+      "adult",
+      "tab-one",
+    ))?.gameSessionId,
+    "newer-session",
+  );
+  assert.equal(
+    await loadMelaniesGameFromStorage(
+      storage,
+      "different-player",
+      "persistent-library",
+      "adult",
+      "fresh-tab",
+    ),
+    null,
+  );
 });
 
 test("full tournament feeds production recommender constraints and returns three positioned real books", async () => {

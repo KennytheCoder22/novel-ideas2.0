@@ -34,11 +34,24 @@ type QueueClient<T> = {
   ): Promise<{ sent: number; remaining: number }>;
 };
 
+type QueueOptions<T> = {
+  immutableRevision?: boolean;
+  revisionFingerprint?: (value: T) => string;
+};
+
+type AcceptedQueueRevision = {
+  id: string;
+  fingerprint: string;
+};
+
 export function createSerializedRecommendationQueue<T>(
   storageKey: string,
   isValid: (value: unknown) => value is T,
   identity: (value: T) => string,
+  options: QueueOptions<T> = {},
 ): QueueClient<T> {
+  const acceptedKey = `${storageKey}:accepted`;
+  const revisionFingerprint = options.revisionFingerprint || JSON.stringify;
   let queueMutation: Promise<unknown> = Promise.resolve();
   function serialize<R>(
     storage: AsyncKeyValueStorage,
@@ -61,12 +74,45 @@ export function createSerializedRecommendationQueue<T>(
     }
   }
 
+  async function readAccepted(storage: AsyncKeyValueStorage): Promise<AcceptedQueueRevision[]> {
+    if (!options.immutableRevision) return [];
+    const raw = await storage.getItem(acceptedKey);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed)
+        ? parsed.filter((value): value is AcceptedQueueRevision => (
+          value
+          && typeof value === "object"
+          && typeof value.id === "string"
+          && typeof value.fingerprint === "string"
+        ))
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
   async function enqueue(storage: AsyncKeyValueStorage, value: T): Promise<void> {
     if (!isValid(value)) throw new Error("invalid_queued_event");
     return serialize(storage, async (assertOwnership) => {
+      const id = identity(value);
+      const fingerprint = revisionFingerprint(value);
+      const accepted = await readAccepted(storage);
+      const acceptedRevision = accepted.find((candidate) => candidate.id === id);
+      if (acceptedRevision) {
+        if (acceptedRevision.fingerprint !== fingerprint) throw new Error("immutable_queued_event_conflict");
+        return;
+      }
       const queued = await read(storage);
-      const existingIndex = queued.findIndex((candidate) => identity(candidate) === identity(value));
+      const existingIndex = queued.findIndex((candidate) => identity(candidate) === id);
       if (existingIndex >= 0) {
+        if (options.immutableRevision) {
+          if (revisionFingerprint(queued[existingIndex]) !== fingerprint) {
+            throw new Error("immutable_queued_event_conflict");
+          }
+          return;
+        }
         queued[existingIndex] = value;
         await assertOwnership();
         await storage.setItem(storageKey, JSON.stringify(queued));
@@ -82,24 +128,38 @@ export function createSerializedRecommendationQueue<T>(
     send: (value: T) => Promise<boolean>,
   ): Promise<{ sent: number; remaining: number }> {
     const queued = await serialize(storage, () => read(storage));
-    const sentValues = new Map<string, string>();
+    const sentValues = new Map<string, { serialized: string; fingerprint: string }>();
     let sent = 0;
     for (const value of queued) {
       try {
         if (await send(value)) {
           sent += 1;
-          sentValues.set(identity(value), JSON.stringify(value));
+          sentValues.set(identity(value), {
+            serialized: JSON.stringify(value),
+            fingerprint: revisionFingerprint(value),
+          });
         }
       } catch {}
     }
     return serialize(storage, async (assertOwnership) => {
       const latest = await read(storage);
+      const accepted = await readAccepted(storage);
+      const acceptedById = new Map(accepted.map((value) => [value.id, value.fingerprint]));
       const remainingById = new Map<string, T>();
       for (const value of latest) {
         const sentValue = sentValues.get(identity(value));
-        if (sentValue === undefined || sentValue !== JSON.stringify(value)) {
+        if (sentValue === undefined || sentValue.serialized !== JSON.stringify(value)) {
           remainingById.set(identity(value), value);
+        } else if (options.immutableRevision) {
+          acceptedById.set(identity(value), sentValue.fingerprint);
         }
+      }
+      if (options.immutableRevision) {
+        await assertOwnership();
+        await storage.setItem(
+          acceptedKey,
+          JSON.stringify([...acceptedById].slice(-200).map(([id, fingerprint]) => ({ id, fingerprint }))),
+        );
       }
       const remaining = [...remainingById.values()].slice(-200);
       await assertOwnership();
@@ -127,6 +187,10 @@ const slateFeedbackQueue = createSerializedRecommendationQueue<GameRecommendatio
   GAME_RECOMMENDATION_SLATE_FEEDBACK_QUEUE_KEY,
   isGameRecommendationSlateFeedbackEventV1,
   (event) => event.eventId,
+  {
+    immutableRevision: true,
+    revisionFingerprint: (event) => JSON.stringify({ ...event, respondedAt: null }),
+  },
 );
 
 export const readQueuedGameRecommendationFeedbackEvents = feedbackQueue.read;

@@ -6,23 +6,27 @@ import {
   completeMelanieFinal,
   completeMelanieRanking,
   createInitialMelanieGame,
+  melanieSemanticSimilarity,
   reorderMelanieRanking,
   scoreMelanieEvidence,
+  selectSemanticallyDiverseConcepts,
   selectMelanieConcepts,
 } from "./melaniesGame";
+import { validateMelanieConceptLibrary } from "./melaniesGameContentValidation";
 
 const context = { anonymousPlayerId: "player-1", libraryId: "library-1", ageBand: "teens" as const, gameSessionId: "melanie-test" };
 
 test("concept bank is broad, authored, and distinct for every supported age route", () => {
   const all = new Set<string>();
   for (const band of ["kids", "preteens", "teens", "adult"] as const) {
-    assert.equal(MELANIES_CONCEPTS[band].length, 16);
+    assert.equal(MELANIES_CONCEPTS[band].length, 64);
     assert(MELANIES_CONCEPTS[band].every((concept) => concept.ageBand === band && concept.synopsis.endsWith(".")));
     for (const concept of MELANIES_CONCEPTS[band]) {
       assert(!all.has(concept.id));
       all.add(concept.id);
     }
   }
+  assert.deepEqual(validateMelanieConceptLibrary(), []);
 });
 
 test("deterministic choose, rank, adaptive challenger, rank, final flow carries survivors", () => {
@@ -69,4 +73,69 @@ test("adaptive challengers are deterministic discriminators, not a shuffled fixe
     firstPath.currentConceptIds,
   );
   assert.notDeepEqual(firstPath.currentConceptIds.slice(2), alternatePath.currentConceptIds.slice(2));
+});
+
+test("opening and adaptive rounds remain diverse and non-repeating across age bands and seeds", () => {
+  for (const ageBand of ["kids", "preteens", "teens", "adult"] as const) {
+    const sampled = new Set<string>();
+    for (let seed = 0; seed < 48; seed += 1) {
+      const initial = createInitialMelanieGame({
+        anonymousPlayerId: `player-${seed}`,
+        libraryId: `library-${seed % 5}`,
+        ageBand,
+        gameSessionId: `session-${ageBand}-${seed}`,
+      });
+      const first = completeMelanieRanking(selectMelanieConcepts(initial, initial.currentConceptIds.slice(0, 3)));
+      const second = completeMelanieRanking(selectMelanieConcepts(first, first.currentConceptIds.slice(0, 3)));
+      assert.equal(new Set(second.seenConceptIds).size, 14);
+      assert.equal(second.seenConceptIds.length, 14);
+      for (const state of [initial, first, second]) {
+        const concepts = state.currentConceptIds.map((id) => MELANIES_CONCEPTS[ageBand].find((concept) => concept.id === id)!);
+        concepts.forEach((concept) => sampled.add(concept.id));
+        const familyCounts = new Map<string, number>();
+        const engineCounts = new Map<string, number>();
+        for (const concept of concepts) {
+          familyCounts.set(concept.semantic.premiseFamily, (familyCounts.get(concept.semantic.premiseFamily) || 0) + 1);
+          engineCounts.set(concept.semantic.narrativeEngine, (engineCounts.get(concept.semantic.narrativeEngine) || 0) + 1);
+        }
+        assert(Math.max(...familyCounts.values()) <= 2);
+        assert(Math.max(...engineCounts.values()) <= 2);
+        const distances = concepts.flatMap((concept, index) => (
+          concepts.slice(index + 1).map((other) => 1 - melanieSemanticSimilarity(concept, other))
+        ));
+        assert(Math.min(...distances) >= 0.2);
+      }
+    }
+    assert(sampled.size >= 56, `${ageBand} sampling reached only ${sampled.size}/64 concepts`);
+  }
+});
+
+test("semantic diversity constraint resists an adversarial high-relevance cluster", () => {
+  const base = MELANIES_CONCEPTS.teens[0];
+  const families = ["quest", "rescue", "competition", "creation", "political-struggle"] as const;
+  const engines = ["journey-encounters", "deadline-mission", "rivalry-ladder", "creative-process", "political-maneuvering"] as const;
+  const clustered = Array.from({ length: 6 }, (_, index) => ({
+    concept: {
+      ...base,
+      id: `cluster-${index}`,
+      semantic: { ...base.semantic, premiseFamily: "investigation" as const, narrativeEngine: "clue-chain" as const },
+    },
+    relevance: 100 - index,
+    tie: index,
+  }));
+  const diverse = families.map((premiseFamily, index) => ({
+    concept: {
+      ...base,
+      id: `diverse-${index}`,
+      semantic: { ...base.semantic, premiseFamily, narrativeEngine: engines[index] },
+    },
+    relevance: 20 - index,
+    tie: 100 + index,
+  }));
+  const selected = selectSemanticallyDiverseConcepts([...clustered, ...diverse], [], 6);
+  assert(selected.some((concept) => concept.id === "cluster-0"), "information-gain leader should remain represented");
+  assert(selected.filter((concept) => concept.semantic.premiseFamily === "investigation").length <= 2);
+  assert(selected.filter((concept) => concept.semantic.narrativeEngine === "clue-chain").length <= 2);
+  assert(new Set(selected.map((concept) => concept.semantic.premiseFamily)).size >= 5);
+  assert(new Set(selected.map((concept) => concept.semantic.narrativeEngine)).size >= 5);
 });

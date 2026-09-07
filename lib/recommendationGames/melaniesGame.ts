@@ -1,9 +1,10 @@
 import type { AgeBandV2, SwipeSignalV2 } from "../../app/recommender-v2";
+import { ADDITIONAL_MELANIE_CONCEPTS } from "./melaniesGameExpandedConcepts";
 
 export const MELANIES_GAME_VERSION = "melanies_game_v1" as const;
-export const MELANIES_GAME_BANK_VERSION = "melanies_concepts_v1" as const;
+export const MELANIES_GAME_BANK_VERSION = "melanies_concepts_v2" as const;
 export const MELANIES_GAME_SAVE_SCHEMA = "melanies_game_save_v1" as const;
-export const MELANIES_GAME_EVIDENCE_SCHEMA = "melanies_game_evidence_v1" as const;
+export const MELANIES_GAME_EVIDENCE_SCHEMA = "melanies_game_evidence_v2" as const;
 
 export type MelanieDimension =
   | "speculation"
@@ -24,6 +25,110 @@ export type MelanieAttributes = Record<MelanieDimension, -2 | -1 | 0 | 1 | 2> & 
   settings: string[];
 };
 
+export type MelaniePremiseFamily =
+  | "quest" | "investigation" | "competition" | "rescue" | "survival" | "community-change"
+  | "relationship-repair" | "identity-discovery" | "heist" | "creation" | "stewardship"
+  | "political-struggle" | "journey" | "workplace-crisis" | "inheritance" | "conspiracy"
+  | "coming-of-age" | "historical-reckoning" | "ethical-dilemma" | "second-chance";
+export type MelanieCentralActivity =
+  | "explore" | "investigate" | "build" | "protect" | "perform" | "compete" | "escape" | "solve"
+  | "care" | "negotiate" | "create" | "survive" | "travel" | "organize" | "rescue" | "restore"
+  | "teach" | "reconcile" | "rebel" | "lead" | "discover" | "hide" | "adapt" | "document" | "cook";
+export type MelanieSettingClass =
+  | "home" | "school" | "small-town" | "city" | "wilderness" | "coast" | "sea" | "space"
+  | "other-world" | "historical" | "workplace" | "institution" | "transit" | "performance"
+  | "sports" | "archive" | "garden" | "island" | "underground" | "digital" | "political";
+export type MelanieProtagonistRole =
+  | "student" | "apprentice" | "caretaker" | "outsider" | "investigator" | "performer" | "athlete"
+  | "scientist" | "artist" | "leader" | "worker" | "parent" | "sibling" | "friend" | "traveler"
+  | "teacher" | "healer" | "organizer" | "scholar" | "survivor" | "ruler" | "rebel" | "guardian";
+export type MelanieNarrativeEngine =
+  | "clue-chain" | "escalating-trials" | "deadline-mission" | "relationship-negotiation"
+  | "resource-management" | "rivalry-ladder" | "journey-encounters" | "secret-uncovering"
+  | "community-project" | "moral-choice" | "training-progression" | "cause-and-effect-discovery"
+  | "political-maneuvering" | "survival-pressure" | "creative-process" | "alternating-perspectives"
+  | "procedural-problem-solving" | "transformation-consequences" | "cat-and-mouse"
+  | "memory-reconstruction";
+export type MelanieRelationshipShape =
+  | "solo" | "friendship" | "siblings" | "family" | "found-family" | "rivals" | "mentor-student"
+  | "team" | "romantic-pair" | "community" | "parent-child" | "colleagues" | "adversaries"
+  | "intergenerational";
+export type MelanieSpeculativeDevice =
+  | "none" | "magic-object" | "sentient-place" | "time-distortion" | "memory-technology"
+  | "alternate-world" | "mythic-being" | "transformation" | "artificial-intelligence"
+  | "future-technology" | "ghost" | "living-nature" | "impossible-creature" | "prophecy"
+  | "parallel-reality" | "communicating-animal" | "supernatural-rule";
+export type MelanieStakesShape =
+  | "personal-belonging" | "relationship" | "family" | "community" | "livelihood" | "freedom"
+  | "survival" | "truth" | "justice" | "environment" | "identity" | "public-duty" | "legacy"
+  | "competition" | "creative-goal" | "rescue" | "political" | "ethical";
+export type MelanieSocialFocus = "individual" | "pair" | "family" | "team" | "community" | "society";
+export type MelanieCoverMotif =
+  | "animal" | "archive" | "art" | "book" | "castle" | "city" | "clock" | "coast" | "desert"
+  | "fire" | "food" | "forest" | "garden" | "ghost" | "history" | "home" | "journey" | "machine"
+  | "magic" | "moon" | "mountain" | "music" | "mystery" | "performance" | "politics"
+  | "romance" | "school" | "science" | "sea" | "signal" | "space" | "sport" | "storm" | "train";
+
+export const MELANIE_SEMANTIC_TAXONOMY = {
+  premiseFamily: [
+    "quest", "investigation", "competition", "rescue", "survival", "community-change",
+    "relationship-repair", "identity-discovery", "heist", "creation", "stewardship",
+    "political-struggle", "journey", "workplace-crisis", "inheritance", "conspiracy",
+    "coming-of-age", "historical-reckoning", "ethical-dilemma", "second-chance",
+  ] satisfies readonly MelaniePremiseFamily[],
+  centralActivities: [
+    "explore", "investigate", "build", "protect", "perform", "compete", "escape", "solve", "care",
+    "negotiate", "create", "survive", "travel", "organize", "rescue", "restore", "teach", "reconcile",
+    "rebel", "lead", "discover", "hide", "adapt", "document", "cook",
+  ] satisfies readonly MelanieCentralActivity[],
+  settingClasses: [
+    "home", "school", "small-town", "city", "wilderness", "coast", "sea", "space", "other-world",
+    "historical", "workplace", "institution", "transit", "performance", "sports", "archive", "garden",
+    "island", "underground", "digital", "political",
+  ] satisfies readonly MelanieSettingClass[],
+  protagonistRoles: [
+    "student", "apprentice", "caretaker", "outsider", "investigator", "performer", "athlete",
+    "scientist", "artist", "leader", "worker", "parent", "sibling", "friend", "traveler", "teacher",
+    "healer", "organizer", "scholar", "survivor", "ruler", "rebel", "guardian",
+  ] satisfies readonly MelanieProtagonistRole[],
+  narrativeEngine: [
+    "clue-chain", "escalating-trials", "deadline-mission", "relationship-negotiation",
+    "resource-management", "rivalry-ladder", "journey-encounters", "secret-uncovering",
+    "community-project", "moral-choice", "training-progression", "cause-and-effect-discovery",
+    "political-maneuvering", "survival-pressure", "creative-process", "alternating-perspectives",
+    "procedural-problem-solving", "transformation-consequences", "cat-and-mouse", "memory-reconstruction",
+  ] satisfies readonly MelanieNarrativeEngine[],
+  relationshipShapes: [
+    "solo", "friendship", "siblings", "family", "found-family", "rivals", "mentor-student", "team",
+    "romantic-pair", "community", "parent-child", "colleagues", "adversaries", "intergenerational",
+  ] satisfies readonly MelanieRelationshipShape[],
+  speculativeDevices: [
+    "none", "magic-object", "sentient-place", "time-distortion", "memory-technology", "alternate-world",
+    "mythic-being", "transformation", "artificial-intelligence", "future-technology", "ghost",
+    "living-nature", "impossible-creature", "prophecy", "parallel-reality", "communicating-animal",
+    "supernatural-rule",
+  ] satisfies readonly MelanieSpeculativeDevice[],
+  stakesShapes: [
+    "personal-belonging", "relationship", "family", "community", "livelihood", "freedom", "survival",
+    "truth", "justice", "environment", "identity", "public-duty", "legacy", "competition",
+    "creative-goal", "rescue", "political", "ethical",
+  ] satisfies readonly MelanieStakesShape[],
+  socialFocus: ["individual", "pair", "family", "team", "community", "society"] satisfies readonly MelanieSocialFocus[],
+} as const;
+
+export type MelanieSemanticFingerprint = {
+  premiseFamily: MelaniePremiseFamily;
+  centralActivities: MelanieCentralActivity[];
+  settingClasses: MelanieSettingClass[];
+  protagonistRoles: MelanieProtagonistRole[];
+  narrativeEngine: MelanieNarrativeEngine;
+  relationshipShapes: MelanieRelationshipShape[];
+  speculativeDevices: MelanieSpeculativeDevice[];
+  stakesShapes: MelanieStakesShape[];
+  keyCoverMotifs: MelanieCoverMotif[];
+  socialFocus: MelanieSocialFocus;
+};
+
 export type MelanieConcept = {
   id: string;
   ageBand: AgeBandV2;
@@ -31,6 +136,7 @@ export type MelanieConcept = {
   synopsis: string;
   palette: readonly [string, string];
   attributes: MelanieAttributes;
+  semantic: MelanieSemanticFingerprint;
 };
 
 type ConceptSeed = [
@@ -43,6 +149,19 @@ type ConceptSeed = [
   dynamics: string[],
   settings: string[],
   axes: [number, number, number, number, number, number, number, number, number],
+];
+
+type SemanticSeed = [
+  premiseFamily: MelaniePremiseFamily,
+  centralActivities: MelanieCentralActivity[],
+  settingClasses: MelanieSettingClass[],
+  protagonistRoles: MelanieProtagonistRole[],
+  narrativeEngine: MelanieNarrativeEngine,
+  relationshipShapes: MelanieRelationshipShape[],
+  speculativeDevices: MelanieSpeculativeDevice[],
+  stakesShapes: MelanieStakesShape[],
+  keyCoverMotifs: MelanieCoverMotif[],
+  socialFocus: MelanieSocialFocus,
 ];
 
 const PALETTES: readonly (readonly [string, string])[] = [
@@ -65,13 +184,13 @@ const seeds: Record<AgeBandV2, ConceptSeed[]> = {
     ["k-secret-seed", "The Secret in the Seed Packet", "A child plants an unlabeled seed and wakes to find a doorway growing in the backyard.", ["fantasy", "mystery"], ["gentle", "curious"], ["nature", "discovery"], ["family"], ["home", "hidden world"], [2, -2, 0, -2, 2, 0, 1, 0, 2]],
     ["k-snow-day", "The Longest Snow Day", "Three siblings turn a power outage into a neighborhood-wide quest for warmth and pancakes.", ["realistic fiction", "adventure"], ["cozy", "funny"], ["community", "resourcefulness"], ["family", "community"], ["neighborhood"], [-2, -1, 2, -2, 0, -1, 1, 1, 2]],
     ["k-paper-dragon", "The Paper Dragon Parade", "An artist's paper dragon comes alive and refuses to follow the parade route.", ["fantasy", "comedy"], ["colorful", "playful"], ["art", "independence"], ["friendship"], ["city festival"], [2, -2, 2, -2, 0, 0, 1, 2, 1]],
-    ["k-island-race", "Race Around Pebble Island", "A cautious rabbit and a fearless turtle enter a race where every shortcut hides a puzzle.", ["animal story", "adventure"], ["exciting", "funny"], ["perseverance", "puzzles"], ["rivals"], ["island"], [0, -1, 1, -2, 1, 1, 0, 2, 0]],
+    ["k-island-race", "Race Around Pebble Island", "A cautious rabbit and a fearless turtle enter a race where every shortcut hides a puzzle.", ["animal story", "adventure"], ["exciting", "funny"], ["perseverance", "puzzles"], ["rivals"], ["island"], [0, -1, 1, -2, 1, 1, 0, 2, -1]],
     ["k-grandma-map", "Grandma's Impossible Map", "A grandchild follows a hand-drawn map through ordinary places that hold extraordinary family stories.", ["realistic fiction"], ["warm", "reflective"], ["family", "memory"], ["family"], ["town"], [-1, -2, 0, -2, 0, -1, 2, -1, 2]],
     ["k-monster-window", "The Monster Outside My Window", "A nervous child realizes the nightly monster is trying to warn the whole apartment building.", ["fantasy", "mystery"], ["spooky", "hopeful"], ["bravery", "misunderstanding"], ["community"], ["apartment building"], [2, 1, 0, -2, 2, 0, 1, 1, 1]],
   ],
   preteens: [
     ["p-lost-frequency", "The Lost Frequency", "Three friends build a radio that receives broadcasts from their town exactly one week in the future.", ["science fiction", "mystery"], ["tense", "clever"], ["friendship", "consequences"], ["friendship"], ["small town"], [2, 0, 0, -2, 2, 0, 1, 2, 1]],
-    ["p-dragons-debate", "Dragons on the Debate Team", "A rule-following student discovers the new debate champions are dragons hiding in plain sight.", ["fantasy", "comedy"], ["funny", "energetic"], ["school", "belonging"], ["rivals", "team"], ["school"], [2, -1, 2, -2, 1, -1, 0, 2, 1]],
+    ["p-dragons-debate", "Dragons on the Debate Team", "A rule-following student discovers the new debate champions are dragons hiding in plain sight.", ["fantasy", "comedy"], ["funny", "energetic"], ["school", "belonging"], ["rivals", "team"], ["school"], [2, -1, 2, -2, 1, -1, -1, 2, 1]],
     ["p-below-station", "Below Platform Nine", "A subway explorer finds a sealed station where forgotten city stories keep walking.", ["urban fantasy", "mystery"], ["atmospheric", "spooky"], ["memory", "city"], ["companionship"], ["underground city"], [2, 1, 0, -2, 2, 0, 2, 1, 1]],
     ["p-zero-gravity", "Zero-Gravity Summer", "Cousins at an orbital camp race to repair a garden before the station loses its food supply.", ["science fiction", "adventure"], ["exciting", "hopeful"], ["family", "survival"], ["family", "team"], ["space station"], [2, 0, 1, -2, 0, 1, 1, 2, 0]],
     ["p-river-secret", "The River Keeps a Secret", "A young kayaker searches for a missing environmental scientist along a river that floods overnight.", ["realistic mystery", "adventure"], ["tense", "grounded"], ["environment", "courage"], ["family"], ["river wilderness"], [-2, 1, 0, -2, 2, 1, 1, 2, 0]],
@@ -82,7 +201,7 @@ const seeds: Record<AgeBandV2, ConceptSeed[]> = {
     ["p-skate-code", "The Skatepark Code", "A coder and a skateboarder team up to expose who is sabotaging their community competition.", ["realistic fiction", "mystery"], ["fast", "funny"], ["community", "fairness"], ["friendship"], ["city"], [-2, -1, 1, -2, 2, -1, 1, 2, 1]],
     ["p-last-treehouse", "The Last Treehouse", "Neighbors defend an enormous treehouse while uncovering why every bird in town has vanished.", ["adventure", "mystery"], ["hopeful", "urgent"], ["environment", "community"], ["ensemble cast"], ["suburb", "forest"], [-1, 0, 0, -2, 2, 0, 1, 2, 0]],
     ["p-pocket-universe", "A Universe in My Pocket", "A science fair project opens a tiny universe whose inhabitants start sending requests for help.", ["science fiction"], ["wonder-filled", "thoughtful"], ["responsibility", "invention"], ["solitary"], ["school", "micro-universe"], [2, 0, 0, -2, 1, 2, 2, 0, 2]],
-    ["p-midnight-league", "The Midnight League", "Young athletes discover their championship opponents practice impossible sports after dark.", ["sports", "fantasy"], ["energetic", "mysterious"], ["competition", "confidence"], ["team", "rivals"], ["city"], [1, 0, 1, -2, 1, 0, 0, 2, 0]],
+    ["p-midnight-league", "The Midnight League", "Young athletes discover their championship opponents practice impossible sports after dark.", ["sports", "fantasy"], ["energetic", "mysterious"], ["competition", "confidence"], ["team", "rivals"], ["city"], [1, 0, 1, -2, 1, 0, 0, 2, -1]],
     ["p-coral-cipher", "The Coral Cipher", "A puzzle-loving diver decodes a warning hidden in the changing colors of a coral reef.", ["adventure", "mystery"], ["bright", "suspenseful"], ["environment", "puzzles"], ["family"], ["island", "ocean"], [-1, 0, 0, -2, 2, 1, 1, 2, 1]],
     ["p-ordinary-hero", "An Extremely Ordinary Hero", "The only child without powers at hero school may be the only one who notices the villain's simple trick.", ["fantasy", "comedy"], ["funny", "hopeful"], ["identity", "ingenuity"], ["school friends"], ["hero school"], [2, -1, 2, -2, 1, 0, 1, 2, 2]],
     ["p-winter-letters", "Letters from the Winter Road", "Siblings crossing the country to find their father receive letters predicting each stop before they arrive.", ["road adventure", "mystery"], ["emotional", "tense"], ["family", "hope"], ["family"], ["road trip"], [-1, 1, 0, -2, 2, 1, 2, 1, 2]],
@@ -91,10 +210,10 @@ const seeds: Record<AgeBandV2, ConceptSeed[]> = {
     ["t-memory-orchard", "The Glass Orchard", "A botanist's daughter discovers that an abandoned greenhouse grows fruit containing other people's memories.", ["speculative fiction", "mystery"], ["lush", "unsettling"], ["memory", "identity"], ["family"], ["greenhouse"], [2, 1, 0, 0, 2, 0, 2, 0, 2]],
     ["t-last-train", "The Last Train North", "A student boards an overnight train where every passenger remembers a different version of the same missing town.", ["mystery", "speculative fiction"], ["atmospheric", "tense"], ["truth", "memory"], ["ensemble cast"], ["train"], [2, 1, 0, 0, 2, 1, 2, 1, 1]],
     ["t-borrowed-summer", "The Borrowed Summer", "Two former best friends share one last summer job restoring a closed seaside theater.", ["contemporary fiction", "romance"], ["bittersweet", "warm"], ["friendship", "second chances"], ["friends to lovers"], ["seaside town"], [-2, -1, 1, 2, 0, -1, 2, -1, 2]],
-    ["t-archive-zero", "Archive Zero", "Teen hackers uncover a public archive that has quietly erased one person from every year of history.", ["science fiction", "thriller"], ["urgent", "cerebral"], ["power", "history"], ["team"], ["near-future city"], [1, 1, 0, 0, 2, 2, 1, 2, 0]],
+    ["t-archive-zero", "Archive Zero", "Teen hackers uncover a public archive that has quietly erased one person from every year of history.", ["science fiction", "thriller"], ["urgent", "cerebral"], ["power", "history"], ["team"], ["near-future city"], [1, 1, 0, 0, 2, 2, -1, 2, -1]],
     ["t-sunken-saint", "The Sunken Saint", "A skeptical diver joins a pilgrimage to a drowned city that appears for one night each decade.", ["fantasy", "adventure"], ["mythic", "melancholic"], ["faith", "loss"], ["rivals"], ["drowned city"], [2, 1, 0, 1, 1, 2, 2, 1, 1]],
     ["t-breakup-club", "The Breakup Club", "Four students make a pact to avoid romance and immediately become tangled in everyone else's love stories.", ["contemporary fiction", "comedy"], ["funny", "heartfelt"], ["friendship", "love"], ["ensemble cast", "romance"], ["school"], [-2, -1, 2, 2, 0, -1, 2, 1, 2]],
-    ["t-wolves-signal", "When the Wolves Signal", "A wilderness volunteer follows impossible radio calls during a week-long search for a missing hiker.", ["thriller", "mystery"], ["dark", "claustrophobic"], ["survival", "trust"], ["solitary"], ["mountains"], [0, 2, 0, 0, 2, 0, 2, 2, 2]],
+    ["t-wolves-signal", "When the Wolves Signal", "A wilderness volunteer follows impossible radio calls during a week-long search for a missing hiker.", ["thriller", "mystery"], ["dark", "claustrophobic"], ["survival", "trust"], ["solitary"], ["mountains"], [0, 2, -1, 0, 2, 0, 2, 2, 2]],
     ["t-paper-rebellion", "The Paper Rebellion", "In a city where laws rewrite themselves nightly, student printers circulate a newspaper that cannot be altered.", ["dystopian", "fantasy"], ["defiant", "fast"], ["resistance", "truth"], ["found family"], ["fantasy city"], [2, 1, 1, 1, 1, 2, 1, 2, 0]],
     ["t-orbit-hearts", "Hearts in Low Orbit", "Rival cadets stranded on a damaged moon shuttle must trust each other before their oxygen runs out.", ["science fiction", "romance"], ["tense", "witty"], ["trust", "survival"], ["rivals to lovers"], ["space"], [2, 1, 1, 2, 0, 1, 2, 2, 1]],
     ["t-small-gods", "Small Gods of Cedar Street", "Neighborhood teens discover that every neglected place has a minor god who remembers who abandoned it.", ["urban fantasy"], ["strange", "hopeful"], ["community", "belonging"], ["ensemble cast"], ["neighborhood"], [2, 0, 1, 0, 1, 0, 2, 0, 2]],
@@ -106,12 +225,12 @@ const seeds: Record<AgeBandV2, ConceptSeed[]> = {
     ["t-after-party", "After the Last Party", "Five friends reconstruct one missing hour from the party that ended their final summer together.", ["contemporary mystery"], ["bittersweet", "suspenseful"], ["friendship", "memory"], ["ensemble cast"], ["lake town"], [-2, 1, 0, 1, 2, -1, 2, 0, 2]],
   ],
   adult: [
-    ["a-north-train", "The Last Train North", "A woman boards an overnight train where every passenger remembers a different version of the same missing town.", ["literary mystery", "speculative fiction"], ["atmospheric", "unsettling"], ["memory", "truth"], ["ensemble cast"], ["train", "remote town"], [2, 1, 0, 0, 2, 1, 2, 0, 2]],
-    ["a-glass-orchard", "The Glass Orchard", "A botanist discovers that trees in an abandoned greenhouse grow fruit containing other people's memories.", ["speculative fiction", "mystery"], ["lush", "melancholic"], ["memory", "ethics"], ["solitary"], ["greenhouse"], [2, 1, 0, 0, 2, 0, 2, -1, 2]],
+    ["a-north-train", "Passengers of the Vanished Line", "A rail historian joins a midnight route whose silent travelers carry tickets from stations erased decades ago.", ["literary mystery", "speculative fiction"], ["atmospheric", "unsettling"], ["memory", "truth"], ["ensemble cast"], ["train", "remote town"], [2, 1, 0, 0, 2, 1, 2, 0, 2]],
+    ["a-glass-orchard", "The Memory Harvest", "An estranged horticulturist inherits a sealed conservatory where tasting its impossible fruit reveals the secrets her family buried.", ["speculative fiction", "mystery"], ["lush", "melancholic"], ["memory", "ethics"], ["solitary"], ["greenhouse"], [2, 1, 0, 0, 2, 0, 2, -1, 2]],
     ["a-second-kitchen", "The Second Kitchen", "Estranged siblings inherit a restaurant that serves one forgotten meal from each diner's past.", ["contemporary fiction", "magical realism"], ["warm", "bittersweet"], ["family", "food"], ["family"], ["city restaurant"], [1, -1, 1, 1, 0, -1, 2, -1, 2]],
-    ["a-quiet-coup", "The Quiet Coup", "A municipal clerk notices tiny changes in public records that point to a government takeover nobody else can see.", ["political thriller"], ["tense", "cerebral"], ["power", "truth"], ["solitary"], ["capital city"], [-1, 2, 0, 0, 2, 2, 1, 1, 2]],
+    ["a-quiet-coup", "The Quiet Coup", "A municipal clerk notices tiny changes in public records that point to a government takeover nobody else can see.", ["political thriller"], ["tense", "cerebral"], ["power", "truth"], ["solitary"], ["capital city"], [-1, 2, 0, -1, 2, 2, 1, 1, 2]],
     ["a-house-tides", "The House That Kept the Tides", "Three generations return to a coastal home whose rooms rearrange themselves with the moon.", ["family saga", "magical realism"], ["gothic", "emotional"], ["inheritance", "family"], ["family"], ["coastal house"], [1, 1, 0, 1, 1, 0, 2, -1, 2]],
-    ["a-courier-mars", "The Last Courier on Mars", "A cynical courier crosses abandoned settlements to deliver a package addressed to someone born tomorrow.", ["science fiction", "adventure"], ["wry", "lonely"], ["hope", "survival"], ["solitary"], ["Mars"], [2, 0, 1, 0, 1, 2, 1, 2, 0]],
+    ["a-courier-mars", "The Last Courier on Mars", "A cynical courier crosses abandoned settlements to deliver a package addressed to someone born tomorrow.", ["science fiction", "adventure"], ["wry", "lonely"], ["hope", "survival"], ["solitary"], ["Mars"], [2, 0, 1, 0, 1, 2, -1, 2, -1]],
     ["a-village-murders", "The Village Murder Society", "Retired neighbors investigate a suspicious death while fiercely competing over the annual garden prize.", ["cozy mystery", "comedy"], ["witty", "cozy"], ["community", "aging"], ["ensemble cast"], ["village"], [-2, -1, 2, 0, 2, -1, 1, 0, 1]],
     ["a-salt-parliament", "The Parliament of Salt", "A diplomat must negotiate peace among island nations as the ocean begins returning their buried histories.", ["fantasy", "political fiction"], ["epic", "reflective"], ["history", "power"], ["ensemble cast"], ["island nations"], [2, 1, 0, 1, 1, 2, 2, -1, 1]],
     ["a-unfinished-film", "The Unfinished Film", "A film editor discovers that discarded footage from a vanished director predicts crimes before they happen.", ["thriller", "mystery"], ["dark", "propulsive"], ["art", "obsession"], ["solitary"], ["film studio", "city"], [0, 2, 0, 0, 2, 0, 2, 2, 2]],
@@ -125,12 +244,88 @@ const seeds: Record<AgeBandV2, ConceptSeed[]> = {
   ],
 };
 
+const SEMANTIC_SEEDS: Record<string, SemanticSeed> = {
+  "k-cloud-library": ["quest", ["discover", "protect"], ["other-world"], ["artist"], "cause-and-effect-discovery", ["friendship"], ["sentient-place"], ["public-duty"], ["book", "storm", "magic"], "pair"],
+  "k-lunchbox-detectives": ["investigation", ["investigate", "solve"], ["school"], ["student", "investigator"], "clue-chain", ["friendship"], ["none"], ["truth"], ["food", "school"], "pair"],
+  "k-moon-whale": ["rescue", ["travel", "rescue"], ["sea"], ["guardian", "traveler"], "journey-encounters", ["friendship"], ["mythic-being"], ["rescue"], ["sea", "moon", "animal"], "pair"],
+  "k-garden-robots": ["creation", ["build", "care"], ["garden", "school"], ["student", "scientist"], "transformation-consequences", ["team"], ["artificial-intelligence"], ["community"], ["machine", "garden"], "team"],
+  "k-night-bus": ["journey", ["travel", "perform"], ["transit", "city"], ["traveler"], "journey-encounters", ["found-family"], ["supernatural-rule"], ["personal-belonging"], ["journey", "book"], "community"],
+  "k-dinosaur-neighbor": ["identity-discovery", ["hide", "protect"], ["small-town"], ["friend", "outsider"], "cat-and-mouse", ["friendship"], ["impossible-creature"], ["personal-belonging"], ["animal", "home"], "pair"],
+  "k-clock-mice": ["rescue", ["restore", "survive"], ["city"], ["caretaker"], "deadline-mission", ["family"], ["communicating-animal"], ["community"], ["clock", "storm", "city"], "family"],
+  "k-sea-post": ["investigation", ["explore", "investigate"], ["sea"], ["investigator", "traveler"], "clue-chain", ["friendship"], ["impossible-creature"], ["truth"], ["sea", "mystery"], "pair"],
+  "k-wild-choir": ["creation", ["perform", "reconcile"], ["wilderness", "performance"], ["performer"], "creative-process", ["team"], ["communicating-animal"], ["creative-goal"], ["music", "forest", "animal"], "team"],
+  "k-castle-puddles": ["rescue", ["lead", "solve"], ["other-world"], ["ruler", "leader"], "deadline-mission", ["friendship"], ["living-nature"], ["public-duty"], ["castle", "storm"], "community"],
+  "k-secret-seed": ["quest", ["discover", "explore"], ["home", "other-world"], ["student", "traveler"], "journey-encounters", ["family"], ["magic-object"], ["identity"], ["garden", "magic"], "individual"],
+  "k-snow-day": ["survival", ["organize", "cook"], ["home", "small-town"], ["sibling", "organizer"], "resource-management", ["siblings", "community"], ["none"], ["community"], ["home", "food", "storm"], "community"],
+  "k-paper-dragon": ["identity-discovery", ["create", "protect"], ["performance", "city"], ["artist"], "transformation-consequences", ["friendship"], ["transformation"], ["creative-goal"], ["art", "magic"], "pair"],
+  "k-island-race": ["competition", ["compete", "solve"], ["island", "sports"], ["athlete"], "rivalry-ladder", ["rivals"], ["communicating-animal"], ["competition"], ["sport", "sea", "animal"], "pair"],
+  "k-grandma-map": ["historical-reckoning", ["travel", "document"], ["small-town"], ["traveler"], "memory-reconstruction", ["intergenerational", "family"], ["none"], ["legacy"], ["journey", "history"], "family"],
+  "k-monster-window": ["rescue", ["investigate", "protect"], ["city", "home"], ["outsider", "guardian"], "clue-chain", ["community"], ["impossible-creature"], ["community"], ["ghost", "home"], "community"],
+
+  "p-lost-frequency": ["ethical-dilemma", ["build", "investigate"], ["small-town"], ["student", "scientist"], "cause-and-effect-discovery", ["friendship"], ["time-distortion"], ["ethical"], ["signal", "clock", "machine"], "team"],
+  "p-dragons-debate": ["identity-discovery", ["compete", "hide"], ["school"], ["student"], "rivalry-ladder", ["rivals", "team"], ["mythic-being"], ["personal-belonging"], ["school", "animal"], "team"],
+  "p-below-station": ["historical-reckoning", ["explore", "document"], ["underground", "city"], ["traveler", "scholar"], "journey-encounters", ["friendship"], ["ghost"], ["legacy"], ["train", "ghost", "history"], "pair"],
+  "p-zero-gravity": ["survival", ["restore", "care"], ["space"], ["student", "scientist"], "resource-management", ["family", "team"], ["future-technology"], ["survival"], ["space", "garden"], "team"],
+  "p-river-secret": ["rescue", ["investigate", "rescue"], ["wilderness"], ["athlete", "investigator"], "deadline-mission", ["family"], ["none"], ["rescue", "environment"], ["sea", "forest"], "pair"],
+  "p-bakery-ghost": ["historical-reckoning", ["cook", "solve"], ["workplace"], ["apprentice"], "clue-chain", ["intergenerational"], ["ghost"], ["legacy"], ["food", "ghost"], "pair"],
+  "p-rulebook": ["survival", ["survive", "adapt"], ["institution", "historical"], ["student"], "escalating-trials", ["team"], ["supernatural-rule"], ["freedom"], ["history", "magic"], "team"],
+  "p-lake-house": ["identity-discovery", ["investigate", "reconcile"], ["coast", "home"], ["outsider"], "memory-reconstruction", ["friendship"], ["none"], ["family", "identity"], ["home", "history"], "pair"],
+  "p-moth-kingdom": ["political-struggle", ["negotiate", "lead"], ["other-world"], ["ruler", "outsider"], "moral-choice", ["family"], ["supernatural-rule"], ["freedom", "public-duty"], ["castle", "moon", "animal"], "society"],
+  "p-skate-code": ["investigation", ["investigate", "protect"], ["city", "sports"], ["athlete", "scientist"], "cat-and-mouse", ["friendship"], ["none"], ["justice", "competition"], ["sport", "machine"], "pair"],
+  "p-last-treehouse": ["stewardship", ["protect", "investigate"], ["small-town", "wilderness"], ["organizer"], "community-project", ["community"], ["none"], ["environment"], ["forest", "animal"], "community"],
+  "p-pocket-universe": ["ethical-dilemma", ["build", "rescue"], ["school", "other-world"], ["student", "scientist"], "cause-and-effect-discovery", ["solo"], ["alternate-world"], ["ethical", "rescue"], ["space", "science", "machine"], "individual"],
+  "p-midnight-league": ["competition", ["compete", "investigate"], ["sports", "city"], ["athlete"], "rivalry-ladder", ["team", "rivals"], ["supernatural-rule"], ["competition"], ["sport", "moon"], "team"],
+  "p-coral-cipher": ["investigation", ["solve", "protect"], ["sea", "island"], ["investigator"], "clue-chain", ["family"], ["none"], ["environment"], ["sea", "mystery"], "pair"],
+  "p-ordinary-hero": ["identity-discovery", ["investigate", "solve"], ["school"], ["student", "outsider"], "secret-uncovering", ["friendship"], ["supernatural-rule"], ["personal-belonging"], ["school", "magic"], "team"],
+  "p-winter-letters": ["rescue", ["travel", "investigate"], ["transit"], ["sibling", "traveler"], "journey-encounters", ["siblings", "family"], ["prophecy"], ["family", "rescue"], ["journey", "book"], "family"],
+
+  "t-memory-orchard": ["identity-discovery", ["investigate", "care"], ["garden"], ["scientist"], "memory-reconstruction", ["family"], ["memory-technology"], ["identity"], ["garden", "mystery"], "individual"],
+  "t-last-train": ["investigation", ["travel", "investigate"], ["transit", "small-town"], ["student", "traveler"], "alternating-perspectives", ["community"], ["parallel-reality"], ["truth"], ["train", "mystery"], "community"],
+  "t-borrowed-summer": ["relationship-repair", ["restore", "perform"], ["coast", "performance"], ["worker", "performer"], "relationship-negotiation", ["romantic-pair", "friendship"], ["none"], ["relationship", "creative-goal"], ["performance", "coast"], "pair"],
+  "t-archive-zero": ["conspiracy", ["investigate", "rebel"], ["digital", "city"], ["student", "investigator"], "cat-and-mouse", ["team"], ["future-technology"], ["truth", "justice"], ["archive", "machine"], "team"],
+  "t-sunken-saint": ["quest", ["explore", "travel"], ["sea", "historical"], ["outsider", "traveler"], "journey-encounters", ["rivals"], ["sentient-place"], ["truth"], ["sea", "history"], "team"],
+  "t-breakup-club": ["coming-of-age", ["reconcile", "hide"], ["school"], ["student", "friend"], "alternating-perspectives", ["friendship", "romantic-pair"], ["none"], ["relationship"], ["school", "romance"], "team"],
+  "t-wolves-signal": ["rescue", ["survive", "investigate"], ["wilderness"], ["guardian", "investigator"], "survival-pressure", ["solo"], ["supernatural-rule"], ["survival", "rescue"], ["signal", "mountain"], "individual"],
+  "t-paper-rebellion": ["political-struggle", ["rebel", "organize"], ["city", "political"], ["student", "rebel"], "political-maneuvering", ["found-family"], ["supernatural-rule"], ["freedom", "truth"], ["book", "politics"], "society"],
+  "t-orbit-hearts": ["survival", ["survive", "restore"], ["space"], ["student", "traveler"], "deadline-mission", ["rivals", "romantic-pair"], ["future-technology"], ["survival", "relationship"], ["space", "romance"], "pair"],
+  "t-small-gods": ["stewardship", ["discover", "protect"], ["small-town"], ["student", "guardian"], "community-project", ["community"], ["mythic-being"], ["community", "legacy"], ["city", "magic"], "community"],
+  "t-dead-language": ["historical-reckoning", ["investigate", "compete"], ["school", "historical"], ["student", "scholar"], "secret-uncovering", ["rivals"], ["ghost"], ["truth", "identity"], ["school", "ghost"], "pair"],
+  "t-fire-season": ["investigation", ["investigate", "reconcile"], ["small-town", "wilderness"], ["sibling", "investigator"], "clue-chain", ["siblings", "family"], ["none"], ["environment", "justice"], ["fire", "forest"], "family"],
+  "t-monster-documentary": ["creation", ["create", "document"], ["small-town"], ["student", "artist"], "creative-process", ["team", "friendship"], ["impossible-creature"], ["truth", "creative-goal"], ["art", "ghost"], "team"],
+  "t-deep-blue": ["identity-discovery", ["compete", "investigate"], ["coast", "sports"], ["athlete"], "memory-reconstruction", ["family"], ["none"], ["identity", "truth"], ["sport", "sea", "music"], "individual"],
+  "t-crownless": ["political-struggle", ["compete", "rebel"], ["other-world", "political"], ["ruler", "rebel"], "rivalry-ladder", ["rivals"], ["none"], ["political", "freedom"], ["castle", "politics"], "society"],
+  "t-after-party": ["relationship-repair", ["investigate", "reconcile"], ["small-town"], ["student", "friend"], "memory-reconstruction", ["friendship"], ["none"], ["relationship", "truth"], ["home", "mystery"], "team"],
+
+  "a-north-train": ["historical-reckoning", ["travel", "investigate"], ["transit", "historical"], ["scholar", "traveler"], "alternating-perspectives", ["community"], ["ghost"], ["truth", "legacy"], ["train", "ghost"], "community"],
+  "a-glass-orchard": ["inheritance", ["care", "investigate"], ["garden", "home"], ["scientist", "outsider"], "memory-reconstruction", ["family"], ["memory-technology"], ["family", "ethical"], ["garden", "mystery"], "family"],
+  "a-second-kitchen": ["relationship-repair", ["cook", "reconcile"], ["workplace", "city"], ["sibling", "worker"], "relationship-negotiation", ["siblings", "family"], ["magic-object"], ["family", "livelihood"], ["food", "home"], "family"],
+  "a-quiet-coup": ["conspiracy", ["investigate", "document"], ["political", "city"], ["worker", "investigator"], "cat-and-mouse", ["solo"], ["none"], ["political", "truth"], ["archive", "politics"], "individual"],
+  "a-house-tides": ["inheritance", ["reconcile", "discover"], ["coast", "home"], ["parent", "caretaker"], "alternating-perspectives", ["family", "intergenerational"], ["sentient-place"], ["family", "legacy"], ["home", "moon"], "family"],
+  "a-courier-mars": ["journey", ["travel", "survive"], ["space", "wilderness"], ["worker", "traveler"], "journey-encounters", ["solo"], ["future-technology", "time-distortion"], ["survival", "ethical"], ["space", "journey"], "individual"],
+  "a-village-murders": ["investigation", ["investigate", "compete"], ["small-town", "garden"], ["investigator"], "clue-chain", ["community", "rivals"], ["none"], ["truth", "competition"], ["mystery", "garden"], "community"],
+  "a-salt-parliament": ["political-struggle", ["negotiate", "lead"], ["island", "political"], ["leader"], "political-maneuvering", ["adversaries", "community"], ["living-nature"], ["political", "legacy"], ["sea", "politics"], "society"],
+  "a-unfinished-film": ["conspiracy", ["create", "investigate"], ["workplace", "city"], ["artist", "investigator"], "cat-and-mouse", ["solo"], ["prophecy"], ["truth", "survival"], ["art", "mystery"], "individual"],
+  "a-three-weddings": ["second-chance", ["reconcile", "survive"], ["workplace", "coast"], ["friend"], "relationship-negotiation", ["friendship", "romantic-pair"], ["none"], ["relationship"], ["romance", "storm", "home"], "community"],
+  "a-hollow-archive": ["historical-reckoning", ["document", "investigate"], ["archive", "wilderness"], ["scholar", "investigator"], "secret-uncovering", ["solo"], ["ghost"], ["truth", "legacy"], ["archive", "ghost"], "individual"],
+  "a-algorithm-love": ["ethical-dilemma", ["investigate", "rebel"], ["city", "digital"], ["scientist"], "cause-and-effect-discovery", ["romantic-pair"], ["artificial-intelligence"], ["relationship", "freedom"], ["romance", "machine"], "pair"],
+  "a-wildfire-line": ["investigation", ["investigate", "survive"], ["wilderness"], ["investigator", "worker"], "procedural-problem-solving", ["team"], ["none"], ["justice", "survival"], ["fire", "mountain"], "team"],
+  "a-city-sleeps": ["ethical-dilemma", ["explore", "negotiate"], ["city"], ["outsider"], "moral-choice", ["community"], ["supernatural-rule"], ["ethical", "community"], ["city", "clock"], "community"],
+  "a-false-biographer": ["historical-reckoning", ["document", "investigate"], ["institution"], ["artist", "scholar"], "secret-uncovering", ["rivals"], ["none"], ["truth", "legacy"], ["book", "science"], "pair"],
+  "a-after-harvest": ["second-chance", ["investigate", "care"], ["wilderness", "garden"], ["caretaker", "scientist"], "cause-and-effect-discovery", ["romantic-pair"], ["future-technology"], ["relationship", "truth"], ["science", "garden"], "pair"],
+};
+
 const DIMENSIONS: MelanieDimension[] = [
   "speculation", "darkness", "humor", "romance", "mystery", "scale", "emotion", "pace", "character",
 ];
 
 function makeConcept(ageBand: AgeBandV2, seed: ConceptSeed, index: number): MelanieConcept {
   const [id, title, synopsis, genres, tones, themes, dynamics, settings, axes] = seed;
+  const semanticSeed = SEMANTIC_SEEDS[id];
+  if (!semanticSeed) throw new Error(`missing_melanie_semantic_fingerprint:${id}`);
+  const [
+    premiseFamily, centralActivities, settingClasses, protagonistRoles, narrativeEngine,
+    relationshipShapes, speculativeDevices, stakesShapes, keyCoverMotifs, socialFocus,
+  ] = semanticSeed;
   return {
     id,
     ageBand,
@@ -149,14 +344,38 @@ function makeConcept(ageBand: AgeBandV2, seed: ConceptSeed, index: number): Mela
       pace: axes[7] as MelanieAttributes["pace"],
       character: axes[8] as MelanieAttributes["character"],
     },
+    semantic: {
+      premiseFamily,
+      centralActivities,
+      settingClasses,
+      protagonistRoles,
+      narrativeEngine,
+      relationshipShapes,
+      speculativeDevices,
+      stakesShapes,
+      keyCoverMotifs,
+      socialFocus,
+    },
   };
 }
 
 export const MELANIES_CONCEPTS: Record<AgeBandV2, MelanieConcept[]> = {
-  kids: seeds.kids.map((seed, index) => makeConcept("kids", seed, index)),
-  preteens: seeds.preteens.map((seed, index) => makeConcept("preteens", seed, index)),
-  teens: seeds.teens.map((seed, index) => makeConcept("teens", seed, index)),
-  adult: seeds.adult.map((seed, index) => makeConcept("adult", seed, index)),
+  kids: [
+    ...seeds.kids.map((seed, index) => makeConcept("kids", seed, index)),
+    ...ADDITIONAL_MELANIE_CONCEPTS.kids,
+  ],
+  preteens: [
+    ...seeds.preteens.map((seed, index) => makeConcept("preteens", seed, index)),
+    ...ADDITIONAL_MELANIE_CONCEPTS.preteens,
+  ],
+  teens: [
+    ...seeds.teens.map((seed, index) => makeConcept("teens", seed, index)),
+    ...ADDITIONAL_MELANIE_CONCEPTS.teens,
+  ],
+  adult: [
+    ...seeds.adult.map((seed, index) => makeConcept("adult", seed, index)),
+    ...ADDITIONAL_MELANIE_CONCEPTS.adult,
+  ],
 };
 
 export type MelaniePresentationEvidence = {
@@ -164,7 +383,7 @@ export type MelaniePresentationEvidence = {
   presentationId: string;
   round: 1 | 2 | 3;
   occurredAt: string;
-  presented: { id: string; attributes: MelanieAttributes }[];
+  presented: { id: string; attributes: MelanieAttributes; semantic: MelanieSemanticFingerprint }[];
   selectedIds: string[];
   nonSelectedIds: string[];
   ranking: string[];
@@ -233,6 +452,82 @@ function deterministicOrder<T extends { id: string }>(values: readonly T[], seed
   return [...values].sort((left, right) => hash(`${seed}:${left.id}`) - hash(`${seed}:${right.id}`) || left.id.localeCompare(right.id));
 }
 
+function facetOverlap<T extends string>(left: readonly T[], right: readonly T[]): number {
+  const union = new Set([...left, ...right]);
+  if (!union.size) return 0;
+  return [...new Set(left)].filter((value) => right.includes(value)).length / union.size;
+}
+
+export function melanieSemanticSimilarity(left: MelanieConcept, right: MelanieConcept): number {
+  const a = left.semantic;
+  const b = right.semantic;
+  return (
+    (a.premiseFamily === b.premiseFamily ? 0.2 : 0)
+    + (a.narrativeEngine === b.narrativeEngine ? 0.2 : 0)
+    + facetOverlap(a.centralActivities, b.centralActivities) * 0.12
+    + facetOverlap(a.settingClasses, b.settingClasses) * 0.1
+    + facetOverlap(a.protagonistRoles, b.protagonistRoles) * 0.08
+    + facetOverlap(a.relationshipShapes, b.relationshipShapes) * 0.07
+    + facetOverlap(a.speculativeDevices, b.speculativeDevices) * 0.09
+    + facetOverlap(a.stakesShapes, b.stakesShapes) * 0.08
+    + (a.socialFocus === b.socialFocus ? 0.06 : 0)
+  );
+}
+
+export function selectSemanticallyDiverseConcepts(
+  rankedCandidates: readonly { concept: MelanieConcept; relevance: number; tie: number }[],
+  anchors: readonly MelanieConcept[],
+  count: number,
+): MelanieConcept[] {
+  const remaining = [...rankedCandidates];
+  const selected: MelanieConcept[] = [];
+  const rankedRelevance = new Map(
+    [...remaining]
+      .sort((left, right) => right.relevance - left.relevance || left.tie - right.tie || left.concept.id.localeCompare(right.concept.id))
+      .map((candidate, index) => [candidate.concept.id, 1 - index / Math.max(1, remaining.length - 1)]),
+  );
+  while (selected.length < count && remaining.length) {
+    const comparison = [...anchors, ...selected];
+    const familyCounts = new Map<MelaniePremiseFamily, number>();
+    const engineCounts = new Map<MelanieNarrativeEngine, number>();
+    const signatures = new Set<string>();
+    for (const concept of comparison) {
+      familyCounts.set(concept.semantic.premiseFamily, (familyCounts.get(concept.semantic.premiseFamily) || 0) + 1);
+      engineCounts.set(concept.semantic.narrativeEngine, (engineCounts.get(concept.semantic.narrativeEngine) || 0) + 1);
+      signatures.add(`${concept.semantic.premiseFamily}:${concept.semantic.narrativeEngine}`);
+    }
+    const strict = remaining.filter(({ concept }) => (
+      (familyCounts.get(concept.semantic.premiseFamily) || 0) < 1
+      && (engineCounts.get(concept.semantic.narrativeEngine) || 0) < 1
+      && !signatures.has(`${concept.semantic.premiseFamily}:${concept.semantic.narrativeEngine}`)
+      && comparison.every((existing) => melanieSemanticSimilarity(concept, existing) < 0.72)
+    ));
+    const capped = remaining.filter(({ concept }) => (
+      (familyCounts.get(concept.semantic.premiseFamily) || 0) < 2
+      && (engineCounts.get(concept.semantic.narrativeEngine) || 0) < 2
+    ));
+    const familyCapped = remaining.filter(({ concept }) => (
+      (familyCounts.get(concept.semantic.premiseFamily) || 0) < 2
+    ));
+    const source = strict.length ? strict : capped.length ? capped : familyCapped.length ? familyCapped : remaining;
+    source.sort((left, right) => {
+      const utility = (candidate: typeof left) => {
+        const maxOverlap = comparison.length
+          ? Math.max(...comparison.map((concept) => melanieSemanticSimilarity(candidate.concept, concept)))
+          : 0;
+        const familyRepeat = familyCounts.get(candidate.concept.semantic.premiseFamily) || 0;
+        const engineRepeat = engineCounts.get(candidate.concept.semantic.narrativeEngine) || 0;
+        return (rankedRelevance.get(candidate.concept.id) || 0) - maxOverlap * 0.72 - familyRepeat * 0.22 - engineRepeat * 0.26;
+      };
+      return utility(right) - utility(left) || left.tie - right.tie || left.concept.id.localeCompare(right.concept.id);
+    });
+    const winner = source[0];
+    selected.push(winner.concept);
+    remaining.splice(remaining.findIndex(({ concept }) => concept.id === winner.concept.id), 1);
+  }
+  return selected;
+}
+
 export function createMelanieGameSessionId(now = Date.now(), entropy = Math.random()): string {
   return `melanie-${now.toString(36)}-${Math.floor(entropy * 0xffffffff).toString(36).padStart(6, "0")}`;
 }
@@ -247,7 +542,12 @@ export function createInitialMelanieGame(args: {
   const now = args.now || new Date().toISOString();
   const gameSessionId = args.gameSessionId || createMelanieGameSessionId();
   const seed = `${args.anonymousPlayerId}:${args.libraryId}:${args.ageBand}:${gameSessionId}:opening`;
-  const currentConceptIds = deterministicOrder(MELANIES_CONCEPTS[args.ageBand], seed).slice(0, 6).map((concept) => concept.id);
+  const ordered = deterministicOrder(MELANIES_CONCEPTS[args.ageBand], seed);
+  const currentConceptIds = selectSemanticallyDiverseConcepts(
+    ordered.map((concept, index) => ({ concept, relevance: ordered.length - index, tie: hash(`${seed}:${concept.id}`) })),
+    [],
+    6,
+  ).map((concept) => concept.id);
   return {
     schemaVersion: MELANIES_GAME_SAVE_SCHEMA,
     gameVersion: MELANIES_GAME_VERSION,
@@ -380,7 +680,7 @@ function createPresentation(
     presented: state.currentConceptIds.map((id) => {
       const concept = index.get(id);
       if (!concept) throw new Error(`unknown_melanie_concept:${id}`);
-      return { id, attributes: concept.attributes };
+      return { id, attributes: concept.attributes, semantic: concept.semantic };
     }),
     selectedIds,
     nonSelectedIds,
@@ -424,15 +724,13 @@ export function chooseAdaptiveChallengers(
   const survivorConcepts = survivors.map((id) => index.get(id)).filter((value): value is MelanieConcept => Boolean(value));
   const scores = scoreMelanieEvidence(state.evidence);
   const unseen = pool.filter((concept) => !state.seenConceptIds.includes(concept.id) && !survivors.includes(concept.id));
-  return unseen
+  const scored = unseen
     .map((concept) => ({
       concept,
-      score: candidateDiscriminatorScore(concept, survivorConcepts, scores),
+      relevance: candidateDiscriminatorScore(concept, survivorConcepts, scores),
       tie: hash(`${state.gameSessionId}:round-${round}:${concept.id}`),
-    }))
-    .sort((left, right) => right.score - left.score || left.tie - right.tie || left.concept.id.localeCompare(right.concept.id))
-    .slice(0, count)
-    .map(({ concept }) => concept.id);
+    }));
+  return selectSemanticallyDiverseConcepts(scored, survivorConcepts, count).map((concept) => concept.id);
 }
 
 export function completeMelanieRanking(state: MelanieGameState, now = new Date().toISOString()): MelanieGameState {
@@ -591,9 +889,13 @@ export function isMelanieEvidenceEvent(value: unknown): value is MelaniePresenta
   );
   if (!Array.isArray(event.presented) || event.presented.length < 3 || event.presented.length > 6) return false;
   for (const item of event.presented) {
-    if (!item || typeof item !== "object" || !exactKeys(item, ["id", "attributes"])) return false;
+    if (!item || typeof item !== "object" || !exactKeys(item, ["id", "attributes", "semantic"])) return false;
     const concept = authored.get(item.id);
-    if (!concept || JSON.stringify(item.attributes) !== JSON.stringify(concept.attributes)) return false;
+    if (
+      !concept
+      || JSON.stringify(item.attributes) !== JSON.stringify(concept.attributes)
+      || JSON.stringify(item.semantic) !== JSON.stringify(concept.semantic)
+    ) return false;
   }
   const presentedIds = new Set(event.presented.map((item) => item.id));
   if (

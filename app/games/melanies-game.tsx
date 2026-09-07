@@ -37,6 +37,11 @@ import {
   flushMelanieEvidence,
 } from "../../lib/recommendationGames/melaniesGameEvidenceClient";
 import {
+  createMelanieCoverArt,
+  type MelanieCoverFrame,
+  type MelanieCoverSubject,
+} from "../../lib/recommendationGames/melaniesGameCoverArt";
+import {
   createMelaniesGameStorageInstanceId,
   loadMelaniesGame,
   saveMelaniesGame,
@@ -62,31 +67,51 @@ const POSITION_COPY = {
   adventurous: ["A little adventurous", "Just outside your center, supported by nearby signals."],
 } as const;
 
-function DecorativeLibraryBackdrop() {
-  const shelf = (side: "left" | "right") => (
-    <View style={[styles.shelf, side === "left" ? styles.shelfLeft : styles.shelfRight]}>
-      {[0, 1, 2, 3].map((row) => (
-        <View key={row} style={styles.shelfRow}>
-          {[0, 1, 2, 3, 4].map((book) => (
-            <View
-              key={book}
-              style={[
-                styles.shelfBook,
-                {
-                  height: 33 + ((row * 7 + book * 11) % 20),
-                  backgroundColor: ["#64331f", "#183f4d", "#54263b", "#79531f", "#26395c"][(row + book) % 5],
-                },
-              ]}
-            />
-          ))}
-        </View>
-      ))}
-      <View style={styles.lamp}>
-        <View style={styles.lampShade} />
-        <View style={styles.lampStem} />
-      </View>
-    </View>
-  );
+const COVER_ICONS: Record<MelanieCoverSubject, keyof typeof MaterialCommunityIcons.glyphMap> = {
+  animal: "paw-outline",
+  archive: "archive-outline",
+  art: "palette-outline",
+  book: "book-open-page-variant-outline",
+  castle: "castle",
+  city: "city-variant-outline",
+  clock: "clock-outline",
+  coast: "lighthouse-on",
+  desert: "weather-sunny",
+  fire: "fire",
+  food: "food-variant",
+  forest: "pine-tree",
+  garden: "flower-outline",
+  ghost: "ghost-outline",
+  history: "script-text-outline",
+  home: "home-outline",
+  journey: "map-marker-path",
+  machine: "robot-outline",
+  magic: "star-four-points-outline",
+  moon: "moon-waning-crescent",
+  mountain: "image-filter-hdr",
+  music: "music-note",
+  mystery: "key-variant",
+  performance: "drama-masks",
+  politics: "account-group-outline",
+  romance: "heart-outline",
+  school: "school-outline",
+  science: "flask-outline",
+  sea: "waves",
+  signal: "radio-tower",
+  space: "rocket-launch-outline",
+  sport: "run",
+  storm: "weather-lightning",
+  train: "train",
+};
+const COVER_FRAME_ICONS: Record<MelanieCoverFrame, keyof typeof MaterialCommunityIcons.glyphMap> = {
+  botanical: "leaf",
+  celestial: "star-four-points-outline",
+  geometric: "rhombus-outline",
+  gothic: "gate",
+  maritime: "anchor",
+};
+
+function DecorativeLibraryBackdrop({ entry = false }: { entry?: boolean }) {
   return (
     <View
       pointerEvents="none"
@@ -94,43 +119,129 @@ function DecorativeLibraryBackdrop() {
       importantForAccessibility="no-hide-descendants"
       style={styles.backdrop}
     >
+      <Image
+        source={entry
+          ? require("../../assets/games/melanies-game/entry-left.webp")
+          : require("../../assets/games/melanies-game/library-left.webp")}
+        style={[styles.libraryArt, styles.libraryArtLeft]}
+        contentFit="cover"
+        accessibilityElementsHidden
+      />
+      <Image
+        source={entry
+          ? require("../../assets/games/melanies-game/entry-right.webp")
+          : require("../../assets/games/melanies-game/library-right.webp")}
+        style={[styles.libraryArt, styles.libraryArtRight]}
+        contentFit="cover"
+        accessibilityElementsHidden
+      />
+      <View style={styles.centerVeil} />
       <View style={[styles.glow, styles.glowLeft]} />
       <View style={[styles.glow, styles.glowRight]} />
-      {shelf("left")}
-      {shelf("right")}
-      <View style={[styles.libraryBanner, styles.bannerLeft]}>
-        <Text style={styles.bannerText}>GREAT{"\n"}STORIES{"\n"}FIND{"\n"}CURIOUS{"\n"}PEOPLE</Text>
-      </View>
-      <View style={[styles.libraryBanner, styles.bannerRight]}>
-        <Text style={styles.bannerText}>DIFFERENT{"\n"}STORIES{"\n"}BRIGHTER{"\n"}TOMORROWS</Text>
-      </View>
-      <MaterialCommunityIcons name="leaf" size={62} color="#31563f" style={styles.ivyLeft} />
-      <MaterialCommunityIcons name="leaf" size={62} color="#31563f" style={styles.ivyRight} />
-      <View style={styles.starField}>
-        <Text style={styles.starDust}>✦　·　✧　　　　·　✦　　　✧　·</Text>
-      </View>
+      <View style={styles.topVignette} />
     </View>
   );
 }
 
-function ConceptCover({ concept, size = "small" }: { concept: MelanieConcept; size?: "small" | "large" }) {
-  const motif = concept.id.split("").reduce((sum, value) => sum + value.charCodeAt(0), 0) % 4;
+function ConceptCover({ concept, size = "small" }: { concept: MelanieConcept; size?: "small" | "rank" | "large" }) {
+  const art = createMelanieCoverArt(concept);
+  const large = size === "large";
+  const primarySize = large ? 58 : size === "rank" ? 25 : 31;
+  const secondarySize = large ? 39 : size === "rank" ? 18 : 23;
+  const compositionRotation = art.composition === "diagonal" ? "-18deg" : art.composition === "split" ? "12deg" : "0deg";
+  const primaryTopOffset = art.composition === "tower" ? 39 : art.composition === "constellation" ? 33 : 27;
+  const secondaryTopOffset = art.composition === "horizon" ? 2 : art.composition === "portal" ? 16 : 10;
   return (
     <View
       accessibilityLabel={`Fictional cover for ${concept.title}`}
       style={[
         styles.conceptCover,
+        size === "rank" && styles.conceptCoverRank,
         size === "large" && styles.conceptCoverLarge,
         { backgroundColor: concept.palette[1], borderColor: concept.palette[0] },
       ]}
     >
-      <View style={[styles.coverFrame, { borderColor: concept.palette[0] }]} />
-      {motif === 0 ? <MaterialCommunityIcons name="moon-waning-crescent" size={size === "large" ? 54 : 30} color={concept.palette[0]} /> : null}
-      {motif === 1 ? <MaterialCommunityIcons name="tree-outline" size={size === "large" ? 56 : 31} color={concept.palette[0]} /> : null}
-      {motif === 2 ? <MaterialCommunityIcons name="star-four-points-outline" size={size === "large" ? 56 : 31} color={concept.palette[0]} /> : null}
-      {motif === 3 ? <MaterialCommunityIcons name="key-variant" size={size === "large" ? 54 : 30} color={concept.palette[0]} /> : null}
-      <Text numberOfLines={3} style={[styles.coverTitle, size === "large" && styles.coverTitleLarge]}>{concept.title}</Text>
-      <View style={[styles.coverRule, { backgroundColor: concept.palette[0] }]} />
+      <View style={[styles.coverMoon, {
+        top: `${Math.max(8, art.horizonPercent - 35)}%`,
+        left: `${Math.max(5, art.primaryXPercent - 16)}%`,
+        borderColor: concept.palette[0],
+      }]} />
+      {Array.from({ length: art.starCount }).map((_, index) => (
+        <View
+          key={`${art.assetId}:star:${index}`}
+          style={[
+            styles.coverStar,
+            {
+              left: `${10 + ((art.sceneSeed >>> (index % 16)) % 78)}%`,
+              top: `${6 + ((art.sceneSeed >>> ((index + 5) % 16)) % 48)}%`,
+              backgroundColor: concept.palette[0],
+            },
+          ]}
+        />
+      ))}
+      <View style={[styles.coverHorizon, { top: `${art.horizonPercent}%`, borderTopColor: concept.palette[0] }]} />
+      <MaterialCommunityIcons
+        name={COVER_ICONS[art.primarySubject]}
+        size={primarySize}
+        color="#fff0c8"
+        style={[styles.coverPrimarySubject, {
+          left: `${art.primaryXPercent}%`,
+          top: `${Math.max(8, art.horizonPercent - primaryTopOffset)}%`,
+          transform: [{ translateX: -primarySize / 2 }, { rotate: compositionRotation }],
+        }]}
+      />
+      <MaterialCommunityIcons
+        name={COVER_ICONS[art.secondarySubject]}
+        size={secondarySize}
+        color={concept.palette[0]}
+        style={[styles.coverSecondarySubject, {
+          left: `${art.secondaryXPercent}%`,
+          top: `${Math.max(18, art.horizonPercent - secondaryTopOffset)}%`,
+          transform: [{ translateX: -secondarySize / 2 }],
+        }]}
+      />
+      <View style={[styles.coverGround, { top: `${art.horizonPercent + 1}%`, backgroundColor: concept.palette[0] }]} />
+      <View style={[
+        styles.coverFrame,
+        art.frame === "gothic" && styles.coverFrameGothic,
+        art.frame === "geometric" && styles.coverFrameGeometric,
+        art.frame === "maritime" && styles.coverFrameMaritime,
+        { borderColor: concept.palette[0] },
+      ]} />
+      <MaterialCommunityIcons
+        name={COVER_FRAME_ICONS[art.frame]}
+        size={large ? 24 : size === "rank" ? 12 : 15}
+        color={concept.palette[0]}
+        style={styles.coverFrameOrnament}
+      />
+      {size === "large" ? (
+        <View style={styles.coverTitlePlate}>
+          <Text numberOfLines={3} style={[styles.coverTitle, styles.coverTitleLarge]}>{concept.title}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function TournamentProgress({ step, compact }: { step: number; compact: boolean }) {
+  const labels = compact
+    ? ["CHOOSE", "RANK", "CHALLENGE", "RANK", "RECOMMEND"]
+    : ["1. CHOOSE", "2. RANK", "3. CHALLENGE", "4. RANK", "5. RECOMMEND"];
+  return (
+    <View style={styles.progressWrap} accessibilityLabel={`Tournament step ${step} of 5`}>
+      <View style={styles.progressRail} />
+      {labels.map((label, index) => {
+        const value = index + 1;
+        const active = value <= step;
+        return (
+          <View key={`${label}-${value}`} style={styles.progressStep}>
+            <View style={[styles.progressDot, active && styles.progressDotActive]}>
+              {value === step ? <View style={styles.progressDotCore} /> : null}
+            </View>
+            <Text numberOfLines={1} style={[styles.progressLabel, active && styles.progressLabelActive]}>{label}</Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -141,6 +252,7 @@ function ConceptCard({
   survivor,
   selectionNumber,
   finalist,
+  compact,
   disabled,
   onPress,
 }: {
@@ -149,6 +261,7 @@ function ConceptCard({
   survivor: boolean;
   selectionNumber: number | null;
   finalist: boolean;
+  compact: boolean;
   disabled: boolean;
   onPress: () => void;
 }) {
@@ -163,6 +276,7 @@ function ConceptCard({
       onPress={onPress}
       style={({ pressed }) => [
         styles.conceptCard,
+        compact && styles.conceptCardCompact,
         finalist && styles.conceptFinalist,
         { borderColor: selected ? concept.palette[0] : "#45606b", backgroundColor: concept.palette[1] },
         selected && styles.conceptSelected,
@@ -170,24 +284,36 @@ function ConceptCard({
         disabled && styles.disabled,
       ]}
     >
-      <View style={[styles.bookSpine, { backgroundColor: concept.palette[0] }]} />
-      <ConceptCover concept={concept} size={finalist ? "large" : "small"} />
-      <View style={styles.conceptBody}>
-        <View style={styles.conceptMeta}>
-          {finalist ? <Text style={styles.finalistPill}>FINALIST</Text> : survivor ? <Text style={styles.survivorPill}>SURVIVOR</Text> : <Text style={styles.challengerPill}>CHALLENGER</Text>}
-          <Text
-            style={[
-              styles.pickNumber,
-              { borderColor: concept.palette[0], color: selected ? "#182027" : concept.palette[0] },
-              selected && { backgroundColor: concept.palette[0] },
-            ]}
-          >
-            {selectionNumber || ""}
-          </Text>
-        </View>
-        <Text style={styles.conceptTitle}>{concept.title}</Text>
-        <Text style={styles.synopsis}>{concept.synopsis}</Text>
-      </View>
+      {finalist ? (
+        <>
+          <ConceptCover concept={concept} size="large" />
+          <View style={styles.finalistPedestal}>
+            <Text style={styles.finalistPill}>❧ FINALIST ❧</Text>
+            <Text numberOfLines={2} style={styles.finalistTitle}>{concept.title}</Text>
+          </View>
+        </>
+      ) : (
+        <>
+          <View style={[styles.bookSpine, { backgroundColor: concept.palette[0] }]} />
+          <ConceptCover concept={concept} />
+          <View style={styles.conceptBody}>
+            <View style={styles.conceptMeta}>
+              {survivor ? <Text style={styles.survivorPill}>SURVIVOR</Text> : <Text style={styles.challengerPill}>NEW STORY</Text>}
+              <Text
+                style={[
+                  styles.pickNumber,
+                  { borderColor: concept.palette[0], color: selected ? "#182027" : concept.palette[0] },
+                  selected && { backgroundColor: concept.palette[0] },
+                ]}
+              >
+                {selectionNumber || ""}
+              </Text>
+            </View>
+            <Text style={styles.conceptTitle}>{concept.title}</Text>
+            <Text style={styles.synopsis}>{concept.synopsis}</Text>
+          </View>
+        </>
+      )}
     </Pressable>
   );
 }
@@ -216,7 +342,7 @@ function RankList({
             accessibilityLabel={`Rank ${index + 1}, ${concept.title}`}
           >
             <Text style={[styles.rankNumber, { color: concept.palette[0] }]}>{index + 1}</Text>
-            <ConceptCover concept={concept} />
+            <ConceptCover concept={concept} size="rank" />
             <View style={styles.rankCopy}>
               <Text style={styles.rankTitle}>{concept.title}</Text>
               <Text numberOfLines={2} style={styles.rankSynopsis}>{concept.synopsis}</Text>
@@ -267,6 +393,7 @@ export default function MelaniesGameScreen() {
   );
   const { width } = useWindowDimensions();
   const compact = width < 720;
+  const wide = width >= 1180;
   const [state, setState] = useState<MelanieGameState | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -598,7 +725,7 @@ export default function MelaniesGameScreen() {
   if (!state.introDismissed) {
     return (
       <SafeAreaView style={styles.safe}>
-        <DecorativeLibraryBackdrop />
+        <DecorativeLibraryBackdrop entry />
         <ScrollView contentContainerStyle={styles.entryScroll}>
           <Pressable accessibilityRole="button" accessibilityLabel="Back to Games" onPress={exitGame} style={styles.entryBack}>
             <MaterialCommunityIcons name="arrow-left" size={18} color="#f5c66b" />
@@ -610,7 +737,7 @@ export default function MelaniesGameScreen() {
               <MaterialCommunityIcons name="book-open-page-variant-outline" size={48} color="#f2bd5f" />
               <Text style={styles.laurel}>❧</Text>
             </View>
-            <Text style={styles.entryTitle}>Melanie&apos;s Game</Text>
+            <Text style={[styles.entryTitle, compact && styles.entryTitleCompact]}>Melanie&apos;s Game</Text>
             <Text style={styles.entrySubtitle}>THE TOURNAMENT OF STORIES</Text>
             <View style={styles.ornament}><View style={styles.ornamentLine} /><Text style={styles.ornamentStar}>✦</Text><View style={styles.ornamentLine} /></View>
             <Text testID="melanie-self-choice-instruction" accessibilityRole="header" style={styles.entryInstruction}>
@@ -628,19 +755,6 @@ export default function MelaniesGameScreen() {
               <Text style={styles.entryButtonText}>Let the Tournament Begin</Text>
               <MaterialCommunityIcons name="arrow-right" size={20} color="#191d1f" />
             </Pressable>
-          </View>
-          <View
-            pointerEvents="none"
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={styles.entryCat}
-          >
-            <MaterialCommunityIcons name="cat" size={88} color="#0c1012" />
-            <View style={styles.entryBookPile}>
-              <View style={[styles.entryBook, { width: 132, backgroundColor: "#7b3a22" }]} />
-              <View style={[styles.entryBook, { width: 112, backgroundColor: "#183e52" }]} />
-              <View style={[styles.entryBook, { width: 142, backgroundColor: "#604927" }]} />
-            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -660,63 +774,64 @@ export default function MelaniesGameScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <DecorativeLibraryBackdrop />
-      <View style={styles.topBar}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back to Games" onPress={exitGame} style={styles.backButton}>
+      <View style={[styles.topBar, compact && styles.topBarCompact]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Back to Games" onPress={exitGame} style={[styles.backButton, compact && styles.headerButtonCompact]}>
           <MaterialCommunityIcons name="arrow-left" size={18} color="#f8f1dc" />
-          <Text style={styles.backText}>Games</Text>
+          {!compact ? <Text style={styles.backText}>Games</Text> : null}
         </Pressable>
         <View style={styles.brand}>
-          <Text style={styles.brandEyebrow}>THE PREMISE TOURNAMENT</Text>
-          <Text style={styles.brandTitle}>Melanie&apos;s Game</Text>
+          <View style={styles.brandCrest}>
+            <Text style={styles.brandLaurel}>❧</Text>
+            <MaterialCommunityIcons name="book-open-page-variant-outline" size={wide ? 28 : 22} color="#eab34d" />
+            <Text style={[styles.brandLaurel, styles.brandLaurelRight]}>❧</Text>
+          </View>
+          <Text style={[styles.brandTitle, compact && styles.brandTitleCompact]}>Melanie&apos;s Game</Text>
+          <Text style={styles.brandEyebrow}>THE TOURNAMENT OF STORIES</Text>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Start a new tournament" onPress={() => void restart()} style={styles.restartButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Start a new tournament" onPress={() => void restart()} style={[styles.restartButton, compact && styles.headerButtonCompact]}>
           <MaterialCommunityIcons name="refresh" size={18} color="#f8f1dc" />
           {!compact ? <Text style={styles.backText}>New</Text> : null}
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.progressWrap} accessibilityLabel={`Tournament step ${stageStep} of 5`}>
-          {[1, 2, 3, 4, 5].map((step) => (
-            <View key={step} style={[styles.progressSegment, step <= stageStep && styles.progressActive]} />
-          ))}
-        </View>
+        <TournamentProgress step={stageStep} compact={compact} />
 
         <Animated.View style={[styles.stage, entranceStyle]}>
           {state.stage === "choose-1" ? (
             <View style={styles.hero}>
-              <Text style={styles.heroKicker}>ROUND ONE · CHOOSE UP TO THREE</Text>
+              <Text style={styles.heroKicker}>ROUND 1 OF 5</Text>
               <Text testID="melanie-self-choice-instruction" accessibilityRole="header" style={styles.heroTitle}>
                 There is no imaginary person. Pick the book YOU want.
               </Text>
-              <Text style={styles.heroCopy}>Read every one-sentence premise, then advance the stories you would genuinely open.</Text>
+              <Text style={styles.heroCopy}>Read each one-sentence premise. Choose up to 3 books.</Text>
             </View>
           ) : null}
           {state.stage === "choose-2" ? (
             <View style={styles.hero}>
-              <Text style={styles.heroKicker}>ROUND TWO · SURVIVORS + CHALLENGERS</Text>
-              <Text accessibilityRole="header" style={styles.heroTitle}>Which would you most want to read now?</Text>
-              <Text style={styles.heroCopy}>Your strongest picks stayed. New challengers were chosen to test what made them win.</Text>
+              <Text style={styles.heroKicker}>ROUND 3 OF 5</Text>
+              <Text accessibilityRole="header" style={styles.heroTitle}>Your favorites return, with new challengers.</Text>
+              <Text style={styles.heroCopy}>Which of these would you most want to read? Choose up to 3.</Text>
             </View>
           ) : null}
           {isRank ? (
             <View style={styles.hero}>
-              <Text style={styles.heroKicker}>{state.stage === "rank-1" ? "ROUND ONE" : "ROUND TWO"} · RANK</Text>
+              <Text style={styles.heroKicker}>ROUND {state.stage === "rank-1" ? "2" : "4"} OF 5</Text>
               <Text accessibilityRole="header" style={styles.heroTitle}>Put these in the order you&apos;d want to read them.</Text>
-              <Text style={styles.heroCopy}>Move your strongest choice to the top. The order changes what advances.</Text>
+              <Text style={styles.heroCopy}>Move your favorite to the top. The order changes what we learn.</Text>
             </View>
           ) : null}
           {isFinal ? (
             <View style={styles.hero}>
-              <Text style={styles.heroKicker}>FINAL COMPARISON</Text>
+              <Text style={styles.heroKicker}>FINAL ROUND</Text>
               <Text accessibilityRole="header" style={styles.heroTitle}>Choose up to three finalists, then order them.</Text>
-              <Text style={styles.heroCopy}>Two proven favorites face the last adaptive challengers.</Text>
+              <Text style={styles.heroCopy}>These are the strongest contenders based on your choices so far.</Text>
             </View>
           ) : null}
 
           {(isChoose || isFinal) ? (
             <>
-              <View style={[styles.conceptGrid, compact && styles.conceptGridCompact]}>
+              <View style={[styles.conceptGrid, isFinal && state.selectedIds.length === 3 && styles.finalistGrid, compact && styles.conceptGridCompact]}>
                 {(isFinal && state.selectedIds.length === 3
                   ? currentConcepts.filter((concept) => state.selectedIds.includes(concept.id))
                   : currentConcepts).map((concept) => {
@@ -730,6 +845,7 @@ export default function MelaniesGameScreen() {
                       survivor={state.survivorIds.includes(concept.id)}
                       selectionNumber={selected ? selectedIndex + 1 : null}
                       finalist={isFinal && state.selectedIds.length === 3}
+                      compact={compact}
                       disabled={locked || (!selected && state.selectedIds.length >= 3)}
                       onPress={() => toggleChoice(concept.id)}
                     />
@@ -761,7 +877,9 @@ export default function MelaniesGameScreen() {
                   style={({ pressed }) => [styles.primaryButton, (!state.selectedIds.length || locked) && styles.disabled, pressed && styles.pressed]}
                 >
                   {locked && isFinal ? <ActivityIndicator color="#1b2330" /> : null}
-                  <Text style={styles.primaryButtonText}>{isFinal ? "Unlock real recommendations" : "Advance these books"}</Text>
+                  <Text style={styles.primaryButtonText}>
+                    {isFinal ? "Reveal My Recommendations" : state.stage === "choose-2" ? "Next: Rank Again" : "Next: Rank Your Picks"}
+                  </Text>
                   <MaterialCommunityIcons name="arrow-right" size={20} color="#1b2330" />
                 </Pressable>
               </View>
@@ -780,8 +898,8 @@ export default function MelaniesGameScreen() {
                   onPress={finishRanking}
                   style={({ pressed }) => [styles.primaryButton, locked && styles.disabled, pressed && styles.pressed]}
                 >
-                  <Text style={styles.primaryButtonText}>Lock this ranking</Text>
-                  <MaterialCommunityIcons name="trophy-outline" size={20} color="#1b2330" />
+                  <Text style={styles.primaryButtonText}>Next Round</Text>
+                  <MaterialCommunityIcons name="arrow-right" size={20} color="#1b2330" />
                 </Pressable>
               </View>
             </>
@@ -791,8 +909,8 @@ export default function MelaniesGameScreen() {
             <View>
               <View style={styles.hero}>
                 <Text style={styles.heroKicker}>TOURNAMENT COMPLETE</Text>
-                <Text accessibilityRole="header" style={styles.heroTitle}>Three real books rose from your choices.</Text>
-                <Text style={styles.heroCopy}>These came from the active NovelIdeas sources for your age and library context.</Text>
+                <Text accessibilityRole="header" style={styles.heroTitle}>Your Reading Recommendations</Text>
+                <Text style={styles.heroCopy}>Real books from your library and beyond, based on your choices.</Text>
               </View>
               {!state.recommendations.length ? (
                 <View style={styles.retryCard}>
@@ -851,7 +969,7 @@ export default function MelaniesGameScreen() {
                   </View>
                   <View style={styles.feedbackPanel}>
                     <Text style={styles.sectionTitle}>Which would you read first?</Text>
-                    <Text style={styles.feedbackHint}>Optional: choose a card, or refine the full order below.</Text>
+                    <Text style={styles.feedbackHint}>Your answer helps us get even better. This step is optional.</Text>
                     {state.finalRecommendationRanking.map((id, index) => {
                       const book = state.recommendations.find((candidate) => candidate.id === id);
                       if (!book) return null;
@@ -886,12 +1004,12 @@ export default function MelaniesGameScreen() {
                         accessibilityRole="button"
                         disabled={locked || state.feedbackRecorded || !state.finalFeedbackInteracted}
                         onPress={() => void saveFinalPreference()}
-                        style={[styles.primaryButton, (locked || state.feedbackRecorded || !state.finalFeedbackInteracted) && styles.disabled]}
+                        style={[styles.secondaryButton, (locked || state.feedbackRecorded || !state.finalFeedbackInteracted) && styles.disabled]}
                       >
-                        <Text style={styles.primaryButtonText}>{state.feedbackRecorded || feedbackSaved ? "Answer saved" : "Save optional answer"}</Text>
+                        <Text style={styles.secondaryButtonText}>{state.feedbackRecorded || feedbackSaved ? "Answer saved" : "Save optional answer"}</Text>
                       </Pressable>
-                      <Pressable accessibilityRole="button" onPress={exitGame} style={styles.secondaryButton}>
-                        <Text style={styles.secondaryButtonText}>Finish without answering</Text>
+                      <Pressable accessibilityRole="button" onPress={exitGame} style={styles.primaryButton}>
+                        <Text style={styles.primaryButtonText}>Finish</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -901,6 +1019,13 @@ export default function MelaniesGameScreen() {
           ) : null}
 
           {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+          {isChoose ? (
+            <View pointerEvents="none" accessibilityElementsHidden style={styles.closingOrnament}>
+              <View style={styles.ornamentLine} />
+              <Text style={styles.closingQuote}>“Stories aren&apos;t just escape. They&apos;re better maps.”</Text>
+              <View style={styles.ornamentLine} />
+            </View>
+          ) : null}
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
@@ -908,88 +1033,103 @@ export default function MelaniesGameScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#07131c" },
-  backdrop: { ...StyleSheet.absoluteFillObject, overflow: "hidden", backgroundColor: "#07131c" },
-  glow: { position: "absolute", width: 520, height: 520, borderRadius: 260, opacity: 0.13 },
+  safe: { flex: 1, backgroundColor: "#02090e" },
+  backdrop: { ...StyleSheet.absoluteFillObject, overflow: "hidden", backgroundColor: "#02090e" },
+  libraryArt: { position: "absolute", top: 0, bottom: 0, width: "27%", height: "100%", opacity: 0.93 },
+  libraryArtLeft: { left: 0 },
+  libraryArtRight: { right: 0 },
+  centerVeil: { position: "absolute", top: 0, bottom: 0, left: "18%", right: "18%", backgroundColor: "rgba(2,13,19,0.9)" },
+  topVignette: { position: "absolute", top: 0, left: 0, right: 0, height: 150, backgroundColor: "rgba(1,7,11,0.42)" },
+  glow: { position: "absolute", width: 520, height: 520, borderRadius: 260, opacity: 0.1 },
   glowLeft: { left: -310, top: 110, backgroundColor: "#0f8394" },
   glowRight: { right: -300, bottom: -180, backgroundColor: "#e4862c" },
-  shelf: { position: "absolute", top: 0, bottom: 0, width: 142, paddingHorizontal: 11, paddingTop: 92, opacity: 0.48, backgroundColor: "#160f0d", borderColor: "#744222" },
-  shelfLeft: { left: 0, borderRightWidth: 3 },
-  shelfRight: { right: 0, borderLeftWidth: 3, transform: [{ scaleX: -1 }] },
-  shelfRow: { height: 82, marginBottom: 20, borderBottomWidth: 7, borderBottomColor: "#6e3c21", flexDirection: "row", alignItems: "flex-end", gap: 4 },
-  shelfBook: { flex: 1, minWidth: 12, borderWidth: 1, borderColor: "#a36832", borderTopLeftRadius: 3, borderTopRightRadius: 3 },
-  lamp: { position: "absolute", top: 42, left: 49, alignItems: "center" },
-  lampShade: { width: 42, height: 30, borderTopLeftRadius: 20, borderTopRightRadius: 20, backgroundColor: "#efac42", opacity: 0.85, shadowColor: "#ffb944", shadowOpacity: 1, shadowRadius: 20 },
-  lampStem: { width: 4, height: 24, backgroundColor: "#9d6530" },
-  starField: { position: "absolute", top: 28, left: 170, right: 170, alignItems: "center" },
-  starDust: { color: "#dca94f", opacity: 0.42, fontSize: 17, letterSpacing: 7 },
-  libraryBanner: { position: "absolute", top: 120, width: 90, minHeight: 186, borderWidth: 1, borderColor: "#a46e2e", backgroundColor: "#073242", paddingHorizontal: 8, paddingVertical: 18, alignItems: "center" },
-  bannerLeft: { left: 26 },
-  bannerRight: { right: 26 },
-  bannerText: { color: "#dca84b", fontFamily: "Georgia", fontSize: 12, lineHeight: 23, textAlign: "center" },
-  ivyLeft: { position: "absolute", left: 100, top: 17, transform: [{ rotate: "22deg" }] },
-  ivyRight: { position: "absolute", right: 100, top: 17, transform: [{ rotate: "-22deg" }, { scaleX: -1 }] },
-  topBar: { minHeight: 76, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#6b4925", flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(5,16,24,0.96)" },
-  backButton: { minWidth: 78, minHeight: 44, paddingHorizontal: 12, borderRadius: 7, borderWidth: 1, borderColor: "#9d6a2c", flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", backgroundColor: "#101b20" },
-  restartButton: { minWidth: 54, minHeight: 44, paddingHorizontal: 12, borderRadius: 7, borderWidth: 1, borderColor: "#9d6a2c", flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", backgroundColor: "#101b20" },
+  topBar: { minHeight: 116, paddingHorizontal: 20, paddingVertical: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(2,10,15,0.68)" },
+  topBarCompact: { minHeight: 92, paddingHorizontal: 10 },
+  backButton: { minWidth: 88, minHeight: 44, paddingHorizontal: 13, borderRadius: 7, borderWidth: 1, borderColor: "#c98a31", flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(4,14,20,0.88)" },
+  restartButton: { minWidth: 70, minHeight: 44, paddingHorizontal: 12, borderRadius: 7, borderWidth: 1, borderColor: "#c98a31", flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(4,14,20,0.88)" },
+  headerButtonCompact: { minWidth: 48, paddingHorizontal: 8 },
   backText: { color: "#f5c66b", fontWeight: "800", fontSize: 14 },
   brand: { alignItems: "center", flex: 1, paddingHorizontal: 8 },
-  brandEyebrow: { color: "#d39b3d", fontSize: 9, lineHeight: 13, fontWeight: "900", letterSpacing: 2.1 },
-  brandTitle: { color: "#f5c66b", fontFamily: "Georgia", fontSize: 25, lineHeight: 29, fontWeight: "800" },
-  scroll: { width: "100%", maxWidth: 1120, alignSelf: "center", paddingHorizontal: 24, paddingTop: 16, paddingBottom: 54 },
-  progressWrap: { flexDirection: "row", gap: 7, maxWidth: 560, width: "100%", alignSelf: "center" },
-  progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: "#273e48", borderWidth: 1, borderColor: "#34535e" },
-  progressActive: { backgroundColor: "#e7aa43", borderColor: "#ffd06d", shadowColor: "#ffbd4c", shadowOpacity: 0.65, shadowRadius: 8 },
-  stage: { width: "100%" },
-  hero: { alignItems: "center", paddingVertical: 22, gap: 7 },
-  heroKicker: { color: "#dca84b", fontSize: 11, lineHeight: 16, fontWeight: "900", letterSpacing: 2.3, textAlign: "center" },
-  heroTitle: { maxWidth: 760, color: "#fff2d0", fontFamily: "Georgia", fontSize: 32, lineHeight: 39, fontWeight: "800", letterSpacing: -0.5, textAlign: "center", textShadowColor: "rgba(0,0,0,0.8)", textShadowRadius: 9 },
-  heroCopy: { maxWidth: 650, color: "#c1ccd0", fontSize: 14, lineHeight: 21, textAlign: "center" },
-  conceptGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
+  brandCrest: { flexDirection: "row", alignItems: "center", gap: 10, height: 28 },
+  brandLaurel: { color: "#dca849", fontFamily: "Georgia", fontSize: 27, transform: [{ rotate: "-15deg" }] },
+  brandLaurelRight: { transform: [{ rotate: "15deg" }, { scaleX: -1 }] },
+  brandEyebrow: { color: "#e3aa46", fontFamily: "Georgia", fontSize: 10, lineHeight: 14, fontWeight: "800", letterSpacing: 2.3 },
+  brandTitle: { color: "#f7c765", fontFamily: "Georgia", fontSize: 34, lineHeight: 38, fontWeight: "800", textTransform: "uppercase", textShadowColor: "rgba(222,132,34,0.48)", textShadowRadius: 10 },
+  brandTitleCompact: { fontSize: 20, lineHeight: 24 },
+  scroll: { width: "100%", maxWidth: 1080, alignSelf: "center", paddingHorizontal: 22, paddingTop: 0, paddingBottom: 40 },
+  progressWrap: { position: "relative", flexDirection: "row", maxWidth: 760, width: "100%", minHeight: 45, alignSelf: "center", justifyContent: "space-between" },
+  progressRail: { position: "absolute", left: "9%", right: "9%", top: 7, height: 2, backgroundColor: "#46616a" },
+  progressStep: { flex: 1, alignItems: "center", gap: 6 },
+  progressDot: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: "#5e777b", backgroundColor: "#07151c", alignItems: "center", justifyContent: "center" },
+  progressDotActive: { borderColor: "#f0bc54", backgroundColor: "#8e6326", shadowColor: "#f6b842", shadowOpacity: 0.8, shadowRadius: 7 },
+  progressDotCore: { width: 4, height: 4, borderRadius: 2, backgroundColor: "#ffe4a0" },
+  progressLabel: { color: "#789095", fontSize: 10, lineHeight: 13, fontWeight: "800", letterSpacing: 0.5, textAlign: "center" },
+  progressLabelActive: { color: "#f4c76c" },
+  stage: { width: "100%", paddingHorizontal: 12, paddingBottom: 18, borderWidth: 1, borderColor: "rgba(185,126,44,0.18)", borderRadius: 12, backgroundColor: "rgba(2,14,20,0.72)" },
+  hero: { alignItems: "center", paddingTop: 10, paddingBottom: 16, gap: 4 },
+  heroKicker: { color: "#e0ad51", fontSize: 11, lineHeight: 16, fontWeight: "800", letterSpacing: 1.6, textAlign: "center" },
+  heroTitle: { maxWidth: 920, color: "#fff1cd", fontFamily: "Georgia", fontSize: 28, lineHeight: 34, fontWeight: "800", letterSpacing: -0.35, textAlign: "center", textShadowColor: "rgba(0,0,0,0.9)", textShadowRadius: 8 },
+  heroCopy: { maxWidth: 680, color: "#d3d8d3", fontSize: 14, lineHeight: 20, textAlign: "center" },
+  conceptGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   conceptGridCompact: { flexDirection: "column" },
-  conceptCard: { flexBasis: "31%", flexGrow: 1, minWidth: 285, minHeight: 176, borderWidth: 1.5, borderRadius: 9, overflow: "hidden", flexDirection: "row", alignItems: "stretch", shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
-  conceptFinalist: { minHeight: 328, flexDirection: "column", alignItems: "center", justifyContent: "flex-start", paddingTop: 16, borderColor: "#e5a846", backgroundColor: "#142732", shadowColor: "#f0aa3d", shadowOpacity: 0.48, shadowRadius: 18 },
+  finalistGrid: { maxWidth: 850, width: "100%", alignSelf: "center", alignItems: "flex-end", justifyContent: "center", paddingTop: 8 },
+  conceptCard: { flexBasis: "31%", flexGrow: 1, minWidth: 270, minHeight: 160, borderWidth: 1.5, borderRadius: 8, overflow: "hidden", flexDirection: "row", alignItems: "stretch", shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
+  conceptCardCompact: { flexBasis: "auto", flexGrow: 0, width: "100%", minWidth: 0 },
+  conceptFinalist: { minWidth: 230, minHeight: 330, flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingTop: 18, borderColor: "#d9942f", backgroundColor: "rgba(13,31,38,0.92)", shadowColor: "#f0aa3d", shadowOpacity: 0.55, shadowRadius: 20 },
   conceptSelected: { transform: [{ translateY: -3 }], shadowColor: "#efb74d", shadowOpacity: 0.66, shadowRadius: 15 },
   bookSpine: { width: 6 },
-  conceptBody: { flex: 1, padding: 14 },
-  conceptCover: { width: 80, minHeight: 126, margin: 11, marginRight: 0, borderWidth: 1.5, borderRadius: 5, alignItems: "center", justifyContent: "center", paddingHorizontal: 7, overflow: "hidden", shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 7 },
-  conceptCoverLarge: { width: 142, height: 210, minHeight: 210, margin: 0, shadowColor: "#e3a844", shadowOpacity: 0.48, shadowRadius: 12 },
+  conceptBody: { flex: 1, paddingHorizontal: 14, paddingVertical: 12 },
+  conceptCover: { width: 82, height: 126, minHeight: 126, margin: 10, marginRight: 0, borderWidth: 1.5, borderRadius: 4, alignItems: "center", justifyContent: "center", overflow: "hidden", shadowColor: "#000", shadowOpacity: 0.68, shadowRadius: 8 },
+  conceptCoverRank: { width: 64, height: 88, minHeight: 88, margin: 0 },
+  conceptCoverLarge: { width: 172, height: 252, minHeight: 252, margin: 0, shadowColor: "#e3a844", shadowOpacity: 0.62, shadowRadius: 16 },
+  coverMoon: { position: "absolute", width: "54%", aspectRatio: 1, borderRadius: 999, borderWidth: 1, backgroundColor: "rgba(255,238,189,0.08)", opacity: 0.74 },
+  coverStar: { position: "absolute", width: 3, height: 3, borderRadius: 2, opacity: 0.78 },
+  coverHorizon: { position: "absolute", left: "8%", right: "8%", borderTopWidth: 1, opacity: 0.72 },
+  coverGround: { position: "absolute", left: 0, right: 0, bottom: 0, opacity: 0.1 },
+  coverPrimarySubject: { position: "absolute", zIndex: 2, textShadowColor: "rgba(0,0,0,0.9)", textShadowRadius: 6 },
+  coverSecondarySubject: { position: "absolute", zIndex: 3, textShadowColor: "rgba(0,0,0,0.95)", textShadowRadius: 5 },
   coverFrame: { ...StyleSheet.absoluteFillObject, margin: 5, borderWidth: 1, borderRadius: 3, opacity: 0.6 },
-  coverTitle: { color: "#fff5dc", fontFamily: "Georgia", fontSize: 10, lineHeight: 12, fontWeight: "800", textAlign: "center", marginTop: 8 },
-  coverTitleLarge: { fontSize: 16, lineHeight: 19, paddingHorizontal: 7 },
-  coverRule: { width: 34, height: 1, marginTop: 8, opacity: 0.8 },
-  conceptMeta: { minHeight: 25, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  survivorPill: { color: "#102428", backgroundColor: "#66cbd1", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, fontSize: 9, fontWeight: "900", letterSpacing: 1.2 },
-  challengerPill: { color: "#c79b50", fontSize: 9, fontWeight: "900", letterSpacing: 1.2 },
-  finalistPill: { color: "#251708", backgroundColor: "#e9b34f", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
-  pickNumber: { width: 28, height: 28, lineHeight: 25, borderRadius: 14, borderWidth: 1.5, fontSize: 13, fontWeight: "900", textAlign: "center", overflow: "hidden" },
-  conceptTitle: { color: "#fff1cf", fontFamily: "Georgia", fontSize: 19, lineHeight: 23, fontWeight: "800", marginTop: 8 },
-  synopsis: { color: "#d3dcda", fontSize: 13, lineHeight: 19, marginTop: 7 },
+  coverFrameGothic: { borderTopWidth: 3, borderBottomWidth: 2, borderRadius: 12 },
+  coverFrameGeometric: { margin: 7, borderWidth: 2, transform: [{ rotate: "1.5deg" }] },
+  coverFrameMaritime: { borderTopWidth: 2, borderBottomWidth: 3 },
+  coverFrameOrnament: { position: "absolute", bottom: 7, right: 8, zIndex: 4, opacity: 0.78 },
+  coverTitlePlate: { position: "absolute", left: 8, right: 8, bottom: 9, paddingHorizontal: 5, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(244,196,104,0.64)", backgroundColor: "rgba(4,13,18,0.82)" },
+  coverTitle: { color: "#fff5dc", fontFamily: "Georgia", fontSize: 10, lineHeight: 12, fontWeight: "800", textAlign: "center" },
+  coverTitleLarge: { fontSize: 15, lineHeight: 18 },
+  conceptMeta: { minHeight: 28, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  survivorPill: { color: "#06232b", backgroundColor: "#85d8da", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, fontSize: 9, fontWeight: "900", letterSpacing: 1.2 },
+  challengerPill: { color: "#d5a85b", fontSize: 9, fontWeight: "900", letterSpacing: 1.1 },
+  finalistPill: { color: "#f6c568", fontFamily: "Georgia", fontSize: 15, lineHeight: 20, fontWeight: "800", letterSpacing: 1.5, textAlign: "center" },
+  finalistPedestal: { width: "100%", minHeight: 70, marginTop: -2, paddingHorizontal: 10, paddingVertical: 9, borderTopWidth: 2, borderTopColor: "#d99631", backgroundColor: "#29170d", alignItems: "center", justifyContent: "center", shadowColor: "#f0a83b", shadowOpacity: 0.4, shadowRadius: 12 },
+  finalistTitle: { color: "#fff0c8", fontFamily: "Georgia", fontSize: 13, lineHeight: 17, fontWeight: "800", textAlign: "center", marginTop: 2 },
+  pickNumber: { width: 30, height: 30, lineHeight: 27, borderRadius: 15, borderWidth: 1.5, fontSize: 13, fontWeight: "900", textAlign: "center", overflow: "hidden" },
+  conceptTitle: { color: "#fff1cf", fontFamily: "Georgia", fontSize: 18, lineHeight: 22, fontWeight: "800", marginTop: 5 },
+  synopsis: { color: "#d9ddda", fontSize: 13, lineHeight: 18, marginTop: 6 },
   pressed: { opacity: 0.76, transform: [{ scale: 0.99 }] },
   disabled: { opacity: 0.42 },
   changeFinalists: { alignSelf: "center", minHeight: 44, marginTop: 12, paddingHorizontal: 18, borderRadius: 8, borderWidth: 1, borderColor: "#866332", alignItems: "center", justifyContent: "center" },
   changeFinalistsText: { color: "#e9bd6b", fontSize: 13, fontWeight: "800" },
-  actionBar: { marginTop: 20, padding: 12, borderWidth: 1, borderColor: "#735029", borderRadius: 10, backgroundColor: "rgba(7,20,28,0.96)", flexDirection: "row", flexWrap: "wrap", gap: 13, alignItems: "center", justifyContent: "space-between" },
-  selectionCount: { color: "#b9c8ca", fontWeight: "700", fontSize: 14 },
-  primaryButton: { minHeight: 48, paddingHorizontal: 19, paddingVertical: 12, borderRadius: 7, borderWidth: 1, borderColor: "#ffd576", backgroundColor: "#e9ad46", flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", shadowColor: "#f0ad40", shadowOpacity: 0.38, shadowRadius: 10 },
+  actionBar: { marginTop: 14, paddingHorizontal: 16, paddingVertical: 11, borderWidth: 1, borderColor: "#72502b", borderRadius: 8, backgroundColor: "rgba(3,15,21,0.96)", flexDirection: "row", flexWrap: "wrap", gap: 13, alignItems: "center", justifyContent: "space-between" },
+  selectionCount: { color: "#d3dfdf", fontWeight: "800", fontSize: 14 },
+  primaryButton: { minHeight: 48, paddingHorizontal: 21, paddingVertical: 12, borderRadius: 7, borderWidth: 1, borderColor: "#ffd576", backgroundColor: "#efb54d", flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", shadowColor: "#f0ad40", shadowOpacity: 0.45, shadowRadius: 11 },
   primaryButtonText: { color: "#1b2330", fontSize: 14, lineHeight: 19, fontWeight: "900" },
-  rankList: { width: "100%", maxWidth: 760, alignSelf: "center", gap: 12 },
-  rankRow: { minHeight: 118, borderWidth: 1.5, borderRadius: 9, backgroundColor: "#102833", padding: 10, flexDirection: "row", alignItems: "center", gap: 10, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 10 },
-  rankNumber: { width: 38, height: 38, lineHeight: 38, borderRadius: 6, backgroundColor: "#d9ebe4", fontSize: 20, fontWeight: "900", textAlign: "center", overflow: "hidden" },
+  rankList: { width: "100%", maxWidth: 760, alignSelf: "center", gap: 9 },
+  rankRow: { minHeight: 112, borderWidth: 1.25, borderRadius: 8, backgroundColor: "rgba(12,38,48,0.95)", padding: 9, flexDirection: "row", alignItems: "center", gap: 10, shadowColor: "#000", shadowOpacity: 0.42, shadowRadius: 10 },
+  rankNumber: { width: 38, height: 38, lineHeight: 38, borderRadius: 6, backgroundColor: "#bfece3", fontSize: 20, fontWeight: "900", textAlign: "center", overflow: "hidden" },
   rankCopy: { flex: 1 },
   rankTitle: { color: "#fff8e5", fontSize: 18, lineHeight: 23, fontWeight: "900" },
   rankSynopsis: { color: "#b9c8ca", fontSize: 13, lineHeight: 18, marginTop: 3 },
   rankControls: { flexDirection: "column", gap: 6 },
   iconButton: { width: 44, height: 44, borderRadius: 7, borderWidth: 1, borderColor: "#78603b", alignItems: "center", justifyContent: "center", backgroundColor: "#142c36" },
-  finalRank: { marginTop: 25 },
+  finalRank: { width: "100%", maxWidth: 760, alignSelf: "center", marginTop: 24 },
   sectionTitle: { color: "#f3c66f", fontFamily: "Georgia", fontSize: 23, lineHeight: 28, fontWeight: "800", textAlign: "center", marginBottom: 12 },
   loading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, padding: 24 },
   loadingText: { color: "#d8e0de", textAlign: "center" },
   retryCard: { maxWidth: 560, alignSelf: "center", alignItems: "center", gap: 12, padding: 28, borderRadius: 12, borderWidth: 1, borderColor: "#a47734", backgroundColor: "#142730" },
   retryTitle: { color: "#fff7df", fontSize: 21, fontWeight: "900", textAlign: "center" },
   retryCopy: { color: "#b9c8ca", textAlign: "center", lineHeight: 21 },
-  recommendationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "stretch" },
-  recommendationCard: { flexBasis: "31%", flexGrow: 1, minWidth: 260, padding: 17, borderRadius: 7, borderWidth: 3, borderColor: "#8b5a29", backgroundColor: "#ead9af", shadowColor: "#000", shadowOpacity: 0.52, shadowRadius: 13, shadowOffset: { width: 0, height: 8 } },
+  recommendationGrid: { maxWidth: 960, width: "100%", alignSelf: "center", flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "stretch" },
+  recommendationCard: { flexBasis: "31%", flexGrow: 1, minWidth: 260, padding: 15, borderRadius: 4, borderWidth: 3, borderColor: "#8b5a29", backgroundColor: "#eddcb1", shadowColor: "#000", shadowOpacity: 0.62, shadowRadius: 15, shadowOffset: { width: 0, height: 8 } },
   recommendationSelected: { borderColor: "#ffd36d", backgroundColor: "#f5e7c3", transform: [{ translateY: -3 }], shadowColor: "#e9ae46", shadowOpacity: 0.7 },
   positionLabel: { alignSelf: "center", color: "#38240f", backgroundColor: "#e4a83f", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, fontSize: 10, fontWeight: "900", letterSpacing: 1.1, textTransform: "uppercase" },
   positionCopy: { minHeight: 38, color: "#5d4a36", fontSize: 12, lineHeight: 17, marginTop: 7, textAlign: "center" },
@@ -1003,12 +1143,12 @@ const styles = StyleSheet.create({
   readFirst: { minHeight: 44, marginTop: 14, borderRadius: 7, borderWidth: 1, borderColor: "#876033", backgroundColor: "#172a31", alignItems: "center", justifyContent: "center" },
   readFirstSelected: { borderColor: "#c8872d", backgroundColor: "#6b431b" },
   readFirstText: { color: "#fff0c9", fontWeight: "800", fontSize: 13 },
-  feedbackPanel: { maxWidth: 760, width: "100%", alignSelf: "center", marginTop: 26, padding: 18, borderWidth: 1, borderColor: "#45606b", borderRadius: 17, backgroundColor: "#14262d" },
+  feedbackPanel: { maxWidth: 700, width: "100%", alignSelf: "center", marginTop: 28, padding: 22, borderWidth: 1, borderColor: "#73512c", borderRadius: 9, backgroundColor: "rgba(5,20,27,0.96)", shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 18 },
   feedbackHint: { color: "#aebfc1", textAlign: "center", marginTop: -7, marginBottom: 13 },
-  feedbackRow: { minHeight: 56, borderTopWidth: 1, borderTopColor: "#32474e", flexDirection: "row", alignItems: "center", gap: 10 },
-  feedbackRank: { width: 24, color: "#f2be64", fontSize: 19, fontWeight: "900" },
+  feedbackRow: { minHeight: 58, marginTop: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: "#35535e", borderRadius: 7, backgroundColor: "#0c2732", flexDirection: "row", alignItems: "center", gap: 10 },
+  feedbackRank: { width: 28, color: "#f2be64", fontSize: 20, fontWeight: "900", textAlign: "center" },
   feedbackBook: { flex: 1, color: "#fff7df", fontSize: 14, fontWeight: "800" },
-  smallIconButton: { width: 38, height: 38, borderWidth: 1, borderColor: "#49626b", borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  smallIconButton: { width: 44, height: 44, borderWidth: 1, borderColor: "#49626b", borderRadius: 9, alignItems: "center", justifyContent: "center" },
   feedbackActions: { marginTop: 16, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 10 },
   secondaryButton: { minHeight: 48, paddingHorizontal: 16, borderWidth: 1, borderColor: "#5b7076", borderRadius: 12, alignItems: "center", justifyContent: "center" },
   secondaryButtonText: { color: "#d8e0de", fontWeight: "800" },
@@ -1016,19 +1156,19 @@ const styles = StyleSheet.create({
   entryScroll: { minHeight: "100%", paddingHorizontal: 20, paddingVertical: 18, alignItems: "center", justifyContent: "center" },
   entryBack: { position: "absolute", top: 18, left: 18, minWidth: 82, minHeight: 44, paddingHorizontal: 12, borderRadius: 7, borderWidth: 1, borderColor: "#93632b", backgroundColor: "rgba(5,15,21,0.9)", flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center" },
   entryBackText: { color: "#f4c463", fontSize: 14, fontWeight: "800" },
-  entryCenter: { width: "100%", maxWidth: 760, alignItems: "center", paddingHorizontal: 24, paddingVertical: 42, borderRadius: 12, borderWidth: 1, borderColor: "rgba(190,129,45,0.38)", backgroundColor: "rgba(5,19,27,0.82)", shadowColor: "#000", shadowOpacity: 0.7, shadowRadius: 26 },
+  entryCenter: { width: "100%", maxWidth: 720, alignItems: "center", paddingHorizontal: 24, paddingVertical: 34, borderRadius: 12, backgroundColor: "rgba(2,14,21,0.64)", shadowColor: "#000", shadowOpacity: 0.82, shadowRadius: 30 },
   crest: { flexDirection: "row", alignItems: "center", gap: 18 },
   laurel: { color: "#dca849", fontSize: 44, transform: [{ rotate: "-18deg" }] },
-  entryTitle: { color: "#f5c66b", fontFamily: "Georgia", fontSize: 52, lineHeight: 58, fontWeight: "800", textAlign: "center", textShadowColor: "#8f4f1e", textShadowRadius: 11 },
+  entryTitle: { color: "#f5c66b", fontFamily: "Georgia", fontSize: 56, lineHeight: 61, fontWeight: "800", textAlign: "center", textTransform: "uppercase", textShadowColor: "#8f4f1e", textShadowRadius: 11 },
+  entryTitleCompact: { fontSize: 38, lineHeight: 44 },
   entrySubtitle: { color: "#df9f3f", fontFamily: "Georgia", fontSize: 15, lineHeight: 20, fontWeight: "800", letterSpacing: 2.2, textAlign: "center" },
-  ornament: { width: "72%", maxWidth: 420, marginVertical: 20, flexDirection: "row", alignItems: "center", gap: 10 },
+  ornament: { width: "72%", maxWidth: 420, marginVertical: 16, flexDirection: "row", alignItems: "center", gap: 10 },
   ornamentLine: { flex: 1, height: 1, backgroundColor: "#9b6a2e" },
   ornamentStar: { color: "#f3bd57", fontSize: 16 },
-  entryInstruction: { maxWidth: 620, color: "#ffe3aa", fontSize: 24, lineHeight: 31, fontWeight: "900", textAlign: "center", textShadowColor: "#000", textShadowRadius: 8 },
+  entryInstruction: { maxWidth: 620, color: "#ffe5ac", fontFamily: "Georgia", fontSize: 25, lineHeight: 31, fontWeight: "900", textAlign: "center", textShadowColor: "#000", textShadowRadius: 8 },
   entryCopy: { maxWidth: 610, color: "#d2d6cf", fontSize: 14, lineHeight: 21, textAlign: "center", marginTop: 12 },
   entryButton: { minHeight: 52, marginTop: 24, paddingHorizontal: 24, borderRadius: 7, borderWidth: 1, borderColor: "#ffd77c", backgroundColor: "#ecb34f", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, shadowColor: "#efa73a", shadowOpacity: 0.58, shadowRadius: 14 },
   entryButtonText: { color: "#191d1f", fontSize: 15, fontWeight: "900" },
-  entryCat: { position: "absolute", right: 28, bottom: 24, width: 170, height: 150, alignItems: "center", justifyContent: "flex-start", opacity: 0.88 },
-  entryBookPile: { position: "absolute", bottom: 0, alignItems: "center", gap: 3 },
-  entryBook: { height: 18, borderWidth: 1, borderColor: "#c68a37", borderRadius: 3 },
+  closingOrnament: { maxWidth: 700, width: "100%", alignSelf: "center", marginTop: 14, flexDirection: "row", alignItems: "center", gap: 12 },
+  closingQuote: { color: "#c98d48", fontFamily: "Georgia", fontSize: 13, lineHeight: 18, fontStyle: "italic", textAlign: "center" },
 });

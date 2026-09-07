@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const event = req.body;
   const pathname = [
-    "recommendation-games/melanies-game/v1",
+    "recommendation-games/melanies-game/v2",
     safe(event.context.libraryId, 100),
     safe(event.context.anonymousPlayerId, 100),
     `${safe(event.presentationId, 180)}.json`,
