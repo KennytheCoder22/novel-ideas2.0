@@ -79,13 +79,18 @@ export type PreparedGameRecommendationEvidence = {
   milestone: MilestoneEvaluation | null;
 };
 
-function canonicalBookIdentity(candidate: GameRecommendationCandidateLike): string {
-  const title = candidate.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  const author = (candidate.creators[0] || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+export function canonicalBookIdentity(candidate: GameRecommendationCandidateLike): string {
+  const slug = (value: string) => value
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+  const title = slug(candidate.title) || `${slug(candidate.source)}-${slug(candidate.sourceId || candidate.id)}`;
+  const author = slug(candidate.creators[0] || "");
   return `${title}:${author || "unknown-author"}`.slice(0, 400);
 }
 
-function bookIdentityFromCandidate(candidate: GameRecommendationCandidateLike, rank: number): GameRecommendationBookIdentity {
+export function bookIdentityFromCandidate(candidate: GameRecommendationCandidateLike, rank: number): GameRecommendationBookIdentity {
   return {
     id: canonicalBookIdentity(candidate),
     source: candidate.source,
@@ -94,6 +99,68 @@ function bookIdentityFromCandidate(candidate: GameRecommendationCandidateLike, r
     author: candidate.creators[0] || "",
     rank,
   };
+}
+
+export type GameRecommendationSlateItem = {
+  book: GameRecommendationBookIdentity;
+  coverUrl: string | null;
+  description: string | null;
+  matchedSignals: string[];
+  position: "strongest" | "strong" | "adventurous";
+};
+
+export type GameRecommendationSlateOutcome =
+  | { status: "shown"; state: GameRecommendationIntegrationStateV1; items: GameRecommendationSlateItem[]; shownAt: string }
+  | { status: "empty" | "error"; state: GameRecommendationIntegrationStateV1; error: string };
+
+/** Generates a compact final slate through the same production recommender and identity/history
+ * rules as milestone rewards. The adventurous slot comes from deeper in the still-compatible
+ * production ranking; it is never synthesized or sourced from a toy catalog. */
+export async function generateGameRecommendationSlate(args: {
+  state: GameRecommendationIntegrationStateV1;
+  ageBand: AgeBandV2;
+  enabledSources: Partial<Record<SourceIdV2, boolean>>;
+  localLibraryCurationTrusted?: boolean;
+  runRecommender: RunGameRecommender;
+  now?: () => string;
+}): Promise<GameRecommendationSlateOutcome> {
+  let result: GameRecommendationRunResult;
+  try {
+    result = await args.runRecommender({
+      ageBand: args.ageBand,
+      signals: args.state.adaptedSignals,
+      limit: 18,
+      enabledSources: args.enabledSources,
+      diversitySeed: `${args.state.game}:${args.state.gameSessionId}:final-slate`,
+      localLibraryCurationTrusted: args.localLibraryCurationTrusted,
+    });
+  } catch (error) {
+    return { status: "error", state: args.state, error: error instanceof Error ? error.message : String(error) };
+  }
+  const excluded = new Set([...args.state.shownBookIdentityIds, ...args.state.familiarBookIdentityIds]);
+  const eligible = result.items.filter((candidate) => {
+    const identity = canonicalBookIdentity(candidate);
+    const isBookFormat = candidate.format === "book" || candidate.formats?.includes("book");
+    if (!isBookFormat || !gameRecommendationCoverUrl(candidate) || excluded.has(identity)) return false;
+    excluded.add(identity);
+    return true;
+  });
+  if (eligible.length < 3) return { status: "empty", state: args.state, error: "fewer_than_three_unseen_books" };
+  const adventurousIndex = Math.min(eligible.length - 1, Math.max(2, Math.floor(eligible.length * 0.45)));
+  const picks = [eligible[0], eligible[1], eligible[adventurousIndex]];
+  const positions = ["strongest", "strong", "adventurous"] as const;
+  const items = picks.map((candidate, index): GameRecommendationSlateItem => {
+    const description = gameRecommendationDescription(candidate);
+    return {
+      book: bookIdentityFromCandidate(candidate, result.items.indexOf(candidate) + 1),
+      coverUrl: gameRecommendationCoverUrl(candidate),
+      description: description?.text || null,
+      matchedSignals: [...(candidate.matchedSignals || [])],
+      position: positions[index],
+    };
+  });
+  const state = items.reduce((next, item) => recordShownBook(next, item.book.id), args.state);
+  return { status: "shown", state, items, shownAt: (args.now || (() => new Date().toISOString()))() };
 }
 
 function stringField(value: unknown): string {

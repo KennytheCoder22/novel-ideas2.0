@@ -2,16 +2,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   GAME_RECOMMENDATION_FEEDBACK_QUEUE_KEY,
+  GAME_RECOMMENDATION_SLATE_FEEDBACK_QUEUE_KEY,
   createSerializedRecommendationQueue,
+  flushGameRecommendationSlateFeedbackEvents,
   flushGameRecommendationFeedbackEvents,
+  queueGameRecommendationSlateFeedbackEvent,
   queueGameRecommendationFeedbackEvent,
+  readQueuedGameRecommendationSlateFeedbackEvents,
   readQueuedGameRecommendationFeedbackEvents,
   type AsyncKeyValueStorage,
 } from "./gameRecommendationFeedbackQueue";
 import {
   createGameRecommendationFeedbackEvent,
+  createGameRecommendationSlateFeedbackEvent,
   gameRecommendationFeedbackStoragePath,
   isGameRecommendationFeedbackEventV1,
+  isGameRecommendationSlateFeedbackEventV1,
 } from "./gameRecommendationFeedback";
 
 function memoryStorage(values = new Map<string, string>()): AsyncKeyValueStorage {
@@ -55,6 +61,48 @@ function feedback(gameSessionId: string) {
   });
 }
 
+function slateFeedback(preferredBookId: string, respondedAt: string) {
+  const recommendations = [
+    {
+      id: "book-one:author-one",
+      source: "googleBooks",
+      sourceId: "book-one",
+      title: "Book One",
+      author: "Author One",
+      rank: 1,
+    },
+    {
+      id: "book-two:author-two",
+      source: "openLibrary",
+      sourceId: "book-two",
+      title: "Book Two",
+      author: "Author Two",
+      rank: 2,
+    },
+  ];
+  return createGameRecommendationSlateFeedbackEvent({
+    game: "melanies_game",
+    anonymousPlayerId: "patron-abc",
+    gameSessionId: "immutable-slate",
+    evidenceSnapshotVersion: "v1",
+    evidenceSnapshot: {
+      signalCount: 2,
+      positiveSignalCount: 2,
+      negativeSignalCount: 0,
+      sources: ["books"],
+      semanticTags: ["tone:cozy"],
+    },
+    evidenceMode: "semantic_only",
+    recommendations,
+    ranking: recommendations.map((book) => book.id),
+    preferredBookId,
+    ageBand: "teens",
+    library: { libraryId: "yvhs", localCollectionOnly: false },
+    shownAt: "2026-01-01T00:00:00.000Z",
+    respondedAt,
+  });
+}
+
 test("feedback is durably queued, deduplicated, flushed, and removed after delivery", async () => {
   const storage = memoryStorage();
   const event = feedback("session-1");
@@ -81,6 +129,78 @@ test("failed feedback delivery stays queued for a later launch", async () => {
   const result = await flushGameRecommendationFeedbackEvents(storage, async () => false);
   assert.deepEqual(result, { sent: 0, remaining: 1 });
   assert.equal((await readQueuedGameRecommendationFeedbackEvents(storage))[0]?.eventId, event.eventId);
+});
+
+test("final-slate feedback keeps one immutable response across tabs and retries", async () => {
+  const storage = memoryStorage();
+  const first = slateFeedback("book-one:author-one", "2026-01-01T00:00:05.000Z");
+  const sameAnswer = slateFeedback("book-one:author-one", "2026-01-01T00:00:06.000Z");
+  const conflictingAnswer = slateFeedback("book-two:author-two", "2026-01-01T00:00:07.000Z");
+
+  await queueGameRecommendationSlateFeedbackEvent(storage, first);
+  await queueGameRecommendationSlateFeedbackEvent(storage, sameAnswer);
+  assert.deepEqual(await readQueuedGameRecommendationSlateFeedbackEvents(storage), [first]);
+  await assert.rejects(
+    queueGameRecommendationSlateFeedbackEvent(storage, conflictingAnswer),
+    /immutable_queued_event_conflict/,
+  );
+
+  assert.deepEqual(
+    await flushGameRecommendationSlateFeedbackEvents(storage, async () => true),
+    { sent: 1, remaining: 0 },
+  );
+  await queueGameRecommendationSlateFeedbackEvent(storage, sameAnswer);
+  assert.deepEqual(await readQueuedGameRecommendationSlateFeedbackEvents(storage), []);
+  await assert.rejects(
+    queueGameRecommendationSlateFeedbackEvent(storage, conflictingAnswer),
+    /immutable_queued_event_conflict/,
+  );
+});
+
+test("cross-tab slate clients reject a conflicting response while delivery is in flight", async (context) => {
+  const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: {} });
+  context.after(() => {
+    if (previousNavigator) Object.defineProperty(globalThis, "navigator", previousNavigator);
+    else Reflect.deleteProperty(globalThis, "navigator");
+  });
+  const values = new Map<string, string>();
+  const storageA = memoryStorage(values);
+  const storageB = memoryStorage(values);
+  const options = {
+    immutableRevision: true,
+    revisionFingerprint: (event: ReturnType<typeof slateFeedback>) => JSON.stringify({ ...event, respondedAt: null }),
+  };
+  const clientA = createSerializedRecommendationQueue(
+    GAME_RECOMMENDATION_SLATE_FEEDBACK_QUEUE_KEY,
+    isGameRecommendationSlateFeedbackEventV1,
+    (event) => event.eventId,
+    options,
+  );
+  const clientB = createSerializedRecommendationQueue(
+    GAME_RECOMMENDATION_SLATE_FEEDBACK_QUEUE_KEY,
+    isGameRecommendationSlateFeedbackEventV1,
+    (event) => event.eventId,
+    options,
+  );
+  const first = slateFeedback("book-one:author-one", "2026-01-01T00:00:05.000Z");
+  const conflicting = slateFeedback("book-two:author-two", "2026-01-01T00:00:06.000Z");
+  await clientA.enqueue(storageA, first);
+
+  let startSend: () => void = () => {};
+  let finishSend: () => void = () => {};
+  const sendStarted = new Promise<void>((resolve) => { startSend = resolve; });
+  const sendGate = new Promise<void>((resolve) => { finishSend = resolve; });
+  const flushing = clientA.flush(storageA, async () => {
+    startSend();
+    await sendGate;
+    return true;
+  });
+  await sendStarted;
+  await assert.rejects(clientB.enqueue(storageB, conflicting), /immutable_queued_event_conflict/);
+  finishSend();
+  await flushing;
+  await assert.rejects(clientB.enqueue(storageB, conflicting), /immutable_queued_event_conflict/);
 });
 
 test("response and continued revisions use distinct immutable server paths", () => {

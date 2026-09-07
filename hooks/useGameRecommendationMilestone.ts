@@ -13,6 +13,7 @@ import type { AgeBandV2, SwipeSignalV2 } from "../app/recommender-v2";
 import {
   clearPendingReward,
   isBookAlreadySeen,
+  mergeNativeEvidence,
   retractNativeEvidence,
   recordFamiliarBook,
   resetGameRecommendationSession,
@@ -21,11 +22,15 @@ import {
 } from "../lib/recommendationGames/gameRecommendationIntegrationState";
 import {
   GAME_RECOMMENDATION_EVIDENCE_SNAPSHOT_VERSION,
+  createGameRecommendationEvidenceSnapshot,
+  generateGameRecommendationSlate,
   processDurableGameRecommendationEvidence,
+  type GameRecommendationSlateItem,
 } from "../lib/recommendationGames/gameRecommendationEngine";
 import type { MilestoneEvaluation } from "../lib/recommendationGames/gameRecommendationMilestones";
 import {
   createGameRecommendationFeedbackEvent,
+  createGameRecommendationSlateFeedbackEvent,
   RECOMMENDATION_GAME_IDS,
   withContinuedAt,
   type GameRecommendationBookIdentity,
@@ -38,13 +43,16 @@ import { createGameRecommendationDiagnosticEvent } from "../lib/recommendationGa
 import {
   queueGameRecommendationDiagnosticEvent,
   queueGameRecommendationFeedbackEvent,
+  queueGameRecommendationSlateFeedbackEvent,
   flushGameRecommendationDiagnosticEvents,
   flushGameRecommendationFeedbackEvents,
+  flushGameRecommendationSlateFeedbackEvents,
   type AsyncKeyValueStorage,
 } from "../lib/recommendationGames/gameRecommendationFeedbackQueue";
 import {
   sendGameRecommendationDiagnosticEvent,
   sendGameRecommendationFeedbackEvent,
+  sendGameRecommendationSlateFeedbackEvent,
 } from "../lib/recommendationGames/gameRecommendationFeedbackClient";
 import type { GameRouteSourceFlags } from "../lib/recommendationGames/gameRecommendationRouteConfig";
 import { gameRouteSourceFlagsToEnabledSources } from "../lib/recommendationGames/gameRecommendationRouteConfig";
@@ -56,6 +64,7 @@ import {
   type GameRecommendationHistoryV1,
 } from "../lib/recommendationGames/gameRecommendationHistory";
 import { gameRecommendationReasonFromMatchedSignals } from "../lib/recommendationGames/gameRecommendationReason";
+import { withCrossTabStorageLock } from "../lib/recommendationGames/crossTabStorageLock";
 
 const webStorage: AsyncKeyValueStorage = {
   async getItem(key) {
@@ -70,14 +79,26 @@ const webStorage: AsyncKeyValueStorage = {
 const gameRecommendationStorage: AsyncKeyValueStorage = Platform.OS === "web" ? webStorage : AsyncStorage;
 const apiOrigin = String(process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
 const httpEnv = { isWeb: Platform.OS === "web", apiOrigin };
-const historyMutationTails = new Map<string, Promise<void>>();
 
 function scopeKeyPart(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 120) || "default";
 }
 
-function integrationStateStorageKey(game: RecommendationGameId, playerId: string, libraryId: string, ageBand: AgeBandV2): string {
-  return `novelideas_game_recommendation_integration_state_v2:${game}:${scopeKeyPart(playerId)}:${scopeKeyPart(libraryId)}:${ageBand}`;
+function integrationStateStorageKey(
+  game: RecommendationGameId,
+  playerId: string,
+  libraryId: string,
+  ageBand: AgeBandV2,
+  gameSessionId?: string,
+): string {
+  return [
+    "novelideas_game_recommendation_integration_state_v2",
+    game,
+    scopeKeyPart(playerId),
+    scopeKeyPart(libraryId),
+    ageBand,
+    ...(gameSessionId ? [scopeKeyPart(gameSessionId)] : []),
+  ].join(":");
 }
 
 function legacyIntegrationStateStorageKey(game: RecommendationGameId, playerId: string, libraryId: string): string {
@@ -96,29 +117,12 @@ function recommendationScopeId(args: Pick<UseGameRecommendationMilestoneArgs, "g
   return `${args.game}:${args.playerId}:${args.libraryId}:${args.ageBand}:${args.gameSessionId}`;
 }
 
-async function withInProcessHistoryLock<T>(key: string, work: () => Promise<T>): Promise<T> {
-  const previous = historyMutationTails.get(key) || Promise.resolve();
-  let release: () => void = () => {};
-  const current = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const tail = previous.catch(() => undefined).then(() => current);
-  historyMutationTails.set(key, tail);
-  await previous.catch(() => undefined);
-  try {
-    return await work();
-  } finally {
-    release();
-    if (historyMutationTails.get(key) === tail) historyMutationTails.delete(key);
-  }
-}
-
 async function withSharedHistoryLock<T>(key: string, work: () => Promise<T>): Promise<T> {
-  const locks = (globalThis as {
-    navigator?: { locks?: { request: <R>(name: string, callback: () => Promise<R>) => Promise<R> } };
-  }).navigator?.locks;
-  if (locks?.request) return locks.request(`novelideas:${key}`, work);
-  return withInProcessHistoryLock(key, work);
+  return withCrossTabStorageLock(gameRecommendationStorage, `history:${key}`, async (assertOwnership) => {
+    const result = await work();
+    await assertOwnership();
+    return result;
+  });
 }
 
 export type GameRecommendationRewardPayload = {
@@ -150,7 +154,10 @@ export type UseGameRecommendationMilestoneArgs = {
   sourceFlags: GameRouteSourceFlags;
   localCollectionOnly: boolean;
   evidenceMode: GameRecommendationEvidenceMode;
+  sessionScopedEvidence?: boolean;
 };
+
+export type FinalGameRecommendation = GameRecommendationSlateItem & { reason: string };
 
 type EvidenceNotification = {
   scopeId: string;
@@ -184,7 +191,13 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
     setPendingReward(null);
     let cancelled = false;
     void (async () => {
-      const key = integrationStateStorageKey(args.game, args.playerId, args.libraryId, args.ageBand);
+      const key = integrationStateStorageKey(
+        args.game,
+        args.playerId,
+        args.libraryId,
+        args.ageBand,
+        args.sessionScopedEvidence ? args.gameSessionId : undefined,
+      );
       const historyScope = {
         anonymousPlayerId: args.playerId,
         libraryId: args.libraryId,
@@ -235,7 +248,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
         console.warn("[game-recommendation] shared_history_migration_failed", error);
       }
       if (cancelled || activeScopeRef.current !== loadedScope) return;
-      if (!rawState) {
+      if (!rawState && !args.sessionScopedEvidence) {
         const migrationKey = integrationStateMigrationKey(args.game, args.playerId, args.libraryId);
         try {
           await withSharedHistoryLock(migrationKey, async () => {
@@ -316,6 +329,10 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
         gameRecommendationStorage,
         (event) => sendGameRecommendationFeedbackEvent(event, httpEnv),
       ).catch((error) => console.warn("[game-recommendation] feedback_flush_failed", error));
+      void flushGameRecommendationSlateFeedbackEvents(
+        gameRecommendationStorage,
+        (event) => sendGameRecommendationSlateFeedbackEvent(event, httpEnv),
+      ).catch((error) => console.warn("[game-recommendation] slate_feedback_flush_failed", error));
       void flushGameRecommendationDiagnosticEvents(
         gameRecommendationStorage,
         (event) => sendGameRecommendationDiagnosticEvent(event, httpEnv),
@@ -328,9 +345,10 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
         readyRef.current = false;
       }
     };
-  }, [args.ageBand, args.game, args.gameLabel, args.playerId, args.libraryId, args.gameSessionId, currentScopeId]);
+  }, [args.ageBand, args.game, args.gameLabel, args.playerId, args.libraryId, args.gameSessionId, args.sessionScopedEvidence, currentScopeId]);
 
   const persist = useCallback(async (state: GameRecommendationIntegrationStateV1, scopeId: string): Promise<boolean> => {
+    if (activeScopeRef.current !== scopeId) return false;
     const historyScope = {
       anonymousPlayerId: args.playerId,
       libraryId: args.libraryId,
@@ -345,10 +363,18 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
     } catch (error) {
       console.warn("[game-recommendation] shared_history_read_failed", error);
     }
+    if (activeScopeRef.current !== scopeId) return false;
     const synchronized = synchronizeGameRecommendationHistory(latestHistory, state);
     try {
+      if (activeScopeRef.current !== scopeId) return false;
       await gameRecommendationStorage.setItem(
-        integrationStateStorageKey(args.game, args.playerId, args.libraryId, args.ageBand),
+        integrationStateStorageKey(
+          args.game,
+          args.playerId,
+          args.libraryId,
+          args.ageBand,
+          args.sessionScopedEvidence ? args.gameSessionId : undefined,
+        ),
         JSON.stringify(synchronized.state),
       );
     } catch (error) {
@@ -356,6 +382,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
       throw error;
     }
     try {
+      if (activeScopeRef.current !== scopeId) return false;
       await gameRecommendationStorage.setItem(
         gameRecommendationHistoryStorageKey(historyScope),
         JSON.stringify(synchronized.history),
@@ -369,7 +396,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
     stateRef.current = synchronized.state;
     historyRef.current = synchronized.history;
     return true;
-  }, [args.ageBand, args.game, args.libraryId, args.playerId]);
+  }, [args.ageBand, args.game, args.gameSessionId, args.libraryId, args.playerId, args.sessionScopedEvidence]);
 
   const processEvidence = useCallback(async (notification: EvidenceNotification) => {
     if (!stateRef.current || activeScopeRef.current !== notification.scopeId) return;
@@ -380,7 +407,13 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
       ageBand: args.ageBand,
     };
     const historyKey = gameRecommendationHistoryStorageKey(historyScope);
-    const integrationKey = integrationStateStorageKey(args.game, args.playerId, args.libraryId, args.ageBand);
+    const integrationKey = integrationStateStorageKey(
+      args.game,
+      args.playerId,
+      args.libraryId,
+      args.ageBand,
+      args.sessionScopedEvidence ? args.gameSessionId : undefined,
+    );
     await withSharedHistoryLock(historyKey, async () => {
       if (!stateRef.current || activeScopeRef.current !== notification.scopeId) return;
       let currentState = stateRef.current;
@@ -455,7 +488,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
           .catch((error) => console.warn("[game-recommendation] diagnostic_queue_failed", error));
       }
     });
-  }, [args.ageBand, args.evidenceMode, args.game, args.gameLabel, args.gameSessionId, args.libraryId, args.localCollectionOnly, args.playerId, args.sourceFlags, persist]);
+  }, [args.ageBand, args.evidenceMode, args.game, args.gameLabel, args.gameSessionId, args.libraryId, args.localCollectionOnly, args.playerId, args.sessionScopedEvidence, args.sourceFlags, persist]);
 
   const enqueueEvidenceMutation = useCallback((mutation: () => Promise<void>) => {
     const next = evidenceMutationRef.current.catch(() => undefined).then(mutation);
@@ -502,7 +535,13 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
           let currentState = stateRef.current;
           try {
             const rawState = await gameRecommendationStorage.getItem(
-              integrationStateStorageKey(args.game, args.playerId, args.libraryId, args.ageBand),
+              integrationStateStorageKey(
+                args.game,
+                args.playerId,
+                args.libraryId,
+                args.ageBand,
+                args.sessionScopedEvidence ? args.gameSessionId : undefined,
+              ),
             );
             if (rawState) {
               currentState = restoreGameRecommendationIntegrationState(rawState, {
@@ -518,7 +557,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
         }
       });
     });
-  }, [args.ageBand, args.game, args.gameSessionId, args.libraryId, args.playerId, currentScopeId, enqueueEvidenceMutation, persist]);
+  }, [args.ageBand, args.game, args.gameSessionId, args.libraryId, args.playerId, args.sessionScopedEvidence, currentScopeId, enqueueEvidenceMutation, persist]);
 
   const resetSession = useCallback(async (gameSessionId = args.gameSessionId) => {
     await enqueueEvidenceMutation(async () => {
@@ -533,7 +572,13 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
         let currentState = stateRef.current;
         try {
           const rawState = await gameRecommendationStorage.getItem(
-            integrationStateStorageKey(args.game, args.playerId, args.libraryId, args.ageBand),
+            integrationStateStorageKey(
+              args.game,
+              args.playerId,
+              args.libraryId,
+              args.ageBand,
+              args.sessionScopedEvidence ? args.gameSessionId : undefined,
+            ),
           );
           if (rawState) {
             currentState = restoreGameRecommendationIntegrationState(rawState, {
@@ -549,7 +594,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
         await persist(resetGameRecommendationSession(currentState, gameSessionId), scopeId);
       });
     });
-  }, [args.ageBand, args.game, args.gameSessionId, args.libraryId, args.playerId, currentScopeId, enqueueEvidenceMutation, persist]);
+  }, [args.ageBand, args.game, args.gameSessionId, args.libraryId, args.playerId, args.sessionScopedEvidence, currentScopeId, enqueueEvidenceMutation, persist]);
 
   const respond = useCallback((response: GameRecommendationResponse, continuation: () => void) => {
     if (respondingRef.current) return;
@@ -596,7 +641,13 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
             const [rawHistory, rawIntegrationState] = await Promise.all([
               gameRecommendationStorage.getItem(historyKey),
               gameRecommendationStorage.getItem(
-                integrationStateStorageKey(args.game, args.playerId, args.libraryId, args.ageBand),
+                integrationStateStorageKey(
+                  args.game,
+                  args.playerId,
+                  args.libraryId,
+                  args.ageBand,
+                  args.sessionScopedEvidence ? args.gameSessionId : undefined,
+                ),
               ),
             ]);
             if (rawIntegrationState) {
@@ -648,13 +699,131 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
         console.warn("[game-recommendation] feedback_flush_failed", error);
       }
     })();
-  }, [args.ageBand, args.game, args.gameSessionId, args.libraryId, args.playerId, currentScopeId, pendingReward, persist]);
+  }, [args.ageBand, args.game, args.gameSessionId, args.libraryId, args.playerId, args.sessionScopedEvidence, currentScopeId, pendingReward, persist]);
 
   const isBookAlreadyShown = useCallback((bookId: string) => (
     stateRef.current ? isBookAlreadySeen(stateRef.current, bookId) : false
   ), []);
 
-  return { pendingReward, notifyEvidence, retractEvidence, resetSession, respond, isBookAlreadyShown };
+  const generateFinalRecommendations = useCallback(async (
+    nativeEvidenceId: string,
+    signals: SwipeSignalV2[],
+  ): Promise<{ items: FinalGameRecommendation[]; shownAt: string } | null> => {
+    let result: { items: FinalGameRecommendation[]; shownAt: string } | null = null;
+    await enqueueEvidenceMutation(async () => {
+      const scopeId = currentScopeId;
+      if (!readyRef.current || !stateRef.current || activeScopeRef.current !== scopeId) return;
+      const historyKey = gameRecommendationHistoryStorageKey({
+        anonymousPlayerId: args.playerId,
+        libraryId: args.libraryId,
+        ageBand: args.ageBand,
+      });
+      await withSharedHistoryLock(historyKey, async () => {
+        if (!stateRef.current || activeScopeRef.current !== scopeId) return;
+        let currentState = stateRef.current;
+        try {
+          const [rawHistory, rawIntegrationState] = await Promise.all([
+            gameRecommendationStorage.getItem(historyKey),
+            gameRecommendationStorage.getItem(
+              integrationStateStorageKey(
+                args.game,
+                args.playerId,
+                args.libraryId,
+                args.ageBand,
+                args.sessionScopedEvidence ? args.gameSessionId : undefined,
+              ),
+            ),
+          ]);
+          if (rawIntegrationState) {
+            currentState = restoreGameRecommendationIntegrationState(rawIntegrationState, {
+              game: args.game,
+              anonymousPlayerId: args.playerId,
+              gameSessionId: args.gameSessionId,
+            });
+          }
+          currentState = synchronizeGameRecommendationHistory(
+            restoreGameRecommendationHistory(rawHistory, {
+              anonymousPlayerId: args.playerId,
+              libraryId: args.libraryId,
+              ageBand: args.ageBand,
+            }),
+            currentState,
+          ).state;
+        } catch (error) {
+          console.warn("[game-recommendation] final_slate_history_read_failed", error);
+        }
+        let state = mergeNativeEvidence(currentState, nativeEvidenceId, signals);
+        if (!await persist(state, scopeId) || activeScopeRef.current !== scopeId) return;
+        const outcome = await generateGameRecommendationSlate({
+          state,
+          ageBand: args.ageBand,
+          enabledSources: gameRouteSourceFlagsToEnabledSources(args.sourceFlags),
+          localLibraryCurationTrusted: args.localCollectionOnly,
+          runRecommender: runRecommenderV2,
+        });
+        if (activeScopeRef.current !== scopeId) return;
+        if (outcome.status !== "shown") {
+          throw new Error(outcome.error);
+        }
+        state = outcome.state;
+        if (!await persist(state, scopeId) || activeScopeRef.current !== scopeId) return;
+        if (activeScopeRef.current !== scopeId) return;
+        result = {
+          shownAt: outcome.shownAt,
+          items: outcome.items.map((item) => ({
+            ...item,
+            reason: gameRecommendationReasonFromMatchedSignals(item.matchedSignals),
+          })),
+        };
+      });
+    });
+    return result;
+  }, [args.ageBand, args.game, args.gameSessionId, args.libraryId, args.localCollectionOnly, args.playerId, args.sessionScopedEvidence, args.sourceFlags, currentScopeId, enqueueEvidenceMutation, persist]);
+
+  const submitFinalRecommendationFeedback = useCallback(async (input: {
+    recommendations: GameRecommendationBookIdentity[];
+    ranking: string[];
+    preferredBookId: string | null;
+    shownAt: string;
+  }): Promise<boolean> => {
+    if (!stateRef.current || activeScopeRef.current !== currentScopeId) return false;
+    const event = createGameRecommendationSlateFeedbackEvent({
+      game: args.game,
+      anonymousPlayerId: args.playerId,
+      gameSessionId: args.gameSessionId,
+      evidenceSnapshotVersion: GAME_RECOMMENDATION_EVIDENCE_SNAPSHOT_VERSION,
+      evidenceSnapshot: createGameRecommendationEvidenceSnapshot(stateRef.current.adaptedSignals),
+      evidenceMode: args.evidenceMode,
+      recommendations: input.recommendations,
+      ranking: input.ranking,
+      preferredBookId: input.preferredBookId,
+      ageBand: args.ageBand,
+      library: { libraryId: args.libraryId, localCollectionOnly: args.localCollectionOnly },
+      shownAt: input.shownAt,
+    });
+    try {
+      await queueGameRecommendationSlateFeedbackEvent(gameRecommendationStorage, event);
+      void flushGameRecommendationSlateFeedbackEvents(
+        gameRecommendationStorage,
+        (queuedEvent) => sendGameRecommendationSlateFeedbackEvent(queuedEvent, httpEnv),
+      ).catch((error) => console.warn("[game-recommendation] slate_feedback_flush_failed", error));
+      return true;
+    } catch (error) {
+      console.warn("[game-recommendation] slate_feedback_queue_failed", error);
+      return false;
+    }
+  }, [args.ageBand, args.evidenceMode, args.game, args.gameSessionId, args.libraryId, args.localCollectionOnly, args.playerId, currentScopeId]);
+
+  return {
+    pendingReward,
+    notifyEvidence,
+    retractEvidence,
+    resetSession,
+    respond,
+    isBookAlreadyShown,
+    generateFinalRecommendations,
+    submitFinalRecommendationFeedback,
+  };
 }
 
 // Re-exported so screens can build a diagnostic manually for edge cases that fall outside the

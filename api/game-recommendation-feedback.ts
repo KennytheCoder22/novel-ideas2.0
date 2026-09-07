@@ -2,7 +2,9 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { get, put } from "@vercel/blob";
 import {
   gameRecommendationFeedbackStoragePath,
+  gameRecommendationSlateFeedbackStoragePath,
   normalizeGameRecommendationFeedbackEventV1,
+  normalizeGameRecommendationSlateFeedbackEventV1,
 } from "../lib/recommendationGames/gameRecommendationFeedback";
 
 const RATE_WINDOW_MS = 60_000;
@@ -62,16 +64,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader("Retry-After", "60");
     return res.status(429).json({ error: "game_recommendation_feedback_rate_limited" });
   }
-  if (JSON.stringify(req.body || {}).length > 8_000) {
+  if (JSON.stringify(req.body || {}).length > 12_000) {
     return res.status(413).json({ error: "game_recommendation_feedback_event_too_large" });
   }
-  const event = normalizeGameRecommendationFeedbackEventV1(req.body);
+  const event = normalizeGameRecommendationFeedbackEventV1(req.body)
+    || normalizeGameRecommendationSlateFeedbackEventV1(req.body);
   if (!event) {
     return res.status(400).json({ error: "invalid_game_recommendation_feedback_event" });
   }
 
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  const pathname = gameRecommendationFeedbackStoragePath(event);
+  const pathname = event.schemaVersion === "game_recommendation_slate_feedback_v1"
+    ? gameRecommendationSlateFeedbackStoragePath(event)
+    : gameRecommendationFeedbackStoragePath(event);
   const serialized = JSON.stringify(event);
   try {
     const existing = await readExisting(pathname, token);

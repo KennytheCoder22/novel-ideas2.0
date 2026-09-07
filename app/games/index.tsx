@@ -11,6 +11,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import {
   buildGameRouteSourceParams,
@@ -18,7 +19,7 @@ import {
   type GameRouteParams,
 } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 
-type GameId = "media-mania" | "last-bookshop" | "unwritten-map" | "alchemists-cascade";
+type GameId = "media-mania" | "last-bookshop" | "unwritten-map" | "alchemists-cascade" | "melanies-game";
 
 type GameTheme = {
   accent: string;
@@ -37,11 +38,24 @@ type GameCardConfig = {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   image: ImageSourcePropType;
   imageAlt: string;
-  route: "/media-mania" | "/games/last-bookshop" | "/games/unwritten-map" | "/games/alchemists-cascade";
+  route: "/media-mania" | "/games/last-bookshop" | "/games/unwritten-map" | "/games/alchemists-cascade" | "/games/melanies-game";
   theme: GameTheme;
 };
 
 const GAME_CARDS: GameCardConfig[] = [
+  {
+    id: "alchemists-cascade",
+    title: "The Alchemist’s Cascade",
+    subtitle: "Mix. Experiment. Discover.",
+    duration: "3–8 min",
+    whatYouDo: "Solve match puzzles, trigger cascades, and choose powerful catalysts.",
+    whatLearns: "Shows how you balance novelty, structure, intensity, and imagination.",
+    icon: "flask-outline",
+    image: require("../../assets/games/alchemists-cascade.webp"),
+    imageAlt: "An alchemist creating a glowing potion beside a jewel-filled match puzzle",
+    route: "/games/alchemists-cascade",
+    theme: { accent: "#f1ab2f", bright: "#ffd46a", surface: "#24170d", wash: "#4a2c0d" },
+  },
   {
     id: "media-mania",
     title: "Media Mania",
@@ -54,6 +68,19 @@ const GAME_CARDS: GameCardConfig[] = [
     imageAlt: "A colorful collage of books, film, television, music, and games for Media Mania",
     route: "/media-mania",
     theme: { accent: "#34d6ff", bright: "#92ecff", surface: "#071a2d", wash: "#0d3148" },
+  },
+  {
+    id: "melanies-game",
+    title: "Melanie's Game",
+    subtitle: "The Tournament of Stories",
+    duration: "4–7 min",
+    whatYouDo: "Choose, rank, and advance fictional book concepts through a personal tournament.",
+    whatLearns: "Builds nuanced reading-taste evidence before finding real books for you.",
+    icon: "tournament",
+    image: require("../../assets/games/melanies-game/portal-melanie.webp"),
+    imageAlt: "A black cat beside a glowing stack of books for Melanie's premise tournament",
+    route: "/games/melanies-game",
+    theme: { accent: "#e3a238", bright: "#ffd274", surface: "#1b130c", wash: "#4c3214" },
   },
   {
     id: "last-bookshop",
@@ -81,28 +108,19 @@ const GAME_CARDS: GameCardConfig[] = [
     route: "/games/unwritten-map",
     theme: { accent: "#b7d85a", bright: "#ddf58c", surface: "#10251d", wash: "#29452d" },
   },
-  {
-    id: "alchemists-cascade",
-    title: "The Alchemist’s Cascade",
-    subtitle: "Match ingredients. Make impossible choices.",
-    duration: "3–8 min",
-    whatYouDo: "Solve match puzzles, trigger cascades, and choose powerful catalysts.",
-    whatLearns: "Shows how you balance novelty, structure, intensity, and imagination.",
-    icon: "flask-outline",
-    image: require("../../assets/games/alchemists-cascade.webp"),
-    imageAlt: "An alchemist creating a glowing potion beside a jewel-filled match puzzle",
-    route: "/games/alchemists-cascade",
-    theme: { accent: "#f1ab2f", bright: "#ffd46a", surface: "#24170d", wash: "#4a2c0d" },
-  },
 ];
 
 function GameCard({
   game,
   deferArtwork,
+  showcase,
+  stacked,
   onPress,
 }: {
   game: GameCardConfig;
   deferArtwork: boolean;
+  showcase: boolean;
+  stacked: boolean;
   onPress: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -110,6 +128,7 @@ function GameCard({
   const [artworkVisible, setArtworkVisible] = useState(!deferArtwork);
   const artworkRef = useRef<View>(null);
   const highlighted = hovered || focused;
+  const featured = game.id === "melanies-game";
 
   useEffect(() => {
     if (artworkVisible || !deferArtwork || typeof IntersectionObserver === "undefined") {
@@ -143,14 +162,18 @@ function GameCard({
       style={({ pressed }) => [
         styles.gameCard,
         {
-          borderColor: highlighted ? game.theme.bright : game.theme.accent,
+          borderColor: highlighted || featured ? game.theme.bright : game.theme.accent,
           backgroundColor: game.theme.surface,
-          shadowOpacity: highlighted ? 0.68 : 0.46,
+          shadowColor: featured ? "#f4ad35" : "#000000",
+          shadowOpacity: highlighted || featured ? 0.78 : 0.46,
           transform: [{ translateY: pressed ? 1 : highlighted ? -3 : 0 }],
         },
+        showcase && styles.gameCardShowcase,
+        !showcase && styles.gameCardStandard,
+        stacked && styles.gameCardStacked,
       ]}
     >
-      <View ref={artworkRef} style={styles.artworkFrame}>
+      <View ref={artworkRef} style={[styles.artworkFrame, showcase && styles.artworkFrameShowcase]}>
         {artworkVisible ? (
           <Image
             source={game.image}
@@ -164,22 +187,24 @@ function GameCard({
         <View pointerEvents="none" style={[styles.imageEdge, { backgroundColor: game.theme.accent }]} />
       </View>
 
-      <View style={styles.cardBody}>
+      <View style={[styles.cardBody, showcase && styles.cardBodyShowcase]}>
         <View style={styles.cardHeading}>
-          <View style={[styles.iconMedallion, { borderColor: game.theme.accent, backgroundColor: game.theme.wash }]}>
-            <MaterialCommunityIcons name={game.icon} size={28} color={game.theme.bright} />
-          </View>
+          {!showcase ? (
+            <View style={[styles.iconMedallion, { borderColor: game.theme.accent, backgroundColor: game.theme.wash }]}>
+              <MaterialCommunityIcons name={game.icon} size={28} color={game.theme.bright} />
+            </View>
+          ) : null}
           <View style={styles.titleBlock}>
-            <Text style={styles.gameTitle}>{game.title}</Text>
-            <Text style={[styles.subtitle, { color: game.theme.bright }]}>{game.subtitle}</Text>
+            <Text style={[styles.gameTitle, showcase && styles.gameTitleShowcase]}>{game.title}</Text>
+            <Text style={[styles.subtitle, showcase && styles.subtitleShowcase, { color: game.theme.bright }]}>{game.subtitle}</Text>
           </View>
-          <View style={[styles.duration, { borderColor: game.theme.accent }]}>
+          {!showcase ? <View style={[styles.duration, { borderColor: game.theme.accent }]}>
             <MaterialCommunityIcons name="clock-outline" size={13} color={game.theme.bright} />
             <Text style={[styles.durationText, { color: game.theme.bright }]}>{game.duration}</Text>
-          </View>
+          </View> : null}
         </View>
 
-        <View style={styles.factList}>
+        {!showcase ? <View style={styles.factList}>
           <View style={styles.factRow}>
             <MaterialCommunityIcons name="gamepad-variant-outline" size={19} color={game.theme.bright} />
             <Text style={styles.factText}>{game.whatYouDo}</Text>
@@ -188,12 +213,14 @@ function GameCard({
             <MaterialCommunityIcons name="star-four-points-outline" size={19} color={game.theme.bright} />
             <Text style={styles.factText}>{game.whatLearns}</Text>
           </View>
-        </View>
+        </View> : null}
 
-        <View style={[styles.playButton, { borderColor: game.theme.accent, backgroundColor: game.theme.wash }, highlighted && { borderColor: game.theme.bright }]}>
+        {!showcase ? <View style={[styles.playButton, { borderColor: game.theme.accent, backgroundColor: game.theme.wash }, highlighted && { borderColor: game.theme.bright }]}>
           <Text style={[styles.playButtonText, { color: game.theme.bright }]}>PLAY</Text>
           <MaterialCommunityIcons name="arrow-right" size={19} color={game.theme.bright} />
-        </View>
+        </View> : (
+          <View style={[styles.showcaseDiamond, { borderColor: game.theme.bright }]} />
+        )}
       </View>
     </Pressable>
   );
@@ -202,6 +229,9 @@ function GameCard({
 export default function RecommendationGamesRoute() {
   const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
   const routeConfig = parseGameRouteConfig(params as GameRouteParams);
+  const { width } = useWindowDimensions();
+  const showcase = width >= 1100;
+  const stacked = width < 640;
 
   function launchGame(game: GameCardConfig) {
     const forwardedParams = {
@@ -219,9 +249,10 @@ export default function RecommendationGamesRoute() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View pointerEvents="none" style={styles.ambient}>
-        <View style={[styles.ambientOrb, styles.ambientOrbLeft]} />
-        <View style={[styles.ambientOrb, styles.ambientOrbRight]} />
+      <View pointerEvents="none" accessibilityElementsHidden style={styles.ambient}>
+        <Image source={require("../../assets/games/melanies-game/portal-library-left.webp")} style={[styles.portalBackdrop, styles.portalBackdropLeft]} contentFit="cover" />
+        <Image source={require("../../assets/games/melanies-game/portal-library-right.webp")} style={[styles.portalBackdrop, styles.portalBackdropRight]} contentFit="cover" />
+        <View style={styles.portalVeil} />
       </View>
       <TouchableOpacity
         style={styles.backButton}
@@ -235,61 +266,67 @@ export default function RecommendationGamesRoute() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.intro}>
-          <View style={styles.sparkRow}>
-            <Text style={styles.spark}>✦</Text>
-            <Text style={styles.arcadeLabel}>ARCADE AFTER DARK</Text>
-            <Text style={styles.spark}>✦</Text>
-          </View>
-          <Text style={styles.pageTitle}>Choose a Game</Text>
-          <Text style={styles.tagline}>Four ways to play. Four ways to discover your taste.</Text>
-          <Text style={styles.explainer}>
+          <Text style={[styles.pageTitle, !showcase && styles.pageTitleCompact]}>Choose a Game</Text>
+          <Text style={styles.tagline}>Different paths. A thousand stories.</Text>
+          {!showcase ? <Text style={styles.explainer}>
             Every choice quietly helps NovelIdeas understand which stories and experiences fit you best.
-          </Text>
+          </Text> : null}
         </View>
 
-        <View style={styles.grid}>
+        <View style={[styles.grid, showcase && styles.gridShowcase, stacked && styles.gridStacked]}>
           {GAME_CARDS.map((game, index) => (
-            <GameCard key={game.id} game={game} deferArtwork={index >= 2} onPress={() => launchGame(game)} />
+            <GameCard key={game.id} game={game} deferArtwork={index >= 2} showcase={showcase} stacked={stacked} onPress={() => launchGame(game)} />
           ))}
         </View>
+        {showcase ? (
+          <View pointerEvents="none" accessibilityElementsHidden style={styles.portalQuote}>
+            <View style={styles.portalQuoteLine} />
+            <Text style={styles.portalQuoteText}>Different stories.{"\n"}Brighter tomorrows.</Text>
+            <View style={styles.portalQuoteLine} />
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#050b17" },
-  ambient: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
-  ambientOrb: { position: "absolute", width: 520, height: 520, borderRadius: 260, opacity: 0.1 },
-  ambientOrbLeft: { left: -300, top: 140, backgroundColor: "#145d85" },
-  ambientOrbRight: { right: -330, bottom: -210, backgroundColor: "#7a3d16" },
+  safe: { flex: 1, backgroundColor: "#050a11" },
+  ambient: { ...StyleSheet.absoluteFillObject, overflow: "hidden", backgroundColor: "#050a11" },
+  portalBackdrop: { position: "absolute", top: 0, bottom: 0, width: "25%", height: "100%", opacity: 0.9 },
+  portalBackdropLeft: { left: 0 },
+  portalBackdropRight: { right: 0 },
+  portalVeil: { position: "absolute", top: 0, bottom: 0, left: "15%", right: "15%", backgroundColor: "rgba(2,9,18,0.78)" },
   backButton: {
     position: "absolute",
     zIndex: 10,
     top: 18,
     left: 18,
     minWidth: 86,
-    minHeight: 42,
+    minHeight: 44,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: "#35435d",
+    borderColor: "#b47828",
     borderRadius: 8,
-    backgroundColor: "#080e1c",
+    backgroundColor: "rgba(4,10,18,0.9)",
     flexDirection: "row",
     gap: 7,
     alignItems: "center",
     justifyContent: "center",
   },
   backButtonText: { color: "#e8e5f2", fontSize: 14, fontWeight: "800" },
-  content: { width: "100%", maxWidth: 1180, alignSelf: "center", paddingHorizontal: 20, paddingTop: 18, paddingBottom: 44 },
-  intro: { alignItems: "center", paddingHorizontal: 12, paddingBottom: 22 },
+  content: { width: "100%", maxWidth: 1480, minHeight: "100%", alignSelf: "center", paddingHorizontal: 26, paddingTop: 54, paddingBottom: 32 },
+  intro: { alignItems: "center", paddingHorizontal: 12, paddingBottom: 34 },
   sparkRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   arcadeLabel: { color: "#d28bda", fontSize: 12, lineHeight: 18, fontWeight: "900", letterSpacing: 3.4 },
   spark: { color: "#bd72cb", fontSize: 15 },
-  pageTitle: { color: "#fff5df", fontSize: 43, lineHeight: 49, fontWeight: "900", letterSpacing: -1.2, textAlign: "center" },
-  tagline: { color: "#d580df", fontSize: 18, lineHeight: 24, fontWeight: "800", textAlign: "center" },
+  pageTitle: { color: "#f7c864", fontFamily: "Georgia", fontSize: 62, lineHeight: 68, fontWeight: "800", letterSpacing: 0.6, textAlign: "center", textTransform: "uppercase", textShadowColor: "rgba(205,114,25,0.6)", textShadowRadius: 13 },
+  pageTitleCompact: { fontSize: 42, lineHeight: 48 },
+  tagline: { color: "#d5d7e0", fontSize: 20, lineHeight: 27, fontWeight: "500", textAlign: "center" },
   explainer: { maxWidth: 620, marginTop: 5, color: "#c5cada", fontSize: 14, lineHeight: 20, textAlign: "center" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
+  gridShowcase: { flexWrap: "nowrap", gap: 18, alignItems: "stretch" },
+  gridStacked: { flexDirection: "column" },
   gameCard: {
     flexBasis: "48%",
     flexGrow: 1,
@@ -302,15 +339,20 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 12 },
   },
+  gameCardShowcase: { flexBasis: 0, flexGrow: 1, minWidth: 0, maxWidth: 280, minHeight: 426, borderRadius: 8, borderWidth: 1.5 },
+  gameCardStandard: { flexBasis: "48%", flexGrow: 0, minHeight: 520 },
+  gameCardStacked: { flexBasis: "auto", width: "100%", minWidth: 0 },
   artworkFrame: {
     aspectRatio: 16 / 9,
     width: "100%",
     overflow: "hidden",
     backgroundColor: "#111827",
   },
+  artworkFrameShowcase: { aspectRatio: 1.08, minHeight: 238 },
   artwork: { width: "100%", height: "100%" },
   imageEdge: { position: "absolute", left: 0, right: 0, bottom: 0, height: 3, opacity: 0.82 },
   cardBody: { minHeight: 232, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 15 },
+  cardBodyShowcase: { minHeight: 170, alignItems: "center", justifyContent: "center", paddingHorizontal: 12, paddingVertical: 16 },
   cardHeading: { flexDirection: "row", alignItems: "center", gap: 11 },
   iconMedallion: {
     width: 52,
@@ -322,7 +364,9 @@ const styles = StyleSheet.create({
   },
   titleBlock: { flex: 1, minWidth: 0 },
   gameTitle: { color: "#fff9ed", fontSize: 23, lineHeight: 28, fontWeight: "900", letterSpacing: -0.45 },
+  gameTitleShowcase: { fontFamily: "Georgia", fontSize: 24, lineHeight: 29, textAlign: "center" },
   subtitle: { fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: 1 },
+  subtitleShowcase: { minHeight: 50, marginTop: 10, fontSize: 17, lineHeight: 23, fontWeight: "500", textAlign: "center" },
   duration: {
     alignSelf: "flex-start",
     borderWidth: 1,
@@ -353,4 +397,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   playButtonText: { fontSize: 15, lineHeight: 19, fontWeight: "900", letterSpacing: 2.4 },
+  showcaseDiamond: { width: 16, height: 16, marginTop: 13, borderWidth: 2, transform: [{ rotate: "45deg" }] },
+  portalQuote: { maxWidth: 380, width: "100%", alignSelf: "center", marginTop: 38, flexDirection: "row", alignItems: "center", gap: 12 },
+  portalQuoteLine: { flex: 1, height: 1, backgroundColor: "#a26826" },
+  portalQuoteText: { color: "#e1a74d", fontFamily: "Georgia", fontSize: 19, lineHeight: 25, fontStyle: "italic", textAlign: "center" },
 });

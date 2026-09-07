@@ -32,6 +32,7 @@ export default function RootLayout() {
         <Stack.Screen name="games/last-bookshop" options={{ headerShown: false }} />
         <Stack.Screen name="games/unwritten-map" options={{ headerShown: false }} />
         <Stack.Screen name="games/alchemists-cascade" options={{ headerShown: false }} />
+        <Stack.Screen name="games/melanies-game" options={{ headerShown: false }} />
         <Stack.Screen name="customize-my-experience" options={{ headerShown: false }} />
         <Stack.Screen name="media-mania" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
