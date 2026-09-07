@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -1827,6 +1827,25 @@ async function main() {
   assert(routeSource.includes("walkingFrame") && routeSource.includes("bumpDirection"), "walking animation and bump feedback missing");
   assert(routeSource.includes("NONE OF THESE · KEEP EXPLORING") && routeSource.includes("What the map remembers"), "skip/privacy UX missing");
   assert(routeSource.includes("window.confirm") && routeSource.includes("UNDO LATEST NOTE"), "reset confirmation or journal undo missing");
+  for (const asset of ["entry-left.webp", "entry-right.webp", "world-map.webp", "journal-left.webp", "journal-right.webp"]) {
+    assert(existsSync(resolve(root, "assets/games/unwritten-map", asset)), `missing Unwritten Map presentation asset: ${asset}`);
+    assert(routeSource.includes(`unwritten-map/${asset}`), `Unwritten Map route does not use ${asset}`);
+  }
+  assert(!routeSource.includes("source-composite.png"), "authorized composite must not render as a static game screen");
+  assert(routeSource.includes('page={phase === "map" ? "map" : "journal"}')
+    && routeSource.includes('phase === "map" ? (')
+    && routeSource.includes('phase === "encounter" && activeScenario ? ('),
+  "map and field-note phases must retain distinct live layouts");
+  assert(routeSource.includes("AccessibilityInfo.isReduceMotionEnabled")
+    && routeSource.includes('"reduceMotionChanged"')
+    && routeSource.includes("reduceMotion ? 0 : walkingFrame")
+    && routeSource.includes("reduceMotion ? null : bumpDirection"),
+  "decorative movement must respect reduced-motion preferences");
+  assert(routeSource.includes('accessibilityLabel={hasProgress ? "Continue journey" : "Open the map"}')
+    && routeSource.includes('accessibilityLiveRegion="polite"')
+    && routeSource.includes('importantForAccessibility="no-hide-descendants"'),
+  "restyled live controls and decorative artwork need explicit accessibility semantics");
+  checks.push("illustrated_phase_specific_presentation");
   assert(routeSource.includes('window.addEventListener("blur"') && routeSource.includes('"visibilitychange"')
     && routeSource.includes('AppState.addEventListener("change"'), "web and native lifecycle movement cancellation missing");
   assert(routeSource.includes("useEffect(() => () => clearMovementState(false)")

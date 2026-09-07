@@ -1,8 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AccessibilityInfo,
   Alert,
   AppState,
   Platform,
@@ -97,6 +100,58 @@ async function sendUnwrittenMapEvent(event: UnwrittenMapEvent): Promise<boolean>
   );
 }
 
+function usePrefersReducedMotion(): boolean {
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(function monitorReducedMotion() {
+    let mounted = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (mounted) setReduceMotion(enabled);
+    });
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+  return reduceMotion;
+}
+
+function CartographyBackdrop({ page = "map" }: { page?: "entry" | "map" | "journal" }) {
+  const journal = page === "journal";
+  const entry = page === "entry";
+  return (
+    <View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.backdrop}
+    >
+      <Image
+        source={entry
+          ? require("../../assets/games/unwritten-map/entry-left.webp")
+          : journal
+            ? require("../../assets/games/unwritten-map/journal-left.webp")
+            : require("../../assets/games/unwritten-map/entry-left.webp")}
+        style={[styles.edgeArt, styles.edgeArtLeft]}
+        contentFit="cover"
+        accessibilityElementsHidden
+      />
+      <Image
+        source={entry
+          ? require("../../assets/games/unwritten-map/entry-right.webp")
+          : journal
+            ? require("../../assets/games/unwritten-map/journal-right.webp")
+            : require("../../assets/games/unwritten-map/entry-right.webp")}
+        style={[styles.edgeArt, styles.edgeArtRight]}
+        contentFit="cover"
+        accessibilityElementsHidden
+      />
+      <View style={styles.parchmentWash} />
+      <View style={styles.edgeVignette} />
+    </View>
+  );
+}
+
 function PlayerSprite({ facing, walkingFrame }: { facing: MapDirection; walkingFrame: number }) {
   const horizontal = facing === "left" || facing === "right";
   return (
@@ -123,10 +178,9 @@ function PlayerSprite({ facing, walkingFrame }: { facing: MapDirection; walkingF
 
 function LandmarkSprite({ scenario, completed }: { scenario: MapScenario; completed: boolean }) {
   return (
-    <View style={[styles.landmark, { backgroundColor: completed ? "#657057" : scenario.color }]}>
-      <View style={styles.landmarkRoof} />
-      <View style={styles.landmarkDoor} />
-      <Text style={styles.landmarkLabel}>{completed ? "✓" : scenario.mapLabel.slice(0, 2)}</Text>
+    <View style={[styles.landmark, { backgroundColor: completed ? "#6f755d" : scenario.color }]}>
+      <MaterialCommunityIcons name={completed ? "check" : "map-marker-star"} size={18} color={PARCHMENT} />
+      <Text style={styles.landmarkLabel}>{completed ? "NOTED" : scenario.mapLabel.slice(0, 2)}</Text>
     </View>
   );
 }
@@ -145,10 +199,10 @@ function WorldTile({
       tile === "P" && styles.pathTile, tile === "W" && styles.waterTile,
       tile === "S" && styles.sandTile, tile === "M" && styles.mountainTile,
     ]}>
-      {tile === "T" ? <><View style={styles.treeCrown} /><View style={styles.treeTrunk} /></> : null}
-      {tile === "G" && (x * 3 + y) % 5 === 0 ? <View style={styles.grassTuft} /> : null}
-      {tile === "W" ? <View style={styles.waterLine} /> : null}
-      {tile === "M" ? <View style={styles.mountainPeak} /> : null}
+      {tile === "T" ? <MaterialCommunityIcons name="pine-tree" size={Math.max(16, size * 0.62)} color="#314e32" /> : null}
+      {tile === "G" && (x * 3 + y) % 5 === 0 ? <MaterialCommunityIcons name="sprout" size={Math.max(11, size * 0.28)} color="#68794b" /> : null}
+      {tile === "W" ? <MaterialCommunityIcons name="waves" size={Math.max(15, size * 0.48)} color="#537f80" /> : null}
+      {tile === "M" ? <MaterialCommunityIcons name="image-filter-hdr" size={Math.max(16, size * 0.58)} color="#5f6659" /> : null}
       {scenario ? <LandmarkSprite scenario={scenario} completed={save.decisions.some((item) => item.scenarioId === scenario.id)} /> : null}
       {hasPlayer ? <PlayerSprite facing={save.facing} walkingFrame={walkingFrame} /> : null}
     </View>
@@ -182,6 +236,13 @@ function WorldMap({
       onBlur={onDeactivate}
       onTouchStart={onActivate}
     >
+      <Image
+        source={require("../../assets/games/unwritten-map/world-map.webp")}
+        style={styles.worldMapArt}
+        contentFit="cover"
+        accessibilityElementsHidden
+      />
+      <View pointerEvents="none" style={styles.mapArtVeil} />
       <View style={bumpTransform ? [styles.worldMap, { transform: [bumpTransform] }] : styles.worldMap}>
         {Array.from({ length: rows }, (_, rowOffset) => {
           const y = origin.y + rowOffset;
@@ -243,11 +304,13 @@ function GameHeader({ save, onLeave, leaving }: { save: UnwrittenMapSaveV2; onLe
   return (
     <View style={styles.header}>
       <TouchableOpacity style={[styles.headerButton, leaving && styles.buttonDisabled]} disabled={leaving} onPress={onLeave} accessibilityRole="button" accessibilityLabel="Save and leave The Unwritten Map">
+        <MaterialCommunityIcons name="arrow-left" size={15} color={PARCHMENT} />
         <Text style={styles.headerButtonText}>{leaving ? "SAVING..." : "EXIT"}</Text>
       </TouchableOpacity>
       <View style={styles.headerTitleWrap}>
         <Text style={styles.headerKicker}>A CARTOGRAPHER&apos;S TALE</Text>
         <Text style={styles.headerTitle}>THE UNWRITTEN MAP</Text>
+        <View style={styles.headerFlourish} />
       </View>
       <View style={styles.headerProgress}>
         <Text style={styles.headerProgressValue}>{save.decisions.length}/{UNWRITTEN_MAP_SCENARIOS.length}</Text>
@@ -258,28 +321,44 @@ function GameHeader({ save, onLeave, leaving }: { save: UnwrittenMapSaveV2; onLe
 }
 
 function TitleScreen({
-  hasProgress, onBegin, onPrivacy, onReset, beginning,
-}: { hasProgress: boolean; onBegin: () => void; onPrivacy: () => void; onReset: () => void; beginning: boolean }) {
+  hasProgress, onBegin, onPrivacy, onReset, beginning, compact,
+}: { hasProgress: boolean; onBegin: () => void; onPrivacy: () => void; onReset: () => void; beginning: boolean; compact: boolean }) {
   return (
     <ScrollView contentContainerStyle={styles.titleScreen}>
-      <View style={styles.titleMap}>
-        <View style={styles.titleRiver} /><View style={styles.titleRoadHorizontal} /><View style={styles.titleRoadVertical} />
-        <View style={[styles.titleLandmark, { left: 24, top: 28 }]} /><View style={[styles.titleLandmark, { right: 25, top: 44 }]} />
-        <View style={[styles.titleLandmark, { left: 74, bottom: 25 }]} />
+      <CartographyBackdrop page="entry" />
+      <View style={[styles.titleMap, compact && styles.titleMapCompact]}>
+        <Image
+          source={require("../../assets/games/unwritten-map/world-map.webp")}
+          style={styles.titleMapArt}
+          contentFit="cover"
+          accessibilityElementsHidden
+        />
+        <View style={styles.titleMapVeil} />
+        <View style={styles.titleContent}>
+          <View style={styles.titleKickerRow}>
+            <View style={styles.titleRule} />
+            <MaterialCommunityIcons name="compass-rose" size={22} color={INK} />
+            <Text style={styles.titleKicker}>A CARTOGRAPHER&apos;S TALE</Text>
+            <MaterialCommunityIcons name="compass-rose" size={22} color={INK} />
+            <View style={styles.titleRule} />
+          </View>
+          <Text style={[styles.titleLogo, compact && styles.titleLogoCompact]}>THE{"\n"}UNWRITTEN MAP</Text>
+          <Text style={styles.titleCopy}>Cross five wild regions, meet their curious inhabitants, and make a map no other traveler could draw.</Text>
+          <TouchableOpacity style={[styles.primaryButton, beginning && styles.buttonDisabled]} disabled={beginning} onPress={onBegin} accessibilityRole="button" accessibilityLabel={hasProgress ? "Continue journey" : "Open the map"}>
+            <MaterialCommunityIcons name="map-outline" size={18} color="#f7e7b0" />
+            <Text style={styles.primaryButtonText}>{beginning ? "OPENING..." : hasProgress ? "CONTINUE JOURNEY" : "OPEN THE MAP"}</Text>
+          </TouchableOpacity>
+          <Text style={styles.titleHint}>Focus the map for Arrow/WASD controls, or hold the direction pad.</Text>
+          <TouchableOpacity style={styles.textButton} onPress={onPrivacy} accessibilityRole="button">
+            <MaterialCommunityIcons name="book-open-page-variant-outline" size={16} color={INK} />
+            <Text style={styles.textButtonText}>What the map remembers</Text>
+          </TouchableOpacity>
+          {hasProgress ? <TouchableOpacity style={[styles.textButton, beginning && styles.buttonDisabled]} disabled={beginning} onPress={onReset} accessibilityRole="button">
+            <Text style={styles.resetText}>Reset this journey</Text>
+          </TouchableOpacity> : null}
+        </View>
       </View>
-      <Text style={styles.titleKicker}>A POCKET-SIZED JOURNEY</Text>
-      <Text style={styles.titleLogo}>THE{"\n"}UNWRITTEN MAP</Text>
-      <Text style={styles.titleCopy}>Cross five wild regions, meet their curious inhabitants, and make a map no other traveler could draw.</Text>
-      <TouchableOpacity style={[styles.primaryButton, beginning && styles.buttonDisabled]} disabled={beginning} onPress={onBegin} accessibilityRole="button">
-        <Text style={styles.primaryButtonText}>{beginning ? "OPENING..." : hasProgress ? "CONTINUE JOURNEY" : "OPEN THE MAP"}</Text>
-      </TouchableOpacity>
-      <Text style={styles.titleHint}>Focus the map for Arrow/WASD controls, or hold the direction pad.</Text>
-      <TouchableOpacity style={styles.textButton} onPress={onPrivacy} accessibilityRole="button">
-        <Text style={styles.textButtonText}>What the map remembers</Text>
-      </TouchableOpacity>
-      {hasProgress ? <TouchableOpacity style={[styles.textButton, beginning && styles.buttonDisabled]} disabled={beginning} onPress={onReset} accessibilityRole="button">
-        <Text style={styles.resetText}>Reset this journey</Text>
-      </TouchableOpacity> : null}
+      <Text style={styles.entryQuote}>“Some places aren&apos;t on any map. That&apos;s where the best stories live.”</Text>
     </ScrollView>
   );
 }
@@ -287,6 +366,7 @@ function TitleScreen({
 function PrivacyNote({ onClose }: { onClose: () => void }) {
   return (
     <View style={styles.notePanel}>
+      <MaterialCommunityIcons name="shield-lock-outline" size={28} color={GOLD} />
       <Text style={styles.noteTitle}>WHAT THE MAP REMEMBERS</Text>
       <Text style={styles.noteText}>
         This device saves your anonymous journey, encounter options, choices or skips, corrections, and a broad response-pace category.
@@ -307,12 +387,17 @@ function EncounterPanel({
   onSkip: () => void;
 }) {
   return (
-    <View style={styles.dialoguePanel}>
-      <View style={[styles.dialogueLocation, { backgroundColor: scenario.color }]}>
+    <View style={styles.fieldPage}>
+      <View pointerEvents="none" accessibilityElementsHidden style={styles.fieldSketch}>
+        <MaterialCommunityIcons name="feather" size={90} color="rgba(81,53,25,0.12)" />
+      </View>
+      <View style={styles.dialogueLocation}>
+        <View style={[styles.locationSwatch, { backgroundColor: scenario.color }]} />
         <Text style={styles.dialogueLocationText}>{scenario.location.toUpperCase()} · {scenario.type.toUpperCase()}</Text>
       </View>
       <Text style={styles.dialogueTitle}>{scenario.title}</Text>
       <Text style={styles.dialoguePrompt}>{scenario.prompt}</Text>
+      <View style={styles.inkDivider}><View style={styles.inkLine} /><MaterialCommunityIcons name="leaf-maple" size={18} color={INK} /><View style={styles.inkLine} /></View>
       <View style={styles.choiceGrid}>
         {choices.map((item, index) => (
           <TouchableOpacity
@@ -323,7 +408,7 @@ function EncounterPanel({
             accessibilityRole="button"
             accessibilityLabel={`Option ${index + 1}: ${item.label}. ${item.description}`}
           >
-            <Text style={styles.choiceNumber}>{index + 1}</Text>
+            <View style={styles.choiceNumberSeal}><Text style={styles.choiceNumber}>{index + 1}</Text></View>
             <View style={styles.choiceCopy}><Text style={styles.choiceLabel}>{item.label}</Text><Text style={styles.choiceDescription}>{item.description}</Text></View>
           </TouchableOpacity>
         ))}
@@ -340,7 +425,8 @@ function ResultPanel({
   scenario, choice, skipped, onContinue, pending,
 }: { scenario: MapScenario; choice: MapChoice | null; skipped: boolean; onContinue: () => void; pending: boolean }) {
   return (
-    <View style={styles.dialoguePanel}>
+    <View style={styles.fieldPage}>
+      <MaterialCommunityIcons name={skipped ? "map-marker-outline" : "fountain-pen-tip"} size={38} color={INK} />
       <Text style={styles.resultStamp}>{skipped ? "LANDMARK NOTED" : "STORY ADDED TO MAP"}</Text>
       <Text style={styles.dialogueTitle}>{scenario.location}</Text>
       {choice ? <><Text style={styles.resultChoice}>{choice.label}</Text><Text style={styles.resultText}>{choice.result}</Text></> : (
@@ -358,7 +444,11 @@ function Journal({
 }: { save: UnwrittenMapSaveV2; onUndo: () => void; undoing: boolean }) {
   return (
     <View style={styles.journal}>
-      <Text style={styles.journalHeading}>FIELD NOTES</Text>
+      <View style={styles.journalHeadingRow}>
+        <MaterialCommunityIcons name="notebook-outline" size={24} color={INK} />
+        <Text style={styles.journalHeading}>FIELD NOTES</Text>
+        <MaterialCommunityIcons name="feather" size={22} color={INK} />
+      </View>
       {save.decisions.length ? save.decisions.map((decision) => {
         const scenario = UNWRITTEN_MAP_SCENARIOS.find((item) => item.id === decision.scenarioId);
         const selected = scenario?.choices.find((item) => item.id === decision.optionId);
@@ -394,6 +484,9 @@ function CompleteScreen(props: {
 }) {
   return (
     <View style={styles.completeScreen}>
+      <View style={styles.completeCompass}>
+        <MaterialCommunityIcons name="compass-rose" size={54} color={GOLD} />
+      </View>
       <Text style={styles.completeKicker}>THE GRAND JOURNEY IS COMPLETE</Text>
       <Text style={styles.completeTitle}>The blank country has become your story.</Text>
       <Text style={styles.completeCopy}>No road was wrong. Your choices, open possibilities, and corrections made this map entirely yours.</Text>
@@ -417,6 +510,7 @@ export default function UnwrittenMapRoute() {
   const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
   const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const { width, height } = useWindowDimensions();
+  const reduceMotion = usePrefersReducedMotion();
   const scopeKey = useMemo(() => storageScopeKey(params.libraryId, params.playerId), [params.libraryId, params.playerId]);
   const saveKey = useMemo(() => scopedSaveKey(scopeKey), [scopeKey]);
   const libraryScopeId = useMemo(() => scopeKey.slice(0, scopeKey.lastIndexOf("-")), [scopeKey]);
@@ -459,7 +553,8 @@ export default function UnwrittenMapRoute() {
   const moveRef = useRef<(direction: MapDirection) => void>(() => undefined);
   const columns = width < 520 ? 9 : width < 820 ? 11 : 13;
   const rows = height < 700 ? 7 : 9;
-  const tileSize = Math.max(28, Math.min(44, Math.floor((Math.min(width, 760) - 28) / columns)));
+  const tileSize = Math.max(28, Math.min(54, Math.floor((Math.min(width, 920) - 40) / columns)));
+  const compactLayout = width < 700;
   const gameRecommendationMilestone = useGameRecommendationMilestone({
     game: "unwritten_map",
     gameLabel: "The Unwritten Map",
@@ -1155,7 +1250,7 @@ export default function UnwrittenMapRoute() {
   const currentRegion = useMemo(() => save ? regionAt(save.position) : { id: "", name: "" }, [save]);
 
   if (!save) {
-    return <SafeAreaView style={styles.safe}><View style={styles.loading}><ActivityIndicator color={LIGHT} /><Text style={styles.loadingText}>{storageError || "UNFOLDING MAP..."}</Text></View></SafeAreaView>;
+    return <SafeAreaView style={styles.safe}><CartographyBackdrop page="entry" /><View style={styles.loading}><ActivityIndicator color={GOLD} /><Text style={styles.loadingText}>{storageError || "UNFOLDING MAP..."}</Text></View></SafeAreaView>;
   }
 
   if (phase === "title") {
@@ -1164,6 +1259,7 @@ export default function UnwrittenMapRoute() {
         <TitleScreen
           hasProgress={loadedExistingProgress}
           beginning={operationPending}
+          compact={compactLayout}
           onBegin={() => void beginJourney()}
           onPrivacy={() => setShowPrivacy(true)}
           onReset={resetJourney}
@@ -1176,6 +1272,7 @@ export default function UnwrittenMapRoute() {
   if (phase === "complete") {
     return (
       <SafeAreaView style={styles.safe}>
+        <CartographyBackdrop page="journal" />
         <ScrollView contentContainerStyle={styles.completeScroll}>
           <CompleteScreen
             save={save}
@@ -1196,24 +1293,29 @@ export default function UnwrittenMapRoute() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <CartographyBackdrop page={phase === "map" ? "map" : "journal"} />
       <GameHeader save={save} onLeave={() => void leaveJourney()} leaving={operationPending} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.hud}>
-          <View><Text style={styles.locationLabel}>NOW EXPLORING</Text><Text style={styles.locationName}>{currentRegion.name}</Text></View>
+          <View style={styles.locationCard}>
+            <Text style={styles.locationLabel}>{phase === "map" ? "NOW EXPLORING" : "FIELD NOTE FROM"}</Text>
+            <Text style={styles.locationName} accessibilityLiveRegion="polite">{currentRegion.name}</Text>
+          </View>
           <View style={styles.hudActions}>
             <TouchableOpacity style={styles.hudButton} onPress={() => setShowJournal((value) => !value)} accessibilityRole="button">
+              <MaterialCommunityIcons name={showJournal ? "close" : "notebook-outline"} size={17} color={PARCHMENT} />
               <Text style={styles.hudButtonText}>{showJournal ? "CLOSE NOTES" : "FIELD NOTES"}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.hudButton} onPress={() => setShowPrivacy(true)} accessibilityRole="button" accessibilityLabel="What the map remembers">
-              <Text style={styles.hudButtonText}>?</Text>
+              <MaterialCommunityIcons name="help" size={19} color={PARCHMENT} />
             </TouchableOpacity>
           </View>
         </View>
-        {showJournal ? <Journal save={save} onUndo={() => void undoLatest()} undoing={undoing || operationPending} /> : (
+        {showJournal ? <Journal save={save} onUndo={() => void undoLatest()} undoing={undoing || operationPending} /> : phase === "map" ? (
           <>
             <WorldMap
-              save={save} tileSize={tileSize} columns={columns} rows={rows} walkingFrame={walkingFrame}
-              bumpDirection={bumpDirection}
+              save={save} tileSize={tileSize} columns={columns} rows={rows} walkingFrame={reduceMotion ? 0 : walkingFrame}
+              bumpDirection={reduceMotion ? null : bumpDirection}
               onActivate={() => setMapFocused(true)}
               onDeactivate={() => {
                 setMapFocused(false);
@@ -1226,22 +1328,23 @@ export default function UnwrittenMapRoute() {
               <Text style={styles.legendText}>{mapFocused ? "KEYS ACTIVE" : "FOCUS MAP FOR KEYS"}</Text>
             </View>
           </>
-        )}
+        ) : phase === "encounter" && activeScenario ? (
+          <EncounterPanel scenario={activeScenario} choices={presentedChoices} submitting={submitting || operationPending} onChoose={(item) => void recordOutcome(item)} onSkip={() => void recordOutcome(null)} />
+        ) : phase === "result" && activeScenario ? (
+          <ResultPanel scenario={activeScenario} choice={resultChoice} skipped={resultSkipped} pending={operationPending} onContinue={() => void continueFromResult()} />
+        ) : null}
         {phase === "map" && !showJournal ? (
           <View style={styles.mapControls}>
             <DPad onMove={move} onHoldStart={(direction) => startHeldMovement(direction, false)} onHoldEnd={stopHeldMovement} />
             <View style={styles.mapInstructions}>
-              <Text style={styles.instructionHeading}>SEEK THE COLORED LANDMARKS</Text>
+              <View style={styles.instructionHeadingRow}>
+                <MaterialCommunityIcons name="compass-outline" size={20} color={INK} />
+                <Text style={styles.instructionHeading}>SEEK THE COLORED LANDMARKS</Text>
+              </View>
               <Text style={styles.instructionText}>Roads, grass, and sand are open. Trees, water, and peaks block the way. Your route is never used as a preference.</Text>
               <Text style={styles.coordinateText}>MAP {save.position.x.toString().padStart(2, "0")}:{save.position.y.toString().padStart(2, "0")}</Text>
             </View>
           </View>
-        ) : null}
-        {phase === "encounter" && activeScenario ? (
-          <EncounterPanel scenario={activeScenario} choices={presentedChoices} submitting={submitting || operationPending} onChoose={(item) => void recordOutcome(item)} onSkip={() => void recordOutcome(null)} />
-        ) : null}
-        {phase === "result" && activeScenario ? (
-          <ResultPanel scenario={activeScenario} choice={resultChoice} skipped={resultSkipped} pending={operationPending} onContinue={() => void continueFromResult()} />
         ) : null}
         {storageError ? <Text style={styles.storageError}>{storageError}</Text> : (
           <Text style={styles.syncNote}>Journey saved locally · anonymous field notes sync when available</Text>
@@ -1272,129 +1375,145 @@ export default function UnwrittenMapRoute() {
   );
 }
 
-const INK = "#273927";
-const DARK = "#142017";
-const SCREEN = "#cbdc82";
-const LIGHT = "#edf0ae";
+const INK = "#302416";
+const DARK = "#17251c";
+const SCREEN = "#d3c18d";
+const PARCHMENT = "#f0dda6";
+const GOLD = "#c18a37";
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#101811" },
-  loading: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  loadingText: { color: SCREEN, fontSize: 12, fontWeight: "900", letterSpacing: 2, marginTop: 14, textAlign: "center" },
-  scroll: { flex: 1 },
-  scrollContent: { flexGrow: 1, alignItems: "center", paddingHorizontal: 12, paddingBottom: 44 },
-  header: { minHeight: 70, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 4, borderBottomColor: "#080d09", backgroundColor: INK, flexDirection: "row", alignItems: "center" },
-  headerButton: { width: 62, minHeight: 44, borderWidth: 3, borderColor: SCREEN, alignItems: "center", justifyContent: "center", backgroundColor: DARK },
-  headerButtonText: { color: LIGHT, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  safe: { flex: 1, backgroundColor: "#17150f" },
+  backdrop: { ...StyleSheet.absoluteFillObject, overflow: "hidden", backgroundColor: "#17150f" },
+  edgeArt: { position: "absolute", top: 0, bottom: 0, width: "27%", height: "100%", opacity: 0.92 },
+  edgeArtLeft: { left: 0 },
+  edgeArtRight: { right: 0 },
+  parchmentWash: { ...StyleSheet.absoluteFillObject, left: "17%", right: "17%", backgroundColor: "rgba(220,195,137,0.93)" },
+  edgeVignette: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(31,24,14,0.13)" },
+  loading: { flex: 1, zIndex: 2, alignItems: "center", justifyContent: "center", padding: 24 },
+  loadingText: { color: INK, fontFamily: "Georgia", fontSize: 13, fontWeight: "800", letterSpacing: 2, marginTop: 14, textAlign: "center" },
+  scroll: { flex: 1, zIndex: 2 },
+  scrollContent: { flexGrow: 1, alignItems: "center", paddingHorizontal: 14, paddingBottom: 36 },
+  header: { zIndex: 4, minHeight: 64, paddingHorizontal: 16, paddingVertical: 7, borderBottomWidth: 2, borderBottomColor: "#80612e", backgroundColor: "rgba(24,42,30,0.98)", flexDirection: "row", alignItems: "center", shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 12 },
+  headerButton: { minWidth: 70, minHeight: 44, paddingHorizontal: 10, borderWidth: 1.5, borderColor: "#d6be7b", borderRadius: 3, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: "#22362a" },
+  headerButtonText: { color: PARCHMENT, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
   headerTitleWrap: { flex: 1, alignItems: "center", paddingHorizontal: 6 },
-  headerKicker: { color: "#91a95d", fontSize: 7, fontWeight: "900", letterSpacing: 1.3 },
-  headerTitle: { color: LIGHT, fontSize: 16, fontWeight: "900", letterSpacing: 1.2, textAlign: "center", marginTop: 3 },
-  headerProgress: { width: 62, minHeight: 44, borderWidth: 3, borderColor: "#839956", backgroundColor: DARK, alignItems: "center", justifyContent: "center" },
-  headerProgressValue: { color: LIGHT, fontSize: 14, fontWeight: "900" },
-  headerProgressLabel: { color: "#8fa45d", fontSize: 7, fontWeight: "900", letterSpacing: 1 },
-  titleScreen: { flexGrow: 1, minHeight: 680, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: DARK },
-  titleMap: { width: 232, height: 166, borderWidth: 7, borderColor: INK, backgroundColor: SCREEN, marginBottom: 22, overflow: "hidden", position: "relative", transform: [{ rotate: "-1deg" }] },
-  titleRiver: { position: "absolute", width: 36, height: 230, left: 142, top: -30, backgroundColor: "#70916c", transform: [{ rotate: "18deg" }] },
-  titleRoadHorizontal: { position: "absolute", height: 17, left: 0, right: 0, top: 77, backgroundColor: "#e5d887" },
-  titleRoadVertical: { position: "absolute", width: 17, top: 0, bottom: 0, left: 69, backgroundColor: "#e5d887" },
-  titleLandmark: { position: "absolute", width: 22, height: 22, backgroundColor: "#b45645", borderWidth: 4, borderColor: INK },
-  titleKicker: { color: "#93aa61", fontSize: 10, fontWeight: "900", letterSpacing: 2.4, textAlign: "center" },
-  titleLogo: { color: LIGHT, fontSize: 39, lineHeight: 42, fontWeight: "900", letterSpacing: 3, textAlign: "center", marginTop: 9 },
-  titleCopy: { color: "#afc46d", fontSize: 14, lineHeight: 22, textAlign: "center", maxWidth: 540, marginVertical: 20 },
-  titleHint: { color: "#788d53", fontSize: 10, marginTop: 15, textAlign: "center" },
-  primaryButton: { minWidth: 220, minHeight: 50, paddingHorizontal: 20, borderWidth: 4, borderColor: "#0b110c", backgroundColor: "#a54c3c", alignItems: "center", justifyContent: "center", marginTop: 10, shadowColor: "#000", shadowOpacity: 0.45, shadowOffset: { width: 4, height: 5 }, shadowRadius: 0 },
-  primaryButtonText: { color: "#fff2b8", fontSize: 11, fontWeight: "900", letterSpacing: 1.2 },
-  textButton: { minHeight: 40, paddingHorizontal: 18, alignItems: "center", justifyContent: "center", marginTop: 6 },
-  textButtonText: { color: "#adbf73", textDecorationLine: "underline", fontSize: 11 },
-  resetText: { color: "#b77d68", textDecorationLine: "underline", fontSize: 10 },
-  hud: { width: "100%", maxWidth: 760, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 14, marginBottom: 8 },
-  locationLabel: { color: "#718754", fontSize: 8, fontWeight: "900", letterSpacing: 1.5 },
-  locationName: { color: LIGHT, fontSize: 14, fontWeight: "900", marginTop: 2 },
-  hudActions: { flexDirection: "row", gap: 6 },
-  hudButton: { minHeight: 38, paddingHorizontal: 10, backgroundColor: INK, borderWidth: 2, borderColor: "#6f8450", alignItems: "center", justifyContent: "center" },
-  hudButtonText: { color: LIGHT, fontSize: 8, fontWeight: "900", letterSpacing: 0.6 },
-  viewport: { borderWidth: 4, borderColor: "#080d09", overflow: "hidden", backgroundColor: SCREEN, shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 0, shadowOffset: { width: 6, height: 7 } },
+  headerKicker: { color: "#bfa565", fontFamily: "Georgia", fontSize: 7, fontWeight: "800", letterSpacing: 1.8 },
+  headerTitle: { color: PARCHMENT, fontFamily: "Georgia", fontSize: 18, lineHeight: 22, fontWeight: "900", letterSpacing: 1.1, textAlign: "center" },
+  headerFlourish: { width: 66, height: 1, marginTop: 3, backgroundColor: "#8e7240" },
+  headerProgress: { minWidth: 70, minHeight: 46, paddingHorizontal: 8, borderWidth: 1.5, borderColor: "#d6be7b", borderRadius: 3, backgroundColor: "#22362a", alignItems: "center", justifyContent: "center" },
+  headerProgressValue: { color: PARCHMENT, fontFamily: "Georgia", fontSize: 15, fontWeight: "900" },
+  headerProgressLabel: { color: "#baa66e", fontSize: 7, fontWeight: "900", letterSpacing: 1.2 },
+  titleScreen: { flexGrow: 1, minHeight: 680, alignItems: "center", justifyContent: "center", paddingHorizontal: 18, paddingVertical: 28 },
+  titleMap: { width: "88%", maxWidth: 900, minHeight: 560, borderWidth: 2, borderColor: "#745322", borderRadius: 7, backgroundColor: PARCHMENT, overflow: "hidden", position: "relative", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.68, shadowRadius: 24, shadowOffset: { width: 0, height: 12 } },
+  titleMapCompact: { width: "100%", minHeight: 620 },
+  titleMapArt: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%", opacity: 0.68 },
+  titleMapVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(244,224,169,0.54)" },
+  titleContent: { width: "88%", maxWidth: 650, alignItems: "center", paddingHorizontal: 18, paddingVertical: 30, borderWidth: 1, borderColor: "rgba(87,59,28,0.34)", backgroundColor: "rgba(240,221,166,0.86)" },
+  titleKickerRow: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9 },
+  titleRule: { width: "12%", maxWidth: 70, height: 1, backgroundColor: "#725629" },
+  titleKicker: { color: INK, fontFamily: "Georgia", fontSize: 11, fontWeight: "900", letterSpacing: 2.2, textAlign: "center" },
+  titleLogo: { color: INK, fontFamily: "Georgia", fontSize: 58, lineHeight: 60, fontWeight: "900", letterSpacing: 1.8, textAlign: "center", marginTop: 12, textShadowColor: "rgba(246,229,176,0.9)", textShadowRadius: 5 },
+  titleLogoCompact: { fontSize: 39, lineHeight: 43 },
+  titleCopy: { color: "#3f2d1c", fontFamily: "Georgia", fontSize: 16, lineHeight: 24, fontWeight: "600", textAlign: "center", maxWidth: 540, marginVertical: 18 },
+  titleHint: { color: "#66502d", fontSize: 11, lineHeight: 16, marginTop: 13, textAlign: "center" },
+  entryQuote: { zIndex: 2, maxWidth: 500, color: PARCHMENT, backgroundColor: "rgba(41,31,18,0.88)", fontFamily: "Georgia", fontSize: 14, lineHeight: 21, fontStyle: "italic", textAlign: "center", paddingHorizontal: 22, paddingVertical: 11, marginTop: 14, borderRadius: 4 },
+  primaryButton: { minWidth: 220, minHeight: 50, paddingHorizontal: 20, borderWidth: 2, borderColor: "#d3b66d", borderRadius: 4, backgroundColor: "#2e4a36", flexDirection: "row", gap: 9, alignItems: "center", justifyContent: "center", marginTop: 9, shadowColor: "#000", shadowOpacity: 0.42, shadowOffset: { width: 3, height: 4 }, shadowRadius: 3 },
+  primaryButtonText: { color: "#f7e7b0", fontSize: 12, fontWeight: "900", letterSpacing: 1.2 },
+  textButton: { minHeight: 44, paddingHorizontal: 18, flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", marginTop: 3 },
+  textButtonText: { color: INK, textDecorationLine: "underline", fontSize: 12, fontWeight: "700" },
+  resetText: { color: "#7d382c", textDecorationLine: "underline", fontSize: 11, fontWeight: "700" },
+  hud: { width: "100%", maxWidth: 960, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 12, marginBottom: 9 },
+  locationCard: { flexShrink: 1, minHeight: 52, paddingHorizontal: 13, paddingVertical: 8, borderLeftWidth: 4, borderLeftColor: "#38563c", backgroundColor: "rgba(238,218,163,0.93)" },
+  locationLabel: { color: "#765b31", fontSize: 8, fontWeight: "900", letterSpacing: 1.5 },
+  locationName: { color: INK, fontFamily: "Georgia", fontSize: 17, fontWeight: "900", marginTop: 2 },
+  hudActions: { flexDirection: "row", gap: 7 },
+  hudButton: { minHeight: 44, paddingHorizontal: 12, backgroundColor: "#253b2c", borderWidth: 1.5, borderColor: "#c3aa69", borderRadius: 3, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center" },
+  hudButtonText: { color: PARCHMENT, fontSize: 9, fontWeight: "900", letterSpacing: 0.7 },
+  viewport: { position: "relative", borderWidth: 6, borderColor: "#4b351d", borderRadius: 5, overflow: "hidden", backgroundColor: SCREEN, shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 12, shadowOffset: { width: 5, height: 7 } },
+  worldMapArt: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%", opacity: 0.72 },
+  mapArtVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(222,203,149,0.12)" },
   worldMap: { alignSelf: "flex-start" },
   mapRow: { flexDirection: "row" },
-  tile: { position: "relative", alignItems: "center", justifyContent: "center", overflow: "visible" },
-  treeTile: { backgroundColor: "#536f45" },
-  grassTile: { backgroundColor: "#aabd67" },
-  pathTile: { backgroundColor: "#d8ca79" },
-  waterTile: { backgroundColor: "#638b78" },
-  sandTile: { backgroundColor: "#d4bd72" },
-  mountainTile: { backgroundColor: "#68735a" },
-  treeCrown: { position: "absolute", top: 2, width: "75%", height: "64%", borderRadius: 3, backgroundColor: INK, borderWidth: 2, borderColor: "#40583a" },
-  treeTrunk: { position: "absolute", bottom: 1, width: "20%", height: "38%", backgroundColor: "#674d35" },
-  grassTuft: { width: "34%", height: 3, backgroundColor: "#829b55", transform: [{ rotate: "-18deg" }] },
-  waterLine: { width: "70%", height: 3, backgroundColor: "#a8c682" },
-  mountainPeak: { width: "72%", height: "65%", backgroundColor: "#4b5545", borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  landmark: { position: "absolute", width: "86%", height: "86%", borderWidth: 3, borderColor: INK, alignItems: "center", justifyContent: "flex-end", zIndex: 4, shadowColor: "#fff5a1", shadowOpacity: 0.8, shadowRadius: 5 },
-  landmarkRoof: { position: "absolute", top: 2, width: "68%", height: "27%", backgroundColor: DARK },
-  landmarkDoor: { width: "24%", height: "38%", backgroundColor: DARK },
-  landmarkLabel: { position: "absolute", bottom: -7, color: "#fff5bd", backgroundColor: DARK, fontSize: 7, lineHeight: 10, fontWeight: "900", paddingHorizontal: 2, zIndex: 5 },
-  playerSprite: { position: "absolute", width: "68%", height: "90%", alignItems: "center", zIndex: 8 },
+  tile: { position: "relative", alignItems: "center", justifyContent: "center", overflow: "visible", borderWidth: 0.35, borderColor: "rgba(81,63,34,0.1)" },
+  treeTile: { backgroundColor: "rgba(66,99,60,0.48)" },
+  grassTile: { backgroundColor: "rgba(178,181,111,0.34)" },
+  pathTile: { backgroundColor: "rgba(220,196,129,0.35)" },
+  waterTile: { backgroundColor: "rgba(85,139,139,0.48)" },
+  sandTile: { backgroundColor: "rgba(208,178,105,0.4)" },
+  mountainTile: { backgroundColor: "rgba(112,115,91,0.48)" },
+  landmark: { position: "absolute", width: "78%", height: "80%", borderWidth: 2, borderColor: "#302416", borderRadius: 4, alignItems: "center", justifyContent: "center", zIndex: 4, shadowColor: "#fff2b0", shadowOpacity: 0.82, shadowRadius: 5 },
+  landmarkLabel: { position: "absolute", bottom: -8, color: PARCHMENT, backgroundColor: DARK, fontSize: 6, lineHeight: 10, fontWeight: "900", paddingHorizontal: 3, zIndex: 5 },
+  playerSprite: { position: "absolute", width: "70%", height: "92%", alignItems: "center", zIndex: 8, shadowColor: "#fff0a8", shadowOpacity: 0.9, shadowRadius: 5 },
   playerStep: { transform: [{ translateY: -2 }] },
-  playerHatTop: { width: "54%", height: "23%", backgroundColor: "#a54c3c", borderWidth: 2, borderColor: DARK },
-  playerHatBrim: { width: "84%", height: "12%", backgroundColor: "#a54c3c", borderWidth: 2, borderColor: DARK },
-  playerFace: { width: "44%", height: "23%", backgroundColor: "#e1bc75", borderLeftWidth: 2, borderRightWidth: 2, borderColor: DARK, position: "relative" },
+  playerHatTop: { width: "54%", height: "23%", backgroundColor: "#a3482d", borderWidth: 2, borderColor: DARK, borderTopLeftRadius: 7, borderTopRightRadius: 7 },
+  playerHatBrim: { width: "88%", height: "12%", backgroundColor: "#a3482d", borderWidth: 2, borderColor: DARK },
+  playerFace: { width: "44%", height: "23%", backgroundColor: "#dfb775", borderLeftWidth: 2, borderRightWidth: 2, borderColor: DARK, position: "relative" },
   playerEye: { position: "absolute", width: 3, height: 3, right: 3, top: 3, backgroundColor: DARK },
   playerEyeSide: { right: 1 },
-  playerCoat: { width: "64%", height: "29%", backgroundColor: "#344f52", borderWidth: 2, borderColor: DARK },
+  playerCoat: { width: "64%", height: "29%", backgroundColor: "#31505a", borderWidth: 2, borderColor: DARK },
   playerFeet: { width: "58%", height: "12%", flexDirection: "row", justifyContent: "space-between" },
   playerFeetStep: { width: "72%" },
   playerFoot: { width: "38%", height: "100%", backgroundColor: DARK },
-  legendRow: { width: "100%", maxWidth: 760, flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8, marginTop: 11, paddingHorizontal: 4 },
-  legendText: { color: "#819657", fontSize: 8, fontWeight: "900", letterSpacing: 0.7 },
-  mapControls: { width: "100%", maxWidth: 700, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 22, marginTop: 17 },
+  legendRow: { width: "100%", maxWidth: 960, flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8, marginTop: 10, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: "rgba(239,220,167,0.82)" },
+  legendText: { color: "#48351f", fontSize: 8, fontWeight: "900", letterSpacing: 0.7 },
+  mapControls: { width: "100%", maxWidth: 800, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 22, marginTop: 15 },
   dPad: { width: 144, height: 144, alignItems: "center", justifyContent: "center" },
   dPadRow: { flexDirection: "row" },
-  directionButton: { width: 48, height: 48, backgroundColor: "#354936", borderWidth: 3, borderColor: "#0b120c", alignItems: "center", justifyContent: "center" },
-  directionText: { color: LIGHT, fontSize: 15, fontWeight: "900" },
+  directionButton: { width: 48, height: 48, backgroundColor: "#2d4937", borderWidth: 2, borderColor: "#1c281d", borderRadius: 4, alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 2 },
+  directionText: { color: PARCHMENT, fontSize: 16, fontWeight: "900" },
   directionSpacer: { width: 48, height: 48 },
-  dPadCenter: { width: 48, height: 48, backgroundColor: "#354936" },
-  mapInstructions: { flex: 1, minWidth: 235, maxWidth: 400, borderWidth: 4, borderColor: "#080d09", backgroundColor: INK, padding: 14 },
-  instructionHeading: { color: LIGHT, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
-  instructionText: { color: "#a9be6d", fontSize: 11, lineHeight: 17, marginTop: 7 },
-  coordinateText: { color: "#728753", fontSize: 8, fontWeight: "900", marginTop: 10, letterSpacing: 1.4 },
-  dialoguePanel: { width: "100%", maxWidth: 760, borderWidth: 5, borderColor: "#080d09", backgroundColor: INK, padding: 17, marginTop: 18, shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 0, shadowOffset: { width: 6, height: 7 } },
-  dialogueLocation: { alignSelf: "flex-start", paddingHorizontal: 9, paddingVertical: 5, borderWidth: 3, borderColor: DARK, marginBottom: 11 },
-  dialogueLocationText: { color: DARK, fontSize: 8, fontWeight: "900", letterSpacing: 1 },
-  dialogueTitle: { color: LIGHT, fontSize: 22, fontWeight: "900", letterSpacing: 0.7 },
-  dialoguePrompt: { color: "#bfd079", fontSize: 14, lineHeight: 21, marginTop: 8, marginBottom: 13 },
-  choiceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  choiceButton: { flexGrow: 1, flexBasis: 310, minHeight: 88, borderWidth: 3, borderColor: "#839957", backgroundColor: DARK, padding: 11, flexDirection: "row", alignItems: "flex-start" },
-  choiceNumber: { color: "#e2d378", fontSize: 11, fontWeight: "900", marginRight: 10, marginTop: 2 },
+  dPadCenter: { width: 48, height: 48, backgroundColor: "#21382a", borderRadius: 4 },
+  mapInstructions: { flex: 1, minWidth: 235, maxWidth: 470, borderWidth: 1.5, borderColor: "#80612e", borderRadius: 4, backgroundColor: "rgba(239,220,168,0.95)", padding: 15, shadowColor: "#000", shadowOpacity: 0.32, shadowRadius: 7 },
+  instructionHeadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  instructionHeading: { flex: 1, color: INK, fontFamily: "Georgia", fontSize: 12, fontWeight: "900", letterSpacing: 0.8 },
+  instructionText: { color: "#57452c", fontSize: 12, lineHeight: 18, marginTop: 7 },
+  coordinateText: { color: "#775e35", fontSize: 9, fontWeight: "900", marginTop: 10, letterSpacing: 1.4 },
+  fieldPage: { position: "relative", width: "100%", maxWidth: 920, minHeight: 430, borderWidth: 2, borderColor: "#765322", borderRadius: 4, backgroundColor: "rgba(242,222,169,0.97)", paddingHorizontal: 24, paddingVertical: 22, marginTop: 6, overflow: "hidden", shadowColor: "#000", shadowOpacity: 0.48, shadowRadius: 13, shadowOffset: { width: 4, height: 7 } },
+  fieldSketch: { position: "absolute", right: 12, top: 7 },
+  dialogueLocation: { alignSelf: "flex-start", minHeight: 30, paddingHorizontal: 9, paddingVertical: 5, borderWidth: 1.5, borderColor: INK, flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 10, backgroundColor: "rgba(248,231,184,0.74)" },
+  locationSwatch: { width: 12, height: 12, borderWidth: 1, borderColor: INK },
+  dialogueLocationText: { color: INK, fontSize: 9, fontWeight: "900", letterSpacing: 1 },
+  dialogueTitle: { maxWidth: 760, color: INK, fontFamily: "Georgia", fontSize: 28, lineHeight: 34, fontWeight: "900" },
+  dialoguePrompt: { maxWidth: 760, color: "#4b3823", fontFamily: "Georgia", fontSize: 15, lineHeight: 22, marginTop: 6 },
+  inkDivider: { width: "100%", flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 13 },
+  inkLine: { flex: 1, height: 1, backgroundColor: "rgba(48,36,22,0.45)" },
+  choiceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  choiceButton: { flexGrow: 1, flexBasis: 350, minWidth: 0, minHeight: 86, borderWidth: 1.5, borderColor: "#765b34", borderRadius: 3, backgroundColor: "rgba(247,229,183,0.78)", padding: 11, flexDirection: "row", alignItems: "flex-start" },
+  choiceNumberSeal: { width: 27, height: 27, borderRadius: 14, borderWidth: 1.5, borderColor: INK, marginRight: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#dcc58c" },
+  choiceNumber: { color: INK, fontFamily: "Georgia", fontSize: 12, fontWeight: "900" },
   choiceCopy: { flex: 1 },
-  choiceLabel: { color: LIGHT, fontSize: 13, fontWeight: "900" },
-  choiceDescription: { color: "#96ab63", fontSize: 11, lineHeight: 16, marginTop: 4 },
-  skipButton: { minHeight: 44, marginTop: 11, borderWidth: 2, borderColor: "#6d8150", alignItems: "center", justifyContent: "center" },
-  skipText: { color: "#c7d783", fontSize: 9, fontWeight: "900", letterSpacing: 0.9 },
-  equalNote: { color: "#748a51", fontSize: 9, lineHeight: 14, marginTop: 9, textAlign: "center" },
+  choiceLabel: { color: INK, fontFamily: "Georgia", fontSize: 14, lineHeight: 18, fontWeight: "900" },
+  choiceDescription: { color: "#5b472d", fontSize: 11, lineHeight: 16, marginTop: 4 },
+  skipButton: { minHeight: 46, marginTop: 12, borderWidth: 1.5, borderColor: "#765b34", borderRadius: 3, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(247,229,183,0.58)" },
+  skipText: { color: INK, fontSize: 9, fontWeight: "900", letterSpacing: 0.9 },
+  equalNote: { color: "#655033", fontFamily: "Georgia", fontSize: 10, lineHeight: 15, marginTop: 10, textAlign: "center", fontStyle: "italic" },
   buttonDisabled: { opacity: 0.45 },
-  resultStamp: { color: "#e2d378", fontSize: 10, fontWeight: "900", letterSpacing: 2, marginBottom: 8 },
-  resultChoice: { color: "#93aa61", fontSize: 13, fontWeight: "900", textTransform: "uppercase", marginTop: 7 },
-  resultText: { color: "#c7d783", fontSize: 15, lineHeight: 23, marginVertical: 17 },
-  storageError: { width: "100%", maxWidth: 760, color: "#fff0ad", backgroundColor: "#7c3f34", borderWidth: 3, borderColor: "#b86a4e", padding: 11, marginTop: 13, fontSize: 11, lineHeight: 17, textAlign: "center" },
-  syncNote: { color: "#64784b", fontSize: 8, marginTop: 14, textAlign: "center" },
-  journal: { width: "100%", maxWidth: 620, borderWidth: 5, borderColor: "#080d09", backgroundColor: "#d8d68b", padding: 14, marginVertical: 8, transform: [{ rotate: "-0.2deg" }] },
-  journalHeading: { color: DARK, fontSize: 11, fontWeight: "900", letterSpacing: 2, borderBottomWidth: 3, borderColor: "#758653", paddingBottom: 7 },
-  journalRow: { flexDirection: "row", alignItems: "center", paddingVertical: 7, borderBottomWidth: 1, borderColor: "#9caa69" },
-  journalMark: { width: 16, height: 16, borderWidth: 2, borderColor: DARK, marginRight: 9 },
+  resultStamp: { color: "#805a21", fontSize: 10, fontWeight: "900", letterSpacing: 2, marginTop: 7, marginBottom: 8 },
+  resultChoice: { color: "#4b653f", fontFamily: "Georgia", fontSize: 15, fontWeight: "900", textTransform: "uppercase", marginTop: 7 },
+  resultText: { color: "#4f3d27", fontFamily: "Georgia", fontSize: 16, lineHeight: 24, marginVertical: 17 },
+  storageError: { width: "100%", maxWidth: 920, color: "#fff1c3", backgroundColor: "#743c2e", borderWidth: 2, borderColor: "#a66043", padding: 11, marginTop: 13, fontSize: 11, lineHeight: 17, textAlign: "center" },
+  syncNote: { color: "#4f452f", backgroundColor: "rgba(239,220,167,0.76)", fontSize: 9, marginTop: 14, paddingHorizontal: 9, paddingVertical: 5, textAlign: "center" },
+  journal: { width: "100%", maxWidth: 720, borderWidth: 2, borderColor: "#765322", borderRadius: 4, backgroundColor: "rgba(242,222,169,0.98)", padding: 18, marginVertical: 8, shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 10 },
+  journalHeadingRow: { minHeight: 36, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 2, borderColor: "#8a7147", paddingBottom: 7 },
+  journalHeading: { color: INK, fontFamily: "Georgia", fontSize: 14, fontWeight: "900", letterSpacing: 2 },
+  journalRow: { flexDirection: "row", alignItems: "center", paddingVertical: 9, borderBottomWidth: 1, borderColor: "#b7a172" },
+  journalMark: { width: 18, height: 18, borderWidth: 2, borderColor: DARK, marginRight: 10, transform: [{ rotate: "-5deg" }] },
   journalCopy: { flex: 1 },
-  journalPlace: { color: DARK, fontSize: 11, fontWeight: "900" },
-  journalDecision: { color: "#51603d", fontSize: 9, marginTop: 2 },
-  emptyJournal: { color: "#51603d", fontSize: 11, paddingVertical: 14 },
-  undoButton: { minHeight: 42, borderWidth: 2, borderColor: DARK, marginTop: 12, alignItems: "center", justifyContent: "center" },
+  journalPlace: { color: DARK, fontFamily: "Georgia", fontSize: 13, fontWeight: "900" },
+  journalDecision: { color: "#584830", fontSize: 10, marginTop: 2 },
+  emptyJournal: { color: "#584830", fontFamily: "Georgia", fontSize: 12, paddingVertical: 16 },
+  undoButton: { minHeight: 44, borderWidth: 1.5, borderColor: DARK, borderRadius: 3, marginTop: 13, alignItems: "center", justifyContent: "center" },
   undoText: { color: DARK, fontSize: 9, fontWeight: "900", letterSpacing: 1 },
-  completeScroll: { flexGrow: 1, padding: 18, paddingBottom: 44 },
-  completeScreen: { width: "100%", maxWidth: 700, minHeight: 650, alignSelf: "center", alignItems: "center", justifyContent: "center" },
-  completeKicker: { color: "#93aa61", fontSize: 10, fontWeight: "900", letterSpacing: 2, textAlign: "center" },
-  completeTitle: { color: LIGHT, fontSize: 29, lineHeight: 36, fontWeight: "900", textAlign: "center", maxWidth: 560, marginTop: 10 },
-  completeCopy: { color: "#a9be6d", fontSize: 14, lineHeight: 22, textAlign: "center", maxWidth: 530, marginTop: 12, marginBottom: 18 },
-  overlay: { ...StyleSheet.absoluteFillObject, zIndex: 30, backgroundColor: "rgba(5,10,6,0.82)", alignItems: "center", justifyContent: "center", padding: 18 },
-  notePanel: { width: "100%", maxWidth: 500, borderWidth: 5, borderColor: "#080d09", backgroundColor: INK, padding: 20 },
-  noteTitle: { color: LIGHT, fontSize: 14, fontWeight: "900", letterSpacing: 1.5 },
-  noteText: { color: "#b6c874", fontSize: 12, lineHeight: 20, marginVertical: 14 },
-  smallButton: { minHeight: 43, borderWidth: 3, borderColor: "#829756", backgroundColor: DARK, alignItems: "center", justifyContent: "center" },
-  smallButtonText: { color: LIGHT, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  completeScroll: { flexGrow: 1, zIndex: 2, padding: 18, paddingBottom: 44 },
+  completeScreen: { width: "100%", maxWidth: 760, minHeight: 650, alignSelf: "center", alignItems: "center", justifyContent: "center" },
+  completeCompass: { width: 74, height: 74, borderRadius: 37, borderWidth: 1.5, borderColor: "#7d5c2d", backgroundColor: "rgba(34,52,38,0.94)", alignItems: "center", justifyContent: "center", marginBottom: 14 },
+  completeKicker: { color: "#6b522c", fontSize: 10, fontWeight: "900", letterSpacing: 2, textAlign: "center" },
+  completeTitle: { color: INK, fontFamily: "Georgia", fontSize: 32, lineHeight: 39, fontWeight: "900", textAlign: "center", maxWidth: 590, marginTop: 10 },
+  completeCopy: { color: "#58452d", fontFamily: "Georgia", fontSize: 15, lineHeight: 23, textAlign: "center", maxWidth: 560, marginTop: 12, marginBottom: 18 },
+  overlay: { ...StyleSheet.absoluteFillObject, zIndex: 30, backgroundColor: "rgba(18,16,10,0.76)", alignItems: "center", justifyContent: "center", padding: 18 },
+  notePanel: { width: "100%", maxWidth: 520, borderWidth: 2, borderColor: "#765322", borderRadius: 5, backgroundColor: PARCHMENT, padding: 22, alignItems: "center", shadowColor: "#000", shadowOpacity: 0.58, shadowRadius: 18 },
+  noteTitle: { color: INK, fontFamily: "Georgia", fontSize: 16, fontWeight: "900", letterSpacing: 1.4, marginTop: 8 },
+  noteText: { color: "#4f3d27", fontSize: 13, lineHeight: 21, marginVertical: 14 },
+  smallButton: { minHeight: 44, minWidth: 120, paddingHorizontal: 15, borderWidth: 1.5, borderColor: "#2e4936", borderRadius: 3, backgroundColor: DARK, alignItems: "center", justifyContent: "center" },
+  smallButtonText: { color: PARCHMENT, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
 });
