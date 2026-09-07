@@ -30,6 +30,7 @@ const titleArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCa
 const atlasArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeAtlasArtwork.ts"));
 const whisperArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeWhisperArtwork.ts"));
 const gameplayArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeGameplayArtwork.ts"));
+const resultArtwork = require(resolve(root, "lib/recommendationGames/alchemistsCascadeResultArtwork.ts"));
 const presentation = require(resolve(root, "lib/recommendationGames/alchemistsCascadePresentation.ts"));
 
 function assert(condition, message) {
@@ -1594,6 +1595,63 @@ async function main() {
     && route.includes("isReduceMotionEnabled"),
   "clear pulses, cancellable timing, cleanup, and reduced-motion behavior must remain wired");
   checks.push("gameplay_artwork_live_state_and_animation");
+  const resultArtworkPath = resultArtwork.ALCHEMISTS_CASCADE_RESULT_ARTWORK;
+  assert(typeof resultArtworkPath === "string"
+    && resultArtworkPath.endsWith("completion-laboratory.webp")
+    && existsSync(resultArtworkPath),
+  "real Cascade completion artwork mapping is missing");
+  const resultArtworkBytes = readFileSync(resultArtworkPath);
+  assert(resultArtworkBytes.subarray(0, 4).toString("ascii") === "RIFF"
+    && resultArtworkBytes.subarray(8, 12).toString("ascii") === "WEBP"
+    && statSync(resultArtworkPath).size < 300_000,
+  "Cascade completion artwork must be an optimized production WebP");
+  assert(resultArtwork.ALCHEMISTS_CASCADE_RESULT_ARTWORK_SIZE.width === 1672
+    && resultArtwork.ALCHEMISTS_CASCADE_RESULT_ARTWORK_SIZE.height === 941,
+  "Cascade completion artwork dimensions must remain aligned to the authorized source");
+  assert(!existsSync(resolve(root, "assets/games/alchemists-cascade/completion-laboratory.png"))
+    && !route.includes("clipboard.png"),
+  "the authorized source PNG must remain external to production assets and code");
+  const desktopResult = resultArtwork.computeAlchemistsCascadeResultLayout(1920, 1080);
+  const chromebookResult = resultArtwork.computeAlchemistsCascadeResultLayout(1366, 768);
+  const shortResult = resultArtwork.computeAlchemistsCascadeResultLayout(844, 390);
+  const mobileResult = resultArtwork.computeAlchemistsCascadeResultLayout(390, 844);
+  assert(desktopResult.mode === "cinematic"
+    && chromebookResult.mode === "cinematic"
+    && shortResult.mode === "stacked"
+    && mobileResult.mode === "stacked",
+  "completion artwork must preserve cinematic desktop and readable short/mobile layouts");
+  assert(desktopResult.stage.width <= 1920
+    && desktopResult.stage.height <= 1080
+    && chromebookResult.stage.width <= 1366
+    && chromebookResult.stage.height <= 768
+    && mobileResult.header.width === 390,
+  "completion artwork layouts must not overflow their viewports");
+  assert(Object.keys(resultArtwork.ALCHEMISTS_CASCADE_RESULT_DYNAMIC_BOUNDS).sort().join("|")
+    === "parchment|stars",
+  "every baked completion-state region must have an explicit live cover");
+  assert([0, 1, 2, 3].every((count) => {
+    const state = resultArtwork.alchemistsCascadeResultStarStates(count);
+    return state.length === 3 && state.filter(Boolean).length === count;
+  }),
+  "completion star state must render exact 0, 1, 2, and 3-star results");
+  assert(route.includes("function CascadeResultScreen")
+    && route.includes("return <AbstractCascadeResultScreen")
+    && route.includes("source={ALCHEMISTS_CASCADE_RESULT_ARTWORK}")
+    && route.includes("alchemistsCascadeResultStarStates(props.stars)")
+    && route.includes("{score.toLocaleString()} points")
+    && route.includes('testID="alchemists-cascade-result-primary"')
+    && route.includes('testID="alchemists-cascade-result-secondary"')
+    && route.includes('accessibilityHint={primaryHint}')
+    && route.includes('accessibilityHint={secondaryHint}')
+    && route.includes("props.reducedMotion")
+    && route.includes("animation.stop()"),
+  "completion artwork must retain live score, star state, accessible actions, fallback, and reduced-motion-safe animation");
+  assert(route.includes("onPrimary={won ? () => void returnToCampaign() : () => void retry()}")
+    && route.includes("onSecondary={won ? () => void retry() : () => void returnToCampaign()}")
+    && route.includes('"OPEN THE RECIPE ATLAS"')
+    && route.includes('"BREW AGAIN"'),
+  "completion controls must preserve the live Atlas and retry handlers");
+  checks.push("completion_artwork_live_state_accessibility_and_animation");
   assert(route.includes("onPress={() => onCell(at)}") && route.includes('document.addEventListener("keydown"') && route.includes("accessibilityLabel={`Row"), "touch, keyboard, and cell accessibility wiring missing");
   assert(route.includes("What the cauldron remembers") && route.includes("IP addresses") && route.includes("never count as taste"), "privacy disclosure is incomplete");
   assert(route.includes('eventType: "campaign_reset"') && route.includes("sessionId.current = fresh.gameSessionId")
