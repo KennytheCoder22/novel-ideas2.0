@@ -95,6 +95,11 @@ import {
   ALCHEMISTS_CASCADE_GAMEPLAY_MOBILE_ARTWORK,
   computeAlchemistsCascadeGameplayLayout,
 } from "../../lib/recommendationGames/alchemistsCascadeGameplayArtwork";
+import {
+  ALCHEMISTS_CASCADE_RESULT_ARTWORK,
+  alchemistsCascadeResultStarStates,
+  computeAlchemistsCascadeResultLayout,
+} from "../../lib/recommendationGames/alchemistsCascadeResultArtwork";
 
 type Phase = "loading" | "title" | "campaign" | "catalyst" | "play" | "pause" | "help" | "result";
 const STALE_SESSION_NOTICE = "This game changed in another tab. The latest save was reloaded; your action was not applied.";
@@ -459,6 +464,377 @@ function PrivacyPanel({ onClose }: { onClose: () => void }) {
       <TouchableOpacity style={styles.secondaryButton} onPress={onClose} accessibilityRole="button">
         <Text style={styles.secondaryButtonText}>CLOSE THE LEDGER</Text>
       </TouchableOpacity>
+    </View>
+  );
+}
+
+type CascadeResultScreenProps = {
+  won: boolean;
+  stars: number;
+  score: number;
+  busy: boolean;
+  reducedMotion: boolean;
+  accent: string;
+  background: string;
+  onPrimary: () => void;
+  onSecondary: () => void;
+};
+
+function AbstractCascadeResultScreen({
+  won,
+  stars,
+  score,
+  busy,
+  accent,
+  background,
+  onPrimary,
+  onSecondary,
+}: CascadeResultScreenProps) {
+  const primaryLabel = won ? "OPEN THE RECIPE ATLAS" : "REKINDLE THIS RECIPE";
+  const secondaryLabel = won ? "BREW AGAIN" : "RETURN TO THE ATLAS";
+  return (
+    <View style={[styles.centered, { backgroundColor: background }]}>
+      <View style={[styles.resultSheet, { borderColor: accent }]}>
+        <Text style={styles.resultGlyph}>{won ? "✦" : "◇"}</Text>
+        <Text style={styles.sheetTitle}>{won ? "The recipe lives!" : "The flame went quiet"}</Text>
+        <Text style={styles.resultStars} accessibilityLabel={`${stars} of 3 stars earned`}>
+          {"★".repeat(stars)}{"☆".repeat(3 - stars)}
+        </Text>
+        <Text style={styles.resultScore}>{score.toLocaleString()} points</Text>
+        <Text style={styles.lead}>
+          {won
+            ? "The atlas turns its own page. A stranger recipe is waiting."
+            : "Nothing is wasted in alchemy. The board will return exactly from its seed."}
+        </Text>
+        <TouchableOpacity
+          style={[styles.primaryButton, busy && styles.disabled]}
+          onPress={onPrimary}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel={primaryLabel}
+        >
+          <Text style={styles.primaryButtonText}>{primaryLabel}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.secondaryButton, busy && styles.disabled]}
+          onPress={onSecondary}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel={secondaryLabel}
+        >
+          <Text style={styles.secondaryButtonText}>{secondaryLabel}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function CascadeResultStars({
+  stars,
+  reveal,
+  compact = false,
+}: {
+  stars: number;
+  reveal: Animated.Value[];
+  compact?: boolean;
+}) {
+  return (
+    <View
+      style={[styles.resultArtworkStars, compact && styles.resultArtworkStarsCompact]}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={`${stars} of 3 stars earned`}
+    >
+      {reveal.map((value, index) => {
+        const earned = index < stars;
+        return (
+          <Animated.View
+            key={index}
+            style={[
+              styles.resultArtworkStarGlow,
+              compact && styles.resultArtworkStarGlowCompact,
+              earned && styles.resultArtworkStarGlowEarned,
+              {
+                opacity: earned ? value : 0.7,
+                transform: [{
+                  scale: earned
+                    ? value.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] })
+                    : 1,
+                }],
+              },
+            ]}
+          >
+            <Text
+              importantForAccessibility="no-hide-descendants"
+              accessibilityElementsHidden
+              style={[
+                styles.resultArtworkStar,
+                compact && styles.resultArtworkStarCompact,
+                !earned && styles.resultArtworkStarEmpty,
+              ]}
+            >
+              {earned ? "★" : "☆"}
+            </Text>
+          </Animated.View>
+        );
+      })}
+    </View>
+  );
+}
+
+function CascadeResultParchment({
+  won,
+  score,
+  busy,
+  compact = false,
+  focusedControl,
+  hoveredControl,
+  onFocus,
+  onBlur,
+  onHoverIn,
+  onHoverOut,
+  onPrimary,
+  onSecondary,
+}: Pick<CascadeResultScreenProps, "won" | "score" | "busy" | "onPrimary" | "onSecondary"> & {
+  compact?: boolean;
+  focusedControl: string;
+  hoveredControl: string;
+  onFocus: (control: string) => void;
+  onBlur: () => void;
+  onHoverIn: (control: string) => void;
+  onHoverOut: () => void;
+}) {
+  const primaryLabel = won ? "OPEN THE RECIPE ATLAS" : "REKINDLE THIS RECIPE";
+  const secondaryLabel = won ? "BREW AGAIN" : "RETURN TO THE ATLAS";
+  const primaryHint = won
+    ? "Return to the live recipe atlas"
+    : "Restart this recipe from its original seed";
+  const secondaryHint = won
+    ? "Restart this recipe from its original seed"
+    : "Return to the live recipe atlas";
+
+  return (
+    <View style={[styles.resultArtworkParchment, compact && styles.resultArtworkParchmentCompact]}>
+      <Text
+        accessibilityRole="header"
+        style={[styles.resultArtworkTitle, compact && styles.resultArtworkTitleCompact]}
+      >
+        {won ? "The recipe lives!" : "The flame went quiet"}
+      </Text>
+      <View style={styles.resultArtworkDivider}>
+        <View style={styles.resultArtworkDividerLine} />
+        <Text style={styles.resultArtworkDividerGlyph}>◆</Text>
+        <View style={styles.resultArtworkDividerLine} />
+      </View>
+      <Text style={[styles.resultArtworkScore, compact && styles.resultArtworkScoreCompact]}>
+        {score.toLocaleString()} points
+      </Text>
+      <Text style={[styles.resultArtworkCopy, compact && styles.resultArtworkCopyCompact]}>
+        {won
+          ? "The atlas turns its own page. A stranger recipe is waiting."
+          : "Nothing is wasted in alchemy. The board will return exactly from its seed."}
+      </Text>
+      <Pressable
+        testID="alchemists-cascade-result-primary"
+        accessibilityRole="button"
+        accessibilityLabel={primaryLabel}
+        accessibilityHint={primaryHint}
+        accessibilityState={{ disabled: busy }}
+        disabled={busy}
+        onPress={onPrimary}
+        onFocus={() => onFocus("primary")}
+        onBlur={onBlur}
+        onHoverIn={() => onHoverIn("primary")}
+        onHoverOut={onHoverOut}
+        style={({ pressed }: { pressed: boolean }) => [
+          styles.resultArtworkPrimary,
+          compact && styles.resultArtworkPrimaryCompact,
+          (focusedControl === "primary" || hoveredControl === "primary") && styles.resultArtworkPrimaryActive,
+          pressed && styles.resultArtworkControlPressed,
+          busy && styles.disabled,
+        ]}
+      >
+        <MaterialCommunityIcons name="book-open-page-variant-outline" size={25} color="#25180A" />
+        <Text
+          style={[styles.resultArtworkPrimaryText, compact && styles.resultArtworkPrimaryTextCompact]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
+          {primaryLabel}
+        </Text>
+      </Pressable>
+      <Pressable
+        testID="alchemists-cascade-result-secondary"
+        accessibilityRole="button"
+        accessibilityLabel={secondaryLabel}
+        accessibilityHint={secondaryHint}
+        accessibilityState={{ disabled: busy }}
+        disabled={busy}
+        onPress={onSecondary}
+        onFocus={() => onFocus("secondary")}
+        onBlur={onBlur}
+        onHoverIn={() => onHoverIn("secondary")}
+        onHoverOut={onHoverOut}
+        style={({ pressed }: { pressed: boolean }) => [
+          styles.resultArtworkSecondary,
+          (focusedControl === "secondary" || hoveredControl === "secondary") && styles.resultArtworkSecondaryActive,
+          pressed && styles.resultArtworkControlPressed,
+          busy && styles.disabled,
+        ]}
+      >
+        <MaterialCommunityIcons name={won ? "refresh" : "book-open-page-variant-outline"} size={22} color="#F7D48C" />
+        <Text style={styles.resultArtworkSecondaryText}>{secondaryLabel}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function CascadeResultScreen(props: CascadeResultScreenProps) {
+  const { width, height } = useWindowDimensions();
+  const [artworkFailed, setArtworkFailed] = useState(false);
+  const [focusedControl, setFocusedControl] = useState("");
+  const [hoveredControl, setHoveredControl] = useState("");
+  const sheetEntrance = useRef(new Animated.Value(props.reducedMotion ? 1 : 0)).current;
+  const starReveal = useRef([
+    new Animated.Value(props.reducedMotion ? 1 : 0),
+    new Animated.Value(props.reducedMotion ? 1 : 0),
+    new Animated.Value(props.reducedMotion ? 1 : 0),
+  ]).current;
+  const starStates = alchemistsCascadeResultStarStates(props.stars);
+  const stars = starStates.filter(Boolean).length;
+  const layout = computeAlchemistsCascadeResultLayout(width, height);
+
+  useEffect(() => {
+    sheetEntrance.stopAnimation();
+    starReveal.forEach((value, index) => {
+      value.stopAnimation();
+      value.setValue(props.reducedMotion || index >= stars ? 1 : 0);
+    });
+    if (props.reducedMotion) {
+      sheetEntrance.setValue(1);
+      return;
+    }
+
+    sheetEntrance.setValue(0);
+    const animation = Animated.parallel([
+      Animated.timing(sheetEntrance, {
+        toValue: 1,
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.delay(140),
+        Animated.stagger(
+          135,
+          starReveal.slice(0, stars).map((value) => Animated.spring(value, {
+            toValue: 1,
+            friction: 5,
+            tension: 85,
+            useNativeDriver: true,
+          })),
+        ),
+      ]),
+    ]);
+    animation.start();
+    return () => animation.stop();
+  }, [props.reducedMotion, sheetEntrance, starReveal, stars]);
+
+  if (artworkFailed) return <AbstractCascadeResultScreen {...props} stars={stars} />;
+
+  const parchment = (
+    <CascadeResultParchment
+      won={props.won}
+      score={props.score}
+      busy={props.busy}
+      compact={layout.mode === "stacked"}
+      focusedControl={focusedControl}
+      hoveredControl={hoveredControl}
+      onFocus={setFocusedControl}
+      onBlur={() => setFocusedControl("")}
+      onHoverIn={setHoveredControl}
+      onHoverOut={() => setHoveredControl("")}
+      onPrimary={props.onPrimary}
+      onSecondary={props.onSecondary}
+    />
+  );
+
+  if (layout.mode === "stacked") {
+    return (
+      <ScrollView
+        style={[styles.resultArtworkStackedScroll, { backgroundColor: props.background }]}
+        contentContainerStyle={styles.resultArtworkStackedContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.resultArtworkHeader, { width: layout.header.width, height: layout.header.height }]}>
+          <Image
+            source={ALCHEMISTS_CASCADE_RESULT_ARTWORK}
+            style={{
+              position: "absolute",
+              width: layout.header.imageWidth,
+              height: layout.header.imageHeight,
+              left: layout.header.imageLeft,
+              top: 0,
+            }}
+            resizeMode="contain"
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel="A moonlit alchemy laboratory with glowing flasks, books, and candlelight"
+            accessibilityIgnoresInvertColors
+            onError={() => setArtworkFailed(true)}
+          />
+          <View style={styles.resultArtworkHeaderShade} />
+          <CascadeResultStars stars={stars} reveal={starReveal} compact />
+        </View>
+        <Animated.View
+          style={[
+            styles.resultArtworkStackedParchmentWrap,
+            {
+              opacity: sheetEntrance,
+              transform: [{
+                translateY: sheetEntrance.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }),
+              }],
+            },
+          ]}
+        >
+          {parchment}
+        </Animated.View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <View style={[styles.resultArtworkCinematic, { backgroundColor: props.background }]}>
+      <View style={[styles.resultArtworkStage, layout.stage]}>
+        <Image
+          source={ALCHEMISTS_CASCADE_RESULT_ARTWORK}
+          style={[styles.resultArtworkImage, layout.stage]}
+          resizeMode="contain"
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel="A cinematic moonlit alchemy laboratory with books, candles, glowing flasks, and an open recipe book"
+          accessibilityIgnoresInvertColors
+          onError={() => setArtworkFailed(true)}
+        />
+        <View style={[styles.resultArtworkStarVeil, layout.stars]}>
+          <CascadeResultStars stars={stars} reveal={starReveal} />
+        </View>
+        <Animated.View
+          style={[
+            styles.resultArtworkParchmentWrap,
+            layout.parchment,
+            {
+              opacity: sheetEntrance,
+              transform: [{
+                translateY: sheetEntrance.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }),
+              }],
+            },
+          ]}
+        >
+          {parchment}
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -2983,19 +3359,17 @@ export default function AlchemistsCascadeRoute() {
     const stars = levelStars(save.activeLevel, activeConfig);
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: activeRealm.background }]}>
-        <View style={styles.centered}>
-          <View style={[styles.resultSheet, { borderColor: activeRealm.accent }]}>
-            <Text style={styles.resultGlyph}>{won ? "✦" : "◇"}</Text>
-            <Text style={styles.sheetTitle}>{won ? "The recipe lives!" : "The flame went quiet"}</Text>
-            <Text style={styles.resultStars}>{won ? `${"★".repeat(stars)}${"☆".repeat(3 - stars)}` : "☆☆☆"}</Text>
-            <Text style={styles.resultScore}>{save.activeLevel.score.toLocaleString()} points</Text>
-            <Text style={styles.lead}>{won ? "The atlas turns its own page. A stranger recipe is waiting." : "Nothing is wasted in alchemy. The board will return exactly from its seed."}</Text>
-            <TouchableOpacity style={styles.primaryButton} onPress={won ? () => void returnToCampaign() : () => void retry()} disabled={busy}>
-              <Text style={styles.primaryButtonText}>{won ? "OPEN THE RECIPE ATLAS" : "REKINDLE THIS RECIPE"}</Text>
-            </TouchableOpacity>
-            {won ? <TouchableOpacity style={styles.secondaryButton} onPress={() => void retry()}><Text style={styles.secondaryButtonText}>BREW AGAIN</Text></TouchableOpacity> : <TouchableOpacity style={styles.secondaryButton} onPress={() => void returnToCampaign()}><Text style={styles.secondaryButtonText}>RETURN TO THE ATLAS</Text></TouchableOpacity>}
-          </View>
-        </View>
+        <CascadeResultScreen
+          won={won}
+          stars={stars}
+          score={save.activeLevel.score}
+          busy={busy}
+          reducedMotion={reducedMotion}
+          accent={activeRealm.accent}
+          background={activeRealm.background}
+          onPrimary={won ? () => void returnToCampaign() : () => void retry()}
+          onSecondary={won ? () => void retry() : () => void returnToCampaign()}
+        />
         {gameRecommendationMilestone.pendingReward ? (
           <GameRecommendationReward
             visible
@@ -3855,6 +4229,197 @@ const styles = StyleSheet.create({
   specialColumn: { position: "absolute", top: 3, bottom: 3, width: 3, backgroundColor: "#FFF8E8", opacity: 0.9 },
   specialBurst: { position: "absolute", width: 13, height: 13, borderRadius: 7, borderWidth: 2, borderColor: "#FFF8E8" },
   feedback: { color: "#F2E8D7", minHeight: 42, fontSize: 14, fontWeight: "700", textAlign: "center", padding: 11 },
+  resultArtworkCinematic: { flex: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  resultArtworkStage: { position: "relative", overflow: "hidden", backgroundColor: "#100A0A" },
+  resultArtworkImage: { position: "absolute", top: 0, left: 0 },
+  resultArtworkStarVeil: {
+    position: "absolute",
+    overflow: "hidden",
+    borderRadius: 999,
+    backgroundColor: "#160B0B",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#F3A12E",
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  resultArtworkStars: {
+    minHeight: 112,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 22,
+    paddingHorizontal: 18,
+  },
+  resultArtworkStarsCompact: { minHeight: 90, gap: 12 },
+  resultArtworkStarGlow: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  resultArtworkStarGlowCompact: { width: 72, height: 72, borderRadius: 36 },
+  resultArtworkStarGlowEarned: {
+    backgroundColor: "rgba(245, 157, 34, 0.18)",
+    shadowColor: "#FFB12F",
+    shadowOpacity: 1,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  resultArtworkStar: {
+    color: "#FFD164",
+    fontSize: 78,
+    lineHeight: 92,
+    textShadowColor: "#F7931F",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
+  },
+  resultArtworkStarCompact: { fontSize: 54, lineHeight: 64 },
+  resultArtworkStarEmpty: {
+    color: "#9B7347",
+    textShadowColor: "transparent",
+  },
+  resultArtworkParchmentWrap: { position: "absolute" },
+  resultArtworkParchment: {
+    flex: 1,
+    width: "100%",
+    minHeight: 0,
+    paddingHorizontal: 42,
+    paddingVertical: 24,
+    borderWidth: 8,
+    borderColor: "#3A1D0F",
+    borderRadius: 7,
+    backgroundColor: "#E7C28B",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.65,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+  },
+  resultArtworkParchmentCompact: {
+    minHeight: 475,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    borderWidth: 5,
+  },
+  resultArtworkTitle: {
+    color: "#31180C",
+    fontFamily: Platform.select({ web: "Georgia", default: undefined }),
+    fontSize: 40,
+    lineHeight: 48,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  resultArtworkTitleCompact: { fontSize: 31, lineHeight: 38 },
+  resultArtworkDivider: {
+    width: "72%",
+    minHeight: 24,
+    marginTop: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  resultArtworkDividerLine: { flex: 1, height: 1, backgroundColor: "#815124" },
+  resultArtworkDividerGlyph: { color: "#6C370E", fontSize: 12 },
+  resultArtworkScore: {
+    color: "#5A2C12",
+    fontFamily: Platform.select({ web: "Georgia", default: undefined }),
+    fontSize: 36,
+    lineHeight: 43,
+    marginTop: 2,
+    textAlign: "center",
+  },
+  resultArtworkScoreCompact: { fontSize: 29, lineHeight: 36 },
+  resultArtworkCopy: {
+    maxWidth: 510,
+    color: "#3E2515",
+    fontFamily: Platform.select({ web: "Georgia", default: undefined }),
+    fontSize: 17,
+    lineHeight: 23,
+    marginTop: 8,
+    marginBottom: 14,
+    textAlign: "center",
+  },
+  resultArtworkCopyCompact: { fontSize: 15, lineHeight: 21, marginBottom: 12 },
+  resultArtworkPrimary: {
+    width: "100%",
+    maxWidth: 500,
+    minHeight: 54,
+    paddingHorizontal: 18,
+    borderWidth: 2,
+    borderColor: "#FFF0A8",
+    borderRadius: 5,
+    backgroundColor: "#F5BD43",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    shadowColor: "#A96511",
+    shadowOpacity: 0.52,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  resultArtworkPrimaryActive: {
+    borderColor: "#FFFFFF",
+    backgroundColor: "#FFD15B",
+    shadowOpacity: 0.82,
+    shadowRadius: 14,
+  },
+  resultArtworkPrimaryCompact: { paddingHorizontal: 12, gap: 8 },
+  resultArtworkPrimaryText: {
+    color: "#25180A",
+    fontFamily: Platform.select({ web: "Georgia", default: undefined }),
+    fontSize: 17,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    textAlign: "center",
+  },
+  resultArtworkPrimaryTextCompact: { fontSize: 13, letterSpacing: 0.45 },
+  resultArtworkSecondary: {
+    width: "72%",
+    maxWidth: 340,
+    minHeight: 48,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: "#A97945",
+    borderRadius: 5,
+    backgroundColor: "#2A1915",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  resultArtworkSecondaryActive: {
+    borderColor: "#FFE3A1",
+    backgroundColor: "#3B251E",
+  },
+  resultArtworkSecondaryText: {
+    color: "#F7D48C",
+    fontFamily: Platform.select({ web: "Georgia", default: undefined }),
+    fontSize: 14,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textAlign: "center",
+  },
+  resultArtworkControlPressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
+  resultArtworkStackedScroll: { flex: 1 },
+  resultArtworkStackedContent: { flexGrow: 1, alignItems: "center", paddingBottom: 24 },
+  resultArtworkHeader: { position: "relative", overflow: "hidden", backgroundColor: "#150D0D" },
+  resultArtworkHeaderShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(12, 8, 12, 0.34)",
+  },
+  resultArtworkStackedParchmentWrap: {
+    width: "100%",
+    maxWidth: 620,
+    marginTop: -10,
+    paddingHorizontal: 16,
+  },
   resultGlyph: { color: "#F6C957", fontSize: 60 },
   resultStars: { color: "#F6C957", fontSize: 30, letterSpacing: 4 },
   resultScore: { color: "#FFF3DD", fontSize: 22, fontWeight: "900", marginVertical: 12 },
