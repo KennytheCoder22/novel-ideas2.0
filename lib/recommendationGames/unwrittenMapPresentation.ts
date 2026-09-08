@@ -13,6 +13,29 @@ export type UnwrittenMapArtworkFrame = {
   height: number;
 };
 
+export type UnwrittenMapViewportLayout = {
+  columns: number;
+  rows: number;
+  tileSize: number;
+  compact: boolean;
+  viewportWidth: number;
+  viewportHeight: number;
+};
+
+export function unwrittenMapViewportLayout(width: number, height: number): UnwrittenMapViewportLayout {
+  const columns = width < 520 ? 9 : width < 900 ? 11 : width < 1500 ? 13 : 15;
+  const rows = height < 700 ? 7 : height < 900 ? 9 : 11;
+  const tileSize = Math.max(28, Math.min(54, Math.floor((Math.min(width, 920) - 40) / columns)));
+  return {
+    columns,
+    rows,
+    tileSize,
+    compact: width < 700,
+    viewportWidth: columns * tileSize + 8,
+    viewportHeight: rows * tileSize + 8,
+  };
+}
+
 export function unwrittenMapArtworkFrame(
   position: MapPosition,
   columns: number,
