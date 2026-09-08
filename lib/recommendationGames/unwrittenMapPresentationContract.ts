@@ -106,10 +106,10 @@ export const UNWRITTEN_MAP_CHARACTER_IDS = [
   "orchard-light-wisp",
   "bridge-workers-and-gearkin",
   "highwind-shepherd-dog-and-cloud-flock",
-  "marsh-mirror-reflection",
+  "marsh-mirror-reflection-and-dog",
   "reed-parliament-frogs",
-  "rain-camp-travelers",
-  "living-paper-dragon",
+  "rain-camp-travelers-and-dog",
+  "living-paper-dragon-and-dog",
   "cold-ember-archive",
   "stairway-vine-spirit",
   "lighthouse-keeper",
@@ -204,10 +204,10 @@ const SCENE_REGISTRY: readonly SceneRegistryEntry[] = [
   { scenarioId: "whisper-orchard", regionId: "sunmeadow", environmentId: "sunmeadow-whisper-orchard", characterId: "orchard-light-wisp", actorRole: "creature" },
   { scenarioId: "clockwork-bridge", regionId: "ironwood", environmentId: "ironwood-brass-bridge", characterId: "bridge-workers-and-gearkin", actorRole: "creature" },
   { scenarioId: "cloud-shepherd", regionId: "ironwood", environmentId: "ironwood-highwind-farm", characterId: "highwind-shepherd-dog-and-cloud-flock", actorRole: "community" },
-  { scenarioId: "mirror-marsh", regionId: "mossmere", environmentId: "mossmere-mirror-marsh", characterId: "marsh-mirror-reflection", actorRole: "environment" },
+  { scenarioId: "mirror-marsh", regionId: "mossmere", environmentId: "mossmere-mirror-marsh", characterId: "marsh-mirror-reflection-and-dog", actorRole: "environment" },
   { scenarioId: "frog-parliament", regionId: "mossmere", environmentId: "mossmere-reed-parliament", characterId: "reed-parliament-frogs", actorRole: "creature" },
-  { scenarioId: "rain-camp", regionId: "westreach", environmentId: "westreach-storm-camp", characterId: "rain-camp-travelers", actorRole: "community" },
-  { scenarioId: "paper-dragon", regionId: "westreach", environmentId: "westreach-kite-hill", characterId: "living-paper-dragon", actorRole: "creature" },
+  { scenarioId: "rain-camp", regionId: "westreach", environmentId: "westreach-storm-camp", characterId: "rain-camp-travelers-and-dog", actorRole: "community" },
+  { scenarioId: "paper-dragon", regionId: "westreach", environmentId: "westreach-kite-hill", characterId: "living-paper-dragon-and-dog", actorRole: "creature" },
   { scenarioId: "ember-library", regionId: "ashpeak", environmentId: "ashpeak-ember-library", characterId: "cold-ember-archive", actorRole: "environment" },
   { scenarioId: "giant-garden", regionId: "ashpeak", environmentId: "ashpeak-giants-garden", characterId: "stairway-vine-spirit", actorRole: "environment" },
   { scenarioId: "old-lighthouse", regionId: "tideglass", environmentId: "tideglass-old-lighthouse", characterId: "lighthouse-keeper", actorRole: "community" },
@@ -255,7 +255,7 @@ export function unwrittenMapDeriveMoodId(tags: readonly string[]): UnwrittenMapM
 // ---------------------------------------------------------------------------
 
 const OTHER_SKY_BRIEFS = {
-  encounter: "Eerie moonlit marsh; the water reflects an impossible second sky with unfamiliar stars, and something in the reflection waves upward at the explorer.",
+  encounter: "The explorer and dog stand on an eerie moonlit marsh dock with a lantern; among reeds, lily pads, mist, a windmill, and a tower, the water reflects an impossible second sky with unfamiliar stars, and something in the reflection waves upward at the explorer.",
   "sketch-stars": "Explorer kneeling beside the marsh, drawing reflected constellations in a field notebook.",
   "wave-back": "Explorer at the water's edge, waving toward the mysterious reflected figure.",
   "reed-raft": "Explorer tying marsh reeds into a small raft beside the reflective water.",
@@ -269,6 +269,8 @@ const AUTHORIZED_ENCOUNTER_BRIEFS: Readonly<Partial<Record<UnwrittenMapScenarioI
   "whisper-orchard": "The explorer approaches a pale golden wisp in a blossom-filled moonlit orchard, among apples, lanterns, and mist with the distant city beyond.",
   "clockwork-bridge": "The explorer faces an incomplete brass-and-timber mechanical bridge across a mountain gorge, surrounded by exposed gears, cranes, workers, windmills, and a highland city.",
   "cloud-shepherd": "The explorer and a dog overlook a highland farm, shepherd, sheep flock, and cloud-sheep flock while one dark runaway thundercloud flashes with lightning near the windmill and mountains.",
+  "rain-camp": "The explorer and dog approach a warm, lantern-lit canvas shelter and communal travelers during heavy rain, with wagons, fire, tea, a shared table, music, supplies, and wet rolling hills.",
+  "paper-dragon": "At a sunset kite festival, the explorer and dog watch a huge living patchwork paper dragon fly among smaller kites above the hill crowd, tents, windmill, and mountains.",
 };
 
 const AUTHORIZED_ENCOUNTER_ACTOR_ROLES: Readonly<Partial<Record<
@@ -279,6 +281,9 @@ const AUTHORIZED_ENCOUNTER_ACTOR_ROLES: Readonly<Partial<Record<
   "whisper-orchard": ["explorer", "creature", "environment"],
   "clockwork-bridge": ["explorer", "community", "creature", "environment"],
   "cloud-shepherd": ["explorer", "community", "creature", "environment"],
+  "mirror-marsh": ["explorer", "creature", "environment"],
+  "rain-camp": ["explorer", "community", "creature", "environment"],
+  "paper-dragon": ["explorer", "community", "creature", "environment"],
 };
 
 function expectedRasterPath(

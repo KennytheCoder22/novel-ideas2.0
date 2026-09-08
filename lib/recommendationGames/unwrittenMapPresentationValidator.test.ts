@@ -121,7 +121,7 @@ test("missing commissioning slots block production completeness without pretendi
   const missing = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "mirror-marsh");
   assert.ok(missing);
   const issues = validateUnwrittenMapEncounterPresentation(missing, { assetExists: () => false });
-  assert.equal(issues.filter((issue) => issue.code === "missing_required_asset").length, 9);
+  assert.equal(issues.filter((issue) => issue.code === "missing_required_asset").length, 8);
 });
 
 test("detects missing metadata when required fields are absent", () => {
@@ -131,18 +131,18 @@ test("detects missing metadata when required fields are absent", () => {
   assert.ok(issues.some((issue) => issue.code === "missing_metadata"));
 });
 
-test("live production inventory is honestly blocked at 13 approved of 108 required", () => {
+test("live production inventory is honestly blocked at 16 approved of 108 required", () => {
   const inventory = buildUnwrittenMapArtInventorySummary();
   assert.deepEqual(inventory, {
     required: 108,
-    approved: 13,
-    missing: 95,
-    encounters: { required: 12, approved: 5, missing: 7 },
+    approved: 16,
+    missing: 92,
+    encounters: { required: 12, approved: 8, missing: 4 },
     choices: { required: 48, approved: 4, missing: 44 },
     results: { required: 48, approved: 4, missing: 44 },
   });
   const diagnostics = validateUnwrittenMapPresentation();
-  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 95);
+  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 92);
 });
 
 test("inventory never counts declared approvals whose local files fail validation", () => {
@@ -169,8 +169,9 @@ test("coverage summary identifies Reed Parliament as approved and every missing 
 
 test("human-readable summary reports blocked production status and exact inventory", () => {
   const summary = formatUnwrittenMapPresentationSummary();
-  assert.match(summary, /Raster inventory: 13\/108 approved; 95 commissioning assets missing/);
+  assert.match(summary, /Raster inventory: 16\/108 approved; 92 commissioning assets missing/);
   assert.match(summary, /Production status: BLOCKED/);
   assert.match(summary, /Scenario: frog-parliament \[approved\]/);
-  assert.match(summary, /Scenario: mirror-marsh \[MISSING\]/);
+  assert.match(summary, /Scenario: mirror-marsh \[approved\]/);
+  assert.match(summary, /Scenario: ember-library \[MISSING\]/);
 });

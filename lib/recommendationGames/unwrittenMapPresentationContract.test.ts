@@ -118,6 +118,9 @@ test("newly supplied encounter art retains authorized source and derived provena
     "whisper-orchard": ["whisper-orchard-encounter", "d8a7e9bcd190a155012fa8487de34ed9f04374f8b8dc09ae8595f76b54ac0424"],
     "clockwork-bridge": ["clockwork-bridge-encounter", "d5db024902530a630b4b4915de00abf71dfb00994dd4eb6c781c7c8747cc77ff"],
     "cloud-shepherd": ["cloud-shepherd-encounter", "dee3eb79771fe639eb2e2bb4f0cd85007c3300ee6d55545ab62318bf1162fc89"],
+    "mirror-marsh": ["mirror-marsh-encounter", "2bb05f58ad5eafe013c568c1bd9bf41565cb159f842c8caed99a5003f68dd6b1"],
+    "rain-camp": ["rain-camp-encounter", "8972b46edee314463a21dab80b9f95f91487e1e99bc732cb5cc1f356bf18bc4e"],
+    "paper-dragon": ["paper-dragon-encounter", "78b042b8c4c00051226c5d8716147eac38b6ae1cbff6dfd44baa6ce3125f0ed5"],
   } as const;
 
   for (const [scenarioId, [localAssetId, sourceSha256]] of Object.entries(expected)) {
@@ -143,6 +146,9 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
     "whisper-orchard",
     "clockwork-bridge",
     "cloud-shepherd",
+    "mirror-marsh",
+    "rain-camp",
+    "paper-dragon",
     "frog-parliament",
   ]);
   for (const encounter of metadata) {

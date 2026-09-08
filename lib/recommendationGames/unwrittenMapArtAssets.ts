@@ -25,6 +25,9 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "whisper-orchard-encounter": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-encounter.webp",
   "clockwork-bridge-encounter": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-encounter.webp",
   "cloud-shepherd-encounter": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-encounter.webp",
+  "mirror-marsh-encounter": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-encounter.webp",
+  "rain-camp-encounter": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-encounter.webp",
+  "paper-dragon-encounter": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-encounter.webp",
 
   "frog-parliament-encounter": "assets/games/unwritten-map/frog-encounter.webp",
 
@@ -91,6 +94,9 @@ export const UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS: Readonly<Partial<Record<string, 
   "whisper-orchard": "whisper-orchard-encounter",
   "clockwork-bridge": "clockwork-bridge-encounter",
   "cloud-shepherd": "cloud-shepherd-encounter",
+  "mirror-marsh": "mirror-marsh-encounter",
+  "rain-camp": "rain-camp-encounter",
+  "paper-dragon": "paper-dragon-encounter",
   "frog-parliament": FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
 };
 
@@ -127,6 +133,27 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     sourceSha256: "dee3eb79771fe639eb2e2bb4f0cd85007c3300ee6d55545ab62318bf1162fc89",
     derivedSha256: "853f75983848a79f04f72b7dade2ba89f72ce3cafa2c83752a5ed040742a0286",
     derivedDimensions: "1466x977",
+    authorization: "User-supplied for PR #306",
+  },
+  "mirror-marsh-encounter": {
+    sourceFile: "50be74da-47fa-49fe-a204-cf1076c80c9c-25a580be-9955-4d46-bcd1-978a2e7fad60-clipboard.png",
+    sourceSha256: "2bb05f58ad5eafe013c568c1bd9bf41565cb159f842c8caed99a5003f68dd6b1",
+    derivedSha256: "5be524e0902da7ec87b0561cacd6c8f1f73ba5b9f58e4d23ca154373c54115a2",
+    derivedDimensions: "1437x958",
+    authorization: "User-supplied for PR #306",
+  },
+  "rain-camp-encounter": {
+    sourceFile: "9af4bcb0-68d8-4724-8736-faa412031456-02e1abbf-3f03-4f02-8c0b-b7019fb013c9-clipboard.png",
+    sourceSha256: "8972b46edee314463a21dab80b9f95f91487e1e99bc732cb5cc1f356bf18bc4e",
+    derivedSha256: "dc15e7d5ea431adb2e43c9a707e2893a3c1d2e8422e84f8d1fb2c36620ee366f",
+    derivedDimensions: "1433x955",
+    authorization: "User-supplied for PR #306",
+  },
+  "paper-dragon-encounter": {
+    sourceFile: "46e2ab70-c86c-4262-8ea3-a4888b62c6d5-c5fc2e67-4901-4091-85a7-980d427650c1-clipboard.png",
+    sourceSha256: "78b042b8c4c00051226c5d8716147eac38b6ae1cbff6dfd44baa6ce3125f0ed5",
+    derivedSha256: "16f3a3afbd00bbdc89d415074f35207ba1ea43d9102307fbff46c209fdcb9878",
+    derivedDimensions: "1415x943",
     authorization: "User-supplied for PR #306",
   },
 };
