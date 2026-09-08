@@ -21,6 +21,10 @@ const LOCAL_ART_SOURCES: Partial<Record<UnwrittenMapLocalAssetId, ImageSource>> 
   "lantern-fair-result-balcony-view": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-balcony-view.webp"),
   "lantern-fair-result-hidden-melody": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-hidden-melody.webp"),
   "lantern-fair-result-help-lanterns": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-help-lanterns.webp"),
+  "lantern-fair-choice-take-stage": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-take-stage.webp"),
+  "lantern-fair-choice-balcony-view": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-balcony-view.webp"),
+  "lantern-fair-choice-hidden-melody": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-hidden-melody.webp"),
+  "lantern-fair-choice-help-lanterns": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-help-lanterns.webp"),
   "whisper-orchard-encounter": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-encounter.webp"),
   "whisper-orchard-choice-call-light": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-call-light.webp"),
   "whisper-orchard-choice-trail-light": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-trail-light.webp"),
@@ -103,12 +107,12 @@ export function UnwrittenMapArt({
         style={[styles.localArt, variant === "choice" && styles.localChoiceArt]}
         contentFit={variant === "choice" ? "contain" : "cover"}
         onError={() => setLoadFailed(true)}
-        accessible={variant !== "result"}
-        aria-hidden={variant === "result"}
-        accessibilityElementsHidden={variant === "result"}
-        importantForAccessibility={variant === "result" ? "no" : "auto"}
-        alt={variant === "result" ? "" : undefined}
-        accessibilityLabel={variant === "result" ? undefined : `${label}. Illustrated local artwork; depicted actor role: ${actorRole}.`}
+        accessible={variant === "encounter"}
+        aria-hidden={variant !== "encounter"}
+        accessibilityElementsHidden={variant !== "encounter"}
+        importantForAccessibility={variant !== "encounter" ? "no-hide-descendants" : "auto"}
+        alt={variant !== "encounter" ? "" : undefined}
+        accessibilityLabel={variant === "encounter" ? `${label}. Illustrated local artwork; depicted actor role: ${actorRole}.` : ""}
       />
     );
   }
@@ -117,7 +121,10 @@ export function UnwrittenMapArt({
     <View
       style={[styles.unavailable, variant === "choice" && styles.unavailableChoice]}
       accessibilityRole="image"
-      accessibilityLabel={`${label}. Authorized illustration unavailable.`}
+      accessible={variant !== "choice"}
+      accessibilityElementsHidden={variant === "choice"}
+      importantForAccessibility={variant === "choice" ? "no-hide-descendants" : "auto"}
+      accessibilityLabel={variant === "choice" ? "" : `${label}. Authorized illustration unavailable.`}
     >
       <MaterialCommunityIcons
         name="image-broken-variant"

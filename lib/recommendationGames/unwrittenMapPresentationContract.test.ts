@@ -20,6 +20,7 @@ import {
   FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
   LANTERN_FAIR_RESULT_ASSET_IDS,
+  LANTERN_FAIR_CHOICE_ASSET_IDS,
   UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE,
   WHISPER_ORCHARD_CHOICE_ASSET_IDS,
   WHISPER_ORCHARD_RESULT_ASSET_IDS,
@@ -113,6 +114,53 @@ test("frog-parliament local assets are mapped by authoritative choice id, not ba
   assert.equal(unwrittenMapLocalAssetPath(FROG_PARLIAMENT_RESULT_ASSET_IDS["night-pageant"]), "assets/games/unwritten-map/result-frog-pageant.webp");
   assert.equal(unwrittenMapLocalAssetPath(FROG_PARLIAMENT_RESULT_ASSET_IDS["moon-experiment"]), "assets/games/unwritten-map/result-moon-frog.webp");
   assert.equal(unwrittenMapLocalAssetPath(FROG_PARLIAMENT_RESULT_ASSET_IDS["grand-speech"]), "assets/games/unwritten-map/result-frog-speech.webp");
+});
+
+test("Lantern Fair choice art maps one-to-one to authoritative choice ids and never to results", () => {
+  const lanternFair = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "lantern-fair");
+  assert.ok(lanternFair);
+  const expected = {
+    "take-stage": "lantern-fair-choice-take-stage",
+    "balcony-view": "lantern-fair-choice-balcony-view",
+    "hidden-melody": "lantern-fair-choice-hidden-melody",
+    "help-lanterns": "lantern-fair-choice-help-lanterns",
+  } as const;
+
+  assert.deepEqual(lanternFair.choices.map((choice) => choice.choiceId), [
+    "take-stage",
+    "balcony-view",
+    "hidden-melody",
+    "help-lanterns",
+  ]);
+  for (const choice of lanternFair.choices) {
+    const localAssetId = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(LANTERN_FAIR_CHOICE_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.focalArt.assetId, `choice:lantern-fair:${choice.choiceId}`);
+    assert.equal(choice.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.focalArt.status, "approved");
+    assert.equal(choice.result.focalArt.assetId, `result:lantern-fair:${choice.choiceId}`);
+    assert.equal(choice.result.focalArt.localAssetId, null);
+    assert.equal(choice.result.focalArt.status, "missing");
+  }
+});
+
+test("Lantern Fair choice art retains authorized source and derived provenance", () => {
+  const expected = {
+    "lantern-fair-choice-take-stage": "ae0339a4bb2eb03f5b950a905e9e2b7b6b10dedf90de6ea8fa4723c910bec7aa",
+    "lantern-fair-choice-balcony-view": "cc5e3f5be63c4b9795da9129d12307636612f8d0c2ea00b528e517e392f72e86",
+    "lantern-fair-choice-hidden-melody": "ba6edef51d9408217bfb8a60a13dd66bf23cdc693701f2580429f42800e0565b",
+    "lantern-fair-choice-help-lanterns": "5080027b52021a6685fb30a161b59efb8f0e2599fec77a2fd81594592ec5a762",
+  } as const;
+
+  for (const localAssetId of Object.keys(expected) as (keyof typeof expected)[]) {
+    const sourceSha256 = expected[localAssetId];
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, "800x600");
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", unwrittenMapLocalAssetPath(localAssetId)));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
 });
 
 test("newly supplied encounter art retains authorized source and derived provenance", () => {
@@ -262,7 +310,9 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
     const encounterStatus = approvedEncounterIds.has(encounter.scenarioId) ? "approved" : "missing";
     assert.equal(encounter.focalArt.status, encounterStatus, `${encounter.scenarioId} encounter art status mismatch`);
     for (const choice of encounter.choices) {
-      const choiceStatus = encounter.scenarioId === "frog-parliament" || encounter.scenarioId === "whisper-orchard"
+      const choiceStatus = encounter.scenarioId === "frog-parliament"
+        || encounter.scenarioId === "whisper-orchard"
+        || encounter.scenarioId === "lantern-fair"
         ? "approved"
         : "missing";
       const resultStatus = encounter.scenarioId === "frog-parliament"
@@ -282,7 +332,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
 
   const allChoices = metadata.flatMap((encounter) => encounter.choices);
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
-  assert.equal(unavailableChoices.length, 40);
+  assert.equal(unavailableChoices.length, 36);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
   assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 36);
 });

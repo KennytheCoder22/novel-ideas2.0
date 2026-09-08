@@ -1,9 +1,10 @@
 // Local asset manifest for The Unwritten Map's presentation layer.
 //
-// Authorized focal art currently covers all encounters, Mossmere/frog-parliament,
-// Whisper Orchard choices/results, and Lantern Fair results, alongside shared cartographic
-// framing chrome. Every other choice and result remains an explicitly
-// missing raster commissioning slot (see unwrittenMapPresentationContract.ts). This module
+// Authorized focal art currently covers every encounter, all Mossmere/
+// frog-parliament choices and results, Whisper Orchard choices/results, and Lantern
+// Fair choices and results, alongside shared cartographic framing chrome.
+// Every other choice and result remains an explicitly missing raster
+// commissioning slot (see unwrittenMapPresentationContract.ts). This module
 // is pure data (a path manifest) plus a couple of pure lookup helpers; it
 // does not touch the filesystem itself so it stays safe to import from any
 // runtime. Filesystem existence checks live in the Node-only validator.
@@ -26,6 +27,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "lantern-fair-result-balcony-view": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-balcony-view.webp",
   "lantern-fair-result-hidden-melody": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-hidden-melody.webp",
   "lantern-fair-result-help-lanterns": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-help-lanterns.webp",
+  "lantern-fair-choice-take-stage": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-take-stage.webp",
+  "lantern-fair-choice-balcony-view": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-balcony-view.webp",
+  "lantern-fair-choice-hidden-melody": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-hidden-melody.webp",
+  "lantern-fair-choice-help-lanterns": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-help-lanterns.webp",
   "whisper-orchard-encounter": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-encounter.webp",
   "whisper-orchard-choice-call-light": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-call-light.webp",
   "whisper-orchard-choice-trail-light": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-trail-light.webp",
@@ -93,6 +98,13 @@ export const FROG_PARLIAMENT_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalA
   "night-pageant": "frog-parliament-choice-night-pageant",
   "moon-experiment": "frog-parliament-choice-moon-experiment",
   "grand-speech": "frog-parliament-choice-grand-speech",
+};
+
+export const LANTERN_FAIR_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "take-stage": "lantern-fair-choice-take-stage",
+  "balcony-view": "lantern-fair-choice-balcony-view",
+  "hidden-melody": "lantern-fair-choice-hidden-melody",
+  "help-lanterns": "lantern-fair-choice-help-lanterns",
 };
 
 /** The exact, authoritative choice-id -> local-asset-id mapping for results. */
@@ -185,6 +197,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "78c0bbd53611f141fbf9118170e00010f902af52298ead3c8df2d736a1889830",
     derivedDimensions: "1418x945",
     authorization: "User-supplied for PR #306",
+  },
+  "lantern-fair-choice-take-stage": {
+    sourceFile: "b0a32019-e55d-4ab8-ac7a-49b2ef3139a9-1cc8091e-4547-4f71-b077-afec765727ab-clipboard.png",
+    sourceSha256: "ae0339a4bb2eb03f5b950a905e9e2b7b6b10dedf90de6ea8fa4723c910bec7aa",
+    derivedSha256: "64607381a8dcdcd637f630923112727188484f70de9deb8ba799b53f62ed6386",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for this Lantern Fair choice-art phase",
+  },
+  "lantern-fair-choice-balcony-view": {
+    sourceFile: "ca53938b-ddf0-462c-8a93-ca0a9472cd37-a923c3e0-51c2-41c5-88d0-7c176fd0dbf2-clipboard.png",
+    sourceSha256: "cc5e3f5be63c4b9795da9129d12307636612f8d0c2ea00b528e517e392f72e86",
+    derivedSha256: "fcf4a37324cc3da4b8e9a49127d0553dd159d4b1c686c835a91d63aebc3e0ac6",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for this Lantern Fair choice-art phase",
+  },
+  "lantern-fair-choice-hidden-melody": {
+    sourceFile: "1e2e7391-3aae-451d-8292-1f6a52941b64-45e1b0b4-7c1a-4919-ba16-9ba6ce8425ee-clipboard.png",
+    sourceSha256: "ba6edef51d9408217bfb8a60a13dd66bf23cdc693701f2580429f42800e0565b",
+    derivedSha256: "c5294a8154949d9f46b98d4cb18ee6c3aa61653c03aa77681720d9ab0cd26475",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for this Lantern Fair choice-art phase",
+  },
+  "lantern-fair-choice-help-lanterns": {
+    sourceFile: "1b6f2dad-2192-4686-b8d4-9e61d6b9ff5c-db2ba40c-635f-48c8-afae-8ceb25aeab03-clipboard.png",
+    sourceSha256: "5080027b52021a6685fb30a161b59efb8f0e2599fec77a2fd81594592ec5a762",
+    derivedSha256: "f6cfa181a31c803850fddf459b8a4f44e659ea357e663bed2da1cca57cb2cd7d",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for this Lantern Fair choice-art phase",
   },
   "whisper-orchard-encounter": {
     sourceFile: "a93fb7d1-cb43-487e-ae1e-e6e62c2eb72a-ca28c87f-d8d7-4e64-b9e6-4a0a862d12c9-clipboard.png",
