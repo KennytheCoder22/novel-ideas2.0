@@ -1,8 +1,8 @@
 // Local asset manifest for The Unwritten Map's presentation layer.
 //
-// Authorized focal art currently covers Mossmere/frog-parliament and the
-// Sunmeadow/lantern-fair encounter, alongside shared cartographic framing
-// chrome. Every other encounter, choice, and result remains an explicitly
+// Authorized focal art currently covers all encounters, Mossmere/frog-parliament,
+// Whisper Orchard choices, and Lantern Fair results, alongside shared cartographic
+// framing chrome. Every other choice and result remains an explicitly
 // missing raster commissioning slot (see unwrittenMapPresentationContract.ts). This module
 // is pure data (a path manifest) plus a couple of pure lookup helpers; it
 // does not touch the filesystem itself so it stays safe to import from any
@@ -27,6 +27,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "lantern-fair-result-hidden-melody": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-hidden-melody.webp",
   "lantern-fair-result-help-lanterns": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-help-lanterns.webp",
   "whisper-orchard-encounter": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-encounter.webp",
+  "whisper-orchard-choice-call-light": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-call-light.webp",
+  "whisper-orchard-choice-trail-light": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-trail-light.webp",
+  "whisper-orchard-choice-decode-trees": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-decode-trees.webp",
+  "whisper-orchard-choice-taste-fruit": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-taste-fruit.webp",
   "clockwork-bridge-encounter": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-encounter.webp",
   "cloud-shepherd-encounter": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-encounter.webp",
   "mirror-marsh-encounter": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-encounter.webp",
@@ -103,6 +107,14 @@ export const LANTERN_FAIR_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAsse
   "help-lanterns": "lantern-fair-result-help-lanterns",
 };
 
+/** Authoritative Whisper Orchard choice-id -> commissioned choice-art mapping. */
+export const WHISPER_ORCHARD_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "call-light": "whisper-orchard-choice-call-light",
+  "trail-light": "whisper-orchard-choice-trail-light",
+  "decode-trees": "whisper-orchard-choice-decode-trees",
+  "taste-fruit": "whisper-orchard-choice-taste-fruit",
+};
+
 export const FROG_PARLIAMENT_ENCOUNTER_ASSET_ID: UnwrittenMapLocalAssetId = "frog-parliament-encounter";
 
 export const UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS: Readonly<Partial<Record<string, UnwrittenMapLocalAssetId>>> = {
@@ -168,6 +180,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "158536501f8daba63b55782ef6725e6762da29045538290418bc5fbabad319a3",
     derivedDimensions: "1395x930",
     authorization: "User-supplied for PR #306",
+  },
+  "whisper-orchard-choice-call-light": {
+    sourceFile: "736c738d-c658-4a40-a814-b3082af8886b-745be0cd-a0a7-4a42-97d5-868286b02324-clipboard.png",
+    sourceSha256: "08d7e426025efa8048fbec7841253c09661dcce2a137e9ffedf71b94b35c85ab",
+    derivedSha256: "23f74f6070b5cb7bd2106346fa02eab6ec8f730f4ce14892ace8aa5b8085c0c5",
+    derivedDimensions: "1200x900",
+    authorization: "User-supplied for Whisper Orchard choice integration",
+  },
+  "whisper-orchard-choice-trail-light": {
+    sourceFile: "8c6e765d-a09d-434c-869f-651fbc62e17c-19ea12d1-959d-451e-9da5-666bc2a9bb37-clipboard.png",
+    sourceSha256: "6bbcee66d1d01a07a6bd5b549ee626735816a57f72ceaf85f293988dc66cba64",
+    derivedSha256: "c3f5861e983633b3c5ded814528511a9c8241e0372442d978eb48eb17a70a3f9",
+    derivedDimensions: "1200x900",
+    authorization: "User-supplied for Whisper Orchard choice integration",
+  },
+  "whisper-orchard-choice-decode-trees": {
+    sourceFile: "a77b7a05-018b-450d-9413-82fb71cd6446-9d39468b-509c-46e4-aba8-de754a0cc9a8-clipboard.png",
+    sourceSha256: "6c4ae438db87e704fd648c2506517e4d2432298cf2ab9304fb9228e41eac0665",
+    derivedSha256: "17b71cbecf8843341a6d5cb7e3f3a687c6a17c138f5de9ab88a9ae8fd9bb6817",
+    derivedDimensions: "1200x900",
+    authorization: "User-supplied for Whisper Orchard choice integration",
+  },
+  "whisper-orchard-choice-taste-fruit": {
+    sourceFile: "9d597ec4-5eca-47ca-8129-8de37ae96768-7ae4edb6-a642-4654-941d-cced0b6ceb63-clipboard.png",
+    sourceSha256: "723e9596d70e4c78e336397d57cc4a24f2f26aa2781d723ec634e22e607173ea",
+    derivedSha256: "e8a035ee144aa388b83c669a8e979296cea41591ca71575dc089da7f45cdb0fe",
+    derivedDimensions: "1200x900",
+    authorization: "User-supplied for Whisper Orchard choice integration",
   },
   "clockwork-bridge-encounter": {
     sourceFile: "14e6145f-c501-457e-b5c3-728a7fa8ae1d-e414d6fb-2c40-4268-998c-28658fc346cb-clipboard.png",

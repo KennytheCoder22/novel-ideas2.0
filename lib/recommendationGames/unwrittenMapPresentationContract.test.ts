@@ -21,6 +21,7 @@ import {
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
   LANTERN_FAIR_RESULT_ASSET_IDS,
   UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE,
+  WHISPER_ORCHARD_CHOICE_ASSET_IDS,
   unwrittenMapLocalAssetPath,
 } from "./unwrittenMapArtAssets";
 import { unwrittenMapViewportLayout } from "./unwrittenMapPresentation";
@@ -169,6 +170,32 @@ test("Lantern Fair result art is mapped by authoritative choice id with provenan
   }
 });
 
+test("Whisper Orchard choice art is mapped by authoritative choice id with provenance", () => {
+  const metadata = buildUnwrittenMapPresentationMetadata();
+  const encounter = metadata.find((item) => item.scenarioId === "whisper-orchard");
+  assert.ok(encounter);
+  const expected = {
+    "call-light": ["whisper-orchard-choice-call-light", "08d7e426025efa8048fbec7841253c09661dcce2a137e9ffedf71b94b35c85ab"],
+    "trail-light": ["whisper-orchard-choice-trail-light", "6bbcee66d1d01a07a6bd5b549ee626735816a57f72ceaf85f293988dc66cba64"],
+    "decode-trees": ["whisper-orchard-choice-decode-trees", "6c4ae438db87e704fd648c2506517e4d2432298cf2ab9304fb9228e41eac0665"],
+    "taste-fruit": ["whisper-orchard-choice-taste-fruit", "723e9596d70e4c78e336397d57cc4a24f2f26aa2781d723ec634e22e607173ea"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(WHISPER_ORCHARD_CHOICE_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.focalArt.status, "approved");
+    assert.equal(choice.focalArt.targetAspectRatio, "4:3");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.derivedDimensions, "1200x900");
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+  }
+});
+
 test("only supplied focal art is approved; every other slot stays explicitly missing", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
   const approvedEncounterIds = new Set([
@@ -189,7 +216,9 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
     const encounterStatus = approvedEncounterIds.has(encounter.scenarioId) ? "approved" : "missing";
     assert.equal(encounter.focalArt.status, encounterStatus, `${encounter.scenarioId} encounter art status mismatch`);
     for (const choice of encounter.choices) {
-      const choiceStatus = encounter.scenarioId === "frog-parliament" ? "approved" : "missing";
+      const choiceStatus = encounter.scenarioId === "frog-parliament" || encounter.scenarioId === "whisper-orchard"
+        ? "approved"
+        : "missing";
       const resultStatus = encounter.scenarioId === "frog-parliament" || encounter.scenarioId === "lantern-fair"
         ? "approved"
         : "missing";
@@ -203,12 +232,11 @@ test("temporary commissioned-art state omits unavailable choice and result art",
   const metadata = buildUnwrittenMapPresentationMetadata();
   assert.ok(metadata.every((encounter) => unwrittenMapHasCommissionedArt(encounter.focalArt)));
 
-  const unavailableChoices = metadata
-    .filter((encounter) => encounter.scenarioId !== "frog-parliament")
-    .flatMap((encounter) => encounter.choices);
-  assert.equal(unavailableChoices.length, 44);
+  const allChoices = metadata.flatMap((encounter) => encounter.choices);
+  const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
+  assert.equal(unavailableChoices.length, 40);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.equal(unavailableChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 40);
+  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 40);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {

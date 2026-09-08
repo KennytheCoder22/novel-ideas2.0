@@ -2054,12 +2054,13 @@ async function main() {
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
   const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
-  assert(inventory.required === 108 && inventory.approved === 24 && inventory.missing === 84
+  assert(inventory.required === 108 && inventory.approved === 28 && inventory.missing === 80
     && inventory.encounters.approved === 12 && inventory.encounters.missing === 0
+    && inventory.choices.approved === 8 && inventory.choices.missing === 40
     && inventory.results.approved === 8 && inventory.results.missing === 40,
     `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
-  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 84,
-    "full focal-art audit must stay explicitly blocked until all 84 remaining choice/result assets are supplied");
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 80,
+    "full focal-art audit must stay explicitly blocked until all 80 remaining choice/result assets are supplied");
   assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
     "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
   assert(!artComponentSource.includes("AUTHORIZED ILLUSTRATION REQUIRED")
@@ -2070,8 +2071,9 @@ async function main() {
   assert(presentationSummary.length === 12, `presentation coverage summary must cover all 12 scenarios, found ${presentationSummary.length}`);
   assert(presentationSummary.every((row) => row.choiceCount === 4)
     && presentationSummary.find((row) => row.scenarioId === "frog-parliament")?.choiceOkCount === 4
+    && presentationSummary.find((row) => row.scenarioId === "whisper-orchard")?.choiceOkCount === 4
     && presentationSummary.find((row) => row.scenarioId === "lantern-fair")?.resultOkCount === 4,
-  "coverage must retain four slots per scenario, Reed Parliament coverage, and all four Lantern Fair results");
+  "coverage must retain four slots per scenario and all commissioned Reed Parliament, Whisper Orchard, and Lantern Fair art");
   checks.push("encounter_complete_staged_raster_commissioning_gate");
 
   console.log(JSON.stringify({

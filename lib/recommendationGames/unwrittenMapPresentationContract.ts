@@ -20,6 +20,7 @@ import {
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
   LANTERN_FAIR_RESULT_ASSET_IDS,
   UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS,
+  WHISPER_ORCHARD_CHOICE_ASSET_IDS,
   unwrittenMapLocalAssetPath,
   type UnwrittenMapLocalAssetId,
 } from "./unwrittenMapArtAssets";
@@ -358,6 +359,9 @@ function buildChoicePresentation(
 
   const frogChoiceAssetId = FROG_PARLIAMENT_CHOICE_ASSET_IDS[choice.id];
   const frogResultAssetId = FROG_PARLIAMENT_RESULT_ASSET_IDS[choice.id];
+  const choiceLocalAssetId = scenarioId === "whisper-orchard"
+    ? WHISPER_ORCHARD_CHOICE_ASSET_IDS[choice.id]
+    : frogChoiceAssetId;
   const resultLocalAssetId = scenarioId === "lantern-fair"
     ? LANTERN_FAIR_RESULT_ASSET_IDS[choice.id]
     : frogResultAssetId;
@@ -371,11 +375,11 @@ function buildChoicePresentation(
   const focalArt = rasterArt({
     id: choiceArtId,
     assetId: choiceAssetId,
-    localAssetId: frogChoiceAssetId,
-    assetPath: frogChoiceAssetId
-      ? unwrittenMapLocalAssetPath(frogChoiceAssetId)
+    localAssetId: choiceLocalAssetId,
+    assetPath: choiceLocalAssetId
+      ? unwrittenMapLocalAssetPath(choiceLocalAssetId)
       : expectedRasterPath(regionId, scenarioId, "choice", choice.id),
-    status: frogChoiceAssetId ? "approved" : "missing",
+    status: choiceLocalAssetId ? "approved" : "missing",
     slot: "choice",
     regionId,
     paletteSlot,
