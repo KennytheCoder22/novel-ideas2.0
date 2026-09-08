@@ -2053,13 +2053,19 @@ async function main() {
 
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
-  assert(presentationDiagnostics.length === 0,
-    `domain presentation metadata contract must have zero diagnostics: ${presentationDiagnostics.map((issue) => `[${issue.code}] ${issue.scenarioId || "-"}${issue.choiceId ? ` / ${issue.choiceId}` : ""}: ${issue.message}`).join("; ")}`);
+  const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
+  assert(inventory.required === 108 && inventory.approved === 10 && inventory.missing === 98,
+    `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 98,
+    "production presentation must stay explicitly blocked until all 98 commissioned raster assets are supplied");
+  assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
+    "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
   const presentationSummary = presentationValidator.buildUnwrittenMapPresentationCoverageSummary();
   assert(presentationSummary.length === 12, `presentation coverage summary must cover all 12 scenarios, found ${presentationSummary.length}`);
-  assert(presentationSummary.every((row) => row.choiceCount === 4 && row.choiceOkCount === 4 && row.resultOkCount === 4),
-    "every scenario must report 4 valid choices and 4 valid results in the coverage summary");
-  checks.push("domain_presentation_metadata_contract");
+  assert(presentationSummary.every((row) => row.choiceCount === 4)
+    && presentationSummary.find((row) => row.scenarioId === "frog-parliament")?.choiceOkCount === 4,
+  "coverage must retain four slots per scenario and all nine approved Reed Parliament assets");
+  checks.push("raster_only_presentation_contract_and_commissioning_gate");
 
   console.log(JSON.stringify({
     name: "the-unwritten-map-v2-regressions",

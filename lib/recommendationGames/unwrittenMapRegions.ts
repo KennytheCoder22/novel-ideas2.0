@@ -4,8 +4,8 @@
 // Native dependency) so it is safe to import from any runtime: the app
 // bundle, Node scripts, or tests. It defines the bounded set of regions the
 // game world is divided into, along with each region's palette and the
-// canonical/fallback motif vocabulary used to keep generated focal art
-// premise-appropriate and visually distinct region-to-region.
+// canonical/fallback motif vocabulary used to brief focal illustrations and
+// keep outer framing premise-appropriate and visually distinct by region.
 
 export const UNWRITTEN_MAP_REGION_IDS = [
   "sunmeadow",
@@ -35,8 +35,8 @@ export type UnwrittenMapRegionDefinition = {
   /** Hex colors keyed by palette slot; every region defines all three slots. */
   paletteHex: Record<UnwrittenMapPaletteSlot, string>;
   /**
-   * The canonical, region-specific motif vocabulary used by vector/CSS art
-   * composition. Tokens must never be shared between regions (enforced by
+   * The canonical, region-specific motif vocabulary used by art briefs and
+   * shared outer framing. Tokens must never be shared between regions (enforced by
    * the validator) so each region reads as visually distinct.
    */
   canonicalMotifTokens: readonly string[];

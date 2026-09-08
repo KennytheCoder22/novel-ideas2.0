@@ -12,7 +12,6 @@ import path from "node:path";
 import { UNWRITTEN_MAP_SCENARIOS } from "./unwrittenMap";
 import {
   UNWRITTEN_MAP_REGION_IDS,
-  unwrittenMapRegionOwningMotifToken,
   type UnwrittenMapRegionId,
 } from "./unwrittenMapRegions";
 import {
@@ -24,7 +23,10 @@ import {
   type UnwrittenMapArtDefinition,
   type UnwrittenMapEncounterPresentation,
 } from "./unwrittenMapPresentationContract";
-import { unwrittenMapLocalAssetPath } from "./unwrittenMapArtAssets";
+import {
+  UNWRITTEN_MAP_SHARED_FRAME_ASSET_IDS,
+  unwrittenMapLocalAssetPath,
+} from "./unwrittenMapArtAssets";
 
 export type UnwrittenMapPresentationDiagnosticCode =
   | "coverage_gap"
@@ -34,6 +36,9 @@ export type UnwrittenMapPresentationDiagnosticCode =
   | "duplicate_art_id"
   | "missing_asset_definition"
   | "missing_asset_file"
+  | "missing_required_asset"
+  | "invalid_asset_provider"
+  | "actor_depiction_violation"
   | "explorer_actor_violation";
 
 export type UnwrittenMapPresentationScope = "registry" | "encounter" | "choice" | "result";
@@ -52,12 +57,36 @@ export type UnwrittenMapPresentationValidationOptions = {
   repoRoot?: string;
   /** Injectable for tests; defaults to a real fs.existsSync check. */
   assetExists?: (repoRelativePath: string) => boolean;
+  /** Injectable for tests; defaults to checking the declared raster file signature. */
+  assetIsRaster?: (repoRelativePath: string) => boolean;
 };
 
 const DEFAULT_REPO_ROOT = path.resolve(__dirname, "..", "..");
 
 function defaultAssetExists(repoRoot: string) {
   return (repoRelativePath: string) => fs.existsSync(path.join(repoRoot, repoRelativePath));
+}
+
+function defaultAssetIsRaster(repoRoot: string) {
+  return (repoRelativePath: string) => {
+    const bytes = fs.readFileSync(path.join(repoRoot, repoRelativePath)).subarray(0, 12);
+    const extension = path.extname(repoRelativePath).toLowerCase();
+    if (extension === ".webp") {
+      return bytes.subarray(0, 4).toString("ascii") === "RIFF"
+        && bytes.subarray(8, 12).toString("ascii") === "WEBP";
+    }
+    if (extension === ".png") {
+      return bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    }
+    if (extension === ".jpg" || extension === ".jpeg") {
+      return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    }
+    if (extension === ".avif") {
+      return bytes.subarray(4, 8).toString("ascii") === "ftyp"
+        && ["avif", "avis"].includes(bytes.subarray(8, 12).toString("ascii"));
+    }
+    return false;
+  };
 }
 
 function diagnostic(
@@ -79,6 +108,7 @@ function validateArtDefinition(
   choiceId: string | null,
   seenArtIds: Set<string>,
   assetExists: (relPath: string) => boolean,
+  assetIsRaster: (relPath: string) => boolean,
   issues: UnwrittenMapPresentationDiagnostic[],
 ): void {
   if (!art || !art.id) {
@@ -98,51 +128,137 @@ function validateArtDefinition(
   }
   seenArtIds.add(art.id);
 
-  if (art.kind === "local_asset") {
-    const relPath = unwrittenMapLocalAssetPath(art.assetId);
-    if (!relPath) {
+  if (art.kind !== "local_raster") {
+    issues.push(diagnostic(
+      "invalid_asset_provider",
+      scope,
+      `${scope} art "${art.id}" must use a local illustrated raster; generated SVG/data URI/icon providers are not production art`,
+      regionId,
+      scenarioId,
+      choiceId,
+    ));
+    return;
+  }
+
+  const expectedAssetId = scope === "encounter"
+    ? `encounter:${scenarioId}`
+    : `${scope}:${scenarioId}:${choiceId}`;
+  if (art.slot !== scope || art.assetId !== expectedAssetId) {
+    issues.push(diagnostic(
+      "missing_metadata",
+      scope,
+      `${scope} art must use slot "${scope}" and asset id "${expectedAssetId}", got "${art.slot}" / "${art.assetId}"`,
+      regionId,
+      scenarioId,
+      choiceId,
+    ));
+  }
+
+  if (!/^[a-zA-Z0-9_./-]+\.(webp|png|jpe?g|avif)$/.test(art.assetPath)
+    || art.assetPath.startsWith("data:")
+    || /^https?:/i.test(art.assetPath)
+    || /\.svg$/i.test(art.assetPath)) {
+    issues.push(diagnostic(
+      "invalid_asset_provider",
+      scope,
+      `asset "${art.assetId}" must reference a repository-local raster path, got "${art.assetPath}"`,
+      regionId,
+      scenarioId,
+      choiceId,
+    ));
+  }
+
+  for (const uniqueValue of [`asset:${art.assetId}`, `path:${art.assetPath}`]) {
+    if (seenArtIds.has(uniqueValue)) {
       issues.push(diagnostic(
-        "missing_asset_definition",
+        "duplicate_art_id",
         scope,
-        `local asset "${art.assetId}" referenced by "${art.id}" has no manifest definition`,
-        regionId,
-        scenarioId,
-        choiceId,
-      ));
-    } else if (!assetExists(relPath)) {
-      issues.push(diagnostic(
-        "missing_asset_file",
-        scope,
-        `local asset file "${relPath}" referenced by "${art.id}" does not exist on disk`,
+        `focal raster "${art.assetId}" reuses an asset id or file path; every encounter/choice/result requires a distinct illustration`,
         regionId,
         scenarioId,
         choiceId,
       ));
     }
-    return;
+    seenArtIds.add(uniqueValue);
   }
 
-  if (!art.motifTokens || art.motifTokens.length === 0) {
-    issues.push(diagnostic("missing_metadata", scope, `art "${art.id}" has no motif tokens`, regionId, scenarioId, choiceId));
-    return;
+  if (!art.brief || !art.targetAspectRatio || !art.recommendedDimensions) {
+    issues.push(diagnostic(
+      "missing_metadata",
+      scope,
+      `asset "${art.assetId}" is missing its commissioning brief, aspect ratio, or dimensions`,
+      regionId,
+      scenarioId,
+      choiceId,
+    ));
   }
 
-  for (const token of art.motifTokens) {
-    const owner = unwrittenMapRegionOwningMotifToken(token);
-    if (!owner) {
+  if ((scope === "choice" || scope === "result") && !art.depictsActorRoles.includes("explorer")) {
+    issues.push(diagnostic(
+      "actor_depiction_violation",
+      scope,
+      `player-performed ${scope} asset "${art.assetId}" must depict the explorer performing the action`,
+      regionId,
+      scenarioId,
+      choiceId,
+    ));
+  }
+
+  if (art.status !== "approved") {
+    issues.push(diagnostic(
+      "missing_required_asset",
+      scope,
+      `commissioning required: "${art.assetPath}" (${art.targetAspectRatio}, ${art.recommendedDimensions}) — ${art.brief}`,
+      regionId,
+      scenarioId,
+      choiceId,
+    ));
+  } else {
+    if (!art.localAssetId) {
       issues.push(diagnostic(
-        "invalid_theme",
+        "missing_asset_definition",
         scope,
-        `motif token "${token}" on art "${art.id}" is not part of any known region vocabulary`,
+        `approved raster "${art.assetId}" has no local asset manifest identity`,
         regionId,
         scenarioId,
         choiceId,
       ));
-    } else if (owner !== regionId) {
+    } else {
+      if (UNWRITTEN_MAP_SHARED_FRAME_ASSET_IDS.includes(art.localAssetId)) {
+        issues.push(diagnostic(
+          "invalid_asset_provider",
+          scope,
+          `shared frame "${art.localAssetId}" cannot satisfy the unique focal-art slot "${art.assetId}"`,
+          regionId,
+          scenarioId,
+          choiceId,
+        ));
+      }
+      if (unwrittenMapLocalAssetPath(art.localAssetId) !== art.assetPath) {
+        issues.push(diagnostic(
+          "missing_asset_definition",
+          scope,
+          `approved raster "${art.assetId}" path does not match local manifest entry "${art.localAssetId}"`,
+          regionId,
+          scenarioId,
+          choiceId,
+        ));
+      }
+    }
+    if (!assetExists(art.assetPath)) {
       issues.push(diagnostic(
-        "region_mismatch",
+        "missing_asset_file",
         scope,
-        `motif token "${token}" on art "${art.id}" belongs to region "${owner}", not "${regionId}"`,
+        `approved local raster "${art.assetPath}" referenced by "${art.id}" does not exist on disk`,
+        regionId,
+        scenarioId,
+        choiceId,
+      ));
+    } else if (!assetIsRaster(art.assetPath)) {
+      issues.push(diagnostic(
+        "invalid_asset_provider",
+        scope,
+        `approved local asset "${art.assetPath}" does not contain its declared raster file format`,
         regionId,
         scenarioId,
         choiceId,
@@ -218,6 +334,7 @@ function validateEncounter(
   encounter: UnwrittenMapEncounterPresentation,
   seenArtIds: Set<string>,
   assetExists: (relPath: string) => boolean,
+  assetIsRaster: (relPath: string) => boolean,
   issues: UnwrittenMapPresentationDiagnostic[],
 ): void {
   const { regionId, scenarioId } = encounter;
@@ -252,7 +369,7 @@ function validateEncounter(
     ));
   }
 
-  validateArtDefinition(encounter.focalArt, regionId, "encounter", scenarioId, null, seenArtIds, assetExists, issues);
+  validateArtDefinition(encounter.focalArt, regionId, "encounter", scenarioId, null, seenArtIds, assetExists, assetIsRaster, issues);
 
   if (encounter.choices.length !== 4) {
     issues.push(diagnostic("missing_metadata", "encounter", `scenario "${scenarioId}" must have exactly 4 choices, found ${encounter.choices.length}`, regionId, scenarioId));
@@ -283,8 +400,8 @@ function validateEncounter(
       issues.push(diagnostic("missing_metadata", "choice", `choice "${choice.choiceId}" is missing mood/action metadata`, regionId, scenarioId, choice.choiceId));
     }
 
-    validateArtDefinition(choice.focalArt, regionId, "choice", scenarioId, choice.choiceId, seenArtIds, assetExists, issues);
-    validateArtDefinition(choice.result.focalArt, regionId, "result", scenarioId, choice.choiceId, seenArtIds, assetExists, issues);
+    validateArtDefinition(choice.focalArt, regionId, "choice", scenarioId, choice.choiceId, seenArtIds, assetExists, assetIsRaster, issues);
+    validateArtDefinition(choice.result.focalArt, regionId, "result", scenarioId, choice.choiceId, seenArtIds, assetExists, assetIsRaster, issues);
   }
 }
 
@@ -299,8 +416,10 @@ export function validateUnwrittenMapEncounterPresentation(
 ): UnwrittenMapPresentationDiagnostic[] {
   const repoRoot = options.repoRoot || DEFAULT_REPO_ROOT;
   const assetExists = options.assetExists || defaultAssetExists(repoRoot);
+  const assetIsRaster = options.assetIsRaster
+    || (options.assetExists ? () => true : defaultAssetIsRaster(repoRoot));
   const issues: UnwrittenMapPresentationDiagnostic[] = [];
-  validateEncounter(encounter, new Set(), assetExists, issues);
+  validateEncounter(encounter, new Set(), assetExists, assetIsRaster, issues);
   return issues;
 }
 
@@ -313,6 +432,8 @@ export function validateUnwrittenMapPresentation(
 ): UnwrittenMapPresentationDiagnostic[] {
   const repoRoot = options.repoRoot || DEFAULT_REPO_ROOT;
   const assetExists = options.assetExists || defaultAssetExists(repoRoot);
+  const assetIsRaster = options.assetIsRaster
+    || (options.assetExists ? () => true : defaultAssetIsRaster(repoRoot));
   const issues: UnwrittenMapPresentationDiagnostic[] = [];
 
   validateCoverage(issues);
@@ -321,7 +442,7 @@ export function validateUnwrittenMapPresentation(
   const seenArtIds = new Set<string>();
 
   for (const encounter of metadata) {
-    validateEncounter(encounter, seenArtIds, assetExists, issues);
+    validateEncounter(encounter, seenArtIds, assetExists, assetIsRaster, issues);
   }
 
   return issues;
@@ -340,6 +461,68 @@ export type UnwrittenMapPresentationCoverageSummary = {
   resultOkCount: number;
   diagnosticCount: number;
 }[];
+
+export type UnwrittenMapArtInventorySummary = {
+  required: number;
+  approved: number;
+  missing: number;
+  encounters: { required: number; approved: number; missing: number };
+  choices: { required: number; approved: number; missing: number };
+  results: { required: number; approved: number; missing: number };
+};
+
+export function buildUnwrittenMapArtInventorySummary(
+  options: UnwrittenMapPresentationValidationOptions = {},
+): UnwrittenMapArtInventorySummary {
+  const metadata = buildUnwrittenMapPresentationMetadata();
+  const diagnostics = validateUnwrittenMapPresentation(options);
+  const bySlot = {
+    encounter: metadata.map((encounter) => ({
+      art: encounter.focalArt,
+      scenarioId: encounter.scenarioId,
+      choiceId: null,
+    })),
+    choice: metadata.flatMap((encounter) => encounter.choices.map((choice) => ({
+      art: choice.focalArt,
+      scenarioId: encounter.scenarioId,
+      choiceId: choice.choiceId,
+    }))),
+    result: metadata.flatMap((encounter) => encounter.choices.map((choice) => ({
+      art: choice.result.focalArt,
+      scenarioId: encounter.scenarioId,
+      choiceId: choice.choiceId,
+    }))),
+  };
+  const summarize = (
+    scope: "encounter" | "choice" | "result",
+    items: readonly {
+      art: UnwrittenMapArtDefinition;
+      scenarioId: string;
+      choiceId: string | null;
+    }[],
+  ) => {
+    const approved = items.filter((item) => (
+      item.art.status === "approved"
+      && !diagnostics.some((issue) => (
+        issue.scope === scope
+        && issue.scenarioId === item.scenarioId
+        && issue.choiceId === item.choiceId
+      ))
+    )).length;
+    return { required: items.length, approved, missing: items.length - approved };
+  };
+  const encounters = summarize("encounter", bySlot.encounter);
+  const choices = summarize("choice", bySlot.choice);
+  const results = summarize("result", bySlot.result);
+  return {
+    required: encounters.required + choices.required + results.required,
+    approved: encounters.approved + choices.approved + results.approved,
+    missing: encounters.missing + choices.missing + results.missing,
+    encounters,
+    choices,
+    results,
+  };
+}
 
 export function buildUnwrittenMapPresentationCoverageSummary(
   options: UnwrittenMapPresentationValidationOptions = {},
@@ -375,12 +558,14 @@ export function formatUnwrittenMapPresentationSummary(
 ): string {
   const diagnostics = validateUnwrittenMapPresentation(options);
   const metadata = buildUnwrittenMapPresentationMetadata();
+  const inventory = buildUnwrittenMapArtInventorySummary(options);
   const lines: string[] = [];
 
   lines.push("The Unwritten Map — presentation metadata coverage");
+  lines.push(`Raster inventory: ${inventory.approved}/${inventory.required} approved; ${inventory.missing} commissioning assets missing.`);
   lines.push(diagnostics.length === 0
-    ? "Status: OK (0 diagnostics)"
-    : `Status: FAILED (${diagnostics.length} diagnostic${diagnostics.length === 1 ? "" : "s"})`);
+    ? "Production status: READY (0 diagnostics)"
+    : `Production status: BLOCKED (${diagnostics.length} diagnostic${diagnostics.length === 1 ? "" : "s"})`);
   lines.push("");
 
   for (const regionId of UNWRITTEN_MAP_REGION_IDS) {
@@ -391,13 +576,13 @@ export function formatUnwrittenMapPresentationSummary(
     for (const encounter of regionScenarios) {
       const scenarioDiagnostics = diagnostics.filter((issue) => issue.scenarioId === encounter.scenarioId);
       const encounterDiagnostics = scenarioDiagnostics.filter((issue) => issue.scope === "encounter" || issue.scope === "registry");
-      lines.push(`  Scenario: ${encounter.scenarioId} [${encounterDiagnostics.length === 0 ? "ok" : "FAIL"}] art=${encounter.focalArt.id} actor=${encounter.actorRole}`);
+      lines.push(`  Scenario: ${encounter.scenarioId} [${encounterDiagnostics.length === 0 ? "approved" : "MISSING"}] art=${encounter.focalArt.assetPath} actor=${encounter.actorRole}`);
 
       for (const choice of encounter.choices) {
         const choiceIssues = scenarioDiagnostics.filter((issue) => issue.scope === "choice" && issue.choiceId === choice.choiceId);
         const resultIssues = scenarioDiagnostics.filter((issue) => issue.scope === "result" && issue.choiceId === choice.choiceId);
-        lines.push(`    Choice: ${choice.choiceId} [${choiceIssues.length === 0 ? "ok" : "FAIL"}] art=${choice.focalArt.id}`);
-        lines.push(`      Result: [${resultIssues.length === 0 ? "ok" : "FAIL"}] art=${choice.result.focalArt.id}`);
+        lines.push(`    Choice: ${choice.choiceId} [${choiceIssues.length === 0 ? "approved" : "MISSING"}] art=${choice.focalArt.assetPath}`);
+        lines.push(`      Result: [${resultIssues.length === 0 ? "approved" : "MISSING"}] art=${choice.result.focalArt.assetPath}`);
       }
     }
     lines.push("");

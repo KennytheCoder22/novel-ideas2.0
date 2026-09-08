@@ -1,9 +1,9 @@
 // Local asset manifest for The Unwritten Map's presentation layer.
 //
-// Only Mossmere/frog-parliament focal art and shared cartographic framing
-// chrome shipped as real local assets (PR #305). Every other encounter,
-// choice, and result relies on bounded deterministic vector/CSS composition
-// identities instead (see unwrittenMapPresentationContract.ts). This module
+// Authorized focal art currently covers Mossmere/frog-parliament and the
+// Sunmeadow/lantern-fair encounter, alongside shared cartographic framing
+// chrome. Every other encounter, choice, and result remains an explicitly
+// missing raster commissioning slot (see unwrittenMapPresentationContract.ts). This module
 // is pure data (a path manifest) plus a couple of pure lookup helpers; it
 // does not touch the filesystem itself so it stays safe to import from any
 // runtime. Filesystem existence checks live in the Node-only validator.
@@ -21,6 +21,8 @@
  *    present on disk.
  */
 export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
+  "lantern-fair-encounter": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-encounter.webp",
+
   "frog-parliament-encounter": "assets/games/unwritten-map/frog-encounter.webp",
 
   "frog-parliament-choice-hear-frogs": "assets/games/unwritten-map/frog-hear.webp",
@@ -80,6 +82,27 @@ export const FROG_PARLIAMENT_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalA
 };
 
 export const FROG_PARLIAMENT_ENCOUNTER_ASSET_ID: UnwrittenMapLocalAssetId = "frog-parliament-encounter";
+
+export const UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS: Readonly<Partial<Record<string, UnwrittenMapLocalAssetId>>> = {
+  "lantern-fair": "lantern-fair-encounter",
+  "frog-parliament": FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
+};
+
+export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<UnwrittenMapLocalAssetId, {
+  sourceFile: string;
+  sourceSha256: string;
+  derivedSha256: string;
+  derivedDimensions: string;
+  authorization: string;
+}>>> = {
+  "lantern-fair-encounter": {
+    sourceFile: "a38fedbc-84ee-4467-8b6a-6f23c6135066-0fca7dc5-313d-45ce-beea-f3c0ce118358-clipboard.png",
+    sourceSha256: "1cc48fed7691c3fdbf29cc1096d4df7bbe2992a868c5e1893a2876e80fe701a7",
+    derivedSha256: "78c0bbd53611f141fbf9118170e00010f902af52298ead3c8df2d736a1889830",
+    derivedDimensions: "1418x945",
+    authorization: "User-supplied for PR #306",
+  },
+};
 
 export const UNWRITTEN_MAP_SHARED_FRAME_ASSET_IDS: readonly UnwrittenMapLocalAssetId[] =
   UNWRITTEN_MAP_LOCAL_ASSET_IDS.filter((id) => id.startsWith("shared-frame-"));

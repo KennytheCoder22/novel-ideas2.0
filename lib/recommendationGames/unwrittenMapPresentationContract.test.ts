@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
 
 import { UNWRITTEN_MAP_SCENARIOS } from "./unwrittenMap";
@@ -15,6 +18,7 @@ import {
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
+  UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE,
   unwrittenMapLocalAssetPath,
 } from "./unwrittenMapArtAssets";
 import { unwrittenMapViewportLayout } from "./unwrittenMapPresentation";
@@ -59,44 +63,31 @@ test("mossmere's canonical vocabulary contains exactly the required wetland moti
   }
 });
 
-test("every mossmere art definition includes all required wetland motifs", () => {
+test("every Mossmere commissioning entry inherits the Mossmere palette and local raster path", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
   const mossmereEncounters = metadata.filter((encounter) => encounter.regionId === "mossmere");
   assert.equal(mossmereEncounters.length, 2, "expected mirror-marsh and frog-parliament in mossmere");
 
   for (const encounter of mossmereEncounters) {
-    if (encounter.focalArt.kind === "vector_composition") {
-      for (const motif of MOSSMERE_REQUIRED_MOTIFS) {
-        assert.ok(encounter.focalArt.motifTokens.includes(motif), `${encounter.scenarioId} encounter art missing motif "${motif}"`);
-      }
-    }
-    for (const choice of encounter.choices) {
-      if (choice.focalArt.kind === "vector_composition") {
-        for (const motif of MOSSMERE_REQUIRED_MOTIFS) {
-          assert.ok(choice.focalArt.motifTokens.includes(motif), `${choice.choiceId} choice art missing motif "${motif}"`);
-        }
-      }
-      if (choice.result.focalArt.kind === "vector_composition") {
-        for (const motif of MOSSMERE_REQUIRED_MOTIFS) {
-          assert.ok(choice.result.focalArt.motifTokens.includes(motif), `${choice.choiceId} result art missing motif "${motif}"`);
-        }
+    const art = [encounter.focalArt, ...encounter.choices.flatMap((choice) => [choice.focalArt, choice.result.focalArt])];
+    for (const focalArt of art) {
+      assert.equal(focalArt.kind, "local_raster");
+      assert.match(focalArt.paletteId, /^mossmere_/);
+      if (focalArt.status === "missing") {
+        assert.match(focalArt.assetPath, /^assets\/games\/unwritten-map\/illustrations\/mossmere\//);
       }
     }
   }
 });
 
-test("non-mossmere regions never use another region's canonical motif tokens", () => {
+test("every focal slot references a repository-local raster path and never a generated provider", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
   for (const encounter of metadata) {
-    if (encounter.regionId === "mossmere") continue;
     const arts = [encounter.focalArt, ...encounter.choices.flatMap((choice) => [choice.focalArt, choice.result.focalArt])];
     for (const art of arts) {
-      if (art.kind !== "vector_composition") continue;
-      for (const token of art.motifTokens) {
-        const owningRegionMotifs = UNWRITTEN_MAP_REGION_REGISTRY[encounter.regionId];
-        const isOwnRegionToken = owningRegionMotifs.canonicalMotifTokens.includes(token) || owningRegionMotifs.fallbackMotifToken === token;
-        assert.ok(isOwnRegionToken, `art "${art.id}" in region "${encounter.regionId}" uses foreign motif token "${token}"`);
-      }
+      assert.equal(art.kind, "local_raster");
+      assert.match(art.assetPath, /^assets\/games\/unwritten-map\/.+\.webp$/);
+      assert.doesNotMatch(art.assetPath, /^(data:|https?:)|\.svg$/);
     }
   }
 });
@@ -120,14 +111,33 @@ test("frog-parliament local assets are mapped by authoritative choice id, not ba
   assert.equal(unwrittenMapLocalAssetPath(FROG_PARLIAMENT_RESULT_ASSET_IDS["grand-speech"]), "assets/games/unwritten-map/result-frog-speech.webp");
 });
 
-test("only frog-parliament focal art uses local assets; every other scenario uses vector composition", () => {
+test("Lantern Fair encounter art retains its authorized source and derived provenance", () => {
+  const metadata = buildUnwrittenMapPresentationMetadata();
+  const lanternFair = metadata.find((encounter) => encounter.scenarioId === "lantern-fair");
+  assert.ok(lanternFair);
+  assert.equal(lanternFair.focalArt.assetId, "encounter:lantern-fair");
+  assert.equal(lanternFair.focalArt.localAssetId, "lantern-fair-encounter");
+  assert.equal(lanternFair.focalArt.status, "approved");
+  assert.deepEqual(lanternFair.focalArt.depictsActorRoles, ["explorer", "community", "creature"]);
+
+  const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE["lantern-fair-encounter"];
+  assert.ok(provenance);
+  const bytes = readFileSync(path.resolve(__dirname, "..", "..", lanternFair.focalArt.assetPath));
+  assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  assert.equal(provenance.sourceSha256, "1cc48fed7691c3fdbf29cc1096d4df7bbe2992a868c5e1893a2876e80fe701a7");
+});
+
+test("only supplied focal art is approved; every other slot stays explicitly missing", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
   for (const encounter of metadata) {
-    const expectLocal = encounter.scenarioId === "frog-parliament";
-    assert.equal(encounter.focalArt.kind, expectLocal ? "local_asset" : "vector_composition", `${encounter.scenarioId} encounter art kind mismatch`);
+    const encounterStatus = encounter.scenarioId === "frog-parliament" || encounter.scenarioId === "lantern-fair"
+      ? "approved"
+      : "missing";
+    assert.equal(encounter.focalArt.status, encounterStatus, `${encounter.scenarioId} encounter art status mismatch`);
     for (const choice of encounter.choices) {
-      assert.equal(choice.focalArt.kind, expectLocal ? "local_asset" : "vector_composition", `${choice.choiceId} choice art kind mismatch`);
-      assert.equal(choice.result.focalArt.kind, expectLocal ? "local_asset" : "vector_composition", `${choice.choiceId} result art kind mismatch`);
+      const choiceStatus = encounter.scenarioId === "frog-parliament" ? "approved" : "missing";
+      assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
+      assert.equal(choice.result.focalArt.status, choiceStatus, `${choice.choiceId} result art status mismatch`);
     }
   }
 });
@@ -147,6 +157,12 @@ test("every encounter, choice, and result focal art identity is unique", () => {
 
   const allIds = [...encounterIds, ...choiceIds, ...resultIds];
   assert.equal(new Set(allIds).size, allIds.length, "no focal art id may be reused across encounter/choice/result kinds");
+  const allArt = metadata.flatMap((encounter) => [
+    encounter.focalArt,
+    ...encounter.choices.flatMap((choice) => [choice.focalArt, choice.result.focalArt]),
+  ]);
+  assert.equal(new Set(allArt.map((art) => art.assetId)).size, 108, "every focal raster asset id must be unique");
+  assert.equal(new Set(allArt.map((art) => art.assetPath)).size, 108, "every focal raster file path must be unique");
 });
 
 test("player-performed choices and their results are always attributed to the explorer actor", () => {
@@ -155,8 +171,23 @@ test("player-performed choices and their results are always attributed to the ex
     for (const choice of encounter.choices) {
       assert.equal(choice.actorRole, "explorer", `${choice.choiceId} action must be explorer-attributed`);
       assert.equal(choice.result.actorRole, "explorer", `${choice.choiceId} result must be explorer-attributed`);
+      assert.ok(choice.focalArt.depictsActorRoles.includes("explorer"), `${choice.choiceId} choice art must depict the explorer`);
+      assert.ok(choice.result.focalArt.depictsActorRoles.includes("explorer"), `${choice.choiceId} result art must depict the explorer`);
     }
   }
+});
+
+test("The Other Sky commissioning briefs capture five distinct required scenes exactly", () => {
+  const mirrorMarsh = buildUnwrittenMapPresentationMetadata().find((encounter) => encounter.scenarioId === "mirror-marsh");
+  assert.ok(mirrorMarsh);
+  assert.match(mirrorMarsh.focalArt.brief, /impossible second sky with unfamiliar stars/);
+  assert.match(mirrorMarsh.focalArt.brief, /reflection waves upward at the explorer/);
+  const briefs = Object.fromEntries(mirrorMarsh.choices.map((choice) => [choice.choiceId, choice.focalArt.brief]));
+  assert.match(briefs["sketch-stars"], /Explorer kneeling beside the marsh, drawing reflected constellations in a field notebook/);
+  assert.match(briefs["wave-back"], /Explorer at the water's edge, waving toward the mysterious reflected figure/);
+  assert.match(briefs["reed-raft"], /Explorer tying marsh reeds into a small raft beside the reflective water/);
+  assert.match(briefs["step-reflection"], /Explorer cautiously placing a boot onto the star-filled reflected surface as if it were solid/);
+  assert.equal(new Set([mirrorMarsh.focalArt.assetPath, ...mirrorMarsh.choices.map((choice) => choice.focalArt.assetPath)]).size, 5);
 });
 
 test("encounter actor roles distinguish community/creature/environment and are never explorer", () => {

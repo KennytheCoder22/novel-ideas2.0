@@ -11,15 +11,15 @@
 
 import { UNWRITTEN_MAP_SCENARIOS, type MapChoice, type MapScenario } from "./unwrittenMap";
 import {
-  UNWRITTEN_MAP_REGION_REGISTRY,
   unwrittenMapPaletteId,
   type UnwrittenMapPaletteId,
   type UnwrittenMapRegionId,
 } from "./unwrittenMapRegions";
 import {
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
-  FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
+  UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS,
+  unwrittenMapLocalAssetPath,
   type UnwrittenMapLocalAssetId,
 } from "./unwrittenMapArtAssets";
 
@@ -102,7 +102,7 @@ export const UNWRITTEN_MAP_ENVIRONMENT_IDS = [
 export type UnwrittenMapEnvironmentId = typeof UNWRITTEN_MAP_ENVIRONMENT_IDS[number];
 
 export const UNWRITTEN_MAP_CHARACTER_IDS = [
-  "festival-musicians",
+  "frog-festival-musicians-and-audience",
   "orchard-light-wisp",
   "bridge-gearkin",
   "highwind-shepherd",
@@ -134,26 +134,30 @@ export const UNWRITTEN_MAP_MOOD_IDS = [
 
 export type UnwrittenMapMoodId = typeof UNWRITTEN_MAP_MOOD_IDS[number];
 
-export type UnwrittenMapArtKind = "local_asset" | "vector_composition";
+export type UnwrittenMapArtSlot = "encounter" | "choice" | "result";
+export type UnwrittenMapAssetStatus = "approved" | "missing";
+export type UnwrittenMapTargetAspectRatio = "3:2" | "4:3";
+export type UnwrittenMapFocalAssetId =
+  | `encounter:${UnwrittenMapScenarioId}`
+  | `choice:${UnwrittenMapScenarioId}:${UnwrittenMapActionId}`
+  | `result:${UnwrittenMapScenarioId}:${UnwrittenMapActionId}`;
 
-export type UnwrittenMapLocalAssetArt = {
-  kind: "local_asset";
+export type UnwrittenMapRasterArt = {
+  kind: "local_raster";
   id: string;
-  assetId: UnwrittenMapLocalAssetId;
+  assetId: UnwrittenMapFocalAssetId;
+  localAssetId: UnwrittenMapLocalAssetId | null;
+  assetPath: string;
+  status: UnwrittenMapAssetStatus;
+  slot: UnwrittenMapArtSlot;
   paletteId: UnwrittenMapPaletteId;
+  brief: string;
+  depictsActorRoles: readonly UnwrittenMapActorRole[];
+  targetAspectRatio: UnwrittenMapTargetAspectRatio;
+  recommendedDimensions: `${number}x${number}`;
 };
 
-export type UnwrittenMapVectorCompositionArt = {
-  kind: "vector_composition";
-  id: string;
-  paletteId: UnwrittenMapPaletteId;
-  /** Region-appropriate motif tokens; always non-empty and region-valid. */
-  motifTokens: readonly string[];
-  /** Bounded abstract composition primitives used to render the vector/CSS art. */
-  shapeTokens: readonly string[];
-};
-
-export type UnwrittenMapArtDefinition = UnwrittenMapLocalAssetArt | UnwrittenMapVectorCompositionArt;
+export type UnwrittenMapArtDefinition = UnwrittenMapRasterArt;
 
 export type UnwrittenMapChoicePresentation = {
   scenarioId: UnwrittenMapScenarioId;
@@ -196,7 +200,7 @@ type SceneRegistryEntry = {
 };
 
 const SCENE_REGISTRY: readonly SceneRegistryEntry[] = [
-  { scenarioId: "lantern-fair", regionId: "sunmeadow", environmentId: "sunmeadow-pavilion-field", characterId: "festival-musicians", actorRole: "community" },
+  { scenarioId: "lantern-fair", regionId: "sunmeadow", environmentId: "sunmeadow-pavilion-field", characterId: "frog-festival-musicians-and-audience", actorRole: "community" },
   { scenarioId: "whisper-orchard", regionId: "sunmeadow", environmentId: "sunmeadow-whisper-orchard", characterId: "orchard-light-wisp", actorRole: "creature" },
   { scenarioId: "clockwork-bridge", regionId: "ironwood", environmentId: "ironwood-brass-bridge", characterId: "bridge-gearkin", actorRole: "creature" },
   { scenarioId: "cloud-shepherd", regionId: "ironwood", environmentId: "ironwood-highwind-farm", characterId: "highwind-shepherd", actorRole: "community" },
@@ -247,69 +251,55 @@ export function unwrittenMapDeriveMoodId(tags: readonly string[]): UnwrittenMapM
 }
 
 // ---------------------------------------------------------------------------
-// Deterministic motif/shape composition helpers
+// Raster commissioning helpers
 // ---------------------------------------------------------------------------
 
-const SHAPE_TOKENS = [
-  "arc",
-  "band",
-  "dot-cluster",
-  "frame",
-  "silhouette",
-  "glow",
-  "ripple",
-  "lattice",
-] as const;
+const OTHER_SKY_BRIEFS = {
+  encounter: "Eerie moonlit marsh; the water reflects an impossible second sky with unfamiliar stars, and something in the reflection waves upward at the explorer.",
+  "sketch-stars": "Explorer kneeling beside the marsh, drawing reflected constellations in a field notebook.",
+  "wave-back": "Explorer at the water's edge, waving toward the mysterious reflected figure.",
+  "reed-raft": "Explorer tying marsh reeds into a small raft beside the reflective water.",
+  "step-reflection": "Explorer cautiously placing a boot onto the star-filled reflected surface as if it were solid.",
+} as const;
 
-function stableStringHash(seed: string): number {
-  let hash = 5381;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash = ((hash << 5) + hash + seed.charCodeAt(index)) | 0;
-  }
-  return Math.abs(hash);
-}
+const LANTERN_FAIR_ENCOUNTER_BRIEF = "A rain-soaked striped pavilion glows with warm hanging lanterns while frog musicians and their audience gather; distant tents and town sit beyond, and the explorer directs and participates in the final song.";
 
-function shapeTokensFor(seed: string): readonly string[] {
-  const first = SHAPE_TOKENS[stableStringHash(seed) % SHAPE_TOKENS.length];
-  const second = SHAPE_TOKENS[stableStringHash(`${seed}:2`) % SHAPE_TOKENS.length];
-  return Array.from(new Set([first, second]));
-}
-
-function motifTokensFor(regionId: UnwrittenMapRegionId, seed: string): readonly string[] {
-  const region = UNWRITTEN_MAP_REGION_REGISTRY[regionId];
-  // Mossmere's canonical vocabulary IS the required motif set (reeds, frogs,
-  // lily pads, marsh water, mist, wetland flora); every Mossmere art
-  // definition includes the full set so the requirement holds everywhere,
-  // not just at the region-vocabulary level.
-  if (regionId === "mossmere") return region.canonicalMotifTokens;
-  const tokens = region.canonicalMotifTokens;
-  const first = tokens[stableStringHash(seed) % tokens.length];
-  const second = tokens[stableStringHash(`${seed}:2`) % tokens.length];
-  return Array.from(new Set([first, second, region.fallbackMotifToken]));
-}
-
-function vectorArt(
-  id: string,
+function expectedRasterPath(
   regionId: UnwrittenMapRegionId,
-  slot: "primary" | "accent" | "fallback",
-  seed: string,
-): UnwrittenMapVectorCompositionArt {
+  scenarioId: UnwrittenMapScenarioId,
+  slot: UnwrittenMapArtSlot,
+  choiceId?: string,
+): string {
+  const suffix = slot === "encounter" ? "encounter" : `${slot}-${choiceId}`;
+  return `assets/games/unwritten-map/illustrations/${regionId}/${scenarioId}/${scenarioId}-${suffix}.webp`;
+}
+
+function rasterArt(args: {
+  id: string,
+  assetId: UnwrittenMapFocalAssetId,
+  localAssetId?: UnwrittenMapLocalAssetId,
+  assetPath: string,
+  status: UnwrittenMapAssetStatus,
+  slot: UnwrittenMapArtSlot,
+  regionId: UnwrittenMapRegionId,
+  paletteSlot: "primary" | "accent" | "fallback",
+  brief: string,
+  depictsActorRoles: readonly UnwrittenMapActorRole[],
+}): UnwrittenMapRasterArt {
   return {
-    kind: "vector_composition",
-    id,
-    paletteId: unwrittenMapPaletteId(regionId, slot),
-    motifTokens: motifTokensFor(regionId, seed),
-    shapeTokens: shapeTokensFor(seed),
+    kind: "local_raster",
+    id: args.id,
+    assetId: args.assetId,
+    localAssetId: args.localAssetId || null,
+    assetPath: args.assetPath,
+    status: args.status,
+    slot: args.slot,
+    paletteId: unwrittenMapPaletteId(args.regionId, args.paletteSlot),
+    brief: args.brief,
+    depictsActorRoles: args.depictsActorRoles,
+    targetAspectRatio: args.slot === "choice" ? "4:3" : "3:2",
+    recommendedDimensions: args.slot === "choice" ? "800x600" : "1800x1200",
   };
-}
-
-function localAssetArt(
-  id: string,
-  assetId: UnwrittenMapLocalAssetId,
-  regionId: UnwrittenMapRegionId,
-  slot: "primary" | "accent" | "fallback",
-): UnwrittenMapLocalAssetArt {
-  return { kind: "local_asset", id, assetId, paletteId: unwrittenMapPaletteId(regionId, slot) };
 }
 
 // ---------------------------------------------------------------------------
@@ -331,14 +321,42 @@ function buildChoicePresentation(
 
   const frogChoiceAssetId = FROG_PARLIAMENT_CHOICE_ASSET_IDS[choice.id];
   const frogResultAssetId = FROG_PARLIAMENT_RESULT_ASSET_IDS[choice.id];
+  const choiceBrief = scenarioId === "mirror-marsh"
+    ? OTHER_SKY_BRIEFS[choice.id as keyof typeof OTHER_SKY_BRIEFS]
+    : `The explorer performs "${choice.label}" at ${scenario.location}: ${choice.description}`;
+  const resultBrief = `The explorer completes "${choice.label}" at ${scenario.location}. Outcome: ${choice.result}`;
+  const choiceAssetId = `choice:${scenarioId}:${choice.id}` as UnwrittenMapFocalAssetId;
+  const resultAssetId = `result:${scenarioId}:${choice.id}` as UnwrittenMapFocalAssetId;
 
-  const focalArt = frogChoiceAssetId
-    ? localAssetArt(choiceArtId, frogChoiceAssetId, regionId, paletteSlot)
-    : vectorArt(choiceArtId, regionId, paletteSlot, `choice:${choice.id}`);
+  const focalArt = rasterArt({
+    id: choiceArtId,
+    assetId: choiceAssetId,
+    localAssetId: frogChoiceAssetId,
+    assetPath: frogChoiceAssetId
+      ? unwrittenMapLocalAssetPath(frogChoiceAssetId)
+      : expectedRasterPath(regionId, scenarioId, "choice", choice.id),
+    status: frogChoiceAssetId ? "approved" : "missing",
+    slot: "choice",
+    regionId,
+    paletteSlot,
+    brief: choiceBrief,
+    depictsActorRoles: ["explorer"],
+  });
 
-  const resultFocalArt = frogResultAssetId
-    ? localAssetArt(resultArtId, frogResultAssetId, regionId, "fallback")
-    : vectorArt(resultArtId, regionId, "fallback", `result:${choice.id}`);
+  const resultFocalArt = rasterArt({
+    id: resultArtId,
+    assetId: resultAssetId,
+    localAssetId: frogResultAssetId,
+    assetPath: frogResultAssetId
+      ? unwrittenMapLocalAssetPath(frogResultAssetId)
+      : expectedRasterPath(regionId, scenarioId, "result", choice.id),
+    status: frogResultAssetId ? "approved" : "missing",
+    slot: "result",
+    regionId,
+    paletteSlot: "fallback",
+    brief: resultBrief,
+    depictsActorRoles: ["explorer"],
+  });
 
   return {
     scenarioId,
@@ -366,10 +384,27 @@ function buildEncounterPresentation(scenario: MapScenario): UnwrittenMapEncounte
 
   const encounterArtId = `art:encounter:${scenarioId}`;
   const encounterTags = scenario.choices.flatMap((choice) => choice.tags);
-
-  const focalArt = scenarioId === "frog-parliament"
-    ? localAssetArt(encounterArtId, FROG_PARLIAMENT_ENCOUNTER_ASSET_ID, regionId, "primary")
-    : vectorArt(encounterArtId, regionId, "primary", `encounter:${scenarioId}`);
+  const approvedEncounterAssetId = UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS[scenarioId] || null;
+  const focalArt = rasterArt({
+    id: encounterArtId,
+    assetId: `encounter:${scenarioId}`,
+    localAssetId: approvedEncounterAssetId || undefined,
+    assetPath: approvedEncounterAssetId
+      ? unwrittenMapLocalAssetPath(approvedEncounterAssetId)
+      : expectedRasterPath(regionId, scenarioId, "encounter"),
+    status: approvedEncounterAssetId ? "approved" : "missing",
+    slot: "encounter",
+    regionId,
+    paletteSlot: "primary",
+    brief: scenarioId === "mirror-marsh"
+      ? OTHER_SKY_BRIEFS.encounter
+      : scenarioId === "lantern-fair"
+        ? LANTERN_FAIR_ENCOUNTER_BRIEF
+        : `${scenario.prompt} Establish ${scenario.location}, its ${sceneEntry.environmentId} environment, and ${sceneEntry.characterId}.`,
+    depictsActorRoles: scenarioId === "lantern-fair"
+      ? ["explorer", "community", "creature"]
+      : [sceneEntry.actorRole],
+  });
 
   return {
     scenarioId,
