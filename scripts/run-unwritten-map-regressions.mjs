@@ -136,6 +136,10 @@ async function main() {
   const contractSource = readFileSync(resolve(root, "lib/recommendationGames/unwrittenMap.ts"), "utf8");
   const evidenceSource = readFileSync(resolve(root, "lib/recommendationGames/unwrittenMapEvidenceClient.ts"), "utf8");
   const apiSource = readFileSync(resolve(root, "api/unwritten-map-event.ts"), "utf8");
+  const artComponentSource = readFileSync(resolve(root, "features/unwritten-map/components/UnwrittenMapArt.tsx"), "utf8");
+  const templateSource = readFileSync(resolve(root, "features/unwritten-map/components/UnwrittenMapTemplates.tsx"), "utf8");
+  const presentationContractSource = readFileSync(resolve(root, "lib/recommendationGames/unwrittenMapPresentationContract.ts"), "utf8");
+  const visualSource = `${routeSource}\n${artComponentSource}\n${templateSource}`;
 
   assert(hubSource.includes("The Unwritten Map") && hubSource.includes('route: "/games/unwritten-map"'), "games hub card missing");
   assert(hubSource.includes("router.push({ pathname: game.route, params: forwardedParams }"), "games hub route/context forwarding missing");
@@ -1902,14 +1906,14 @@ async function main() {
     "result-frog-speech.webp",
   ]) {
     assert(existsSync(resolve(root, "assets/games/unwritten-map", asset)), `missing illustrated board or encounter asset: ${asset}`);
-    assert(routeSource.includes(`unwritten-map/${asset}`), `Unwritten Map route does not use ${asset}`);
+    assert(visualSource.includes(`unwritten-map/${asset}`), `Unwritten Map presentation does not use ${asset}`);
   }
-  assert(!routeSource.includes("board-source.png")
-    && !routeSource.includes("encounter-source.png")
-    && !routeSource.includes("result-source.png")
-    && !routeSource.includes("choice-hear-source.png")
-    && !routeSource.includes("choice-pageant-source.png")
-    && !routeSource.includes("choice-speech-source.png"),
+  assert(!visualSource.includes("board-source.png")
+    && !visualSource.includes("encounter-source.png")
+    && !visualSource.includes("result-source.png")
+    && !visualSource.includes("choice-hear-source.png")
+    && !visualSource.includes("choice-pageant-source.png")
+    && !visualSource.includes("choice-speech-source.png"),
   "authorized board, encounter, result, and choice source images must not render as static screens");
   assert(routeSource.includes("unwrittenMapArtworkFrame(save.position, columns, rows, tileSize)")
     && routeSource.includes("hasPlayer ? <PlayerSprite")
@@ -1923,25 +1927,22 @@ async function main() {
     && routeSource.includes("board-map-mobile.webp")
     && routeSource.includes("focused && styles.viewportFocused"),
   "board must retain a playable fallback, responsive asset, and visible keyboard focus");
-  assert(routeSource.includes('const frogEncounter = scenario.id === "frog-parliament"')
-    && routeSource.includes("FrogChoiceIllustration choiceId={item.id}")
-    && routeSource.includes("choiceMotifIcon(item)")
+  assert(routeSource.includes("presentationForScenario(scenario)")
+    && routeSource.includes("presentationForChoice(presentation, item.id).focalArt")
+    && routeSource.includes("<UnwrittenMapArt")
     && routeSource.includes("choices.map((item, index) =>"),
-  "frog artwork must stay encounter-specific while every live choice retains its presented identity and order");
+  "metadata-driven artwork must retain every live choice's presented identity and order");
   assert(routeSource.includes("RESULT_CLOSING_LINES[scenario.type]")
-    && routeSource.includes('const mossmere = scenario.id === "frog-parliament"')
+    && routeSource.includes("choicePresentation?.result.focalArt")
     && routeSource.includes("choice?.result")
     && routeSource.includes("choice?.label")
     && routeSource.includes('accessibilityLabel="Return to the road"'),
   "result layout must map live scenario, choice, consequence, motif, and continuation state without universal sample content");
-  assert(routeSource.includes('choiceId === "hear-frogs"')
-    && routeSource.includes("result-frog-hear.webp")
-    && routeSource.includes('choiceId === "night-pageant"')
-    && routeSource.includes("result-frog-pageant.webp")
-    && routeSource.includes('choiceId === "moon-experiment"')
-    && routeSource.includes("result-moon-frog.webp")
-    && routeSource.includes('choiceId === "grand-speech"')
-    && routeSource.includes("result-frog-speech.webp"),
+  assert(presentationContractSource.includes('FROG_PARLIAMENT_RESULT_ASSET_IDS[choice.id]')
+    && artComponentSource.includes('"frog-parliament-result-hear-frogs"')
+    && artComponentSource.includes('"frog-parliament-result-night-pageant"')
+    && artComponentSource.includes('"frog-parliament-result-moon-experiment"')
+    && artComponentSource.includes('"frog-parliament-result-grand-speech"'),
   "each Reed Parliament choice ID must map to its exact authored result illustration, independent of displayed option number");
   assert(routeSource.includes("flexBasis: 350")
     && routeSource.includes("flexWrap: \"wrap\"")
@@ -1950,7 +1951,12 @@ async function main() {
   assert(routeSource.includes('page={phase === "map" ? "map" : phase === "result" ? "result" : "journal"}')
     && routeSource.includes('phase === "map" ? (')
     && routeSource.includes('phase === "encounter" && activeScenario ? (')
-    && routeSource.includes('phase === "result" && activeScenario ? ('),
+    && routeSource.includes('phase === "result" && activeScenario ? (')
+    && routeSource.includes("UnwrittenMapEntryTemplate")
+    && routeSource.includes("UnwrittenMapRegionMapTemplate")
+    && routeSource.includes("UnwrittenMapEncounterTemplate")
+    && routeSource.includes("UnwrittenMapResultTemplate")
+    && routeSource.includes("UnwrittenMapFieldNotesTemplate"),
   "map, field-note, and result phases must retain distinct live layouts");
   assert(routeSource.includes("AccessibilityInfo.isReduceMotionEnabled")
     && routeSource.includes('"reduceMotionChanged"')
@@ -2044,6 +2050,16 @@ async function main() {
   assert(legacyEvent.responseTimeMs === 4_000 && game.isUnwrittenMapChoiceEventV1(legacyEvent),
     "historical V1 exact timing must remain supported unchanged");
   checks.push("privacy_category_only_v2_and_legacy_v1");
+
+  const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
+  const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
+  assert(presentationDiagnostics.length === 0,
+    `domain presentation metadata contract must have zero diagnostics: ${presentationDiagnostics.map((issue) => `[${issue.code}] ${issue.scenarioId || "-"}${issue.choiceId ? ` / ${issue.choiceId}` : ""}: ${issue.message}`).join("; ")}`);
+  const presentationSummary = presentationValidator.buildUnwrittenMapPresentationCoverageSummary();
+  assert(presentationSummary.length === 12, `presentation coverage summary must cover all 12 scenarios, found ${presentationSummary.length}`);
+  assert(presentationSummary.every((row) => row.choiceCount === 4 && row.choiceOkCount === 4 && row.resultOkCount === 4),
+    "every scenario must report 4 valid choices and 4 valid results in the coverage summary");
+  checks.push("domain_presentation_metadata_contract");
 
   console.log(JSON.stringify({
     name: "the-unwritten-map-v2-regressions",

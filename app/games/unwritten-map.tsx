@@ -46,7 +46,10 @@ import {
   type UnwrittenMapEventV2,
   type UnwrittenMapSaveV2,
 } from "../../lib/recommendationGames/unwrittenMap";
-import { unwrittenMapArtworkFrame } from "../../lib/recommendationGames/unwrittenMapPresentation";
+import {
+  unwrittenMapArtworkFrame,
+  unwrittenMapViewportLayout,
+} from "../../lib/recommendationGames/unwrittenMapPresentation";
 import {
   flushUnwrittenMapEvents,
   initializeUnwrittenMapJourney,
@@ -65,6 +68,27 @@ import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendatio
 import { adaptUnwrittenMapChoiceToSignal, UNWRITTEN_MAP_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
 import { unwrittenMapMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
 import { buildGameRouteSourceParams, parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
+import {
+  UNWRITTEN_MAP_TOKENS,
+  UnwrittenMapEncounterTemplate,
+  UnwrittenMapEntryTemplate,
+  UnwrittenMapFieldNotesTemplate,
+  UnwrittenMapRegionMapTemplate,
+  UnwrittenMapResultTemplate,
+} from "../../features/unwritten-map/components/UnwrittenMapTemplates";
+import {
+  UnwrittenMapArt,
+  UnwrittenMapRegionMotifs,
+} from "../../features/unwritten-map/components/UnwrittenMapArt";
+import {
+  buildUnwrittenMapPresentationMetadata,
+  type UnwrittenMapChoicePresentation,
+  type UnwrittenMapEncounterPresentation,
+} from "../../lib/recommendationGames/unwrittenMapPresentationContract";
+import {
+  UNWRITTEN_MAP_REGION_REGISTRY,
+  type UnwrittenMapRegionId,
+} from "../../lib/recommendationGames/unwrittenMapRegions";
 
 type GamePhase = "title" | "map" | "encounter" | "result" | "complete";
 
@@ -116,10 +140,37 @@ function usePrefersReducedMotion(): boolean {
   return reduceMotion;
 }
 
-function CartographyBackdrop({ page = "map", mossmere = false }: { page?: "entry" | "map" | "journal" | "result"; mossmere?: boolean }) {
+const UNWRITTEN_MAP_PRESENTATION = new Map<string, UnwrittenMapEncounterPresentation>(
+  buildUnwrittenMapPresentationMetadata().map((presentation) => [presentation.scenarioId, presentation]),
+);
+
+function presentationForScenario(scenario: MapScenario): UnwrittenMapEncounterPresentation {
+  const presentation = UNWRITTEN_MAP_PRESENTATION.get(scenario.id);
+  if (!presentation) throw new Error(`Missing Unwritten Map presentation metadata for ${scenario.id}`);
+  return presentation;
+}
+
+function presentationForChoice(
+  presentation: UnwrittenMapEncounterPresentation,
+  choiceId: string,
+): UnwrittenMapChoicePresentation {
+  const choice = presentation.choices.find((candidate) => candidate.choiceId === choiceId);
+  if (!choice) throw new Error(`Missing Unwritten Map choice presentation metadata for ${presentation.scenarioId}/${choiceId}`);
+  return choice;
+}
+
+function CartographyBackdrop({
+  page = "map",
+  regionId,
+}: {
+  page?: "entry" | "map" | "journal" | "result";
+  regionId?: UnwrittenMapRegionId;
+}) {
   const result = page === "result";
   const journal = page === "journal" || result;
   const entry = page === "entry";
+  const mossmere = regionId === "mossmere";
+  const region = regionId ? UNWRITTEN_MAP_REGION_REGISTRY[regionId] : null;
   return (
     <View
       pointerEvents="none"
@@ -163,7 +214,13 @@ function CartographyBackdrop({ page = "map", mossmere = false }: { page?: "entry
           accessibilityElementsHidden
         />
       ) : null}
+      {region && regionId ? (
+        <View style={[styles.regionFrame, { borderColor: region.paletteHex.primary }]}>
+          <UnwrittenMapRegionMotifs regionId={regionId} />
+        </View>
+      ) : null}
       <View style={[styles.parchmentWash, result && mossmere && styles.resultParchmentWash]} />
+      {region ? <View style={[styles.regionWash, { backgroundColor: `${region.paletteHex.fallback}24` }]} /> : null}
       <View style={styles.edgeVignette} />
     </View>
   );
@@ -202,14 +259,6 @@ function LandmarkSprite({ scenario, completed }: { scenario: MapScenario; comple
   );
 }
 
-const ENCOUNTER_TYPE_ICONS: Record<MapScenario["type"], keyof typeof MaterialCommunityIcons.glyphMap> = {
-  community: "account-group-outline",
-  mystery: "weather-night",
-  craft: "hammer-wrench",
-  wonder: "star-four-points-outline",
-  expedition: "compass-outline",
-};
-
 const RESULT_CLOSING_LINES: Record<MapScenario["type"], string> = {
   community: "Every gathering leaves a new trail of stories.",
   mystery: "Look closer. The world always has more to say.",
@@ -225,68 +274,6 @@ function resultClosingLine(scenario: MapScenario, choice: MapChoice | null) {
   if (/quiet|observant|reflective|patient/.test(motif)) return "The quietest details often tell the longest stories.";
   if (/music|dance|art|creative|spectacle/.test(motif)) return "A shared wonder can brighten every path home.";
   return RESULT_CLOSING_LINES[scenario.type];
-}
-
-function choiceMotifIcon(choice: MapChoice): keyof typeof MaterialCommunityIcons.glyphMap {
-  const motif = `${choice.id} ${choice.tags.join(" ")}`;
-  if (/music|song|melody|dance/.test(motif)) return "music-note";
-  if (/book|journal|lore|scholarly/.test(motif)) return "book-open-page-variant-outline";
-  if (/craft|mechanical|repair|gear|build|mend/.test(motif)) return "tools";
-  if (/storm|weather|lightning|cloud/.test(motif)) return "weather-lightning";
-  if (/sea|water|ferry|raft/.test(motif)) return "sail-boat";
-  if (/community|social|ensemble|friendly/.test(motif)) return "account-group-outline";
-  if (/puzzle|riddle|investigative|challenge/.test(motif)) return "puzzle-outline";
-  if (/quiet|reflective|patient|observant/.test(motif)) return "eye-outline";
-  if (/flight|adventure|kinetic|race/.test(motif)) return "weather-windy";
-  if (/art|paint|visual|spectacle|creative/.test(motif)) return "palette-outline";
-  return "star-four-points-outline";
-}
-
-function FrogChoiceIllustration({ choiceId }: { choiceId: string }) {
-  const [failed, setFailed] = useState(false);
-  const source = choiceId === "hear-frogs"
-    ? require("../../assets/games/unwritten-map/frog-hear.webp")
-    : choiceId === "night-pageant"
-      ? require("../../assets/games/unwritten-map/frog-pageant.webp")
-      : choiceId === "moon-experiment"
-        ? require("../../assets/games/unwritten-map/frog-experiment.webp")
-        : choiceId === "grand-speech"
-          ? require("../../assets/games/unwritten-map/frog-speech.webp")
-          : null;
-  return source && !failed ? (
-    <Image source={source} style={styles.frogChoiceArt} contentFit="contain" onError={() => setFailed(true)} accessibilityElementsHidden />
-  ) : (
-    <View style={styles.frogChoiceFallback}>
-      <MaterialCommunityIcons name="paw" size={32} color="#4e6c35" />
-    </View>
-  );
-}
-
-function FrogResultIllustration({ choiceId }: { choiceId: string }) {
-  const [failed, setFailed] = useState(false);
-  const source = choiceId === "hear-frogs"
-    ? require("../../assets/games/unwritten-map/result-frog-hear.webp")
-    : choiceId === "night-pageant"
-      ? require("../../assets/games/unwritten-map/result-frog-pageant.webp")
-      : choiceId === "moon-experiment"
-        ? require("../../assets/games/unwritten-map/result-moon-frog.webp")
-        : choiceId === "grand-speech"
-          ? require("../../assets/games/unwritten-map/result-frog-speech.webp")
-          : null;
-  return source && !failed ? (
-    <Image
-      source={source}
-      style={styles.resultIllustrationArt}
-      contentFit="cover"
-      onError={() => setFailed(true)}
-      accessibilityElementsHidden
-    />
-  ) : (
-    <View style={styles.resultMotif}>
-      <MaterialCommunityIcons name="paw" size={68} color="#4e6c35" />
-      <MaterialCommunityIcons name="moon-waning-crescent" size={38} color={INK} />
-    </View>
-  );
 }
 
 function WorldTile({
@@ -473,7 +460,7 @@ function TitleScreen({
         <View style={styles.entryBackdropVignette} />
       </View>
       <View style={[styles.titleMap, compact && styles.titleMapCompact]}>
-        <View style={styles.titleContent}>
+        <UnwrittenMapEntryTemplate testID="unwritten-map-entry-template">
           <View style={styles.titleKickerRow}>
             <View style={styles.titleRule} />
             <MaterialCommunityIcons name="compass-rose" size={22} color={INK} />
@@ -482,7 +469,7 @@ function TitleScreen({
             <View style={styles.titleRule} />
           </View>
           <Text style={[styles.titleLogo, compact && styles.titleLogoCompact]}>THE{"\n"}UNWRITTEN MAP</Text>
-          <Text style={styles.titleCopy}>Cross five wild regions, meet their curious inhabitants, and make a map no other traveler could draw.</Text>
+          <Text style={styles.titleCopy}>Cross six wild regions, meet their curious inhabitants, and make a map no other traveler could draw.</Text>
           <TouchableOpacity style={[styles.primaryButton, beginning && styles.buttonDisabled]} disabled={beginning} onPress={onBegin} accessibilityRole="button" accessibilityLabel={hasProgress ? "Continue journey" : "Open the map"}>
             <MaterialCommunityIcons name="map-outline" size={18} color="#f7e7b0" />
             <Text style={styles.primaryButtonText}>{beginning ? "OPENING..." : hasProgress ? "CONTINUE JOURNEY" : "OPEN THE MAP"}</Text>
@@ -495,7 +482,7 @@ function TitleScreen({
           {hasProgress ? <TouchableOpacity style={[styles.textButton, beginning && styles.buttonDisabled]} disabled={beginning} onPress={onReset} accessibilityRole="button">
             <Text style={styles.resetText}>Reset this journey</Text>
           </TouchableOpacity> : null}
-        </View>
+        </UnwrittenMapEntryTemplate>
       </View>
     </ScrollView>
   );
@@ -524,13 +511,18 @@ function EncounterPanel({
   onChoose: (choice: MapChoice) => void;
   onSkip: () => void;
 }) {
-  const frogEncounter = scenario.id === "frog-parliament";
-  const [encounterArtFailed, setEncounterArtFailed] = useState(false);
+  const presentation = presentationForScenario(scenario);
+  const region = UNWRITTEN_MAP_REGION_REGISTRY[presentation.regionId];
   return (
-    <View style={styles.fieldPage}>
-      <View pointerEvents="none" accessibilityElementsHidden style={styles.fieldSketch}>
-        <MaterialCommunityIcons name="feather" size={90} color="rgba(81,53,25,0.12)" />
-      </View>
+    <UnwrittenMapEncounterTemplate
+      testID="unwritten-map-encounter-template"
+      accent={region.paletteHex.primary}
+      decoration={(
+        <View pointerEvents="none" accessibilityElementsHidden style={styles.fieldSketch}>
+          <MaterialCommunityIcons name="feather" size={90} color="rgba(81,53,25,0.12)" />
+        </View>
+      )}
+    >
       <View style={styles.encounterLead}>
         <View style={styles.encounterLeadCopy}>
           <View style={styles.dialogueLocation}>
@@ -540,21 +532,14 @@ function EncounterPanel({
           <Text style={styles.dialogueTitle}>{scenario.title}</Text>
           <Text style={styles.dialoguePrompt}>{scenario.prompt}</Text>
         </View>
-        <View style={[styles.encounterIllustration, { borderColor: scenario.color }]}>
-          {frogEncounter && !encounterArtFailed ? (
-            <Image
-              source={require("../../assets/games/unwritten-map/frog-encounter.webp")}
-              style={styles.encounterIllustrationArt}
-              contentFit="cover"
-              onError={() => setEncounterArtFailed(true)}
-              accessibilityElementsHidden
-            />
-          ) : (
-            <View style={[styles.encounterMotif, { backgroundColor: `${scenario.color}24` }]}>
-              <MaterialCommunityIcons name={ENCOUNTER_TYPE_ICONS[scenario.type]} size={62} color={scenario.color} />
-              <MaterialCommunityIcons name="feather" size={28} color={INK} />
-            </View>
-          )}
+        <View style={[styles.encounterIllustration, { borderColor: region.paletteHex.primary }]}>
+          <UnwrittenMapArt
+            art={presentation.focalArt}
+            actorRole={presentation.actorRole}
+            regionId={presentation.regionId}
+            label={`${scenario.title} at ${scenario.location}`}
+            variant="encounter"
+          />
         </View>
       </View>
       <View style={styles.inkDivider}><View style={styles.inkLine} /><MaterialCommunityIcons name="leaf-maple" size={18} color={INK} /><View style={styles.inkLine} /></View>
@@ -569,13 +554,13 @@ function EncounterPanel({
             accessibilityLabel={`Option ${index + 1}: ${item.label}. ${item.description}`}
           >
             <View style={styles.choiceNumberSeal}><Text style={styles.choiceNumber}>{index + 1}</Text></View>
-            {frogEncounter ? (
-              <FrogChoiceIllustration choiceId={item.id} />
-            ) : (
-              <View style={[styles.choiceMotif, { borderColor: scenario.color }]}>
-                <MaterialCommunityIcons name={choiceMotifIcon(item)} size={31} color={scenario.color} />
-              </View>
-            )}
+            <UnwrittenMapArt
+              art={presentationForChoice(presentation, item.id).focalArt}
+              actorRole="explorer"
+              regionId={presentation.regionId}
+              label={item.label}
+              variant="choice"
+            />
             <View style={styles.choiceCopy}><Text style={styles.choiceLabel}>{item.label}</Text><Text style={styles.choiceDescription}>{item.description}</Text></View>
           </TouchableOpacity>
         ))}
@@ -584,17 +569,22 @@ function EncounterPanel({
         <Text style={styles.skipText}>NONE OF THESE · KEEP EXPLORING</Text>
       </TouchableOpacity>
       <Text style={styles.equalNote}>Every path is a good path. You can also change your latest field note.</Text>
-    </View>
+    </UnwrittenMapEncounterTemplate>
   );
 }
 
 function ResultPanel({
   scenario, choice, skipped, onContinue, pending,
 }: { scenario: MapScenario; choice: MapChoice | null; skipped: boolean; onContinue: () => void; pending: boolean }) {
-  const mossmere = scenario.id === "frog-parliament";
-  const motifIcon = choice ? choiceMotifIcon(choice) : "map-marker-outline";
+  const presentation = presentationForScenario(scenario);
+  const choicePresentation = choice
+    ? presentation.choices.find((candidate) => candidate.choiceId === choice.id)
+    : null;
+  const resultArt = choicePresentation?.result.focalArt || presentation.focalArt;
+  const resultActor = choicePresentation?.result.actorRole || presentation.actorRole;
+  const region = UNWRITTEN_MAP_REGION_REGISTRY[presentation.regionId];
   return (
-    <View style={styles.resultCard}>
+    <UnwrittenMapResultTemplate testID="unwritten-map-result-template" accent={region.paletteHex.primary}>
       <View style={styles.resultLead}>
         <View style={styles.resultLeadCopy}>
           <View style={styles.resultEyebrow}>
@@ -602,22 +592,21 @@ function ResultPanel({
             <Text style={styles.resultStamp}>{skipped ? "LANDMARK NOTED" : "STORY ADDED TO MAP"}</Text>
           </View>
           <Text style={styles.resultEncounterTitle}>{scenario.title}</Text>
-          <Text style={[styles.resultChoice, { color: scenario.color }]}>
+          <Text style={[styles.resultChoice, { color: region.paletteHex.primary }]}>
             {(choice?.label || "OPEN POSSIBILITY").toUpperCase()}
           </Text>
         </View>
-        <View style={[styles.resultIllustration, { borderColor: scenario.color }]}>
-          {mossmere && choice ? (
-            <FrogResultIllustration choiceId={choice.id} />
-          ) : (
-            <View style={[styles.resultMotif, { backgroundColor: `${scenario.color}20` }]}>
-              <MaterialCommunityIcons name={ENCOUNTER_TYPE_ICONS[scenario.type]} size={70} color={scenario.color} />
-              <MaterialCommunityIcons name={motifIcon} size={34} color={INK} />
-            </View>
-          )}
+        <View style={[styles.resultIllustration, { borderColor: region.paletteHex.primary }]}>
+          <UnwrittenMapArt
+            art={resultArt}
+            actorRole={resultActor}
+            regionId={presentation.regionId}
+            label={choice ? `${choice.label}: ${choice.result}` : `${scenario.location}: open possibility`}
+            variant="result"
+          />
         </View>
       </View>
-      <View style={styles.resultRule}><View style={styles.resultRuleLine} /><MaterialCommunityIcons name="sprout" size={19} color={scenario.color} /><View style={styles.resultRuleLine} /></View>
+      <View style={styles.resultRule}><View style={styles.resultRuleLine} /><MaterialCommunityIcons name="sprout" size={19} color={region.paletteHex.primary} /><View style={styles.resultRuleLine} /></View>
       <Text style={styles.resultText}>
         {choice?.result || "You mark the place with a small open circle. It can remain a possibility, without meaning anything more."}
       </Text>
@@ -632,7 +621,7 @@ function ResultPanel({
         <MaterialCommunityIcons name="arrow-right" size={19} color="#f6e7b3" />
       </TouchableOpacity>
       <Text style={styles.resultClosing}>“{resultClosingLine(scenario, choice)}”</Text>
-    </View>
+    </UnwrittenMapResultTemplate>
   );
 }
 
@@ -640,20 +629,30 @@ function Journal({
   save, onUndo, undoing,
 }: { save: UnwrittenMapSaveV2; onUndo: () => void; undoing: boolean }) {
   return (
-    <View style={styles.journal}>
-      <View style={styles.journalHeadingRow}>
-        <MaterialCommunityIcons name="notebook-outline" size={24} color={INK} />
-        <Text style={styles.journalHeading}>FIELD NOTES</Text>
-        <MaterialCommunityIcons name="feather" size={22} color={INK} />
-      </View>
+    <UnwrittenMapFieldNotesTemplate
+      testID="unwritten-map-field-notes-template"
+      subtitle={`${save.decisions.length} of ${UNWRITTEN_MAP_SCENARIOS.length} landmarks recorded from saved journey data`}
+    >
       {save.decisions.length ? save.decisions.map((decision) => {
         const scenario = UNWRITTEN_MAP_SCENARIOS.find((item) => item.id === decision.scenarioId);
         const selected = scenario?.choices.find((item) => item.id === decision.optionId);
+        const presentation = scenario ? presentationForScenario(scenario) : null;
+        const choicePresentation = presentation?.choices.find((item) => item.choiceId === decision.optionId);
+        const region = presentation ? UNWRITTEN_MAP_REGION_REGISTRY[presentation.regionId] : null;
         return (
           <View key={`${decision.scenarioId}:${decision.presentationId}`} style={styles.journalRow}>
-            <View style={[styles.journalMark, { backgroundColor: scenario?.color || INK }]} />
+            {presentation ? (
+              <UnwrittenMapArt
+                art={choicePresentation?.result.focalArt || presentation.focalArt}
+                actorRole={choicePresentation?.result.actorRole || presentation.actorRole}
+                regionId={presentation.regionId}
+                label={selected?.label || scenario?.location || decision.scenarioId}
+                variant="choice"
+              />
+            ) : <View style={[styles.journalMark, { backgroundColor: scenario?.color || INK }]} />}
             <View style={styles.journalCopy}>
               <Text style={styles.journalPlace}>{scenario?.location || decision.scenarioId}</Text>
+              {region ? <Text style={styles.journalRegion}>{region.name.toUpperCase()}</Text> : null}
               <Text style={styles.journalDecision}>{decision.kind === "skip" ? "Left as an open possibility" : selected?.label}</Text>
             </View>
           </View>
@@ -664,7 +663,7 @@ function Journal({
           <Text style={styles.undoText}>{undoing ? "CORRECTING..." : "UNDO LATEST NOTE"}</Text>
         </TouchableOpacity>
       ) : null}
-    </View>
+    </UnwrittenMapFieldNotesTemplate>
   );
 }
 
@@ -748,10 +747,12 @@ export default function UnwrittenMapRoute() {
   const operationIdsRef = useRef(new Map<string, string>());
   const movementOperationRef = useRef<string | null>(null);
   const moveRef = useRef<(direction: MapDirection) => void>(() => undefined);
-  const columns = width < 520 ? 9 : width < 900 ? 11 : width < 1500 ? 13 : 15;
-  const rows = height < 700 ? 7 : height < 900 ? 9 : 11;
-  const tileSize = Math.max(28, Math.min(54, Math.floor((Math.min(width, 920) - 40) / columns)));
-  const compactLayout = width < 700;
+  const {
+    columns,
+    rows,
+    tileSize,
+    compact: compactLayout,
+  } = useMemo(() => unwrittenMapViewportLayout(width, height), [height, width]);
   const gameRecommendationMilestone = useGameRecommendationMilestone({
     game: "unwritten_map",
     gameLabel: "The Unwritten Map",
@@ -1444,7 +1445,9 @@ export default function UnwrittenMapRoute() {
     ], { cancelable: false });
   }, [acquireOperation, clearMovementState, gameRecommendationMilestone, libraryScopeId, releaseOperation, resolvePendingCompletionForTerminalAction, scopeKey, updateCompletionPending, updateSaveState]);
 
-  const currentRegion = useMemo(() => save ? regionAt(save.position) : { id: "", name: "" }, [save]);
+  const currentRegion = useMemo(() => save
+    ? regionAt(save.position) as { id: UnwrittenMapRegionId; name: string }
+    : null, [save]);
 
   if (!save) {
     return <SafeAreaView style={styles.safe}><CartographyBackdrop page="entry" /><View style={styles.loading}><ActivityIndicator color={GOLD} /><Text style={styles.loadingText}>{storageError || "UNFOLDING MAP..."}</Text></View></SafeAreaView>;
@@ -1492,14 +1495,16 @@ export default function UnwrittenMapRoute() {
     <SafeAreaView style={styles.safe}>
       <CartographyBackdrop
         page={phase === "map" ? "map" : phase === "result" ? "result" : "journal"}
-        mossmere={phase !== "map" && activeScenario?.id === "frog-parliament"}
+        regionId={phase === "map" ? currentRegion?.id : activeScenario
+          ? presentationForScenario(activeScenario).regionId
+          : currentRegion?.id}
       />
       <GameHeader save={save} onLeave={() => void leaveJourney()} leaving={operationPending} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.hud}>
           <View style={styles.locationCard}>
             <Text style={styles.locationLabel}>{phase === "map" ? "NOW EXPLORING" : "FIELD NOTE FROM"}</Text>
-            <Text style={styles.locationName} accessibilityLiveRegion="polite">{currentRegion.name}</Text>
+            <Text style={styles.locationName} accessibilityLiveRegion="polite">{currentRegion?.name || ""}</Text>
           </View>
           <View style={styles.hudActions}>
             <TouchableOpacity style={styles.hudButton} onPress={() => setShowJournal((value) => !value)} accessibilityRole="button">
@@ -1512,7 +1517,7 @@ export default function UnwrittenMapRoute() {
           </View>
         </View>
         {showJournal ? <Journal save={save} onUndo={() => void undoLatest()} undoing={undoing || operationPending} /> : phase === "map" ? (
-          <>
+          <UnwrittenMapRegionMapTemplate testID="unwritten-map-region-map-template">
             <WorldMap
               save={save} tileSize={tileSize} columns={columns} rows={rows} walkingFrame={reduceMotion ? 0 : walkingFrame}
               bumpDirection={reduceMotion ? null : bumpDirection}
@@ -1529,7 +1534,7 @@ export default function UnwrittenMapRoute() {
               <Text style={styles.legendText}>◆ OPEN LANDMARK</Text><Text style={styles.legendText}>✓ FIELD NOTE</Text>
               <Text style={styles.legendText}>{mapFocused ? "KEYS ACTIVE" : "FOCUS MAP FOR KEYS"}</Text>
             </View>
-          </>
+          </UnwrittenMapRegionMapTemplate>
         ) : phase === "encounter" && activeScenario ? (
           <EncounterPanel scenario={activeScenario} choices={presentedChoices} submitting={submitting || operationPending} onChoose={(item) => void recordOutcome(item)} onSkip={() => void recordOutcome(null)} />
         ) : phase === "result" && activeScenario ? (
@@ -1577,11 +1582,11 @@ export default function UnwrittenMapRoute() {
   );
 }
 
-const INK = "#302416";
-const DARK = "#17251c";
+const INK = UNWRITTEN_MAP_TOKENS.color.ink;
+const DARK = UNWRITTEN_MAP_TOKENS.color.darkGreen;
 const SCREEN = "#d3c18d";
-const PARCHMENT = "#f0dda6";
-const GOLD = "#c18a37";
+const PARCHMENT = UNWRITTEN_MAP_TOKENS.color.parchment;
+const GOLD = UNWRITTEN_MAP_TOKENS.color.gold;
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#17150f" },
@@ -1590,6 +1595,8 @@ const styles = StyleSheet.create({
   edgeArtLeft: { left: 0 },
   edgeArtRight: { right: 0 },
   resultBackdropBottom: { position: "absolute", left: "17%", right: "17%", bottom: 0, width: "66%", height: 150, opacity: 0.94 },
+  regionFrame: { position: "absolute", left: 12, right: 12, bottom: 10, zIndex: 2, minHeight: 48, paddingHorizontal: 14, borderTopWidth: 1, borderBottomWidth: 1, alignItems: "center", justifyContent: "center" },
+  regionWash: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
   parchmentWash: { ...StyleSheet.absoluteFillObject, left: "17%", right: "17%", backgroundColor: "rgba(220,195,137,0.93)" },
   resultParchmentWash: { backgroundColor: "rgba(220,195,137,0.56)" },
   edgeVignette: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(31,24,14,0.13)" },
@@ -1729,6 +1736,7 @@ const styles = StyleSheet.create({
   journalMark: { width: 18, height: 18, borderWidth: 2, borderColor: DARK, marginRight: 10, transform: [{ rotate: "-5deg" }] },
   journalCopy: { flex: 1 },
   journalPlace: { color: DARK, fontFamily: "Georgia", fontSize: 13, fontWeight: "900" },
+  journalRegion: { color: "#765b31", fontSize: 8, fontWeight: "900", letterSpacing: 1.1, marginTop: 2 },
   journalDecision: { color: "#584830", fontSize: 10, marginTop: 2 },
   emptyJournal: { color: "#584830", fontFamily: "Georgia", fontSize: 12, paddingVertical: 16 },
   undoButton: { minHeight: 44, borderWidth: 1.5, borderColor: DARK, borderRadius: 3, marginTop: 13, alignItems: "center", justifyContent: "center" },
