@@ -82,6 +82,7 @@ import {
 } from "../../features/unwritten-map/components/UnwrittenMapArt";
 import {
   buildUnwrittenMapPresentationMetadata,
+  unwrittenMapHasCommissionedArt,
   type UnwrittenMapChoicePresentation,
   type UnwrittenMapEncounterPresentation,
 } from "../../lib/recommendationGames/unwrittenMapPresentationContract";
@@ -532,15 +533,17 @@ function EncounterPanel({
           <Text style={styles.dialogueTitle}>{scenario.title}</Text>
           <Text style={styles.dialoguePrompt}>{scenario.prompt}</Text>
         </View>
-        <View style={[styles.encounterIllustration, { borderColor: region.paletteHex.primary }]}>
-          <UnwrittenMapArt
-            art={presentation.focalArt}
-            actorRole={presentation.actorRole}
-            regionId={presentation.regionId}
-            label={`${scenario.title} at ${scenario.location}`}
-            variant="encounter"
-          />
-        </View>
+        {unwrittenMapHasCommissionedArt(presentation.focalArt) ? (
+          <View style={[styles.encounterIllustration, { borderColor: region.paletteHex.primary }]}>
+            <UnwrittenMapArt
+              art={presentation.focalArt}
+              actorRole={presentation.actorRole}
+              regionId={presentation.regionId}
+              label={`${scenario.title} at ${scenario.location}`}
+              variant="encounter"
+            />
+          </View>
+        ) : null}
       </View>
       <View style={styles.inkDivider}><View style={styles.inkLine} /><MaterialCommunityIcons name="leaf-maple" size={18} color={INK} /><View style={styles.inkLine} /></View>
       <View style={styles.choiceGrid}>
@@ -596,15 +599,17 @@ function ResultPanel({
             {(choice?.label || "OPEN POSSIBILITY").toUpperCase()}
           </Text>
         </View>
-        <View style={[styles.resultIllustration, { borderColor: region.paletteHex.primary }]}>
-          <UnwrittenMapArt
-            art={resultArt}
-            actorRole={resultActor}
-            regionId={presentation.regionId}
-            label={choice ? `${choice.label}: ${choice.result}` : `${scenario.location}: open possibility`}
-            variant="result"
-          />
-        </View>
+        {unwrittenMapHasCommissionedArt(resultArt) ? (
+          <View style={[styles.resultIllustration, { borderColor: region.paletteHex.primary }]}>
+            <UnwrittenMapArt
+              art={resultArt}
+              actorRole={resultActor}
+              regionId={presentation.regionId}
+              label={choice ? `${choice.label}: ${choice.result}` : `${scenario.location}: open possibility`}
+              variant="result"
+            />
+          </View>
+        ) : null}
       </View>
       <View style={styles.resultRule}><View style={styles.resultRuleLine} /><MaterialCommunityIcons name="sprout" size={19} color={region.paletteHex.primary} /><View style={styles.resultRuleLine} /></View>
       <Text style={styles.resultText}>

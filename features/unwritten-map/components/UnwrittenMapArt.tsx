@@ -3,9 +3,10 @@ import { Image, type ImageSource } from "expo-image";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import type {
-  UnwrittenMapActorRole,
-  UnwrittenMapArtDefinition,
+import {
+  unwrittenMapHasCommissionedArt,
+  type UnwrittenMapActorRole,
+  type UnwrittenMapArtDefinition,
 } from "../../../lib/recommendationGames/unwrittenMapPresentationContract";
 import {
   UNWRITTEN_MAP_REGION_REGISTRY,
@@ -22,6 +23,10 @@ const LOCAL_ART_SOURCES: Partial<Record<UnwrittenMapLocalAssetId, ImageSource>> 
   "mirror-marsh-encounter": require("../../../assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-encounter.webp"),
   "rain-camp-encounter": require("../../../assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-encounter.webp"),
   "paper-dragon-encounter": require("../../../assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-encounter.webp"),
+  "ember-library-encounter": require("../../../assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-encounter.webp"),
+  "giant-garden-encounter": require("../../../assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-encounter.webp"),
+  "old-lighthouse-encounter": require("../../../assets/games/unwritten-map/illustrations/tideglass/old-lighthouse/old-lighthouse-encounter.webp"),
+  "star-ferry-encounter": require("../../../assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-encounter.webp"),
   "frog-parliament-encounter": require("../../../assets/games/unwritten-map/frog-encounter.webp"),
   "frog-parliament-choice-hear-frogs": require("../../../assets/games/unwritten-map/frog-hear.webp"),
   "frog-parliament-choice-night-pageant": require("../../../assets/games/unwritten-map/frog-pageant.webp"),
@@ -77,9 +82,9 @@ export function UnwrittenMapArt({
 }: UnwrittenMapArtProps) {
   const [loadFailed, setLoadFailed] = useState(false);
   const source = art.localAssetId ? LOCAL_ART_SOURCES[art.localAssetId] : undefined;
-  const available = art.status === "approved" && source && !loadFailed;
+  if (!unwrittenMapHasCommissionedArt(art) || !source) return null;
 
-  if (available) {
+  if (!loadFailed) {
     return (
       <Image
         source={source}
@@ -98,12 +103,12 @@ export function UnwrittenMapArt({
       accessibilityLabel={`${label}. Authorized illustration unavailable.`}
     >
       <MaterialCommunityIcons
-        name={loadFailed ? "image-broken-variant" : "image-outline"}
+        name="image-broken-variant"
         size={variant === "choice" ? 22 : 34}
         color={UNWRITTEN_MAP_TOKENS.color.mutedInk}
       />
       <Text numberOfLines={variant === "choice" ? 2 : 3} style={[styles.unavailableText, variant === "choice" && styles.unavailableTextChoice]}>
-        {loadFailed ? "IMAGE COULD NOT LOAD" : "AUTHORIZED ILLUSTRATION REQUIRED"}
+        IMAGE COULD NOT LOAD
       </Text>
       {variant === "choice" ? null : <Text style={styles.assetId}>{art.assetId}</Text>}
     </View>

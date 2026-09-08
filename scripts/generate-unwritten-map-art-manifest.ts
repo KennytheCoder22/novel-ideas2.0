@@ -24,7 +24,8 @@ export function renderUnwrittenMapArtManifest(): string {
   const lines = [
     "# The Unwritten Map art manifest",
     "",
-    "> Production focal-art gate: **BLOCKED** until every missing slot below is filled with authorized local illustrated raster art and `npm run audit:unwritten-map-presentation` passes.",
+    "> Encounter hero gate: **PASS** — all 12 encounter illustrations are approved local raster assets.",
+    "> Full focal-art gate: **BLOCKED** until every missing choice/result slot below is filled with authorized local illustrated raster art and `npm run audit:unwritten-map-presentation` passes.",
     "",
     `Required: **${inventory.required}** distinct assets (${inventory.encounters.required} encounter, ${inventory.choices.required} choice, ${inventory.results.required} result).`,
     `Approved and integrated: **${inventory.approved}** (${inventory.encounters.approved} encounter, ${inventory.choices.approved} choice, ${inventory.results.approved} result).`,
@@ -36,6 +37,7 @@ export function renderUnwrittenMapArtManifest(): string {
     "- Use the exact paths below. For new commissions, encounter and result art: WebP, 3:2, 1800x1200 recommended. Choice art: WebP, 4:3, 800x600 recommended. Existing approved supplied assets retain their authorized source dimensions.",
     "- Use sRGB. Do not bake option numbers, labels, UI, borders, or text into the image.",
     "- Authored in-world signs or decorative lettering may remain part of an illustration, but must not replace live accessible screen text or controls.",
+    "- During staged delivery, unavailable choice and result focal art is omitted cleanly. Canonical region framing, live text, accessible controls, and gameplay remain authoritative; no generated or generic placeholder art is substituted.",
     "- Artwork must be original or explicitly authorized for this project. Do not source third-party copyrighted art.",
     "- Player-performed choice and result scenes must visibly depict the explorer performing the named action.",
     "- Shared entry/map/journal/Mossmere frame assets are retained but do not satisfy any unique focal-art slot.",

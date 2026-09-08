@@ -68,6 +68,7 @@
     "test:unwritten-map": "node scripts/run-unwritten-map-regressions.mjs",
     "test:unwritten-map-presentation": "node --import tsx --test lib/recommendationGames/unwrittenMapPresentationContract.test.ts lib/recommendationGames/unwrittenMapPresentationValidator.test.ts",
     "audit:unwritten-map-presentation": "node --import tsx scripts/run-unwritten-map-presentation-audit.ts",
+    "audit:unwritten-map-encounters": "node --import tsx scripts/run-unwritten-map-encounter-audit.ts",
     "generate:unwritten-map-art-manifest": "node --import tsx scripts/generate-unwritten-map-art-manifest.ts",
     "check:unwritten-map-art-manifest": "node --import tsx scripts/generate-unwritten-map-art-manifest.ts --check",
     "test:alchemists-cascade": "node scripts/run-alchemists-cascade-regressions.mjs",

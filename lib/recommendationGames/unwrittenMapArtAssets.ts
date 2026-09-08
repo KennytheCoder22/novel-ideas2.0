@@ -28,6 +28,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "mirror-marsh-encounter": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-encounter.webp",
   "rain-camp-encounter": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-encounter.webp",
   "paper-dragon-encounter": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-encounter.webp",
+  "ember-library-encounter": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-encounter.webp",
+  "giant-garden-encounter": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-encounter.webp",
+  "old-lighthouse-encounter": "assets/games/unwritten-map/illustrations/tideglass/old-lighthouse/old-lighthouse-encounter.webp",
+  "star-ferry-encounter": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-encounter.webp",
 
   "frog-parliament-encounter": "assets/games/unwritten-map/frog-encounter.webp",
 
@@ -97,6 +101,10 @@ export const UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS: Readonly<Partial<Record<string, 
   "mirror-marsh": "mirror-marsh-encounter",
   "rain-camp": "rain-camp-encounter",
   "paper-dragon": "paper-dragon-encounter",
+  "ember-library": "ember-library-encounter",
+  "giant-garden": "giant-garden-encounter",
+  "old-lighthouse": "old-lighthouse-encounter",
+  "star-ferry": "star-ferry-encounter",
   "frog-parliament": FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
 };
 
@@ -154,6 +162,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     sourceSha256: "78b042b8c4c00051226c5d8716147eac38b6ae1cbff6dfd44baa6ce3125f0ed5",
     derivedSha256: "16f3a3afbd00bbdc89d415074f35207ba1ea43d9102307fbff46c209fdcb9878",
     derivedDimensions: "1415x943",
+    authorization: "User-supplied for PR #306",
+  },
+  "ember-library-encounter": {
+    sourceFile: "b0a8de70-ee09-4689-b17d-bdfc0761a57d-cb090572-9604-483f-bde6-7e6c67648898-clipboard.png",
+    sourceSha256: "393eeab390da6677bb066b6a0348802e98a0c0ce71e26ed98447c79adead8f99",
+    derivedSha256: "a37ecbed9816430d18a1a087cf45f37c2beb25b8b7e4716cfa4dcd6facd86aeb",
+    derivedDimensions: "1462x975",
+    authorization: "User-supplied for PR #306",
+  },
+  "giant-garden-encounter": {
+    sourceFile: "d6294571-6ee0-46e2-81ee-e0524eefe120-37247589-303a-4b1e-a770-360b980522c1-clipboard.png",
+    sourceSha256: "cbc25a399df56665c5ec14d3bdafc56d6b726bc480cb24ce4012ce8436293d62",
+    derivedSha256: "8726c896b3247ffff1d404412e797a2ac85cba1acab9b0521e09da825fbe9764",
+    derivedDimensions: "1423x949",
+    authorization: "User-supplied for PR #306",
+  },
+  "old-lighthouse-encounter": {
+    sourceFile: "fd93d49f-eb70-4549-b0e6-258e38d01765-0e9685d8-3fbe-4032-9d48-7e77e57e8169-clipboard.png",
+    sourceSha256: "6987ff68be3bd618d4fee1564a7b95b1838b01fffac205fb2d6c41cb3884656d",
+    derivedSha256: "445c48582f033eff5c3e4c0f1d1c96d4f721995d0ba6cb1434f280eeda2578f1",
+    derivedDimensions: "1479x986",
+    authorization: "User-supplied for PR #306",
+  },
+  "star-ferry-encounter": {
+    sourceFile: "e5d4d34d-5d75-4328-84d3-06a0af2218a9-a6eb876a-74d1-49b0-a946-b3d69f786326-clipboard.png",
+    sourceSha256: "7b0ee456626ce512ac1f4dbbf4bf8f4011679d278cfd51806753a465090cd89d",
+    derivedSha256: "4de56d8cfbfeea737a481e0430b5d1d04e1aefa19db4cf19f6c7934443b06e93",
+    derivedDimensions: "1464x976",
     authorization: "User-supplied for PR #306",
   },
 };

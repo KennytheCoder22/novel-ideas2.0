@@ -131,18 +131,19 @@ test("detects missing metadata when required fields are absent", () => {
   assert.ok(issues.some((issue) => issue.code === "missing_metadata"));
 });
 
-test("live production inventory is honestly blocked at 16 approved of 108 required", () => {
+test("encounter milestone is complete while full inventory remains blocked at 20 of 108", () => {
   const inventory = buildUnwrittenMapArtInventorySummary();
   assert.deepEqual(inventory, {
     required: 108,
-    approved: 16,
-    missing: 92,
-    encounters: { required: 12, approved: 8, missing: 4 },
+    approved: 20,
+    missing: 88,
+    encounters: { required: 12, approved: 12, missing: 0 },
     choices: { required: 48, approved: 4, missing: 44 },
     results: { required: 48, approved: 4, missing: 44 },
   });
   const diagnostics = validateUnwrittenMapPresentation();
-  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 92);
+  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 88);
+  assert.equal(diagnostics.filter((issue) => issue.scope === "encounter" || issue.scope === "registry").length, 0);
 });
 
 test("inventory never counts declared approvals whose local files fail validation", () => {
@@ -169,9 +170,9 @@ test("coverage summary identifies Reed Parliament as approved and every missing 
 
 test("human-readable summary reports blocked production status and exact inventory", () => {
   const summary = formatUnwrittenMapPresentationSummary();
-  assert.match(summary, /Raster inventory: 16\/108 approved; 92 commissioning assets missing/);
+  assert.match(summary, /Raster inventory: 20\/108 approved; 88 commissioning assets missing/);
   assert.match(summary, /Production status: BLOCKED/);
   assert.match(summary, /Scenario: frog-parliament \[approved\]/);
   assert.match(summary, /Scenario: mirror-marsh \[approved\]/);
-  assert.match(summary, /Scenario: ember-library \[MISSING\]/);
+  assert.match(summary, /Scenario: ember-library \[approved\]/);
 });

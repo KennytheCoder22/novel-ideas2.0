@@ -11,6 +11,7 @@ import {
   UNWRITTEN_MAP_SCENARIO_CHOICE_IDS,
   UNWRITTEN_MAP_SCENARIO_IDS,
   buildUnwrittenMapPresentationMetadata,
+  unwrittenMapHasCommissionedArt,
   unwrittenMapDeriveMoodId,
   unwrittenMapSceneRegistry,
 } from "./unwrittenMapPresentationContract";
@@ -121,6 +122,10 @@ test("newly supplied encounter art retains authorized source and derived provena
     "mirror-marsh": ["mirror-marsh-encounter", "2bb05f58ad5eafe013c568c1bd9bf41565cb159f842c8caed99a5003f68dd6b1"],
     "rain-camp": ["rain-camp-encounter", "8972b46edee314463a21dab80b9f95f91487e1e99bc732cb5cc1f356bf18bc4e"],
     "paper-dragon": ["paper-dragon-encounter", "78b042b8c4c00051226c5d8716147eac38b6ae1cbff6dfd44baa6ce3125f0ed5"],
+    "ember-library": ["ember-library-encounter", "393eeab390da6677bb066b6a0348802e98a0c0ce71e26ed98447c79adead8f99"],
+    "giant-garden": ["giant-garden-encounter", "cbc25a399df56665c5ec14d3bdafc56d6b726bc480cb24ce4012ce8436293d62"],
+    "old-lighthouse": ["old-lighthouse-encounter", "6987ff68be3bd618d4fee1564a7b95b1838b01fffac205fb2d6c41cb3884656d"],
+    "star-ferry": ["star-ferry-encounter", "7b0ee456626ce512ac1f4dbbf4bf8f4011679d278cfd51806753a465090cd89d"],
   } as const;
 
   for (const [scenarioId, [localAssetId, sourceSha256]] of Object.entries(expected)) {
@@ -149,6 +154,10 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
     "mirror-marsh",
     "rain-camp",
     "paper-dragon",
+    "ember-library",
+    "giant-garden",
+    "old-lighthouse",
+    "star-ferry",
     "frog-parliament",
   ]);
   for (const encounter of metadata) {
@@ -160,6 +169,18 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
       assert.equal(choice.result.focalArt.status, choiceStatus, `${choice.choiceId} result art status mismatch`);
     }
   }
+});
+
+test("temporary commissioned-art state omits unavailable choice and result art", () => {
+  const metadata = buildUnwrittenMapPresentationMetadata();
+  assert.ok(metadata.every((encounter) => unwrittenMapHasCommissionedArt(encounter.focalArt)));
+
+  const unavailableChoices = metadata
+    .filter((encounter) => encounter.scenarioId !== "frog-parliament")
+    .flatMap((encounter) => encounter.choices);
+  assert.equal(unavailableChoices.length, 44);
+  assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
+  assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)));
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {

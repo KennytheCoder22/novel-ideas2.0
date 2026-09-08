@@ -110,10 +110,10 @@ export const UNWRITTEN_MAP_CHARACTER_IDS = [
   "reed-parliament-frogs",
   "rain-camp-travelers-and-dog",
   "living-paper-dragon-and-dog",
-  "cold-ember-archive",
-  "stairway-vine-spirit",
-  "lighthouse-keeper",
-  "star-ferryman",
+  "cold-flame-archive-and-dog",
+  "stairway-vine-garden-and-dog",
+  "lighthouse-keeper-and-dog",
+  "star-ferryman-passengers-and-dog",
 ] as const;
 
 export type UnwrittenMapCharacterId = typeof UNWRITTEN_MAP_CHARACTER_IDS[number];
@@ -158,6 +158,12 @@ export type UnwrittenMapRasterArt = {
 };
 
 export type UnwrittenMapArtDefinition = UnwrittenMapRasterArt;
+
+export function unwrittenMapHasCommissionedArt(
+  art: UnwrittenMapArtDefinition,
+): boolean {
+  return art.status === "approved" && art.localAssetId !== null;
+}
 
 export type UnwrittenMapChoicePresentation = {
   scenarioId: UnwrittenMapScenarioId;
@@ -208,10 +214,10 @@ const SCENE_REGISTRY: readonly SceneRegistryEntry[] = [
   { scenarioId: "frog-parliament", regionId: "mossmere", environmentId: "mossmere-reed-parliament", characterId: "reed-parliament-frogs", actorRole: "creature" },
   { scenarioId: "rain-camp", regionId: "westreach", environmentId: "westreach-storm-camp", characterId: "rain-camp-travelers-and-dog", actorRole: "community" },
   { scenarioId: "paper-dragon", regionId: "westreach", environmentId: "westreach-kite-hill", characterId: "living-paper-dragon-and-dog", actorRole: "creature" },
-  { scenarioId: "ember-library", regionId: "ashpeak", environmentId: "ashpeak-ember-library", characterId: "cold-ember-archive", actorRole: "environment" },
-  { scenarioId: "giant-garden", regionId: "ashpeak", environmentId: "ashpeak-giants-garden", characterId: "stairway-vine-spirit", actorRole: "environment" },
-  { scenarioId: "old-lighthouse", regionId: "tideglass", environmentId: "tideglass-old-lighthouse", characterId: "lighthouse-keeper", actorRole: "community" },
-  { scenarioId: "star-ferry", regionId: "tideglass", environmentId: "tideglass-star-ferry", characterId: "star-ferryman", actorRole: "community" },
+  { scenarioId: "ember-library", regionId: "ashpeak", environmentId: "ashpeak-ember-library", characterId: "cold-flame-archive-and-dog", actorRole: "environment" },
+  { scenarioId: "giant-garden", regionId: "ashpeak", environmentId: "ashpeak-giants-garden", characterId: "stairway-vine-garden-and-dog", actorRole: "environment" },
+  { scenarioId: "old-lighthouse", regionId: "tideglass", environmentId: "tideglass-old-lighthouse", characterId: "lighthouse-keeper-and-dog", actorRole: "community" },
+  { scenarioId: "star-ferry", regionId: "tideglass", environmentId: "tideglass-star-ferry", characterId: "star-ferryman-passengers-and-dog", actorRole: "community" },
 ];
 
 const SCENE_REGISTRY_BY_SCENARIO_ID: ReadonlyMap<string, SceneRegistryEntry> = new Map(
@@ -271,6 +277,10 @@ const AUTHORIZED_ENCOUNTER_BRIEFS: Readonly<Partial<Record<UnwrittenMapScenarioI
   "cloud-shepherd": "The explorer and a dog overlook a highland farm, shepherd, sheep flock, and cloud-sheep flock while one dark runaway thundercloud flashes with lightning near the windmill and mountains.",
   "rain-camp": "The explorer and dog approach a warm, lantern-lit canvas shelter and communal travelers during heavy rain, with wagons, fire, tea, a shared table, music, supplies, and wet rolling hills.",
   "paper-dragon": "At a sunset kite festival, the explorer and dog watch a huge living patchwork paper dragon fly among smaller kites above the hill crowd, tents, windmill, and mountains.",
+  "ember-library": "The explorer and dog enter a vast archive lit by cold blue flames, with levitating open books, spiral stairs, towering shelves, lanterns, and compass motifs.",
+  "giant-garden": "The explorer and dog face a colossal vine stairway climbing through giant leaves, flowers, and waterfalls into peach-gold clouds and a floating garden city.",
+  "old-lighthouse": "Under a storm sky, the explorer and dog meet the keeper beside a dark coastal lighthouse and open quarters filled with lanterns, journals, maps, and sea glass above the surf.",
+  "star-ferry": "The explorer and dog approach a lantern-lit ferry, ferryman, and passengers on star-filled black water beneath falling stars, with a distant city and aqueduct.",
 };
 
 const AUTHORIZED_ENCOUNTER_ACTOR_ROLES: Readonly<Partial<Record<
@@ -284,6 +294,10 @@ const AUTHORIZED_ENCOUNTER_ACTOR_ROLES: Readonly<Partial<Record<
   "mirror-marsh": ["explorer", "creature", "environment"],
   "rain-camp": ["explorer", "community", "creature", "environment"],
   "paper-dragon": ["explorer", "community", "creature", "environment"],
+  "ember-library": ["explorer", "creature", "environment"],
+  "giant-garden": ["explorer", "creature", "environment"],
+  "old-lighthouse": ["explorer", "community", "creature", "environment"],
+  "star-ferry": ["explorer", "community", "creature", "environment"],
 };
 
 function expectedRasterPath(

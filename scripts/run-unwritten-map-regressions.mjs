@@ -2054,18 +2054,23 @@ async function main() {
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
   const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
-  assert(inventory.required === 108 && inventory.approved === 16 && inventory.missing === 92,
+  assert(inventory.required === 108 && inventory.approved === 20 && inventory.missing === 88
+    && inventory.encounters.approved === 12 && inventory.encounters.missing === 0,
     `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
-  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 92,
-    "production presentation must stay explicitly blocked until all 92 commissioned raster assets are supplied");
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 88,
+    "full focal-art audit must stay explicitly blocked until all 88 choice/result assets are supplied");
   assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
     "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
+  assert(!artComponentSource.includes("AUTHORIZED ILLUSTRATION REQUIRED")
+    && artComponentSource.includes("if (!unwrittenMapHasCommissionedArt(art) || !source) return null;")
+    && routeSource.includes("unwrittenMapHasCommissionedArt(resultArt) ?"),
+  "missing commissioned choice/result art must be omitted instead of rendered as procedural or generic placeholder art");
   const presentationSummary = presentationValidator.buildUnwrittenMapPresentationCoverageSummary();
   assert(presentationSummary.length === 12, `presentation coverage summary must cover all 12 scenarios, found ${presentationSummary.length}`);
   assert(presentationSummary.every((row) => row.choiceCount === 4)
     && presentationSummary.find((row) => row.scenarioId === "frog-parliament")?.choiceOkCount === 4,
   "coverage must retain four slots per scenario and all nine approved Reed Parliament assets");
-  checks.push("raster_only_presentation_contract_and_commissioning_gate");
+  checks.push("encounter_complete_staged_raster_commissioning_gate");
 
   console.log(JSON.stringify({
     name: "the-unwritten-map-v2-regressions",
