@@ -19,6 +19,7 @@ import {
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
+  LANTERN_FAIR_RESULT_ASSET_IDS,
   UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE,
   unwrittenMapLocalAssetPath,
 } from "./unwrittenMapArtAssets";
@@ -144,6 +145,30 @@ test("newly supplied encounter art retains authorized source and derived provena
   }
 });
 
+test("Lantern Fair result art is mapped by authoritative choice id with provenance", () => {
+  const metadata = buildUnwrittenMapPresentationMetadata();
+  const encounter = metadata.find((item) => item.scenarioId === "lantern-fair");
+  assert.ok(encounter);
+  const expected = {
+    "take-stage": ["lantern-fair-result-take-stage", "65aaa4416927fbc0a1f4fb8067dc10318841efdf35e9094198b5707ac6d99e03"],
+    "balcony-view": ["lantern-fair-result-balcony-view", "e1bfd1c7ab8d154e93d5bf30709f8dfa201a0d2a334af899a4f570c2bb51a161"],
+    "hidden-melody": ["lantern-fair-result-hidden-melody", "1d6016847f1e052199145343944730e8f5bd03f140cd64095725230df5eacc99"],
+    "help-lanterns": ["lantern-fair-result-help-lanterns", "974e0b9ce0cbe5d348e049584f75ce0b9831fdb13331b40ddd3732d958f653df"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(LANTERN_FAIR_RESULT_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.result.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.result.focalArt.status, "approved");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+  }
+});
+
 test("only supplied focal art is approved; every other slot stays explicitly missing", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
   const approvedEncounterIds = new Set([
@@ -165,8 +190,11 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
     assert.equal(encounter.focalArt.status, encounterStatus, `${encounter.scenarioId} encounter art status mismatch`);
     for (const choice of encounter.choices) {
       const choiceStatus = encounter.scenarioId === "frog-parliament" ? "approved" : "missing";
+      const resultStatus = encounter.scenarioId === "frog-parliament" || encounter.scenarioId === "lantern-fair"
+        ? "approved"
+        : "missing";
       assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
-      assert.equal(choice.result.focalArt.status, choiceStatus, `${choice.choiceId} result art status mismatch`);
+      assert.equal(choice.result.focalArt.status, resultStatus, `${choice.choiceId} result art status mismatch`);
     }
   }
 });
@@ -180,7 +208,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
     .flatMap((encounter) => encounter.choices);
   assert.equal(unavailableChoices.length, 44);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)));
+  assert.equal(unavailableChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 40);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {

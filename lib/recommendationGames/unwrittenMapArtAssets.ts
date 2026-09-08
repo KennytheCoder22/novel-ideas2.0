@@ -22,6 +22,10 @@
  */
 export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "lantern-fair-encounter": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-encounter.webp",
+  "lantern-fair-result-take-stage": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-take-stage.webp",
+  "lantern-fair-result-balcony-view": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-balcony-view.webp",
+  "lantern-fair-result-hidden-melody": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-hidden-melody.webp",
+  "lantern-fair-result-help-lanterns": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-help-lanterns.webp",
   "whisper-orchard-encounter": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-encounter.webp",
   "clockwork-bridge-encounter": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-encounter.webp",
   "cloud-shepherd-encounter": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-encounter.webp",
@@ -91,6 +95,14 @@ export const FROG_PARLIAMENT_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalA
   "grand-speech": "frog-parliament-result-grand-speech",
 };
 
+/** Authoritative Lantern Fair choice-id -> commissioned result-art mapping. */
+export const LANTERN_FAIR_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "take-stage": "lantern-fair-result-take-stage",
+  "balcony-view": "lantern-fair-result-balcony-view",
+  "hidden-melody": "lantern-fair-result-hidden-melody",
+  "help-lanterns": "lantern-fair-result-help-lanterns",
+};
+
 export const FROG_PARLIAMENT_ENCOUNTER_ASSET_ID: UnwrittenMapLocalAssetId = "frog-parliament-encounter";
 
 export const UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS: Readonly<Partial<Record<string, UnwrittenMapLocalAssetId>>> = {
@@ -115,6 +127,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
   derivedDimensions: string;
   authorization: string;
 }>>> = {
+  "lantern-fair-result-take-stage": {
+    sourceFile: "4f09c3b1-da6f-468d-bf8a-768339f60720-3d4033fe-7250-46b7-8347-ea980876126f-clipboard.png",
+    sourceSha256: "65aaa4416927fbc0a1f4fb8067dc10318841efdf35e9094198b5707ac6d99e03",
+    derivedSha256: "59b183d1005cb134564057018e34b32c22b9d92ff41fee2fc8e3d8d4ada9ab1f",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Lantern Fair result integration",
+  },
+  "lantern-fair-result-balcony-view": {
+    sourceFile: "ccb74a15-5b66-4b4a-8c71-1319b53569e2-c3bda329-21a9-403b-b6c9-dfb7f7087545-clipboard.png",
+    sourceSha256: "e1bfd1c7ab8d154e93d5bf30709f8dfa201a0d2a334af899a4f570c2bb51a161",
+    derivedSha256: "56db31e9a3cde453c9dbcb634f894d61b6a306213b74a428257db8e43e4e8442",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Lantern Fair result integration",
+  },
+  "lantern-fair-result-hidden-melody": {
+    sourceFile: "76c97622-4b97-4c37-8d54-f9619eb525ad-7776b0cf-a87a-46e7-80fa-9720d593170a-clipboard.png",
+    sourceSha256: "1d6016847f1e052199145343944730e8f5bd03f140cd64095725230df5eacc99",
+    derivedSha256: "8fce6819e9f1b44f2f9b19e5778223aaf772082ed75457814cc4d3a97a6d1924",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Lantern Fair result integration",
+  },
+  "lantern-fair-result-help-lanterns": {
+    sourceFile: "785f6217-7585-4b68-a820-c4540c4eff75-5bc84b8d-e271-458f-b854-ddf281b46c23-clipboard.png",
+    sourceSha256: "974e0b9ce0cbe5d348e049584f75ce0b9831fdb13331b40ddd3732d958f653df",
+    derivedSha256: "131cb45ef6a5775669935ce9ed16cf51cb0c9752669b565a7189f4260847357d",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Lantern Fair result integration",
+  },
   "lantern-fair-encounter": {
     sourceFile: "a38fedbc-84ee-4467-8b6a-6f23c6135066-0fca7dc5-313d-45ce-beea-f3c0ce118358-clipboard.png",
     sourceSha256: "1cc48fed7691c3fdbf29cc1096d4df7bbe2992a868c5e1893a2876e80fe701a7",

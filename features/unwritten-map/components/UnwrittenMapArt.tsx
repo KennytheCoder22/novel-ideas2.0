@@ -17,6 +17,10 @@ import { UNWRITTEN_MAP_TOKENS } from "./UnwrittenMapTemplates";
 
 const LOCAL_ART_SOURCES: Partial<Record<UnwrittenMapLocalAssetId, ImageSource>> = {
   "lantern-fair-encounter": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-encounter.webp"),
+  "lantern-fair-result-take-stage": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-take-stage.webp"),
+  "lantern-fair-result-balcony-view": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-balcony-view.webp"),
+  "lantern-fair-result-hidden-melody": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-hidden-melody.webp"),
+  "lantern-fair-result-help-lanterns": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-help-lanterns.webp"),
   "whisper-orchard-encounter": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-encounter.webp"),
   "clockwork-bridge-encounter": require("../../../assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-encounter.webp"),
   "cloud-shepherd-encounter": require("../../../assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-encounter.webp"),

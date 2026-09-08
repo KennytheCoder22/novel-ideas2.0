@@ -18,6 +18,7 @@ import {
 import {
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
+  LANTERN_FAIR_RESULT_ASSET_IDS,
   UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS,
   unwrittenMapLocalAssetPath,
   type UnwrittenMapLocalAssetId,
@@ -357,6 +358,9 @@ function buildChoicePresentation(
 
   const frogChoiceAssetId = FROG_PARLIAMENT_CHOICE_ASSET_IDS[choice.id];
   const frogResultAssetId = FROG_PARLIAMENT_RESULT_ASSET_IDS[choice.id];
+  const resultLocalAssetId = scenarioId === "lantern-fair"
+    ? LANTERN_FAIR_RESULT_ASSET_IDS[choice.id]
+    : frogResultAssetId;
   const choiceBrief = scenarioId === "mirror-marsh"
     ? OTHER_SKY_BRIEFS[choice.id as keyof typeof OTHER_SKY_BRIEFS]
     : `The explorer performs "${choice.label}" at ${scenario.location}: ${choice.description}`;
@@ -382,11 +386,11 @@ function buildChoicePresentation(
   const resultFocalArt = rasterArt({
     id: resultArtId,
     assetId: resultAssetId,
-    localAssetId: frogResultAssetId,
-    assetPath: frogResultAssetId
-      ? unwrittenMapLocalAssetPath(frogResultAssetId)
+    localAssetId: resultLocalAssetId,
+    assetPath: resultLocalAssetId
+      ? unwrittenMapLocalAssetPath(resultLocalAssetId)
       : expectedRasterPath(regionId, scenarioId, "result", choice.id),
-    status: frogResultAssetId ? "approved" : "missing",
+    status: resultLocalAssetId ? "approved" : "missing",
     slot: "result",
     regionId,
     paletteSlot: "fallback",

@@ -131,18 +131,18 @@ test("detects missing metadata when required fields are absent", () => {
   assert.ok(issues.some((issue) => issue.code === "missing_metadata"));
 });
 
-test("encounter milestone is complete while full inventory remains blocked at 20 of 108", () => {
+test("encounter milestone is complete while full inventory remains blocked at 24 of 108", () => {
   const inventory = buildUnwrittenMapArtInventorySummary();
   assert.deepEqual(inventory, {
     required: 108,
-    approved: 20,
-    missing: 88,
+    approved: 24,
+    missing: 84,
     encounters: { required: 12, approved: 12, missing: 0 },
     choices: { required: 48, approved: 4, missing: 44 },
-    results: { required: 48, approved: 4, missing: 44 },
+    results: { required: 48, approved: 8, missing: 40 },
   });
   const diagnostics = validateUnwrittenMapPresentation();
-  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 88);
+  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 84);
   assert.equal(diagnostics.filter((issue) => issue.scope === "encounter" || issue.scope === "registry").length, 0);
 });
 
@@ -162,6 +162,11 @@ test("coverage summary identifies Reed Parliament as approved and every missing 
       assert.equal(row.encounterOk, true);
       assert.equal(row.choiceOkCount, 4);
       assert.equal(row.resultOkCount, 4);
+    } else if (row.scenarioId === "lantern-fair") {
+      assert.equal(row.encounterOk, true);
+      assert.equal(row.choiceOkCount, 0);
+      assert.equal(row.resultOkCount, 4);
+      assert.ok(row.diagnosticCount > 0, "Lantern Fair should remain blocked on choice art");
     } else {
       assert.ok(row.diagnosticCount > 0, `${row.scenarioId} should remain blocked on commissioned art`);
     }
@@ -170,7 +175,7 @@ test("coverage summary identifies Reed Parliament as approved and every missing 
 
 test("human-readable summary reports blocked production status and exact inventory", () => {
   const summary = formatUnwrittenMapPresentationSummary();
-  assert.match(summary, /Raster inventory: 20\/108 approved; 88 commissioning assets missing/);
+  assert.match(summary, /Raster inventory: 24\/108 approved; 84 commissioning assets missing/);
   assert.match(summary, /Production status: BLOCKED/);
   assert.match(summary, /Scenario: frog-parliament \[approved\]/);
   assert.match(summary, /Scenario: mirror-marsh \[approved\]/);
