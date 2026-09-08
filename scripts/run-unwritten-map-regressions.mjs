@@ -2054,10 +2054,10 @@ async function main() {
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
   const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
-  assert(inventory.required === 108 && inventory.approved === 10 && inventory.missing === 98,
+  assert(inventory.required === 108 && inventory.approved === 13 && inventory.missing === 95,
     `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
-  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 98,
-    "production presentation must stay explicitly blocked until all 98 commissioned raster assets are supplied");
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 95,
+    "production presentation must stay explicitly blocked until all 95 commissioned raster assets are supplied");
   assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
     "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
   const presentationSummary = presentationValidator.buildUnwrittenMapPresentationCoverageSummary();

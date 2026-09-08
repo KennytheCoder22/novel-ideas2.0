@@ -22,6 +22,9 @@
  */
 export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "lantern-fair-encounter": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-encounter.webp",
+  "whisper-orchard-encounter": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-encounter.webp",
+  "clockwork-bridge-encounter": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-encounter.webp",
+  "cloud-shepherd-encounter": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-encounter.webp",
 
   "frog-parliament-encounter": "assets/games/unwritten-map/frog-encounter.webp",
 
@@ -85,6 +88,9 @@ export const FROG_PARLIAMENT_ENCOUNTER_ASSET_ID: UnwrittenMapLocalAssetId = "fro
 
 export const UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS: Readonly<Partial<Record<string, UnwrittenMapLocalAssetId>>> = {
   "lantern-fair": "lantern-fair-encounter",
+  "whisper-orchard": "whisper-orchard-encounter",
+  "clockwork-bridge": "clockwork-bridge-encounter",
+  "cloud-shepherd": "cloud-shepherd-encounter",
   "frog-parliament": FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
 };
 
@@ -100,6 +106,27 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     sourceSha256: "1cc48fed7691c3fdbf29cc1096d4df7bbe2992a868c5e1893a2876e80fe701a7",
     derivedSha256: "78c0bbd53611f141fbf9118170e00010f902af52298ead3c8df2d736a1889830",
     derivedDimensions: "1418x945",
+    authorization: "User-supplied for PR #306",
+  },
+  "whisper-orchard-encounter": {
+    sourceFile: "a93fb7d1-cb43-487e-ae1e-e6e62c2eb72a-ca28c87f-d8d7-4e64-b9e6-4a0a862d12c9-clipboard.png",
+    sourceSha256: "d8a7e9bcd190a155012fa8487de34ed9f04374f8b8dc09ae8595f76b54ac0424",
+    derivedSha256: "158536501f8daba63b55782ef6725e6762da29045538290418bc5fbabad319a3",
+    derivedDimensions: "1395x930",
+    authorization: "User-supplied for PR #306",
+  },
+  "clockwork-bridge-encounter": {
+    sourceFile: "14e6145f-c501-457e-b5c3-728a7fa8ae1d-e414d6fb-2c40-4268-998c-28658fc346cb-clipboard.png",
+    sourceSha256: "d5db024902530a630b4b4915de00abf71dfb00994dd4eb6c781c7c8747cc77ff",
+    derivedSha256: "017e95d59c74753fc74446e0316e38a4780ca12371c849c17eb654583c4b2de7",
+    derivedDimensions: "1418x945",
+    authorization: "User-supplied for PR #306",
+  },
+  "cloud-shepherd-encounter": {
+    sourceFile: "b3ea9f57-fbd8-4344-bd46-3fc24e3a79c0-eb5fbca4-1ec4-4e0d-9419-154633bfc2bf-clipboard.png",
+    sourceSha256: "dee3eb79771fe639eb2e2bb4f0cd85007c3300ee6d55545ab62318bf1162fc89",
+    derivedSha256: "853f75983848a79f04f72b7dade2ba89f72ce3cafa2c83752a5ed040742a0286",
+    derivedDimensions: "1466x977",
     authorization: "User-supplied for PR #306",
   },
 };

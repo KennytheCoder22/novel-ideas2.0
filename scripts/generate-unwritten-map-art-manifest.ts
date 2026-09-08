@@ -35,6 +35,7 @@ export function renderUnwrittenMapArtManifest(): string {
     "- Deliver one ZIP preserving `assets/games/unwritten-map/illustrations/<region>/<scenario>/`.",
     "- Use the exact paths below. For new commissions, encounter and result art: WebP, 3:2, 1800x1200 recommended. Choice art: WebP, 4:3, 800x600 recommended. Existing approved supplied assets retain their authorized source dimensions.",
     "- Use sRGB. Do not bake option numbers, labels, UI, borders, or text into the image.",
+    "- Authored in-world signs or decorative lettering may remain part of an illustration, but must not replace live accessible screen text or controls.",
     "- Artwork must be original or explicitly authorized for this project. Do not source third-party copyrighted art.",
     "- Player-performed choice and result scenes must visibly depict the explorer performing the named action.",
     "- Shared entry/map/journal/Mossmere frame assets are retained but do not satisfy any unique focal-art slot.",

@@ -111,28 +111,42 @@ test("frog-parliament local assets are mapped by authoritative choice id, not ba
   assert.equal(unwrittenMapLocalAssetPath(FROG_PARLIAMENT_RESULT_ASSET_IDS["grand-speech"]), "assets/games/unwritten-map/result-frog-speech.webp");
 });
 
-test("Lantern Fair encounter art retains its authorized source and derived provenance", () => {
+test("newly supplied encounter art retains authorized source and derived provenance", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
-  const lanternFair = metadata.find((encounter) => encounter.scenarioId === "lantern-fair");
-  assert.ok(lanternFair);
-  assert.equal(lanternFair.focalArt.assetId, "encounter:lantern-fair");
-  assert.equal(lanternFair.focalArt.localAssetId, "lantern-fair-encounter");
-  assert.equal(lanternFair.focalArt.status, "approved");
-  assert.deepEqual(lanternFair.focalArt.depictsActorRoles, ["explorer", "community", "creature"]);
+  const expected = {
+    "lantern-fair": ["lantern-fair-encounter", "1cc48fed7691c3fdbf29cc1096d4df7bbe2992a868c5e1893a2876e80fe701a7"],
+    "whisper-orchard": ["whisper-orchard-encounter", "d8a7e9bcd190a155012fa8487de34ed9f04374f8b8dc09ae8595f76b54ac0424"],
+    "clockwork-bridge": ["clockwork-bridge-encounter", "d5db024902530a630b4b4915de00abf71dfb00994dd4eb6c781c7c8747cc77ff"],
+    "cloud-shepherd": ["cloud-shepherd-encounter", "dee3eb79771fe639eb2e2bb4f0cd85007c3300ee6d55545ab62318bf1162fc89"],
+  } as const;
 
-  const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE["lantern-fair-encounter"];
-  assert.ok(provenance);
-  const bytes = readFileSync(path.resolve(__dirname, "..", "..", lanternFair.focalArt.assetPath));
-  assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
-  assert.equal(provenance.sourceSha256, "1cc48fed7691c3fdbf29cc1096d4df7bbe2992a868c5e1893a2876e80fe701a7");
+  for (const [scenarioId, [localAssetId, sourceSha256]] of Object.entries(expected)) {
+    const encounter = metadata.find((item) => item.scenarioId === scenarioId);
+    assert.ok(encounter);
+    assert.equal(encounter.focalArt.assetId, `encounter:${scenarioId}`);
+    assert.equal(encounter.focalArt.localAssetId, localAssetId);
+    assert.equal(encounter.focalArt.status, "approved");
+    assert.ok(encounter.focalArt.depictsActorRoles.includes("explorer"));
+
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", encounter.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+  }
 });
 
 test("only supplied focal art is approved; every other slot stays explicitly missing", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
+  const approvedEncounterIds = new Set([
+    "lantern-fair",
+    "whisper-orchard",
+    "clockwork-bridge",
+    "cloud-shepherd",
+    "frog-parliament",
+  ]);
   for (const encounter of metadata) {
-    const encounterStatus = encounter.scenarioId === "frog-parliament" || encounter.scenarioId === "lantern-fair"
-      ? "approved"
-      : "missing";
+    const encounterStatus = approvedEncounterIds.has(encounter.scenarioId) ? "approved" : "missing";
     assert.equal(encounter.focalArt.status, encounterStatus, `${encounter.scenarioId} encounter art status mismatch`);
     for (const choice of encounter.choices) {
       const choiceStatus = encounter.scenarioId === "frog-parliament" ? "approved" : "missing";

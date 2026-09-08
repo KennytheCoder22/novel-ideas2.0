@@ -16,6 +16,9 @@ import { UNWRITTEN_MAP_TOKENS } from "./UnwrittenMapTemplates";
 
 const LOCAL_ART_SOURCES: Partial<Record<UnwrittenMapLocalAssetId, ImageSource>> = {
   "lantern-fair-encounter": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-encounter.webp"),
+  "whisper-orchard-encounter": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-encounter.webp"),
+  "clockwork-bridge-encounter": require("../../../assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-encounter.webp"),
+  "cloud-shepherd-encounter": require("../../../assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-encounter.webp"),
   "frog-parliament-encounter": require("../../../assets/games/unwritten-map/frog-encounter.webp"),
   "frog-parliament-choice-hear-frogs": require("../../../assets/games/unwritten-map/frog-hear.webp"),
   "frog-parliament-choice-night-pageant": require("../../../assets/games/unwritten-map/frog-pageant.webp"),

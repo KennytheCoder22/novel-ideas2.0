@@ -104,8 +104,8 @@ export type UnwrittenMapEnvironmentId = typeof UNWRITTEN_MAP_ENVIRONMENT_IDS[num
 export const UNWRITTEN_MAP_CHARACTER_IDS = [
   "frog-festival-musicians-and-audience",
   "orchard-light-wisp",
-  "bridge-gearkin",
-  "highwind-shepherd",
+  "bridge-workers-and-gearkin",
+  "highwind-shepherd-dog-and-cloud-flock",
   "marsh-mirror-reflection",
   "reed-parliament-frogs",
   "rain-camp-travelers",
@@ -202,8 +202,8 @@ type SceneRegistryEntry = {
 const SCENE_REGISTRY: readonly SceneRegistryEntry[] = [
   { scenarioId: "lantern-fair", regionId: "sunmeadow", environmentId: "sunmeadow-pavilion-field", characterId: "frog-festival-musicians-and-audience", actorRole: "community" },
   { scenarioId: "whisper-orchard", regionId: "sunmeadow", environmentId: "sunmeadow-whisper-orchard", characterId: "orchard-light-wisp", actorRole: "creature" },
-  { scenarioId: "clockwork-bridge", regionId: "ironwood", environmentId: "ironwood-brass-bridge", characterId: "bridge-gearkin", actorRole: "creature" },
-  { scenarioId: "cloud-shepherd", regionId: "ironwood", environmentId: "ironwood-highwind-farm", characterId: "highwind-shepherd", actorRole: "community" },
+  { scenarioId: "clockwork-bridge", regionId: "ironwood", environmentId: "ironwood-brass-bridge", characterId: "bridge-workers-and-gearkin", actorRole: "creature" },
+  { scenarioId: "cloud-shepherd", regionId: "ironwood", environmentId: "ironwood-highwind-farm", characterId: "highwind-shepherd-dog-and-cloud-flock", actorRole: "community" },
   { scenarioId: "mirror-marsh", regionId: "mossmere", environmentId: "mossmere-mirror-marsh", characterId: "marsh-mirror-reflection", actorRole: "environment" },
   { scenarioId: "frog-parliament", regionId: "mossmere", environmentId: "mossmere-reed-parliament", characterId: "reed-parliament-frogs", actorRole: "creature" },
   { scenarioId: "rain-camp", regionId: "westreach", environmentId: "westreach-storm-camp", characterId: "rain-camp-travelers", actorRole: "community" },
@@ -263,6 +263,23 @@ const OTHER_SKY_BRIEFS = {
 } as const;
 
 const LANTERN_FAIR_ENCOUNTER_BRIEF = "A rain-soaked striped pavilion glows with warm hanging lanterns while frog musicians and their audience gather; distant tents and town sit beyond, and the explorer directs and participates in the final song.";
+
+const AUTHORIZED_ENCOUNTER_BRIEFS: Readonly<Partial<Record<UnwrittenMapScenarioId, string>>> = {
+  "lantern-fair": LANTERN_FAIR_ENCOUNTER_BRIEF,
+  "whisper-orchard": "The explorer approaches a pale golden wisp in a blossom-filled moonlit orchard, among apples, lanterns, and mist with the distant city beyond.",
+  "clockwork-bridge": "The explorer faces an incomplete brass-and-timber mechanical bridge across a mountain gorge, surrounded by exposed gears, cranes, workers, windmills, and a highland city.",
+  "cloud-shepherd": "The explorer and a dog overlook a highland farm, shepherd, sheep flock, and cloud-sheep flock while one dark runaway thundercloud flashes with lightning near the windmill and mountains.",
+};
+
+const AUTHORIZED_ENCOUNTER_ACTOR_ROLES: Readonly<Partial<Record<
+  UnwrittenMapScenarioId,
+  readonly UnwrittenMapActorRole[]
+>>> = {
+  "lantern-fair": ["explorer", "community", "creature", "environment"],
+  "whisper-orchard": ["explorer", "creature", "environment"],
+  "clockwork-bridge": ["explorer", "community", "creature", "environment"],
+  "cloud-shepherd": ["explorer", "community", "creature", "environment"],
+};
 
 function expectedRasterPath(
   regionId: UnwrittenMapRegionId,
@@ -398,12 +415,10 @@ function buildEncounterPresentation(scenario: MapScenario): UnwrittenMapEncounte
     paletteSlot: "primary",
     brief: scenarioId === "mirror-marsh"
       ? OTHER_SKY_BRIEFS.encounter
-      : scenarioId === "lantern-fair"
-        ? LANTERN_FAIR_ENCOUNTER_BRIEF
+      : AUTHORIZED_ENCOUNTER_BRIEFS[scenarioId]
+        ? AUTHORIZED_ENCOUNTER_BRIEFS[scenarioId]!
         : `${scenario.prompt} Establish ${scenario.location}, its ${sceneEntry.environmentId} environment, and ${sceneEntry.characterId}.`,
-    depictsActorRoles: scenarioId === "lantern-fair"
-      ? ["explorer", "community", "creature"]
-      : [sceneEntry.actorRole],
+    depictsActorRoles: AUTHORIZED_ENCOUNTER_ACTOR_ROLES[scenarioId] || [sceneEntry.actorRole],
   });
 
   return {

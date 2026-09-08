@@ -131,18 +131,18 @@ test("detects missing metadata when required fields are absent", () => {
   assert.ok(issues.some((issue) => issue.code === "missing_metadata"));
 });
 
-test("live production inventory is honestly blocked at 10 approved of 108 required", () => {
+test("live production inventory is honestly blocked at 13 approved of 108 required", () => {
   const inventory = buildUnwrittenMapArtInventorySummary();
   assert.deepEqual(inventory, {
     required: 108,
-    approved: 10,
-    missing: 98,
-    encounters: { required: 12, approved: 2, missing: 10 },
+    approved: 13,
+    missing: 95,
+    encounters: { required: 12, approved: 5, missing: 7 },
     choices: { required: 48, approved: 4, missing: 44 },
     results: { required: 48, approved: 4, missing: 44 },
   });
   const diagnostics = validateUnwrittenMapPresentation();
-  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 98);
+  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 95);
 });
 
 test("inventory never counts declared approvals whose local files fail validation", () => {
@@ -169,7 +169,7 @@ test("coverage summary identifies Reed Parliament as approved and every missing 
 
 test("human-readable summary reports blocked production status and exact inventory", () => {
   const summary = formatUnwrittenMapPresentationSummary();
-  assert.match(summary, /Raster inventory: 10\/108 approved; 98 commissioning assets missing/);
+  assert.match(summary, /Raster inventory: 13\/108 approved; 95 commissioning assets missing/);
   assert.match(summary, /Production status: BLOCKED/);
   assert.match(summary, /Scenario: frog-parliament \[approved\]/);
   assert.match(summary, /Scenario: mirror-marsh \[MISSING\]/);
