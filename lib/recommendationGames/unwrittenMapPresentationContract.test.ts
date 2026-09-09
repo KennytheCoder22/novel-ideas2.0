@@ -17,6 +17,7 @@ import {
 } from "./unwrittenMapPresentationContract";
 import {
   CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS,
+  CLOCKWORK_BRIDGE_RESULT_ASSET_IDS,
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
@@ -145,7 +146,7 @@ test("Lantern Fair choice art maps one-to-one to authoritative choice ids withou
   }
 });
 
-test("Clockwork Bridge choice art maps one-to-one to authoritative choice ids and never to results", () => {
+test("Clockwork Bridge choice art maps one-to-one to authoritative choice ids", () => {
   const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "clockwork-bridge");
   assert.ok(encounter);
   const expected = {
@@ -168,8 +169,59 @@ test("Clockwork Bridge choice art maps one-to-one to authoritative choice ids an
     assert.equal(choice.focalArt.localAssetId, localAssetId);
     assert.equal(choice.focalArt.status, "approved");
     assert.equal(choice.result.focalArt.assetId, `result:clockwork-bridge:${choice.choiceId}`);
-    assert.equal(choice.result.focalArt.localAssetId, null);
-    assert.equal(choice.result.focalArt.status, "missing");
+    assert.equal(choice.result.focalArt.status, "approved");
+    assert.notEqual(choice.result.focalArt.localAssetId, localAssetId);
+    assert.notEqual(choice.result.focalArt.assetPath, choice.focalArt.assetPath);
+  }
+});
+
+test("Clockwork Bridge result art maps by authoritative choice id without changing live outcomes", () => {
+  const metadata = buildUnwrittenMapPresentationMetadata();
+  const scenario = UNWRITTEN_MAP_SCENARIOS.find((item) => item.id === "clockwork-bridge");
+  const encounter = metadata.find((item) => item.scenarioId === "clockwork-bridge");
+  assert.ok(scenario);
+  assert.ok(encounter);
+  const expected = {
+    "gear-puzzle": [
+      "clockwork-bridge-result-gear-puzzle",
+      "7545b5a712a517a9d0210612ecbd1693c67dbb5db95eb22da7a1bdce87986fc9",
+      "1473x982",
+      "The bridge remembers every crossing and clicks gratefully into place.",
+    ],
+    "rope-crossing": [
+      "clockwork-bridge-result-rope-crossing",
+      "5de2b7ac1ceb8f92a7f75ca4e48b080aa56c3ee1485019e010e76adb4aebe931",
+      "1442x961",
+      "Your rope becomes a shining handrail when the bridge finally wakes.",
+    ],
+    "mediate-gears": [
+      "clockwork-bridge-result-mediate-gears",
+      "3cd20fd668151b32ef478fbc41497cbd9d73395d27213346620f6a5f7c3ff3b3",
+      "1461x974",
+      "The gears agree to turn together, though one insists on singing.",
+    ],
+    "paint-blueprint": [
+      "clockwork-bridge-result-paint-blueprint",
+      "c69634d4ab182736263fc5e300693d7cb9fac600060b2f095a847afa6e0bf910",
+      "1471x981",
+      "The painted bridge climbs off the page and completes the span.",
+    ],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256, dimensions, outcome] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(CLOCKWORK_BRIDGE_RESULT_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.result.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.result.focalArt.status, "approved");
+    assert.equal(choice.result.focalArt.targetAspectRatio, "3:2");
+    assert.equal(scenario.choices.find((item) => item.id === choice.choiceId)?.result, outcome);
+    assert.match(choice.result.focalArt.brief, new RegExp(outcome.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, dimensions);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
   }
 });
 
@@ -366,6 +418,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
       const resultStatus = encounter.scenarioId === "frog-parliament"
         || encounter.scenarioId === "lantern-fair"
         || encounter.scenarioId === "whisper-orchard"
+        || encounter.scenarioId === "clockwork-bridge"
         ? "approved"
         : "missing";
       assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
@@ -382,7 +435,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
   assert.equal(unavailableChoices.length, 32);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 36);
+  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 32);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {

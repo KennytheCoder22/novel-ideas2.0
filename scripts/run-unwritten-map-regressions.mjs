@@ -1983,6 +1983,16 @@ async function main() {
   assert(presentationContractSource.includes('scenarioId === "clockwork-bridge"')
     && presentationContractSource.includes("CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS[choice.id]"),
   "all four Clockwork Bridge choice cards must use authoritative runtime mappings");
+  for (const asset of [
+    "clockwork-bridge-result-gear-puzzle",
+    "clockwork-bridge-result-rope-crossing",
+    "clockwork-bridge-result-mediate-gears",
+    "clockwork-bridge-result-paint-blueprint",
+  ]) {
+    assert(artComponentSource.includes(`"${asset}"`), `Clockwork Bridge result runtime source missing: ${asset}`);
+  }
+  assert(presentationContractSource.includes("CLOCKWORK_BRIDGE_RESULT_ASSET_IDS[choice.id]"),
+    "all four Clockwork Bridge results must use authoritative choice-id mappings");
   assert(routeSource.includes("flexBasis: 350")
     && routeSource.includes("flexWrap: \"wrap\"")
     && routeSource.includes("minWidth: 0"),
@@ -2093,13 +2103,13 @@ async function main() {
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
   const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
-  assert(inventory.required === 108 && inventory.approved === 40 && inventory.missing === 68
+  assert(inventory.required === 108 && inventory.approved === 44 && inventory.missing === 64
     && inventory.encounters.approved === 12 && inventory.encounters.missing === 0
     && inventory.choices.approved === 16 && inventory.choices.missing === 32
-    && inventory.results.approved === 12 && inventory.results.missing === 36,
+    && inventory.results.approved === 16 && inventory.results.missing === 32,
     `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
-  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 68,
-    "full focal-art audit must stay explicitly blocked until all 68 remaining choice/result assets are supplied");
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 64,
+    "full focal-art audit must stay explicitly blocked until all 64 remaining choice/result assets are supplied");
   assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
     "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
   assert(!artComponentSource.includes("AUTHORIZED ILLUSTRATION REQUIRED")
