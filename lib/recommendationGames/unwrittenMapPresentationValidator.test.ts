@@ -131,18 +131,18 @@ test("detects missing metadata when required fields are absent", () => {
   assert.ok(issues.some((issue) => issue.code === "missing_metadata"));
 });
 
-test("encounter milestone is complete while full inventory remains blocked at 32 of 108", () => {
+test("encounter milestone and four choice/result sets are complete while full inventory remains blocked", () => {
   const inventory = buildUnwrittenMapArtInventorySummary();
   assert.deepEqual(inventory, {
     required: 108,
-    approved: 32,
-    missing: 76,
+    approved: 44,
+    missing: 64,
     encounters: { required: 12, approved: 12, missing: 0 },
-    choices: { required: 48, approved: 8, missing: 40 },
-    results: { required: 48, approved: 12, missing: 36 },
+    choices: { required: 48, approved: 16, missing: 32 },
+    results: { required: 48, approved: 16, missing: 32 },
   });
   const diagnostics = validateUnwrittenMapPresentation();
-  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 76);
+  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 64);
   assert.equal(diagnostics.filter((issue) => issue.scope === "encounter" || issue.scope === "registry").length, 0);
 });
 
@@ -153,7 +153,7 @@ test("inventory never counts declared approvals whose local files fail validatio
   assert.equal(inventory.missing, 108);
 });
 
-test("coverage summary identifies Reed Parliament as approved and every missing slot as blocked", () => {
+test("coverage summary identifies approved choice sets while every missing result remains blocked", () => {
   const summary = buildUnwrittenMapPresentationCoverageSummary();
   assert.equal(summary.length, 12);
   for (const row of summary) {
@@ -164,10 +164,15 @@ test("coverage summary identifies Reed Parliament as approved and every missing 
       assert.equal(row.resultOkCount, 4);
     } else if (row.scenarioId === "lantern-fair") {
       assert.equal(row.encounterOk, true);
-      assert.equal(row.choiceOkCount, 0);
+      assert.equal(row.choiceOkCount, 4);
       assert.equal(row.resultOkCount, 4);
-      assert.ok(row.diagnosticCount > 0, "Lantern Fair should remain blocked on choice art");
+      assert.equal(row.diagnosticCount, 0);
     } else if (row.scenarioId === "whisper-orchard") {
+      assert.equal(row.encounterOk, true);
+      assert.equal(row.choiceOkCount, 4);
+      assert.equal(row.resultOkCount, 4);
+      assert.equal(row.diagnosticCount, 0);
+    } else if (row.scenarioId === "clockwork-bridge") {
       assert.equal(row.encounterOk, true);
       assert.equal(row.choiceOkCount, 4);
       assert.equal(row.resultOkCount, 4);
@@ -180,7 +185,7 @@ test("coverage summary identifies Reed Parliament as approved and every missing 
 
 test("human-readable summary reports blocked production status and exact inventory", () => {
   const summary = formatUnwrittenMapPresentationSummary();
-  assert.match(summary, /Raster inventory: 32\/108 approved; 76 commissioning assets missing/);
+  assert.match(summary, /Raster inventory: 44\/108 approved; 64 commissioning assets missing/);
   assert.match(summary, /Production status: BLOCKED/);
   assert.match(summary, /Scenario: frog-parliament \[approved\]/);
   assert.match(summary, /Scenario: mirror-marsh \[approved\]/);

@@ -1949,13 +1949,50 @@ async function main() {
     && artComponentSource.includes('"whisper-orchard-result-trail-light"')
     && artComponentSource.includes('"whisper-orchard-result-decode-trees"')
     && artComponentSource.includes('"whisper-orchard-result-taste-fruit"')
-    && artComponentSource.includes('aria-hidden={variant === "result"}')
-    && artComponentSource.includes('accessibilityElementsHidden={variant === "result"}')
-    && artComponentSource.includes('alt={variant === "result" ? "" : undefined}')
+    && artComponentSource.includes('aria-hidden={variant !== "encounter"}')
+    && artComponentSource.includes('accessibilityElementsHidden={variant !== "encounter"}')
+    && artComponentSource.includes('alt={variant !== "encounter" ? "" : undefined}')
     && routeSource.includes("styles.resultIllustration, { borderColor: region.paletteHex.primary }")
     && routeSource.includes("importantForAccessibility=\"no-hide-descendants\"")
     && routeSource.includes('label={choice ? `${choice.label}: ${choice.result}`'),
   "each Whisper Orchard choice ID must render its exact decorative result illustration while live result text stays authoritative");
+  for (const asset of [
+    "lantern-fair-choice-take-stage",
+    "lantern-fair-choice-balcony-view",
+    "lantern-fair-choice-hidden-melody",
+    "lantern-fair-choice-help-lanterns",
+  ]) {
+    assert(artComponentSource.includes(`"${asset}"`), `Lantern Fair choice runtime source missing: ${asset}`);
+  }
+  assert(presentationContractSource.includes('scenarioId === "lantern-fair"')
+    && presentationContractSource.includes("LANTERN_FAIR_CHOICE_ASSET_IDS[choice.id]")
+    && artComponentSource.includes('accessible={variant === "encounter"}')
+    && artComponentSource.includes('accessibilityElementsHidden={variant !== "encounter"}')
+    && artComponentSource.includes('importantForAccessibility={variant !== "encounter" ? "no-hide-descendants" : "auto"}')
+    && artComponentSource.includes('accessibilityLabel={variant === "encounter" ?')
+    && routeSource.includes("presentationForChoice(presentation, item.id).focalArt"),
+  "all four Lantern Fair choice cards must use authoritative runtime mappings while decorative authored text stays accessibility-hidden");
+  for (const asset of [
+    "clockwork-bridge-choice-gear-puzzle",
+    "clockwork-bridge-choice-rope-crossing",
+    "clockwork-bridge-choice-mediate-gears",
+    "clockwork-bridge-choice-paint-blueprint",
+  ]) {
+    assert(artComponentSource.includes(`"${asset}"`), `Clockwork Bridge choice runtime source missing: ${asset}`);
+  }
+  assert(presentationContractSource.includes('scenarioId === "clockwork-bridge"')
+    && presentationContractSource.includes("CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS[choice.id]"),
+  "all four Clockwork Bridge choice cards must use authoritative runtime mappings");
+  for (const asset of [
+    "clockwork-bridge-result-gear-puzzle",
+    "clockwork-bridge-result-rope-crossing",
+    "clockwork-bridge-result-mediate-gears",
+    "clockwork-bridge-result-paint-blueprint",
+  ]) {
+    assert(artComponentSource.includes(`"${asset}"`), `Clockwork Bridge result runtime source missing: ${asset}`);
+  }
+  assert(presentationContractSource.includes("CLOCKWORK_BRIDGE_RESULT_ASSET_IDS[choice.id]"),
+    "all four Clockwork Bridge results must use authoritative choice-id mappings");
   assert(routeSource.includes("flexBasis: 350")
     && routeSource.includes("flexWrap: \"wrap\"")
     && routeSource.includes("minWidth: 0"),
@@ -2066,13 +2103,13 @@ async function main() {
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
   const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
-  assert(inventory.required === 108 && inventory.approved === 32 && inventory.missing === 76
+  assert(inventory.required === 108 && inventory.approved === 44 && inventory.missing === 64
     && inventory.encounters.approved === 12 && inventory.encounters.missing === 0
-    && inventory.choices.approved === 8 && inventory.choices.missing === 40
-    && inventory.results.approved === 12 && inventory.results.missing === 36,
+    && inventory.choices.approved === 16 && inventory.choices.missing === 32
+    && inventory.results.approved === 16 && inventory.results.missing === 32,
     `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
-  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 76,
-    "full focal-art audit must stay explicitly blocked until all 76 remaining choice/result assets are supplied");
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 64,
+    "full focal-art audit must stay explicitly blocked until all 64 remaining choice/result assets are supplied");
   assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
     "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
   assert(!artComponentSource.includes("AUTHORIZED ILLUSTRATION REQUIRED")

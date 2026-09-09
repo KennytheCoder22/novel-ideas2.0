@@ -16,9 +16,12 @@ import {
   type UnwrittenMapRegionId,
 } from "./unwrittenMapRegions";
 import {
+  CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS,
+  CLOCKWORK_BRIDGE_RESULT_ASSET_IDS,
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
   LANTERN_FAIR_RESULT_ASSET_IDS,
+  LANTERN_FAIR_CHOICE_ASSET_IDS,
   UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS,
   WHISPER_ORCHARD_CHOICE_ASSET_IDS,
   WHISPER_ORCHARD_RESULT_ASSET_IDS,
@@ -362,12 +365,18 @@ function buildChoicePresentation(
   const frogResultAssetId = FROG_PARLIAMENT_RESULT_ASSET_IDS[choice.id];
   const choiceLocalAssetId = scenarioId === "whisper-orchard"
     ? WHISPER_ORCHARD_CHOICE_ASSET_IDS[choice.id]
-    : frogChoiceAssetId;
+    : scenarioId === "lantern-fair"
+      ? LANTERN_FAIR_CHOICE_ASSET_IDS[choice.id]
+      : scenarioId === "clockwork-bridge"
+        ? CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS[choice.id]
+        : frogChoiceAssetId;
   const resultLocalAssetId = scenarioId === "whisper-orchard"
     ? WHISPER_ORCHARD_RESULT_ASSET_IDS[choice.id]
     : scenarioId === "lantern-fair"
       ? LANTERN_FAIR_RESULT_ASSET_IDS[choice.id]
-      : frogResultAssetId;
+      : scenarioId === "clockwork-bridge"
+        ? CLOCKWORK_BRIDGE_RESULT_ASSET_IDS[choice.id]
+        : frogResultAssetId;
   const choiceBrief = scenarioId === "mirror-marsh"
     ? OTHER_SKY_BRIEFS[choice.id as keyof typeof OTHER_SKY_BRIEFS]
     : `The explorer performs "${choice.label}" at ${scenario.location}: ${choice.description}`;

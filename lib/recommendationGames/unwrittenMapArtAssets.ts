@@ -1,9 +1,11 @@
 // Local asset manifest for The Unwritten Map's presentation layer.
 //
-// Authorized focal art currently covers all encounters, Mossmere/frog-parliament,
-// Whisper Orchard choices/results, and Lantern Fair results, alongside shared cartographic
-// framing chrome. Every other choice and result remains an explicitly
-// missing raster commissioning slot (see unwrittenMapPresentationContract.ts). This module
+// Authorized focal art currently covers every encounter, all Mossmere/
+// frog-parliament choices and results, Whisper Orchard choices/results, Lantern
+// Fair choices/results, and Clockwork Bridge choices/results, alongside shared
+// cartographic framing chrome.
+// Every other choice and result remains an explicitly missing raster
+// commissioning slot (see unwrittenMapPresentationContract.ts). This module
 // is pure data (a path manifest) plus a couple of pure lookup helpers; it
 // does not touch the filesystem itself so it stays safe to import from any
 // runtime. Filesystem existence checks live in the Node-only validator.
@@ -26,6 +28,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "lantern-fair-result-balcony-view": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-balcony-view.webp",
   "lantern-fair-result-hidden-melody": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-hidden-melody.webp",
   "lantern-fair-result-help-lanterns": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-result-help-lanterns.webp",
+  "lantern-fair-choice-take-stage": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-take-stage.webp",
+  "lantern-fair-choice-balcony-view": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-balcony-view.webp",
+  "lantern-fair-choice-hidden-melody": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-hidden-melody.webp",
+  "lantern-fair-choice-help-lanterns": "assets/games/unwritten-map/illustrations/sunmeadow/lantern-fair/lantern-fair-choice-help-lanterns.webp",
   "whisper-orchard-encounter": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-encounter.webp",
   "whisper-orchard-choice-call-light": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-call-light.webp",
   "whisper-orchard-choice-trail-light": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-trail-light.webp",
@@ -36,6 +42,14 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "whisper-orchard-result-decode-trees": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-result-decode-trees.webp",
   "whisper-orchard-result-taste-fruit": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-result-taste-fruit.webp",
   "clockwork-bridge-encounter": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-encounter.webp",
+  "clockwork-bridge-choice-gear-puzzle": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-choice-gear-puzzle.webp",
+  "clockwork-bridge-choice-rope-crossing": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-choice-rope-crossing.webp",
+  "clockwork-bridge-choice-mediate-gears": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-choice-mediate-gears.webp",
+  "clockwork-bridge-choice-paint-blueprint": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-choice-paint-blueprint.webp",
+  "clockwork-bridge-result-gear-puzzle": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-result-gear-puzzle.webp",
+  "clockwork-bridge-result-rope-crossing": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-result-rope-crossing.webp",
+  "clockwork-bridge-result-mediate-gears": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-result-mediate-gears.webp",
+  "clockwork-bridge-result-paint-blueprint": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-result-paint-blueprint.webp",
   "cloud-shepherd-encounter": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-encounter.webp",
   "mirror-marsh-encounter": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-encounter.webp",
   "rain-camp-encounter": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-encounter.webp",
@@ -93,6 +107,27 @@ export const FROG_PARLIAMENT_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalA
   "night-pageant": "frog-parliament-choice-night-pageant",
   "moon-experiment": "frog-parliament-choice-moon-experiment",
   "grand-speech": "frog-parliament-choice-grand-speech",
+};
+
+export const LANTERN_FAIR_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "take-stage": "lantern-fair-choice-take-stage",
+  "balcony-view": "lantern-fair-choice-balcony-view",
+  "hidden-melody": "lantern-fair-choice-hidden-melody",
+  "help-lanterns": "lantern-fair-choice-help-lanterns",
+};
+
+export const CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "gear-puzzle": "clockwork-bridge-choice-gear-puzzle",
+  "rope-crossing": "clockwork-bridge-choice-rope-crossing",
+  "mediate-gears": "clockwork-bridge-choice-mediate-gears",
+  "paint-blueprint": "clockwork-bridge-choice-paint-blueprint",
+};
+
+export const CLOCKWORK_BRIDGE_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "gear-puzzle": "clockwork-bridge-result-gear-puzzle",
+  "rope-crossing": "clockwork-bridge-result-rope-crossing",
+  "mediate-gears": "clockwork-bridge-result-mediate-gears",
+  "paint-blueprint": "clockwork-bridge-result-paint-blueprint",
 };
 
 /** The exact, authoritative choice-id -> local-asset-id mapping for results. */
@@ -186,6 +221,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedDimensions: "1418x945",
     authorization: "User-supplied for PR #306",
   },
+  "lantern-fair-choice-take-stage": {
+    sourceFile: "b0a32019-e55d-4ab8-ac7a-49b2ef3139a9-1cc8091e-4547-4f71-b077-afec765727ab-clipboard.png",
+    sourceSha256: "ae0339a4bb2eb03f5b950a905e9e2b7b6b10dedf90de6ea8fa4723c910bec7aa",
+    derivedSha256: "64607381a8dcdcd637f630923112727188484f70de9deb8ba799b53f62ed6386",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for this Lantern Fair choice-art phase",
+  },
+  "lantern-fair-choice-balcony-view": {
+    sourceFile: "ca53938b-ddf0-462c-8a93-ca0a9472cd37-a923c3e0-51c2-41c5-88d0-7c176fd0dbf2-clipboard.png",
+    sourceSha256: "cc5e3f5be63c4b9795da9129d12307636612f8d0c2ea00b528e517e392f72e86",
+    derivedSha256: "fcf4a37324cc3da4b8e9a49127d0553dd159d4b1c686c835a91d63aebc3e0ac6",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for this Lantern Fair choice-art phase",
+  },
+  "lantern-fair-choice-hidden-melody": {
+    sourceFile: "1e2e7391-3aae-451d-8292-1f6a52941b64-45e1b0b4-7c1a-4919-ba16-9ba6ce8425ee-clipboard.png",
+    sourceSha256: "ba6edef51d9408217bfb8a60a13dd66bf23cdc693701f2580429f42800e0565b",
+    derivedSha256: "c5294a8154949d9f46b98d4cb18ee6c3aa61653c03aa77681720d9ab0cd26475",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for this Lantern Fair choice-art phase",
+  },
+  "lantern-fair-choice-help-lanterns": {
+    sourceFile: "1b6f2dad-2192-4686-b8d4-9e61d6b9ff5c-db2ba40c-635f-48c8-afae-8ceb25aeab03-clipboard.png",
+    sourceSha256: "5080027b52021a6685fb30a161b59efb8f0e2599fec77a2fd81594592ec5a762",
+    derivedSha256: "f6cfa181a31c803850fddf459b8a4f44e659ea357e663bed2da1cca57cb2cd7d",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for this Lantern Fair choice-art phase",
+  },
   "whisper-orchard-encounter": {
     sourceFile: "a93fb7d1-cb43-487e-ae1e-e6e62c2eb72a-ca28c87f-d8d7-4e64-b9e6-4a0a862d12c9-clipboard.png",
     sourceSha256: "d8a7e9bcd190a155012fa8487de34ed9f04374f8b8dc09ae8595f76b54ac0424",
@@ -255,6 +318,62 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "017e95d59c74753fc74446e0316e38a4780ca12371c849c17eb654583c4b2de7",
     derivedDimensions: "1418x945",
     authorization: "User-supplied for PR #306",
+  },
+  "clockwork-bridge-choice-gear-puzzle": {
+    sourceFile: "60a2a0d5-f950-464e-b3bb-93148caa5a37-a9943e72-1052-4220-b61a-3487b37087c9-clipboard.png",
+    sourceSha256: "f79446e357f6d993f525fe8a803928fec4591db232a1e80695a2f27d4ef656d8",
+    derivedSha256: "13f0a5b2879c7c5e6ba13028243bdaa26117d1902db8f3484fecb61433c84963",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Clockwork Bridge choice integration",
+  },
+  "clockwork-bridge-choice-rope-crossing": {
+    sourceFile: "255c9a32-1061-41fb-95fc-61f260f39a4a-d9affb6c-2987-4158-92c1-6fb31bd2ce2a-clipboard.png",
+    sourceSha256: "1be7face075af0ec2576e41aea7b6fe483457579f9b0842c73c3c5f2d3f3915a",
+    derivedSha256: "536debbe785553c45a6a896530a8df62049946e7f9178ccbbc18c734d67db55a",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Clockwork Bridge choice integration",
+  },
+  "clockwork-bridge-choice-mediate-gears": {
+    sourceFile: "d549fc41-32c3-4747-9e2d-d222ffce164c-f9163eab-98d4-41ce-8eb8-5294392b3813-clipboard.png",
+    sourceSha256: "3d44bc5afd22f53a40e96252b0d82f65f3fc7f72957932bab3817d8608240fa5",
+    derivedSha256: "ff7c51e15f8e95085eb7eaeeb07493e32dced685165fbf0d5c5644b668c911ca",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Clockwork Bridge choice integration",
+  },
+  "clockwork-bridge-choice-paint-blueprint": {
+    sourceFile: "ba8c4abd-c941-488c-8a08-231bb42cad4e-38ab5d42-c9bb-4e0b-98df-a83362167f5c-clipboard.png",
+    sourceSha256: "3c718dc4cdb26e525e310535f61d242203e8bc55afa64a4e8a4e887f2ecddd18",
+    derivedSha256: "b8879da8753fc5f10fd7e3ef38e853a7c43e8b1831da427d75f6f893e91ef337",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Clockwork Bridge choice integration",
+  },
+  "clockwork-bridge-result-gear-puzzle": {
+    sourceFile: "456e4913-9cef-4c1c-bcf4-3f0303360e47-1ec60e4a-8fae-4ec1-919b-4589de9bb031-clipboard.png",
+    sourceSha256: "7545b5a712a517a9d0210612ecbd1693c67dbb5db95eb22da7a1bdce87986fc9",
+    derivedSha256: "245aa71635b2a2d27ee7c1602e8e398f465ace6f3e4105cf7f28c64a71993e11",
+    derivedDimensions: "1473x982",
+    authorization: "User-supplied for Clockwork Bridge result integration",
+  },
+  "clockwork-bridge-result-rope-crossing": {
+    sourceFile: "bdaad6ec-4b6c-4fde-b1e7-b5b959a0982d-7dec58fd-e568-4586-9a96-659ae3354495-clipboard.png",
+    sourceSha256: "5de2b7ac1ceb8f92a7f75ca4e48b080aa56c3ee1485019e010e76adb4aebe931",
+    derivedSha256: "d82b2266e8461e0cb7f020a650b8254c00191f8ce34c498b4d257a51e341bc1b",
+    derivedDimensions: "1442x961",
+    authorization: "User-supplied for Clockwork Bridge result integration",
+  },
+  "clockwork-bridge-result-mediate-gears": {
+    sourceFile: "07fdc65e-156c-4876-82ce-b6c0ab31b104-1c7e0af5-c76f-48e6-92d6-a38f72ec18e3-clipboard.png",
+    sourceSha256: "3cd20fd668151b32ef478fbc41497cbd9d73395d27213346620f6a5f7c3ff3b3",
+    derivedSha256: "9be776e572c3e0684a593db550ff79fdbbc40d313beae1fc1f29f0e83aaf097a",
+    derivedDimensions: "1461x974",
+    authorization: "User-supplied for Clockwork Bridge result integration",
+  },
+  "clockwork-bridge-result-paint-blueprint": {
+    sourceFile: "e92bc360-f5ce-494f-9899-efe5aa2edba2-d46dce09-575d-45ed-bca2-8746bf2cec49-clipboard.png",
+    sourceSha256: "c69634d4ab182736263fc5e300693d7cb9fac600060b2f095a847afa6e0bf910",
+    derivedSha256: "b35de9105a98e3ff4ddf1cf6ceef164d03e1537001a5e719cc6bd46de5ff73bf",
+    derivedDimensions: "1471x981",
+    authorization: "User-supplied for Clockwork Bridge result integration",
   },
   "cloud-shepherd-encounter": {
     sourceFile: "b3ea9f57-fbd8-4344-bd46-3fc24e3a79c0-eb5fbca4-1ec4-4e0d-9419-154633bfc2bf-clipboard.png",
