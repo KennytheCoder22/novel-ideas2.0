@@ -41,6 +41,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "whisper-orchard-result-decode-trees": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-result-decode-trees.webp",
   "whisper-orchard-result-taste-fruit": "assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-result-taste-fruit.webp",
   "clockwork-bridge-encounter": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-encounter.webp",
+  "clockwork-bridge-choice-gear-puzzle": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-choice-gear-puzzle.webp",
+  "clockwork-bridge-choice-rope-crossing": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-choice-rope-crossing.webp",
+  "clockwork-bridge-choice-mediate-gears": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-choice-mediate-gears.webp",
+  "clockwork-bridge-choice-paint-blueprint": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-choice-paint-blueprint.webp",
   "cloud-shepherd-encounter": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-encounter.webp",
   "mirror-marsh-encounter": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-encounter.webp",
   "rain-camp-encounter": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-encounter.webp",
@@ -105,6 +109,13 @@ export const LANTERN_FAIR_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAsse
   "balcony-view": "lantern-fair-choice-balcony-view",
   "hidden-melody": "lantern-fair-choice-hidden-melody",
   "help-lanterns": "lantern-fair-choice-help-lanterns",
+};
+
+export const CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "gear-puzzle": "clockwork-bridge-choice-gear-puzzle",
+  "rope-crossing": "clockwork-bridge-choice-rope-crossing",
+  "mediate-gears": "clockwork-bridge-choice-mediate-gears",
+  "paint-blueprint": "clockwork-bridge-choice-paint-blueprint",
 };
 
 /** The exact, authoritative choice-id -> local-asset-id mapping for results. */
@@ -295,6 +306,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "017e95d59c74753fc74446e0316e38a4780ca12371c849c17eb654583c4b2de7",
     derivedDimensions: "1418x945",
     authorization: "User-supplied for PR #306",
+  },
+  "clockwork-bridge-choice-gear-puzzle": {
+    sourceFile: "60a2a0d5-f950-464e-b3bb-93148caa5a37-a9943e72-1052-4220-b61a-3487b37087c9-clipboard.png",
+    sourceSha256: "f79446e357f6d993f525fe8a803928fec4591db232a1e80695a2f27d4ef656d8",
+    derivedSha256: "13f0a5b2879c7c5e6ba13028243bdaa26117d1902db8f3484fecb61433c84963",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Clockwork Bridge choice integration",
+  },
+  "clockwork-bridge-choice-rope-crossing": {
+    sourceFile: "255c9a32-1061-41fb-95fc-61f260f39a4a-d9affb6c-2987-4158-92c1-6fb31bd2ce2a-clipboard.png",
+    sourceSha256: "1be7face075af0ec2576e41aea7b6fe483457579f9b0842c73c3c5f2d3f3915a",
+    derivedSha256: "536debbe785553c45a6a896530a8df62049946e7f9178ccbbc18c734d67db55a",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Clockwork Bridge choice integration",
+  },
+  "clockwork-bridge-choice-mediate-gears": {
+    sourceFile: "d549fc41-32c3-4747-9e2d-d222ffce164c-f9163eab-98d4-41ce-8eb8-5294392b3813-clipboard.png",
+    sourceSha256: "3d44bc5afd22f53a40e96252b0d82f65f3fc7f72957932bab3817d8608240fa5",
+    derivedSha256: "ff7c51e15f8e95085eb7eaeeb07493e32dced685165fbf0d5c5644b668c911ca",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Clockwork Bridge choice integration",
+  },
+  "clockwork-bridge-choice-paint-blueprint": {
+    sourceFile: "ba8c4abd-c941-488c-8a08-231bb42cad4e-38ab5d42-c9bb-4e0b-98df-a83362167f5c-clipboard.png",
+    sourceSha256: "3c718dc4cdb26e525e310535f61d242203e8bc55afa64a4e8a4e887f2ecddd18",
+    derivedSha256: "b8879da8753fc5f10fd7e3ef38e853a7c43e8b1831da427d75f6f893e91ef337",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Clockwork Bridge choice integration",
   },
   "cloud-shepherd-encounter": {
     sourceFile: "b3ea9f57-fbd8-4344-bd46-3fc24e3a79c0-eb5fbca4-1ec4-4e0d-9419-154633bfc2bf-clipboard.png",

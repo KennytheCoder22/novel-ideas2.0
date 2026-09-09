@@ -16,6 +16,7 @@ import {
   type UnwrittenMapRegionId,
 } from "./unwrittenMapRegions";
 import {
+  CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
   LANTERN_FAIR_RESULT_ASSET_IDS,
@@ -365,7 +366,9 @@ function buildChoicePresentation(
     ? WHISPER_ORCHARD_CHOICE_ASSET_IDS[choice.id]
     : scenarioId === "lantern-fair"
       ? LANTERN_FAIR_CHOICE_ASSET_IDS[choice.id]
-      : frogChoiceAssetId;
+      : scenarioId === "clockwork-bridge"
+        ? CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS[choice.id]
+        : frogChoiceAssetId;
   const resultLocalAssetId = scenarioId === "whisper-orchard"
     ? WHISPER_ORCHARD_RESULT_ASSET_IDS[choice.id]
     : scenarioId === "lantern-fair"

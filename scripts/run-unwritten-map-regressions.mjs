@@ -1972,6 +1972,17 @@ async function main() {
     && artComponentSource.includes('accessibilityLabel={variant === "encounter" ?')
     && routeSource.includes("presentationForChoice(presentation, item.id).focalArt"),
   "all four Lantern Fair choice cards must use authoritative runtime mappings while decorative authored text stays accessibility-hidden");
+  for (const asset of [
+    "clockwork-bridge-choice-gear-puzzle",
+    "clockwork-bridge-choice-rope-crossing",
+    "clockwork-bridge-choice-mediate-gears",
+    "clockwork-bridge-choice-paint-blueprint",
+  ]) {
+    assert(artComponentSource.includes(`"${asset}"`), `Clockwork Bridge choice runtime source missing: ${asset}`);
+  }
+  assert(presentationContractSource.includes('scenarioId === "clockwork-bridge"')
+    && presentationContractSource.includes("CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS[choice.id]"),
+  "all four Clockwork Bridge choice cards must use authoritative runtime mappings");
   assert(routeSource.includes("flexBasis: 350")
     && routeSource.includes("flexWrap: \"wrap\"")
     && routeSource.includes("minWidth: 0"),
@@ -2082,13 +2093,13 @@ async function main() {
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
   const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
-  assert(inventory.required === 108 && inventory.approved === 36 && inventory.missing === 72
+  assert(inventory.required === 108 && inventory.approved === 40 && inventory.missing === 68
     && inventory.encounters.approved === 12 && inventory.encounters.missing === 0
-    && inventory.choices.approved === 12 && inventory.choices.missing === 36
+    && inventory.choices.approved === 16 && inventory.choices.missing === 32
     && inventory.results.approved === 12 && inventory.results.missing === 36,
     `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
-  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 72,
-    "full focal-art audit must stay explicitly blocked until all 72 remaining choice/result assets are supplied");
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 68,
+    "full focal-art audit must stay explicitly blocked until all 68 remaining choice/result assets are supplied");
   assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
     "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
   assert(!artComponentSource.includes("AUTHORIZED ILLUSTRATION REQUIRED")
