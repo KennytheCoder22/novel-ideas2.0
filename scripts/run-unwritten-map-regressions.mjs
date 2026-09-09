@@ -1944,6 +1944,18 @@ async function main() {
     && artComponentSource.includes('"frog-parliament-result-moon-experiment"')
     && artComponentSource.includes('"frog-parliament-result-grand-speech"'),
   "each Reed Parliament choice ID must map to its exact authored result illustration, independent of displayed option number");
+  assert(presentationContractSource.includes('WHISPER_ORCHARD_RESULT_ASSET_IDS[choice.id]')
+    && artComponentSource.includes('"whisper-orchard-result-call-light"')
+    && artComponentSource.includes('"whisper-orchard-result-trail-light"')
+    && artComponentSource.includes('"whisper-orchard-result-decode-trees"')
+    && artComponentSource.includes('"whisper-orchard-result-taste-fruit"')
+    && artComponentSource.includes('aria-hidden={variant === "result"}')
+    && artComponentSource.includes('accessibilityElementsHidden={variant === "result"}')
+    && artComponentSource.includes('alt={variant === "result" ? "" : undefined}')
+    && routeSource.includes("styles.resultIllustration, { borderColor: region.paletteHex.primary }")
+    && routeSource.includes("importantForAccessibility=\"no-hide-descendants\"")
+    && routeSource.includes('label={choice ? `${choice.label}: ${choice.result}`'),
+  "each Whisper Orchard choice ID must render its exact decorative result illustration while live result text stays authoritative");
   assert(routeSource.includes("flexBasis: 350")
     && routeSource.includes("flexWrap: \"wrap\"")
     && routeSource.includes("minWidth: 0"),
@@ -2054,13 +2066,13 @@ async function main() {
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
   const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
-  assert(inventory.required === 108 && inventory.approved === 28 && inventory.missing === 80
+  assert(inventory.required === 108 && inventory.approved === 32 && inventory.missing === 76
     && inventory.encounters.approved === 12 && inventory.encounters.missing === 0
     && inventory.choices.approved === 8 && inventory.choices.missing === 40
-    && inventory.results.approved === 8 && inventory.results.missing === 40,
+    && inventory.results.approved === 12 && inventory.results.missing === 36,
     `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
-  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 80,
-    "full focal-art audit must stay explicitly blocked until all 80 remaining choice/result assets are supplied");
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 76,
+    "full focal-art audit must stay explicitly blocked until all 76 remaining choice/result assets are supplied");
   assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
     "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
   assert(!artComponentSource.includes("AUTHORIZED ILLUSTRATION REQUIRED")
@@ -2072,6 +2084,7 @@ async function main() {
   assert(presentationSummary.every((row) => row.choiceCount === 4)
     && presentationSummary.find((row) => row.scenarioId === "frog-parliament")?.choiceOkCount === 4
     && presentationSummary.find((row) => row.scenarioId === "whisper-orchard")?.choiceOkCount === 4
+    && presentationSummary.find((row) => row.scenarioId === "whisper-orchard")?.resultOkCount === 4
     && presentationSummary.find((row) => row.scenarioId === "lantern-fair")?.resultOkCount === 4,
   "coverage must retain four slots per scenario and all commissioned Reed Parliament, Whisper Orchard, and Lantern Fair art");
   checks.push("encounter_complete_staged_raster_commissioning_gate");

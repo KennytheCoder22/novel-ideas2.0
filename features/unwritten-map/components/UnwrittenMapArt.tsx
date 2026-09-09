@@ -26,6 +26,10 @@ const LOCAL_ART_SOURCES: Partial<Record<UnwrittenMapLocalAssetId, ImageSource>> 
   "whisper-orchard-choice-trail-light": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-trail-light.webp"),
   "whisper-orchard-choice-decode-trees": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-decode-trees.webp"),
   "whisper-orchard-choice-taste-fruit": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-choice-taste-fruit.webp"),
+  "whisper-orchard-result-call-light": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-result-call-light.webp"),
+  "whisper-orchard-result-trail-light": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-result-trail-light.webp"),
+  "whisper-orchard-result-decode-trees": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-result-decode-trees.webp"),
+  "whisper-orchard-result-taste-fruit": require("../../../assets/games/unwritten-map/illustrations/sunmeadow/whisper-orchard/whisper-orchard-result-taste-fruit.webp"),
   "clockwork-bridge-encounter": require("../../../assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-encounter.webp"),
   "cloud-shepherd-encounter": require("../../../assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-encounter.webp"),
   "mirror-marsh-encounter": require("../../../assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-encounter.webp"),
@@ -99,7 +103,12 @@ export function UnwrittenMapArt({
         style={[styles.localArt, variant === "choice" && styles.localChoiceArt]}
         contentFit={variant === "choice" ? "contain" : "cover"}
         onError={() => setLoadFailed(true)}
-        accessibilityLabel={`${label}. Illustrated local artwork; depicted actor role: ${actorRole}.`}
+        accessible={variant !== "result"}
+        aria-hidden={variant === "result"}
+        accessibilityElementsHidden={variant === "result"}
+        importantForAccessibility={variant === "result" ? "no" : "auto"}
+        alt={variant === "result" ? "" : undefined}
+        accessibilityLabel={variant === "result" ? undefined : `${label}. Illustrated local artwork; depicted actor role: ${actorRole}.`}
       />
     );
   }

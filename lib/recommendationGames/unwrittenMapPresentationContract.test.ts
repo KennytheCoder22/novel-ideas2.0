@@ -22,6 +22,7 @@ import {
   LANTERN_FAIR_RESULT_ASSET_IDS,
   UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE,
   WHISPER_ORCHARD_CHOICE_ASSET_IDS,
+  WHISPER_ORCHARD_RESULT_ASSET_IDS,
   unwrittenMapLocalAssetPath,
 } from "./unwrittenMapArtAssets";
 import { unwrittenMapViewportLayout } from "./unwrittenMapPresentation";
@@ -196,6 +197,51 @@ test("Whisper Orchard choice art is mapped by authoritative choice id with prove
   }
 });
 
+test("Whisper Orchard result art is mapped by authoritative choice id without changing live outcomes", () => {
+  const metadata = buildUnwrittenMapPresentationMetadata();
+  const scenario = UNWRITTEN_MAP_SCENARIOS.find((item) => item.id === "whisper-orchard");
+  const encounter = metadata.find((item) => item.scenarioId === "whisper-orchard");
+  assert.ok(scenario);
+  assert.ok(encounter);
+  const expected = {
+    "call-light": [
+      "whisper-orchard-result-call-light",
+      "252f5d20fdf7802f7f1b4a74f50d8aa122de74581be5689267df41a97d7de2db",
+      "It answers in your voice, then becomes a companionable lantern moth.",
+    ],
+    "trail-light": [
+      "whisper-orchard-result-trail-light",
+      "92de7af3c94e8fa9d061aa3f7439a66a49c393ddfe5a2e283124a8e99d06aef3",
+      "It leads to a tree bearing moon-silver fruit.",
+    ],
+    "decode-trees": [
+      "whisper-orchard-result-decode-trees",
+      "77b167e30fb07e4fe229a32f9c9c366ec609d427cb2c56941eb7197bfdbc53ab",
+      "The fragments become directions left by a traveler a century ago.",
+    ],
+    "taste-fruit": [
+      "whisper-orchard-result-taste-fruit",
+      "fa3ac36376b472c7fdc636812966c01192b7322480e3760a5c05366d25da75b2",
+      "The apple hums whenever you face north.",
+    ],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256, outcome] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(WHISPER_ORCHARD_RESULT_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.result.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.result.focalArt.status, "approved");
+    assert.equal(choice.result.focalArt.targetAspectRatio, "3:2");
+    assert.equal(scenario.choices.find((item) => item.id === choice.choiceId)?.result, outcome);
+    assert.match(choice.result.focalArt.brief, new RegExp(outcome.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+  }
+});
+
 test("only supplied focal art is approved; every other slot stays explicitly missing", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
   const approvedEncounterIds = new Set([
@@ -219,7 +265,9 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
       const choiceStatus = encounter.scenarioId === "frog-parliament" || encounter.scenarioId === "whisper-orchard"
         ? "approved"
         : "missing";
-      const resultStatus = encounter.scenarioId === "frog-parliament" || encounter.scenarioId === "lantern-fair"
+      const resultStatus = encounter.scenarioId === "frog-parliament"
+        || encounter.scenarioId === "lantern-fair"
+        || encounter.scenarioId === "whisper-orchard"
         ? "approved"
         : "missing";
       assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
@@ -236,7 +284,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
   assert.equal(unavailableChoices.length, 40);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 40);
+  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 36);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {

@@ -600,7 +600,12 @@ function ResultPanel({
           </Text>
         </View>
         {unwrittenMapHasCommissionedArt(resultArt) ? (
-          <View style={[styles.resultIllustration, { borderColor: region.paletteHex.primary }]}>
+          <View
+            style={[styles.resultIllustration, { borderColor: region.paletteHex.primary }]}
+            aria-hidden
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
             <UnwrittenMapArt
               art={resultArt}
               actorRole={resultActor}
