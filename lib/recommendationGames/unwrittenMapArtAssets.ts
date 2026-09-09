@@ -2,8 +2,8 @@
 //
 // Authorized focal art currently covers every encounter, all Mossmere/
 // frog-parliament choices and results, Whisper Orchard choices/results, Lantern
-// Fair choices/results, and Clockwork Bridge choices/results, alongside shared
-// cartographic framing chrome.
+// Fair choices/results, Clockwork Bridge choices/results, and Highwind Farm
+// choices, alongside shared cartographic framing chrome.
 // Every other choice and result remains an explicitly missing raster
 // commissioning slot (see unwrittenMapPresentationContract.ts). This module
 // is pure data (a path manifest) plus a couple of pure lookup helpers; it
@@ -51,6 +51,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "clockwork-bridge-result-mediate-gears": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-result-mediate-gears.webp",
   "clockwork-bridge-result-paint-blueprint": "assets/games/unwritten-map/illustrations/ironwood/clockwork-bridge/clockwork-bridge-result-paint-blueprint.webp",
   "cloud-shepherd-encounter": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-encounter.webp",
+  "cloud-shepherd-choice-race-cloud": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-choice-race-cloud.webp",
+  "cloud-shepherd-choice-cloud-joke": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-choice-cloud-joke.webp",
+  "cloud-shepherd-choice-weather-song": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-choice-weather-song.webp",
+  "cloud-shepherd-choice-map-air-current": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-choice-map-air-current.webp",
   "mirror-marsh-encounter": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-encounter.webp",
   "rain-camp-encounter": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-encounter.webp",
   "paper-dragon-encounter": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-encounter.webp",
@@ -123,6 +127,14 @@ export const CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocal
   "paint-blueprint": "clockwork-bridge-choice-paint-blueprint",
 };
 
+/** Authoritative Highwind Farm choice-id -> commissioned choice-art mapping. */
+export const CLOUD_SHEPHERD_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "race-cloud": "cloud-shepherd-choice-race-cloud",
+  "cloud-joke": "cloud-shepherd-choice-cloud-joke",
+  "weather-song": "cloud-shepherd-choice-weather-song",
+  "map-air-current": "cloud-shepherd-choice-map-air-current",
+};
+
 export const CLOCKWORK_BRIDGE_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
   "gear-puzzle": "clockwork-bridge-result-gear-puzzle",
   "rope-crossing": "clockwork-bridge-result-rope-crossing",
@@ -185,6 +197,7 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
   derivedSha256: string;
   derivedDimensions: string;
   authorization: string;
+  authoredScene?: string;
 }>>> = {
   "lantern-fair-result-take-stage": {
     sourceFile: "4f09c3b1-da6f-468d-bf8a-768339f60720-3d4033fe-7250-46b7-8347-ea980876126f-clipboard.png",
@@ -381,6 +394,38 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "853f75983848a79f04f72b7dade2ba89f72ce3cafa2c83752a5ed040742a0286",
     derivedDimensions: "1466x977",
     authorization: "User-supplied for PR #306",
+  },
+  "cloud-shepherd-choice-race-cloud": {
+    sourceFile: "d98f5612-df7c-4652-bcac-34878a14869e-a23111bc-632f-4f17-ae2a-a4ef8ca1e1f4-clipboard.png",
+    sourceSha256: "07911bb5b328d24e856407e56508c174664a6eb1c79795c6caa49ba267df1d72",
+    derivedSha256: "1ac7a372ca163e5108a6b7d2cf9c09e462d381ce6b00ae1b59eee8b2cacec6ed",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Highwind Farm choice integration",
+    authoredScene: "Explorer and dog race a wind-sail cart along a highland ridge and farm road at sunset; the cloud remains contextual rather than central.",
+  },
+  "cloud-shepherd-choice-cloud-joke": {
+    sourceFile: "0be35d24-ac17-460b-91d3-0ac5e57890cb-fb888bc1-ee3c-49ec-aab5-f33e51510618-clipboard.png",
+    sourceSha256: "06a15ce5b566c59bbdca55534ea472fd5ac2974473b9969071267ff779e337a3",
+    derivedSha256: "51c255069b6f7a0bde5dbb911db232f4796b58598d16bd1c496db97b3f52c2bb",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Highwind Farm choice integration",
+    authoredScene: "Explorer tells a joke to a laughing cow with the dog and farm visible at sunset; the cow is decorative context and does not redefine the cloud choice.",
+  },
+  "cloud-shepherd-choice-weather-song": {
+    sourceFile: "5e5515fb-3f3c-4735-86ce-c854694c7134-9b837eee-c871-4ba1-a0ca-ff2d5fe645cf-clipboard.png",
+    sourceSha256: "5ce3ce4eff4f37d4995dd806f8b13a7459e0fe402b314a04f7364ef24b6b0641",
+    derivedSha256: "a2c33cc8d55dfb21f2bb9753ec350b5743f77e3fbd47d8f878172e24e48d1b22",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Highwind Farm choice integration",
+    authoredScene: "Explorer and dog learn a guitar weather song from an elder shepherd among sheep on the farm at sunset.",
+  },
+  "cloud-shepherd-choice-map-air-current": {
+    sourceFile: "26a066b4-96e9-43b4-b2f4-642d4e0e2c5f-2614173d-2d20-4d58-afa7-b2f1f4895cfc-clipboard.png",
+    sourceSha256: "f1ea8730b8a73e4357f44df84d8e25288d52ad1b09d2b3ec6c9942f3c9dbd282",
+    derivedSha256: "e50fd9e50432e8b264c5c79a45316aac716af715831c7616df579abf57dafcfc",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Highwind Farm choice integration",
+    authoredScene: "Explorer and dog study drawn wind patterns beside a weather vane as visible air-current ribbons cross the valley.",
   },
   "mirror-marsh-encounter": {
     sourceFile: "50be74da-47fa-49fe-a204-cf1076c80c9c-25a580be-9955-4d46-bcd1-978a2e7fad60-clipboard.png",

@@ -16,6 +16,7 @@ import {
   type UnwrittenMapRegionId,
 } from "./unwrittenMapRegions";
 import {
+  CLOUD_SHEPHERD_CHOICE_ASSET_IDS,
   CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS,
   CLOCKWORK_BRIDGE_RESULT_ASSET_IDS,
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
@@ -369,7 +370,9 @@ function buildChoicePresentation(
       ? LANTERN_FAIR_CHOICE_ASSET_IDS[choice.id]
       : scenarioId === "clockwork-bridge"
         ? CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS[choice.id]
-        : frogChoiceAssetId;
+        : scenarioId === "cloud-shepherd"
+          ? CLOUD_SHEPHERD_CHOICE_ASSET_IDS[choice.id]
+          : frogChoiceAssetId;
   const resultLocalAssetId = scenarioId === "whisper-orchard"
     ? WHISPER_ORCHARD_RESULT_ASSET_IDS[choice.id]
     : scenarioId === "lantern-fair"
