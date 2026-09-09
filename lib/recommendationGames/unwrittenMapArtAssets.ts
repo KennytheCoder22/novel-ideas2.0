@@ -3,7 +3,7 @@
 // Authorized focal art currently covers every encounter, all Mossmere/
 // frog-parliament choices and results, Whisper Orchard choices/results, Lantern
 // Fair choices/results, Clockwork Bridge choices/results, and Highwind Farm
-// choices, alongside shared cartographic framing chrome.
+// choices/results, alongside shared cartographic framing chrome.
 // Every other choice and result remains an explicitly missing raster
 // commissioning slot (see unwrittenMapPresentationContract.ts). This module
 // is pure data (a path manifest) plus a couple of pure lookup helpers; it
@@ -55,6 +55,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "cloud-shepherd-choice-cloud-joke": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-choice-cloud-joke.webp",
   "cloud-shepherd-choice-weather-song": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-choice-weather-song.webp",
   "cloud-shepherd-choice-map-air-current": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-choice-map-air-current.webp",
+  "cloud-shepherd-result-race-cloud": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-result-race-cloud.webp",
+  "cloud-shepherd-result-cloud-joke": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-result-cloud-joke.webp",
+  "cloud-shepherd-result-weather-song": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-result-weather-song.webp",
+  "cloud-shepherd-result-map-air-current": "assets/games/unwritten-map/illustrations/ironwood/cloud-shepherd/cloud-shepherd-result-map-air-current.webp",
   "mirror-marsh-encounter": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-encounter.webp",
   "rain-camp-encounter": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-encounter.webp",
   "paper-dragon-encounter": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-encounter.webp",
@@ -133,6 +137,14 @@ export const CLOUD_SHEPHERD_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAs
   "cloud-joke": "cloud-shepherd-choice-cloud-joke",
   "weather-song": "cloud-shepherd-choice-weather-song",
   "map-air-current": "cloud-shepherd-choice-map-air-current",
+};
+
+/** Authoritative Highwind Farm choice-id -> commissioned result-art mapping. */
+export const CLOUD_SHEPHERD_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "race-cloud": "cloud-shepherd-result-race-cloud",
+  "cloud-joke": "cloud-shepherd-result-cloud-joke",
+  "weather-song": "cloud-shepherd-result-weather-song",
+  "map-air-current": "cloud-shepherd-result-map-air-current",
 };
 
 export const CLOCKWORK_BRIDGE_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
@@ -426,6 +438,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedDimensions: "800x600",
     authorization: "User-supplied for Highwind Farm choice integration",
     authoredScene: "Explorer and dog study drawn wind patterns beside a weather vane as visible air-current ribbons cross the valley.",
+  },
+  "cloud-shepherd-result-race-cloud": {
+    sourceFile: "982fe171-9261-4560-b050-98f6db3c4867-31d5a204-ad6c-4ca1-a9bd-8ea34514c604-clipboard.png",
+    sourceSha256: "df21f6182641326a28e519ec7199a41d442d1f67abf20651dd3df655be0c1e81",
+    derivedSha256: "d3a8c5bbbc6b9bbcddbb138f064fd3623220e15a2f0d8aa12f5be150fbe8139a",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Highwind Farm result integration",
+  },
+  "cloud-shepherd-result-cloud-joke": {
+    sourceFile: "d4373905-e8a5-4c47-938e-c4d868c2e108-c2e9e549-8409-482f-a212-a12775464e12-clipboard.png",
+    sourceSha256: "e5295fafe70c750eab97d73321c9dcc3b5d5416006ff9e51030c691cb2a16a59",
+    derivedSha256: "9d9750b9a3d4728f2a1a43b98f679a52612fa1cebc489676f6274a61c623992f",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Highwind Farm result integration",
+  },
+  "cloud-shepherd-result-weather-song": {
+    sourceFile: "6d94ade5-87fa-40e1-a3b8-32c81deb9cc5-07c22ef1-a170-44d8-8402-f9efe9a0a72d-clipboard.png",
+    sourceSha256: "6de291b8a3e29c40fe8f98f369ff794a33370a8e011cb910086e95c955a1b789",
+    derivedSha256: "1b0261fa73bd3fd093fa1c6975859a21c752a7149b4f1dce1c1a2fa16dda4484",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Highwind Farm result integration",
+  },
+  "cloud-shepherd-result-map-air-current": {
+    sourceFile: "22ede1d6-5277-43f0-b147-cadb41826493-a3204a78-e1ce-4f14-b0f2-f10cb0831d37-clipboard.png",
+    sourceSha256: "b50e8b65f63cd1fa2109133939455a89dcf2be99c311e94aebc0e58ed64b1b5f",
+    derivedSha256: "0656f0e7b9ce74b75de432e52c66c3ee07d3a5fdf71a3d6682ad79a8fa4bd744",
+    derivedDimensions: "1530x1020",
+    authorization: "User-supplied for Highwind Farm result integration",
   },
   "mirror-marsh-encounter": {
     sourceFile: "50be74da-47fa-49fe-a204-cf1076c80c9c-25a580be-9955-4d46-bcd1-978a2e7fad60-clipboard.png",

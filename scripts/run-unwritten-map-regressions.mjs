@@ -2003,6 +2003,7 @@ async function main() {
   }
   assert(presentationContractSource.includes('scenarioId === "cloud-shepherd"')
     && presentationContractSource.includes("CLOUD_SHEPHERD_CHOICE_ASSET_IDS[choice.id]")
+    && presentationContractSource.includes("CLOUD_SHEPHERD_RESULT_ASSET_IDS[choice.id]")
     && artComponentSource.includes("onError={() => setLoadFailed(true)}")
     && artComponentSource.includes('accessible={variant === "encounter"}')
     && artComponentSource.includes('accessibilityElementsHidden={variant !== "encounter"}')
@@ -2122,13 +2123,13 @@ async function main() {
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
   const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
-  assert(inventory.required === 108 && inventory.approved === 48 && inventory.missing === 60
+  assert(inventory.required === 108 && inventory.approved === 52 && inventory.missing === 56
     && inventory.encounters.approved === 12 && inventory.encounters.missing === 0
     && inventory.choices.approved === 20 && inventory.choices.missing === 28
-    && inventory.results.approved === 16 && inventory.results.missing === 32,
+    && inventory.results.approved === 20 && inventory.results.missing === 28,
     `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
-  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 60,
-    "full focal-art audit must stay explicitly blocked until all 60 remaining choice/result assets are supplied");
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 56,
+    "full focal-art audit must stay explicitly blocked until all 56 remaining choice/result assets are supplied");
   assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
     "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
   assert(!artComponentSource.includes("AUTHORIZED ILLUSTRATION REQUIRED")

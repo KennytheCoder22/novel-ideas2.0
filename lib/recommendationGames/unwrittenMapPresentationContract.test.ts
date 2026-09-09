@@ -17,6 +17,7 @@ import {
 } from "./unwrittenMapPresentationContract";
 import {
   CLOUD_SHEPHERD_CHOICE_ASSET_IDS,
+  CLOUD_SHEPHERD_RESULT_ASSET_IDS,
   CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS,
   CLOCKWORK_BRIDGE_RESULT_ASSET_IDS,
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
@@ -203,7 +204,7 @@ test("Highwind Farm choice art maps by authoritative IDs without gameplay or res
     assert.equal(choice.focalArt.status, "approved");
     assert.equal(choice.focalArt.targetAspectRatio, "4:3");
     assert.equal(choice.result.focalArt.assetId, `result:cloud-shepherd:${choice.choiceId}`);
-    assert.equal(choice.result.focalArt.status, "missing");
+    assert.equal(choice.result.focalArt.status, "approved");
     assert.notEqual(choice.result.focalArt.assetPath, choice.focalArt.assetPath);
   }
 });
@@ -229,6 +230,31 @@ test("Highwind Farm choice art retains unique authorized provenance and authored
     assert.equal(derivedSha256, provenance.derivedSha256);
     assert.ok(!derivedHashes.has(derivedSha256), `${localAssetId} must have unique derived pixels`);
     derivedHashes.add(derivedSha256);
+  }
+});
+
+test("Highwind Farm result art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "cloud-shepherd");
+  assert.ok(encounter);
+  const expected = {
+    "race-cloud": ["cloud-shepherd-result-race-cloud", "df21f6182641326a28e519ec7199a41d442d1f67abf20651dd3df655be0c1e81", "1536x1024"],
+    "cloud-joke": ["cloud-shepherd-result-cloud-joke", "e5295fafe70c750eab97d73321c9dcc3b5d5416006ff9e51030c691cb2a16a59", "1536x1024"],
+    "weather-song": ["cloud-shepherd-result-weather-song", "6de291b8a3e29c40fe8f98f369ff794a33370a8e011cb910086e95c955a1b789", "1536x1024"],
+    "map-air-current": ["cloud-shepherd-result-map-air-current", "b50e8b65f63cd1fa2109133939455a89dcf2be99c311e94aebc0e58ed64b1b5f", "1530x1020"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256, dimensions] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(CLOUD_SHEPHERD_RESULT_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.result.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.result.focalArt.status, "approved");
+    assert.equal(choice.result.focalArt.targetAspectRatio, "3:2");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, dimensions);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
   }
 });
 
@@ -477,6 +503,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "lantern-fair"
         || encounter.scenarioId === "whisper-orchard"
         || encounter.scenarioId === "clockwork-bridge"
+        || encounter.scenarioId === "cloud-shepherd"
         ? "approved"
         : "missing";
       assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
@@ -493,7 +520,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
   assert.equal(unavailableChoices.length, 28);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 32);
+  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 28);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {
