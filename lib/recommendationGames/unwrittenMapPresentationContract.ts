@@ -21,6 +21,7 @@ import {
   LANTERN_FAIR_RESULT_ASSET_IDS,
   UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS,
   WHISPER_ORCHARD_CHOICE_ASSET_IDS,
+  WHISPER_ORCHARD_RESULT_ASSET_IDS,
   unwrittenMapLocalAssetPath,
   type UnwrittenMapLocalAssetId,
 } from "./unwrittenMapArtAssets";
@@ -362,9 +363,11 @@ function buildChoicePresentation(
   const choiceLocalAssetId = scenarioId === "whisper-orchard"
     ? WHISPER_ORCHARD_CHOICE_ASSET_IDS[choice.id]
     : frogChoiceAssetId;
-  const resultLocalAssetId = scenarioId === "lantern-fair"
-    ? LANTERN_FAIR_RESULT_ASSET_IDS[choice.id]
-    : frogResultAssetId;
+  const resultLocalAssetId = scenarioId === "whisper-orchard"
+    ? WHISPER_ORCHARD_RESULT_ASSET_IDS[choice.id]
+    : scenarioId === "lantern-fair"
+      ? LANTERN_FAIR_RESULT_ASSET_IDS[choice.id]
+      : frogResultAssetId;
   const choiceBrief = scenarioId === "mirror-marsh"
     ? OTHER_SKY_BRIEFS[choice.id as keyof typeof OTHER_SKY_BRIEFS]
     : `The explorer performs "${choice.label}" at ${scenario.location}: ${choice.description}`;
