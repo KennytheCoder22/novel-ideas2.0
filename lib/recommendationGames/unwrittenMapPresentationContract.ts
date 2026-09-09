@@ -29,6 +29,7 @@ import {
   RAIN_CAMP_CHOICE_ASSET_IDS,
   RAIN_CAMP_RESULT_ASSET_IDS,
   PAPER_DRAGON_CHOICE_ASSET_IDS,
+  PAPER_DRAGON_RESULT_ASSET_IDS,
   UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS,
   WHISPER_ORCHARD_CHOICE_ASSET_IDS,
   WHISPER_ORCHARD_RESULT_ASSET_IDS,
@@ -397,6 +398,8 @@ function buildChoicePresentation(
             ? MIRROR_MARSH_RESULT_ASSET_IDS[choice.id]
             : scenarioId === "rain-camp"
               ? RAIN_CAMP_RESULT_ASSET_IDS[choice.id]
+              : scenarioId === "paper-dragon"
+                ? PAPER_DRAGON_RESULT_ASSET_IDS[choice.id]
         : frogResultAssetId;
   const choiceBrief = scenarioId === "mirror-marsh"
     ? OTHER_SKY_BRIEFS[choice.id as keyof typeof OTHER_SKY_BRIEFS]

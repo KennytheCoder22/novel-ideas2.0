@@ -3,8 +3,7 @@
 // Authorized focal art currently covers every encounter, all Mossmere/
 // frog-parliament choices and results, Whisper Orchard choices/results, Lantern
 // Fair choices/results, Clockwork Bridge choices/results, and Highwind Farm
-// choices/results, plus Mirror Marsh and Rain Camp choices/results and Kite
-// Hill choices,
+// choices/results, plus Mirror Marsh, Rain Camp, and Kite Hill choices/results,
 // alongside shared cartographic framing chrome.
 // Every other choice and result remains an explicitly missing raster
 // commissioning slot (see unwrittenMapPresentationContract.ts). This module
@@ -84,6 +83,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "paper-dragon-choice-dragon-riddle": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-choice-dragon-riddle.webp",
   "paper-dragon-choice-repair-tail": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-choice-repair-tail.webp",
   "paper-dragon-choice-festival-chase": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-choice-festival-chase.webp",
+  "paper-dragon-result-fly-with-dragon": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-result-fly-with-dragon.webp",
+  "paper-dragon-result-dragon-riddle": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-result-dragon-riddle.webp",
+  "paper-dragon-result-repair-tail": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-result-repair-tail.webp",
+  "paper-dragon-result-festival-chase": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-result-festival-chase.webp",
   "ember-library-encounter": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-encounter.webp",
   "giant-garden-encounter": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-encounter.webp",
   "old-lighthouse-encounter": "assets/games/unwritten-map/illustrations/tideglass/old-lighthouse/old-lighthouse-encounter.webp",
@@ -207,6 +210,14 @@ export const PAPER_DRAGON_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAsse
   "dragon-riddle": "paper-dragon-choice-dragon-riddle",
   "repair-tail": "paper-dragon-choice-repair-tail",
   "festival-chase": "paper-dragon-choice-festival-chase",
+};
+
+/** Authoritative Kite Hill choice-id -> commissioned result-art mapping. */
+export const PAPER_DRAGON_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "fly-with-dragon": "paper-dragon-result-fly-with-dragon",
+  "dragon-riddle": "paper-dragon-result-dragon-riddle",
+  "repair-tail": "paper-dragon-result-repair-tail",
+  "festival-chase": "paper-dragon-result-festival-chase",
 };
 
 export const CLOCKWORK_BRIDGE_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
@@ -668,6 +679,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "19e8e6cca1bec009dfe44f7b309a898017353449cce7a04543084aeafcb1dc75",
     derivedDimensions: "800x600",
     authorization: "User-supplied for Kite Hill choice integration",
+  },
+  "paper-dragon-result-fly-with-dragon": {
+    sourceFile: "3f7e4253-7624-479b-92f9-c7abb351130d-3fbafa5c-58df-45f0-9c55-5aaa050dabfc-clipboard.png",
+    sourceSha256: "9d131c49c779dde72f0c45fd787295689f88fe3a4457b1f198ca2ac8ba8795de",
+    derivedSha256: "18502570f6ca0113f90b8bebe8ec603fced1ef53cd6b3d586273a4ec1c5b8157",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Kite Hill result integration",
+  },
+  "paper-dragon-result-dragon-riddle": {
+    sourceFile: "91fbf1be-8e3c-4a5e-8f3a-068c96893141-fc82bd5c-c12b-434c-9dab-88017093d889-clipboard.png",
+    sourceSha256: "ae4601b07fbb895f83aa0d1d49e7a39739810ba5b28846d345529b7411ca2dbe",
+    derivedSha256: "ebd15e6d67c337343c1ce685353b4227cbae9cee483d2cccbedba19bb94e5b97",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Kite Hill result integration",
+  },
+  "paper-dragon-result-repair-tail": {
+    sourceFile: "e6939229-78c7-49cb-ad47-fc7c1bfff0f5-afb5d674-f917-4c8a-aeda-8e77186b3497-clipboard.png",
+    sourceSha256: "acbec56ebbe5fbf7f2841fb6703a2655acaf67d5f4927b89c42acf1f57a032f0",
+    derivedSha256: "c23045597d85491876a29cc3e8b8cd8c164e477ba3e1433d4cb730e4c873e141",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Kite Hill result integration",
+  },
+  "paper-dragon-result-festival-chase": {
+    sourceFile: "b250f8f1-5833-4b36-82be-7ed0f15a711f-ca0a3253-2c22-4711-b04b-44a0b0e0f876-clipboard.png",
+    sourceSha256: "2783cfc90f115408c30a78e40adea523baf62874c9cfb9d7688647c2fd799e0c",
+    derivedSha256: "98491c328bddeb0a103029f8285fa046446e06966eeab874a8eff708787e3511",
+    derivedDimensions: "1533x1022",
+    authorization: "User-supplied for Kite Hill result integration",
   },
   "mirror-marsh-encounter": {
     sourceFile: "50be74da-47fa-49fe-a204-cf1076c80c9c-25a580be-9955-4d46-bcd1-978a2e7fad60-clipboard.png",

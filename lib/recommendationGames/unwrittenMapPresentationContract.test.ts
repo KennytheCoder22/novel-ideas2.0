@@ -29,6 +29,7 @@ import {
   RAIN_CAMP_CHOICE_ASSET_IDS,
   RAIN_CAMP_RESULT_ASSET_IDS,
   PAPER_DRAGON_CHOICE_ASSET_IDS,
+  PAPER_DRAGON_RESULT_ASSET_IDS,
   LANTERN_FAIR_CHOICE_ASSET_IDS,
   UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE,
   WHISPER_ORCHARD_CHOICE_ASSET_IDS,
@@ -381,12 +382,37 @@ test("Kite Hill choice art maps by authoritative choice id with provenance", () 
     assert.equal(choice.focalArt.localAssetId, localAssetId);
     assert.equal(choice.focalArt.status, "approved");
     assert.equal(choice.focalArt.targetAspectRatio, "4:3");
-    assert.equal(choice.result.focalArt.status, "missing");
+    assert.equal(choice.result.focalArt.status, "approved");
     const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
     assert.ok(provenance);
     assert.equal(provenance.sourceSha256, sourceSha256);
     assert.equal(provenance.derivedDimensions, "800x600");
     const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
+});
+
+test("Kite Hill result art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "paper-dragon");
+  assert.ok(encounter);
+  const expected = {
+    "fly-with-dragon": ["paper-dragon-result-fly-with-dragon", "9d131c49c779dde72f0c45fd787295689f88fe3a4457b1f198ca2ac8ba8795de", "1536x1024"],
+    "dragon-riddle": ["paper-dragon-result-dragon-riddle", "ae4601b07fbb895f83aa0d1d49e7a39739810ba5b28846d345529b7411ca2dbe", "1536x1024"],
+    "repair-tail": ["paper-dragon-result-repair-tail", "acbec56ebbe5fbf7f2841fb6703a2655acaf67d5f4927b89c42acf1f57a032f0", "1536x1024"],
+    "festival-chase": ["paper-dragon-result-festival-chase", "2783cfc90f115408c30a78e40adea523baf62874c9cfb9d7688647c2fd799e0c", "1533x1022"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256, dimensions] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(PAPER_DRAGON_RESULT_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.result.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.result.focalArt.status, "approved");
+    assert.equal(choice.result.focalArt.targetAspectRatio, "3:2");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, dimensions);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
     assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
   }
 });
@@ -642,6 +668,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "cloud-shepherd"
         || encounter.scenarioId === "mirror-marsh"
         || encounter.scenarioId === "rain-camp"
+        || encounter.scenarioId === "paper-dragon"
         ? "approved"
         : "missing";
       assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
@@ -658,7 +685,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
   assert.equal(unavailableChoices.length, 16);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 20);
+  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 16);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {
