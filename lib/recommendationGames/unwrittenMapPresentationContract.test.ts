@@ -24,6 +24,7 @@ import {
   FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
   LANTERN_FAIR_RESULT_ASSET_IDS,
+  MIRROR_MARSH_CHOICE_ASSET_IDS,
   LANTERN_FAIR_CHOICE_ASSET_IDS,
   UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE,
   WHISPER_ORCHARD_CHOICE_ASSET_IDS,
@@ -254,6 +255,32 @@ test("Highwind Farm result art maps by authoritative choice id with provenance",
     assert.equal(provenance.sourceSha256, sourceSha256);
     assert.equal(provenance.derivedDimensions, dimensions);
     const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
+});
+
+test("Mirror Marsh choice art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "mirror-marsh");
+  assert.ok(encounter);
+  const expected = {
+    "step-reflection": ["mirror-marsh-choice-step-reflection", "6d19e35808c9d7ce6d481b3367c13ce3a22c972ec913db7942bf5ffaaa9f93a9"],
+    "sketch-stars": ["mirror-marsh-choice-sketch-stars", "42ea837fb07f403ba4f4f69763d483babb5dfd37ab4697274277dd8806b21d46"],
+    "wave-back": ["mirror-marsh-choice-wave-back", "a943667384a410ea718ecc074b9b5fac57564a8aa89da3d5074f17cbd3381cc8"],
+    "reed-raft": ["mirror-marsh-choice-reed-raft", "f23c6b7603ac8891696aa3f7719b409109dacdfd8f4bbd0897a36ccf0e120528"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(MIRROR_MARSH_CHOICE_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.focalArt.status, "approved");
+    assert.equal(choice.focalArt.targetAspectRatio, "4:3");
+    assert.equal(choice.result.focalArt.status, "missing");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, "800x600");
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.focalArt.assetPath));
     assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
   }
 });
@@ -497,6 +524,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "lantern-fair"
         || encounter.scenarioId === "clockwork-bridge"
         || encounter.scenarioId === "cloud-shepherd"
+        || encounter.scenarioId === "mirror-marsh"
         ? "approved"
         : "missing";
       const resultStatus = encounter.scenarioId === "frog-parliament"
@@ -518,7 +546,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
 
   const allChoices = metadata.flatMap((encounter) => encounter.choices);
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
-  assert.equal(unavailableChoices.length, 28);
+  assert.equal(unavailableChoices.length, 24);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
   assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 28);
 });

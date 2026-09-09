@@ -121,7 +121,7 @@ test("missing commissioning slots block production completeness without pretendi
   const missing = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "mirror-marsh");
   assert.ok(missing);
   const issues = validateUnwrittenMapEncounterPresentation(missing, { assetExists: () => false });
-  assert.equal(issues.filter((issue) => issue.code === "missing_required_asset").length, 8);
+  assert.equal(issues.filter((issue) => issue.code === "missing_required_asset").length, 4);
 });
 
 test("detects missing metadata when required fields are absent", () => {
@@ -131,18 +131,18 @@ test("detects missing metadata when required fields are absent", () => {
   assert.ok(issues.some((issue) => issue.code === "missing_metadata"));
 });
 
-test("encounter milestone and five choice/result sets are complete while full inventory remains blocked", () => {
+test("encounter milestone, six choice sets, and five result sets are complete while full inventory remains blocked", () => {
   const inventory = buildUnwrittenMapArtInventorySummary();
   assert.deepEqual(inventory, {
     required: 108,
-    approved: 52,
-    missing: 56,
+    approved: 56,
+    missing: 52,
     encounters: { required: 12, approved: 12, missing: 0 },
-    choices: { required: 48, approved: 20, missing: 28 },
+    choices: { required: 48, approved: 24, missing: 24 },
     results: { required: 48, approved: 20, missing: 28 },
   });
   const diagnostics = validateUnwrittenMapPresentation();
-  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 56);
+  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 52);
   assert.equal(diagnostics.filter((issue) => issue.scope === "encounter" || issue.scope === "registry").length, 0);
 });
 
@@ -182,6 +182,11 @@ test("coverage summary identifies approved choice sets while every missing resul
       assert.equal(row.choiceOkCount, 4);
       assert.equal(row.resultOkCount, 4);
       assert.equal(row.diagnosticCount, 0);
+    } else if (row.scenarioId === "mirror-marsh") {
+      assert.equal(row.encounterOk, true);
+      assert.equal(row.choiceOkCount, 4);
+      assert.equal(row.resultOkCount, 0);
+      assert.equal(row.diagnosticCount, 4);
     } else {
       assert.ok(row.diagnosticCount > 0, `${row.scenarioId} should remain blocked on commissioned art`);
     }
@@ -190,7 +195,7 @@ test("coverage summary identifies approved choice sets while every missing resul
 
 test("human-readable summary reports blocked production status and exact inventory", () => {
   const summary = formatUnwrittenMapPresentationSummary();
-  assert.match(summary, /Raster inventory: 52\/108 approved; 56 commissioning assets missing/);
+  assert.match(summary, /Raster inventory: 56\/108 approved; 52 commissioning assets missing/);
   assert.match(summary, /Production status: BLOCKED/);
   assert.match(summary, /Scenario: frog-parliament \[approved\]/);
   assert.match(summary, /Scenario: mirror-marsh \[approved\]/);
