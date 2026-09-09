@@ -3,7 +3,8 @@
 // Authorized focal art currently covers every encounter, all Mossmere/
 // frog-parliament choices and results, Whisper Orchard choices/results, Lantern
 // Fair choices/results, Clockwork Bridge choices/results, and Highwind Farm
-// choices/results, plus Mirror Marsh choices/results, alongside shared cartographic framing chrome.
+// choices/results, plus Mirror Marsh choices/results and Rain Camp choices,
+// alongside shared cartographic framing chrome.
 // Every other choice and result remains an explicitly missing raster
 // commissioning slot (see unwrittenMapPresentationContract.ts). This module
 // is pure data (a path manifest) plus a couple of pure lookup helpers; it
@@ -69,6 +70,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "mirror-marsh-result-wave-back": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-result-wave-back.webp",
   "mirror-marsh-result-reed-raft": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-result-reed-raft.webp",
   "rain-camp-encounter": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-encounter.webp",
+  "rain-camp-choice-crowded-table": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-choice-crowded-table.webp",
+  "rain-camp-choice-paint-storm": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-choice-paint-storm.webp",
+  "rain-camp-choice-sort-supplies": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-choice-sort-supplies.webp",
+  "rain-camp-choice-rain-walk": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-choice-rain-walk.webp",
   "paper-dragon-encounter": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-encounter.webp",
   "ember-library-encounter": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-encounter.webp",
   "giant-garden-encounter": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-encounter.webp",
@@ -169,6 +174,14 @@ export const MIRROR_MARSH_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAsse
   "sketch-stars": "mirror-marsh-result-sketch-stars",
   "wave-back": "mirror-marsh-result-wave-back",
   "reed-raft": "mirror-marsh-result-reed-raft",
+};
+
+/** Authoritative Rain Camp choice-id -> commissioned choice-art mapping. */
+export const RAIN_CAMP_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "crowded-table": "rain-camp-choice-crowded-table",
+  "paint-storm": "rain-camp-choice-paint-storm",
+  "sort-supplies": "rain-camp-choice-sort-supplies",
+  "rain-walk": "rain-camp-choice-rain-walk",
 };
 
 export const CLOCKWORK_BRIDGE_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
@@ -546,6 +559,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "ed3fdeaa4e0b7a31e0c0b5ba674cbb5d81f46925eed34332e5e1ed991139eec3",
     derivedDimensions: "1526x1017",
     authorization: "User-supplied for Mirror Marsh result integration",
+  },
+  "rain-camp-choice-crowded-table": {
+    sourceFile: "c6f63653-3aed-49da-8b52-1f2e24f7efe7-01cbe309-9e77-49e4-8114-8af747284ea7-clipboard.png",
+    sourceSha256: "e7d54af792d6fbe4e181a40f655aa097394023f410801f24b654cbedd3cfa635",
+    derivedSha256: "74989dd42a4c62d57bd772dbdff3568830a5fcb13a2e42ed4449c5c7d8eacf2a",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Rain Camp choice integration",
+  },
+  "rain-camp-choice-paint-storm": {
+    sourceFile: "2a599151-cf0a-401a-aaf8-bfc3173d0239-a708a265-4f36-4711-910f-1a155e5960f3-clipboard.png",
+    sourceSha256: "4a292dd3a821c8a2c2de504ea5f0650feaede00a426c15608af2d0343a6e8036",
+    derivedSha256: "ed5a709117995938ec0cf8d9250bf712b19d8750545cc1002aabf7b23f9725f8",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Rain Camp choice integration",
+  },
+  "rain-camp-choice-sort-supplies": {
+    sourceFile: "ec9c5625-4a2e-4ebd-b666-ca272590ed0c-ffcf5cc9-068b-489e-b73d-88c2bd7e94aa-clipboard.png",
+    sourceSha256: "0fe6ff3b0909b238999456c5d8e749c9444f7a48ef4c5bcdc77b7f2d772894f9",
+    derivedSha256: "8736b1b5ca4c214ae239b01acfb94ff250f633d8b192af79fdb2a54066ff9c7f",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Rain Camp choice integration",
+  },
+  "rain-camp-choice-rain-walk": {
+    sourceFile: "836d8936-4e56-47ac-932d-f0717d964430-85871674-21a1-4d58-b759-312d56cd90fb-clipboard.png",
+    sourceSha256: "41f21debea2f5faded886478ab86e9f5848b5b39e6bd0f3caf3a73d927026e80",
+    derivedSha256: "09f482eb8f9899c0365c6c1d258a10d82f11ae0ed3cfcea026865c6d4d3b007f",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Rain Camp choice integration",
   },
   "mirror-marsh-encounter": {
     sourceFile: "50be74da-47fa-49fe-a204-cf1076c80c9c-25a580be-9955-4d46-bcd1-978a2e7fad60-clipboard.png",

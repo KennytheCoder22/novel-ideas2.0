@@ -26,6 +26,7 @@ import {
   LANTERN_FAIR_CHOICE_ASSET_IDS,
   MIRROR_MARSH_CHOICE_ASSET_IDS,
   MIRROR_MARSH_RESULT_ASSET_IDS,
+  RAIN_CAMP_CHOICE_ASSET_IDS,
   UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS,
   WHISPER_ORCHARD_CHOICE_ASSET_IDS,
   WHISPER_ORCHARD_RESULT_ASSET_IDS,
@@ -377,6 +378,8 @@ function buildChoicePresentation(
           ? CLOUD_SHEPHERD_CHOICE_ASSET_IDS[choice.id]
           : scenarioId === "mirror-marsh"
             ? MIRROR_MARSH_CHOICE_ASSET_IDS[choice.id]
+            : scenarioId === "rain-camp"
+              ? RAIN_CAMP_CHOICE_ASSET_IDS[choice.id]
           : frogChoiceAssetId;
   const resultLocalAssetId = scenarioId === "whisper-orchard"
     ? WHISPER_ORCHARD_RESULT_ASSET_IDS[choice.id]
