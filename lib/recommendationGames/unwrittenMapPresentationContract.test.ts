@@ -27,6 +27,7 @@ import {
   MIRROR_MARSH_CHOICE_ASSET_IDS,
   MIRROR_MARSH_RESULT_ASSET_IDS,
   RAIN_CAMP_CHOICE_ASSET_IDS,
+  RAIN_CAMP_RESULT_ASSET_IDS,
   LANTERN_FAIR_CHOICE_ASSET_IDS,
   UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE,
   WHISPER_ORCHARD_CHOICE_ASSET_IDS,
@@ -328,12 +329,37 @@ test("Rain Camp choice art maps by authoritative choice id with provenance", () 
     assert.equal(choice.focalArt.localAssetId, localAssetId);
     assert.equal(choice.focalArt.status, "approved");
     assert.equal(choice.focalArt.targetAspectRatio, "4:3");
-    assert.equal(choice.result.focalArt.status, "missing");
+    assert.equal(choice.result.focalArt.status, "approved");
     const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
     assert.ok(provenance);
     assert.equal(provenance.sourceSha256, sourceSha256);
     assert.equal(provenance.derivedDimensions, "800x600");
     const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
+});
+
+test("Rain Camp result art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "rain-camp");
+  assert.ok(encounter);
+  const expected = {
+    "crowded-table": ["rain-camp-result-crowded-table", "b6940ec312d97d61ed167009f0302653d864d9269d631f4a0cf5ad1994d68b70"],
+    "paint-storm": ["rain-camp-result-paint-storm", "9389645ac74261ab007bbf98dd8e5dcda7851eb029ceed1a3d4e728a6ea42d38"],
+    "sort-supplies": ["rain-camp-result-sort-supplies", "f5ab8947cc1697fe2c92837c0e45a3b8b7d5d9399c93346b9c0540b11732b228"],
+    "rain-walk": ["rain-camp-result-rain-walk", "4f0c676c09a12df20f10b35d9a58bb67e575f80cb5aa2e1680fb5e3a3962181e"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(RAIN_CAMP_RESULT_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.result.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.result.focalArt.status, "approved");
+    assert.equal(choice.result.focalArt.targetAspectRatio, "3:2");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, "1536x1024");
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
     assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
   }
 });
@@ -587,6 +613,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "clockwork-bridge"
         || encounter.scenarioId === "cloud-shepherd"
         || encounter.scenarioId === "mirror-marsh"
+        || encounter.scenarioId === "rain-camp"
         ? "approved"
         : "missing";
       assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
@@ -603,7 +630,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
   assert.equal(unavailableChoices.length, 20);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 24);
+  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 20);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {
