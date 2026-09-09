@@ -1993,6 +1993,25 @@ async function main() {
   }
   assert(presentationContractSource.includes("CLOCKWORK_BRIDGE_RESULT_ASSET_IDS[choice.id]"),
     "all four Clockwork Bridge results must use authoritative choice-id mappings");
+  for (const asset of [
+    "cloud-shepherd-choice-race-cloud",
+    "cloud-shepherd-choice-cloud-joke",
+    "cloud-shepherd-choice-weather-song",
+    "cloud-shepherd-choice-map-air-current",
+  ]) {
+    assert(artComponentSource.includes(`"${asset}"`), `Highwind Farm choice runtime source missing: ${asset}`);
+  }
+  assert(presentationContractSource.includes('scenarioId === "cloud-shepherd"')
+    && presentationContractSource.includes("CLOUD_SHEPHERD_CHOICE_ASSET_IDS[choice.id]")
+    && artComponentSource.includes("onError={() => setLoadFailed(true)}")
+    && artComponentSource.includes('accessible={variant === "encounter"}')
+    && artComponentSource.includes('accessibilityElementsHidden={variant !== "encounter"}')
+    && artComponentSource.includes('importantForAccessibility={variant !== "encounter" ? "no-hide-descendants" : "auto"}')
+    && artComponentSource.includes('alt={variant !== "encounter" ? "" : undefined}')
+    && artComponentSource.includes('accessible={variant !== "choice"}')
+    && artComponentSource.includes('accessibilityElementsHidden={variant === "choice"}')
+    && routeSource.includes("presentationForChoice(presentation, item.id).focalArt"),
+  "all four Highwind Farm choice cards must use authoritative mappings, remain decorative, and fail cleanly without changing live controls");
   assert(routeSource.includes("flexBasis: 350")
     && routeSource.includes("flexWrap: \"wrap\"")
     && routeSource.includes("minWidth: 0"),
@@ -2103,13 +2122,13 @@ async function main() {
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
   const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
-  assert(inventory.required === 108 && inventory.approved === 44 && inventory.missing === 64
+  assert(inventory.required === 108 && inventory.approved === 48 && inventory.missing === 60
     && inventory.encounters.approved === 12 && inventory.encounters.missing === 0
-    && inventory.choices.approved === 16 && inventory.choices.missing === 32
+    && inventory.choices.approved === 20 && inventory.choices.missing === 28
     && inventory.results.approved === 16 && inventory.results.missing === 32,
     `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
-  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 64,
-    "full focal-art audit must stay explicitly blocked until all 64 remaining choice/result assets are supplied");
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 60,
+    "full focal-art audit must stay explicitly blocked until all 60 remaining choice/result assets are supplied");
   assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
     "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
   assert(!artComponentSource.includes("AUTHORIZED ILLUSTRATION REQUIRED")

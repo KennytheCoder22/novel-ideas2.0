@@ -16,6 +16,7 @@ import {
   unwrittenMapSceneRegistry,
 } from "./unwrittenMapPresentationContract";
 import {
+  CLOUD_SHEPHERD_CHOICE_ASSET_IDS,
   CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS,
   CLOCKWORK_BRIDGE_RESULT_ASSET_IDS,
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
@@ -172,6 +173,62 @@ test("Clockwork Bridge choice art maps one-to-one to authoritative choice ids", 
     assert.equal(choice.result.focalArt.status, "approved");
     assert.notEqual(choice.result.focalArt.localAssetId, localAssetId);
     assert.notEqual(choice.result.focalArt.assetPath, choice.focalArt.assetPath);
+  }
+});
+
+test("Highwind Farm choice art maps by authoritative IDs without gameplay or result reuse", () => {
+  const scenario = UNWRITTEN_MAP_SCENARIOS.find((item) => item.id === "cloud-shepherd");
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "cloud-shepherd");
+  assert.ok(scenario);
+  assert.ok(encounter);
+  const expectedAssets = {
+    "race-cloud": "cloud-shepherd-choice-race-cloud",
+    "cloud-joke": "cloud-shepherd-choice-cloud-joke",
+    "weather-song": "cloud-shepherd-choice-weather-song",
+    "map-air-current": "cloud-shepherd-choice-map-air-current",
+  } as const;
+
+  assert.deepEqual(scenario.choices, [
+    { id: "race-cloud", version: 1, label: "Race it along the ridge", description: "Match its wild speed until it turns home.", result: "It laughs thunder and leaves a rainbow ribbon in your pack.", tasteVector: { pace: 2, intensity: 2 }, tags: ["kinetic", "exhilarating"] },
+    { id: "cloud-joke", version: 1, label: "Tell it a terrible joke", description: "Try to charm it down with cheerful nonsense.", result: "It rains from laughter and follows you back like a puppy.", tasteVector: { humor: 2, social_energy: 1 }, tags: ["comic", "friendly"] },
+    { id: "weather-song", version: 1, label: "Learn the shepherd's song", description: "Practice the old melody one patient phrase at a time.", result: "The whole flock settles into a soft silver harmony.", tasteVector: { structure: 1, emotional_depth: 1 }, tags: ["musical", "tender"] },
+    { id: "map-air-current", version: 1, label: "Map the invisible currents", description: "Find the hidden route the cloud already wants.", result: "Your ink swirls into a permanent map of the upper air.", tasteVector: { challenge: 1, novelty: 1 }, tags: ["discovery", "thoughtful"] },
+  ]);
+  assert.deepEqual(encounter.choices.map((choice) => choice.choiceId), Object.keys(expectedAssets));
+  for (const choice of encounter.choices) {
+    const localAssetId = expectedAssets[choice.choiceId as keyof typeof expectedAssets];
+    assert.equal(CLOUD_SHEPHERD_CHOICE_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.focalArt.assetId, `choice:cloud-shepherd:${choice.choiceId}`);
+    assert.equal(choice.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.focalArt.status, "approved");
+    assert.equal(choice.focalArt.targetAspectRatio, "4:3");
+    assert.equal(choice.result.focalArt.assetId, `result:cloud-shepherd:${choice.choiceId}`);
+    assert.equal(choice.result.focalArt.status, "missing");
+    assert.notEqual(choice.result.focalArt.assetPath, choice.focalArt.assetPath);
+  }
+});
+
+test("Highwind Farm choice art retains unique authorized provenance and authored scenes", () => {
+  const expected = {
+    "cloud-shepherd-choice-race-cloud": ["07911bb5b328d24e856407e56508c174664a6eb1c79795c6caa49ba267df1d72", /wind-sail cart.*cloud remains contextual/],
+    "cloud-shepherd-choice-cloud-joke": ["06a15ce5b566c59bbdca55534ea472fd5ac2974473b9969071267ff779e337a3", /laughing cow.*does not redefine the cloud choice/],
+    "cloud-shepherd-choice-weather-song": ["5ce3ce4eff4f37d4995dd806f8b13a7459e0fe402b314a04f7364ef24b6b0641", /guitar weather song.*elder shepherd/],
+    "cloud-shepherd-choice-map-air-current": ["f1ea8730b8a73e4357f44df84d8e25288d52ad1b09d2b3ec6c9942f3c9dbd282", /drawn wind patterns.*air-current ribbons/],
+  } as const;
+  const derivedHashes = new Set<string>();
+
+  for (const localAssetId of Object.keys(expected) as (keyof typeof expected)[]) {
+    const [sourceSha256, scenePattern] = expected[localAssetId];
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, "800x600");
+    assert.match(provenance.authoredScene || "", scenePattern);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", unwrittenMapLocalAssetPath(localAssetId)));
+    const derivedSha256 = createHash("sha256").update(bytes).digest("hex");
+    assert.equal(derivedSha256, provenance.derivedSha256);
+    assert.ok(!derivedHashes.has(derivedSha256), `${localAssetId} must have unique derived pixels`);
+    derivedHashes.add(derivedSha256);
   }
 });
 
@@ -413,6 +470,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "whisper-orchard"
         || encounter.scenarioId === "lantern-fair"
         || encounter.scenarioId === "clockwork-bridge"
+        || encounter.scenarioId === "cloud-shepherd"
         ? "approved"
         : "missing";
       const resultStatus = encounter.scenarioId === "frog-parliament"
@@ -433,7 +491,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
 
   const allChoices = metadata.flatMap((encounter) => encounter.choices);
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
-  assert.equal(unavailableChoices.length, 32);
+  assert.equal(unavailableChoices.length, 28);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
   assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 32);
 });

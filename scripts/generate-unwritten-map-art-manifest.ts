@@ -52,6 +52,16 @@ export function renderUnwrittenMapArtManifest(): string {
         : []
     )),
     "",
+    "## Authored scene metadata",
+    "",
+    "| Stable asset ID | Authored scene |",
+    "|---|---|",
+    ...Object.entries(UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE).flatMap(([localAssetId, provenance]) => (
+      provenance?.authoredScene
+        ? [`| \`${localAssetId}\` | ${escaped(provenance.authoredScene)} |`]
+        : []
+    )),
+    "",
     "## Commissioning checklist",
     "",
   ];
