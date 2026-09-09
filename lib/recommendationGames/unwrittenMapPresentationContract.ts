@@ -25,6 +25,7 @@ import {
   LANTERN_FAIR_RESULT_ASSET_IDS,
   LANTERN_FAIR_CHOICE_ASSET_IDS,
   MIRROR_MARSH_CHOICE_ASSET_IDS,
+  MIRROR_MARSH_RESULT_ASSET_IDS,
   UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS,
   WHISPER_ORCHARD_CHOICE_ASSET_IDS,
   WHISPER_ORCHARD_RESULT_ASSET_IDS,
@@ -385,6 +386,8 @@ function buildChoicePresentation(
         ? CLOCKWORK_BRIDGE_RESULT_ASSET_IDS[choice.id]
         : scenarioId === "cloud-shepherd"
           ? CLOUD_SHEPHERD_RESULT_ASSET_IDS[choice.id]
+          : scenarioId === "mirror-marsh"
+            ? MIRROR_MARSH_RESULT_ASSET_IDS[choice.id]
         : frogResultAssetId;
   const choiceBrief = scenarioId === "mirror-marsh"
     ? OTHER_SKY_BRIEFS[choice.id as keyof typeof OTHER_SKY_BRIEFS]

@@ -3,7 +3,7 @@
 // Authorized focal art currently covers every encounter, all Mossmere/
 // frog-parliament choices and results, Whisper Orchard choices/results, Lantern
 // Fair choices/results, Clockwork Bridge choices/results, and Highwind Farm
-// choices/results, plus Mirror Marsh choices, alongside shared cartographic framing chrome.
+// choices/results, plus Mirror Marsh choices/results, alongside shared cartographic framing chrome.
 // Every other choice and result remains an explicitly missing raster
 // commissioning slot (see unwrittenMapPresentationContract.ts). This module
 // is pure data (a path manifest) plus a couple of pure lookup helpers; it
@@ -64,6 +64,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "mirror-marsh-choice-sketch-stars": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-choice-sketch-stars.webp",
   "mirror-marsh-choice-wave-back": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-choice-wave-back.webp",
   "mirror-marsh-choice-reed-raft": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-choice-reed-raft.webp",
+  "mirror-marsh-result-step-reflection": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-result-step-reflection.webp",
+  "mirror-marsh-result-sketch-stars": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-result-sketch-stars.webp",
+  "mirror-marsh-result-wave-back": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-result-wave-back.webp",
+  "mirror-marsh-result-reed-raft": "assets/games/unwritten-map/illustrations/mossmere/mirror-marsh/mirror-marsh-result-reed-raft.webp",
   "rain-camp-encounter": "assets/games/unwritten-map/illustrations/westreach/rain-camp/rain-camp-encounter.webp",
   "paper-dragon-encounter": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-encounter.webp",
   "ember-library-encounter": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-encounter.webp",
@@ -157,6 +161,14 @@ export const MIRROR_MARSH_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAsse
   "sketch-stars": "mirror-marsh-choice-sketch-stars",
   "wave-back": "mirror-marsh-choice-wave-back",
   "reed-raft": "mirror-marsh-choice-reed-raft",
+};
+
+/** Authoritative Mirror Marsh choice-id -> commissioned result-art mapping. */
+export const MIRROR_MARSH_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "step-reflection": "mirror-marsh-result-step-reflection",
+  "sketch-stars": "mirror-marsh-result-sketch-stars",
+  "wave-back": "mirror-marsh-result-wave-back",
+  "reed-raft": "mirror-marsh-result-reed-raft",
 };
 
 export const CLOCKWORK_BRIDGE_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
@@ -506,6 +518,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "36cc71da1a086a1ba965f85135cbc86c456e032d74dee7cf02d503ec2a7beb8a",
     derivedDimensions: "800x600",
     authorization: "User-supplied for Mirror Marsh choice integration",
+  },
+  "mirror-marsh-result-step-reflection": {
+    sourceFile: "c9d54953-b139-4e00-ad54-2295053de84e-78ce8c8f-4bdb-46a9-b9a4-ae5923fc964c-clipboard.png",
+    sourceSha256: "8c04b1538eb6f1ee2f132b96ab4ee6f27d276eceeeb2b742168dc5bc0638baa1",
+    derivedSha256: "cc29b74c1eefd009dde8c3cfb379d357c789c1721fe5e68206cb7cc3d6ef9590",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Mirror Marsh result integration",
+  },
+  "mirror-marsh-result-sketch-stars": {
+    sourceFile: "52f666df-1af1-4671-86c4-2aef2bc6a4c7-a707eda2-6c3d-42f5-9857-42c5b352d4ea-clipboard.png",
+    sourceSha256: "1f70a997bf7e24ca854083d7eea63146b5ffed7f21f633c91a911197e04c2469",
+    derivedSha256: "5c828f1eeb6ea824a7278dc48a74bc7568bbf3256eb2a8fac7bda5d661eb4d4c",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Mirror Marsh result integration",
+  },
+  "mirror-marsh-result-wave-back": {
+    sourceFile: "c251a539-88dc-40fc-9f40-650477728a1f-3469a028-d46d-418d-90b4-c6e04fbe2d71-clipboard.png",
+    sourceSha256: "53f17580427ad13fb4a27a384bdea036792153d87e96beadcaa5c234b4b57eed",
+    derivedSha256: "1a196438f099454c2c77011f581191f4430b4e6154c305b07977db89c8c73cdf",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Mirror Marsh result integration",
+  },
+  "mirror-marsh-result-reed-raft": {
+    sourceFile: "7fa0b133-5bf9-4e94-a131-7eef31ea5450-29fd5056-6fb6-405e-a297-d99d87719463-clipboard.png",
+    sourceSha256: "ddfdeeef04416f560c90e65171babed088c39f5fae5df7cac2d9adb39fe6ee02",
+    derivedSha256: "ed3fdeaa4e0b7a31e0c0b5ba674cbb5d81f46925eed34332e5e1ed991139eec3",
+    derivedDimensions: "1526x1017",
+    authorization: "User-supplied for Mirror Marsh result integration",
   },
   "mirror-marsh-encounter": {
     sourceFile: "50be74da-47fa-49fe-a204-cf1076c80c9c-25a580be-9955-4d46-bcd1-978a2e7fad60-clipboard.png",
