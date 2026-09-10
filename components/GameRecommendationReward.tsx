@@ -13,7 +13,8 @@ import {
   useWindowDimensions,
   type GestureResponderEvent,
 } from "react-native";
-import type { GameRecommendationResponse } from "../lib/recommendationGames/gameRecommendationFeedback";
+import { useState } from 'react';
+import type { GameRecommendationResponse, GameRecommendationDetail } from "../lib/recommendationGames/gameRecommendationFeedback";
 import { computeGameRecommendationRewardLayout } from "../lib/recommendationGames/gameRecommendationRewardLayout";
 import { gameRecommendationRewardContent } from "../lib/recommendationGames/gameRecommendationRewardContent";
 
@@ -42,10 +43,12 @@ export type GameRecommendationRewardProps = {
   cadence: GameRecommendationRewardCadence;
   gameLabel: string;
   book: GameRecommendationRewardBook;
-  onRespond: (response: GameRecommendationResponse) => void;
+  onRespond: (response: GameRecommendationResponse, detail?: GameRecommendationDetail) => void;
+  detailedFeedback?: boolean;
 };
 
-export function GameRecommendationReward({ visible, cadence, gameLabel, book, onRespond }: GameRecommendationRewardProps) {
+export function GameRecommendationReward({ visible, cadence, gameLabel, book, onRespond, detailedFeedback = false }: GameRecommendationRewardProps) {
+  const [followup, setFollowup] = useState<GameRecommendationResponse | null>(null);
   const { width } = useWindowDimensions();
   const layout = computeGameRecommendationRewardLayout(width);
 
@@ -57,6 +60,7 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
 
   function handleRespond(event: GestureResponderEvent | undefined, response: GameRecommendationResponse) {
     event?.preventDefault?.();
+    if (detailedFeedback && (response === 'no' || response === 'already_read')) { setFollowup(response); return; }
     onRespond(response);
   }
 
@@ -96,6 +100,12 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
               {eyebrow}
             </Text>
             <Text style={{ color: "#fbf7ff", fontSize: 22, lineHeight: 27, fontWeight: "900" }}>{headline}</Text>
+            {followup ? <View style={{ gap: 10 }}>
+              <Text style={{ color: '#fbf7ff', fontSize: 16 }}>{followup === 'no' ? 'What missed the mark? (Optional)' : 'How did you feel about it? (Optional)'}</Text>
+              {(followup === 'no' ? [['too_young', 'Feels too young'], ['wrong_mood', 'Not the mood I want'], ['uninteresting_premise', 'The premise doesn’t interest me']] : [['liked_it', 'I liked it'], ['not_for_me', 'It wasn’t for me']]).map(([detail, label]) => <Pressable key={detail} accessibilityRole="button" onPress={() => onRespond(followup, detail as GameRecommendationDetail)} style={{ padding: 14, backgroundColor: '#36304b', borderRadius: 8 }}><Text style={{ color: '#fff' }}>{label}</Text></Pressable>)}
+              <Pressable accessibilityRole="button" onPress={() => onRespond(followup)} style={{ padding: 14 }}><Text style={{ color: '#fff' }}>Continue without a reason</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={() => setFollowup(null)} style={{ padding: 14 }}><Text style={{ color: '#fff' }}>Change my answer</Text></Pressable>
+            </View> : null}
 
             <View
               style={{
@@ -147,7 +157,7 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
             </Text>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-              {RESPONSE_OPTIONS.map((option) => (
+              {!followup && RESPONSE_OPTIONS.map((option) => (
                 <Pressable
                   key={option.value}
                   onPress={(event) => handleRespond(event, option.value)}

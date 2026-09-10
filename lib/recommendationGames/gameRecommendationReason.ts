@@ -28,6 +28,11 @@ const FRIENDLY_SIGNAL: Record<string, string> = {
   humor: "humorous",
   imagination: "imaginative",
   world: "immersive",
+  'puzzle-solving': 'puzzle-filled',
+  discovery: 'discovery-driven',
+  exploration: 'exploratory',
+  investigative: 'mysterious',
+  curious: 'curiosity-driven',
 };
 
 function normalizeSignal(rawSignal: string): string {
@@ -46,7 +51,9 @@ function normalizeSignal(rawSignal: string): string {
 }
 
 export function gameRecommendationReasonFromMatchedSignals(matchedSignals: readonly string[]): string {
-  const descriptors = [...new Set(matchedSignals.map(normalizeSignal).filter(Boolean))].slice(0, 2);
+  // A broad genre match should not crowd out the specific mood/activity that matched.
+  const ordered = [...matchedSignals].sort((a, b) => Number(/^genreFacetMatch:/i.test(a)) - Number(/^genreFacetMatch:/i.test(b)));
+  const descriptors = [...new Set(ordered.map(normalizeSignal).filter(Boolean))].slice(0, 2);
   if (!descriptors.length) return FALLBACK_REASON;
   if (descriptors.length === 1) return `Your choices suggest you enjoy ${descriptors[0]} stories.`;
   return `Your choices suggest you enjoy ${descriptors[0]}, ${descriptors[1]} stories.`;

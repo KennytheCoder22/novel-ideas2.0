@@ -66,6 +66,16 @@ test("accepts every documented response value", () => {
   }
 });
 
+test('optional feedback details survive validation without changing familiarity into a like', () => {
+  const event = createGameRecommendationFeedbackEvent(baseArgs({ response: 'already_read', responseDetail: 'liked_it' }));
+  assert.equal(event.response, 'already_read');
+  assert.equal(event.responseDetail, 'liked_it');
+  assert.ok(isGameRecommendationFeedbackEventV1(event));
+  assert.ok(!isGameRecommendationFeedbackEventV1({ ...event, response: 'yes' }));
+  assert.ok(!isGameRecommendationFeedbackEventV1({ ...event, responseDetail: 'anything' }));
+  assert.equal(createGameRecommendationFeedbackEvent(baseArgs({ response: 'no', responseDetail: 'wrong_mood' })).responseDetail, 'wrong_mood');
+});
+
 test("already_read is stored as plain familiarity, structurally indistinguishable in shape from yes/no/maybe", () => {
   const alreadyRead = createGameRecommendationFeedbackEvent(baseArgs({ response: "already_read" }));
   const yes = createGameRecommendationFeedbackEvent(baseArgs({ response: "yes" }));

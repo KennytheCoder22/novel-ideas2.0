@@ -311,6 +311,9 @@ export function adaptUnwrittenMapChoiceToSignal(args: {
     semanticFieldsFromTags(args.option.tags),
     semanticFieldsFromTasteVector(args.option.tasteVector),
   );
+  // Imagining a strange solution or appreciating a joke is not an explicit genre vote.
+  // Keep those signals as themes/tones; only authored genre: tags assert genre preference.
+  semantics.genres = args.option.tags.filter(tag => tag.startsWith('genre:')).map(tag => tag.slice(6));
   return {
     id: `unwritten-map:${args.scenarioId}:${args.option.id}`,
     title: args.option.label,

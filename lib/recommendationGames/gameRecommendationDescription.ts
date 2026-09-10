@@ -75,7 +75,13 @@ export function gameRecommendationDescriptionExcerpt(value: unknown): string | n
   const cleaned = cleanRecommendationDescription(value);
   if (!cleaned) return null;
 
-  const sentences = cleaned.match(/[^.!?]+(?:[.!?]+(?=\s|$)|$)/g) || [cleaned];
+  // Segment on sentence boundaries without splitting honorifics or stranded quote marks.
+  const segments = typeof Intl.Segmenter === 'function'
+    ? [...new Intl.Segmenter('en', { granularity: 'sentence' }).segment(cleaned)].map(part => part.segment)
+    : cleaned.match(/[^.!?]+(?:[.!?]+(?=\s|$)|$)/g) || [cleaned];
+  const sentences = segments.map(sentence => sentence.trim())
+    .filter(sentence => sentence.replace(/[^a-zA-Z]/g, '').length > 3);
+  if (!sentences.length) return null;
   const selected: string[] = [];
   for (const sentence of sentences.slice(0, MAX_GAME_DESCRIPTION_SENTENCES)) {
     const next = [...selected, sentence.trim()].join(" ");
