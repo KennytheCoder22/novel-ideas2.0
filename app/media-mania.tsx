@@ -1,3 +1,4 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { AccessibilityInfo, ActivityIndicator, Animated, Image, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
@@ -46,11 +47,18 @@ import {
   reconcileMediaManiaRouteAge,
 } from "../features/recommendation-games/media-mania/mediaManiaUiGuards";
 
-const SOURCE_META: Record<MediaManiaSource, { icon: string; color: string }> = {
-  books: { icon: "BK", color: "#8b5cf6" }, movies: { icon: "MV", color: "#ef4444" },
-  tv: { icon: "TV", color: "#06b6d4" }, games: { icon: "GM", color: "#22c55e" },
-  youtube: { icon: "YT", color: "#f43f5e" }, anime: { icon: "AN", color: "#ec4899" },
-  podcasts: { icon: "PC", color: "#f59e0b" },
+const SOURCE_META: Record<MediaManiaSource, {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  code: string;
+  color: string;
+}> = {
+  books: { icon: "book-open-page-variant-outline", code: "BK", color: "#9b6cff" },
+  movies: { icon: "movie-open-outline", code: "MV", color: "#ff4d67" },
+  tv: { icon: "television-classic", code: "TV", color: "#27d8ff" },
+  games: { icon: "controller-classic-outline", code: "GM", color: "#35f29b" },
+  youtube: { icon: "youtube", code: "YT", color: "#ff426d" },
+  anime: { icon: "emoticon-excited-outline", code: "AN", color: "#ff58df" },
+  podcasts: { icon: "microphone-outline", code: "PC", color: "#f8bd29" },
 };
 
 const catalogById = new Map(MEDIA_MANIA_CATALOG.map((item) => [item.id, item]));
@@ -60,6 +68,63 @@ const durablePersistenceNotice = (error: string | null) =>
     ? "Gameplay is saved on this device."
     : "Gameplay is saved on this device; durable sync will retry.";
 const mediaManiaAgeBandToV2 = (band: MediaManiaAgeBand): AgeBandV2 => (band === "adults" ? "adult" : band);
+const MEDIA_MOTIFS: (keyof typeof MaterialCommunityIcons.glyphMap)[] = [
+  "book-open-page-variant-outline",
+  "movie-open-outline",
+  "television-classic",
+  "controller-classic-outline",
+  "emoticon-excited-outline",
+  "music-note",
+  "microphone-outline",
+];
+
+function CinematicBackdrop({ vivid = false }: { vivid?: boolean }) {
+  return (
+    <View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.cinematicBackdrop}
+    >
+      <Image
+        source={require("../assets/games/media-mania.webp")}
+        resizeMode="cover"
+        style={[styles.roomArtwork, vivid ? styles.roomArtworkVivid : styles.roomArtworkMuted]}
+      />
+      <View style={[styles.roomVeil, vivid && styles.roomVeilVivid]} />
+      <View style={styles.ceilingGlow} />
+      <View style={styles.floorGlow} />
+    </View>
+  );
+}
+
+function MediaManiaLogo({ large = false }: { large?: boolean }) {
+  return (
+    <View style={[styles.logoSign, large && styles.logoSignLarge]} accessibilityRole="header">
+      <Text style={[styles.logoWord, large && styles.logoWordLarge]}>MEDIA</Text>
+      <Text style={[styles.logoWord, styles.logoWordAccent, large && styles.logoWordLarge]}>MANIA</Text>
+      {large ? <MaterialCommunityIcons name="play" size={34} color="#c9fbff" style={styles.logoPlay} /> : null}
+    </View>
+  );
+}
+
+function NeonSideRail({ side }: { side: "left" | "right" }) {
+  const left = side === "left";
+  return (
+    <View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.neonSideRail, left ? styles.neonSideRailLeft : styles.neonSideRailRight]}
+    >
+      <MaterialCommunityIcons name={left ? "heart-outline" : "arrow-left-bottom"} size={38} color={left ? "#ff48cf" : "#ff2c9c"} />
+      <Text style={[styles.railCopy, left ? styles.railCopyPink : styles.railCopyBlue]}>
+        {left ? "GOOD\nSTORIES\nIN ANY\nFORMAT" : "FIND\nWHAT\nMOVES\nYOU"}
+      </Text>
+      <MaterialCommunityIcons name={left ? "controller-classic-outline" : "headphones"} size={38} color={left ? "#20dfff" : "#fe436f"} />
+    </View>
+  );
+}
 
 function MediaArtwork({ item }: { item: MediaManiaCatalogItem }) {
   const meta = SOURCE_META[item.mediaSource];
@@ -110,7 +175,9 @@ function MediaArtwork({ item }: { item: MediaManiaCatalogItem }) {
   const failed = bundledFailed || candidates.length > 0 || lookupStatus === "lookup_failed";
   return (
     <View style={[styles.artwork, styles.artworkFallback, { backgroundColor: meta.color }]}>
-      <Text style={styles.artworkIcon}>{failed ? "!" : meta.icon}</Text>
+      {failed
+        ? <Text style={styles.artworkIcon}>!</Text>
+        : <MaterialCommunityIcons name={meta.icon} size={62} color="#fff" />}
       <Text style={styles.artworkSource}>{failed ? "ARTWORK UNAVAILABLE" : "NO ARTWORK AVAILABLE"}</Text>
     </View>
   );
@@ -125,8 +192,10 @@ export default function MediaManiaScreen() {
     () => createMediaManiaStorageInstanceId(playerId, libraryId),
     [libraryId, playerId],
   );
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const compact = width < 760;
+  const portrait = width < 560;
+  const shortViewport = height < 720;
   const [state, setState] = useState<MediaManiaState | null>(null);
   const [events, setEvents] = useState<MediaManiaEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,6 +204,7 @@ export default function MediaManiaScreen() {
   const [firstDislikeHintSeen, setFirstDislikeHintSeen] = useState(false);
   const [showDislikeHint, setShowDislikeHint] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [entryDismissed, setEntryDismissed] = useState(false);
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(true);
   const [persistenceNotice, setPersistenceNotice] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -351,14 +421,68 @@ export default function MediaManiaScreen() {
   );
 
   if (loading || !state) {
-    return <SafeAreaView style={styles.safe}><ActivityIndicator size="large" color="#fbbf24" /></SafeAreaView>;
+    return <SafeAreaView style={styles.safe}><CinematicBackdrop /><ActivityIndicator size="large" color="#27d8ff" /></SafeAreaView>;
   }
 
   if (!state.startingSource) {
+    if (!entryDismissed) {
+      return (
+        <SafeAreaView style={styles.safe} testID="media-mania-entry">
+          <CinematicBackdrop vivid />
+          <ScrollView contentContainerStyle={[styles.entryContent, shortViewport && styles.entryContentShort]}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Back to Games"
+              onPress={() => void exitGame()}
+              style={styles.backButton}
+            >
+              <MaterialCommunityIcons name="arrow-left" size={20} color="#d6e8ff" />
+              <Text style={styles.backText}>Games</Text>
+            </TouchableOpacity>
+            <View
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={styles.motifRow}
+            >
+              {MEDIA_MOTIFS.map((icon, index) => (
+                <View key={icon} style={[styles.motifOrb, { borderColor: index % 2 ? "#ff3fbe" : "#26dbff" }]}>
+                  <MaterialCommunityIcons name={icon} size={portrait ? 19 : 24} color={index % 2 ? "#ff7bd8" : "#75efff"} />
+                </View>
+              ))}
+            </View>
+            <View style={styles.entryHero}>
+              <MediaManiaLogo large />
+              <Text style={styles.entryTitle}>Build your taste lineup.</Text>
+              <Text style={styles.entrySubtitle}>Make quick picks across books, movies, TV, games, anime, music, podcasts, and more.</Text>
+              {persistenceNotice ? <Text accessibilityRole="alert" style={styles.persistenceNotice}>{persistenceNotice}</Text> : null}
+              <Text style={styles.entryPrompt}>Choose your age band</Text>
+              <AgeBandControl ageBand={state.ageBand} onChange={selectAgeBand} />
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Enter Media Mania and choose a medium"
+                disabled={locked}
+                onPress={() => setEntryDismissed(true)}
+                style={styles.entryPlayButton}
+              >
+                <MaterialCommunityIcons name="play" size={25} color="#04131f" />
+                <Text style={styles.entryPlayText}>BUILD MY LINEUP</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      );
+    }
+
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} testID="media-mania-lobby">
+        <CinematicBackdrop />
+        {!compact ? <><NeonSideRail side="left" /><NeonSideRail side="right" /></> : null}
         <ScrollView contentContainerStyle={styles.startContent}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => void exitGame()} style={styles.backButton}><Text style={styles.backText}>{"< NovelIdeas"}</Text></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => void exitGame()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={20} color="#d6e8ff" />
+            <Text style={styles.backText}>NovelIdeas</Text>
+          </TouchableOpacity>
           <Text style={styles.eyebrow}>RECOMMENDATION GAMES</Text>
           {persistenceNotice ? <Text accessibilityRole="alert" style={styles.persistenceNotice}>{persistenceNotice}</Text> : null}
           <Text style={styles.startTitle}>{"Let's get ready to play Media Mania!"}</Text>
@@ -372,10 +496,17 @@ export default function MediaManiaScreen() {
                 accessibilityLabel={`Start with ${MEDIA_MANIA_SOURCE_LABELS[source]}`}
                 accessibilityState={{ disabled: !availableSources.includes(source) }}
                 disabled={locked || !availableSources.includes(source)}
-                style={[styles.sourceCard, { borderColor: SOURCE_META[source].color }, !availableSources.includes(source) && styles.sourceCardDisabled]}
+                style={[
+                  styles.sourceCard,
+                  compact && styles.sourceCardCompact,
+                  portrait && styles.sourceCardPortrait,
+                  { borderColor: SOURCE_META[source].color, shadowColor: SOURCE_META[source].color },
+                  !availableSources.includes(source) && styles.sourceCardDisabled,
+                ]}
                 onPress={() => void commit(startMediaMania(state, source, MEDIA_MANIA_CATALOG))}
               >
-                <Text style={styles.sourceIcon}>{SOURCE_META[source].icon}</Text>
+                <MaterialCommunityIcons name={SOURCE_META[source].icon} size={42} color={SOURCE_META[source].color} />
+                <Text style={[styles.sourceCode, { color: SOURCE_META[source].color }]}>{SOURCE_META[source].code}</Text>
                 <Text style={styles.sourceLabel}>{MEDIA_MANIA_SOURCE_LABELS[source]}</Text>
                 <Text style={[styles.sourceArrow, { color: SOURCE_META[source].color }]}>{availableSources.includes(source) ? "PLAY >" : "NOT IN THIS BAND"}</Text>
               </TouchableOpacity>
@@ -389,8 +520,9 @@ export default function MediaManiaScreen() {
   if (state.unlockStatus === "offered") {
     return (
       <SafeAreaView style={styles.safe}>
+        <CinematicBackdrop />
         <ScrollView contentContainerStyle={styles.unlockContent}>
-          <Text style={styles.unlockIcon}>+</Text>
+          <View style={styles.unlockIcon}><MaterialCommunityIcons name="plus" size={54} color="#04131f" /></View>
           {persistenceNotice ? <Text accessibilityRole="alert" style={styles.persistenceNotice}>{persistenceNotice}</Text> : null}
           <Text style={styles.unlockTitle}>New media unlocked!</Text>
           <Text style={styles.unlockSubtitle}>Choose a new world to mix into your taste - or keep playing your current one.</Text>
@@ -398,13 +530,26 @@ export default function MediaManiaScreen() {
           {state.lastChoiceUndo ? <TouchableOpacity accessibilityRole="button" style={styles.undoButton} onPress={undoLastChoice}><Text style={styles.undoText}>Undo last choice</Text></TouchableOpacity> : null}
           <View style={styles.unlockOptions}>
             {state.unlockOptions.map((source) => (
-              <TouchableOpacity key={source} style={[styles.unlockCard, { borderColor: SOURCE_META[source].color }]} onPress={() => void commit(resolveMediaManiaUnlock(state, source, MEDIA_MANIA_CATALOG))}>
-                <Text style={styles.sourceIcon}>{SOURCE_META[source].icon}</Text>
+              <TouchableOpacity
+                key={source}
+                accessibilityRole="button"
+                accessibilityLabel={`Add ${MEDIA_MANIA_SOURCE_LABELS[source]} to this game`}
+                style={[styles.unlockCard, { borderColor: SOURCE_META[source].color }]}
+                onPress={() => void commit(resolveMediaManiaUnlock(state, source, MEDIA_MANIA_CATALOG))}
+              >
+                <MaterialCommunityIcons name={SOURCE_META[source].icon} size={46} color={SOURCE_META[source].color} />
                 <Text style={styles.sourceLabel}>{MEDIA_MANIA_SOURCE_LABELS[source]}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          <TouchableOpacity style={styles.continueButton} onPress={() => void commit(resolveMediaManiaUnlock(state, null, MEDIA_MANIA_CATALOG))}><Text style={styles.continueText}>Keep playing {MEDIA_MANIA_SOURCE_LABELS[state.startingSource]}</Text></TouchableOpacity>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Keep playing ${MEDIA_MANIA_SOURCE_LABELS[state.startingSource]}`}
+            style={styles.continueButton}
+            onPress={() => void commit(resolveMediaManiaUnlock(state, null, MEDIA_MANIA_CATALOG))}
+          >
+            <Text style={styles.continueText}>Keep playing {MEDIA_MANIA_SOURCE_LABELS[state.startingSource]}</Text>
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     );
@@ -415,11 +560,16 @@ export default function MediaManiaScreen() {
   const dislikeRound = round.roundType === "DISLIKE";
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} testID="media-mania-gameplay">
+      <CinematicBackdrop />
+      {!compact ? <><NeonSideRail side="left" /><NeonSideRail side="right" /></> : null}
       <ScrollView contentContainerStyle={styles.gameContent} keyboardShouldPersistTaps="handled">
         <View style={styles.topBar}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => void exitGame()} style={styles.backButton}><Text style={styles.backText}>{"< Back"}</Text></TouchableOpacity>
-          <Text style={styles.logo}>MEDIA <Text style={styles.logoAccent}>MANIA</Text></Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => void exitGame()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={20} color="#d6e8ff" />
+            <Text style={styles.backText}>Back</Text>
+          </TouchableOpacity>
+          <MediaManiaLogo />
           <View style={styles.roundMeta}>
             <Text style={styles.roundLabel}>{MEDIA_MANIA_AGE_BAND_LABELS[state.ageBand].toUpperCase()}</Text>
             <Text style={styles.roundLabel}>ROUND {round.roundNumber}</Text>
@@ -459,7 +609,6 @@ export default function MediaManiaScreen() {
             </View>
           )}
 
-          <Text style={[styles.prompt, dislikeRound ? styles.dislikePrompt : styles.likePrompt]}>{dislikeRound ? "Pick the one you'd SKIP" : "Pick the one you WANT most"}</Text>
           {round.isCrossMedia ? <Text style={styles.crossMedia}>CROSS-MEDIA ROUND  +3 BONUS</Text> : null}
 
           <View style={[styles.candidateRow, compact && styles.candidateColumn]}>
@@ -550,59 +699,144 @@ function AgeBandControl({ ageBand, onChange, compact = false }: { ageBand: Media
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#06172a" },
-  startContent: { flexGrow: 1, alignItems: "center", padding: 24, paddingBottom: 48 },
-  backButton: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
-  backText: { color: "#b8c8dc", fontSize: 16, fontWeight: "800" },
-  eyebrow: { color: "#fbbf24", fontWeight: "900", letterSpacing: 2.2, marginTop: 20 },
-  startTitle: { color: "#f8fafc", fontSize: 38, lineHeight: 44, fontWeight: "900", textAlign: "center", maxWidth: 760, marginTop: 14 },
-  startSubtitle: { color: "#9fb2ca", fontSize: 22, fontWeight: "700", marginTop: 12, marginBottom: 28 },
-  ageBandControl: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 18 },
-  ageBandControlCompact: { marginTop: 12 },
-  ageBandButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 15, borderWidth: 1, borderColor: "#3a5875", borderRadius: 999, backgroundColor: "#0a1d33" },
-  ageBandButtonCompact: { minHeight: 36, paddingHorizontal: 12 },
-  ageBandButtonSelected: { borderColor: "#fbbf24", backgroundColor: "#4a3510" },
-  ageBandText: { color: "#b8c8dc", fontSize: 13, fontWeight: "900" },
-  ageBandTextSelected: { color: "#fde68a" },
-  sourceGrid: { width: "100%", maxWidth: 900, flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" },
-  sourceCard: { width: 205, minHeight: 170, borderWidth: 2, borderRadius: 24, backgroundColor: "#0d233d", padding: 20, alignItems: "center", justifyContent: "center" },
-  sourceCardDisabled: { opacity: 0.42 },
-  sourceIcon: { fontSize: 42 }, sourceLabel: { color: "#f8fafc", fontWeight: "900", fontSize: 21, marginTop: 10 }, sourceArrow: { fontWeight: "900", marginTop: 14, letterSpacing: 1.4 },
-  gameContent: { flexGrow: 1, width: "100%", maxWidth: 1180, alignSelf: "center", padding: 18, paddingBottom: 44 },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  roundMeta: { alignItems: "flex-end", gap: 3 },
-  logo: { color: "#f8fafc", fontWeight: "900", fontSize: 23, letterSpacing: 1 }, logoAccent: { color: "#fbbf24" }, roundLabel: { color: "#7890ad", fontSize: 12, fontWeight: "900", letterSpacing: 1.5 },
-  roundSurface: { marginTop: 14, padding: 10, borderRadius: 26, borderWidth: 2 },
-  likeRoundSurface: { backgroundColor: "#071f25", borderColor: "#247d68" },
-  dislikeRoundSurface: { backgroundColor: "#25111b", borderColor: "#a83d57" },
-  roundModeBanner: { borderRadius: 18, borderWidth: 3, padding: 14, alignItems: "center" }, likeRoundBanner: { backgroundColor: "#0b4138", borderColor: "#5ee1b7" }, dislikeRoundBanner: { backgroundColor: "#5a1629", borderColor: "#fb7185" }, roundModeLabel: { color: "#a7f3d0", fontSize: 21, fontWeight: "900", letterSpacing: 2 }, dislikeRoundLabel: { color: "#ffe4e6" }, roundModeInstruction: { color: "#ecfdf5", fontSize: 19, fontWeight: "900", marginTop: 4 }, dislikeRoundInstruction: { color: "#fff1f2" },
-  scorePanel: { marginTop: 12, padding: 14, backgroundColor: "#0b213a", borderRadius: 18, borderWidth: 1, borderColor: "#214566" },
-  likeInsetPanel: { backgroundColor: "#0a292c", borderWidth: 1, borderColor: "#1c6658" },
-  dislikeInsetPanel: { backgroundColor: "#301521", borderWidth: 1, borderColor: "#813047" },
-  scoreRow: { flexDirection: "row", justifyContent: "space-between" }, scoreLabel: { color: "#d6e5f5", fontWeight: "900", fontSize: 16 }, scoreValue: { color: "#fbbf24", fontWeight: "900", fontSize: 18 },
-  progressTrack: { height: 9, borderRadius: 9, backgroundColor: "#183651", marginTop: 10, overflow: "hidden" }, progressFill: { height: "100%", backgroundColor: "#fbbf24", borderRadius: 9 }, progressHint: { color: "#7890ad", fontSize: 12, marginTop: 7 },
-  contextPanel: { marginTop: 14, padding: 14, borderRadius: 18, backgroundColor: "#0a1d33", gap: 9 }, contextLine: { flexDirection: "row", flexWrap: "wrap", gap: 10 }, contextLabel: { color: "#54d68b", fontSize: 11, fontWeight: "900", letterSpacing: 1.2 }, negativeLabel: { color: "#fb7185" }, contextText: { color: "#d6e5f5", flexShrink: 1 },
-  anchorPanel: { marginTop: 14, padding: 14, borderRadius: 18, backgroundColor: "#0a1d33" }, anchorRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 6 }, anchorTitle: { color: "#f8fafc", fontWeight: "900", fontSize: 19, flex: 1 }, unknownAnchor: { minHeight: 44, paddingHorizontal: 12, justifyContent: "center" },
-  prompt: { fontSize: 28, lineHeight: 34, fontWeight: "900", textAlign: "center", marginVertical: 20 }, likePrompt: { color: "#86efcc" }, dislikePrompt: { color: "#fda4af" }, crossMedia: { color: "#67e8f9", textAlign: "center", fontSize: 12, fontWeight: "900", letterSpacing: 1.2, marginTop: -12, marginBottom: 14 },
-  candidateRow: { flexDirection: "row", gap: 14, alignItems: "stretch" }, candidateColumn: { flexDirection: "column" }, candidateShell: { flex: 1, minWidth: 0 }, candidateShellCompact: { width: "100%", flex: 0 },
-  candidateCard: { flex: 1, minHeight: 390, borderWidth: 3, borderRadius: 22, backgroundColor: "#0d2540", overflow: "hidden" },
-  candidateCardLike: { borderColor: "#36b98f" },
-  candidateCardDislike: { borderColor: "#d15370" },
-  candidateCardLikeSelected: { borderColor: "#86efcc", backgroundColor: "#104438" },
-  candidateCardDislikeSelected: { borderColor: "#fda4af", backgroundColor: "#561a2d" },
-  keyHint: { position: "absolute", zIndex: 2, top: 10, left: 10, color: "#06172a", width: 30, height: 30, borderRadius: 15, textAlign: "center", lineHeight: 30, fontWeight: "900", borderWidth: 2 },
-  keyHintLike: { backgroundColor: "#86efcc", borderColor: "#d1fae5" },
-  keyHintDislike: { backgroundColor: "#fda4af", borderColor: "#ffe4e6" },
-  selectionBadge: { position: "absolute", zIndex: 3, top: 10, right: 10, minHeight: 30, justifyContent: "center", paddingHorizontal: 12, borderRadius: 999, borderWidth: 2 },
-  selectionBadgeLike: { backgroundColor: "#0f765c", borderColor: "#a7f3d0" },
-  selectionBadgeDislike: { backgroundColor: "#9f294a", borderColor: "#fecdd3" },
-  selectionBadgeText: { color: "#fff", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
-  artwork: { width: "100%", height: 230, backgroundColor: "#102943" }, artworkLoading: { alignItems: "center", justifyContent: "center", gap: 10 }, artworkStatus: { color: "#91a7c0", fontWeight: "800" }, artworkFallback: { alignItems: "center", justifyContent: "center" }, artworkIcon: { fontSize: 62 }, artworkSource: { color: "#fff", fontSize: 12, fontWeight: "900", letterSpacing: 1.6, marginTop: 8 },
-  candidateCopy: { padding: 15 }, mediaPill: { fontSize: 11, fontWeight: "900", letterSpacing: 1.3 }, candidateTitle: { color: "#f8fafc", fontSize: 21, lineHeight: 25, fontWeight: "900", marginTop: 7 }, candidateCreator: { color: "#91a7c0", marginTop: 7, fontWeight: "700" },
-  undoButton: { minHeight: 44, alignSelf: "center", justifyContent: "center", paddingHorizontal: 16, marginTop: 10, borderWidth: 1, borderColor: "#7890ad", borderRadius: 999 }, undoText: { color: "#d6e5f5", fontWeight: "900" },
-  unknownCandidate: { minHeight: 48, alignItems: "center", justifyContent: "center", marginTop: 7 }, unknownText: { color: "#9fb2ca", fontWeight: "800", fontSize: 13 }, keyboardHint: { color: "#657e9c", textAlign: "center", marginTop: 18, fontSize: 12 },
-  persistenceNotice: { color: "#fde68a", backgroundColor: "#422006", borderColor: "#a16207", borderWidth: 1, borderRadius: 10, padding: 10, textAlign: "center", fontWeight: "800", marginVertical: 8 },
-  hintBackdrop: { flex: 1, backgroundColor: "rgba(3, 10, 20, 0.86)", alignItems: "center", justifyContent: "center", padding: 24 }, hintCard: { width: "100%", maxWidth: 480, borderRadius: 24, borderWidth: 3, borderColor: "#fb7185", backgroundColor: "#3b1220", padding: 26, alignItems: "center" }, hintEyebrow: { color: "#fecdd3", fontSize: 14, fontWeight: "900", letterSpacing: 2 }, hintTitle: { color: "#fff", fontSize: 28, lineHeight: 34, fontWeight: "900", textAlign: "center", marginTop: 10 }, hintCopy: { color: "#ffe4e6", fontSize: 17, lineHeight: 24, textAlign: "center", marginTop: 10 }, hintButton: { minHeight: 52, marginTop: 22, borderRadius: 999, backgroundColor: "#fb7185", paddingHorizontal: 22, justifyContent: "center" }, hintButtonText: { color: "#310b16", fontWeight: "900", fontSize: 16 },
-  flash: { position: "absolute", top: "42%", alignSelf: "center", borderRadius: 999, borderWidth: 3, paddingVertical: 16, paddingHorizontal: 28 }, flashLike: { backgroundColor: "#5ee1b7", borderColor: "#d1fae5" }, flashDislike: { backgroundColor: "#be3458", borderColor: "#fecdd3" }, flashText: { color: "#06241d", fontWeight: "900", fontSize: 20 }, flashTextDislike: { color: "#fff1f2" },
-  unlockContent: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 }, unlockIcon: { color: "#fbbf24", fontSize: 70 }, unlockTitle: { color: "#f8fafc", fontSize: 38, fontWeight: "900", textAlign: "center" }, unlockSubtitle: { color: "#9fb2ca", fontSize: 18, lineHeight: 25, textAlign: "center", maxWidth: 650, marginTop: 12 }, unlockOptions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 14, marginTop: 28 }, unlockCard: { width: 190, minHeight: 155, borderWidth: 2, borderRadius: 22, backgroundColor: "#0d233d", alignItems: "center", justifyContent: "center" }, continueButton: { minHeight: 48, justifyContent: "center", marginTop: 25, paddingHorizontal: 18 }, continueText: { color: "#b8c8dc", fontWeight: "800" },
+  safe: { flex: 1, backgroundColor: "#020817" },
+  cinematicBackdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, overflow: "hidden" },
+  roomArtwork: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, width: "100%", height: "100%" },
+  roomArtworkVivid: { opacity: 0.78 },
+  roomArtworkMuted: { opacity: 0.24 },
+  roomVeil: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(1, 8, 24, 0.72)" },
+  roomVeilVivid: { backgroundColor: "rgba(1, 5, 18, 0.45)" },
+  ceilingGlow: { position: "absolute", top: -80, left: "20%", width: "60%", height: 150, borderRadius: 120, backgroundColor: "rgba(30, 218, 255, 0.18)" },
+  floorGlow: { position: "absolute", bottom: -110, left: "18%", width: "64%", height: 190, borderRadius: 160, backgroundColor: "rgba(255, 36, 190, 0.16)" },
+  entryContent: { flexGrow: 1, justifyContent: "space-between", alignItems: "center", padding: 24, paddingBottom: 34, zIndex: 1 },
+  entryContentShort: { paddingTop: 12, paddingBottom: 18 },
+  entryHero: { width: "100%", maxWidth: 720, alignItems: "center", padding: 22, borderRadius: 30, borderWidth: 1, borderColor: "rgba(66, 228, 255, 0.62)", backgroundColor: "rgba(2, 10, 29, 0.84)" },
+  entryTitle: { color: "#ffffff", fontSize: 28, lineHeight: 34, fontWeight: "900", textAlign: "center", marginTop: 17, textShadowColor: "#ff29c3", textShadowRadius: 12 },
+  entrySubtitle: { color: "#c8ddf5", fontSize: 16, lineHeight: 23, fontWeight: "700", textAlign: "center", maxWidth: 590, marginTop: 7 },
+  entryPrompt: { color: "#8ceeff", fontSize: 13, fontWeight: "900", letterSpacing: 1.8, marginTop: 18, textTransform: "uppercase" },
+  entryPlayButton: { minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, marginTop: 22, paddingHorizontal: 26, borderRadius: 12, borderWidth: 2, borderColor: "#d1fbff", backgroundColor: "#32e0ff", shadowColor: "#26d9ff", shadowOpacity: 0.9, shadowRadius: 16, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
+  entryPlayText: { color: "#04131f", fontSize: 15, fontWeight: "900", letterSpacing: 1.4 },
+  motifRow: { width: "100%", maxWidth: 760, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 12, marginVertical: 14 },
+  motifOrb: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 14, borderWidth: 2, backgroundColor: "rgba(3, 13, 34, 0.82)" },
+  logoSign: { minWidth: 154, alignItems: "center", paddingVertical: 6, paddingHorizontal: 18, borderRadius: 10, borderWidth: 2, borderColor: "#31dcff", backgroundColor: "rgba(2, 9, 29, 0.94)", shadowColor: "#25dcff", shadowOpacity: 0.95, shadowRadius: 12, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
+  logoSignLarge: { minWidth: 250, paddingVertical: 12, paddingHorizontal: 34, borderWidth: 3, borderRadius: 16 },
+  logoWord: { color: "#8af3ff", fontSize: 17, lineHeight: 19, fontWeight: "900", letterSpacing: 2, textShadowColor: "#12dfff", textShadowRadius: 7 },
+  logoWordLarge: { fontSize: 34, lineHeight: 37, letterSpacing: 3.5 },
+  logoWordAccent: { color: "#ff65d4", textShadowColor: "#ff22b9" },
+  logoPlay: { marginTop: 6, textShadowColor: "#24ddff", textShadowRadius: 10 },
+  startContent: { flexGrow: 1, alignItems: "center", padding: 20, paddingHorizontal: 64, paddingBottom: 42, zIndex: 1 },
+  backButton: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 7, justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: 8, borderRadius: 8 },
+  backText: { color: "#d6e8ff", fontSize: 15, fontWeight: "900" },
+  eyebrow: { color: "#f7c926", fontSize: 12, fontWeight: "900", letterSpacing: 2.2, marginTop: 2 },
+  startTitle: { color: "#ffffff", fontSize: 32, lineHeight: 38, fontWeight: "900", textAlign: "center", maxWidth: 760, marginTop: 8, textShadowColor: "#147eff", textShadowRadius: 10 },
+  startSubtitle: { color: "#c9ddf3", fontSize: 17, fontWeight: "800", marginTop: 10, marginBottom: 18 },
+  ageBandControl: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 12 },
+  ageBandControlCompact: { marginTop: 9 },
+  ageBandButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 15, borderWidth: 1, borderColor: "#315b80", borderRadius: 999, backgroundColor: "rgba(5, 21, 48, 0.92)" },
+  ageBandButtonCompact: { minHeight: 44, paddingHorizontal: 12 },
+  ageBandButtonSelected: { borderColor: "#ffe04c", backgroundColor: "#55410c", shadowColor: "#ffd92b", shadowOpacity: 0.85, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 5 },
+  ageBandText: { color: "#bed2e9", fontSize: 12, fontWeight: "900" },
+  ageBandTextSelected: { color: "#fff49a" },
+  sourceGrid: { width: "100%", maxWidth: 940, flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "center" },
+  sourceCard: { width: 205, minHeight: 156, borderWidth: 2, borderRadius: 13, backgroundColor: "rgba(4, 17, 39, 0.94)", padding: 14, alignItems: "center", justifyContent: "center", shadowOpacity: 0.42, shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: 5 },
+  sourceCardCompact: { width: "46%", minWidth: 145 },
+  sourceCardPortrait: { width: "100%", minHeight: 132 },
+  sourceCardDisabled: { opacity: 0.37, borderColor: "#425467", shadowOpacity: 0 },
+  sourceCode: { fontSize: 12, fontWeight: "900", letterSpacing: 1.6, marginTop: 3 },
+  sourceLabel: { color: "#ffffff", fontWeight: "900", fontSize: 18, marginTop: 2 },
+  sourceArrow: { fontSize: 11, fontWeight: "900", marginTop: 8, letterSpacing: 1.2 },
+  neonSideRail: { position: "absolute", zIndex: 1, top: "20%", width: 116, alignItems: "center", gap: 14, opacity: 0.88 },
+  neonSideRailLeft: { left: 10 },
+  neonSideRailRight: { right: 10 },
+  railCopy: { textAlign: "center", fontSize: 18, lineHeight: 24, fontWeight: "900", letterSpacing: 1.2 },
+  railCopyPink: { color: "#ff67d5", textShadowColor: "#ff16ae", textShadowRadius: 9 },
+  railCopyBlue: { color: "#62eaff", textShadowColor: "#16d9ff", textShadowRadius: 9 },
+  gameContent: { flexGrow: 1, width: "100%", maxWidth: 1040, alignSelf: "center", padding: 14, paddingBottom: 36, zIndex: 2 },
+  topBar: { minHeight: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  roundMeta: { alignItems: "flex-end", gap: 2 },
+  roundLabel: { color: "#b6cce3", fontSize: 11, fontWeight: "900", letterSpacing: 1.4 },
+  roundSurface: { marginTop: 9, padding: 10, borderRadius: 15, borderWidth: 2, shadowOpacity: 0.36, shadowRadius: 14, shadowOffset: { width: 0, height: 0 }, elevation: 6 },
+  likeRoundSurface: { backgroundColor: "rgba(2, 28, 37, 0.96)", borderColor: "#1d806e", shadowColor: "#24e6c2" },
+  dislikeRoundSurface: { backgroundColor: "rgba(39, 9, 28, 0.96)", borderColor: "#ad315b", shadowColor: "#ff3e86" },
+  roundModeBanner: { borderRadius: 10, borderWidth: 1, padding: 8, alignItems: "center" },
+  likeRoundBanner: { backgroundColor: "#063f3b", borderColor: "#36caaa" },
+  dislikeRoundBanner: { backgroundColor: "#5d1534", borderColor: "#f35c8a" },
+  roundModeLabel: { color: "#fff16a", fontSize: 15, fontWeight: "900", letterSpacing: 2 },
+  dislikeRoundLabel: { color: "#ffd0df" },
+  roundModeInstruction: { color: "#ffffff", fontSize: 14, fontWeight: "900", marginTop: 2 },
+  dislikeRoundInstruction: { color: "#fff1f5" },
+  scorePanel: { marginTop: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
+  likeInsetPanel: { backgroundColor: "#062f34", borderColor: "#17685e" },
+  dislikeInsetPanel: { backgroundColor: "#3c1428", borderColor: "#80324f" },
+  scoreRow: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
+  scoreLabel: { color: "#e2f3ff", fontWeight: "900", fontSize: 13 },
+  scoreValue: { color: "#ffe143", fontWeight: "900", fontSize: 14 },
+  progressTrack: { height: 8, borderRadius: 9, backgroundColor: "#113454", marginTop: 7, overflow: "hidden" },
+  progressFill: { height: "100%", backgroundColor: "#72ef9a", borderRadius: 9 },
+  progressHint: { color: "#9cb9d2", fontSize: 11, marginTop: 5 },
+  contextPanel: { marginTop: 8, padding: 10, borderRadius: 10, gap: 6 },
+  contextLine: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
+  contextLabel: { color: "#65f2ac", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  negativeLabel: { color: "#ff719e" },
+  contextText: { color: "#e4f1ff", flexShrink: 1, fontSize: 12 },
+  anchorPanel: { marginTop: 8, padding: 10, borderRadius: 10 },
+  anchorRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 4 },
+  anchorTitle: { color: "#ffffff", fontWeight: "900", fontSize: 16, flex: 1 },
+  unknownAnchor: { minHeight: 44, paddingHorizontal: 12, justifyContent: "center" },
+  prompt: { fontSize: 24, lineHeight: 30, fontWeight: "900", textAlign: "center", marginVertical: 14 },
+  likePrompt: { color: "#8ef9d6" },
+  dislikePrompt: { color: "#ffabc5" },
+  crossMedia: { color: "#69eaff", textAlign: "center", fontSize: 11, fontWeight: "900", letterSpacing: 1.2, marginTop: 10, marginBottom: 6 },
+  candidateRow: { flexDirection: "row", gap: 10, alignItems: "stretch", marginTop: 10 },
+  candidateColumn: { flexDirection: "column" },
+  candidateShell: { flex: 1, minWidth: 0 },
+  candidateShellCompact: { width: "100%", flex: 0 },
+  candidateCard: { flex: 1, minHeight: 360, borderWidth: 2, borderRadius: 12, backgroundColor: "#062a43", overflow: "hidden" },
+  candidateCardLike: { borderColor: "#35d3c0" },
+  candidateCardDislike: { borderColor: "#ef5d88" },
+  candidateCardLikeSelected: { borderColor: "#a2ffe7", backgroundColor: "#0c4a43" },
+  candidateCardDislikeSelected: { borderColor: "#ffd0df", backgroundColor: "#5c1835" },
+  keyHint: { position: "absolute", zIndex: 2, top: 8, left: 8, color: "#03121e", width: 28, height: 28, borderRadius: 14, textAlign: "center", lineHeight: 28, fontWeight: "900", borderWidth: 2 },
+  keyHintLike: { backgroundColor: "#c7fff0", borderColor: "#ffffff" },
+  keyHintDislike: { backgroundColor: "#ffd0df", borderColor: "#ffffff" },
+  selectionBadge: { position: "absolute", zIndex: 3, top: 8, right: 8, minHeight: 30, justifyContent: "center", paddingHorizontal: 10, borderRadius: 999, borderWidth: 2 },
+  selectionBadgeLike: { backgroundColor: "#08785f", borderColor: "#b5ffeb" },
+  selectionBadgeDislike: { backgroundColor: "#a62755", borderColor: "#ffd0df" },
+  selectionBadgeText: { color: "#fff", fontSize: 11, fontWeight: "900", letterSpacing: 1 },
+  artwork: { width: "100%", height: 230, backgroundColor: "#0b2942" },
+  artworkLoading: { alignItems: "center", justifyContent: "center", gap: 10 },
+  artworkStatus: { color: "#a4bdd5", fontWeight: "800" },
+  artworkFallback: { alignItems: "center", justifyContent: "center" },
+  artworkIcon: { color: "#fff", fontSize: 62, fontWeight: "900" },
+  artworkSource: { color: "#fff", fontSize: 11, fontWeight: "900", letterSpacing: 1.4, marginTop: 8 },
+  candidateCopy: { padding: 12 },
+  mediaPill: { fontSize: 10, fontWeight: "900", letterSpacing: 1.3 },
+  candidateTitle: { color: "#ffffff", fontSize: 17, lineHeight: 21, fontWeight: "900", marginTop: 5 },
+  candidateCreator: { color: "#aac0d6", marginTop: 5, fontSize: 12, fontWeight: "700" },
+  undoButton: { minHeight: 44, alignSelf: "center", justifyContent: "center", paddingHorizontal: 16, marginTop: 7, borderWidth: 1, borderColor: "#7696b5", borderRadius: 999, backgroundColor: "rgba(2, 12, 29, 0.55)" },
+  undoText: { color: "#dcecff", fontWeight: "900" },
+  unknownCandidate: { minHeight: 48, alignItems: "center", justifyContent: "center", marginTop: 3 },
+  unknownText: { color: "#b9cee1", fontWeight: "800", fontSize: 12, textDecorationLine: "underline" },
+  keyboardHint: { color: "#8aa8c4", textAlign: "center", marginTop: 12, fontSize: 11 },
+  persistenceNotice: { color: "#fff0a2", backgroundColor: "rgba(83, 52, 4, 0.92)", borderColor: "#d69c17", borderWidth: 1, borderRadius: 10, padding: 9, textAlign: "center", fontWeight: "800", marginVertical: 7 },
+  hintBackdrop: { flex: 1, backgroundColor: "rgba(1, 5, 18, 0.91)", alignItems: "center", justifyContent: "center", padding: 24 },
+  hintCard: { width: "100%", maxWidth: 480, borderRadius: 20, borderWidth: 3, borderColor: "#ff5c92", backgroundColor: "#421126", padding: 26, alignItems: "center" },
+  hintEyebrow: { color: "#ffc2d5", fontSize: 13, fontWeight: "900", letterSpacing: 2 },
+  hintTitle: { color: "#fff", fontSize: 27, lineHeight: 33, fontWeight: "900", textAlign: "center", marginTop: 9 },
+  hintCopy: { color: "#ffe7ef", fontSize: 16, lineHeight: 23, textAlign: "center", marginTop: 9 },
+  hintButton: { minHeight: 52, marginTop: 21, borderRadius: 999, backgroundColor: "#ff6b9c", paddingHorizontal: 22, justifyContent: "center" },
+  hintButtonText: { color: "#310817", fontWeight: "900", fontSize: 15 },
+  flash: { position: "absolute", zIndex: 5, top: "42%", alignSelf: "center", borderRadius: 999, borderWidth: 3, paddingVertical: 16, paddingHorizontal: 28 },
+  flashLike: { backgroundColor: "#5ee1b7", borderColor: "#d1fae5" },
+  flashDislike: { backgroundColor: "#c52f61", borderColor: "#ffd0df" },
+  flashText: { color: "#06241d", fontWeight: "900", fontSize: 20 },
+  flashTextDislike: { color: "#fff1f5" },
+  unlockContent: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24, zIndex: 1 },
+  unlockIcon: { width: 74, height: 74, alignItems: "center", justifyContent: "center", borderRadius: 37, backgroundColor: "#ffdd3f", borderWidth: 3, borderColor: "#fff3a0", shadowColor: "#ffdd3f", shadowOpacity: 0.9, shadowRadius: 18, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
+  unlockTitle: { color: "#ffffff", fontSize: 38, fontWeight: "900", textAlign: "center", marginTop: 14, textShadowColor: "#ff2dbd", textShadowRadius: 12 },
+  unlockSubtitle: { color: "#c1d6eb", fontSize: 18, lineHeight: 25, textAlign: "center", maxWidth: 650, marginTop: 10 },
+  unlockOptions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 14, marginTop: 24 },
+  unlockCard: { width: 190, minHeight: 155, borderWidth: 2, borderRadius: 15, backgroundColor: "rgba(4, 17, 39, 0.95)", alignItems: "center", justifyContent: "center" },
+  continueButton: { minHeight: 48, justifyContent: "center", marginTop: 22, paddingHorizontal: 18 },
+  continueText: { color: "#d1e3f5", fontWeight: "900" },
 });
