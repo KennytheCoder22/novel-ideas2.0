@@ -30,6 +30,7 @@ import {
   LANTERN_FAIR_CHOICE_ASSET_IDS,
   MIRROR_MARSH_CHOICE_ASSET_IDS,
   MIRROR_MARSH_RESULT_ASSET_IDS,
+  OLD_LIGHTHOUSE_CHOICE_ASSET_IDS,
   RAIN_CAMP_CHOICE_ASSET_IDS,
   RAIN_CAMP_RESULT_ASSET_IDS,
   PAPER_DRAGON_CHOICE_ASSET_IDS,
@@ -393,6 +394,8 @@ function buildChoicePresentation(
                   ? EMBER_LIBRARY_CHOICE_ASSET_IDS[choice.id]
                   : scenarioId === "giant-garden"
                     ? GIANT_GARDEN_CHOICE_ASSET_IDS[choice.id]
+                    : scenarioId === "old-lighthouse"
+                      ? OLD_LIGHTHOUSE_CHOICE_ASSET_IDS[choice.id]
           : frogChoiceAssetId;
   const resultLocalAssetId = scenarioId === "whisper-orchard"
     ? WHISPER_ORCHARD_RESULT_ASSET_IDS[choice.id]
