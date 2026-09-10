@@ -24,6 +24,8 @@ import {
   EMBER_LIBRARY_RESULT_ASSET_IDS,
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
+  GIANT_GARDEN_CHOICE_ASSET_IDS,
+  GIANT_GARDEN_RESULT_ASSET_IDS,
   LANTERN_FAIR_RESULT_ASSET_IDS,
   LANTERN_FAIR_CHOICE_ASSET_IDS,
   MIRROR_MARSH_CHOICE_ASSET_IDS,
@@ -389,6 +391,8 @@ function buildChoicePresentation(
                 ? PAPER_DRAGON_CHOICE_ASSET_IDS[choice.id]
                 : scenarioId === "ember-library"
                   ? EMBER_LIBRARY_CHOICE_ASSET_IDS[choice.id]
+                  : scenarioId === "giant-garden"
+                    ? GIANT_GARDEN_CHOICE_ASSET_IDS[choice.id]
           : frogChoiceAssetId;
   const resultLocalAssetId = scenarioId === "whisper-orchard"
     ? WHISPER_ORCHARD_RESULT_ASSET_IDS[choice.id]
@@ -406,6 +410,8 @@ function buildChoicePresentation(
                 ? PAPER_DRAGON_RESULT_ASSET_IDS[choice.id]
                 : scenarioId === "ember-library"
                   ? EMBER_LIBRARY_RESULT_ASSET_IDS[choice.id]
+                  : scenarioId === "giant-garden"
+                    ? GIANT_GARDEN_RESULT_ASSET_IDS[choice.id]
         : frogResultAssetId;
   const choiceBrief = scenarioId === "mirror-marsh"
     ? OTHER_SKY_BRIEFS[choice.id as keyof typeof OTHER_SKY_BRIEFS]

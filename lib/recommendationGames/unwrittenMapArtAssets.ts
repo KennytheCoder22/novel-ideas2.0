@@ -4,7 +4,8 @@
 // frog-parliament choices and results, Whisper Orchard choices/results, Lantern
 // Fair choices/results, Clockwork Bridge choices/results, and Highwind Farm
 // choices/results, plus Mirror Marsh, Rain Camp, Kite Hill, and Ember Library
-// choices/results, alongside shared cartographic framing chrome.
+// choices/results, including Giant's Garden, alongside shared cartographic
+// framing chrome.
 // Every other choice and result remains an explicitly missing raster
 // commissioning slot (see unwrittenMapPresentationContract.ts). This module
 // is pure data (a path manifest) plus a couple of pure lookup helpers; it
@@ -97,6 +98,14 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "ember-library-result-listen-book": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-result-listen-book.webp",
   "ember-library-result-fold-fire-bird": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-result-fold-fire-bird.webp",
   "giant-garden-encounter": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-encounter.webp",
+  "giant-garden-choice-climb-fast": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-choice-climb-fast.webp",
+  "giant-garden-choice-botany-notes": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-choice-botany-notes.webp",
+  "giant-garden-choice-vine-picnic": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-choice-vine-picnic.webp",
+  "giant-garden-choice-cloud-shapes": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-choice-cloud-shapes.webp",
+  "giant-garden-result-climb-fast": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-result-climb-fast.webp",
+  "giant-garden-result-botany-notes": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-result-botany-notes.webp",
+  "giant-garden-result-vine-picnic": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-result-vine-picnic.webp",
+  "giant-garden-result-cloud-shapes": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-result-cloud-shapes.webp",
   "old-lighthouse-encounter": "assets/games/unwritten-map/illustrations/tideglass/old-lighthouse/old-lighthouse-encounter.webp",
   "star-ferry-encounter": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-encounter.webp",
 
@@ -242,6 +251,22 @@ export const EMBER_LIBRARY_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAss
   "catalog-flames": "ember-library-result-catalog-flames",
   "listen-book": "ember-library-result-listen-book",
   "fold-fire-bird": "ember-library-result-fold-fire-bird",
+};
+
+/** Authoritative Giant's Garden choice-id -> commissioned choice-art mapping. */
+export const GIANT_GARDEN_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "climb-fast": "giant-garden-choice-climb-fast",
+  "botany-notes": "giant-garden-choice-botany-notes",
+  "vine-picnic": "giant-garden-choice-vine-picnic",
+  "cloud-shapes": "giant-garden-choice-cloud-shapes",
+};
+
+/** Authoritative Giant's Garden choice-id -> commissioned result-art mapping. */
+export const GIANT_GARDEN_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "climb-fast": "giant-garden-result-climb-fast",
+  "botany-notes": "giant-garden-result-botany-notes",
+  "vine-picnic": "giant-garden-result-vine-picnic",
+  "cloud-shapes": "giant-garden-result-cloud-shapes",
 };
 
 export const CLOCKWORK_BRIDGE_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
@@ -815,6 +840,62 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "a37ecbed9816430d18a1a087cf45f37c2beb25b8b7e4716cfa4dcd6facd86aeb",
     derivedDimensions: "1462x975",
     authorization: "User-supplied for PR #306",
+  },
+  "giant-garden-choice-climb-fast": {
+    sourceFile: "b6ca4f9c-6957-421f-beea-9a5d80b6036a-ba9440b1-3eb3-488a-99d4-99363f5b932d-clipboard.png",
+    sourceSha256: "60c1bed3133cf214f2b30d6556ccb409f8717fa5839f28089f6d2bceb38847fd",
+    derivedSha256: "f7aa16566772de5ccc06335e8fe1a7a223dbcb5cd1c5b2bcf7fa25ccd9e4f5fb",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Giant's Garden choice integration",
+  },
+  "giant-garden-choice-botany-notes": {
+    sourceFile: "0618b06c-b53b-4a34-8d03-ead8cdb1c344-9f4c248f-477b-44a5-8514-05f04a20996a-clipboard.png",
+    sourceSha256: "ddb8ebd9ccd75b6114b5eb472204aba1334da8e58b9f89da12ab1307b18fd4ba",
+    derivedSha256: "6417650bb3ed6577599227736c6dfa1147964f558e2b4065bc396c44d267f9a9",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Giant's Garden choice integration",
+  },
+  "giant-garden-choice-vine-picnic": {
+    sourceFile: "9ed5f82e-7cfb-40fe-94af-c8dffeaf811b-0116b601-52e7-4081-8e0b-f091e19bc381-clipboard.png",
+    sourceSha256: "628bc48c01271a45550e5a047d3e502d9cd9327c4da4ad59fffa4cc9137d5a92",
+    derivedSha256: "b7386703d9bd6f26491caf93c4275bddd2cbaf4b036f18c29f623ec732101a56",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Giant's Garden choice integration",
+  },
+  "giant-garden-choice-cloud-shapes": {
+    sourceFile: "2115ab19-caae-4976-801c-41ac01e85b70-16011b58-0de7-4277-9c7e-6c9ce3f9fa53-clipboard.png",
+    sourceSha256: "e6fb5e383c5b27a27400f0362bf8ba4b7d2a2d86b3044917f330138a5e410194",
+    derivedSha256: "28fdb2bf698467b656e5fadf007a8b071f2f43b15e2d0ae33d025071272448c6",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Giant's Garden choice integration",
+  },
+  "giant-garden-result-climb-fast": {
+    sourceFile: "717762a1-637a-48e6-9fb0-5fedda1e2d5a-ef279fb9-8453-48f7-a1b6-1f765f0e2059-clipboard.png",
+    sourceSha256: "66f037fcf19246af76930f914f3012c91776fa276f546060685a4d376f296452",
+    derivedSha256: "01adbd0017b773c520465d6522cc7a13cec41fe555e83122fd36043164c05b80",
+    derivedDimensions: "1439x959",
+    authorization: "User-supplied for Giant's Garden result integration",
+  },
+  "giant-garden-result-botany-notes": {
+    sourceFile: "c7f4157c-be59-4613-b1d0-c96cf72b7b34-6b0d6b66-f015-4a6f-9d76-6e8ed3067d8e-clipboard.png",
+    sourceSha256: "bf09edd33b8de279f8abd9f2494ba5dda810cd423141a689963a2f5871f3df2f",
+    derivedSha256: "fce8d1402952c5c2d791d4e3f03fa179b1f00df2fd35fb0a422ffdd019e6c7da",
+    derivedDimensions: "1461x974",
+    authorization: "User-supplied for Giant's Garden result integration",
+  },
+  "giant-garden-result-vine-picnic": {
+    sourceFile: "e5865053-98b1-4db0-8afd-6b65187a1c82-9d591455-de7a-4ae4-b481-be8d7989233d-clipboard.png",
+    sourceSha256: "edd77cef1dc003b0d309be7d8b6580ff5778d7a34ac5fef3a8c235f437d604d3",
+    derivedSha256: "d5550c6f72dc8d5d900d4c7bf24283517c223523585665f1f138e4cb41cb6d7b",
+    derivedDimensions: "1482x988",
+    authorization: "User-supplied for Giant's Garden result integration",
+  },
+  "giant-garden-result-cloud-shapes": {
+    sourceFile: "77556991-23d7-4ea5-8345-983c73587815-dc41df34-de06-461b-a329-789669fdb75d-clipboard.png",
+    sourceSha256: "18f1d54589afa0c7f37e915829df84789935bfdbfd1c9b51df3412132a2222a6",
+    derivedSha256: "385ff85b4f6cb87f93689b3f686a10a524423d4330b7f04f07b7993500ff7c18",
+    derivedDimensions: "1475x983",
+    authorization: "User-supplied for Giant's Garden result integration",
   },
   "giant-garden-encounter": {
     sourceFile: "d6294571-6ee0-46e2-81ee-e0524eefe120-37247589-303a-4b1e-a770-360b980522c1-clipboard.png",
