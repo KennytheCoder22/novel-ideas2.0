@@ -74,6 +74,8 @@ export const GAME_RECOMMENDATION_EVIDENCE_MODES: readonly GameRecommendationEvid
 // already_read is familiarity only: it must never be treated as a positive or negative taste
 // signal by any downstream consumer of this contract.
 export type GameRecommendationResponse = "yes" | "maybe" | "no" | "already_read";
+export const GAME_RECOMMENDATION_DETAILS = ['too_young', 'wrong_mood', 'uninteresting_premise', 'liked_it', 'not_for_me'] as const;
+export type GameRecommendationDetail = typeof GAME_RECOMMENDATION_DETAILS[number];
 
 export const GAME_RECOMMENDATION_RESPONSES: readonly GameRecommendationResponse[] = [
   "yes",
@@ -118,6 +120,7 @@ export type GameRecommendationFeedbackEventV1 = {
   evidenceMode: GameRecommendationEvidenceMode;
   book: GameRecommendationBookIdentity;
   response: GameRecommendationResponse;
+  responseDetail?: GameRecommendationDetail;
   ageBand: GameRecommendationAgeBand;
   library: GameRecommendationLibraryContext;
   shownAt: string;
@@ -210,7 +213,12 @@ export function isGameRecommendationFeedbackEventV1(value: unknown): value is Ga
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const event = value as Record<string, unknown>;
   if (JSON.stringify(event).length > 8_000) return false;
-  if (!exactKeys(event, EVENT_KEYS)) return false;
+  if (!exactKeys(event, event.responseDetail === undefined ? EVENT_KEYS : [...EVENT_KEYS, 'responseDetail'])) return false;
+  if (event.responseDetail !== undefined) {
+    if (!GAME_RECOMMENDATION_DETAILS.includes(event.responseDetail as GameRecommendationDetail)) return false;
+    if (event.response === 'no' ? !['too_young', 'wrong_mood', 'uninteresting_premise'].includes(String(event.responseDetail))
+      : event.response === 'already_read' ? !['liked_it', 'not_for_me'].includes(String(event.responseDetail)) : true) return false;
+  }
   if (event.schemaVersion !== GAME_RECOMMENDATION_FEEDBACK_SCHEMA) return false;
   if (!isNonEmptyString(event.eventId, 260)) return false;
   if (!RECOMMENDATION_GAME_IDS.includes(event.game as RecommendationGameId)) return false;
@@ -330,6 +338,7 @@ export function createGameRecommendationFeedbackEvent(args: {
   evidenceMode: GameRecommendationEvidenceMode;
   book: GameRecommendationBookIdentity;
   response: GameRecommendationResponse;
+  responseDetail?: GameRecommendationDetail;
   ageBand: GameRecommendationAgeBand;
   library: GameRecommendationLibraryContext;
   shownAt: string;
@@ -350,6 +359,7 @@ export function createGameRecommendationFeedbackEvent(args: {
     evidenceMode: args.evidenceMode,
     book: args.book,
     response: args.response,
+    ...(args.responseDetail ? { responseDetail: args.responseDetail } : {}),
     ageBand: args.ageBand,
     library: args.library,
     shownAt: args.shownAt,

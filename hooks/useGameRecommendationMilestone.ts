@@ -37,6 +37,7 @@ import {
   type GameRecommendationEvidenceMode,
   type GameRecommendationEvidenceSnapshot,
   type GameRecommendationResponse,
+  type GameRecommendationDetail,
   type RecommendationGameId,
 } from "../lib/recommendationGames/gameRecommendationFeedback";
 import { createGameRecommendationDiagnosticEvent } from "../lib/recommendationGames/gameRecommendationDiagnostics";
@@ -596,7 +597,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
     });
   }, [args.ageBand, args.game, args.gameSessionId, args.libraryId, args.playerId, args.sessionScopedEvidence, currentScopeId, enqueueEvidenceMutation, persist]);
 
-  const respond = useCallback((response: GameRecommendationResponse, continuation: () => void) => {
+  const respond = useCallback((response: GameRecommendationResponse, continuation: () => void, responseDetail?: GameRecommendationDetail) => {
     if (respondingRef.current) return;
     const reward = pendingReward;
     if (!reward || !stateRef.current) {
@@ -622,6 +623,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
       evidenceMode: reward.evidenceMode,
       book: reward.book,
       response,
+      responseDetail,
       ageBand: reward.ageBand,
       library: reward.library,
       shownAt: reward.shownAt,

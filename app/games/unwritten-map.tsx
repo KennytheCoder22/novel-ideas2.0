@@ -64,6 +64,9 @@ import {
 } from "../../lib/recommendationGames/unwrittenMapEvidenceClient";
 import type { AsyncKeyValueStorage } from "../../lib/recommendationGames/evidenceClient";
 import { GameRecommendationReward } from "../../components/GameRecommendationReward";
+import { AdventureActivity, AdventureDiscovery, AdventureJournal } from "../../features/unwritten-map/components/UnwrittenMapAdventure";
+import { hasAdventureActivity } from "../../lib/recommendationGames/unwrittenMapAdventure";
+import { UnwrittenMapBooks, useUnwrittenMapBooks } from "../../features/unwritten-map/components/UnwrittenMapBooks";
 import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
 import { adaptUnwrittenMapChoiceToSignal, UNWRITTEN_MAP_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
 import { unwrittenMapMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
@@ -252,9 +255,13 @@ function PlayerSprite({ facing, walkingFrame }: { facing: MapDirection; walkingF
 }
 
 function LandmarkSprite({ scenario, completed }: { scenario: MapScenario; completed: boolean }) {
+  const restoredIcon = scenario.id === 'clockwork-bridge' ? 'bridge'
+    : scenario.id === 'old-lighthouse' ? 'lighthouse-on'
+    : scenario.id === 'paper-dragon' ? 'kite'
+    : scenario.id === 'mirror-marsh' ? 'star-four-points' : 'check';
   return (
     <View style={[styles.landmark, { backgroundColor: completed ? "#6f755d" : scenario.color }]}>
-      <MaterialCommunityIcons name={completed ? "check" : "map-marker-star"} size={18} color={PARCHMENT} />
+      <MaterialCommunityIcons name={completed ? restoredIcon : "map-marker-star"} size={18} color={PARCHMENT} />
       <Text style={styles.landmarkLabel}>{completed ? "NOTED" : scenario.mapLabel.slice(0, 2)}</Text>
     </View>
   );
@@ -302,7 +309,7 @@ function WorldTile({
 }
 
 function WorldMap({
-  save, tileSize, columns, rows, walkingFrame, bumpDirection, compact, focused, onActivate, onDeactivate,
+  save, tileSize, columns, rows, walkingFrame, bumpDirection, compact, focused, onActivate, onDeactivate, autoFocus,
 }: {
   save: UnwrittenMapSaveV2;
   tileSize: number;
@@ -314,8 +321,13 @@ function WorldMap({
   focused: boolean;
   onActivate: () => void;
   onDeactivate: () => void;
+  autoFocus: boolean;
 }) {
   const [boardArtFailed, setBoardArtFailed] = useState(false);
+  const boardRef = useRef<View>(null);
+  useEffect(() => {
+    if (autoFocus && Platform.OS === 'web') (boardRef.current as unknown as HTMLElement | null)?.focus?.({ preventScroll: true });
+  }, [autoFocus]);
   const { origin, ...artworkFrame } = unwrittenMapArtworkFrame(save.position, columns, rows, tileSize);
   const bumpTransform = bumpDirection === "left" ? { translateX: -3 }
     : bumpDirection === "right" ? { translateX: 3 }
@@ -323,6 +335,7 @@ function WorldMap({
         : bumpDirection === "down" ? { translateY: 3 } : undefined;
   return (
     <View
+      ref={boardRef}
       style={[styles.viewport, focused && styles.viewportFocused, { width: columns * tileSize + 8, height: rows * tileSize + 8 }]}
       accessibilityLabel="The Unwritten Map overworld. Focus to use arrow or WASD controls."
       accessibilityRole="image"
@@ -470,7 +483,7 @@ function TitleScreen({
             <View style={styles.titleRule} />
           </View>
           <Text style={[styles.titleLogo, compact && styles.titleLogoCompact]}>THE{"\n"}UNWRITTEN MAP</Text>
-          <Text style={styles.titleCopy}>Cross six wild regions, meet their curious inhabitants, and make a map no other traveler could draw.</Text>
+          <Text style={styles.titleCopy}>A cartographer has vanished. An island has slipped off every map. Follow Aster’s clues across six wild regions and discover the shore that no light touches.</Text>
           <TouchableOpacity style={[styles.primaryButton, beginning && styles.buttonDisabled]} disabled={beginning} onPress={onBegin} accessibilityRole="button" accessibilityLabel={hasProgress ? "Continue journey" : "Open the map"}>
             <MaterialCommunityIcons name="map-outline" size={18} color="#f7e7b0" />
             <Text style={styles.primaryButtonText}>{beginning ? "OPENING..." : hasProgress ? "CONTINUE JOURNEY" : "OPEN THE MAP"}</Text>
@@ -696,6 +709,7 @@ function CompleteScreen(props: {
       <Text style={styles.completeKicker}>THE GRAND JOURNEY IS COMPLETE</Text>
       <Text style={styles.completeTitle}>The blank country has become your story.</Text>
       <Text style={styles.completeCopy}>No road was wrong. Your choices, open possibilities, and corrections made this map entirely yours.</Text>
+      <AdventureJournal save={props.save} finale />
       <Journal save={props.save} onUndo={props.onUndo} undoing={props.undoing} />
       {props.completionPending ? (
         <TouchableOpacity style={[styles.primaryButton, props.busy && styles.buttonDisabled]} disabled={props.busy} onPress={props.onRetryCompletion} accessibilityRole="button">
@@ -719,6 +733,7 @@ export default function UnwrittenMapRoute() {
   const reduceMotion = usePrefersReducedMotion();
   const scopeKey = useMemo(() => storageScopeKey(params.libraryId, params.playerId), [params.libraryId, params.playerId]);
   const saveKey = useMemo(() => scopedSaveKey(scopeKey), [scopeKey]);
+  const bookMemory = useUnwrittenMapBooks(`${scopeKey}:${routeConfig.ageBand}`);
   const libraryScopeId = useMemo(() => scopeKey.slice(0, scopeKey.lastIndexOf("-")), [scopeKey]);
   const [save, setSave] = useState<UnwrittenMapSaveV2 | null>(null);
   const saveRef = useRef<UnwrittenMapSaveV2 | null>(null);
@@ -728,6 +743,7 @@ export default function UnwrittenMapRoute() {
   const [presentedChoices, setPresentedChoices] = useState<MapChoice[]>([]);
   const [resultChoice, setResultChoice] = useState<MapChoice | null>(null);
   const [resultSkipped, setResultSkipped] = useState(false);
+  const [activityScenario, setActivityScenario] = useState<string | null>(null);
   const [loadedExistingProgress, setLoadedExistingProgress] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [undoing, setUndoing] = useState(false);
@@ -774,6 +790,8 @@ export default function UnwrittenMapRoute() {
     localCollectionOnly: routeConfig.localCollectionOnly,
     evidenceMode: UNWRITTEN_MAP_EVIDENCE_MODE,
   });
+  const inputBlockedRef = useRef(false);
+  inputBlockedRef.current = Boolean(gameRecommendationMilestone.pendingReward || showJournal || showPrivacy);
 
   const updateSaveState = useCallback((next: UnwrittenMapSaveV2) => {
     saveRef.current = next;
@@ -947,7 +965,7 @@ export default function UnwrittenMapRoute() {
   }, []);
 
   const move = useCallback((direction: MapDirection) => {
-    if (!saveRef.current || phaseRef.current !== "map" || !acquireOperation()) return;
+    if (inputBlockedRef.current || !saveRef.current || phaseRef.current !== "map" || !acquireOperation()) return;
     const operationId = movementOperationRef.current || createOperationId("move");
     movementOperationRef.current = operationId;
     const positionBefore = saveRef.current.position;
@@ -1036,7 +1054,7 @@ export default function UnwrittenMapRoute() {
     const onKeyDown = (event: KeyboardEvent) => {
       const direction = keyDirection(event.key);
       const target = event.target as HTMLElement | null;
-      if (!direction || !mapFocusedRef.current || phaseRef.current !== "map"
+      if (!direction || inputBlockedRef.current || !mapFocusedRef.current || phaseRef.current !== "map"
         || target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
       event.preventDefault();
       if (!heldKeysRef.current.has(direction)) {
@@ -1189,6 +1207,7 @@ export default function UnwrittenMapRoute() {
       ) || null;
       setResultChoice(selected);
       setResultSkipped(!selected);
+      setActivityScenario(selected && hasAdventureActivity(activeScenario.id, selected.id) ? activeScenario.id : null);
       phaseRef.current = "result";
       setPhase("result");
       if (selected && resultDecisionRef.current) {
@@ -1459,6 +1478,33 @@ export default function UnwrittenMapRoute() {
     ? regionAt(save.position) as { id: UnwrittenMapRegionId; name: string }
     : null, [save]);
 
+  const rewardOverlay = (<>
+      {gameRecommendationMilestone.pendingReward ? (
+        <GameRecommendationReward
+          key={gameRecommendationMilestone.pendingReward.book.id}
+          detailedFeedback
+          visible
+          cadence={gameRecommendationMilestone.pendingReward.cadence}
+          gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
+          book={{
+            title: gameRecommendationMilestone.pendingReward.book.title,
+            author: gameRecommendationMilestone.pendingReward.book.author,
+            coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
+            description: gameRecommendationMilestone.pendingReward.description,
+            reason: gameRecommendationMilestone.pendingReward.reason,
+          }}
+          onRespond={(response, detail) => {
+            const reward = gameRecommendationMilestone.pendingReward;
+            if (reward && (response === 'yes' || detail === 'liked_it')) bookMemory.remember({ ...reward.book, coverUrl: reward.coverUrl, reason: reward.reason });
+            const originatingDecisionId = gameRecommendationMilestone.pendingReward?.nativeEvidenceId;
+            gameRecommendationMilestone.respond(response, () => {
+              if (originatingDecisionId && phaseRef.current === "result" && !activityScenario) void continueFromResult(originatingDecisionId);
+            }, detail);
+          }}
+        />
+      ) : null}
+  </>);
+
   if (!save) {
     return <SafeAreaView style={styles.safe}><CartographyBackdrop page="entry" /><View style={styles.loading}><ActivityIndicator color={GOLD} /><Text style={styles.loadingText}>{storageError || "UNFOLDING MAP..."}</Text></View></SafeAreaView>;
   }
@@ -1496,7 +1542,9 @@ export default function UnwrittenMapRoute() {
             completionPending={completionPending}
           />
           {storageError ? <Text style={styles.storageError}>{storageError}</Text> : null}
+          <UnwrittenMapBooks books={bookMemory.books} />
         </ScrollView>
+        {rewardOverlay}
       </SafeAreaView>
     );
   }
@@ -1526,9 +1574,10 @@ export default function UnwrittenMapRoute() {
             </TouchableOpacity>
           </View>
         </View>
-        {showJournal ? <Journal save={save} onUndo={() => void undoLatest()} undoing={undoing || operationPending} /> : phase === "map" ? (
+        {showJournal ? <><AdventureJournal save={save} /><Journal save={save} onUndo={() => void undoLatest()} undoing={undoing || operationPending} /></> : phase === "map" ? (
           <UnwrittenMapRegionMapTemplate testID="unwritten-map-region-map-template">
             <WorldMap
+              autoFocus={!gameRecommendationMilestone.pendingReward && !showPrivacy}
               save={save} tileSize={tileSize} columns={columns} rows={rows} walkingFrame={reduceMotion ? 0 : walkingFrame}
               bumpDirection={reduceMotion ? null : bumpDirection}
               compact={compactLayout}
@@ -1548,7 +1597,12 @@ export default function UnwrittenMapRoute() {
         ) : phase === "encounter" && activeScenario ? (
           <EncounterPanel scenario={activeScenario} choices={presentedChoices} submitting={submitting || operationPending} onChoose={(item) => void recordOutcome(item)} onSkip={() => void recordOutcome(null)} />
         ) : phase === "result" && activeScenario ? (
-          <ResultPanel scenario={activeScenario} choice={resultChoice} skipped={resultSkipped} pending={operationPending} onContinue={() => void continueFromResult()} />
+          <>
+            {activityScenario ? <AdventureActivity key={activityScenario} scenarioId={activityScenario} onContinue={() => setActivityScenario(null)} /> : <>
+              <ResultPanel scenario={activeScenario} choice={resultChoice} skipped={resultSkipped} pending={operationPending} onContinue={() => void continueFromResult()} />
+              <AdventureDiscovery scenarioId={activeScenario.id} />
+            </>}
+          </>
         ) : null}
         {phase === "map" && !showJournal ? (
           <View style={styles.mapControls}>
@@ -1556,9 +1610,9 @@ export default function UnwrittenMapRoute() {
             <View style={styles.mapInstructions}>
               <View style={styles.instructionHeadingRow}>
                 <MaterialCommunityIcons name="compass-outline" size={20} color={INK} />
-                <Text style={styles.instructionHeading}>SEEK THE COLORED LANDMARKS</Text>
+                <Text style={styles.instructionHeading}>FIND ASTER’S LOST ISLAND</Text>
               </View>
-              <Text style={styles.instructionText}>Roads, grass, and sand are open. Trees, water, and peaks block the way. Your route is never used as a preference.</Text>
+              <Text style={styles.instructionText}>Follow clues at the orchard, bridge, mirror marsh and lighthouse. Open FIELD NOTES for the atlas and directions. Roads cross rivers; trees and peaks block your way.</Text>
               <Text style={styles.coordinateText}>MAP {save.position.x.toString().padStart(2, "0")}:{save.position.y.toString().padStart(2, "0")}</Text>
             </View>
           </View>
@@ -1568,26 +1622,8 @@ export default function UnwrittenMapRoute() {
         )}
       </ScrollView>
       {showPrivacy ? <View style={styles.overlay}><PrivacyNote onClose={() => setShowPrivacy(false)} /></View> : null}
-      {gameRecommendationMilestone.pendingReward ? (
-        <GameRecommendationReward
-          visible
-          cadence={gameRecommendationMilestone.pendingReward.cadence}
-          gameLabel={gameRecommendationMilestone.pendingReward.gameLabel}
-          book={{
-            title: gameRecommendationMilestone.pendingReward.book.title,
-            author: gameRecommendationMilestone.pendingReward.book.author,
-            coverUrl: gameRecommendationMilestone.pendingReward.coverUrl,
-            description: gameRecommendationMilestone.pendingReward.description,
-            reason: gameRecommendationMilestone.pendingReward.reason,
-          }}
-          onRespond={(response) => {
-            const originatingDecisionId = gameRecommendationMilestone.pendingReward?.nativeEvidenceId;
-            gameRecommendationMilestone.respond(response, () => {
-              if (originatingDecisionId) void continueFromResult(originatingDecisionId);
-            });
-          }}
-        />
-      ) : null}
+      {rewardOverlay}
+
     </SafeAreaView>
   );
 }

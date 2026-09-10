@@ -2056,7 +2056,8 @@ async function main() {
   assert(leaveSource.indexOf("await queueSaveCommit") < leaveSource.indexOf("router.replace")
     && leaveSource.includes("Stay on this map and retry Exit"),
   "exit navigation must wait for local queue/save/commit and expose a clear retry on failure");
-  const completionSource = routeSource.slice(routeSource.indexOf("const queueCompletionEvent"), routeSource.indexOf("useEffect(() =>"));
+    const completionStart = routeSource.indexOf("const queueCompletionEvent");
+    const completionSource = routeSource.slice(completionStart, routeSource.indexOf("useEffect(() =>", completionStart));
   const continueSource = routeSource.slice(routeSource.indexOf("const continueFromResult"), routeSource.indexOf("const retryCompletion"));
   assert(completionSource.indexOf("await transactUnwrittenMapCompletion") < completionSource.indexOf("completionEmittedRef.current = true")
     && evidenceSource.includes("if (!isUnwrittenMapJourneyComplete(current))")
