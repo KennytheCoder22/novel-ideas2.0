@@ -21,6 +21,7 @@ import {
   CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS,
   CLOCKWORK_BRIDGE_RESULT_ASSET_IDS,
   EMBER_LIBRARY_CHOICE_ASSET_IDS,
+  EMBER_LIBRARY_RESULT_ASSET_IDS,
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
@@ -434,12 +435,37 @@ test("Ember Library choice art maps by authoritative choice id with provenance",
     assert.equal(choice.focalArt.localAssetId, localAssetId);
     assert.equal(choice.focalArt.status, "approved");
     assert.equal(choice.focalArt.targetAspectRatio, "4:3");
-    assert.equal(choice.result.focalArt.status, "missing");
+    assert.equal(choice.result.focalArt.status, "approved");
     const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
     assert.ok(provenance);
     assert.equal(provenance.sourceSha256, sourceSha256);
     assert.equal(provenance.derivedDimensions, "800x600");
     const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
+});
+
+test("Ember Library result art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "ember-library");
+  assert.ok(encounter);
+  const expected = {
+    "forbidden-volume": ["ember-library-result-forbidden-volume", "77ef3af0c2427081c6d2d194b35cb1ca16e4d7061d74be3ce7d7906141327167", "1452x968"],
+    "catalog-flames": ["ember-library-result-catalog-flames", "e57170d574067c2a6c890b4d4b6744ab91e855a09b35a164c865f3f373d2a2e5", "1485x990"],
+    "listen-book": ["ember-library-result-listen-book", "5ce080187cc53c580370fd2f912d3f082a23cd6ffdfcee27384cafe158aa1c10", "1522x1015"],
+    "fold-fire-bird": ["ember-library-result-fold-fire-bird", "515106fae30a140dc830455562f1337ee1fbb0d3b4d358cedbb0a700dd3b5a9f", "1524x1016"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256, dimensions] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(EMBER_LIBRARY_RESULT_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.result.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.result.focalArt.status, "approved");
+    assert.equal(choice.result.focalArt.targetAspectRatio, "3:2");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, dimensions);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
     assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
   }
 });
@@ -697,6 +723,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "mirror-marsh"
         || encounter.scenarioId === "rain-camp"
         || encounter.scenarioId === "paper-dragon"
+        || encounter.scenarioId === "ember-library"
         ? "approved"
         : "missing";
       assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
@@ -713,7 +740,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
   assert.equal(unavailableChoices.length, 12);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 16);
+  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 12);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {
