@@ -25,7 +25,9 @@ export function renderUnwrittenMapArtManifest(): string {
     "# The Unwritten Map art manifest",
     "",
     "> Encounter hero gate: **PASS** — all 12 encounter illustrations are approved local raster assets.",
-    "> Full focal-art gate: **BLOCKED** until every missing choice/result slot below is filled with authorized local illustrated raster art and `npm run audit:unwritten-map-presentation` passes.",
+    inventory.missing === 0
+      ? "> Full focal-art gate: **PASS** — all encounter, choice, and result illustrations are approved local raster assets."
+      : "> Full focal-art gate: **BLOCKED** until every missing choice/result slot below is filled with authorized local illustrated raster art and `npm run audit:unwritten-map-presentation` passes.",
     "",
     `Required: **${inventory.required}** distinct assets (${inventory.encounters.required} encounter, ${inventory.choices.required} choice, ${inventory.results.required} result).`,
     `Approved and integrated: **${inventory.approved}** (${inventory.encounters.approved} encounter, ${inventory.choices.approved} choice, ${inventory.results.approved} result).`,

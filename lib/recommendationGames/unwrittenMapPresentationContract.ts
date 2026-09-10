@@ -35,6 +35,7 @@ import {
   RAIN_CAMP_CHOICE_ASSET_IDS,
   RAIN_CAMP_RESULT_ASSET_IDS,
   STAR_FERRY_CHOICE_ASSET_IDS,
+  STAR_FERRY_RESULT_ASSET_IDS,
   PAPER_DRAGON_CHOICE_ASSET_IDS,
   PAPER_DRAGON_RESULT_ASSET_IDS,
   UNWRITTEN_MAP_ENCOUNTER_ASSET_IDS,
@@ -421,6 +422,8 @@ function buildChoicePresentation(
                     ? GIANT_GARDEN_RESULT_ASSET_IDS[choice.id]
                     : scenarioId === "old-lighthouse"
                       ? OLD_LIGHTHOUSE_RESULT_ASSET_IDS[choice.id]
+                      : scenarioId === "star-ferry"
+                        ? STAR_FERRY_RESULT_ASSET_IDS[choice.id]
         : frogResultAssetId;
   const choiceBrief = scenarioId === "mirror-marsh"
     ? OTHER_SKY_BRIEFS[choice.id as keyof typeof OTHER_SKY_BRIEFS]

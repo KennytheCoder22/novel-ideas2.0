@@ -120,6 +120,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "star-ferry-choice-ferryman-tale": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-choice-ferryman-tale.webp",
   "star-ferry-choice-catch-star": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-choice-catch-star.webp",
   "star-ferry-choice-deck-dance": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-choice-deck-dance.webp",
+  "star-ferry-result-steer-stars": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-result-steer-stars.webp",
+  "star-ferry-result-ferryman-tale": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-result-ferryman-tale.webp",
+  "star-ferry-result-catch-star": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-result-catch-star.webp",
+  "star-ferry-result-deck-dance": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-result-deck-dance.webp",
 
   "frog-parliament-encounter": "assets/games/unwritten-map/frog-encounter.webp",
 
@@ -303,6 +307,14 @@ export const STAR_FERRY_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetI
   "ferryman-tale": "star-ferry-choice-ferryman-tale",
   "catch-star": "star-ferry-choice-catch-star",
   "deck-dance": "star-ferry-choice-deck-dance",
+};
+
+/** Authoritative Star Ferry choice-id -> commissioned result-art mapping. */
+export const STAR_FERRY_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "steer-stars": "star-ferry-result-steer-stars",
+  "ferryman-tale": "star-ferry-result-ferryman-tale",
+  "catch-star": "star-ferry-result-catch-star",
+  "deck-dance": "star-ferry-result-deck-dance",
 };
 
 export const CLOCKWORK_BRIDGE_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
@@ -1030,6 +1042,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "9b419bf87e51b5e160cc9c831deabb9af469727e39be8a7697c552ef86abbcb7",
     derivedDimensions: "800x600",
     authorization: "User-supplied for Star Ferry choice integration",
+  },
+  "star-ferry-result-steer-stars": {
+    sourceFile: "f23d3a15-eb47-4751-92b9-3ff6ec50fb32-3e6d3ca6-8cd1-43b0-9788-0d12dbfa671e-clipboard.png",
+    sourceSha256: "d98bf0256b3b2a26b99b7bc013eac985bd7e6ec3baaa5a72cc297ea5b51f61d3",
+    derivedSha256: "f42ba9ffbef214a252ba75d4ecddea3a4d749c7db7f19c5c45b83fb54e1df1a7",
+    derivedDimensions: "1521x1014",
+    authorization: "User-supplied for Star Ferry result integration",
+  },
+  "star-ferry-result-ferryman-tale": {
+    sourceFile: "24c87f80-2bd1-4006-87b3-04f0190ad154-2e61e6cf-abfe-4a3c-b7af-1c3a5cbcf994-clipboard.png",
+    sourceSha256: "dbc7aec0423f82a48675c0e47fde327f7803c8f5fee00f16a6272c254cfed78d",
+    derivedSha256: "dc97c71cd13b802cd56a7df20c9a0b2e183dd378df4aa14a6e4a2d8e3a5ac225",
+    derivedDimensions: "1536x1024",
+    authorization: "User-supplied for Star Ferry result integration",
+  },
+  "star-ferry-result-catch-star": {
+    sourceFile: "7fcc0dcb-3312-49f7-b417-48ddc6c77415-7cb18e06-fead-4df6-b610-0451d2e1bf9a-clipboard.png",
+    sourceSha256: "46dcee6d72a999bb67553eae6609d307d42e861c53c4b437cc039e96d544eda4",
+    derivedSha256: "50ea0c6e4b8c64e1d238af097a715e30ffd81474f55e269c254fec3a733c623b",
+    derivedDimensions: "1530x1020",
+    authorization: "User-supplied for Star Ferry result integration",
+  },
+  "star-ferry-result-deck-dance": {
+    sourceFile: "121a3284-acfc-4da7-884e-a5a5f3f0f9ae-de1acc89-31cb-4682-83c8-d9f7ddab350f-clipboard.png",
+    sourceSha256: "3ff41d31411cd6592df640bd3b9b6f4598d307c2bee00b164ce41384f039fae4",
+    derivedSha256: "d4976ff0307dd55a7eb63cbce9107714b32cf9127e23f1482b8645e4d961a3a2",
+    derivedDimensions: "1497x998",
+    authorization: "User-supplied for Star Ferry result integration",
   },
   "star-ferry-encounter": {
     sourceFile: "e5d4d34d-5d75-4328-84d3-06a0af2218a9-a6eb876a-74d1-49b0-a946-b3d69f786326-clipboard.png",

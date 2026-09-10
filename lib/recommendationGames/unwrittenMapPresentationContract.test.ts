@@ -35,6 +35,7 @@ import {
   RAIN_CAMP_CHOICE_ASSET_IDS,
   RAIN_CAMP_RESULT_ASSET_IDS,
   STAR_FERRY_CHOICE_ASSET_IDS,
+  STAR_FERRY_RESULT_ASSET_IDS,
   PAPER_DRAGON_CHOICE_ASSET_IDS,
   PAPER_DRAGON_RESULT_ASSET_IDS,
   LANTERN_FAIR_CHOICE_ASSET_IDS,
@@ -593,12 +594,37 @@ test("Star Ferry choice art maps by authoritative choice id with provenance", ()
     assert.equal(choice.focalArt.localAssetId, localAssetId);
     assert.equal(choice.focalArt.status, "approved");
     assert.equal(choice.focalArt.targetAspectRatio, "4:3");
-    assert.equal(choice.result.focalArt.status, "missing");
+    assert.equal(choice.result.focalArt.status, "approved");
     const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
     assert.ok(provenance);
     assert.equal(provenance.sourceSha256, sourceSha256);
     assert.equal(provenance.derivedDimensions, "800x600");
     const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
+});
+
+test("Star Ferry result art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "star-ferry");
+  assert.ok(encounter);
+  const expected = {
+    "steer-stars": ["star-ferry-result-steer-stars", "d98bf0256b3b2a26b99b7bc013eac985bd7e6ec3baaa5a72cc297ea5b51f61d3", "1521x1014"],
+    "ferryman-tale": ["star-ferry-result-ferryman-tale", "dbc7aec0423f82a48675c0e47fde327f7803c8f5fee00f16a6272c254cfed78d", "1536x1024"],
+    "catch-star": ["star-ferry-result-catch-star", "46dcee6d72a999bb67553eae6609d307d42e861c53c4b437cc039e96d544eda4", "1530x1020"],
+    "deck-dance": ["star-ferry-result-deck-dance", "3ff41d31411cd6592df640bd3b9b6f4598d307c2bee00b164ce41384f039fae4", "1497x998"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256, dimensions] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(STAR_FERRY_RESULT_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.result.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.result.focalArt.status, "approved");
+    assert.equal(choice.result.focalArt.targetAspectRatio, "3:2");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, dimensions);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
     assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
   }
 });
@@ -862,6 +888,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "ember-library"
         || encounter.scenarioId === "giant-garden"
         || encounter.scenarioId === "old-lighthouse"
+        || encounter.scenarioId === "star-ferry"
         ? "approved"
         : "missing";
       assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
@@ -878,7 +905,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
   assert.equal(unavailableChoices.length, 0);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 4);
+  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 0);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {
