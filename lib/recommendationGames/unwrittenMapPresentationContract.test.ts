@@ -30,6 +30,7 @@ import {
   LANTERN_FAIR_RESULT_ASSET_IDS,
   MIRROR_MARSH_CHOICE_ASSET_IDS,
   MIRROR_MARSH_RESULT_ASSET_IDS,
+  OLD_LIGHTHOUSE_CHOICE_ASSET_IDS,
   RAIN_CAMP_CHOICE_ASSET_IDS,
   RAIN_CAMP_RESULT_ASSET_IDS,
   PAPER_DRAGON_CHOICE_ASSET_IDS,
@@ -523,6 +524,32 @@ test("Giant's Garden result art maps by authoritative choice id with provenance"
   }
 });
 
+test("Old Lighthouse choice art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "old-lighthouse");
+  assert.ok(encounter);
+  const expected = {
+    "repair-lens": ["old-lighthouse-choice-repair-lens", "5e6caf89cb2124a4f6f9b11be942640c415231e327b479c53b892fb53490f70e"],
+    "keeper-journals": ["old-lighthouse-choice-keeper-journals", "d57b98cd1128fd7503717266712bf81ab12203204b34f8bb39c74b3850f25da3"],
+    "storm-roof": ["old-lighthouse-choice-storm-roof", "4dc5a0764f995346a9fe28ce4accf77ac181561ba5d03de5833ce6986585b048"],
+    "sea-listen": ["old-lighthouse-choice-sea-listen", "2ec99a24c773b60ac99853fff32e313becadfbe13ffb8a9d6081c4d82d868609"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(OLD_LIGHTHOUSE_CHOICE_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.focalArt.status, "approved");
+    assert.equal(choice.focalArt.targetAspectRatio, "4:3");
+    assert.equal(choice.result.focalArt.status, "missing");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, "800x600");
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
+});
+
 test("Clockwork Bridge result art maps by authoritative choice id without changing live outcomes", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
   const scenario = UNWRITTEN_MAP_SCENARIOS.find((item) => item.id === "clockwork-bridge");
@@ -767,6 +794,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "paper-dragon"
         || encounter.scenarioId === "ember-library"
         || encounter.scenarioId === "giant-garden"
+        || encounter.scenarioId === "old-lighthouse"
         ? "approved"
         : "missing";
       const resultStatus = encounter.scenarioId === "frog-parliament"
@@ -793,7 +821,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
 
   const allChoices = metadata.flatMap((encounter) => encounter.choices);
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
-  assert.equal(unavailableChoices.length, 8);
+  assert.equal(unavailableChoices.length, 4);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
   assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 8);
 });

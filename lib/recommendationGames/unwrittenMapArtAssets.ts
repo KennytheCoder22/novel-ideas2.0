@@ -107,6 +107,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "giant-garden-result-vine-picnic": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-result-vine-picnic.webp",
   "giant-garden-result-cloud-shapes": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-result-cloud-shapes.webp",
   "old-lighthouse-encounter": "assets/games/unwritten-map/illustrations/tideglass/old-lighthouse/old-lighthouse-encounter.webp",
+  "old-lighthouse-choice-repair-lens": "assets/games/unwritten-map/illustrations/tideglass/old-lighthouse/old-lighthouse-choice-repair-lens.webp",
+  "old-lighthouse-choice-keeper-journals": "assets/games/unwritten-map/illustrations/tideglass/old-lighthouse/old-lighthouse-choice-keeper-journals.webp",
+  "old-lighthouse-choice-storm-roof": "assets/games/unwritten-map/illustrations/tideglass/old-lighthouse/old-lighthouse-choice-storm-roof.webp",
+  "old-lighthouse-choice-sea-listen": "assets/games/unwritten-map/illustrations/tideglass/old-lighthouse/old-lighthouse-choice-sea-listen.webp",
   "star-ferry-encounter": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-encounter.webp",
 
   "frog-parliament-encounter": "assets/games/unwritten-map/frog-encounter.webp",
@@ -267,6 +271,14 @@ export const GIANT_GARDEN_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAsse
   "botany-notes": "giant-garden-result-botany-notes",
   "vine-picnic": "giant-garden-result-vine-picnic",
   "cloud-shapes": "giant-garden-result-cloud-shapes",
+};
+
+/** Authoritative Old Lighthouse choice-id -> commissioned choice-art mapping. */
+export const OLD_LIGHTHOUSE_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "repair-lens": "old-lighthouse-choice-repair-lens",
+  "keeper-journals": "old-lighthouse-choice-keeper-journals",
+  "storm-roof": "old-lighthouse-choice-storm-roof",
+  "sea-listen": "old-lighthouse-choice-sea-listen",
 };
 
 export const CLOCKWORK_BRIDGE_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
@@ -903,6 +915,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "8726c896b3247ffff1d404412e797a2ac85cba1acab9b0521e09da825fbe9764",
     derivedDimensions: "1423x949",
     authorization: "User-supplied for PR #306",
+  },
+  "old-lighthouse-choice-repair-lens": {
+    sourceFile: "372d028c-8441-4af8-9895-551163984ae4-4b25b199-9d79-448f-95a2-2c0291ea9eba-clipboard.png",
+    sourceSha256: "5e6caf89cb2124a4f6f9b11be942640c415231e327b479c53b892fb53490f70e",
+    derivedSha256: "7784b2a0e71164afdaa0ded0f571f752f576219961957542092454638b202b7c",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Old Lighthouse choice integration",
+  },
+  "old-lighthouse-choice-keeper-journals": {
+    sourceFile: "e6e5dae2-48bf-499d-ab0b-274d29534a7a-0bd6f1ac-a8c4-442d-bb95-a8a086412f9a-clipboard.png",
+    sourceSha256: "d57b98cd1128fd7503717266712bf81ab12203204b34f8bb39c74b3850f25da3",
+    derivedSha256: "7ccbe5f5d45fde7def9de42680d7abd8b32072da33ab89327dbab3e67aee9f9b",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Old Lighthouse choice integration",
+  },
+  "old-lighthouse-choice-storm-roof": {
+    sourceFile: "4d6e6eb6-a9ad-446a-93f8-03f7f52520e6-383217b7-b671-47db-9db3-2ca73809267d-clipboard.png",
+    sourceSha256: "4dc5a0764f995346a9fe28ce4accf77ac181561ba5d03de5833ce6986585b048",
+    derivedSha256: "dfb57345277836fd3a86d129e8ecb495e5b82ceb4e1e3ec3bc5fcfcc1190d76a",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Old Lighthouse choice integration",
+  },
+  "old-lighthouse-choice-sea-listen": {
+    sourceFile: "7251113f-8679-4b66-8a6f-cf49f9ff8628-433c7755-2349-4e90-9845-a956986f24a1-clipboard.png",
+    sourceSha256: "2ec99a24c773b60ac99853fff32e313becadfbe13ffb8a9d6081c4d82d868609",
+    derivedSha256: "cc0c9dbde54058a9034b6724089d5e9d5819e3f7f47532e053b66b19c99d04c2",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Old Lighthouse choice integration",
   },
   "old-lighthouse-encounter": {
     sourceFile: "fd93d49f-eb70-4549-b0e6-258e38d01765-0e9685d8-3fbe-4032-9d48-7e77e57e8169-clipboard.png",
