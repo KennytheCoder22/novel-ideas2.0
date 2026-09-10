@@ -20,6 +20,7 @@ import {
   CLOUD_SHEPHERD_RESULT_ASSET_IDS,
   CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS,
   CLOCKWORK_BRIDGE_RESULT_ASSET_IDS,
+  EMBER_LIBRARY_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
   LANTERN_FAIR_RESULT_ASSET_IDS,
@@ -385,6 +386,8 @@ function buildChoicePresentation(
               ? RAIN_CAMP_CHOICE_ASSET_IDS[choice.id]
               : scenarioId === "paper-dragon"
                 ? PAPER_DRAGON_CHOICE_ASSET_IDS[choice.id]
+                : scenarioId === "ember-library"
+                  ? EMBER_LIBRARY_CHOICE_ASSET_IDS[choice.id]
           : frogChoiceAssetId;
   const resultLocalAssetId = scenarioId === "whisper-orchard"
     ? WHISPER_ORCHARD_RESULT_ASSET_IDS[choice.id]

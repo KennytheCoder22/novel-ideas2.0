@@ -3,8 +3,8 @@
 // Authorized focal art currently covers every encounter, all Mossmere/
 // frog-parliament choices and results, Whisper Orchard choices/results, Lantern
 // Fair choices/results, Clockwork Bridge choices/results, and Highwind Farm
-// choices/results, plus Mirror Marsh, Rain Camp, and Kite Hill choices/results,
-// alongside shared cartographic framing chrome.
+// choices/results, plus Mirror Marsh, Rain Camp, and Kite Hill choices/results
+// and Ember Library choices, alongside shared cartographic framing chrome.
 // Every other choice and result remains an explicitly missing raster
 // commissioning slot (see unwrittenMapPresentationContract.ts). This module
 // is pure data (a path manifest) plus a couple of pure lookup helpers; it
@@ -88,6 +88,10 @@ export const UNWRITTEN_MAP_LOCAL_ASSET_MANIFEST = {
   "paper-dragon-result-repair-tail": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-result-repair-tail.webp",
   "paper-dragon-result-festival-chase": "assets/games/unwritten-map/illustrations/westreach/paper-dragon/paper-dragon-result-festival-chase.webp",
   "ember-library-encounter": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-encounter.webp",
+  "ember-library-choice-forbidden-volume": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-choice-forbidden-volume.webp",
+  "ember-library-choice-catalog-flames": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-choice-catalog-flames.webp",
+  "ember-library-choice-listen-book": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-choice-listen-book.webp",
+  "ember-library-choice-fold-fire-bird": "assets/games/unwritten-map/illustrations/ashpeak/ember-library/ember-library-choice-fold-fire-bird.webp",
   "giant-garden-encounter": "assets/games/unwritten-map/illustrations/ashpeak/giant-garden/giant-garden-encounter.webp",
   "old-lighthouse-encounter": "assets/games/unwritten-map/illustrations/tideglass/old-lighthouse/old-lighthouse-encounter.webp",
   "star-ferry-encounter": "assets/games/unwritten-map/illustrations/tideglass/star-ferry/star-ferry-encounter.webp",
@@ -218,6 +222,14 @@ export const PAPER_DRAGON_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAsse
   "dragon-riddle": "paper-dragon-result-dragon-riddle",
   "repair-tail": "paper-dragon-result-repair-tail",
   "festival-chase": "paper-dragon-result-festival-chase",
+};
+
+/** Authoritative Ember Library choice-id -> commissioned choice-art mapping. */
+export const EMBER_LIBRARY_CHOICE_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
+  "forbidden-volume": "ember-library-choice-forbidden-volume",
+  "catalog-flames": "ember-library-choice-catalog-flames",
+  "listen-book": "ember-library-choice-listen-book",
+  "fold-fire-bird": "ember-library-choice-fold-fire-bird",
 };
 
 export const CLOCKWORK_BRIDGE_RESULT_ASSET_IDS: Record<string, UnwrittenMapLocalAssetId> = {
@@ -707,6 +719,34 @@ export const UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE: Readonly<Partial<Record<Unwri
     derivedSha256: "98491c328bddeb0a103029f8285fa046446e06966eeab874a8eff708787e3511",
     derivedDimensions: "1533x1022",
     authorization: "User-supplied for Kite Hill result integration",
+  },
+  "ember-library-choice-forbidden-volume": {
+    sourceFile: "bd8d5af0-ff8a-45f3-bd76-a217b2dcaaf1-7d607a7d-ea99-4647-856f-3d263635fc41-clipboard.png",
+    sourceSha256: "004bed1b06b3914ed36cfeca6ff90a22b969fc61410f424dff7fd2730731012b",
+    derivedSha256: "66dae76c0cf98e14e0fdf08a934573b5b09b6e77df509e36ed5441b746338fb6",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Ember Library choice integration",
+  },
+  "ember-library-choice-catalog-flames": {
+    sourceFile: "50bea801-e2b3-4a1d-904d-7da845f20b89-a6abb8a1-ffc2-413b-aa64-697f4f393fbd-clipboard.png",
+    sourceSha256: "205268a257e2c61604fd149785abfa53220fa768e5195804badfbc6d63c4ec8f",
+    derivedSha256: "a5e67d5caba9e2e77d4089991fb61adc3e48de742ba62cb042c77570bc5d9638",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Ember Library choice integration",
+  },
+  "ember-library-choice-listen-book": {
+    sourceFile: "625228e9-5a3d-41b0-8560-8222fd93c544-cd1a11fd-811e-46ec-bfec-32a2a7847308-clipboard.png",
+    sourceSha256: "985b27a7189536a643dc742b02c819d2158a7502429ea19924275ec9131ea943",
+    derivedSha256: "eda2953943a00e1814c88289e376b89690102592b1efa8e43a7308f5b7ac64b8",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Ember Library choice integration",
+  },
+  "ember-library-choice-fold-fire-bird": {
+    sourceFile: "159bc44e-91dd-4e4a-839a-e9866dbade9e-76fe8c19-9389-4168-913b-34c81df9bdb7-clipboard.png",
+    sourceSha256: "f68b43e887c0a1cd81328a517d565352f6f8cc2a4787711b7c7b6841b335bd51",
+    derivedSha256: "ad90d6edc3a1788e54be0a2f64605c1f9524200561cdf22fd023c8587c141ae1",
+    derivedDimensions: "800x600",
+    authorization: "User-supplied for Ember Library choice integration",
   },
   "mirror-marsh-encounter": {
     sourceFile: "50be74da-47fa-49fe-a204-cf1076c80c9c-25a580be-9955-4d46-bcd1-978a2e7fad60-clipboard.png",

@@ -20,6 +20,7 @@ import {
   CLOUD_SHEPHERD_RESULT_ASSET_IDS,
   CLOCKWORK_BRIDGE_CHOICE_ASSET_IDS,
   CLOCKWORK_BRIDGE_RESULT_ASSET_IDS,
+  EMBER_LIBRARY_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
@@ -417,6 +418,32 @@ test("Kite Hill result art maps by authoritative choice id with provenance", () 
   }
 });
 
+test("Ember Library choice art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "ember-library");
+  assert.ok(encounter);
+  const expected = {
+    "forbidden-volume": ["ember-library-choice-forbidden-volume", "004bed1b06b3914ed36cfeca6ff90a22b969fc61410f424dff7fd2730731012b"],
+    "catalog-flames": ["ember-library-choice-catalog-flames", "205268a257e2c61604fd149785abfa53220fa768e5195804badfbc6d63c4ec8f"],
+    "listen-book": ["ember-library-choice-listen-book", "985b27a7189536a643dc742b02c819d2158a7502429ea19924275ec9131ea943"],
+    "fold-fire-bird": ["ember-library-choice-fold-fire-bird", "f68b43e887c0a1cd81328a517d565352f6f8cc2a4787711b7c7b6841b335bd51"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(EMBER_LIBRARY_CHOICE_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.focalArt.status, "approved");
+    assert.equal(choice.focalArt.targetAspectRatio, "4:3");
+    assert.equal(choice.result.focalArt.status, "missing");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, "800x600");
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
+});
+
 test("Clockwork Bridge result art maps by authoritative choice id without changing live outcomes", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
   const scenario = UNWRITTEN_MAP_SCENARIOS.find((item) => item.id === "clockwork-bridge");
@@ -659,6 +686,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "cloud-shepherd"
         || encounter.scenarioId === "rain-camp"
         || encounter.scenarioId === "paper-dragon"
+        || encounter.scenarioId === "ember-library"
         ? "approved"
         : "missing";
       const resultStatus = encounter.scenarioId === "frog-parliament"
@@ -683,7 +711,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
 
   const allChoices = metadata.flatMap((encounter) => encounter.choices);
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
-  assert.equal(unavailableChoices.length, 16);
+  assert.equal(unavailableChoices.length, 12);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
   assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 16);
 });
