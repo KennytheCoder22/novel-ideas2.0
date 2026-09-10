@@ -25,6 +25,8 @@ import {
   FROG_PARLIAMENT_CHOICE_ASSET_IDS,
   FROG_PARLIAMENT_ENCOUNTER_ASSET_ID,
   FROG_PARLIAMENT_RESULT_ASSET_IDS,
+  GIANT_GARDEN_CHOICE_ASSET_IDS,
+  GIANT_GARDEN_RESULT_ASSET_IDS,
   LANTERN_FAIR_RESULT_ASSET_IDS,
   MIRROR_MARSH_CHOICE_ASSET_IDS,
   MIRROR_MARSH_RESULT_ASSET_IDS,
@@ -470,6 +472,57 @@ test("Ember Library result art maps by authoritative choice id with provenance",
   }
 });
 
+test("Giant's Garden choice art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "giant-garden");
+  assert.ok(encounter);
+  const expected = {
+    "climb-fast": ["giant-garden-choice-climb-fast", "60c1bed3133cf214f2b30d6556ccb409f8717fa5839f28089f6d2bceb38847fd"],
+    "botany-notes": ["giant-garden-choice-botany-notes", "ddb8ebd9ccd75b6114b5eb472204aba1334da8e58b9f89da12ab1307b18fd4ba"],
+    "vine-picnic": ["giant-garden-choice-vine-picnic", "628bc48c01271a45550e5a047d3e502d9cd9327c4da4ad59fffa4cc9137d5a92"],
+    "cloud-shapes": ["giant-garden-choice-cloud-shapes", "e6fb5e383c5b27a27400f0362bf8ba4b7d2a2d86b3044917f330138a5e410194"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(GIANT_GARDEN_CHOICE_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.focalArt.status, "approved");
+    assert.equal(choice.focalArt.targetAspectRatio, "4:3");
+    assert.equal(choice.result.focalArt.status, "approved");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, "800x600");
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
+});
+
+test("Giant's Garden result art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "giant-garden");
+  assert.ok(encounter);
+  const expected = {
+    "climb-fast": ["giant-garden-result-climb-fast", "66f037fcf19246af76930f914f3012c91776fa276f546060685a4d376f296452", "1439x959"],
+    "botany-notes": ["giant-garden-result-botany-notes", "bf09edd33b8de279f8abd9f2494ba5dda810cd423141a689963a2f5871f3df2f", "1461x974"],
+    "vine-picnic": ["giant-garden-result-vine-picnic", "edd77cef1dc003b0d309be7d8b6580ff5778d7a34ac5fef3a8c235f437d604d3", "1482x988"],
+    "cloud-shapes": ["giant-garden-result-cloud-shapes", "18f1d54589afa0c7f37e915829df84789935bfdbfd1c9b51df3412132a2222a6", "1475x983"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256, dimensions] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(GIANT_GARDEN_RESULT_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.result.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.result.focalArt.status, "approved");
+    assert.equal(choice.result.focalArt.targetAspectRatio, "3:2");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, dimensions);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
+});
+
 test("Clockwork Bridge result art maps by authoritative choice id without changing live outcomes", () => {
   const metadata = buildUnwrittenMapPresentationMetadata();
   const scenario = UNWRITTEN_MAP_SCENARIOS.find((item) => item.id === "clockwork-bridge");
@@ -713,6 +766,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "rain-camp"
         || encounter.scenarioId === "paper-dragon"
         || encounter.scenarioId === "ember-library"
+        || encounter.scenarioId === "giant-garden"
         ? "approved"
         : "missing";
       const resultStatus = encounter.scenarioId === "frog-parliament"
@@ -724,6 +778,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "rain-camp"
         || encounter.scenarioId === "paper-dragon"
         || encounter.scenarioId === "ember-library"
+        || encounter.scenarioId === "giant-garden"
         ? "approved"
         : "missing";
       assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
@@ -738,9 +793,9 @@ test("temporary commissioned-art state omits unavailable choice and result art",
 
   const allChoices = metadata.flatMap((encounter) => encounter.choices);
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
-  assert.equal(unavailableChoices.length, 12);
+  assert.equal(unavailableChoices.length, 8);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 12);
+  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 8);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {
