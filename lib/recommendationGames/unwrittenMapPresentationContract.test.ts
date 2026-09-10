@@ -31,6 +31,7 @@ import {
   MIRROR_MARSH_CHOICE_ASSET_IDS,
   MIRROR_MARSH_RESULT_ASSET_IDS,
   OLD_LIGHTHOUSE_CHOICE_ASSET_IDS,
+  OLD_LIGHTHOUSE_RESULT_ASSET_IDS,
   RAIN_CAMP_CHOICE_ASSET_IDS,
   RAIN_CAMP_RESULT_ASSET_IDS,
   PAPER_DRAGON_CHOICE_ASSET_IDS,
@@ -540,12 +541,37 @@ test("Old Lighthouse choice art maps by authoritative choice id with provenance"
     assert.equal(choice.focalArt.localAssetId, localAssetId);
     assert.equal(choice.focalArt.status, "approved");
     assert.equal(choice.focalArt.targetAspectRatio, "4:3");
-    assert.equal(choice.result.focalArt.status, "missing");
+    assert.equal(choice.result.focalArt.status, "approved");
     const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
     assert.ok(provenance);
     assert.equal(provenance.sourceSha256, sourceSha256);
     assert.equal(provenance.derivedDimensions, "800x600");
     const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.focalArt.assetPath));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
+  }
+});
+
+test("Old Lighthouse result art maps by authoritative choice id with provenance", () => {
+  const encounter = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "old-lighthouse");
+  assert.ok(encounter);
+  const expected = {
+    "repair-lens": ["old-lighthouse-result-repair-lens", "55a4a788cdb2bc666fbd97a70ec8bddf8e5336cfdd0ddd55c3eef8c4e8b3c6e1", "1478x985"],
+    "keeper-journals": ["old-lighthouse-result-keeper-journals", "f34c86950dd1d0ada7b854cf849bc6efbd70cffc84c07377bf9eb9410b53e926", "1529x1019"],
+    "storm-roof": ["old-lighthouse-result-storm-roof", "2d7954e00087afeb098b7a09e844436b0c12193002728bec9499bda07aa7cc9c", "1494x996"],
+    "sea-listen": ["old-lighthouse-result-sea-listen", "081f2566dd36e92ec8c9bc095f1148a1beaadc46cd9f906a4b0f62503335ebe8", "1508x1005"],
+  } as const;
+
+  for (const choice of encounter.choices) {
+    const [localAssetId, sourceSha256, dimensions] = expected[choice.choiceId as keyof typeof expected];
+    assert.equal(OLD_LIGHTHOUSE_RESULT_ASSET_IDS[choice.choiceId], localAssetId);
+    assert.equal(choice.result.focalArt.localAssetId, localAssetId);
+    assert.equal(choice.result.focalArt.status, "approved");
+    assert.equal(choice.result.focalArt.targetAspectRatio, "3:2");
+    const provenance = UNWRITTEN_MAP_FOCAL_ASSET_PROVENANCE[localAssetId];
+    assert.ok(provenance);
+    assert.equal(provenance.sourceSha256, sourceSha256);
+    assert.equal(provenance.derivedDimensions, dimensions);
+    const bytes = readFileSync(path.resolve(__dirname, "..", "..", choice.result.focalArt.assetPath));
     assert.equal(createHash("sha256").update(bytes).digest("hex"), provenance.derivedSha256);
   }
 });
@@ -807,6 +833,7 @@ test("only supplied focal art is approved; every other slot stays explicitly mis
         || encounter.scenarioId === "paper-dragon"
         || encounter.scenarioId === "ember-library"
         || encounter.scenarioId === "giant-garden"
+        || encounter.scenarioId === "old-lighthouse"
         ? "approved"
         : "missing";
       assert.equal(choice.focalArt.status, choiceStatus, `${choice.choiceId} choice art status mismatch`);
@@ -823,7 +850,7 @@ test("temporary commissioned-art state omits unavailable choice and result art",
   const unavailableChoices = allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt));
   assert.equal(unavailableChoices.length, 4);
   assert.ok(unavailableChoices.every((choice) => !unwrittenMapHasCommissionedArt(choice.focalArt)));
-  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 8);
+  assert.equal(allChoices.filter((choice) => !unwrittenMapHasCommissionedArt(choice.result.focalArt)).length, 4);
 });
 
 test("every encounter, choice, and result focal art identity is unique", () => {

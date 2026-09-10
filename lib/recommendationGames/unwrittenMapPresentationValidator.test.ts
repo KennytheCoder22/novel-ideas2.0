@@ -131,18 +131,18 @@ test("detects missing metadata when required fields are absent", () => {
   assert.ok(issues.some((issue) => issue.code === "missing_metadata"));
 });
 
-test("encounter milestone, ten complete sets, and Old Lighthouse choices are integrated while full inventory remains blocked", () => {
+test("encounter milestone and eleven complete choice/result sets are integrated while full inventory remains blocked", () => {
   const inventory = buildUnwrittenMapArtInventorySummary();
   assert.deepEqual(inventory, {
     required: 108,
-    approved: 96,
-    missing: 12,
+    approved: 100,
+    missing: 8,
     encounters: { required: 12, approved: 12, missing: 0 },
     choices: { required: 48, approved: 44, missing: 4 },
-    results: { required: 48, approved: 40, missing: 8 },
+    results: { required: 48, approved: 44, missing: 4 },
   });
   const diagnostics = validateUnwrittenMapPresentation();
-  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 12);
+  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 8);
   assert.equal(diagnostics.filter((issue) => issue.scope === "encounter" || issue.scope === "registry").length, 0);
 });
 
@@ -210,8 +210,8 @@ test("coverage summary identifies approved choice sets while every missing resul
     } else if (row.scenarioId === "old-lighthouse") {
       assert.equal(row.encounterOk, true);
       assert.equal(row.choiceOkCount, 4);
-      assert.equal(row.resultOkCount, 0);
-      assert.equal(row.diagnosticCount, 4);
+      assert.equal(row.resultOkCount, 4);
+      assert.equal(row.diagnosticCount, 0);
     } else {
       assert.ok(row.diagnosticCount > 0, `${row.scenarioId} should remain blocked on commissioned art`);
     }
@@ -220,7 +220,7 @@ test("coverage summary identifies approved choice sets while every missing resul
 
 test("human-readable summary reports blocked production status and exact inventory", () => {
   const summary = formatUnwrittenMapPresentationSummary();
-  assert.match(summary, /Raster inventory: 96\/108 approved; 12 commissioning assets missing/);
+  assert.match(summary, /Raster inventory: 100\/108 approved; 8 commissioning assets missing/);
   assert.match(summary, /Production status: BLOCKED/);
   assert.match(summary, /Scenario: frog-parliament \[approved\]/);
   assert.match(summary, /Scenario: mirror-marsh \[approved\]/);
