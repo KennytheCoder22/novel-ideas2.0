@@ -118,10 +118,10 @@ test("detects approved assets without manifest identity or files", () => {
 });
 
 test("missing commissioning slots block production completeness without pretending art exists", () => {
-  const missing = buildUnwrittenMapPresentationMetadata().find((item) => item.scenarioId === "star-ferry");
-  assert.ok(missing);
+  const missing = approvedEncounter();
+  (missing.choices[0].result.focalArt as { status: string }).status = "missing";
   const issues = validateUnwrittenMapEncounterPresentation(missing, { assetExists: () => false });
-  assert.equal(issues.filter((issue) => issue.code === "missing_required_asset").length, 4);
+  assert.equal(issues.filter((issue) => issue.code === "missing_required_asset").length, 1);
 });
 
 test("detects missing metadata when required fields are absent", () => {
@@ -131,18 +131,18 @@ test("detects missing metadata when required fields are absent", () => {
   assert.ok(issues.some((issue) => issue.code === "missing_metadata"));
 });
 
-test("all choices and eleven complete choice/result sets are integrated while full inventory remains blocked", () => {
+test("all encounter, choice, and result art is integrated", () => {
   const inventory = buildUnwrittenMapArtInventorySummary();
   assert.deepEqual(inventory, {
     required: 108,
-    approved: 104,
-    missing: 4,
+    approved: 108,
+    missing: 0,
     encounters: { required: 12, approved: 12, missing: 0 },
     choices: { required: 48, approved: 48, missing: 0 },
-    results: { required: 48, approved: 44, missing: 4 },
+    results: { required: 48, approved: 48, missing: 0 },
   });
   const diagnostics = validateUnwrittenMapPresentation();
-  assert.equal(diagnostics.filter((issue) => issue.code === "missing_required_asset").length, 4);
+  assert.equal(diagnostics.length, 0);
   assert.equal(diagnostics.filter((issue) => issue.scope === "encounter" || issue.scope === "registry").length, 0);
 });
 
@@ -153,7 +153,7 @@ test("inventory never counts declared approvals whose local files fail validatio
   assert.equal(inventory.missing, 108);
 });
 
-test("coverage summary identifies approved choice sets while every missing result remains blocked", () => {
+test("coverage summary reports complete approved art for every scenario", () => {
   const summary = buildUnwrittenMapPresentationCoverageSummary();
   assert.equal(summary.length, 12);
   for (const row of summary) {
@@ -215,18 +215,18 @@ test("coverage summary identifies approved choice sets while every missing resul
     } else if (row.scenarioId === "star-ferry") {
       assert.equal(row.encounterOk, true);
       assert.equal(row.choiceOkCount, 4);
-      assert.equal(row.resultOkCount, 0);
-      assert.equal(row.diagnosticCount, 4);
+      assert.equal(row.resultOkCount, 4);
+      assert.equal(row.diagnosticCount, 0);
     } else {
       assert.ok(row.diagnosticCount > 0, `${row.scenarioId} should remain blocked on commissioned art`);
     }
   }
 });
 
-test("human-readable summary reports blocked production status and exact inventory", () => {
+test("human-readable summary reports ready production status and exact inventory", () => {
   const summary = formatUnwrittenMapPresentationSummary();
-  assert.match(summary, /Raster inventory: 104\/108 approved; 4 commissioning assets missing/);
-  assert.match(summary, /Production status: BLOCKED/);
+  assert.match(summary, /Raster inventory: 108\/108 approved; 0 commissioning assets missing/);
+  assert.match(summary, /Production status: READY \(0 diagnostics\)/);
   assert.match(summary, /Scenario: frog-parliament \[approved\]/);
   assert.match(summary, /Scenario: mirror-marsh \[approved\]/);
   assert.match(summary, /Scenario: ember-library \[approved\]/);
