@@ -2123,13 +2123,13 @@ async function main() {
   const presentationValidator = require(resolve(root, "lib/recommendationGames/unwrittenMapPresentationValidator.ts"));
   const presentationDiagnostics = presentationValidator.validateUnwrittenMapPresentation();
   const inventory = presentationValidator.buildUnwrittenMapArtInventorySummary();
-  assert(inventory.required === 108 && inventory.approved === 100 && inventory.missing === 8
+  assert(inventory.required === 108 && inventory.approved === 104 && inventory.missing === 4
     && inventory.encounters.approved === 12 && inventory.encounters.missing === 0
-    && inventory.choices.approved === 44 && inventory.choices.missing === 4
+    && inventory.choices.approved === 48 && inventory.choices.missing === 0
     && inventory.results.approved === 44 && inventory.results.missing === 4,
     `raster commissioning inventory drifted: ${JSON.stringify(inventory)}`);
-  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 8,
-    "full focal-art audit must stay explicitly blocked until all 8 remaining choice/result assets are supplied");
+  assert(presentationDiagnostics.filter((issue) => issue.code === "missing_required_asset").length === 4,
+    "full focal-art audit must stay explicitly blocked until all 4 remaining result assets are supplied");
   assert(!presentationDiagnostics.some((issue) => issue.code === "invalid_asset_provider"),
     "production presentation metadata cannot use generated SVG/data URI/icon-only focal-art providers");
   assert(!artComponentSource.includes("AUTHORIZED ILLUSTRATION REQUIRED")
