@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   attemptGameRecommendationMilestone,
+  gameRecommendationCoverUrl,
   generateGameRecommendationSlate,
   type GameRecommendationCandidateLike,
   type RunGameRecommender,
@@ -440,4 +441,23 @@ test("final slate uses the requested collection and excludes outside books", asy
   });
   assert.equal(outcome.status, "shown");
   if (outcome.status === "shown") assert.ok(outcome.items.every(item => item.book.source === "localLibrary"));
+});
+
+
+test("game covers use the main app ISBN fallback and preserve direct covers", () => {
+  const candidate = { ...CANDIDATES[0], coverUrl: null, source: "localLibrary", raw: { isbn13: "978-1-984835-67-3" } };
+  assert.equal(gameRecommendationCoverUrl(candidate), "https://covers.openlibrary.org/b/isbn/9781984835673-L.jpg?default=false");
+  assert.equal(gameRecommendationCoverUrl({ ...candidate, coverUrl: "https://example.test/own.jpg" }), "https://example.test/own.jpg");
+  assert.equal(gameRecommendationCoverUrl({ ...candidate, raw: { isbn13: "invalid" } }), null);
+});
+
+test("local books without artwork remain eligible for milestones and final slates", async () => {
+  const books = CANDIDATES.map(c => ({ ...c, source: "localLibrary", format: "book" as const, coverUrl: null }));
+  const common = { state: initialState(), ageBand: "teens" as const, enabledSources: { localLibrary: true }, library: { libraryId: "yvhs", localCollectionOnly: true }, runRecommender: fixedRunner(books) };
+  const milestone = await attemptGameRecommendationMilestone({ ...common, milestone: mediaManiaMilestone(6, 0), evidenceMode: "cross_media" });
+  assert.equal(milestone.status, "shown");
+  if (milestone.status === "shown") assert.equal(milestone.coverUrl, null);
+  const slate = await generateGameRecommendationSlate(common);
+  assert.equal(slate.status, "shown");
+  if (slate.status === "shown") assert.ok(slate.items.every(item => item.coverUrl === null));
 });

@@ -1,3 +1,4 @@
+import { coverUrlFromIsbn, recommendationIsbnCandidates } from "../recommendationIsbnCovers";
 // Pure orchestration for one milestone-triggered recommendation attempt. This module never talks
 // to storage or the network directly - callers inject `runRecommender` (in production, the real
 // `runRecommenderV2` from `app/recommender-v2`) and persist the returned state/diagnostic
@@ -152,7 +153,7 @@ export async function generateGameRecommendationSlate(args: {
     if ((args.library?.localCollectionOnly || args.enabledSources.localLibrary) && candidate.source !== "localLibrary") return false;
     const identity = canonicalBookIdentity(candidate);
     const isBookFormat = candidate.format === "book" || candidate.formats?.includes("book");
-    if (!isBookFormat || !gameRecommendationCoverUrl(candidate) || excluded.has(identity)) return false;
+    if (!isBookFormat || (candidate.source !== "localLibrary" && !gameRecommendationCoverUrl(candidate)) || excluded.has(identity)) return false;
     excluded.add(identity);
     return true;
   });
@@ -203,7 +204,8 @@ export function gameRecommendationCoverUrl(candidate: GameRecommendationCandidat
   ].map(stringField).find(Boolean);
   if (direct) return direct.replace(/^http:\/\//i, "https://");
   const coverId = String(raw.cover_i || raw.coverId || "").trim();
-  return coverId ? `https://covers.openlibrary.org/b/id/${encodeURIComponent(coverId)}-L.jpg` : null;
+  if (coverId) return `https://covers.openlibrary.org/b/id/${encodeURIComponent(coverId)}-L.jpg`;
+  return coverUrlFromIsbn(recommendationIsbnCandidates(candidate)[0]);
 }
 
 export function createGameRecommendationEvidenceSnapshot(
@@ -282,7 +284,7 @@ export async function attemptGameRecommendationMilestone(args: {
     if ((args.library?.localCollectionOnly || args.enabledSources.localLibrary) && candidate.source !== "localLibrary") return false;
     const isBookFormat = candidate.format !== "anime" && !candidate.formats?.includes("anime");
     return isBookFormat
-      && Boolean(gameRecommendationCoverUrl(candidate))
+      && (candidate.source === "localLibrary" || Boolean(gameRecommendationCoverUrl(candidate)))
       && !excluded.has(canonicalBookIdentity(candidate));
   });
   if (pickedIndex === -1) {
@@ -294,7 +296,7 @@ export async function attemptGameRecommendationMilestone(args: {
       milestoneIndex: milestone.milestoneIndex,
       evidenceCount: milestone.evidenceCount,
       reason: "empty_result",
-      detail: `${result.items.length} candidates returned; none was an unseen book with production cover art`,
+      detail: `${result.items.length} candidates returned; none was an eligible unseen book`,
     });
     return { status: "empty", state: recordFailedAttempt(state, milestone.evidenceCount), diagnostic };
   }

@@ -91,7 +91,7 @@ const openLibraryFromTagsSource = readFileSync(resolve(ROOT, "screens", "swipe",
 const adminSource = readFileSync(resolve(ROOT, "app", "app_admin-web.tsx"), "utf8");
 const localSource = readFileSync(resolve(ROOT, "app", "recommender-v2", "sources", "localLibrarySource.ts"), "utf8");
 const localPresentationSource = readFileSync(resolve(ROOT, "lib", "localCollection", "presentation.ts"), "utf8");
-const swipeDeckFile = ts.createSourceFile("SwipeDeckScreen.tsx", swipeDeckSource, ts.ScriptTarget.ES2020, true, ts.ScriptKind.TSX);
+const swipeDeckFile = ts.createSourceFile("SwipeDeckScreen.tsx", swipeDeckSource + "\n" + readFileSync(resolve(ROOT, "lib", "recommendationIsbnCovers.ts"), "utf8"), ts.ScriptTarget.ES2020, true, ts.ScriptKind.TSX);
 
 function extractFunctionText(sourceFile, name) {
   let found = "";
