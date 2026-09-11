@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   attemptGameRecommendationMilestone,
+  generateGameRecommendationSlate,
   type GameRecommendationCandidateLike,
   type RunGameRecommender,
 } from "./gameRecommendationEngine";
@@ -398,4 +399,45 @@ test("an empty candidate list (or all candidates already shown/familiar) is repo
   assert.equal(outcome.status, "empty");
   if (outcome.status !== "empty") return;
   assert.equal(outcome.diagnostic.reason, "empty_result");
+});
+
+
+test("local game forwards its library and rejects hosted candidates even with conflicting flags", async () => {
+  const local = { ...CANDIDATES[1], source: "localLibrary", title: "YVHS book", format: "book" as const };
+  const runRecommender: RunGameRecommender = async session => {
+    assert.equal(session.libraryId, "yvhs");
+    assert.deepEqual(session.enabledSources, { mock: false, googleBooks: false, openLibrary: false, kitsu: false, comicVine: false, nyt: false, localLibrary: true });
+    return { items: [CANDIDATES[0], local] };
+  };
+  const outcome = await attemptGameRecommendationMilestone({
+    state: initialState(), milestone: mediaManiaMilestone(6, 0), evidenceMode: "cross_media",
+    ageBand: "teens", enabledSources: { googleBooks: true },
+    library: { libraryId: "yvhs", localCollectionOnly: true }, runRecommender,
+  });
+  assert.equal(outcome.status, "shown");
+  if (outcome.status === "shown") assert.equal(outcome.book.title, "YVHS book");
+});
+
+test("empty local collection never falls back to an outside book", async () => {
+  const outcome = await attemptGameRecommendationMilestone({
+    state: initialState(), milestone: mediaManiaMilestone(6, 0), evidenceMode: "cross_media",
+    ageBand: "teens", enabledSources: { localLibrary: true },
+    library: { libraryId: "yvhs", localCollectionOnly: true }, runRecommender: fixedRunner(CANDIDATES),
+  });
+  assert.equal(outcome.status, "empty");
+});
+
+test("final slate uses the requested collection and excludes outside books", async () => {
+  const locals = CANDIDATES.map(c => ({ ...c, source: "localLibrary", title: `Local ${c.title}`, format: "book" as const }));
+  const outcome = await generateGameRecommendationSlate({
+    state: initialState(), ageBand: "teens", enabledSources: { localLibrary: true, googleBooks: true },
+    library: { libraryId: "yvhs", localCollectionOnly: true },
+    runRecommender: async session => {
+      assert.equal(session.libraryId, "yvhs");
+      assert.equal(session.enabledSources?.googleBooks, false);
+      return { items: [...CANDIDATES.map(c => ({ ...c, format: "book" as const })), ...locals] };
+    },
+  });
+  assert.equal(outcome.status, "shown");
+  if (outcome.status === "shown") assert.ok(outcome.items.every(item => item.book.source === "localLibrary"));
 });

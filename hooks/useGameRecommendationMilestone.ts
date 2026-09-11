@@ -114,8 +114,8 @@ function legacyHistoryMigrationKey(playerId: string, libraryId: string): string 
   return `novelideas_game_recommendation_history_v1_migrated:${scopeKeyPart(playerId)}:${scopeKeyPart(libraryId)}`;
 }
 
-function recommendationScopeId(args: Pick<UseGameRecommendationMilestoneArgs, "game" | "playerId" | "libraryId" | "ageBand" | "gameSessionId">): string {
-  return `${args.game}:${args.playerId}:${args.libraryId}:${args.ageBand}:${args.gameSessionId}`;
+function recommendationScopeId(args: Pick<UseGameRecommendationMilestoneArgs, "game" | "playerId" | "libraryId" | "ageBand" | "gameSessionId" | "localCollectionOnly">): string {
+  return `${args.game}:${args.playerId}:${args.libraryId}:${args.ageBand}:${args.gameSessionId}:${args.localCollectionOnly ? "local" : "hosted"}`;
 }
 
 async function withSharedHistoryLock<T>(key: string, work: () => Promise<T>): Promise<T> {
@@ -311,6 +311,11 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
       if (cancelled || activeScopeRef.current !== loadedScope) return;
       stateRef.current = synchronized.state;
       historyRef.current = synchronized.history;
+      if (args.localCollectionOnly && stateRef.current.pendingReward &&
+          (stateRef.current.pendingReward.book.source !== "localLibrary" ||
+           stateRef.current.pendingReward.library.libraryId !== args.libraryId)) {
+        stateRef.current = clearPendingReward(stateRef.current);
+      }
       const restoredReward = stateRef.current.pendingReward;
       if (restoredReward) {
         setPendingReward({
@@ -436,6 +441,11 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
         historyRef.current = synchronized.history;
       } catch (error) {
         console.warn("[game-recommendation] shared_history_read_failed", error);
+      }
+      if (args.localCollectionOnly && currentState.pendingReward &&
+          (currentState.pendingReward.book.source !== "localLibrary" ||
+           currentState.pendingReward.library.libraryId !== args.libraryId)) {
+        currentState = clearPendingReward(currentState);
       }
       let outcome;
       try {
@@ -758,6 +768,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
         if (!await persist(state, scopeId) || activeScopeRef.current !== scopeId) return;
         const outcome = await generateGameRecommendationSlate({
           state,
+          library: { libraryId: args.libraryId, localCollectionOnly: args.localCollectionOnly },
           ageBand: args.ageBand,
           enabledSources: gameRouteSourceFlagsToEnabledSources(args.sourceFlags),
           localLibraryCurationTrusted: args.localCollectionOnly,
@@ -817,7 +828,8 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
   }, [args.ageBand, args.evidenceMode, args.game, args.gameSessionId, args.libraryId, args.localCollectionOnly, args.playerId, currentScopeId]);
 
   return {
-    pendingReward,
+    pendingReward: pendingReward && (!args.localCollectionOnly ||
+      (pendingReward.book.source === "localLibrary" && pendingReward.library.libraryId === args.libraryId)) ? pendingReward : null,
     notifyEvidence,
     retractEvidence,
     resetSession,

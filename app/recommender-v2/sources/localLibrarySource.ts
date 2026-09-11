@@ -211,9 +211,9 @@ function diagnosticResult(
 
 export const localLibrarySourceAdapter: SourceAdapterV2 = {
   source: "localLibrary",
-  async search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal; diversitySeed?: string }): Promise<SourceResult> {
+  async search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal; diversitySeed?: string; libraryId?: string }): Promise<SourceResult> {
     const startedAt = nowIso();
-    const libraryId = getRuntimeLibraryId();
+    const libraryId = context.libraryId ?? getRuntimeLibraryId();
     if (context.signal?.aborted) {
       return diagnosticResult(
         plan,

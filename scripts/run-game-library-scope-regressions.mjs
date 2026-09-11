@@ -1,0 +1,23 @@
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+const require = createRequire(import.meta.url);
+const ts = require("typescript");
+require.extensions[".ts"] = (module, filename) => module._compile(ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true } }).outputText, filename);
+const Module = require("module");
+const originalLoad = Module._load;
+const requested = [];
+Module._load = function(name) {
+  if (name.includes("localCollection/storage")) return { loadLocalCollectionRecommendationArtifact: async id => { requested.push(id); return null; } };
+  if (name.includes("runtimeConfig")) return { getRuntimeLibraryId: () => "other-library" };
+  return originalLoad.apply(this, arguments);
+};
+const { localLibrarySourceAdapter } = require("../app/recommender-v2/sources/localLibrarySource.ts");
+Module._load = originalLoad;
+const plan = { source: "localLibrary", intents: [], timeoutMs: 1000 };
+const profile = { localLibraryCurationTrusted: false };
+await localLibrarySourceAdapter.search(plan, { profile, libraryId: "yvhs" });
+await localLibrarySourceAdapter.search(plan, { profile, libraryId: "second-library" });
+await localLibrarySourceAdapter.search(plan, { profile });
+assert.deepEqual(requested, ["yvhs", "second-library", "other-library"]);
+console.log("PASS: explicit collection scope overrides stale runtime state; legacy callers retain their scope.");
