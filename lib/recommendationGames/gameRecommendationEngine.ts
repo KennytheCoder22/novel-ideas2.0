@@ -24,6 +24,13 @@ import type {
 } from "./gameRecommendationFeedback";
 import { gameRecommendationDescription } from "./gameRecommendationDescription";
 
+type LibraryScope = { libraryId: string; localCollectionOnly: boolean };
+
+function scopedSources(enabledSources: Partial<Record<SourceIdV2, boolean>>, library?: LibraryScope) {
+  if (!library?.localCollectionOnly && !enabledSources.localLibrary) return enabledSources;
+  return { mock: false, googleBooks: false, openLibrary: false, kitsu: false, comicVine: false, nyt: false, localLibrary: true };
+}
+
 export const GAME_RECOMMENDATION_EVIDENCE_SNAPSHOT_VERSION = "v1";
 
 export type GameRecommendationCandidateLike = {
@@ -47,6 +54,7 @@ export type GameRecommendationRunResult = {
 
 export type RunGameRecommender = (session: {
   ageBand: AgeBandV2;
+  libraryId?: string;
   signals: SwipeSignalV2[];
   limit?: number;
   enabledSources?: Partial<Record<SourceIdV2, boolean>>;
@@ -120,6 +128,7 @@ export async function generateGameRecommendationSlate(args: {
   state: GameRecommendationIntegrationStateV1;
   ageBand: AgeBandV2;
   enabledSources: Partial<Record<SourceIdV2, boolean>>;
+  library?: LibraryScope;
   localLibraryCurationTrusted?: boolean;
   runRecommender: RunGameRecommender;
   now?: () => string;
@@ -130,7 +139,8 @@ export async function generateGameRecommendationSlate(args: {
       ageBand: args.ageBand,
       signals: args.state.adaptedSignals,
       limit: 18,
-      enabledSources: args.enabledSources,
+      enabledSources: scopedSources(args.enabledSources, args.library),
+      libraryId: args.library?.libraryId,
       diversitySeed: `${args.state.game}:${args.state.gameSessionId}:final-slate`,
       localLibraryCurationTrusted: args.localLibraryCurationTrusted,
     });
@@ -139,6 +149,7 @@ export async function generateGameRecommendationSlate(args: {
   }
   const excluded = new Set([...args.state.shownBookIdentityIds, ...args.state.familiarBookIdentityIds]);
   const eligible = result.items.filter((candidate) => {
+    if ((args.library?.localCollectionOnly || args.enabledSources.localLibrary) && candidate.source !== "localLibrary") return false;
     const identity = canonicalBookIdentity(candidate);
     const isBookFormat = candidate.format === "book" || candidate.formats?.includes("book");
     if (!isBookFormat || !gameRecommendationCoverUrl(candidate) || excluded.has(identity)) return false;
@@ -247,7 +258,8 @@ export async function attemptGameRecommendationMilestone(args: {
       ageBand: args.ageBand,
       signals: state.adaptedSignals,
       limit: 10,
-      enabledSources: args.enabledSources,
+      enabledSources: scopedSources(args.enabledSources, args.library),
+      libraryId: args.library?.libraryId,
       diversitySeed: `${state.game}:${state.gameSessionId}:${milestone.milestoneId}`,
       localLibraryCurationTrusted: args.localLibraryCurationTrusted,
     });
@@ -267,6 +279,7 @@ export async function attemptGameRecommendationMilestone(args: {
 
   const excluded = new Set([...state.shownBookIdentityIds, ...state.familiarBookIdentityIds]);
   const pickedIndex = result.items.findIndex((candidate) => {
+    if ((args.library?.localCollectionOnly || args.enabledSources.localLibrary) && candidate.source !== "localLibrary") return false;
     const isBookFormat = candidate.format !== "anime" && !candidate.formats?.includes("anime");
     return isBookFormat
       && Boolean(gameRecommendationCoverUrl(candidate))

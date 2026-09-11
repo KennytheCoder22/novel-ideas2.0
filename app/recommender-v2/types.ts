@@ -24,6 +24,8 @@ export interface SwipeSignalV2 {
 }
 
 export interface SwipeSessionV2 {
+  // Explicit collection scope; avoids stale device-wide library settings in game routes.
+  libraryId?: string;
   deckKey?: string;
   ageBand: AgeBandV2;
   signals: SwipeSignalV2[];
@@ -833,5 +835,5 @@ export interface RecommendationResultV2 {
 
 export interface SourceAdapterV2 {
   source: SourceIdV2;
-  search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal; diversitySeed?: string }): Promise<SourceResult>;
+  search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal; diversitySeed?: string; libraryId?: string }): Promise<SourceResult>;
 }
