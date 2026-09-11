@@ -48,6 +48,7 @@ export type GameRecommendationRewardProps = {
 };
 
 export function GameRecommendationReward({ visible, cadence, gameLabel, book, onRespond, detailedFeedback = false }: GameRecommendationRewardProps) {
+  const [failedCover, setFailedCover] = useState<string | null>(null);
   const [followup, setFollowup] = useState<GameRecommendationResponse | null>(null);
   const { width } = useWindowDimensions();
   const layout = computeGameRecommendationRewardLayout(width);
@@ -114,9 +115,10 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
                 alignItems: layout === "sideBySide" ? "flex-start" : "center",
               }}
             >
-              {book.coverUrl ? (
+              {book.coverUrl && failedCover !== book.coverUrl ? (
                 <Image
                   source={{ uri: book.coverUrl }}
+                  onError={() => setFailedCover(book.coverUrl || null)}
                   accessibilityIgnoresInvertColors
                   accessibilityLabel={`Cover of ${book.title} by ${book.author || "an unlisted author"}`}
                   style={{ width: 120, height: 176, borderRadius: 8, backgroundColor: "#2a2440" }}
