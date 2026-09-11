@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { AccessibilityInfo, ActivityIndicator, Animated, Image, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { MEDIA_MANIA_CATALOG } from "../features/recommendation-games/media-mania/mediaManiaCatalog";
+import { MediaManiaSessionTrail } from "../features/recommendation-games/media-mania/MediaManiaSessionTrail";
 import {
   MEDIA_MANIA_AGE_BAND_LABELS,
   MEDIA_MANIA_AGE_BANDS,
@@ -61,7 +62,7 @@ const durablePersistenceNotice = (error: string | null) =>
     : "Gameplay is saved on this device; durable sync will retry.";
 const mediaManiaAgeBandToV2 = (band: MediaManiaAgeBand): AgeBandV2 => (band === "adults" ? "adult" : band);
 
-function MediaArtwork({ item }: { item: MediaManiaCatalogItem }) {
+function MediaArtwork({ item, compact = false }: { item: MediaManiaCatalogItem; compact?: boolean }) {
   const meta = SOURCE_META[item.mediaSource];
   const deckKey = item.source.split(":")[1] || "";
   const bundledSource = useMemo(() => getSwipeCardFallbackImage(deckKey, item.title), [deckKey, item.title]);
@@ -93,7 +94,7 @@ function MediaArtwork({ item }: { item: MediaManiaCatalogItem }) {
       <Image
         accessibilityLabel={`Artwork for ${item.title}`}
         source={imageSource}
-        style={styles.artwork}
+        style={[styles.artwork, compact && styles.artworkCompact]}
         resizeMode="cover"
         onError={() => {
           if (bundledSource && !bundledFailed) setBundledFailed(true);
@@ -104,14 +105,14 @@ function MediaArtwork({ item }: { item: MediaManiaCatalogItem }) {
   }
 
   if (lookupStatus === "loading") {
-    return <View style={[styles.artwork, styles.artworkLoading]}><ActivityIndicator color="#d6e5f5" /><Text style={styles.artworkStatus}>Finding artwork...</Text></View>;
+    return <View style={[styles.artwork, compact && styles.artworkCompact, styles.artworkLoading]}><ActivityIndicator color="#d6e5f5" /><Text style={styles.artworkStatus}>Finding artwork...</Text></View>;
   }
 
   const failed = bundledFailed || candidates.length > 0 || lookupStatus === "lookup_failed";
   return (
-    <View style={[styles.artwork, styles.artworkFallback, { backgroundColor: meta.color }]}>
-      <Text style={styles.artworkIcon}>{failed ? "!" : meta.icon}</Text>
-      <Text style={styles.artworkSource}>{failed ? "ARTWORK UNAVAILABLE" : "NO ARTWORK AVAILABLE"}</Text>
+    <View style={[styles.artwork, compact && styles.artworkCompact, styles.artworkFallback, { backgroundColor: meta.color }]}>
+      <Text style={[styles.artworkIcon, compact && styles.artworkIconCompact]}>{failed ? "!" : meta.icon}</Text>
+      <Text style={[styles.artworkSource, compact && styles.artworkSourceCompact]}>{failed ? "ARTWORK UNAVAILABLE" : "NO ARTWORK AVAILABLE"}</Text>
     </View>
   );
 }
@@ -362,6 +363,12 @@ export default function MediaManiaScreen() {
           <Text style={styles.eyebrow}>RECOMMENDATION GAMES</Text>
           {persistenceNotice ? <Text accessibilityRole="alert" style={styles.persistenceNotice}>{persistenceNotice}</Text> : null}
           <Text style={styles.startTitle}>{"Let's get ready to play Media Mania!"}</Text>
+          <View style={styles.howToPlay}>
+            <Text style={styles.howToTitle}>Three titles. One instinct.</Text>
+            <Text style={styles.howToCopy}>Pick the one you want most. When the round turns pink, pick the one you would skip.</Text>
+            <Text style={styles.howToCopy}>Don’t know a title? Swap it for another. Play in sets of six choices, unlock another media world, and discover book recommendations along the way.</Text>
+            <Text style={styles.howToCopy}>No timer. No wrong answers. You can undo your last choice.</Text>
+          </View>
           <AgeBandControl ageBand={state.ageBand} onChange={selectAgeBand} />
           <Text style={styles.startSubtitle}>Where would you like to start?</Text>
           <View style={styles.sourceGrid}>
@@ -418,7 +425,7 @@ export default function MediaManiaScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.gameContent} keyboardShouldPersistTaps="handled">
         <View style={styles.topBar}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to NovelIdeas" onPress={() => void exitGame()} style={styles.backButton}><Text style={styles.backText}>{"< Back"}</Text></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Save and leave Media Mania" onPress={() => void exitGame()} style={styles.backButton}><Text style={styles.backText}>{"< Save & leave"}</Text></TouchableOpacity>
           <Text style={styles.logo}>MEDIA <Text style={styles.logoAccent}>MANIA</Text></Text>
           <View style={styles.roundMeta}>
             <Text style={styles.roundLabel}>{MEDIA_MANIA_AGE_BAND_LABELS[state.ageBand].toUpperCase()}</Text>
@@ -442,8 +449,9 @@ export default function MediaManiaScreen() {
           </View>
           <View style={[styles.scorePanel, dislikeRound ? styles.dislikeInsetPanel : styles.likeInsetPanel]}>
             <View style={styles.scoreRow}><Text style={styles.scoreLabel}>Taste Score</Text><Text style={styles.scoreValue}>{state.tasteScore}{state.unlockStatus === "locked" ? ` / ${MEDIA_MANIA_UNLOCK_SCORE}` : " unlocked"}</Text></View>
-            <View style={styles.progressTrack}><View testID="media-mania-unlock-progress" style={[styles.progressFill, { width: `${progress * 100}%` }]} /></View>
+            {state.unlockStatus === "locked" ? <View style={styles.progressTrack}><View testID="media-mania-unlock-progress" style={[styles.progressFill, { width: `${progress * 100}%` }]} /></View> : null}
             <Text style={styles.progressHint}>{state.unlockStatus === "locked" ? `${Math.max(0, MEDIA_MANIA_UNLOCK_SCORE - state.tasteScore)} points to a new media unlock` : `${state.activeSources.length} media worlds active`}</Text>
+            <MediaManiaSessionTrail completedRoundCount={state.completedRoundCount} />
             {state.lastChoiceUndo ? <TouchableOpacity accessibilityRole="button" style={styles.undoButton} onPress={undoLastChoice}><Text style={styles.undoText}>Undo last choice</Text></TouchableOpacity> : null}
           </View>
 
@@ -476,16 +484,17 @@ export default function MediaManiaScreen() {
                     onPress={() => void choose(candidate.id)}
                     style={[
                       styles.candidateCard,
+                      compact && styles.candidateCardCompact,
                       dislikeRound ? styles.candidateCardDislike : styles.candidateCardLike,
                       selected && (dislikeRound ? styles.candidateCardDislikeSelected : styles.candidateCardLikeSelected),
                     ]}
                   >
                     <Text style={[styles.keyHint, dislikeRound ? styles.keyHintDislike : styles.keyHintLike]}>{candidateIndex + 1}</Text>
                     {selected ? <View style={[styles.selectionBadge, dislikeRound ? styles.selectionBadgeDislike : styles.selectionBadgeLike]}><Text style={styles.selectionBadgeText}>{dislikeRound ? "SKIP" : "MY PICK"}</Text></View> : null}
-                    <MediaArtwork item={candidate} />
-                    <View style={styles.candidateCopy}>
+                    <MediaArtwork item={candidate} compact={compact} />
+                    <View style={[styles.candidateCopy, compact && styles.candidateCopyCompact]}>
                       <Text style={[styles.mediaPill, { color: SOURCE_META[candidate.mediaSource].color }]}>{MEDIA_MANIA_SOURCE_LABELS[candidate.mediaSource].toUpperCase()}</Text>
-                      <Text style={styles.candidateTitle} numberOfLines={3}>{candidate.title}</Text>
+                      <Text style={[styles.candidateTitle, compact && styles.candidateTitleCompact]} numberOfLines={compact ? undefined : 3}>{candidate.title}</Text>
                       {candidate.creator ? <Text style={styles.candidateCreator} numberOfLines={1}>{candidate.creator}</Text> : null}
                     </View>
                   </TouchableOpacity>
@@ -550,6 +559,15 @@ function AgeBandControl({ ageBand, onChange, compact = false }: { ageBand: Media
 }
 
 const styles = StyleSheet.create({
+  howToPlay: { width: "100%", maxWidth: 700, marginTop: 22, padding: 20, borderRadius: 18, backgroundColor: "#0d233d", borderWidth: 1, borderColor: "#3a5875", gap: 10 },
+  howToTitle: { color: "#fde68a", fontSize: 21, fontWeight: "900" },
+  howToCopy: { color: "#d6e5f5", fontSize: 15, lineHeight: 23 },
+  candidateCardCompact: { flexDirection: "row", minHeight: 144, flex: 0, alignItems: "stretch" },
+  artworkCompact: { width: 94, height: "100%", minHeight: 144 },
+  artworkIconCompact: { fontSize: 30 },
+  artworkSourceCompact: { fontSize: 9, letterSpacing: 0, paddingHorizontal: 6, textAlign: "center" },
+  candidateCopyCompact: { flex: 1, minWidth: 0, padding: 12, justifyContent: "center" },
+  candidateTitleCompact: { fontSize: 17, lineHeight: 22 },
   safe: { flex: 1, backgroundColor: "#06172a" },
   startContent: { flexGrow: 1, alignItems: "center", padding: 24, paddingBottom: 48 },
   backButton: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
@@ -569,7 +587,7 @@ const styles = StyleSheet.create({
   sourceCardDisabled: { opacity: 0.42 },
   sourceIcon: { fontSize: 42 }, sourceLabel: { color: "#f8fafc", fontWeight: "900", fontSize: 21, marginTop: 10 }, sourceArrow: { fontWeight: "900", marginTop: 14, letterSpacing: 1.4 },
   gameContent: { flexGrow: 1, width: "100%", maxWidth: 1180, alignSelf: "center", padding: 18, paddingBottom: 44 },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  topBar: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 },
   roundMeta: { alignItems: "flex-end", gap: 3 },
   logo: { color: "#f8fafc", fontWeight: "900", fontSize: 23, letterSpacing: 1 }, logoAccent: { color: "#fbbf24" }, roundLabel: { color: "#7890ad", fontSize: 12, fontWeight: "900", letterSpacing: 1.5 },
   roundSurface: { marginTop: 14, padding: 10, borderRadius: 26, borderWidth: 2 },
