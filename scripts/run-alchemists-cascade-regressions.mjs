@@ -431,6 +431,21 @@ async function main() {
     payload: { ...canonicalCatalyst, selectedSlot: null, neutralEffect: true },
   });
   assert(game.normalizeCascadeEvent(skipEvent) && skipEvent.evidenceClass === "gameplay_telemetry", "skip must be neutral gameplay telemetry");
+  const { selectedOption: _selectedOption, ...boostedOutcome } = selectedPayload;
+  const boostedSkip = game.createCascadeEvent({
+    ...skipEvent,
+    payload: { ...boostedOutcome, selectedSlot: null, neutralEffect: true, neutralBoost: true },
+  });
+  assert(game.normalizeCascadeEvent(boostedSkip), "equal-assistance neutral skip must validate");
+  assert(boostedSkip.payload.boardAfter === selectedEvent.payload.boardAfter
+    && boostedSkip.payload.scoreAfter === selectedEvent.payload.scoreAfter
+    && boostedSkip.preferenceInference === "none_neutral_skip",
+  "neutral assistance must match offered benefit without preference inference");
+  let forgedNeutralRejected = false;
+  try {
+    game.createCascadeEvent({ ...boostedSkip, payload: { ...boostedSkip.payload, scoreAfter: 999999 } });
+  } catch { forgedNeutralRejected = true; }
+  assert(forgedNeutralRejected, "neutral outcome must be server-replayed, not trusted");
   const rejectsCatalystPayload = (event, payload) => {
     try {
       game.createCascadeEvent({ ...event, eventId: undefined, payload });

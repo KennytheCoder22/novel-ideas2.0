@@ -1105,10 +1105,11 @@ function validCatalystPayload(
   );
   if (eligibility.eligible !== calculated.eligible || eligibility.spread !== calculated.spread
     || eligibility.tolerance !== calculated.tolerance) return false;
-  if (eventType === "catalyst_selected") {
-    if (!Number.isInteger(payload.selectedSlot) || (payload.selectedSlot as number) < 0 || (payload.selectedSlot as number) >= 3) return false;
-    const option = canonical[payload.selectedSlot as number];
-    if (JSON.stringify(payload.selectedOption) !== JSON.stringify(option)
+  if (eventType === "catalyst_selected" || (eventType === "catalyst_skipped" && payload.neutralBoost === true)) {
+    const neutral = eventType === "catalyst_skipped";
+    if (neutral ? payload.selectedSlot !== null || payload.neutralEffect !== true : !Number.isInteger(payload.selectedSlot) || (payload.selectedSlot as number) < 0 || (payload.selectedSlot as number) >= 3) return false;
+    const option = canonical[neutral ? 0 : payload.selectedSlot as number];
+    if ((!neutral && JSON.stringify(payload.selectedOption) !== JSON.stringify(option))
       || payload.boardBefore !== payload.catalystBoard || payload.beforeChecksum !== payload.catalystBoardChecksum
       || !validGoalSnapshots(payload.goalsBefore, config)) return false;
     const applied = applyCatalyst(board, payload.catalystRngState as number, option);
@@ -1406,7 +1407,11 @@ export function normalizeCascadeEvent(value: unknown): CascadeEvidenceEvent | nu
     || !event.payload || typeof event.payload !== "object" || Array.isArray(event.payload)) return null;
   const eventType = event.eventType as CascadeEventType;
   const payload = event.payload as Record<string, unknown>;
-  if (!exactKeys(payload, PAYLOAD_KEYS[eventType]) || !serializableBounded(event)
+  // Continue accepting queued legacy skips while validating boosted neutral outcomes.
+  const payloadKeys = eventType === "catalyst_skipped" && payload.neutralBoost === true
+    ? [...PAYLOAD_KEYS.catalyst_skipped, "neutralBoost", "boardBefore", "boardAfter", "beforeChecksum", "afterChecksum", "cleared", "scoreAfter", "scoreDelta", "rngAfter", "goalsAfter"]
+    : PAYLOAD_KEYS[eventType];
+  if (!exactKeys(payload, payloadKeys) || !serializableBounded(event)
     || !validBoardBindings(payload) || !validStructuredPayload(payload, eventType)) return null;
   if (eventType === "campaign_reset" && payload.previousGameSessionId !== event.gameSessionId) return null;
   if (eventType.startsWith("catalyst_") && !validCatalystPayload(payload, eventType, event)) return null;

@@ -38,6 +38,7 @@ import {
   createInitialCascadeSave,
   decodeBoard,
   encodeBoard,
+  findLegalMoves,
   levelStars,
   levelWon,
   mechanicalEquivalence,
@@ -406,8 +407,9 @@ function PresentationBoardView({
     onCell: (at: Coordinate) => void;
   }) {
     const gap = width < 390 ? 3 : 5;
-    const cellSize = Math.floor((width - gap * 6) / 7);
-    const boardSize = cellSize * 7 + gap * 6;
+    // Tile coordinates are inside the border, not the outer border box.
+    const cellSize = Math.floor((width - 14 - gap * 6) / 7);
+    const boardSize = cellSize * 7 + gap * 6 + 14;
     const clearing = new Set(clearingTileIds);
     return (
       <View
@@ -469,6 +471,7 @@ function PrivacyPanel({ onClose }: { onClose: () => void }) {
 }
 
 type CascadeResultScreenProps = {
+  goalSummary: string;
   won: boolean;
   stars: number;
   score: number;
@@ -481,6 +484,7 @@ type CascadeResultScreenProps = {
 };
 
 function AbstractCascadeResultScreen({
+  goalSummary,
   won,
   stars,
   score,
@@ -504,7 +508,7 @@ function AbstractCascadeResultScreen({
         <Text style={styles.lead}>
           {won
             ? "The atlas turns its own page. A stranger recipe is waiting."
-            : "Nothing is wasted in alchemy. The board will return exactly from its seed."}
+            : goalSummary}
         </Text>
         <TouchableOpacity
           style={[styles.primaryButton, busy && styles.disabled]}
@@ -583,6 +587,7 @@ function CascadeResultStars({
 }
 
 function CascadeResultParchment({
+  goalSummary,
   won,
   score,
   busy,
@@ -595,7 +600,7 @@ function CascadeResultParchment({
   onHoverOut,
   onPrimary,
   onSecondary,
-}: Pick<CascadeResultScreenProps, "won" | "score" | "busy" | "onPrimary" | "onSecondary"> & {
+}: Pick<CascadeResultScreenProps, "goalSummary" | "won" | "score" | "busy" | "onPrimary" | "onSecondary"> & {
   compact?: boolean;
   focusedControl: string;
   hoveredControl: string;
@@ -632,7 +637,7 @@ function CascadeResultParchment({
       <Text style={[styles.resultArtworkCopy, compact && styles.resultArtworkCopyCompact]}>
         {won
           ? "The atlas turns its own page. A stranger recipe is waiting."
-          : "Nothing is wasted in alchemy. The board will return exactly from its seed."}
+          : goalSummary}
       </Text>
       <Pressable
         testID="alchemists-cascade-result-primary"
@@ -703,7 +708,8 @@ function CascadeResultScreen(props: CascadeResultScreenProps) {
   ]).current;
   const starStates = alchemistsCascadeResultStarStates(props.stars);
   const stars = starStates.filter(Boolean).length;
-  const layout = computeAlchemistsCascadeResultLayout(width, height);
+  // Detailed loss guidance needs a scrollable sheet, including on short desktops.
+  const layout = computeAlchemistsCascadeResultLayout(width, props.won ? height : Math.min(height, 599));
 
   useEffect(() => {
     sheetEntrance.stopAnimation();
@@ -745,6 +751,7 @@ function CascadeResultScreen(props: CascadeResultScreenProps) {
 
   const parchment = (
     <CascadeResultParchment
+      goalSummary={props.goalSummary}
       won={props.won}
       score={props.score}
       busy={props.busy}
@@ -1292,11 +1299,11 @@ function AbstractCascadeWhisperScreen({
             onPress={() => onChoose(null)}
             disabled={busy}
             accessibilityRole="button"
-            accessibilityLabel="Let fate decide — begin without an infusion"
+            accessibilityLabel="Let fate decide — same infusion, no preference recorded"
             accessibilityHint="Begin with no preference recorded"
             accessibilityState={{ disabled: busy }}
           >
-            <Text style={styles.fateText}>LET FATE DECIDE — BEGIN WITHOUT AN INFUSION</Text>
+            <Text style={styles.fateText}>LET FATE DECIDE — SAME BOOST, NO PREFERENCE</Text>
           </TouchableOpacity>
           <Text style={styles.balanceNote}>Each offered infusion is calibrated to the same seven-ingredient strength.</Text>
         </ScrollView>
@@ -1349,7 +1356,7 @@ function CascadeWhisperScreen(props: CascadeWhisperScreenProps) {
       <Pressable
         testID="alchemists-cascade-whisper-fate"
         accessibilityRole="button"
-        accessibilityLabel="Let fate decide — begin without an infusion"
+        accessibilityLabel="Let fate decide — same infusion, no preference recorded"
         accessibilityHint="Begin with no preference recorded"
         accessibilityState={{ disabled: props.busy }}
         disabled={props.busy}
@@ -1366,12 +1373,10 @@ function CascadeWhisperScreen(props: CascadeWhisperScreenProps) {
           props.busy && styles.disabled,
         ]}
       >
-        {layout.mode === "stacked" ? (
           <>
             <MaterialCommunityIcons name="dice-multiple-outline" size={22} color="#F6C957" accessible={false} />
-            <Text style={styles.whisperFateText}>LET FATE DECIDE — BEGIN WITHOUT AN INFUSION</Text>
+            <Text style={[styles.whisperFateText, { backgroundColor: "#17151C", padding: 4 }]}>LET FATE DECIDE — SAME BOOST, NO PREFERENCE</Text>
           </>
-        ) : null}
       </Pressable>
     );
 
@@ -2309,7 +2314,9 @@ export default function AlchemistsCascadeRoute() {
   const [syncWarning, setSyncWarning] = useState<string | null>(null);
   const [choiceStarted, setChoiceStarted] = useState(Date.now());
   const [privacy, setPrivacy] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [systemReducedMotion, setReducedMotion] = useState(false);
+  const [fastAnimations, setFastAnimations] = useState(false);
+  const reducedMotion = systemReducedMotion || fastAnimations;
   const [presentationTiles, setPresentationTiles] = useState<CascadePresentationTile[]>([]);
   const [presentationPhase, setPresentationPhase] = useState<CascadePresentationPhase>("settled");
   const [clearingTileIds, setClearingTileIds] = useState<string[]>([]);
@@ -2796,34 +2803,23 @@ export default function AlchemistsCascadeRoute() {
           presentedOrder: options.map((item) => item.id),
           eligibility,
         };
-        if (!option) {
-          const nextActive = { ...active, catalystUsed: true };
-          return {
-            save: { ...current, activeLevel: nextActive, catalystOccasion: current.catalystOccasion + 1, tutorialSeen: true, updatedAt: at },
-            event: makeEvent({
-              save: current, eventType: "catalyst_skipped", at,
-              timing: timingBucket(choiceStarted), preference: "none_neutral_skip",
-              payload: {
-                ...canonicalFields, selectedSlot: null, neutralEffect: true,
-              },
-            }),
-          };
-        }
-        const selectedSlot = options.findIndex((item) => item.id === option.id);
-        if (selectedSlot < 0 || JSON.stringify(options[selectedSlot]) !== JSON.stringify(option)) throw new Error("noncanonical_catalyst");
-        const applied = applyCatalyst(currentBoard, active.rngState, option);
+        const selectedSlot = option ? options.findIndex((item) => item.id === option.id) : null;
+        if (option && (selectedSlot === null || selectedSlot < 0 || JSON.stringify(options[selectedSlot]) !== JSON.stringify(option))) throw new Error("noncanonical_catalyst");
+        // All offers share one mechanic. Neutral players receive it without a taste signal.
+        const applied = applyCatalyst(currentBoard, active.rngState, option || options[0]);
         const nextCollected = active.collected.map((count, index) => count + applied.collected[index]);
         const nextActive = {
           ...active, board: encodeBoard(applied.board), rngState: applied.rng.state,
           score: active.score + applied.scoreDelta, collected: nextCollected, catalystUsed: true,
         };
         const selectedEvent = makeEvent({
-          save: current, eventType: "catalyst_selected", at,
+          save: current, eventType: option ? "catalyst_selected" : "catalyst_skipped", at,
           timing: timingBucket(choiceStarted),
-          evidenceClass: eligibility.eligible ? "preference_observation" : "gameplay_telemetry",
-          preference: eligibility.eligible ? "eligible_balanced_semantic_choice" : "none_mechanically_unequal",
+          evidenceClass: option && eligibility.eligible ? "preference_observation" : "gameplay_telemetry",
+          preference: !option ? "none_neutral_skip" : eligibility.eligible ? "eligible_balanced_semantic_choice" : "none_mechanically_unequal",
           payload: {
-            ...canonicalFields, selectedSlot, selectedOption: option,
+            ...canonicalFields, selectedSlot,
+            ...(option ? { selectedOption: option } : { neutralEffect: true, neutralBoost: true }),
             boardBefore: active.board, boardAfter: nextActive.board,
             beforeChecksum: boardChecksum(active.board), afterChecksum: boardChecksum(nextActive.board),
             cleared: applied.cleared, scoreAfter: nextActive.score,
@@ -3321,6 +3317,18 @@ export default function AlchemistsCascadeRoute() {
               <View style={styles.sheet}>
                 <Text style={styles.sheetTitle}>The flame holds steady</Text>
                 <Text style={styles.lead}>Your exact board and the next refill are sealed in the save vial.</Text>
+                <TouchableOpacity style={styles.secondaryButton} accessibilityRole="button" accessibilityLabel="Show a move hint" onPress={() => {
+                  const remainingGoals = activeConfig.goals.filter((goal) => (save.activeLevel!.collected[goal.kind] || 0) < goal.target);
+                  const hint = findLegalMoves(board, remainingGoals).sort((a, b) => b.estimatedGoalHits - a.estimatedGoalHits || b.estimatedScore - a.estimatedScore)[0];
+                  if (hint) {
+                    setSelected(hint.from);
+                    setMessage(`Try row ${hint.from.row + 1}, column ${hint.from.column + 1} → row ${hint.to.row + 1}, column ${hint.to.column + 1}. A hint, not a guaranteed win.`);
+                  }
+                  setPhase("play");
+                }}><Text style={styles.secondaryButtonText}>SHOW A MOVE HINT</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryButton} accessibilityRole="switch" accessibilityState={{ checked: fastAnimations }} accessibilityLabel="Fast animations" onPress={() => setFastAnimations((value) => !value)}>
+                  <Text style={styles.secondaryButtonText}>FAST ANIMATIONS: {fastAnimations ? "ON" : "OFF"}</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.primaryButton} onPress={() => setPhase("play")}><Text style={styles.primaryButtonText}>RETURN TO THE FLASK</Text></TouchableOpacity>
                 <TouchableOpacity style={styles.secondaryButton} onPress={() => void saveExit()}><Text style={styles.secondaryButtonText}>{busy ? "SAVING..." : "SAVE & EXIT"}</Text></TouchableOpacity>
               </View>
@@ -3373,6 +3381,7 @@ export default function AlchemistsCascadeRoute() {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: activeRealm.background }]}>
         <CascadeResultScreen
+          goalSummary={`Score: ${save.activeLevel.score >= activeConfig.scoreTarget ? "met" : `${activeConfig.scoreTarget - save.activeLevel.score} short`}. ${activeConfig.goals.map((goal) => `${INGREDIENTS[goal.kind].name}: ${Math.min(goal.target, save.activeLevel!.collected[goal.kind] || 0)}/${goal.target}`).join("; ")}. Retry the same board: prioritize missing ingredients and use four-match runes to clear their rows or columns.`}
           won={won}
           stars={stars}
           score={save.activeLevel.score}
