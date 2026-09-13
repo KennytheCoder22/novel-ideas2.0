@@ -46,3 +46,5 @@ app-example
 /artifacts/source-competence/
 /artifacts/comparison-harness/
 /artifacts/game-playtest-screenshots/
+.vercel
+.env*

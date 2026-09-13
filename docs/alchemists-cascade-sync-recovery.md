@@ -5,7 +5,16 @@
 A canonical generated QA board event posted to the production endpoint returned
 HTTP 503 with `cascade_quota_storage_unavailable`. This is not evidence that Blob
 storage is missing: it is the failure branch around PostgreSQL quota enforcement.
-The precise underlying database error still requires deployment logs.
+Authenticated production logs now confirm `missing_connection_string`: no
+`POSTGRES_URL` was configured. Project environment inspection found neither that
+key nor another database URL. Team Marketplace resource listing returned no
+resources. A database must be provisioned/connected with user approval; this is
+not a failed campaign save or a demonstrated SQL query defect.
+
+After explicit approval and Marketplace terms acceptance, Neon Free resource
+`cascade-quota` was provisioned in iad1 with auth disabled, connected only to
+production. The actual quota implementation successfully created/used its table
+and returned allowed=true for an isolated QA counter. No campaign data was reset.
 
 The preserved QA campaign has 500 pending events and stalls on recipe 10. Do not
 reset it or clear storage. No production campaign data was modified by this repair.
