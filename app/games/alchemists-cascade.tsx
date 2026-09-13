@@ -38,7 +38,6 @@ import {
   createInitialCascadeSave,
   decodeBoard,
   encodeBoard,
-  findLegalMoves,
   levelStars,
   levelWon,
   mechanicalEquivalence,
@@ -62,6 +61,7 @@ import {
   type CascadePresentationPhase,
   type CascadePresentationTile,
 } from "../../lib/recommendationGames/alchemistsCascadePresentation";
+import { cascadeMoveHint } from "../../lib/recommendationGames/alchemistsCascadeHints";
 import {
   flushCascadeEvents,
   initializeCascadeSave,
@@ -2899,7 +2899,9 @@ export default function AlchemistsCascadeRoute() {
         helpReturn.current = "play";
         setPhase("help");
       }
-      setMessage(option ? `${option.title}. The board answers.` : "Fate keeps the spoon. No preference is recorded.");
+      setMessage(activeConfig.number === 11
+        ? "Need more Moon Dew? Pause → Show a move hint follows a tested route from this opening."
+        : option ? `${option.title}. The board answers.` : "Fate keeps the spoon. No preference is recorded.");
     } catch (error) {
       if (!isStaleCascadeError(error)) {
         setSyncWarning("The catalyst could not be applied safely. Nothing was consumed.");
@@ -3318,11 +3320,10 @@ export default function AlchemistsCascadeRoute() {
                 <Text style={styles.sheetTitle}>The flame holds steady</Text>
                 <Text style={styles.lead}>Your exact board and the next refill are sealed in the save vial.</Text>
                 <TouchableOpacity style={styles.secondaryButton} accessibilityRole="button" accessibilityLabel="Show a move hint" onPress={() => {
-                  const remainingGoals = activeConfig.goals.filter((goal) => (save.activeLevel!.collected[goal.kind] || 0) < goal.target);
-                  const hint = findLegalMoves(board, remainingGoals).sort((a, b) => b.estimatedGoalHits - a.estimatedGoalHits || b.estimatedScore - a.estimatedScore)[0];
+                  const hint = cascadeMoveHint(board, activeConfig, save.activeLevel!);
                   if (hint) {
                     setSelected(hint.from);
-                    setMessage(`Try row ${hint.from.row + 1}, column ${hint.from.column + 1} → row ${hint.to.row + 1}, column ${hint.to.column + 1}. A hint, not a guaranteed win.`);
+                    setMessage(`Try row ${hint.from.row + 1}, column ${hint.from.column + 1} → row ${hint.to.row + 1}, column ${hint.to.column + 1}. ${hint.guided ? "Tested route: use Pause → hint again after this move." : activeConfig.number === 11 ? "Suggested match. For a tested route, retry this recipe and use hints from the opening." : "Suggested match, not a complete solution."}`);
                   }
                   setPhase("play");
                 }}><Text style={styles.secondaryButtonText}>SHOW A MOVE HINT</Text></TouchableOpacity>
