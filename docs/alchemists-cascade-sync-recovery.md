@@ -43,5 +43,17 @@ reset it or clear storage. No production campaign data was modified by this repa
    `idempotentReplay: true`. Verify the preserved 500-event campaign drains and
    recipe 10 moves save after reload. Then finish recipes 11–12 and the ending.
 
-Local tests do not establish production recovery. This branch has not been
-merged or deployed and the server-side outage is not yet repaired.
+## Verified release
+
+Deployment `dpl_B4r9fLJCGAhgu5Fm19ntwZXBeUJX` (application commit 59c730e)
+was built without live-domain assignment, verified with a synthetic QA event
+(201 durable acceptance; 200 idempotent replay), then promoted to production.
+The live domain passed the same checks. All 20 Cascade regression groups,
+targeted lint and the local web build passed. Vercel's build completed; it also
+reported an unrelated existing type diagnostic in api/human-review-append.ts.
+
+The preserved campaign restored its exact recipe-10 state. Its previously failing
+move succeeded: 11 moves/4,740 points became 10 moves/4,920 points. Pending notes
+decreased from 500 to 404 through normal acknowledgements, without clearing data.
+The post-promotion Cascade error-log query returned no entries. Full backlog
+drain and recipes 11–12 remain follow-up playtest checks.
