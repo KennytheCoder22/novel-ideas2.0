@@ -2426,7 +2426,7 @@ export default function AlchemistsCascadeRoute() {
     if (Platform.OS !== "web" && !nativeApiOrigin) return false;
     return sendCascadeEventRequest(
       event,
-      `${nativeApiOrigin}/api/alchemists-cascade-event`,
+      `${Platform.OS === "web" ? "" : nativeApiOrigin}/api/alchemists-cascade-event`,
       Platform.OS !== "web" ? { origin: nativeApiOrigin } : {},
     );
   }, []);
@@ -2436,12 +2436,25 @@ export default function AlchemistsCascadeRoute() {
     try {
       const result = await flushCascadeEvents(storage, scope.scopeKey, send);
       if (sequence !== flushSequence.current) return;
-      setSyncWarning(result.remaining ? `${result.remaining} cauldron note${result.remaining === 1 ? "" : "s"} waiting to sync.` : null);
+      setSyncWarning(result.remaining ? `${result.remaining} cauldron note${result.remaining === 1 ? "" : "s"} saved on this device, waiting to sync. ${result.error || "Retrying automatically."}` : null);
     } catch {
       if (sequence !== flushSequence.current) return;
       setSyncWarning("Your progress is safe here, but cauldron notes could not sync yet.");
     }
   }, [scope.scopeKey, send]);
+
+  useEffect(() => {
+    // Retry even when no new moves are made (including a campaign stalled offline).
+    // Avoid overlapping slow requests from the timer itself.
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const retry = async () => {
+      await flush();
+      if (!cancelled) timer = setTimeout(retry, 15_000);
+    };
+    timer = setTimeout(retry, 15_000);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [flush]);
 
   const openHelp = useCallback((returnTo: Phase) => {
     helpReturn.current = returnTo;

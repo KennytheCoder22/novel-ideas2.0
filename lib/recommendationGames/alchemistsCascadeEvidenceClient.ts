@@ -9,7 +9,9 @@ import {
 } from "./alchemistsCascade";
 import type { AsyncKeyValueStorage } from "./evidenceClient";
 
-export const CASCADE_QUEUE_CAPACITY = 500;
+// This is a warning threshold, not a save limit. Offline campaigns can exceed it.
+// Keep all evidence until acknowledged; actual storage failures still fail safely.
+export const CASCADE_QUEUE_WARNING_THRESHOLD = 500;
 export const CASCADE_FLUSH_BATCH_SIZE = 20;
 export const CASCADE_SEND_TIMEOUT_MS = 10_000;
 
@@ -23,6 +25,8 @@ type QueueEntry = {
 const transactions = new WeakMap<object, Map<string, Promise<unknown>>>();
 const inFlight = new WeakMap<object, Map<string, Set<string>>>();
 const endpointRetryAt = new Map<string, number>();
+type FlushResult = { sent: number; remaining: number; error?: string };
+const activeFlushes = new WeakMap<object, Map<string, Promise<FlushResult>>>();
 
 export function serializeCascadeTransaction<T>(
   storage: AsyncKeyValueStorage,
@@ -181,7 +185,6 @@ export async function transactCascade(
       if (existing && JSON.stringify(existing.event) !== JSON.stringify(event)) throw new Error("conflicting_cascade_event_id");
     }
     const newEvents = events.filter((event) => !queue.some((entry) => entry.event.eventId === event.eventId));
-    if (queue.length + newEvents.length > CASCADE_QUEUE_CAPACITY) throw new Error("cascade_event_queue_capacity_exceeded");
     if (newEvents.length) {
       await writeVerified(storage, queueKey, JSON.stringify([...queue, ...newEvents.map((event) => ({
         event, committed: false, operationId, baseRevision: current.revision, preparedSave: next,
@@ -211,11 +214,25 @@ export async function transactCascade(
   });
 }
 
-export async function flushCascadeEvents(
+export function flushCascadeEvents(
   storage: AsyncKeyValueStorage,
   scope: string,
   send: (event: CascadeEvidenceEvent) => Promise<boolean>,
-): Promise<{ sent: number; remaining: number }> {
+): Promise<FlushResult> {
+  const scopes = activeFlushes.get(storage as object) || new Map<string, Promise<FlushResult>>();
+  activeFlushes.set(storage as object, scopes);
+  const active = scopes.get(scope);
+  if (active) return active;
+  const pending = flushCascadeBatch(storage, scope, send).finally(() => scopes.delete(scope));
+  scopes.set(scope, pending);
+  return pending;
+}
+
+async function flushCascadeBatch(
+  storage: AsyncKeyValueStorage,
+  scope: string,
+  send: (event: CascadeEvidenceEvent) => Promise<boolean>,
+): Promise<FlushResult> {
   const claims = await serializeCascadeTransaction(storage, scope, async () => {
     const byScope = inFlight.get(storage as object) || new Map<string, Set<string>>();
     inFlight.set(storage as object, byScope);
@@ -228,15 +245,21 @@ export async function flushCascadeEvents(
     return entries;
   });
   let sent = 0;
+  let error: string | undefined;
   const sentIds = new Set<string>();
   for (const entry of claims) {
     try {
       if (await send(entry.event)) {
         sent += 1;
         sentIds.add(entry.event.eventId);
+      } else {
+        error = "Delivery not confirmed; notes remain saved on this device.";
+        break;
       }
-    } catch {
+    } catch (failure) {
       // The durable local entry remains for the next retry.
+      error = failure instanceof Error ? failure.message : "Unable to reach the sync service.";
+      break;
     }
   }
   const remaining = await serializeCascadeTransaction(storage, scope, async () => {
@@ -252,7 +275,7 @@ export async function flushCascadeEvents(
       claims.forEach((entry) => claimedIds?.delete(entry.event.eventId));
     }
   });
-  return { sent, remaining };
+  return { sent, remaining, ...(error ? { error } : {}) };
 }
 
 export async function sendCascadeEventRequest(
@@ -277,7 +300,17 @@ export async function sendCascadeEventRequest(
       endpointRetryAt.set(endpoint, Date.now() + Math.max(1_000, seconds || date || 60_000));
       return false;
     }
-    if (response.status !== 200 && response.status !== 201) return false;
+    if (response.status !== 200 && response.status !== 201) {
+      if (response.status >= 500) {
+        endpointRetryAt.set(endpoint, Date.now() + 60_000);
+        let payload: { error?: string } = {};
+        try { payload = await response.json(); } catch { /* Do not display raw server content. */ }
+        throw new Error(payload?.error === "cascade_quota_storage_unavailable"
+          ? "The sync service's quota storage is unavailable. Progress and notes are saved on this device; retrying automatically."
+          : "The sync service is unavailable. Progress and notes are saved on this device; retrying automatically.");
+      }
+      return false;
+    }
     const contentType = String(response.headers.get("Content-Type") || "").toLowerCase();
     if (!contentType.includes("application/json")) return false;
     let payload: unknown;

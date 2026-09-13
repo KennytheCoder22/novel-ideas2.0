@@ -1089,7 +1089,7 @@ async function main() {
   checks.push("cross_tab_stale_ui_transactions");
 
   const capacityEntries = [];
-  for (let index = 0; index < evidence.CASCADE_QUEUE_CAPACITY; index += 1) {
+  for (let index = 0; index < 500; index += 1) {
     const event = game.createCascadeEvent({
       ...boardEvent,
       eventId: undefined,
@@ -1099,17 +1099,34 @@ async function main() {
   }
   await storage.setItem(game.scopedCascadeKey(game.CASCADE_QUEUE_KEY, scopeA.scopeKey), JSON.stringify(capacityEntries));
   const beforeCapacitySave = await evidence.loadCascadeSave(storage, scopeA.scopeKey, "north");
-  let capacityRejected = false;
-  try {
     await evidence.transactCascade(storage, scopeA.scopeKey, "north", "capacity-op", (current) => ({
       save: { ...current, updatedAt: "2026-09-04T00:00:00.000Z" },
       event: game.createCascadeEvent({ ...boardEvent, eventId: undefined, occurredAt: "2026-09-04T00:00:00.000Z" }),
     }));
-  } catch { capacityRejected = true; }
   const afterCapacitySave = await evidence.loadCascadeSave(storage, scopeA.scopeKey, "north");
-  assert(capacityRejected && (await evidence.readCascadeQueue(storage, scopeA.scopeKey)).length === evidence.CASCADE_QUEUE_CAPACITY
-    && afterCapacitySave.revision === beforeCapacitySave.revision,
-  "full queue must reject atomically and never silently evict unsent evidence");
+  const recoveredQueue = await evidence.readCascadeQueue(storage, scopeA.scopeKey);
+  assert(recoveredQueue.length === 501 && afterCapacitySave.revision === beforeCapacitySave.revision + 1,
+    "legacy full queue must allow durable progress without discarding evidence");
+  assert(capacityEntries.every((entry, index) => JSON.stringify(entry) === JSON.stringify(recoveredQueue[index])),
+    "recovery must preserve all 500 legacy entries exactly");
+  let offlineRequests = 0;
+  const unavailable = await evidence.flushCascadeEvents(storage, scopeA.scopeKey, async () => {
+    offlineRequests++; throw new Error("test service unavailable");
+  });
+  assert(offlineRequests === 1 && unavailable.remaining === 501 && unavailable.error,
+    "stop an unavailable batch immediately and preserve all events");
+  const acceptedIds = new Set();
+  let remaining = 501;
+  while (remaining) {
+    const result = await evidence.flushCascadeEvents(storage, scopeA.scopeKey, async event => {
+      assert(!acceptedIds.has(event.eventId), "drained events must not be sent again");
+      acceptedIds.add(event.eventId); return true;
+    });
+    remaining = result.remaining;
+  }
+  assert(acceptedIds.size === 501
+    && (await evidence.loadCascadeSave(storage, scopeA.scopeKey, "north")).revision === afterCapacitySave.revision,
+    "recovered queue must fully drain without changing gameplay progress");
   checks.push("atomic_queue_offline_retry");
 
   assert(api.alchemistsCascadeEventPath(boardEvent).startsWith("recommendation-games/the-alchemists-cascade/v1/north/"), "API path must bind private library namespace");
@@ -1265,6 +1282,19 @@ async function main() {
   "oversized and schema-invalid events must consume source/global budget before body work");
   api.resetCascadeRateLimitsForTests();
   const originalFetch = globalThis.fetch;
+  let unavailableCalls = 0;
+  globalThis.fetch = async () => {
+    unavailableCalls++;
+    return new Response(JSON.stringify({ error: "cascade_quota_storage_unavailable" }), {
+      status: 503, headers: { "Content-Type": "application/json" },
+    });
+  };
+  let quotaNotice = "";
+  try { await evidence.sendCascadeEventRequest(boardEvent, "https://example.test/quota-unavailable"); }
+  catch (error) { quotaNotice = error.message; }
+  assert(quotaNotice.includes("quota storage is unavailable")
+    && !await evidence.sendCascadeEventRequest(boardEvent, "https://example.test/quota-unavailable")
+    && unavailableCalls === 1, "quota outage must be explained and retries backed off");
   let rateLimitCalls = 0;
   globalThis.fetch = async () => {
     rateLimitCalls += 1;
