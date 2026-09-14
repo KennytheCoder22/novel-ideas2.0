@@ -71,6 +71,7 @@ import {
 } from "../../lib/recommendationGames/alchemistsCascadeEvidenceClient";
 import type { AsyncKeyValueStorage } from "../../lib/recommendationGames/evidenceClient";
 import { GameRecommendationReward } from "../../components/GameRecommendationReward";
+import { CascadeLivingAtlas } from "../../components/CascadeLivingAtlas";
 import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
 import { adaptAlchemistsCascadeCatalystToSignal, ALCHEMISTS_CASCADE_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
 import { alchemistsCascadeMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
@@ -3279,7 +3280,9 @@ export default function AlchemistsCascadeRoute() {
   if (phase === "campaign" && save) {
     return (
       <SafeAreaView style={styles.safe}>
-        <CascadeAtlasScreen
+        <CascadeLivingAtlas
+          key={save.gameSessionId}
+          storage={storage}
           save={save}
           busy={busy}
           syncWarning={syncWarning}
