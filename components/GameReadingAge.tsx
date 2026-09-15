@@ -14,8 +14,22 @@ const bands = [
   ["adult", "Adults"],
 ] as const;
 
+type GameReadingAgeTheme = {
+  accentColor: string;
+  borderColor: string;
+  textColor: string;
+  selectedBackgroundColor: string;
+};
+
+const defaultTheme: GameReadingAgeTheme = {
+  accentColor: "#eed59a",
+  borderColor: "#76938a",
+  textColor: "#dce7df",
+  selectedBackgroundColor: "rgba(238, 213, 154, 0.14)",
+};
+
 /** Remount gameplay on a route-age change so in-flight choices retain their original scope. */
-export function withGameReadingAge(Game: ComponentType) {
+export function withGameReadingAge(Game: ComponentType, theme: GameReadingAgeTheme = defaultTheme) {
   return function GameWithReadingAge() {
     const params = useLocalSearchParams() as GameRouteParams;
     const age = normalizeGameRouteAgeBand(params.ageBand);
@@ -36,11 +50,24 @@ export function withGameReadingAge(Game: ComponentType) {
               }}
               style={({ pressed }) => [
                 styles.button,
-                selected && styles.selected,
+                { borderColor: theme.borderColor },
+                selected && {
+                  borderColor: theme.accentColor,
+                  backgroundColor: theme.selectedBackgroundColor,
+                },
                 pressed && !selected && styles.pressed,
               ]}
             >
-              <Text numberOfLines={1} style={[styles.label, selected && styles.selectedLabel]}>{label}</Text>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.label,
+                  { color: selected ? theme.accentColor : theme.textColor },
+                  selected && styles.selectedLabel,
+                ]}
+              >
+                {label}
+              </Text>
             </Pressable>
           );
         })}
@@ -53,26 +80,25 @@ export function withGameReadingAge(Game: ComponentType) {
 const styles = StyleSheet.create({
   frame: { flex: 1 },
   bar: {
-    minHeight: 52,
+    alignSelf: "center",
+    maxWidth: "100%",
     flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
     gap: 6,
-    backgroundColor: "#102e31",
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   button: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 44,
+    minHeight: 36,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 4,
-    borderRadius: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#76938a",
+    backgroundColor: "transparent",
   },
-  label: { color: "#dce7df", fontWeight: "700", fontSize: 12, textAlign: "center" },
-  selected: { backgroundColor: "#f0d08b", borderColor: "#fff2d5" },
-  selectedLabel: { color: "#102e31", fontWeight: "900" },
-  pressed: { backgroundColor: "#294a47" },
+  label: { fontWeight: "700", fontSize: 12, textAlign: "center" },
+  selectedLabel: { fontWeight: "900" },
+  pressed: { opacity: 0.72 },
 });

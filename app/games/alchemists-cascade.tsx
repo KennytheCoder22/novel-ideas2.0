@@ -859,7 +859,22 @@ type CascadeTitleScreenProps = {
   onHelp: () => void;
   onMemory: () => void;
   onReset: () => void;
+  onExit: () => void;
 };
+
+function CascadeBackToGames({ onPress, busy }: { onPress: () => void; busy: boolean }) {
+  return (
+    <TouchableOpacity
+      style={[styles.cascadeBackButton, busy && styles.disabled]}
+      disabled={busy}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Back to Games"
+    >
+      <Text style={styles.cascadeBackButtonText}>{busy ? "SAVING..." : "BACK TO GAMES"}</Text>
+    </TouchableOpacity>
+  );
+}
 
 function AbstractCascadeTitleScreen({
   busy,
@@ -870,9 +885,11 @@ function AbstractCascadeTitleScreen({
   onHelp,
   onMemory,
   onReset,
+  onExit,
 }: CascadeTitleScreenProps) {
   return (
     <ScrollView contentContainerStyle={styles.titleScreen}>
+      <CascadeBackToGames onPress={onExit} busy={busy} />
       <View style={styles.titleSigil}>
         <View style={styles.sigilRing}><Text style={styles.sigilMark}>✦</Text></View>
         <View style={styles.sigilLine} />
@@ -1046,6 +1063,7 @@ function CascadeTitleScreen(props: CascadeTitleScreenProps) {
         contentContainerStyle={styles.cascadeTitleArtworkMobileContent}
         showsVerticalScrollIndicator={false}
       >
+        <CascadeBackToGames onPress={props.onExit} busy={props.busy} />
         {artwork}
         <View style={styles.cascadeTitleArtworkMobileCopy}>
           <Text accessibilityRole="header" style={styles.cascadeTitleArtworkMobileTitle}>The Alchemist&apos;s Cascade</Text>
@@ -1119,6 +1137,7 @@ function CascadeTitleScreen(props: CascadeTitleScreenProps) {
         contentContainerStyle={styles.cascadeTitleArtworkCompactContent}
         showsVerticalScrollIndicator={false}
       >
+        <CascadeBackToGames onPress={props.onExit} busy={props.busy} />
         {artwork}
         <View style={styles.visuallyHidden} pointerEvents="none">
           <Text accessibilityRole="header">The Alchemist&apos;s Cascade</Text>
@@ -1130,6 +1149,7 @@ function CascadeTitleScreen(props: CascadeTitleScreenProps) {
 
   return (
     <View style={styles.cascadeTitleArtworkDesktop}>
+      <CascadeBackToGames onPress={props.onExit} busy={props.busy} />
       {artwork}
       <View style={styles.visuallyHidden} pointerEvents="none">
         <Text accessibilityRole="header">The Alchemist&apos;s Cascade</Text>
@@ -1698,8 +1718,8 @@ function AbstractCascadeAtlasScreen({
     return (
       <>
         <View style={styles.gameHeader}>
-          <TouchableOpacity style={styles.headerButton} onPress={onExit} disabled={busy} accessibilityRole="button">
-            <Text style={styles.headerButtonText}>EXIT</Text>
+          <TouchableOpacity style={[styles.headerButton, styles.backHeaderButton]} onPress={onExit} disabled={busy} accessibilityRole="button" accessibilityLabel="Back to Games">
+            <Text style={styles.headerButtonText}>BACK TO GAMES</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>THE RECIPE ATLAS</Text>
           <Text style={styles.starTotal}>★ {Object.values(save.levelStars).reduce((sum, value) => sum + value, 0)}</Text>
@@ -1776,7 +1796,7 @@ function CascadeAtlasScreen(props: CascadeAtlasScreenProps) {
           <View style={styles.atlasStackedToolbar}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Exit Recipe Atlas"
+              accessibilityLabel="Back to Games"
               accessibilityHint="Save and return to Games"
               accessibilityState={{ disabled: props.busy }}
               disabled={props.busy}
@@ -1787,7 +1807,7 @@ function CascadeAtlasScreen(props: CascadeAtlasScreenProps) {
                 props.busy && styles.disabled,
               ]}
             >
-              <Text style={styles.atlasToolbarButtonText}>EXIT</Text>
+              <Text style={styles.atlasToolbarButtonText}>BACK TO GAMES</Text>
             </Pressable>
             <Text accessibilityRole="header" style={styles.atlasStackedTitle}>THE RECIPE ATLAS</Text>
             <View style={styles.atlasStarTotal} accessible accessibilityLabel={`${totalStars} total stars`}>
@@ -1844,7 +1864,7 @@ function CascadeAtlasScreen(props: CascadeAtlasScreenProps) {
           <Pressable
             testID="alchemists-cascade-atlas-exit"
             accessibilityRole="button"
-            accessibilityLabel="Exit Recipe Atlas"
+            accessibilityLabel="Back to Games"
             accessibilityHint="Save and return to Games"
             accessibilityState={{ disabled: props.busy }}
             disabled={props.busy}
@@ -1856,7 +1876,7 @@ function CascadeAtlasScreen(props: CascadeAtlasScreenProps) {
               props.busy && styles.disabled,
             ]}
           >
-            <Text style={styles.atlasCinematicExitText}>EXIT</Text>
+            <Text style={styles.atlasCinematicExitText} numberOfLines={1} adjustsFontSizeToFit>BACK TO GAMES</Text>
           </Pressable>
           <View
             testID="alchemists-cascade-atlas-stars"
@@ -2591,7 +2611,10 @@ function AlchemistsCascadeRoute() {
 
   const saveExit = useCallback(async () => {
     if (!save) {
-      router.back();
+      router.replace({
+        pathname: "/games",
+        params: buildGamesPortalRouteParams(routeConfig, params),
+      } as never);
       return;
     }
     if (actionLock.current) return;
@@ -3258,7 +3281,7 @@ function AlchemistsCascadeRoute() {
   }, [gameRecommendationMilestone, mutate, now, save]);
 
   if (phase === "loading") {
-    return <SafeAreaView style={styles.loading}><ActivityIndicator color="#F6C957" /><Text style={styles.loadingText}>Warming the copper...</Text></SafeAreaView>;
+    return <SafeAreaView style={styles.loading}><CascadeBackToGames onPress={() => void saveExit()} busy={busy} /><ActivityIndicator color="#F6C957" /><Text style={styles.loadingText}>Warming the copper...</Text></SafeAreaView>;
   }
 
   if (privacy) {
@@ -3279,6 +3302,7 @@ function AlchemistsCascadeRoute() {
           onHelp={() => openHelp("title")}
           onMemory={() => setPrivacy(true)}
           onReset={reset}
+          onExit={() => void saveExit()}
         />
       </SafeAreaView>
     );
@@ -3341,7 +3365,7 @@ function AlchemistsCascadeRoute() {
                   <Text style={styles.secondaryButtonText}>FAST ANIMATIONS: {fastAnimations ? "ON" : "OFF"}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.primaryButton} onPress={() => setPhase("play")}><Text style={styles.primaryButtonText}>RETURN TO THE FLASK</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryButton} onPress={() => void saveExit()}><Text style={styles.secondaryButtonText}>{busy ? "SAVING..." : "SAVE & EXIT"}</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => void saveExit()} accessibilityRole="button" accessibilityLabel="Back to Games"><Text style={styles.secondaryButtonText}>{busy ? "SAVING..." : "BACK TO GAMES"}</Text></TouchableOpacity>
               </View>
             </View>
           </>
@@ -3550,7 +3574,10 @@ const styles = StyleSheet.create({
   warning: { color: "#FFD49C", backgroundColor: "#3B2A20", padding: 10, borderRadius: 4, fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 12, maxWidth: 560 },
   gameHeader: { minHeight: 66, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#584D3B", flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#171A22" },
   headerButton: { minWidth: 66, minHeight: 44, borderWidth: 1, borderColor: "#766C5B", borderRadius: 4, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  backHeaderButton: { minWidth: 116 },
   headerButtonText: { color: "#F1E6D5", fontSize: 11, fontWeight: "900", letterSpacing: 1 },
+  cascadeBackButton: { position: "absolute", top: 12, left: 12, zIndex: 20, minWidth: 116, minHeight: 44, paddingHorizontal: 10, borderWidth: 1, borderColor: "#F6C957", borderRadius: 4, backgroundColor: "rgba(21,24,32,0.96)", alignItems: "center", justifyContent: "center" },
+  cascadeBackButtonText: { color: "#F6C957", fontSize: 10, fontWeight: "900", letterSpacing: 0.8 },
   headerTitle: { color: "#F8EFDF", fontWeight: "900", fontSize: 18, letterSpacing: 0.5, textAlign: "center" },
   starTotal: { color: "#F6C957", minWidth: 66, textAlign: "right", fontWeight: "900" },
   campaign: { width: "100%", maxWidth: 940, alignSelf: "center", padding: 20, gap: 20, paddingBottom: 50 },
@@ -3577,7 +3604,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  atlasCinematicExitText: { color: "#FBE8BD", fontSize: 15, fontWeight: "900", letterSpacing: 0.8 },
+  atlasCinematicExitText: { color: "#FBE8BD", fontSize: 10, fontWeight: "900", letterSpacing: 0.4 },
   atlasCinematicStars: {
     position: "absolute",
     minWidth: 44,
@@ -4458,4 +4485,9 @@ const styles = StyleSheet.create({
   resultScore: { color: "#FFF3DD", fontSize: 22, fontWeight: "900", marginVertical: 12 },
 });
 
-export default withGameReadingAge(AlchemistsCascadeRoute);
+export default withGameReadingAge(AlchemistsCascadeRoute, {
+  accentColor: "#F6C957",
+  borderColor: "#766C5B",
+  textColor: "#E9DFCE",
+  selectedBackgroundColor: "rgba(246, 201, 87, 0.14)",
+});

@@ -1818,4 +1818,9 @@ const styles = StyleSheet.create({
   smallButtonText: { color: PARCHMENT, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
 });
 
-export default withGameReadingAge(UnwrittenMapRoute);
+export default withGameReadingAge(UnwrittenMapRoute, {
+  accentColor: "#d6be7b",
+  borderColor: "#80612e",
+  textColor: "#f7e7b0",
+  selectedBackgroundColor: "rgba(214, 190, 123, 0.14)",
+});

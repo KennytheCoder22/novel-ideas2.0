@@ -45,12 +45,24 @@ for (const [id, label] of [
 assert(componentSource.includes("bands.map"), "the shared selector must render all four choices together");
 assert(componentSource.includes('accessibilityRole="button"'), "age choices must expose button semantics");
 assert(componentSource.includes("accessibilityState={{ selected }}"), "the active age must expose selected state");
-assert(componentSource.includes("minHeight: 44"), "age choices must retain a practical touch target");
+assert(componentSource.includes("minHeight: 36"), "age choices must match the compact Media Mania touch target");
+assert(componentSource.includes('backgroundColor: "transparent"'), "age choices must remain visually lightweight and outlined");
+assert(componentSource.includes('alignSelf: "center"'), "the age group must remain content-width instead of stretching across the screen");
+assert(!componentSource.slice(componentSource.indexOf("bar:"), componentSource.indexOf("button:")).includes("backgroundColor"),
+  "the age group must not sit inside a full-width colored banner");
+assert(!componentSource.includes("theme.surfaceColor"),
+  "the shared wrapper must leave each game's original artwork and background in control");
+assert(!componentSource.slice(componentSource.indexOf("button:"), componentSource.indexOf("label:")).includes("flex: 1"),
+  "age buttons must size to their labels instead of stretching");
+assert(componentSource.includes("theme.accentColor") && componentSource.includes("theme.selectedBackgroundColor"),
+  "the selected age must use each game's accent treatment");
 assert(componentSource.includes("router.setParams(buildGameReadingAgeParams(params, id))"), "one click must directly update the route age");
 assert(!componentSource.includes("useState") && !componentSource.includes("pending") && !componentSource.includes("Use this reading age"),
   "the selector must not retain the old disclosure and confirmation flow");
 assert(gameSources.every((source) => source.includes("withGameReadingAge")),
   "all four recommendation games must use the shared reading-age selector");
+assert(gameSources.every((source) => source.includes("accentColor:")),
+  "all four recommendation games must supply their own accent color");
 
 const originalParams = {
   playerId: "reader-7",

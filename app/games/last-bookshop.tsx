@@ -1552,4 +1552,9 @@ const styles = StyleSheet.create({
   textButtonText: { color: "#8f7d89", fontSize: 13, textDecorationLine: "underline" },
 });
 
-export default withGameReadingAge(LastBookshopRoute);
+export default withGameReadingAge(LastBookshopRoute, {
+  accentColor: "#d9a45f",
+  borderColor: "#725945",
+  textColor: "#d9c9ad",
+  selectedBackgroundColor: "rgba(217, 164, 95, 0.14)",
+});
