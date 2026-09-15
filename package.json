@@ -13,6 +13,7 @@
     "test:media-mania:integration": "node scripts/run-media-mania-integration-regressions.mjs && node --import tsx --test features/recommendation-games/media-mania/mediaManiaRecommendationIntegration.test.ts features/recommendation-games/media-mania/mediaManiaUiGuards.test.ts",
     "test:game-playtest": "node scripts/run-game-playtest-regressions.mjs",
     "test:games-portal": "node scripts/run-games-portal-regressions.mjs",
+    "test:game-reading-age": "node scripts/run-game-reading-age-regressions.mjs",
     "capture:game-playtest": "node scripts/capture-game-playtest-screenshots.mjs",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",

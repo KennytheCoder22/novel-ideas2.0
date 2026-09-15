@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   applyLocalCollectionOnlyRouting,
+  buildGameReadingAgeParams,
   buildGameRouteSourceParams,
+  buildGamesPortalRouteParams,
+  gameProgressScopeForRoute,
   gameRouteSourceFlagsToEnabledSources,
   normalizeGameRouteAgeBand,
   parseGameRouteConfig,
@@ -47,6 +50,53 @@ test("source flags parsed from route params round-trip through buildGameRouteSou
   assert.deepEqual(config.sourceFlags, {
     googleBooks: true, openLibrary: false, localLibrary: false, kitsu: true, comicVine: false, nyt: true,
   });
+});
+
+test("direct reading-age switches preserve route context and restore the original Teens progress scope", () => {
+  const original: Record<string, string> = {
+    playerId: "patron-1",
+    libraryId: "yvhs",
+    ageBand: "teens",
+    srcGoogleBooks: "0",
+    srcOpenLibrary: "1",
+    srcLocalLibrary: "1",
+    srcKitsu: "0",
+    srcComicVine: "0",
+    srcNyt: "0",
+    campaign: "summer",
+  };
+  const kids = { ...original, ...buildGameReadingAgeParams(original, "kids") };
+  assert.equal(kids.ageBand, "kids");
+  assert.equal(kids.readingAgeOverride, "1");
+  assert.equal(kids.readingAgeBase, "teens");
+  assert.equal(kids.playerId, original.playerId);
+  assert.equal(kids.libraryId, original.libraryId);
+  assert.equal(kids.srcLocalLibrary, "1");
+  assert.equal(kids.campaign, "summer");
+
+  const teensAgain = { ...kids, ...buildGameReadingAgeParams(kids, "teens") };
+  assert.equal(teensAgain.ageBand, "teens");
+  assert.equal(teensAgain.readingAgeOverride, "0");
+  assert.equal(gameProgressScopeForRoute("game-scope", "teens", original), "game-scope");
+  assert.equal(gameProgressScopeForRoute("game-scope", "kids", kids), "game-scope:age:kids");
+  assert.equal(gameProgressScopeForRoute("game-scope", "teens", teensAgain), "game-scope");
+});
+
+test("Back to Games route params preserve player, library, source, and reading-age context", () => {
+  const params = {
+    playerId: "patron-1",
+    libraryId: "yvhs",
+    ageBand: "kids",
+    srcGoogleBooks: "0",
+    srcOpenLibrary: "0",
+    srcLocalLibrary: "1",
+    srcKitsu: "0",
+    srcComicVine: "0",
+    srcNyt: "0",
+    readingAgeOverride: "1",
+    readingAgeBase: "teens",
+  };
+  assert.deepEqual(buildGamesPortalRouteParams(parseGameRouteConfig(params), params), params);
 });
 
 test("enabledSources mapping always disables the debug-only mock source", () => {

@@ -76,7 +76,7 @@ import { CascadeLivingAtlas } from "../../components/CascadeLivingAtlas";
 import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
 import { adaptAlchemistsCascadeCatalystToSignal, ALCHEMISTS_CASCADE_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
 import { alchemistsCascadeMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
-import { buildGameRouteSourceParams, parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
+import { buildGamesPortalRouteParams, gameProgressScopeForRoute, parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 import {
   ALCHEMISTS_CASCADE_TITLE_ARTWORK,
   computeAlchemistsCascadeTitleArtworkLayout,
@@ -2303,12 +2303,16 @@ function CascadeGameplayScreen(props: CascadeGameplayScreenProps) {
  }
 
 function AlchemistsCascadeRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string }>();
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string; readingAgeBase?: string }>();
   const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
+  const { playerId, libraryId, readingAgeOverride } = params;
   const scope = useMemo(() => {
-    const original = createCascadeScope(params.playerId, params.libraryId);
-    return params.readingAgeOverride === "1" ? { ...original, scopeKey: `${original.scopeKey}:age:${routeConfig.ageBand}` } : original;
-  }, [params.playerId, params.libraryId, params.readingAgeOverride, routeConfig.ageBand]);
+    const original = createCascadeScope(playerId, libraryId);
+    return {
+      ...original,
+      scopeKey: gameProgressScopeForRoute(original.scopeKey, routeConfig.ageBand, { readingAgeOverride }),
+    };
+  }, [libraryId, playerId, readingAgeOverride, routeConfig.ageBand]);
   const sessionId = useRef(id("cascade-session"));
   const lastTimestamp = useRef<string | null>(null);
   const actionLock = useRef(false);
@@ -2626,15 +2630,11 @@ function AlchemistsCascadeRoute() {
       router.replace({
         pathname: "/games",
         params: {
-          ...(params.playerId ? { playerId: params.playerId } : {}),
-          ...(params.libraryId ? { libraryId: params.libraryId } : {}),
-          ageBand: routeConfig.ageBand,
-          ...buildGameRouteSourceParams(routeConfig.sourceFlags),
-          ...(params.readingAgeOverride === "1" ? { readingAgeOverride: "1" } : {}),
+          ...buildGamesPortalRouteParams(routeConfig, params),
         },
       } as never);
     }
-  }, [flush, mutate, now, params.libraryId, params.playerId, routeConfig.ageBand, routeConfig.sourceFlags, save]);
+  }, [flush, mutate, now, params, routeConfig, save]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {

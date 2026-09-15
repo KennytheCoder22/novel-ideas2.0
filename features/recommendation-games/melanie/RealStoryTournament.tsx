@@ -4,7 +4,7 @@ import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, 
 import { router, useLocalSearchParams } from "expo-router";
 import { runRecommenderV2 } from "../../../app/recommender-v2/engine";
 import { useGameRecommendationMilestone } from "../../../hooks/useGameRecommendationMilestone";
-import { parseGameRouteConfig, gameRouteSourceFlagsToEnabledSources, buildGameRouteSourceParams, type GameRouteParams } from "../../../lib/recommendationGames/gameRecommendationRouteConfig";
+import { parseGameRouteConfig, gameRouteConfigScope, gameRouteSourceFlagsToEnabledSources, buildGamesPortalRouteParams, type GameRouteParams } from "../../../lib/recommendationGames/gameRecommendationRouteConfig";
 import { createMelaniesGameStorageInstanceId } from "../../../lib/recommendationGames/melaniesGamePersistence";
 import { catalogStories, storyRoundCount, startStoryTournament, finishStoryRound, restoreStoryTournament, storySignals, type StoryBook, type StoryTournament } from "../../../lib/recommendationGames/melaniesRealBooks";
 
@@ -22,7 +22,7 @@ function Action({ label, onPress, disabled = false }: { label: string; onPress: 
 export default function RealStoryTournament() {
   const params = useLocalSearchParams() as GameRouteParams;
   const config = parseGameRouteConfig(params);
-  const scope = JSON.stringify([config.playerId, config.libraryId, config.ageBand, config.sourceFlags]);
+  const scope = gameRouteConfigScope(config);
   const instance = useMemo(() => createMelaniesGameStorageInstanceId(config.playerId,config.libraryId,config.ageBand), [config.playerId,config.libraryId,config.ageBand]);
   const storageKey = `melanie-real-stories-v1:${scope}:${instance || "device"}`;
   const [state, setState] = useState<StoryTournament | null>(null);
@@ -83,6 +83,8 @@ export default function RealStoryTournament() {
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
+  // storageKey includes every route-config value used by this load, including source flags and age.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey, attempt]);
 
   async function commit(next: StoryTournament, recordEvidence = false) {
@@ -129,7 +131,7 @@ export default function RealStoryTournament() {
     finally { if (active.current === key) {lock.current=false;setBusy(false);} }
   }
   const books = new Map(visibleState?.pool.map(book => [book.id,book]));
-  const exit = () => router.push({ pathname:"/games", params:{ playerId:config.playerId, libraryId:config.libraryId, ageBand:config.ageBand, ...buildGameRouteSourceParams(config.sourceFlags), ...(params.readingAgeOverride === "1" ? { readingAgeOverride: "1" } : {}) } });
+  const exit = () => router.push({ pathname:"/games", params:buildGamesPortalRouteParams(config, params) });
   return <ScrollView style={styles.page} contentContainerStyle={styles.content}>
     <View style={styles.top}><Action label="Back to games" onPress={exit} /><Action label="What your choices tell us" onPress={() => setPrivacy(!privacy)} /></View>
     <Text style={styles.eyebrow}>MELANIE’S GAME</Text>

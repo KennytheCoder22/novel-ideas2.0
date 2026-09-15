@@ -145,8 +145,9 @@ async function main() {
   assert(hubSource.includes("router.push({ pathname: game.route, params: forwardedParams }"), "games hub route/context forwarding missing");
   assert(layoutSource.includes('name="games/unwritten-map"'), "map game route is not registered");
   assert(routeSource.includes('document.title = "The Unwritten Map"'), "browser title must preserve game fiction");
-  assert(routeSource.includes('router.replace({') && routeSource.includes('...(params.playerId ? { playerId: params.playerId } : {})')
-    && routeSource.includes('...(params.libraryId ? { libraryId: params.libraryId } : {})'),
+  assert(routeSource.includes('router.replace({')
+    && routeSource.includes("buildGamesPortalRouteParams(routeConfig, params)")
+    && (routeSource.match(/Back to Games/g) || []).length >= 3,
   "exit route must preserve active player and library scope");
   checks.push("route_and_games_hub");
 
@@ -2054,7 +2055,7 @@ async function main() {
     && routeSource.includes("disabled={beginning}") && routeSource.includes("disabled={leaving}"),
   "lifecycle controls must be disabled while their transaction is pending");
   assert(leaveSource.indexOf("await queueSaveCommit") < leaveSource.indexOf("router.replace")
-    && leaveSource.includes("Stay on this map and retry Exit"),
+    && leaveSource.includes("Stay on this map and retry Back to Games"),
   "exit navigation must wait for local queue/save/commit and expose a clear retry on failure");
     const completionStart = routeSource.indexOf("const queueCompletionEvent");
     const completionSource = routeSource.slice(completionStart, routeSource.indexOf("useEffect(() =>", completionStart));

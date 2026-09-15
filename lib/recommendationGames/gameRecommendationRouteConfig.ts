@@ -55,6 +55,35 @@ export function normalizeGameRouteAgeBand(value: unknown): AgeBandV2 {
   return "teens";
 }
 
+export function buildGameReadingAgeParams(
+  params: GameRouteParams,
+  ageBand: AgeBandV2,
+): Record<string, string> {
+  const currentAge = normalizeGameRouteAgeBand(paramValue(params, "ageBand"));
+  const rawBaseAge = paramValue(params, "readingAgeBase");
+  const baseAge = rawBaseAge ? normalizeGameRouteAgeBand(rawBaseAge) : currentAge;
+  return {
+    ageBand,
+    readingAgeOverride: ageBand === baseAge ? "0" : "1",
+    readingAgeBase: baseAge,
+  };
+}
+
+/** Keeps the route's original age on the legacy scope and isolates every alternate age. */
+export function gameProgressScopeForRoute(
+  baseScope: string,
+  ageBand: AgeBandV2,
+  params: GameRouteParams,
+): string {
+  return paramValue(params, "readingAgeOverride") === "1"
+    ? `${baseScope}:age:${ageBand}`
+    : baseScope;
+}
+
+export function gameRouteConfigScope(config: GameRouteConfig): string {
+  return JSON.stringify([config.playerId, config.libraryId, config.ageBand, config.sourceFlags]);
+}
+
 /** Preserves local-collection-only routing exactly: whenever local collection is enabled for a
  * route, every hosted source is force-disabled so a library that has opted into local-only
  * routing never leaks hosted-source results through a recommendation game. */
@@ -98,6 +127,22 @@ export function buildGameRouteSourceParams(flags: GameRouteSourceFlags): Record<
     srcKitsu: flags.kitsu ? "1" : "0",
     srcComicVine: flags.comicVine ? "1" : "0",
     srcNyt: flags.nyt ? "1" : "0",
+  };
+}
+
+export function buildGamesPortalRouteParams(
+  config: GameRouteConfig,
+  params: GameRouteParams,
+): Record<string, string> {
+  const readingAgeOverride = paramValue(params, "readingAgeOverride");
+  const readingAgeBase = paramValue(params, "readingAgeBase");
+  return {
+    playerId: config.playerId,
+    libraryId: config.libraryId,
+    ageBand: config.ageBand,
+    ...buildGameRouteSourceParams(config.sourceFlags),
+    ...(["0", "1"].includes(readingAgeOverride) ? { readingAgeOverride } : {}),
+    ...(readingAgeBase ? { readingAgeBase: normalizeGameRouteAgeBand(readingAgeBase) } : {}),
   };
 }
 
