@@ -12,8 +12,8 @@ function Cover({ book, hidden = false }: { book: StoryBook; hidden?: boolean }) 
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [book.coverUrl]);
   return <View style={[styles.cover, hidden && styles.blurredCover]} accessible={!hidden} accessibilityElementsHidden={hidden} importantForAccessibility={hidden ? "no-hide-descendants" : "auto"} accessibilityLabel={hidden ? undefined : `Cover of ${book.title}`}>
-    {book.coverUrl && !failed ? <Image source={{ uri: book.coverUrl }} blurRadius={hidden ? 35 : 0} onError={() => setFailed(true)} style={styles.coverImage} accessible={false} /> : <View style={[styles.coverImage, { backgroundColor: "#899894" }]} />}
-    {hidden ? <View style={styles.coverVeil} /> : failed || !book.coverUrl ? <Text style={styles.placeholder}>Cover unavailable</Text> : null}
+    {book.coverUrl && !failed ? <Image source={{ uri: book.coverUrl }} blurRadius={hidden ? 7 : 0} onError={() => setFailed(true)} style={[styles.coverImage, hidden && styles.defocusedImage]} accessible={false} /> : <View style={[styles.coverImage, { backgroundColor: "#899894" }]} />}
+    {!hidden && (failed || !book.coverUrl) ? <Text style={styles.placeholder}>Cover unavailable</Text> : null}
   </View>;
 }
 function Action({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
@@ -154,6 +154,6 @@ const styles=StyleSheet.create({
   page:{flex:1,backgroundColor:"#102e31"},content:{width:"100%",maxWidth:1080,alignSelf:"center",padding:24,paddingBottom:60,gap:20},
   top:{flexDirection:"row",flexWrap:"wrap",gap:10},eyebrow:{color:"#b9d9c4",fontWeight:"800",fontSize:12,letterSpacing:2},title:{color:"#fff2d5",fontFamily:"Georgia",fontSize:42,fontWeight:"700"},intro:{color:"#dae6de",fontSize:18,lineHeight:28},heading:{fontSize:23,fontWeight:"700",color:"#fff2d5"},copy:{fontSize:15,lineHeight:23,color:"#d1e0d7"},counter:{color:"#eed59a",fontWeight:"700"},
   grid:{gap:14},card:{backgroundColor:"#1c4144",borderWidth:2,borderColor:"#446165",borderRadius:14,padding:18,flexDirection:"row",gap:18,alignItems:"flex-start"},selected:{borderColor:"#eed59a",backgroundColor:"#285054"},cardText:{flex:1,minWidth:0,gap:12},cardLabel:{color:"#eed59a",fontSize:12,fontWeight:"800",letterSpacing:1},synopsis:{color:"#faf4e5",fontSize:17,lineHeight:27},
-  cover:{width:76,height:112,backgroundColor:"#75847c",borderRadius:5,overflow:"hidden",justifyContent:"center"},blurredCover:{width:56,height:84},coverImage:{position:"absolute",width:"100%",height:"100%"},coverVeil:{...StyleSheet.absoluteFillObject,backgroundColor:"rgba(148,161,150,0.72)"},placeholder:{fontSize:11,textAlign:"center",color:"#fff",padding:4},
+  cover:{width:76,height:112,backgroundColor:"#75847c",borderRadius:5,overflow:"hidden",justifyContent:"center"},blurredCover:{width:56,height:84},coverImage:{position:"absolute",width:"100%",height:"100%"},defocusedImage:{transform:[{scale:1.18}]},placeholder:{fontSize:11,textAlign:"center",color:"#fff",padding:4},
   action:{backgroundColor:"#e9d7aa",paddingHorizontal:18,paddingVertical:14,borderRadius:9,minHeight:48,alignSelf:"flex-start"},actionText:{color:"#17393b",fontSize:15,fontWeight:"800"},notice:{padding:18,backgroundColor:"#23494b",color:"#f4ecd9",fontSize:15,lineHeight:24,borderRadius:10,gap:12},error:{color:"#ffd0b8",fontSize:16,lineHeight:24},
 });
