@@ -256,12 +256,18 @@ export default function RecommendationGamesRoute() {
       </View>
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => router.back()}
+        onPress={() => {
+          if (routeConfig.libraryId === "default") {
+            router.replace("/");
+          } else {
+            router.replace({ pathname: "/(tabs)/[libraryId]", params: { libraryId: routeConfig.libraryId } });
+          }
+        }}
         accessibilityRole="button"
-        accessibilityLabel="Back"
+        accessibilityLabel="Novel Ideas Home"
       >
         <MaterialCommunityIcons name="arrow-left" size={18} color="#e8e5f2" />
-        <Text style={styles.backButtonText}>Back</Text>
+        <Text style={styles.backButtonText}>Novel Ideas Home</Text>
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

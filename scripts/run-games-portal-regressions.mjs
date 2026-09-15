@@ -25,7 +25,10 @@ for (const [id, title, image, route] of mappings) {
 assert.equal((source.match(/imageAlt: "/g) || []).length, 5, "every game illustration must have alt text");
 assert.equal((source.match(/aspectRatio: 16 \/ 9/g) || []).length, 1, "the portal must reserve the supplied image aspect ratio");
 assert(source.includes("GAME_CARDS.map"), "all portal cards must render from the maintainable configuration");
-assert(source.includes("router.back()"), "the Back button behavior must remain intact");
+assert(!source.includes("router.back()"), "home must not return to the game through browser history");
+assert(source.includes('router.replace("/")'), "public sessions return to the public home page");
+assert(source.includes('pathname: "/(tabs)/[libraryId]", params: { libraryId: routeConfig.libraryId }'), "library sessions return to their library home");
+assert(source.includes('accessibilityLabel="Novel Ideas Home"'), "home destination must be clearly labeled");
 assert(source.includes("IntersectionObserver"), "below-the-fold artwork must be mounted lazily near the viewport");
 assert(source.includes('rootMargin: "240px 0px"'), "lazy artwork must preload shortly before entering view");
 assert(source.includes('priority={deferArtwork ? "low" : "high"}'), "first-row artwork must retain high loading priority");
