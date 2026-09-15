@@ -7,6 +7,29 @@ const ELEVEN_ROUTE: [number, number, number, number][] = [
 ];
 type GuideStep = { board: string; rng: number; collected: number[]; moves: number; score: number; from: Coordinate; to: Coordinate };
 let verifiedGuide: GuideStep[] | undefined;
+let verifiedFairGuide: GuideStep[] | undefined;
+function fairGuide(): GuideStep[] {
+  if (verifiedFairGuide) return verifiedFairGuide;
+  const config = CASCADE_LEVELS[10];
+  let state = createActiveLevel(config, '2026-09-14T00:00:00.000Z', 1, 2);
+  let board = decodeBoard(state.board)!;
+  const boost = applyCatalyst(board, state.rngState, catalystOptions(board, 'guide', 0, state.rngState, config.goals)[0]);
+  board = boost.board;
+  state = { ...state, collected: boost.collected, score: boost.scoreDelta, rngState: boost.rng.state };
+  const steps: GuideStep[] = [];
+  // Bounded certificate, checked before any hint is labelled verified.
+  while (state.movesRemaining > 0 && !levelWon(state, config)) {
+    const remaining = config.goals.filter(g => state.collected[g.kind] < g.target);
+    const move = findLegalMoves(board, remaining).sort((a,b) => b.estimatedGoalHits-a.estimatedGoalHits || b.estimatedScore-a.estimatedScore)[0];
+    if (!move) break;
+    steps.push({ board: encodeBoard(board), rng: state.rngState, collected: [...state.collected], moves: state.movesRemaining, score: state.score, from: move.from, to: move.to });
+    const result = applySwap(board, state.rngState, move.from, move.to, config.goals, 2);
+    board = result.board;
+    state = { ...state, rngState: result.rng.state, movesRemaining: state.movesRemaining - 1, score: state.score + result.scoreDelta, collected: state.collected.map((n, i) => n + result.collected[i]) };
+  }
+  verifiedFairGuide = levelWon(state, config) ? steps : [];
+  return verifiedFairGuide;
+}
 function guide(): GuideStep[] {
   if (verifiedGuide) return verifiedGuide;
   const config = CASCADE_LEVELS[10];
@@ -28,11 +51,11 @@ function guide(): GuideStep[] {
   return verifiedGuide;
 }
 
-export function cascadeMoveHint(board: Board, config: LevelConfig, state: { rngState: number; collected: number[]; movesRemaining: number; score: number }): (LegalMove & { guided: boolean }) | undefined {
+export function cascadeMoveHint(board: Board, config: LevelConfig, state: { rulesVersion?: 1 | 2; rngState: number; collected: number[]; movesRemaining: number; score: number }): (LegalMove & { guided: boolean }) | undefined {
   const remaining = config.goals.filter(g => (state.collected[g.kind] || 0) < g.target);
   const legal = findLegalMoves(board, remaining);
   if (config.id === 'level-11') {
-    const step = guide().find(s => s.board === encodeBoard(board) && s.rng === state.rngState && s.moves === state.movesRemaining && s.score === state.score && s.collected.every((n, i) => n === state.collected[i]));
+    const step = (state.rulesVersion === 2 ? fairGuide() : guide()).find(s => s.board === encodeBoard(board) && s.rng === state.rngState && s.moves === state.movesRemaining && s.score === state.score && s.collected.every((n, i) => n === state.collected[i]));
     const move = step && legal.find(m => m.from.row === step.from.row && m.from.column === step.from.column && m.to.row === step.to.row && m.to.column === step.to.column);
     if (move) return { ...move, guided: true };
   }

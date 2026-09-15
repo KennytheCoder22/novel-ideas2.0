@@ -172,7 +172,9 @@ function makeEvent(args: {
     occurredAt: args.at,
     timingBucket: args.timing || "instant",
     preferenceInference: args.preference || "none_from_gameplay",
-    payload: args.payload,
+    payload: args.save.activeLevel?.rulesVersion === 2
+      && ["move_attempted", "move_applied", "move_invalid", "cascade_resolved"].includes(args.eventType)
+      ? { ...args.payload, rulesVersion: 2 } : args.payload,
   });
 }
 
@@ -2688,7 +2690,7 @@ export default function AlchemistsCascadeRoute() {
         );
         const startedAt = now();
         const presentedAt = now();
-        const activeLevel = createActiveLevel(durableLevel, startedAt);
+        const activeLevel = createActiveLevel(durableLevel, startedAt, 1, durableLevel.id === "level-11" ? 2 : 1);
         return {
           save: { ...current, activeLevel, updatedAt: presentedAt },
           events: [
@@ -2933,7 +2935,7 @@ export default function AlchemistsCascadeRoute() {
         }
         const currentBoard = decodeBoard(active.board);
         if (!currentBoard) throw new Error("invalid_saved_board");
-        const result = applySwap(currentBoard, active.rngState, from, to, activeConfig.goals);
+        const result = applySwap(currentBoard, active.rngState, from, to, activeConfig.goals, active.rulesVersion ?? 1);
         presentationMove.board = currentBoard;
         presentationMove.result = result;
         const attemptedAt = now();
@@ -3144,7 +3146,7 @@ export default function AlchemistsCascadeRoute() {
         if (!previousAttempt || current.activeLevel?.levelId !== activeConfig.id) {
           throw new Error("stale_level_retry");
         }
-        const activeLevel = createActiveLevel(activeConfig, at, previousAttempt + 1);
+        const activeLevel = createActiveLevel(activeConfig, at, previousAttempt + 1, activeConfig.id === "level-11" ? 2 : 1);
         return {
           save: { ...current, activeLevel, updatedAt: presentedAt },
           events: [

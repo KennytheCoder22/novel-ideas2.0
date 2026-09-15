@@ -301,7 +301,8 @@ function effectCells(board: Board, at: Coordinate, special: Exclude<SpecialKind,
   return cells;
 }
 
-function refill(board: Board, rng: Rng): void {
+function refill(board: Board, rng: Rng, supplyGoals: LevelGoal[] = []): void {
+  let supplied = 0;
   for (let column = 0; column < CASCADE_BOARD_SIZE; column += 1) {
     const survivors: Cell[] = [];
     for (let row = CASCADE_BOARD_SIZE - 1; row >= 0; row -= 1) {
@@ -309,8 +310,17 @@ function refill(board: Board, rng: Rng): void {
       if (cell) survivors.push(cell);
     }
     for (let row = CASCADE_BOARD_SIZE - 1; row >= 0; row -= 1) {
-      board[row][column] = survivors[CASCADE_BOARD_SIZE - 1 - row]
-        || { kind: randomKind(rng), special: "none" };
+      const survivor = survivors[CASCADE_BOARD_SIZE - 1 - row];
+      if (survivor) board[row][column] = survivor;
+      else {
+        // Fair recipe-11 stock: primary, secondary, then two mixed ingredients.
+        // Consume exactly one RNG draw per replacement, even for stocked tiles.
+        // No hidden extra state: replay needs only the board, RNG and rule version.
+        const random = randomKind(rng);
+        const slot = supplied++ % 4;
+        const goal = slot === 0 ? supplyGoals[0] : slot === 1 ? supplyGoals[1] : undefined;
+        board[row][column] = { kind: goal?.kind ?? random, special: "none" };
+      }
     }
   }
 }
@@ -320,6 +330,7 @@ export function resolveBoard(
   rng: Rng,
   preferredSpecialCells: Coordinate[] = [],
   maxSteps = CASCADE_MAX_RESOLUTION_STEPS,
+  supplyGoals: LevelGoal[] = [],
 ): {
   board: Board;
   rng: Rng;
@@ -391,7 +402,7 @@ export function resolveBoard(
       const [row, column] = key.split(",").map(Number);
       board[row][column] = cell;
     }
-    refill(board, rng);
+    refill(board, rng, supplyGoals);
     const multiplier = cascade + 1;
     const stepScore = clear.size * 60 * multiplier + specialsCreated.length * 180 + activated.length * 220;
     steps.push({
@@ -455,7 +466,7 @@ export type MoveResolution = {
   legalMovesBefore: LegalMove[];
 };
 
-export function applySwap(board: Board, rngState: number, from: Coordinate, to: Coordinate, goals: LevelGoal[] = []): MoveResolution {
+export function applySwap(board: Board, rngState: number, from: Coordinate, to: Coordinate, goals: LevelGoal[] = [], rulesVersion: 1 | 2 = 1): MoveResolution {
   const legalMovesBefore = findLegalMoves(board, goals);
   if (!inBoard(from) || !inBoard(to) || !isAdjacent(from, to)) {
     return { valid: false, reason: "not_adjacent", board: cloneBoard(board), rng: createRng(rngState), scoreDelta: 0, collected: Array(6).fill(0), steps: [], reshuffled: false, reshuffleInventoryPreserved: true, reshuffleRngBefore: null, reshuffleAttempts: 0, legalMovesBefore };
@@ -465,7 +476,7 @@ export function applySwap(board: Board, rngState: number, from: Coordinate, to: 
   if (!findMatches(swapped).length) {
     return { valid: false, reason: "no_match", board: cloneBoard(board), rng: createRng(rngState), scoreDelta: 0, collected: Array(6).fill(0), steps: [], reshuffled: false, reshuffleInventoryPreserved: true, reshuffleRngBefore: null, reshuffleAttempts: 0, legalMovesBefore };
   }
-  const resolved = resolveBoard(swapped, createRng(rngState), [to, from]);
+  const resolved = resolveBoard(swapped, createRng(rngState), [to, from], CASCADE_MAX_RESOLUTION_STEPS, rulesVersion === 2 ? goals : []);
   let finalBoard = resolved.board;
   let reshuffled = Boolean(resolved.fallback);
   let reshuffleInventoryPreserved = resolved.fallback?.inventoryPreserved ?? true;
@@ -726,6 +737,7 @@ export function applyCatalyst(board: Board, rngState: number, option: CatalystOp
 }
 
 export type ActiveLevel = {
+  rulesVersion?: 1 | 2;
   levelId: string;
   attempt: number;
   board: string;
@@ -847,12 +859,16 @@ export function createInitialCascadeSave(
   };
 }
 
-export function createActiveLevel(config: LevelConfig, now: string, attempt = 1): ActiveLevel {
+export function createActiveLevel(config: LevelConfig, now: string, attempt = 1, rulesVersion: 1 | 2 = 1): ActiveLevel {
+  if ((rulesVersion !== 1 && rulesVersion !== 2) || (rulesVersion === 2 && config.id !== "level-11")) {
+    throw new Error("invalid_cascade_rules_version");
+  }
   if (!Number.isSafeInteger(attempt) || attempt < 1 || attempt > 10_000) {
     throw new Error("invalid_cascade_level_attempt");
   }
   const generated = createBoard(config.seed);
   return {
+    ...(rulesVersion === 2 ? { rulesVersion } : {}),
     levelId: config.id, attempt, board: encodeBoard(generated.board), rngState: generated.rng.state,
     movesRemaining: config.moves, score: 0, collected: Array(6).fill(0),
     catalystUsed: false, startedAt: now,
@@ -903,6 +919,8 @@ export function restoreCascadeSave(raw: string | null, libraryScopeId: string): 
       const active = value.activeLevel;
       const config = CASCADE_LEVELS.find((level) => level.id === active.levelId);
       if (!config || !decodeBoard(active.board)
+        || (active.rulesVersion !== undefined && active.rulesVersion !== 1 && active.rulesVersion !== 2)
+        || (active.rulesVersion === 2 && config.id !== "level-11")
         || !Number.isSafeInteger(active.attempt) || active.attempt < 1 || active.attempt > 10_000
         || !Number.isInteger(active.rngState) || active.rngState < 0 || active.rngState > 0xFFFFFFFF
         || !Number.isInteger(active.movesRemaining) || active.movesRemaining < 0 || active.movesRemaining > config.moves
@@ -1252,6 +1270,7 @@ function validMovePayload(payload: Record<string, unknown>, eventType: CascadeEv
     payload.from as Coordinate,
     payload.to as Coordinate,
     config.goals,
+    payload.rulesVersion === 2 ? 2 : 1,
   );
   const canonicalMoves = result.legalMovesBefore.slice(0, 24);
   if (!Array.isArray(payload.legalMoves) || !payload.legalMoves.every(validLegalMove)
@@ -1291,6 +1310,7 @@ function validCascadeSourceBinding(
     || !TIMING_BUCKETS.includes(payload.sourceMoveTimingBucket as TimingBucket)) return false;
   const movePayload: Record<string, unknown> = {};
   for (const key of PAYLOAD_KEYS.move_applied) movePayload[key] = payload[key];
+  if (payload.rulesVersion === 2) movePayload.rulesVersion = 2;
   const sourceBody = {
     schemaVersion: CASCADE_EVENT_SCHEMA,
     eventType: "move_applied",
@@ -1408,9 +1428,14 @@ export function normalizeCascadeEvent(value: unknown): CascadeEvidenceEvent | nu
   const eventType = event.eventType as CascadeEventType;
   const payload = event.payload as Record<string, unknown>;
   // Continue accepting queued legacy skips while validating boosted neutral outcomes.
-  const payloadKeys = eventType === "catalyst_skipped" && payload.neutralBoost === true
+  let payloadKeys = eventType === "catalyst_skipped" && payload.neutralBoost === true
     ? [...PAYLOAD_KEYS.catalyst_skipped, "neutralBoost", "boardBefore", "boardAfter", "beforeChecksum", "afterChecksum", "cleared", "scoreAfter", "scoreDelta", "rngAfter", "goalsAfter"]
     : PAYLOAD_KEYS[eventType];
+  if (payload.rulesVersion !== undefined) {
+    if (payload.rulesVersion !== 2 || payload.levelId !== "level-11"
+      || !["move_attempted", "move_applied", "move_invalid", "cascade_resolved"].includes(eventType)) return null;
+    payloadKeys = [...payloadKeys, "rulesVersion"];
+  }
   if (!exactKeys(payload, payloadKeys) || !serializableBounded(event)
     || !validBoardBindings(payload) || !validStructuredPayload(payload, eventType)) return null;
   if (eventType === "campaign_reset" && payload.previousGameSessionId !== event.gameSessionId) return null;
