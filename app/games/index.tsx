@@ -227,7 +227,7 @@ function GameCard({
 }
 
 export default function RecommendationGamesRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string }>();
   const routeConfig = parseGameRouteConfig(params as GameRouteParams);
   const { width } = useWindowDimensions();
   const showcase = width >= 1100;
@@ -243,6 +243,7 @@ export default function RecommendationGamesRoute() {
       // `parseGameRouteConfig` from this same raw param.
       ageBand: String(params.ageBand || "teens"),
       ...buildGameRouteSourceParams(routeConfig.sourceFlags),
+          ...(params.readingAgeOverride === "1" ? { readingAgeOverride: "1" } : {}),
     };
     router.push({ pathname: game.route, params: forwardedParams } as any);
   }

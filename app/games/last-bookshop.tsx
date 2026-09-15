@@ -1,3 +1,4 @@
+import { withGameReadingAge } from "../../components/GameReadingAge";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -902,8 +903,8 @@ function EndingScreen({ progress, onRestart }: { progress: LastBookshopProgressV
   );
 }
 
-export default function LastBookshopRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+function LastBookshopRoute() {
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string }>();
   const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const progressScopeKey = useMemo(() => lastBookshopProgressScopeKey({
     playerId: routeConfig.playerId,
@@ -1508,3 +1509,5 @@ const styles = StyleSheet.create({
   textButton: { minHeight: 44, paddingHorizontal: 18, alignItems: "center", justifyContent: "center", marginTop: 8 },
   textButtonText: { color: "#8f7d89", fontSize: 13, textDecorationLine: "underline" },
 });
+
+export default withGameReadingAge(LastBookshopRoute);
