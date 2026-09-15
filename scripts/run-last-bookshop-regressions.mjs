@@ -261,6 +261,10 @@ async function main() {
     && appSource.includes("loadLastBookshopProgressForScope")
     && appSource.includes("routeConfig.ageBand"),
   "the route must load patron, library, and age-scoped progress");
+  assert(appSource.includes("buildGamesPortalRouteParams(routeConfig, params)")
+    && !appSource.includes("router.back()")
+    && (appSource.match(/Back to Games/g) || []).length >= 4,
+  "loading, title, gameplay, and ending surfaces must expose context-preserving Back to Games controls");
   checks.push("patron_scoped_progress_and_safe_migration");
 
   const encounter = game.LAST_BOOKSHOP_ENCOUNTERS[0];

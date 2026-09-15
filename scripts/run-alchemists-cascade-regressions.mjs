@@ -1424,11 +1424,17 @@ async function main() {
   checks.push("api_namespace_rate_order_and_transport");
 
   const route = readFileSync(resolve(root, "app/games/alchemists-cascade.tsx"), "utf8");
+  const livingAtlasSource = readFileSync(resolve(root, "components/CascadeLivingAtlas.tsx"), "utf8");
   const hub = readFileSync(resolve(root, "app/games/index.tsx"), "utf8");
   const layout = readFileSync(resolve(root, "app/_layout.tsx"), "utf8");
   assert(hub.includes("The Alchemist’s Cascade") && hub.includes('route: "/games/alchemists-cascade"'), "games hub integration missing");
   assert(hub.includes("router.push({ pathname: game.route, params: forwardedParams }"), "games hub context forwarding missing");
   assert(layout.includes('name="games/alchemists-cascade"'), "layout route registration missing");
+  assert(route.includes("buildGamesPortalRouteParams(routeConfig, params)")
+    && !route.includes("router.back()")
+    && (route.match(/BACK TO GAMES/g) || []).length >= 4
+    && livingAtlasSource.includes("← Back to Games"),
+  "title, loading, atlas, and pause surfaces must expose context-preserving Back to Games controls");
   const titleArtworkPath = titleArtwork.ALCHEMISTS_CASCADE_TITLE_ARTWORK;
   assert(typeof titleArtworkPath === "string" && titleArtworkPath.endsWith("title-screen.webp"), "real title artwork mapping missing");
   assert(existsSync(titleArtworkPath), "real title artwork asset does not exist");
