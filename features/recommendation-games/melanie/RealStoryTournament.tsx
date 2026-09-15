@@ -6,13 +6,13 @@ import { runRecommenderV2 } from "../../../app/recommender-v2/engine";
 import { useGameRecommendationMilestone } from "../../../hooks/useGameRecommendationMilestone";
 import { parseGameRouteConfig, gameRouteSourceFlagsToEnabledSources, buildGameRouteSourceParams, type GameRouteParams } from "../../../lib/recommendationGames/gameRecommendationRouteConfig";
 import { createMelaniesGameStorageInstanceId } from "../../../lib/recommendationGames/melaniesGamePersistence";
-import { catalogStories, startStoryTournament, finishStoryRound, restoreStoryTournament, storySignals, type StoryBook, type StoryTournament } from "../../../lib/recommendationGames/melaniesRealBooks";
+import { catalogStories, storyRoundCount, startStoryTournament, finishStoryRound, restoreStoryTournament, storySignals, type StoryBook, type StoryTournament } from "../../../lib/recommendationGames/melaniesRealBooks";
 
 function Cover({ book, hidden = false }: { book: StoryBook; hidden?: boolean }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [book.coverUrl]);
   return <View style={[styles.cover, hidden && styles.blurredCover]} accessible={!hidden} accessibilityElementsHidden={hidden} importantForAccessibility={hidden ? "no-hide-descendants" : "auto"} accessibilityLabel={hidden ? undefined : `Cover of ${book.title}`}>
-    {book.coverUrl && !failed ? <Image source={{ uri: book.coverUrl }} blurRadius={hidden ? 7 : 0} onError={() => setFailed(true)} style={[styles.coverImage, hidden && styles.defocusedImage]} accessible={false} /> : <View style={[styles.coverImage, { backgroundColor: "#899894" }]} />}
+    {book.coverUrl && !failed ? <Image source={{ uri: book.coverUrl }} blurRadius={hidden ? 4 : 0} onError={() => setFailed(true)} style={[styles.coverImage, hidden && styles.defocusedImage]} accessible={false} /> : <View style={[styles.coverImage, { backgroundColor: "#899894" }]} />}
     {!hidden && (failed || !book.coverUrl) ? <Text style={styles.placeholder}>Cover unavailable</Text> : null}
   </View>;
 }
@@ -50,9 +50,33 @@ export default function RealStoryTournament() {
           return;
         }
         const sessionId = `real-stories-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
-        const result = await runRecommenderV2({ ageBand: config.ageBand, libraryId: config.libraryId, signals: [], limit: 150, diversitySeed: sessionId, enabledSources: gameRouteSourceFlagsToEnabledSources(config.sourceFlags), localLibraryCurationTrusted: config.localCollectionOnly });
+        const enabledSources = gameRouteSourceFlagsToEnabledSources(config.sourceFlags);
+        const base = { ageBand: config.ageBand, libraryId: config.libraryId, limit: 150, diversitySeed: sessionId, enabledSources, localLibraryCurationTrusted: config.localCollectionOnly };
+        const result = await runRecommenderV2({ ...base, signals: [] });
         if (cancelled) return;
-        const next = startStoryTournament(catalogStories(result.items, config.localCollectionOnly).slice(0,180), scope, sessionId);
+        const candidates = [...result.items];
+        let pool = catalogStories(candidates, config.localCollectionOnly);
+        // These are search probes only, never reader-preference evidence. Avoid repeatedly
+        // querying an unavailable service (including Google Books quota failures).
+        for (const source of result.diagnostics.sources) {
+          if (source.status === "failed") enabledSources[source.source] = false;
+        }
+        if (!config.localCollectionOnly && pool.length < 12) {
+          for (const genre of ["mystery", "science fiction"]) {
+            if (cancelled) return;
+            const extra = await runRecommenderV2({ ...base, enabledSources, signals: [{ id: `catalog-probe-${genre}`, action: "like", weight: 1, genres: [genre], format: "book" }] }).catch(() => null);
+            if (cancelled) return;
+            if (extra) {
+              candidates.push(...extra.items);
+              for (const source of extra.diagnostics.sources) {
+                if (source.status === "failed") enabledSources[source.source] = false;
+              }
+              pool = catalogStories(candidates, false);
+            }
+            if (pool.length >= 12) break;
+          }
+        }
+        const next = startStoryTournament(pool.slice(0,180), scope, sessionId);
         await AsyncStorage.setItem(key, JSON.stringify(next));
         if (!cancelled) setState(next);
       } catch (e) { if (!cancelled) setError(e instanceof Error ? e.message : "We couldn't load story descriptions. Please retry."); }
@@ -116,10 +140,10 @@ export default function RealStoryTournament() {
     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     {!loading && !visibleState ? <Action label="Retry loading stories" onPress={() => setAttempt(a=>a+1)} /> : null}
     {visibleState && !loading ? <>
-      <Text style={styles.eyebrow}>{visibleState.phase === "reveal" ? "THE REVEAL" : `ROUND ${visibleState.rounds.length+1} OF 3 · ${visibleState.phase === "choose" ? "CHOOSE" : "RANK"}`}</Text>
+      <Text style={styles.eyebrow}>{visibleState.phase === "reveal" ? "THE REVEAL" : `ROUND ${visibleState.rounds.length+1} OF ${storyRoundCount(visibleState.pool.length)} · ${visibleState.phase === "choose" ? "CHOOSE" : "RANK"}`}</Text>
       {visibleState.phase === "choose" ? <>
         <Text accessibilityRole="header" style={styles.heading}>Which three would you read?</Text>
-        <Text style={styles.copy}>{visibleState.rounds.length ? "Your three survivors meet three new challengers. Choose on the premise alone." : "Pick three of these six story descriptions. Every one belongs to a real book."}</Text>
+        <Text style={styles.copy}>{visibleState.rounds.length ? "Your three survivors meet new challengers. Choose on the premise alone." : "Pick three of these story descriptions. Every one belongs to a real book."}</Text>
         <Text accessibilityLiveRegion="polite" style={styles.counter}>{visibleState.selected.length} of 3 selected</Text>
         <View style={styles.grid}>{visibleState.offered.map((id,index) => {
           const book=books.get(id)!; const selected=visibleState.selected.includes(id);
@@ -135,7 +159,7 @@ export default function RealStoryTournament() {
           <Cover book={book} hidden /><View style={styles.cardText}><Text style={styles.cardLabel}>YOUR #{index+1} · STORY {visibleState.offered.indexOf(id)+1}</Text><Text style={styles.synopsis}>{book.synopsis}</Text>
           <View style={styles.top}><Action label={`Move rank ${index+1} up`} disabled={busy || index===0} onPress={()=>move(index,-1)} /><Action label={`Move rank ${index+1} down`} disabled={busy || index===2} onPress={()=>move(index,1)} /></View></View>
         </View>})}
-        <Action label={visibleState.rounds.length===2 ? "Reveal my books" : "Meet the next challengers"} disabled={busy} onPress={()=>void commit(finishStoryRound(visibleState),true)} />
+        <Action label={visibleState.rounds.length===storyRoundCount(visibleState.pool.length)-1 ? "Reveal my books" : "Meet the next challengers"} disabled={busy} onPress={()=>void commit(finishStoryRound(visibleState),true)} />
         <Action label="Change my picks" disabled={busy} onPress={()=>void commit({...visibleState,phase:"choose"})} />
       </> : <>
         <Text accessibilityRole="header" style={styles.heading}>The books behind your favorite stories.</Text>

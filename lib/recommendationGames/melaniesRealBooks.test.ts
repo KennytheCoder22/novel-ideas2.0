@@ -19,6 +19,20 @@ test("catalog synopsis uses a sentence without author or title advertising",()=>
  assert.equal(anonymousSynopsis("Jane Smith presents The Secret, an award-winning new novel about her favorite subjects.","The Secret",["Jane Smith"]),null);
 });
 test("invalid rankings and insufficient catalogs cannot create imaginary replacements",()=>{
- assert.throws(()=>startStoryTournament(pool.slice(0,11),"x","x"));
+ assert.throws(()=>startStoryTournament(pool.slice(0,3),"x","x"));
  const s=startStoryTournament(pool,"x","x");assert.throws(()=>finishStoryRound({...s,phase:"rank",selected:[s.offered[0],s.offered[0],s.offered[1]]}));
+});
+
+test("limited catalogs complete and restore without invented challengers",()=>{
+ for(const size of [4,5,6,7,8,9,10,11,12]){
+  let s=startStoryTournament(pool.slice(0,size),"small","small");
+  let turns=0;
+  while(s.phase!=="reveal"){
+   assert(s.offered.length>=4 && s.offered.length<=6);
+   s=finishStoryRound({...s,phase:"rank",selected:s.offered.slice(0,3)});
+   assert(++turns<=3);
+   assert.deepEqual(restoreStoryTournament(JSON.stringify(s),"small"),s);
+  }
+  assert.equal(s.selected.length,3);
+ }
 });

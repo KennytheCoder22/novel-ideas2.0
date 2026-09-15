@@ -75,18 +75,21 @@ export function diverseStories(pool: StoryBook[], count: number, seed: string, a
   }
   return chosen;
 }
+export function storyRoundCount(poolSize: number): number {
+  return Math.min(3, 1 + Math.ceil(Math.max(0, poolSize - 6) / 3));
+}
 export function startStoryTournament(pool: StoryBook[], scope: string, sessionId: string): StoryTournament {
-  if (pool.length < 12) throw new Error("We need at least 12 books with usable story descriptions. Try again, or ask your librarian to check the collection descriptions.");
+  if (pool.length < 4) throw new Error("Book sources returned too few usable descriptions to compare right now. Please try again shortly.");
   return { version: 1, pool, scope, sessionId, offered: diverseStories(pool, 6, sessionId).map(b => b.id), selected: [], rounds: [], phase: "choose" };
 }
 export function finishStoryRound(state: StoryTournament): StoryTournament {
   if (state.phase !== "rank" || state.selected.length !== 3 || new Set(state.selected).size !== 3 || state.selected.some(id => !state.offered.includes(id))) throw new Error("Rank three stories before continuing.");
   const rounds = [...state.rounds, { offered: state.offered, ranked: state.selected }];
-  if (rounds.length === 3) return { ...state, rounds, phase: "reveal", shownAt: new Date().toISOString() };
+  if (rounds.length === storyRoundCount(state.pool.length)) return { ...state, rounds, phase: "reveal", shownAt: new Date().toISOString() };
   const seen = new Set(rounds.flatMap(round => round.offered));
   const anchors = state.selected.map(id => state.pool.find(b => b.id === id)!);
   const newcomers = diverseStories(state.pool.filter(b => !seen.has(b.id)), 3, state.sessionId + rounds.length, anchors);
-  if (newcomers.length < 3) throw new Error("Not enough unseen stories to continue.");
+  if (!newcomers.length) throw new Error("Not enough unseen stories to continue.");
   const offered = [...state.selected, ...newcomers.map(b => b.id)].sort((a, b) => hash(state.sessionId + rounds.length + a) - hash(state.sessionId + rounds.length + b));
   return { ...state, rounds, offered, selected: [], phase: "choose" };
 }
@@ -105,14 +108,14 @@ export function storySignals(state: StoryTournament): SwipeSignalV2[] {
 export function restoreStoryTournament(raw: string | null, scope: string): StoryTournament | null {
   try {
     const s = JSON.parse(raw || "null") as StoryTournament;
-    if (!s || s.version !== 1 || s.scope !== scope || typeof s.sessionId !== "string" || !["choose", "rank", "reveal"].includes(s.phase) || !Array.isArray(s.pool) || s.pool.length < 12 || s.pool.length > 180) return null;
+    if (!s || s.version !== 1 || s.scope !== scope || typeof s.sessionId !== "string" || !["choose", "rank", "reveal"].includes(s.phase) || !Array.isArray(s.pool) || s.pool.length < 4 || s.pool.length > 180) return null;
     if (!s.pool.every(b => b && [b.id,b.title,b.author,b.synopsis,b.description,b.source].every(v => typeof v === "string") && [b.genres,b.themes,b.tones,b.dynamics].every(v => Array.isArray(v) && v.every(t => typeof t === "string")))) return null;
     const ids = new Set(s.pool.map(b => b.id));
     const valid = (list: unknown, length: number) => Array.isArray(list) && list.length === length && new Set(list).size === length && list.every(id => ids.has(id));
-    if (ids.size !== s.pool.length || !valid(s.offered,6) || !Array.isArray(s.selected) || s.selected.length > 3 || new Set(s.selected).size !== s.selected.length || !s.selected.every(id => s.offered.includes(id)) || !Array.isArray(s.rounds) || s.rounds.length > 3) return null;
-    if (!s.rounds.every(r => valid(r.offered,6) && valid(r.ranked,3) && r.ranked.every(id => r.offered.includes(id)))) return null;
-    if ((s.phase === "rank" && s.selected.length !== 3) || (s.phase === "reveal" && (s.rounds.length !== 3 || s.selected.length !== 3)) || (s.phase !== "reveal" && s.rounds.length === 3)) return null;
-    if (s.phase === "reveal" && (typeof s.shownAt !== "string" || !Number.isFinite(Date.parse(s.shownAt)) || JSON.stringify(s.selected) !== JSON.stringify(s.rounds[2].ranked))) return null;
+    if (ids.size !== s.pool.length || !valid(s.offered,s.offered?.length) || s.offered.length < 4 || s.offered.length > 6 || !Array.isArray(s.selected) || s.selected.length > 3 || new Set(s.selected).size !== s.selected.length || !s.selected.every(id => s.offered.includes(id)) || !Array.isArray(s.rounds) || s.rounds.length > 3) return null;
+    if (!s.rounds.every(r => valid(r.offered,r.offered?.length) && r.offered.length >= 4 && r.offered.length <= 6 && valid(r.ranked,3) && r.ranked.every(id => r.offered.includes(id)))) return null;
+    if ((s.phase === "rank" && s.selected.length !== 3) || (s.phase === "reveal" && (s.rounds.length !== storyRoundCount(s.pool.length) || s.selected.length !== 3)) || (s.phase !== "reveal" && s.rounds.length >= storyRoundCount(s.pool.length))) return null;
+    if (s.phase === "reveal" && (typeof s.shownAt !== "string" || !Number.isFinite(Date.parse(s.shownAt)) || JSON.stringify(s.selected) !== JSON.stringify(s.rounds[s.rounds.length - 1].ranked))) return null;
     return s;
   } catch { return null; }
 }
