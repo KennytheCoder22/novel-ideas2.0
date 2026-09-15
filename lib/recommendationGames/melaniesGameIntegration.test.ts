@@ -57,7 +57,7 @@ test("real-story screen hides identities until reveal and saves session-scoped p
   const source = fs.readFileSync(path.join(process.cwd(), "features/recommendation-games/melanie/RealStoryTournament.tsx"), "utf8");
   assert(source.includes("sessionScopedEvidence: true"));
   assert(source.includes("submitFinalRecommendationFeedback"));
-  assert(source.includes("blurRadius={hidden ? 4 : 0}"));
+  assert(source.includes("blurRadius={hidden ? 3 : 0}"));
   assert(source.includes('importantForAccessibility={hidden ? "no-hide-descendants"'));
   assert(source.includes("recordBookTournament"));
   assert(!source.includes("createMelanieCoverArt"));
