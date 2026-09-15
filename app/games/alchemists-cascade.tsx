@@ -1,3 +1,4 @@
+import { withGameReadingAge } from "../../components/GameReadingAge";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -2301,10 +2302,13 @@ function CascadeGameplayScreen(props: CascadeGameplayScreenProps) {
    );
  }
 
-export default function AlchemistsCascadeRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+function AlchemistsCascadeRoute() {
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string }>();
   const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
-  const scope = useMemo(() => createCascadeScope(params.playerId, params.libraryId), [params.playerId, params.libraryId]);
+  const scope = useMemo(() => {
+    const original = createCascadeScope(params.playerId, params.libraryId);
+    return params.readingAgeOverride === "1" ? { ...original, scopeKey: `${original.scopeKey}:age:${routeConfig.ageBand}` } : original;
+  }, [params.playerId, params.libraryId, params.readingAgeOverride, routeConfig.ageBand]);
   const sessionId = useRef(id("cascade-session"));
   const lastTimestamp = useRef<string | null>(null);
   const actionLock = useRef(false);
@@ -2626,6 +2630,7 @@ export default function AlchemistsCascadeRoute() {
           ...(params.libraryId ? { libraryId: params.libraryId } : {}),
           ageBand: routeConfig.ageBand,
           ...buildGameRouteSourceParams(routeConfig.sourceFlags),
+          ...(params.readingAgeOverride === "1" ? { readingAgeOverride: "1" } : {}),
         },
       } as never);
     }
@@ -4452,3 +4457,5 @@ const styles = StyleSheet.create({
   resultStars: { color: "#F6C957", fontSize: 30, letterSpacing: 4 },
   resultScore: { color: "#FFF3DD", fontSize: 22, fontWeight: "900", marginVertical: 12 },
 });
+
+export default withGameReadingAge(AlchemistsCascadeRoute);

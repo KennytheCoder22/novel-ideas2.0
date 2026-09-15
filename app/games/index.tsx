@@ -227,7 +227,7 @@ function GameCard({
 }
 
 export default function RecommendationGamesRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string }>();
   const routeConfig = parseGameRouteConfig(params as GameRouteParams);
   const { width } = useWindowDimensions();
   const showcase = width >= 1100;
@@ -243,6 +243,7 @@ export default function RecommendationGamesRoute() {
       // `parseGameRouteConfig` from this same raw param.
       ageBand: String(params.ageBand || "teens"),
       ...buildGameRouteSourceParams(routeConfig.sourceFlags),
+          ...(params.readingAgeOverride === "1" ? { readingAgeOverride: "1" } : {}),
     };
     router.push({ pathname: game.route, params: forwardedParams } as any);
   }
@@ -256,12 +257,18 @@ export default function RecommendationGamesRoute() {
       </View>
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => router.back()}
+        onPress={() => {
+          if (routeConfig.libraryId === "default") {
+            router.replace("/");
+          } else {
+            router.replace({ pathname: "/(tabs)/[libraryId]", params: { libraryId: routeConfig.libraryId } });
+          }
+        }}
         accessibilityRole="button"
-        accessibilityLabel="Back"
+        accessibilityLabel="Novel Ideas Home"
       >
         <MaterialCommunityIcons name="arrow-left" size={18} color="#e8e5f2" />
-        <Text style={styles.backButtonText}>Back</Text>
+        <Text style={styles.backButtonText}>Novel Ideas Home</Text>
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

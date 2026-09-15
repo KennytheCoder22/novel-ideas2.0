@@ -1,3 +1,4 @@
+import { withGameReadingAge } from "../../components/GameReadingAge";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Image } from "expo-image";
@@ -726,15 +727,16 @@ function CompleteScreen(props: {
   );
 }
 
-export default function UnwrittenMapRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string }>();
+function UnwrittenMapRoute() {
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string }>();
   const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const { width, height } = useWindowDimensions();
   const reduceMotion = usePrefersReducedMotion();
-  const scopeKey = useMemo(() => storageScopeKey(params.libraryId, params.playerId), [params.libraryId, params.playerId]);
+  const originalScopeKey = useMemo(() => storageScopeKey(params.libraryId, params.playerId), [params.libraryId, params.playerId]);
+  const scopeKey = params.readingAgeOverride === "1" ? `${originalScopeKey}:age:${routeConfig.ageBand}` : originalScopeKey;
   const saveKey = useMemo(() => scopedSaveKey(scopeKey), [scopeKey]);
   const bookMemory = useUnwrittenMapBooks(`${scopeKey}:${routeConfig.ageBand}`);
-  const libraryScopeId = useMemo(() => scopeKey.slice(0, scopeKey.lastIndexOf("-")), [scopeKey]);
+  const libraryScopeId = useMemo(() => originalScopeKey.slice(0, originalScopeKey.lastIndexOf("-")), [originalScopeKey]);
   const [save, setSave] = useState<UnwrittenMapSaveV2 | null>(null);
   const saveRef = useRef<UnwrittenMapSaveV2 | null>(null);
   const [phase, setPhase] = useState<GamePhase>("title");
@@ -930,7 +932,7 @@ export default function UnwrittenMapRoute() {
     void (async () => {
       try {
         const raw = await gameStorage.getItem(saveKey);
-        const restored = await migrateLegacyUnwrittenMapSaveForScope(gameStorage, scopeKey, libraryScopeId)
+        const restored = (params.readingAgeOverride === "1" ? null : await migrateLegacyUnwrittenMapSaveForScope(gameStorage, scopeKey, libraryScopeId))
           || restoreUnwrittenMapSave(raw, libraryScopeId);
         const initial = restored || await initializeUnwrittenMapJourney(
           gameStorage,
@@ -1401,6 +1403,7 @@ export default function UnwrittenMapRoute() {
           ...(params.libraryId ? { libraryId: params.libraryId } : {}),
           ageBand: routeConfig.ageBand,
           ...buildGameRouteSourceParams(routeConfig.sourceFlags),
+          ...(params.readingAgeOverride === "1" ? { readingAgeOverride: "1" } : {}),
         },
       } as never);
     } catch {
@@ -1800,3 +1803,5 @@ const styles = StyleSheet.create({
   smallButton: { minHeight: 44, minWidth: 120, paddingHorizontal: 15, borderWidth: 1.5, borderColor: "#2e4936", borderRadius: 3, backgroundColor: DARK, alignItems: "center", justifyContent: "center" },
   smallButtonText: { color: PARCHMENT, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
 });
+
+export default withGameReadingAge(UnwrittenMapRoute);

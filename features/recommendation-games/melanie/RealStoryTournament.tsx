@@ -129,7 +129,7 @@ export default function RealStoryTournament() {
     finally { if (active.current === key) {lock.current=false;setBusy(false);} }
   }
   const books = new Map(visibleState?.pool.map(book => [book.id,book]));
-  const exit = () => router.push({ pathname:"/games", params:{ playerId:config.playerId, libraryId:config.libraryId, ageBand:config.ageBand, ...buildGameRouteSourceParams(config.sourceFlags) } });
+  const exit = () => router.push({ pathname:"/games", params:{ playerId:config.playerId, libraryId:config.libraryId, ageBand:config.ageBand, ...buildGameRouteSourceParams(config.sourceFlags), ...(params.readingAgeOverride === "1" ? { readingAgeOverride: "1" } : {}) } });
   return <ScrollView style={styles.page} contentContainerStyle={styles.content}>
     <View style={styles.top}><Action label="Back to games" onPress={exit} /><Action label="What your choices tell us" onPress={() => setPrivacy(!privacy)} /></View>
     <Text style={styles.eyebrow}>MELANIE’S GAME</Text>
