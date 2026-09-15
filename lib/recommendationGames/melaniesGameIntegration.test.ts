@@ -53,22 +53,14 @@ const candidates = Array.from({ length: 10 }, (_, index) => ({
   raw: {},
 }));
 
-test("new-player copy is exact and no fictional patron is introduced", () => {
-  const source = fs.readFileSync(path.join(process.cwd(), "app", "games", "melanies-game.tsx"), "utf8");
-  const hookSource = fs.readFileSync(path.join(process.cwd(), "hooks", "useGameRecommendationMilestone.ts"), "utf8");
-  assert(source.includes("There is no imaginary person. Pick the book YOU want."));
-  assert(!/\b(customer|patron|choose for Melanie)\b/i.test(source));
+test("real-story screen hides identities until reveal and saves session-scoped preferences", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "features/recommendation-games/melanie/RealStoryTournament.tsx"), "utf8");
   assert(source.includes("sessionScopedEvidence: true"));
-  assert(source.includes("flushMelanieEvidence()"));
-  assert(source.includes("Let the Tournament Begin"));
-  assert(source.includes("ConceptCover"));
-  assert(source.includes("TournamentProgress"));
-  assert(source.includes("library-left.webp"));
-  assert(source.includes("createMelanieCoverArt"));
-  assert(source.includes("finalistPedestal"));
-  assert(source.includes("recommendationCard"));
-  assert(source.includes("minHeight: 44"));
-  assert(hookSource.includes("args.sessionScopedEvidence ? args.gameSessionId : undefined"));
+  assert(source.includes("submitFinalRecommendationFeedback"));
+  assert(source.includes("blurRadius={hidden ? 35 : 0}"));
+  assert(source.includes('importantForAccessibility={hidden ? "no-hide-descendants"'));
+  assert(source.includes("recordBookTournament"));
+  assert(!source.includes("createMelanieCoverArt"));
 });
 
 test("authorized visual crops are local, optimized, and do not ship whole-screen references", () => {
@@ -228,7 +220,7 @@ test("full tournament feeds production recommender constraints and returns three
     localLibraryCurationTrusted: true,
     runRecommender: async (session) => {
       received = session;
-      return { items: candidates };
+      return { items: candidates.map(candidate => ({ ...candidate, source: "localLibrary" })) };
     },
     now: () => "2026-09-07T00:05:00.000Z",
   });

@@ -16,6 +16,7 @@ import {
   mergeNativeEvidence,
   retractNativeEvidence,
   recordFamiliarBook,
+  recordShownBook,
   resetGameRecommendationSession,
   restoreGameRecommendationIntegrationState,
   type GameRecommendationIntegrationStateV1,
@@ -793,6 +794,24 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
     return result;
   }, [args.ageBand, args.game, args.gameSessionId, args.libraryId, args.localCollectionOnly, args.playerId, args.sessionScopedEvidence, args.sourceFlags, currentScopeId, enqueueEvidenceMutation, persist]);
 
+  // Blind book tournaments rank an existing catalog pool instead of generating a new slate.
+  const recordBookTournament = useCallback(async (signals: SwipeSignalV2[], shownIds: string[]): Promise<boolean> => {
+    let saved = false;
+    const scopeId = currentScopeId;
+    await enqueueEvidenceMutation(async () => {
+      if (!readyRef.current || !stateRef.current || activeScopeRef.current !== scopeId) return;
+      const historyKey = gameRecommendationHistoryStorageKey({ anonymousPlayerId: args.playerId, libraryId: args.libraryId, ageBand: args.ageBand });
+      await withSharedHistoryLock(historyKey, async () => {
+        if (!stateRef.current || activeScopeRef.current !== scopeId) return;
+        const evidenceId = `${args.gameSessionId}:blind-synopsis`;
+        let next = mergeNativeEvidence(retractNativeEvidence(stateRef.current, evidenceId), evidenceId, signals);
+        for (const id of shownIds) next = recordShownBook(next, id);
+        saved = await persist(next, scopeId);
+      });
+    });
+    return saved;
+  }, [args.ageBand, args.gameSessionId, args.libraryId, args.playerId, currentScopeId, enqueueEvidenceMutation, persist]);
+
   const submitFinalRecommendationFeedback = useCallback(async (input: {
     recommendations: GameRecommendationBookIdentity[];
     ranking: string[];
@@ -837,6 +856,7 @@ export function useGameRecommendationMilestone(args: UseGameRecommendationMilest
     isBookAlreadyShown,
     generateFinalRecommendations,
     submitFinalRecommendationFeedback,
+    recordBookTournament,
   };
 }
 
