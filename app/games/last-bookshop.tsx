@@ -1,4 +1,4 @@
-import { withGameReadingAge } from "../../components/GameReadingAge";
+import { GameReadingAgeControl, withGameReadingAge } from "../../components/GameReadingAge";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -69,6 +69,13 @@ import { buildGamesPortalRouteParams, parseGameRouteConfig, type GameRouteParams
 
 type GamePhase = "title" | "arrival" | "shelves" | "counter" | "result" | "night_complete" | "ending";
 
+const LAST_BOOKSHOP_READING_AGE_THEME = {
+  accentColor: "#e0ae62",
+  borderColor: "#8f6b43",
+  textColor: "#cdbb9a",
+  selectedBackgroundColor: "rgba(224, 174, 98, 0.18)",
+};
+
 type RoundResult = {
   encounter: LastBookshopEncounter;
   outcome: EncounterOutcome;
@@ -133,23 +140,36 @@ function ShopHeader({
   displayNight,
   onExit,
 }: {
-  progress: LastBookshopProgressV1;
+  progress?: LastBookshopProgressV1;
   displayNight: number;
   onExit: () => void;
 }) {
+  const { width } = useWindowDimensions();
+  const compact = width < 600;
+
   return (
-    <View style={styles.header}>
-      <TouchableOpacity style={styles.headerButton} onPress={onExit} accessibilityRole="button" accessibilityLabel="Back to Games">
-        <Text style={styles.headerButtonText}>Back to Games</Text>
-      </TouchableOpacity>
-      <View style={styles.headerTitleWrap}>
-        <Text style={styles.headerKicker}>OPEN UNTIL DAWN</Text>
-        <Text style={styles.headerTitle}>The Last Bookshop</Text>
-        <View style={styles.headerOrnament} />
+    <View style={[styles.header, compact && styles.headerCompact]}>
+      <View style={styles.headerMainRow}>
+        <TouchableOpacity
+          style={[styles.headerButton, compact && styles.headerButtonCompact]}
+          onPress={onExit}
+          accessibilityRole="button"
+          accessibilityLabel="Back to Games"
+        >
+          <Text style={[styles.headerButtonText, compact && styles.headerButtonTextCompact]}>Back to Games</Text>
+        </TouchableOpacity>
+        <View style={styles.headerTitleWrap}>
+          <Text style={[styles.headerKicker, compact && styles.headerKickerCompact]}>OPEN UNTIL DAWN</Text>
+          <Text style={[styles.headerTitle, compact && styles.headerTitleCompact]}>The Last Bookshop</Text>
+          <View style={styles.headerOrnament} />
+        </View>
+        <View style={[styles.headerStats, compact && styles.headerStatsCompact]}>
+          <Text style={[styles.headerStat, compact && styles.headerStatCompact]}>Night {Math.min(displayNight, 3)}</Text>
+          <Text style={[styles.headerStat, compact && styles.headerStatCompact]}>{progress?.reputation ?? 0} renown</Text>
+        </View>
       </View>
-      <View style={styles.headerStats}>
-        <Text style={styles.headerStat}>Night {Math.min(displayNight, 3)}</Text>
-        <Text style={styles.headerStat}>{progress.reputation} renown</Text>
+      <View style={styles.headerAgeRow}>
+        <GameReadingAgeControl theme={LAST_BOOKSHOP_READING_AGE_THEME} />
       </View>
     </View>
   );
@@ -181,23 +201,9 @@ function BookshopBackdrop({
   );
 }
 
-function FloatingBackToGames({ onPress }: { onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      style={styles.floatingBackButton}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel="Back to Games"
-    >
-      <Text style={styles.headerButtonText}>Back to Games</Text>
-    </TouchableOpacity>
-  );
-}
-
-function AbstractTitleScreen({ onBegin, onExit, hasProgress }: { onBegin: () => void; onExit: () => void; hasProgress: boolean }) {
+function AbstractTitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgress: boolean }) {
   return (
     <View style={styles.titleScreen}>
-      <FloatingBackToGames onPress={onExit} />
       <View style={styles.moon}>
         <View style={styles.moonCutout} />
       </View>
@@ -231,18 +237,17 @@ function AbstractTitleScreen({ onBegin, onExit, hasProgress }: { onBegin: () => 
   );
 }
 
-function TitleScreen({ onBegin, onExit, hasProgress }: { onBegin: () => void; onExit: () => void; hasProgress: boolean }) {
+function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgress: boolean }) {
   const { width } = useWindowDimensions();
   const [artworkFailed, setArtworkFailed] = useState(false);
   const buttonLabel = hasProgress ? "Continue your journey" : "Turn the Key";
   const compact = width < 700;
 
-  if (artworkFailed) return <AbstractTitleScreen onBegin={onBegin} onExit={onExit} hasProgress={hasProgress} />;
+  if (artworkFailed) return <AbstractTitleScreen onBegin={onBegin} hasProgress={hasProgress} />;
 
   return (
     <View style={styles.titleArtworkDesktop}>
       <BookshopBackdrop phase="title" onError={() => setArtworkFailed(true)} />
-      <FloatingBackToGames onPress={onExit} />
       <ScrollView
         style={styles.titleArtworkMobileScroll}
         contentContainerStyle={[styles.liveTitleContent, compact && styles.liveTitleContentCompact]}
@@ -1143,7 +1148,7 @@ function LastBookshopRoute() {
   if (!progress) {
     return (
       <SafeAreaView style={styles.safe}>
-        <FloatingBackToGames onPress={exit} />
+        <ShopHeader progress={progress} displayNight={1} onExit={exit} />
         <View style={styles.loading}><ActivityIndicator color="#e9c46a" size="large" /></View>
       </SafeAreaView>
     );
@@ -1152,7 +1157,8 @@ function LastBookshopRoute() {
   if (phase === "title") {
     return (
       <SafeAreaView style={styles.safe}>
-        <TitleScreen onBegin={beginEncounter} onExit={exit} hasProgress={loadedExistingProgress} />
+        <ShopHeader progress={progress} displayNight={progress.night} onExit={exit} />
+        <TitleScreen onBegin={beginEncounter} hasProgress={loadedExistingProgress} />
       </SafeAreaView>
     );
   }
@@ -1161,6 +1167,7 @@ function LastBookshopRoute() {
     return (
       <SafeAreaView style={styles.safe}>
         <BookshopBackdrop phase="ending" />
+        <ShopHeader progress={progress} displayNight={3} onExit={exit} />
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <EndingScreen progress={progress} onRestart={restart} onExit={exit} />
         </ScrollView>
@@ -1264,20 +1271,21 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, zIndex: 1 },
   scrollContent: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 56 },
   header: {
-    minHeight: 78,
+    minHeight: 112,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 8,
+    paddingBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(201, 148, 78, 0.55)",
-    backgroundColor: "rgba(5, 13, 27, 0.94)",
-    flexDirection: "row",
-    alignItems: "center",
+    backgroundColor: "rgba(4, 11, 24, 0.98)",
     zIndex: 3,
     shadowColor: "#000",
     shadowOpacity: 0.4,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 5 },
   },
+  headerCompact: { minHeight: 108, paddingHorizontal: 10, paddingTop: 7, paddingBottom: 4 },
+  headerMainRow: { width: "100%", minHeight: 48, flexDirection: "row", alignItems: "center" },
   headerButton: {
     minWidth: 116,
     minHeight: 44,
@@ -1289,28 +1297,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  headerButtonCompact: { minWidth: 96, minHeight: 40, paddingHorizontal: 7 },
   headerButtonText: { color: "#efd7a5", fontSize: 13, fontWeight: "800", letterSpacing: 0.4 },
-  floatingBackButton: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    zIndex: 20,
-    minWidth: 116,
-    minHeight: 44,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: "#b28b55",
-    borderRadius: 8,
-    backgroundColor: "rgba(5,13,27,0.94)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  headerButtonTextCompact: { fontSize: 11, letterSpacing: 0 },
   headerTitleWrap: { flex: 1, alignItems: "center", paddingHorizontal: 8 },
   headerKicker: { color: "#b28b55", fontSize: 9, letterSpacing: 2.2, fontWeight: "800" },
+  headerKickerCompact: { fontSize: 7, letterSpacing: 1.4 },
   headerTitle: { color: "#f6dfb1", fontFamily: "Georgia", fontSize: 21, fontWeight: "900", letterSpacing: 0.4 },
+  headerTitleCompact: { fontSize: 16, lineHeight: 19, textAlign: "center" },
   headerOrnament: { width: 64, height: 1, backgroundColor: "#b98a50", marginTop: 5, opacity: 0.72 },
   headerStats: { minWidth: 76, alignItems: "flex-end" },
+  headerStatsCompact: { minWidth: 63 },
   headerStat: { color: "#d8b979", fontSize: 11, lineHeight: 17, fontWeight: "800" },
+  headerStatCompact: { fontSize: 9, lineHeight: 14 },
+  headerAgeRow: { minHeight: 46, alignItems: "center", justifyContent: "center" },
   titleScreen: {
     flex: 1,
     minHeight: 660,
@@ -1773,8 +1773,5 @@ const styles = StyleSheet.create({
 });
 
 export default withGameReadingAge(LastBookshopRoute, {
-  accentColor: "#d9a45f",
-  borderColor: "#725945",
-  textColor: "#d9c9ad",
-  selectedBackgroundColor: "rgba(217, 164, 95, 0.14)",
-});
+  ...LAST_BOOKSHOP_READING_AGE_THEME,
+}, { inline: true });
