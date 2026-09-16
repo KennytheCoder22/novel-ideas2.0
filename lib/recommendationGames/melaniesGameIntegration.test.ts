@@ -60,6 +60,10 @@ test("real-story screen hides identities until reveal and saves session-scoped p
   assert(source.includes("blurRadius={hidden ? 3 : 0}"));
   assert(source.includes('importantForAccessibility={hidden ? "no-hide-descendants"'));
   assert(source.includes("recordBookTournament"));
+  assert(source.includes("melanieArtworkPhase"));
+  for (const example of ["The Ninja's Daughter", "Burn-In", "The Butterfly Collector", "The Jeweller"]) {
+    assert(!source.includes(example), `approved artwork example content must not be hard-coded: ${example}`);
+  }
   assert(!source.includes("createMelanieCoverArt"));
 });
 
@@ -67,13 +71,21 @@ test("authorized visual crops are local, optimized, and do not ship whole-screen
   const assetDirectory = path.join(process.cwd(), "assets", "games", "melanies-game");
   const assets = fs.readdirSync(assetDirectory).sort();
   assert.deepEqual(assets, [
+    "challenger-left.webp",
+    "challenger-right.webp",
     "entry-left.webp",
     "entry-right.webp",
     "library-left.webp",
     "library-right.webp",
+    "opening-left.webp",
+    "opening-right.webp",
     "portal-library-left.webp",
     "portal-library-right.webp",
     "portal-melanie.webp",
+    "ranking-left.webp",
+    "ranking-right.webp",
+    "reveal-left.webp",
+    "reveal-right.webp",
   ]);
   assert(assets.every((asset) => fs.statSync(path.join(assetDirectory, asset)).size < 80_000));
 });

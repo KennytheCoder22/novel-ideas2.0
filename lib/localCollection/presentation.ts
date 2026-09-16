@@ -23,6 +23,7 @@ export function adaptLocalCollectionSourceRecord(
     queryText?: string;
     facets?: string[];
     tieBreakOrder?: number;
+    sourceFormat?: "csv" | "marc21";
   } = {},
 ): Record<string, unknown> {
   const queryText = options.queryText || "local collection";
@@ -32,6 +33,7 @@ export function adaptLocalCollectionSourceRecord(
     title: record.title,
     authors: record.author ? [record.author] : [],
     description: record.description,
+    descriptionSource: options.sourceFormat === "marc21" ? "marc520" : "localDescription",
     publicationYear: record.publicationYear,
     formats: ["book"],
     genres: [record.shelvingLocation, record.audience].filter(Boolean),

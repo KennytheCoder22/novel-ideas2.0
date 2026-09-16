@@ -71,7 +71,7 @@ import { UnwrittenMapBooks, useUnwrittenMapBooks } from "../../features/unwritte
 import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
 import { adaptUnwrittenMapChoiceToSignal, UNWRITTEN_MAP_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
 import { unwrittenMapMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
-import { buildGameRouteSourceParams, parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
+import { buildGamesPortalRouteParams, gameProgressScopeForRoute, parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 import {
   UNWRITTEN_MAP_TOKENS,
   UnwrittenMapEncounterTemplate,
@@ -424,9 +424,9 @@ function DPad(props: {
 function GameHeader({ save, onLeave, leaving }: { save: UnwrittenMapSaveV2; onLeave: () => void; leaving: boolean }) {
   return (
     <View style={styles.header}>
-      <TouchableOpacity style={[styles.headerButton, leaving && styles.buttonDisabled]} disabled={leaving} onPress={onLeave} accessibilityRole="button" accessibilityLabel="Save and leave The Unwritten Map">
+      <TouchableOpacity style={[styles.headerButton, leaving && styles.buttonDisabled]} disabled={leaving} onPress={onLeave} accessibilityRole="button" accessibilityLabel="Back to Games">
         <MaterialCommunityIcons name="arrow-left" size={15} color={PARCHMENT} />
-        <Text style={styles.headerButtonText}>{leaving ? "SAVING..." : "EXIT"}</Text>
+        <Text style={styles.headerButtonText}>{leaving ? "SAVING..." : "BACK TO GAMES"}</Text>
       </TouchableOpacity>
       <View style={styles.headerTitleWrap}>
         <Text style={styles.headerKicker}>A CARTOGRAPHER&apos;S TALE</Text>
@@ -438,6 +438,21 @@ function GameHeader({ save, onLeave, leaving }: { save: UnwrittenMapSaveV2; onLe
         <Text style={styles.headerProgressLabel}>MARKS</Text>
       </View>
     </View>
+  );
+}
+
+function FloatingBackToGames({ onPress, leaving }: { onPress: () => void; leaving: boolean }) {
+  return (
+    <TouchableOpacity
+      style={[styles.floatingBackButton, leaving && styles.buttonDisabled]}
+      disabled={leaving}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Back to Games"
+    >
+      <MaterialCommunityIcons name="arrow-left" size={15} color={PARCHMENT} />
+      <Text style={styles.headerButtonText}>{leaving ? "SAVING..." : "BACK TO GAMES"}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -722,18 +737,18 @@ function CompleteScreen(props: {
       {props.completionPending ? (
         <TouchableOpacity style={[styles.textButton, props.busy && styles.buttonDisabled]} disabled={props.busy} onPress={props.onRestart} accessibilityRole="button"><Text style={styles.textButtonText}>DRAW A NEW MAP</Text></TouchableOpacity>
       ) : null}
-      <TouchableOpacity style={[styles.textButton, props.busy && styles.buttonDisabled]} disabled={props.busy} onPress={props.onLeave} accessibilityRole="button"><Text style={styles.textButtonText}>{props.leaving ? "Saving exit note..." : "Return to Games"}</Text></TouchableOpacity>
+      <TouchableOpacity style={[styles.textButton, props.busy && styles.buttonDisabled]} disabled={props.busy} onPress={props.onLeave} accessibilityRole="button"><Text style={styles.textButtonText}>{props.leaving ? "Saving exit note..." : "Back to Games"}</Text></TouchableOpacity>
     </View>
   );
 }
 
 function UnwrittenMapRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string }>();
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string; readingAgeBase?: string }>();
   const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const { width, height } = useWindowDimensions();
   const reduceMotion = usePrefersReducedMotion();
   const originalScopeKey = useMemo(() => storageScopeKey(params.libraryId, params.playerId), [params.libraryId, params.playerId]);
-  const scopeKey = params.readingAgeOverride === "1" ? `${originalScopeKey}:age:${routeConfig.ageBand}` : originalScopeKey;
+  const scopeKey = gameProgressScopeForRoute(originalScopeKey, routeConfig.ageBand, params);
   const saveKey = useMemo(() => scopedSaveKey(scopeKey), [scopeKey]);
   const bookMemory = useUnwrittenMapBooks(`${scopeKey}:${routeConfig.ageBand}`);
   const libraryScopeId = useMemo(() => originalScopeKey.slice(0, originalScopeKey.lastIndexOf("-")), [originalScopeKey]);
@@ -952,7 +967,7 @@ function UnwrittenMapRoute() {
       }
     })();
     return () => { cancelled = true; };
-  }, [libraryScopeId, params.libraryId, params.playerId, saveKey, scopeKey, updateSaveState]);
+  }, [libraryScopeId, params.libraryId, params.playerId, params.readingAgeOverride, saveKey, scopeKey, updateSaveState]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -1399,21 +1414,17 @@ function UnwrittenMapRoute() {
       router.replace({
         pathname: "/games",
         params: {
-          ...(params.playerId ? { playerId: params.playerId } : {}),
-          ...(params.libraryId ? { libraryId: params.libraryId } : {}),
-          ageBand: routeConfig.ageBand,
-          ...buildGameRouteSourceParams(routeConfig.sourceFlags),
-          ...(params.readingAgeOverride === "1" ? { readingAgeOverride: "1" } : {}),
+          ...buildGamesPortalRouteParams(routeConfig, params),
         },
       } as never);
     } catch {
-      setStorageError("The exit note could not be queued locally. Stay on this map and retry Exit.");
+      setStorageError("The exit note could not be queued locally. Stay on this map and retry Back to Games.");
     } finally {
       lifecyclePendingRef.current = false;
       setLifecyclePending(false);
       releaseOperation();
     }
-  }, [acquireOperation, clearMovementState, params.libraryId, params.playerId, queueSaveCommit, releaseOperation, resolvePendingCompletionForTerminalAction, routeConfig.ageBand, routeConfig.sourceFlags]);
+  }, [acquireOperation, clearMovementState, params, queueSaveCommit, releaseOperation, resolvePendingCompletionForTerminalAction, routeConfig]);
 
   const resetJourney = useCallback(() => {
     if (!acquireOperation()) return;
@@ -1509,12 +1520,13 @@ function UnwrittenMapRoute() {
   </>);
 
   if (!save) {
-    return <SafeAreaView style={styles.safe}><CartographyBackdrop page="entry" /><View style={styles.loading}><ActivityIndicator color={GOLD} /><Text style={styles.loadingText}>{storageError || "UNFOLDING MAP..."}</Text></View></SafeAreaView>;
+    return <SafeAreaView style={styles.safe}><CartographyBackdrop page="entry" /><FloatingBackToGames onPress={() => void leaveJourney()} leaving={operationPending} /><View style={styles.loading}><ActivityIndicator color={GOLD} /><Text style={styles.loadingText}>{storageError || "UNFOLDING MAP..."}</Text></View></SafeAreaView>;
   }
 
   if (phase === "title") {
     return (
       <SafeAreaView style={styles.safe}>
+        <FloatingBackToGames onPress={() => void leaveJourney()} leaving={operationPending} />
         <TitleScreen
           hasProgress={loadedExistingProgress}
           beginning={operationPending}
@@ -1532,6 +1544,7 @@ function UnwrittenMapRoute() {
     return (
       <SafeAreaView style={styles.safe}>
         <CartographyBackdrop page="journal" />
+        <FloatingBackToGames onPress={() => void leaveJourney()} leaving={operationPending} />
         <ScrollView contentContainerStyle={styles.completeScroll}>
           <CompleteScreen
             save={save}
@@ -1654,8 +1667,9 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, zIndex: 2 },
   scrollContent: { flexGrow: 1, alignItems: "center", paddingHorizontal: 14, paddingBottom: 36 },
   header: { zIndex: 4, minHeight: 64, paddingHorizontal: 16, paddingVertical: 7, borderBottomWidth: 2, borderBottomColor: "#80612e", backgroundColor: "rgba(24,42,30,0.98)", flexDirection: "row", alignItems: "center", shadowColor: "#000", shadowOpacity: 0.55, shadowRadius: 12 },
-  headerButton: { minWidth: 70, minHeight: 44, paddingHorizontal: 10, borderWidth: 1.5, borderColor: "#d6be7b", borderRadius: 3, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: "#22362a" },
+  headerButton: { minWidth: 122, minHeight: 44, paddingHorizontal: 10, borderWidth: 1.5, borderColor: "#d6be7b", borderRadius: 3, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: "#22362a" },
   headerButtonText: { color: PARCHMENT, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  floatingBackButton: { position: "absolute", top: 12, left: 12, zIndex: 10, minWidth: 122, minHeight: 44, paddingHorizontal: 10, borderWidth: 1.5, borderColor: "#d6be7b", borderRadius: 3, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(34,54,42,0.97)" },
   headerTitleWrap: { flex: 1, alignItems: "center", paddingHorizontal: 6 },
   headerKicker: { color: "#bfa565", fontFamily: "Georgia", fontSize: 7, fontWeight: "800", letterSpacing: 1.8 },
   headerTitle: { color: PARCHMENT, fontFamily: "Georgia", fontSize: 18, lineHeight: 22, fontWeight: "900", letterSpacing: 1.1, textAlign: "center" },
@@ -1804,4 +1818,9 @@ const styles = StyleSheet.create({
   smallButtonText: { color: PARCHMENT, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
 });
 
-export default withGameReadingAge(UnwrittenMapRoute);
+export default withGameReadingAge(UnwrittenMapRoute, {
+  accentColor: "#d6be7b",
+  borderColor: "#80612e",
+  textColor: "#f7e7b0",
+  selectedBackgroundColor: "rgba(214, 190, 123, 0.14)",
+});

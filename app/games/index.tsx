@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import {
-  buildGameRouteSourceParams,
+  buildGamesPortalRouteParams,
   parseGameRouteConfig,
   type GameRouteParams,
 } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
@@ -227,7 +227,7 @@ function GameCard({
 }
 
 export default function RecommendationGamesRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string }>();
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string; readingAgeBase?: string }>();
   const routeConfig = parseGameRouteConfig(params as GameRouteParams);
   const { width } = useWindowDimensions();
   const showcase = width >= 1100;
@@ -235,15 +235,12 @@ export default function RecommendationGamesRoute() {
 
   function launchGame(game: GameCardConfig) {
     const forwardedParams = {
-      playerId: routeConfig.playerId,
-      libraryId: routeConfig.libraryId,
+      ...buildGamesPortalRouteParams(routeConfig, params),
       // Forward the raw ageBand string unchanged (not the normalized AgeBandV2 form) so each
       // game route's own age-band vocabulary (e.g. Media Mania's plural "adults") keeps working
       // exactly as before; every route separately derives the shared AgeBandV2 via
       // `parseGameRouteConfig` from this same raw param.
       ageBand: String(params.ageBand || "teens"),
-      ...buildGameRouteSourceParams(routeConfig.sourceFlags),
-          ...(params.readingAgeOverride === "1" ? { readingAgeOverride: "1" } : {}),
     };
     router.push({ pathname: game.route, params: forwardedParams } as any);
   }

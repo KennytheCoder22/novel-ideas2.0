@@ -66,7 +66,7 @@ import { GameRecommendationReward } from "../../components/GameRecommendationRew
 import { useGameRecommendationMilestone } from "../../hooks/useGameRecommendationMilestone";
 import { adaptLastBookshopEncounterToSignals, LAST_BOOKSHOP_EVIDENCE_MODE } from "../../lib/recommendationGames/gameRecommendationEvidenceAdapters";
 import { lastBookshopMilestone } from "../../lib/recommendationGames/gameRecommendationMilestones";
-import { parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
+import { buildGamesPortalRouteParams, parseGameRouteConfig, type GameRouteParams } from "../../lib/recommendationGames/gameRecommendationRouteConfig";
 
 type GamePhase = "title" | "arrival" | "shelves" | "counter" | "result" | "night_complete" | "ending";
 
@@ -140,8 +140,8 @@ function ShopHeader({
 }) {
   return (
     <View style={styles.header}>
-      <TouchableOpacity style={styles.headerButton} onPress={onExit} accessibilityRole="button" accessibilityLabel="Leave the bookshop">
-        <Text style={styles.headerButtonText}>Leave</Text>
+      <TouchableOpacity style={styles.headerButton} onPress={onExit} accessibilityRole="button" accessibilityLabel="Back to Games">
+        <Text style={styles.headerButtonText}>Back to Games</Text>
       </TouchableOpacity>
       <View style={styles.headerTitleWrap}>
         <Text style={styles.headerKicker}>OPEN UNTIL DAWN</Text>
@@ -155,9 +155,23 @@ function ShopHeader({
   );
 }
 
-function AbstractTitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgress: boolean }) {
+function FloatingBackToGames({ onPress }: { onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      style={styles.floatingBackButton}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Back to Games"
+    >
+      <Text style={styles.headerButtonText}>Back to Games</Text>
+    </TouchableOpacity>
+  );
+}
+
+function AbstractTitleScreen({ onBegin, onExit, hasProgress }: { onBegin: () => void; onExit: () => void; hasProgress: boolean }) {
   return (
     <View style={styles.titleScreen}>
+      <FloatingBackToGames onPress={onExit} />
       <View style={styles.moon}>
         <View style={styles.moonCutout} />
       </View>
@@ -191,7 +205,7 @@ function AbstractTitleScreen({ onBegin, hasProgress }: { onBegin: () => void; ha
   );
 }
 
-function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgress: boolean }) {
+function TitleScreen({ onBegin, onExit, hasProgress }: { onBegin: () => void; onExit: () => void; hasProgress: boolean }) {
   const { width, height } = useWindowDimensions();
   const [artworkFailed, setArtworkFailed] = useState(false);
   const [buttonFocused, setButtonFocused] = useState(false);
@@ -200,7 +214,7 @@ function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgres
   const buttonLabel = hasProgress ? "Continue your journey" : "Turn the Key";
   const showVisibleButton = layout.mode === "mobile" || hasProgress;
 
-  if (artworkFailed) return <AbstractTitleScreen onBegin={onBegin} hasProgress={hasProgress} />;
+  if (artworkFailed) return <AbstractTitleScreen onBegin={onBegin} onExit={onExit} hasProgress={hasProgress} />;
 
   const artwork = (
     <View
@@ -258,25 +272,29 @@ function TitleScreen({ onBegin, hasProgress }: { onBegin: () => void; hasProgres
 
   if (layout.mode === "mobile") {
     return (
-      <ScrollView
-        style={styles.titleArtworkMobileScroll}
-        contentContainerStyle={styles.titleArtworkMobileContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {artwork}
-        <View style={styles.titleArtworkMobileCopy}>
-          <Text accessibilityRole="header" style={styles.titleArtworkMobileTitle}>The Last Bookshop</Text>
-          <Text style={styles.titleArtworkMobileInstructions}>
-            Listen closely. Choose three stories. Send each midnight visitor home with the one they need.
-          </Text>
-          <Text style={styles.titleArtworkMobileHint}>The shop remembers every kindness.</Text>
-        </View>
-      </ScrollView>
+      <View style={styles.titleArtworkMobileContainer}>
+        <FloatingBackToGames onPress={onExit} />
+        <ScrollView
+          style={styles.titleArtworkMobileScroll}
+          contentContainerStyle={styles.titleArtworkMobileContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {artwork}
+          <View style={styles.titleArtworkMobileCopy}>
+            <Text accessibilityRole="header" style={styles.titleArtworkMobileTitle}>The Last Bookshop</Text>
+            <Text style={styles.titleArtworkMobileInstructions}>
+              Listen closely. Choose three stories. Send each midnight visitor home with the one they need.
+            </Text>
+            <Text style={styles.titleArtworkMobileHint}>The shop remembers every kindness.</Text>
+          </View>
+        </ScrollView>
+      </View>
     );
   }
 
   return (
     <View style={styles.titleArtworkDesktop}>
+      <FloatingBackToGames onPress={onExit} />
       {artwork}
       <View style={styles.visuallyHidden} pointerEvents="none">
         <Text accessibilityRole="header">The Last Bookshop</Text>
@@ -877,7 +895,7 @@ function NightCompleteScreen({
   );
 }
 
-function EndingScreen({ progress, onRestart }: { progress: LastBookshopProgressV1; onRestart: () => void }) {
+function EndingScreen({ progress, onRestart, onExit }: { progress: LastBookshopProgressV1; onRestart: () => void; onExit: () => void }) {
   return (
     <View style={styles.titleScreen}>
       <View style={styles.moon}>
@@ -896,15 +914,15 @@ function EndingScreen({ progress, onRestart }: { progress: LastBookshopProgressV
       <TouchableOpacity style={styles.beginButton} onPress={onRestart} accessibilityRole="button">
         <Text style={styles.beginButtonText}>Begin Another Story</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.textButton} onPress={() => router.back()} accessibilityRole="button">
-        <Text style={styles.textButtonText}>Leave the shop at dawn</Text>
+      <TouchableOpacity style={styles.textButton} onPress={onExit} accessibilityRole="button" accessibilityLabel="Back to Games">
+        <Text style={styles.textButtonText}>Back to Games</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 function LastBookshopRoute() {
-  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string }>();
+  const params = useLocalSearchParams<{ playerId?: string; libraryId?: string; ageBand?: string; readingAgeOverride?: string; readingAgeBase?: string }>();
   const routeConfig = useMemo(() => parseGameRouteConfig(params as GameRouteParams), [params]);
   const progressScopeKey = useMemo(() => lastBookshopProgressScopeKey({
     playerId: routeConfig.playerId,
@@ -933,6 +951,12 @@ function LastBookshopRoute() {
     localCollectionOnly: routeConfig.localCollectionOnly,
     evidenceMode: LAST_BOOKSHOP_EVIDENCE_MODE,
   });
+  const exit = useCallback(() => {
+    router.push({
+      pathname: "/games",
+      params: buildGamesPortalRouteParams(routeConfig, params),
+    });
+  }, [params, routeConfig]);
 
   const persistProgress = useCallback(async (next: LastBookshopProgressV1) => {
     await gameStorage.setItem(scopedLastBookshopProgressKey(progressScopeKey), JSON.stringify(next));
@@ -1102,6 +1126,7 @@ function LastBookshopRoute() {
   if (!progress) {
     return (
       <SafeAreaView style={styles.safe}>
+        <FloatingBackToGames onPress={exit} />
         <View style={styles.loading}><ActivityIndicator color="#e9c46a" size="large" /></View>
       </SafeAreaView>
     );
@@ -1110,7 +1135,7 @@ function LastBookshopRoute() {
   if (phase === "title") {
     return (
       <SafeAreaView style={styles.safe}>
-        <TitleScreen onBegin={beginEncounter} hasProgress={loadedExistingProgress} />
+        <TitleScreen onBegin={beginEncounter} onExit={exit} hasProgress={loadedExistingProgress} />
       </SafeAreaView>
     );
   }
@@ -1119,7 +1144,7 @@ function LastBookshopRoute() {
     return (
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <EndingScreen progress={progress} onRestart={restart} />
+          <EndingScreen progress={progress} onRestart={restart} onExit={exit} />
         </ScrollView>
       </SafeAreaView>
     );
@@ -1136,7 +1161,7 @@ function LastBookshopRoute() {
               ? progress.night - 1
               : progress.night
         }
-        onExit={() => router.back()}
+        onExit={exit}
       />
       <ScrollView
         style={styles.scroll}
@@ -1209,8 +1234,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerButton: {
-    minWidth: 64,
+    minWidth: 116,
     minHeight: 44,
+    paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: "#725945",
     borderRadius: 4,
@@ -1218,6 +1244,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerButtonText: { color: "#d9c9ad", fontSize: 13, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
+  floatingBackButton: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    zIndex: 20,
+    minWidth: 116,
+    minHeight: 44,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#b28b55",
+    borderRadius: 4,
+    backgroundColor: "rgba(24,18,30,0.96)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   headerTitleWrap: { flex: 1, alignItems: "center", paddingHorizontal: 8 },
   headerKicker: { color: "#b28b55", fontSize: 9, letterSpacing: 2.2, fontWeight: "800" },
   headerTitle: { color: "#f1dfbd", fontSize: 18, fontWeight: "900", letterSpacing: 0.5 },
@@ -1238,6 +1279,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
+  titleArtworkMobileContainer: { flex: 1, backgroundColor: "#0d0a12" },
   titleArtworkMobileScroll: { flex: 1, backgroundColor: "#0d0a12" },
   titleArtworkMobileContent: { flexGrow: 1, alignItems: "center", justifyContent: "flex-start", paddingBottom: 24 },
   titleArtworkStage: { position: "relative", alignSelf: "center", backgroundColor: "#0d0a12", overflow: "hidden" },
@@ -1510,4 +1552,9 @@ const styles = StyleSheet.create({
   textButtonText: { color: "#8f7d89", fontSize: 13, textDecorationLine: "underline" },
 });
 
-export default withGameReadingAge(LastBookshopRoute);
+export default withGameReadingAge(LastBookshopRoute, {
+  accentColor: "#d9a45f",
+  borderColor: "#725945",
+  textColor: "#d9c9ad",
+  selectedBackgroundColor: "rgba(217, 164, 95, 0.14)",
+});
