@@ -119,6 +119,18 @@ async function main() {
   assert(!appSource.includes("testID=\"last-bookshop-stage-hotspot\""), "stage references must not become screenshot-shaped controls");
   checks.push("continuous_stage_artwork");
 
+  assert(appSource.includes("GameReadingAgeControl theme={LAST_BOOKSHOP_READING_AGE_THEME}"),
+    "the age selector must render inside the bookshop header");
+  assert(appSource.includes("}, { inline: true });"),
+    "the shared wrapper must not render a separate age-selector strip");
+  assert(appSource.includes("<ShopHeader progress={progress} displayNight={progress.night}"),
+    "the title scene must use the unified bookshop header");
+  assert(appSource.includes('<ShopHeader progress={progress} displayNight={3}'),
+    "the ending scene must retain the unified bookshop header");
+  assert(!appSource.includes("FloatingBackToGames"),
+    "the unified header must replace floating and two-tier navigation");
+  checks.push("unified_bookshop_header");
+
   const expectedPortraits = {
     mara: "mara-venn.webp",
     orin: "orin-bell.webp",
