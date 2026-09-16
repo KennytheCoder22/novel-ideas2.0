@@ -45,13 +45,15 @@ export type GameRecommendationRewardProps = {
   book: GameRecommendationRewardBook;
   onRespond: (response: GameRecommendationResponse, detail?: GameRecommendationDetail) => void;
   detailedFeedback?: boolean;
+  theme?: "default" | "media-mania";
 };
 
-export function GameRecommendationReward({ visible, cadence, gameLabel, book, onRespond, detailedFeedback = false }: GameRecommendationRewardProps) {
+export function GameRecommendationReward({ visible, cadence, gameLabel, book, onRespond, detailedFeedback = false, theme = "default" }: GameRecommendationRewardProps) {
   const [failedCover, setFailedCover] = useState<string | null>(null);
   const [followup, setFollowup] = useState<GameRecommendationResponse | null>(null);
   const { width } = useWindowDimensions();
   const layout = computeGameRecommendationRewardLayout(width);
+  const mediaManiaTheme = theme === "media-mania";
 
   if (!visible) return null;
 
@@ -74,7 +76,7 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
       onRequestClose={() => undefined}
     >
       <View
-        style={{ flex: 1, backgroundColor: "rgba(5,8,15,0.82)", alignItems: "center", justifyContent: "center", padding: 16 }}
+        style={{ flex: 1, backgroundColor: mediaManiaTheme ? "rgba(2,8,18,0.9)" : "rgba(5,8,15,0.82)", alignItems: "center", justifyContent: "center", padding: 16 }}
         testID="game-recommendation-reward-backdrop"
       >
         <ScrollView
@@ -87,16 +89,20 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
             style={{
               width: "100%",
               borderRadius: 18,
-              borderWidth: 1,
-              borderColor: "#3a3350",
-              backgroundColor: "#171226",
+              borderWidth: mediaManiaTheme ? 2 : 1,
+              borderColor: mediaManiaTheme ? "#d8ad53" : "#3a3350",
+              backgroundColor: mediaManiaTheme ? "#07172b" : "#171226",
               padding: 20,
               gap: 14,
+              shadowColor: mediaManiaTheme ? "#f0a62e" : "#000",
+              shadowOpacity: mediaManiaTheme ? 0.5 : 0,
+              shadowRadius: mediaManiaTheme ? 20 : 0,
+              shadowOffset: { width: 0, height: 0 },
             }}
           >
             <Text
               accessibilityRole="header"
-              style={{ color: "#e7c1ff", fontSize: 13, fontWeight: "900", letterSpacing: 1.6, textTransform: "uppercase" }}
+              style={{ color: mediaManiaTheme ? "#ffd56a" : "#e7c1ff", fontSize: 13, fontWeight: "900", letterSpacing: 1.6, textTransform: "uppercase" }}
             >
               {eyebrow}
             </Text>
@@ -177,8 +183,8 @@ export function GameRecommendationReward({ visible, cadence, gameLabel, book, on
                     paddingVertical: 11,
                     borderRadius: 10,
                     borderWidth: 1,
-                    borderColor: "#4a4166",
-                    backgroundColor: pressed ? "#332b52" : "#241d3a",
+                    borderColor: mediaManiaTheme ? "#4dbda8" : "#4a4166",
+                    backgroundColor: pressed ? (mediaManiaTheme ? "#15594e" : "#332b52") : (mediaManiaTheme ? "#0a2d35" : "#241d3a"),
                     alignItems: "center",
                     justifyContent: "center",
                   })}
