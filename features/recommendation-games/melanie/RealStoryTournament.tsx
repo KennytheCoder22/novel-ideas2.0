@@ -1,3 +1,4 @@
+import { GameReadingAgeControl } from "../../../components/GameReadingAge";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
@@ -6,43 +7,14 @@ import { runRecommenderV2 } from "../../../app/recommender-v2/engine";
 import { useGameRecommendationMilestone } from "../../../hooks/useGameRecommendationMilestone";
 import { parseGameRouteConfig, gameRouteConfigScope, gameRouteSourceFlagsToEnabledSources, buildGamesPortalRouteParams, type GameRouteParams } from "../../../lib/recommendationGames/gameRecommendationRouteConfig";
 import { createMelaniesGameStorageInstanceId } from "../../../lib/recommendationGames/melaniesGamePersistence";
-import { melanieArtworkPhase, type MelanieArtworkPhase } from "../../../lib/recommendationGames/melanieArtwork";
+import { melanieArtworkPhase } from "../../../lib/recommendationGames/melanieArtwork";
 import { catalogStoriesWithDiagnostics, storyRoundCount, startStoryTournament, finishStoryRound, restoreStoryTournament, storySignals, type StoryBook, type StoryTournament } from "../../../lib/recommendationGames/melaniesRealBooks";
 
-const MELANIE_ARTWORK: Record<MelanieArtworkPhase, { left: number; right: number }> = {
-  opening: {
-    left: require("../../../assets/games/melanies-game/opening-left.webp"),
-    right: require("../../../assets/games/melanies-game/opening-right.webp"),
-  },
-  ranking: {
-    left: require("../../../assets/games/melanies-game/ranking-left.webp"),
-    right: require("../../../assets/games/melanies-game/ranking-right.webp"),
-  },
-  challenger: {
-    left: require("../../../assets/games/melanies-game/challenger-left.webp"),
-    right: require("../../../assets/games/melanies-game/challenger-right.webp"),
-  },
-  reveal: {
-    left: require("../../../assets/games/melanies-game/reveal-left.webp"),
-    right: require("../../../assets/games/melanies-game/reveal-right.webp"),
-  },
-};
-
-function MelanieBackdrop({ phase, compact }: { phase: MelanieArtworkPhase; compact: boolean }) {
-  const artwork = MELANIE_ARTWORK[phase];
-  return (
-    <View
-      pointerEvents="none"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={styles.backdrop}
-    >
-      <Image source={artwork.left} resizeMode="cover" style={[styles.edgeArtwork, styles.edgeArtworkLeft, compact && styles.edgeArtworkMobile]} />
-      {!compact ? <Image source={artwork.right} resizeMode="cover" style={[styles.edgeArtwork, styles.edgeArtworkRight]} /> : null}
-      <View style={[styles.centerWash, compact && styles.centerWashMobile]} />
-      <View style={styles.vignette} />
-    </View>
-  );
+function MelanieBackdrop({ compact }: { compact: boolean }) {
+  return <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.backdrop}>
+    <Image source={require("../../../assets/games/melanies-game/library-scene.webp")} resizeMode="cover" style={[StyleSheet.absoluteFillObject, {width:"100%",height:"100%"}]} />
+    <View style={[styles.vignette, compact && styles.mobileWash]} />
+  </View>;
 }
 
 function Cover({ book, hidden = false }: { book: StoryBook; hidden?: boolean }) {
@@ -53,8 +25,8 @@ function Cover({ book, hidden = false }: { book: StoryBook; hidden?: boolean }) 
     {!hidden && (failed || !book.coverUrl) ? <Text style={styles.placeholder}>Cover unavailable</Text> : null}
   </View>;
 }
-function Action({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
-  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={[styles.action, disabled && { opacity: 0.45 }]}><Text style={styles.actionText}>{label}</Text></Pressable>;
+function Action({ label, onPress, disabled = false, outline = false }: { label: string; onPress: () => void; disabled?: boolean; outline?: boolean }) {
+  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={[styles.action, outline && styles.outlineAction, disabled && { opacity: 0.45 }]}><Text style={[styles.actionText, outline && styles.outlineText]}>{label}</Text></Pressable>;
 }
 function reportDescriptionDiagnostics(
   ageBand: string,
@@ -77,6 +49,7 @@ export default function RealStoryTournament() {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [privacy, setPrivacy] = useState(false);
+  const [expandedStories, setExpandedStories] = useState<string[]>([]);
   const lock = useRef(false);
   const scroll = useRef<ScrollView>(null);
   const active = useRef(storageKey);
@@ -189,44 +162,47 @@ export default function RealStoryTournament() {
   const exit = () => router.push({ pathname:"/games", params:buildGamesPortalRouteParams(config, params) });
   const artworkPhase = melanieArtworkPhase(visibleState?.phase || null, visibleState?.rounds.length || 0);
   const compact = width < 720;
-  const openingGrid = artworkPhase === "opening" && width >= 900;
-  const challengerGrid = artworkPhase === "challenger" && width >= 820;
+  const openingGrid = artworkPhase === "opening" && width >= 1000;
+  const openingPair = artworkPhase === "opening" && width >= 620 && width < 1000;
   return <View style={styles.page}>
-    <MelanieBackdrop phase={artworkPhase} compact={compact} />
+    <MelanieBackdrop compact={compact} />
+    <View style={[styles.toolbar, compact && styles.toolbarCompact]}>
+      <Action label="← Back to games" onPress={exit} outline />
+      <GameReadingAgeControl />
+      <Action label="What your choices tell us" onPress={() => setPrivacy(!privacy)} outline />
+    </View>
     <ScrollView ref={scroll} style={styles.scroll} contentContainerStyle={[styles.content, compact && styles.contentCompact]} keyboardShouldPersistTaps="handled">
-      <View style={styles.top}><Action label="Back to games" onPress={exit} /><Action label="What your choices tell us" onPress={() => setPrivacy(!privacy)} /></View>
       <View style={styles.hero}>
-        <Text style={styles.eyebrow}>MELANIE’S GAME</Text>
-        <Text accessibilityRole="header" style={[styles.title, compact && styles.titleCompact]}>Let the story win.</Text>
-        <Text style={styles.intro}>Real books. Hidden identities. Follow the stories that make you want to read on.</Text>
+        <Text style={styles.eyebrow}>── ◇  MELANIE’S GAME  ◇ ──</Text>
+        <Text accessibilityRole="header" style={[styles.title, compact && styles.titleCompact]}>{visibleState?.phase === "rank" ? "Put your favorite first." : visibleState?.phase === "reveal" ? "The books behind your favorite stories." : "Let the story win."}</Text>
+        <Text style={styles.intro}>{visibleState?.phase === "rank" ? "Rank the descriptions from most to least appealing." : "Real books. Hidden identities."}</Text>
       </View>
       {privacy ? <Text style={styles.notice}>Your selections and rankings help NovelIdeas learn which story themes you prefer. Unselected stories count only as weaker choices in this comparison. These choices do not mean you have read or disliked a book. Titles and authors stay hidden until the reveal; cover artwork is deliberately blurred.</Text> : null}
       {loading ? <View style={styles.notice}><ActivityIndicator color="#eed59a" /><Text style={styles.copy}>Finding real stories{config.localCollectionOnly ? " in your library’s collection" : " across your enabled book sources"}…</Text></View> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {!loading && !visibleState ? <Action label="Retry loading stories" onPress={() => setAttempt(a=>a+1)} /> : null}
-      {visibleState && !loading ? <View style={styles.stage}>
+      {visibleState && !loading ? <View style={[styles.stage, artworkPhase !== "opening" && styles.narrowStage]}>
         <Text style={styles.eyebrow}>{visibleState.phase === "reveal" ? "THE REVEAL" : `ROUND ${visibleState.rounds.length+1} OF ${storyRoundCount(visibleState.pool.length)} · ${visibleState.phase === "choose" ? "CHOOSE" : "RANK"}`}</Text>
         {visibleState.phase === "choose" ? <>
-          <Text accessibilityRole="header" style={styles.heading}>Which three would you read?</Text>
-          <Text style={styles.copy}>{visibleState.rounds.length ? "Your three survivors meet new challengers. Choose on the premise alone." : "Pick three of these story descriptions. Every one belongs to a real book."}</Text>
+          <View style={styles.parchmentHeading}><Text accessibilityRole="header" style={styles.parchmentTitle}>Which three would you read?</Text>
+          <Text style={styles.parchmentCopy}>{visibleState.rounds.length ? "Your three survivors meet new challengers. Choose on the premise alone." : "Pick three of these story descriptions. Every one belongs to a real book."}</Text></View>
           <Text accessibilityLiveRegion="polite" style={styles.counter}>{visibleState.selected.length} of 3 selected</Text>
           <View style={styles.grid}>{visibleState.offered.map((id,index) => {
             const book=books.get(id)!; const selected=visibleState.selected.includes(id);
-            return <Pressable key={id} disabled={busy || (!selected && visibleState.selected.length===3)} onPress={()=>toggle(id)} accessibilityRole="button" accessibilityState={{selected}} accessibilityLabel={`Story ${index+1}. ${book.synopsis}`} style={[styles.card, (openingGrid || challengerGrid) && styles.choiceCardWide, selected && styles.selected]}>
-              <Cover book={book} hidden /><View style={styles.cardText}><Text style={styles.cardLabel}>STORY {index+1}{selected ? " · SELECTED" : ""}</Text><Text style={styles.synopsis}>{book.synopsis}</Text></View>
-            </Pressable>;
+            return <View key={id} style={[styles.card, {flexDirection:"column"}, artworkPhase === "opening" && styles.parchmentCard, openingGrid && styles.choiceCardWide, openingPair && styles.choiceCardPair, selected && styles.selected]}>
+              <View style={styles.choiceBody}><Cover book={book} hidden /><View style={styles.cardText}><Text style={[styles.cardLabel, artworkPhase === "opening" && styles.inkLabel]}>STORY {index+1}</Text><Text numberOfLines={expandedStories.includes(id) ? undefined : 5} style={[styles.synopsis, artworkPhase === "opening" && styles.inkSynopsis]}>{book.synopsis}</Text>{book.synopsis.length > 100 ? <Pressable accessibilityRole="button" accessibilityLabel={`${expandedStories.includes(id) ? "Collapse" : "Read full"} synopsis for story ${index+1}`} onPress={event=>{event.stopPropagation();setExpandedStories(current=>current.includes(id)?current.filter(value=>value!==id):[...current,id]);}}><Text style={[styles.readMore, artworkPhase === "opening" && styles.inkLabel]}>{expandedStories.includes(id) ? "Show less" : "Read full synopsis"}</Text></Pressable> : null}</View></View>
+              <Pressable disabled={busy} onPress={()=>toggle(id)} accessibilityRole="checkbox" accessibilityState={{checked:selected}} accessibilityLabel={`Story ${index+1}. ${book.synopsis}`} style={[styles.selectionFooter, artworkPhase === "opening" && styles.parchmentFooter]}><Text style={[styles.selectionText, artworkPhase === "opening" && styles.inkLabel]}>{selected ? "☑  Story selected" : "□  Select this story"}</Text></Pressable>
+            </View>;
           })}</View>
           <View style={styles.actions}><Action label="Rank my three choices" disabled={busy || visibleState.selected.length!==3} onPress={()=>void commit({...visibleState,phase:"rank"})} /></View>
         </> : visibleState.phase === "rank" ? <>
-          <Text accessibilityRole="header" style={styles.heading}>Put your favorite first.</Text>
-          <Text style={styles.copy}>Rank the descriptions from most to least appealing.</Text>
-          <View style={styles.grid}>{visibleState.selected.map((id,index)=>{const book=books.get(id)!;return <View key={id} style={styles.card}>
-            <View style={styles.rankBadge}><Text style={styles.rankNumber}>#{index+1}</Text></View><Cover book={book} hidden /><View style={styles.cardText}><Text style={styles.cardLabel}>YOUR #{index+1} · STORY {visibleState.offered.indexOf(id)+1}</Text><Text style={styles.synopsis}>{book.synopsis}</Text>
-            <View style={styles.rankActions}><Action label={`Move rank ${index+1} up`} disabled={busy || index===0} onPress={()=>move(index,-1)} /><Action label={`Move rank ${index+1} down`} disabled={busy || index===2} onPress={()=>move(index,1)} /></View></View>
+
+          <View style={styles.grid}>{visibleState.selected.map((id,index)=>{const book=books.get(id)!;return <View key={id} style={[styles.card, styles.rankCard, compact && styles.rankCardCompact]}>
+            <Cover book={book} hidden /><View style={styles.cardText}><Text style={styles.cardLabel}>YOUR #{index+1} · STORY {visibleState.offered.indexOf(id)+1}</Text><Text style={styles.synopsis}>{book.synopsis}</Text>
+            </View><View style={[styles.rankActions, compact && styles.rankActionsCompact]}><Action label={`Move rank ${index+1} up`} disabled={busy || index===0} onPress={()=>move(index,-1)} /><Action label={`Move rank ${index+1} down`} disabled={busy || index===2} onPress={()=>move(index,1)} /></View>
           </View>})}</View>
           <View style={styles.actions}><Action label={visibleState.rounds.length===storyRoundCount(visibleState.pool.length)-1 ? "Reveal my books" : "Meet the next challengers"} disabled={busy} onPress={()=>void commit(finishStoryRound(visibleState),true)} /><Action label="Change my picks" disabled={busy} onPress={()=>void commit({...visibleState,phase:"choose"})} /></View>
         </> : <>
-          <Text accessibilityRole="header" style={styles.heading}>The books behind your favorite stories.</Text>
           <Text style={styles.copy}>These are the three real books your synopsis choices brought to the top{config.localCollectionOnly ? ", all from your library’s collection" : ""}. Now that their identities are revealed, which would you choose?</Text>
           <View style={styles.grid}>{visibleState.selected.map((id,index)=>{const book=books.get(id)!;return <View key={id} style={[styles.card, styles.revealCard]}>
             <Cover book={book} /><View style={styles.cardText}><Text style={styles.cardLabel}>{index===0 ? "YOUR TOP STORY MATCH" : `YOUR #${index+1} STORY MATCH`}</Text><Text style={styles.bookTitle}>{book.title}</Text><Text style={styles.author}>{book.author}</Text><Text style={styles.synopsis}>{book.description}</Text>
@@ -240,11 +216,21 @@ export default function RealStoryTournament() {
   </View>;
 }
 const styles=StyleSheet.create({
-  page:{flex:1,backgroundColor:"#071b1d"},scroll:{flex:1},content:{width:"100%",maxWidth:980,alignSelf:"center",paddingHorizontal:28,paddingTop:18,paddingBottom:72,gap:18},contentCompact:{paddingHorizontal:14,paddingTop:12},
-  backdrop:{...StyleSheet.absoluteFillObject,overflow:"hidden",backgroundColor:"#071b1d"},edgeArtwork:{position:"absolute",top:0,bottom:0,width:"29%",height:"100%",opacity:0.96},edgeArtworkLeft:{left:0},edgeArtworkRight:{right:0},edgeArtworkMobile:{width:"100%",opacity:0.38},centerWash:{...StyleSheet.absoluteFillObject,left:"20%",right:"20%",backgroundColor:"rgba(7,27,29,0.96)"},centerWashMobile:{left:0,right:0,backgroundColor:"rgba(7,27,29,0.88)"},vignette:{...StyleSheet.absoluteFillObject,backgroundColor:"rgba(0,0,0,0.12)"},
-  top:{flexDirection:"row",flexWrap:"wrap",justifyContent:"space-between",gap:10},hero:{alignItems:"center",gap:8,paddingVertical:10},eyebrow:{color:"#d9bd78",fontWeight:"800",fontSize:12,letterSpacing:2,textAlign:"center"},title:{color:"#fff2d5",fontFamily:"Georgia",fontSize:46,lineHeight:54,fontWeight:"700",textAlign:"center",textShadowColor:"rgba(0,0,0,0.65)",textShadowRadius:8},titleCompact:{fontSize:36,lineHeight:43},intro:{color:"#e0e8df",fontSize:17,lineHeight:26,textAlign:"center",maxWidth:660},heading:{fontSize:28,lineHeight:35,fontFamily:"Georgia",fontWeight:"700",color:"#fff2d5"},bookTitle:{fontSize:25,lineHeight:31,fontFamily:"Georgia",fontWeight:"700",color:"#fff2d5"},author:{fontSize:15,lineHeight:22,color:"#d9bd78",fontWeight:"700"},copy:{fontSize:15,lineHeight:23,color:"#d1e0d7"},counter:{color:"#eed59a",fontWeight:"800",fontSize:15},
-  stage:{width:"100%",gap:18,padding:22,borderWidth:1,borderColor:"rgba(238,213,154,0.34)",borderRadius:18,backgroundColor:"rgba(8,35,37,0.94)",shadowColor:"#000",shadowOpacity:0.42,shadowRadius:18,shadowOffset:{width:0,height:8}},grid:{flexDirection:"row",flexWrap:"wrap",gap:14},card:{width:"100%",backgroundColor:"rgba(22,61,63,0.96)",borderWidth:2,borderColor:"#45686a",borderRadius:13,padding:16,flexDirection:"row",gap:16,alignItems:"flex-start",shadowColor:"#000",shadowOpacity:0.2,shadowRadius:8,shadowOffset:{width:0,height:4}},choiceCardWide:{width:"31.8%",minWidth:240,flexGrow:1,flexDirection:"column"},selected:{borderColor:"#f3ce78",backgroundColor:"rgba(63,92,80,0.98)",shadowColor:"#f3ce78",shadowOpacity:0.38},cardText:{flex:1,minWidth:0,gap:10},cardLabel:{color:"#f3ce78",fontSize:12,fontWeight:"900",letterSpacing:1},synopsis:{color:"#faf4e5",fontSize:16,lineHeight:25},revealCard:{backgroundColor:"rgba(17,54,56,0.97)"},
-  rankBadge:{width:42,height:42,borderRadius:21,borderWidth:1,borderColor:"#d9bd78",backgroundColor:"#102f31",alignItems:"center",justifyContent:"center"},rankNumber:{color:"#f3ce78",fontSize:15,fontWeight:"900"},rankActions:{flexDirection:"row",flexWrap:"wrap",gap:8},actions:{flexDirection:"row",flexWrap:"wrap",gap:10},
-  cover:{width:88,height:126,backgroundColor:"#75847c",borderRadius:5,overflow:"hidden",justifyContent:"center",flexShrink:0},blurredCover:{width:58,height:86},coverImage:{position:"absolute",width:"100%",height:"100%"},defocusedImage:{transform:[{scale:1.18}]},placeholder:{fontSize:11,textAlign:"center",color:"#fff",padding:4},
-  action:{backgroundColor:"#e9d7aa",paddingHorizontal:17,paddingVertical:12,borderRadius:8,minHeight:46,alignSelf:"flex-start",justifyContent:"center",borderWidth:1,borderColor:"#f5dfa8"},actionText:{color:"#17393b",fontSize:14,fontWeight:"900"},notice:{padding:18,backgroundColor:"rgba(25,73,74,0.96)",borderWidth:1,borderColor:"#567b72",color:"#f4ecd9",fontSize:15,lineHeight:24,borderRadius:10,gap:12},error:{color:"#ffd0b8",fontSize:16,lineHeight:24,backgroundColor:"rgba(77,31,28,0.92)",padding:14,borderRadius:8},
+  page:{flex:1,backgroundColor:"#071b1d"},scroll:{flex:1},content:{width:"100%",maxWidth:1100,alignSelf:"center",paddingHorizontal:28,paddingTop:18,paddingBottom:48,gap:14},contentCompact:{paddingHorizontal:14,paddingTop:12},
+  backdrop:{...StyleSheet.absoluteFillObject,overflow:"hidden",backgroundColor:"#071b1d"},vignette:{...StyleSheet.absoluteFillObject,backgroundColor:"rgba(0,0,0,0.18)"},
+  hero:{alignItems:"center",gap:8,paddingVertical:10},eyebrow:{color:"#d9bd78",fontWeight:"800",fontSize:12,letterSpacing:2,textAlign:"center"},title:{color:"#fff2d5",fontFamily:"Georgia",fontSize:48,lineHeight:58,fontWeight:"700",textAlign:"center",textShadowColor:"rgba(0,0,0,0.65)",textShadowRadius:8},titleCompact:{fontSize:36,lineHeight:43},intro:{color:"#e0e8df",fontSize:17,lineHeight:26,textAlign:"center",maxWidth:760,fontFamily:"Georgia"},heading:{fontSize:28,lineHeight:35,fontFamily:"Georgia",fontWeight:"700",color:"#fff2d5"},bookTitle:{fontSize:25,lineHeight:31,fontFamily:"Georgia",fontWeight:"700",color:"#fff2d5"},author:{fontSize:15,lineHeight:22,color:"#d9bd78",fontWeight:"700"},copy:{fontSize:15,lineHeight:23,color:"#d1e0d7"},counter:{color:"#eed59a",fontWeight:"800",fontSize:15},
+  stage:{width:"100%",gap:14},narrowStage:{maxWidth:940,alignSelf:"center"},grid:{flexDirection:"row",flexWrap:"wrap",gap:14},card:{width:"100%",backgroundColor:"rgba(5,32,33,0.93)",borderWidth:1,borderColor:"#cfb875",borderRadius:12,padding:16,flexDirection:"row",gap:16,alignItems:"flex-start",shadowColor:"#000",shadowOpacity:0.2,shadowRadius:8,shadowOffset:{width:0,height:4}},choiceCardWide:{width:"32%",flexGrow:1},choiceCardPair:{width:"48%",flexGrow:1},selected:{borderColor:"#ffe18a",borderWidth:3,shadowColor:"#f3ce78",shadowOpacity:0.65},cardText:{flex:1,minWidth:0,gap:10},cardLabel:{color:"#f3ce78",fontSize:12,fontWeight:"900",letterSpacing:1},synopsis:{color:"#faf4e5",fontSize:16,lineHeight:25},revealCard:{backgroundColor:"rgba(17,54,56,0.97)"},
+  rankActions:{width:200,gap:8},rankActionsCompact:{width:"100%",flexDirection:"row",flexWrap:"wrap"},actions:{flexDirection:"row",flexWrap:"wrap",gap:10,justifyContent:"center",paddingTop:12},
+  cover:{width:104,height:152,backgroundColor:"#75847c",borderRadius:5,overflow:"hidden",justifyContent:"center",flexShrink:0},blurredCover:{width:64,height:96},coverImage:{position:"absolute",width:"100%",height:"100%"},defocusedImage:{transform:[{scale:1.18}]},placeholder:{fontSize:11,textAlign:"center",color:"#fff",padding:4},
+  toolbar:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,paddingHorizontal:16,paddingVertical:6,backgroundColor:"#052425",borderBottomWidth:1,borderBottomColor:"#bca362"},
+  toolbarCompact:{justifyContent:"center",paddingHorizontal:8},outlineAction:{backgroundColor:"transparent",borderColor:"#bba971",minHeight:40,paddingVertical:8},outlineText:{color:"#fff0ce",fontFamily:"Georgia"},
+  mobileWash:{backgroundColor:"rgba(0,15,17,0.5)"},
+  parchmentHeading:{alignSelf:"center",maxWidth:560,paddingHorizontal:28,paddingVertical:16,backgroundColor:"#e5c38b",...Platform.select({web:{backgroundImage:"radial-gradient(ellipse at center, #f5dfaf, #d2a565)"},default:{}}),borderWidth:1,borderColor:"#b28649",borderRadius:5,gap:6,shadowColor:"#000",shadowOpacity:0.4,shadowRadius:10},
+  parchmentTitle:{fontFamily:"Georgia",fontSize:26,fontWeight:"700",color:"#38210f",textAlign:"center"},parchmentCopy:{fontFamily:"Georgia",fontSize:17,lineHeight:24,color:"#432b16",textAlign:"center"},
+  parchmentCard:{flexDirection:"column",backgroundColor:"#e8cc98",...Platform.select({web:{backgroundImage:"radial-gradient(ellipse at center, #f5e1b4 0%, #e3be83 78%, #b58549 100%)"},default:{}}),borderColor:"#a97f47",borderRadius:6,padding:16,shadowOpacity:0.5,shadowRadius:9,shadowOffset:{width:0,height:6}},
+  readMore:{fontSize:12,lineHeight:18,color:"#eed59a",textDecorationLine:"underline",paddingVertical:4},
+  choiceBody:{flexDirection:"row",gap:14,width:"100%",flex:1},inkLabel:{color:"#65431e"},inkSynopsis:{fontFamily:"Georgia",color:"#352512",fontSize:16,lineHeight:23},
+  selectionFooter:{borderTopWidth:1,borderTopColor:"#607366",paddingTop:10,paddingBottom:4,minHeight:40,width:"100%"},parchmentFooter:{borderTopColor:"#b99a66"},selectionText:{color:"#eed59a",fontFamily:"Georgia",fontSize:15,textAlign:"center"},
+  rankCard:{alignItems:"center",padding:22},rankCardCompact:{flexWrap:"wrap",padding:14},
+  action:{backgroundColor:"#f5d88e",paddingHorizontal:17,paddingVertical:12,borderRadius:8,minHeight:46,alignSelf:"flex-start",justifyContent:"center",borderWidth:1,borderColor:"#f5dfa8"},actionText:{color:"#17393b",fontSize:14,fontWeight:"900"},notice:{padding:18,backgroundColor:"rgba(25,73,74,0.96)",borderWidth:1,borderColor:"#567b72",color:"#f4ecd9",fontSize:15,lineHeight:24,borderRadius:10,gap:12},error:{color:"#ffd0b8",fontSize:16,lineHeight:24,backgroundColor:"rgba(77,31,28,0.92)",padding:14,borderRadius:8},
 });
