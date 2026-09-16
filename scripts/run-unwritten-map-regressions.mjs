@@ -1857,15 +1857,21 @@ async function main() {
   assert(createHash("sha256").update(entrySource).digest("hex")
     === "8d9042d388c9ca17428bc7da4692716fe43c0ddfce879e8f09d1c57199caede5",
   "authorized high-resolution entry source must remain byte-for-byte intact");
-  assert(existsSync(resolve(root, "assets/games/unwritten-map/entry-tabletop.webp"))
-    && routeSource.includes("unwritten-map/entry-tabletop.webp"),
-  "optimized high-resolution tabletop entry art must be rendered");
+  assert(existsSync(resolve(root, "assets/games/unwritten-map/entry-tabletop.webp")),
+    "optimized high-resolution tabletop source must remain available");
+  assert(!routeSource.includes("unwritten-map/entry-tabletop.webp")
+    && routeSource.includes('<CartographyBackdrop page="entry" />')
+    && routeSource.includes("!entry ? <View style={[styles.parchmentWash"),
+  "entry screen must layer live map-and-desk artwork without the flat central wash");
   assert(!routeSource.includes("source-composite.png") && !routeSource.includes("entry-source.png"),
     "authorized source images must not render as static game screens");
-  assert(routeSource.includes("entryArtFailed")
-    && routeSource.includes("onError={() => setEntryArtFailed(true)}")
-    && routeSource.includes("entryArtFallback"),
-  "entry artwork must retain an in-app fallback when image loading fails");
+  assert(routeSource.includes("GameReadingAgeControl theme={UNWRITTEN_MAP_READING_AGE_THEME}")
+    && routeSource.includes("}, { inline: true });")
+    && !routeSource.includes("FloatingBackToGames"),
+  "entry and gameplay must share one in-world header with inline reading-age controls");
+  assert(routeSource.includes('decoration={<EntryParchmentDecoration />}')
+    && templateSource.includes('backgroundColor: "rgba(239,217,163,0.92)"'),
+  "entry title must remain live UI on a physical cartographic parchment panel");
   const boardSource = readFileSync(resolve(root, "assets/games/unwritten-map/board-source.png"));
   assert(createHash("sha256").update(boardSource).digest("hex")
     === "0d724c5bb2445fdf328bec3479f445e2be55051b6de8fed6382d1098129e5f4c",
