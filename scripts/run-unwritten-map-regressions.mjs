@@ -1849,10 +1849,17 @@ async function main() {
   assert(routeSource.includes("walkingFrame") && routeSource.includes("bumpDirection"), "walking animation and bump feedback missing");
   assert(routeSource.includes("NONE OF THESE · KEEP EXPLORING") && routeSource.includes("What the map remembers"), "skip/privacy UX missing");
   assert(routeSource.includes("window.confirm") && routeSource.includes("UNDO LATEST NOTE"), "reset confirmation or journal undo missing");
-  for (const asset of ["entry-left.webp", "entry-right.webp", "world-map.webp", "journal-left.webp", "journal-right.webp"]) {
+  for (const asset of ["world-map.webp", "desk-map-background.webp"]) {
     assert(existsSync(resolve(root, "assets/games/unwritten-map", asset)), `missing Unwritten Map presentation asset: ${asset}`);
     assert(routeSource.includes(`unwritten-map/${asset}`), `Unwritten Map route does not use ${asset}`);
   }
+  const continuousBackdrop = readFileSync(resolve(root, "assets/games/unwritten-map/desk-map-background.webp"));
+  assert(
+    continuousBackdrop.subarray(0, 4).toString("ascii") === "RIFF"
+      && continuousBackdrop.subarray(8, 12).toString("ascii") === "WEBP",
+    "continuous cartographer desk background must be WebP",
+  );
+  assert(continuousBackdrop.length < 650_000, "continuous cartographer desk background exceeds the web payload budget");
   const entrySource = readFileSync(resolve(root, "assets/games/unwritten-map/entry-source.png"));
   assert(createHash("sha256").update(entrySource).digest("hex")
     === "8d9042d388c9ca17428bc7da4692716fe43c0ddfce879e8f09d1c57199caede5",
@@ -1861,8 +1868,11 @@ async function main() {
     "optimized high-resolution tabletop source must remain available");
   assert(!routeSource.includes("unwritten-map/entry-tabletop.webp")
     && routeSource.includes('<CartographyBackdrop page="entry" />')
-    && routeSource.includes("!entry ? <View style={[styles.parchmentWash"),
-  "entry screen must layer live map-and-desk artwork without the flat central wash");
+    && routeSource.includes('contentPosition="center"')
+    && !routeSource.includes("entry-left.webp")
+    && !routeSource.includes("entry-right.webp")
+    && !routeSource.includes("parchmentWash"),
+  "entry screen must use one continuous background without stitched panels or a flat central wash");
   assert(!routeSource.includes("source-composite.png") && !routeSource.includes("entry-source.png"),
     "authorized source images must not render as static game screens");
   assert(routeSource.includes("GameReadingAgeControl theme={UNWRITTEN_MAP_READING_AGE_THEME}")
@@ -1897,16 +1907,11 @@ async function main() {
   for (const asset of [
     "board-map.webp",
     "board-map-mobile.webp",
-    "encounter-mossmere-left.webp",
-    "encounter-mossmere-right.webp",
     "frog-encounter.webp",
     "frog-hear.webp",
     "frog-pageant.webp",
     "frog-experiment.webp",
     "frog-speech.webp",
-    "result-mossmere-left.webp",
-    "result-mossmere-right.webp",
-    "result-mossmere-bottom.webp",
     "result-moon-frog.webp",
     "result-frog-hear.webp",
     "result-frog-pageant.webp",

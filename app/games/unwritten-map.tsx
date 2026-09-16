@@ -179,8 +179,6 @@ function CartographyBackdrop({
   regionId?: UnwrittenMapRegionId;
 }) {
   const result = page === "result";
-  const journal = page === "journal" || result;
-  const entry = page === "entry";
   const mossmere = regionId === "mossmere";
   const region = regionId ? UNWRITTEN_MAP_REGION_REGISTRY[regionId] : null;
   return (
@@ -190,56 +188,19 @@ function CartographyBackdrop({
       importantForAccessibility="no-hide-descendants"
       style={styles.backdrop}
     >
-      {entry ? (
-        <Image
-          source={require("../../assets/games/unwritten-map/world-map.webp")}
-          style={styles.entryWorldMap}
-          contentFit="cover"
-          accessibilityElementsHidden
-        />
-      ) : null}
       <Image
-        source={entry
-          ? require("../../assets/games/unwritten-map/entry-left.webp")
-          : result && mossmere
-            ? require("../../assets/games/unwritten-map/result-mossmere-left.webp")
-          : mossmere
-            ? require("../../assets/games/unwritten-map/encounter-mossmere-left.webp")
-          : journal
-            ? require("../../assets/games/unwritten-map/journal-left.webp")
-            : require("../../assets/games/unwritten-map/entry-left.webp")}
-        style={[styles.edgeArt, styles.edgeArtLeft]}
+        source={require("../../assets/games/unwritten-map/desk-map-background.webp")}
+        style={styles.continuousBackdropArt}
         contentFit="cover"
+        contentPosition="center"
         accessibilityElementsHidden
       />
-      <Image
-        source={entry
-          ? require("../../assets/games/unwritten-map/entry-right.webp")
-          : result && mossmere
-            ? require("../../assets/games/unwritten-map/result-mossmere-right.webp")
-          : mossmere
-            ? require("../../assets/games/unwritten-map/encounter-mossmere-right.webp")
-          : journal
-            ? require("../../assets/games/unwritten-map/journal-right.webp")
-            : require("../../assets/games/unwritten-map/entry-right.webp")}
-        style={[styles.edgeArt, styles.edgeArtRight]}
-        contentFit="cover"
-        accessibilityElementsHidden
-      />
-      {result && mossmere ? (
-        <Image
-          source={require("../../assets/games/unwritten-map/result-mossmere-bottom.webp")}
-          style={styles.resultBackdropBottom}
-          contentFit="cover"
-          accessibilityElementsHidden
-        />
-      ) : null}
+      <View style={[styles.continuousBackdropVeil, result && styles.resultBackdropVeil]} />
       {region && regionId ? (
         <View style={[styles.regionFrame, { borderColor: region.paletteHex.primary }]}>
           <UnwrittenMapRegionMotifs regionId={regionId} />
         </View>
       ) : null}
-      {!entry ? <View style={[styles.parchmentWash, result && mossmere && styles.resultParchmentWash]} /> : null}
       {region ? <View style={[styles.regionWash, { backgroundColor: `${region.paletteHex.fallback}24` }]} /> : null}
       <View style={styles.edgeVignette} />
     </View>
@@ -1669,14 +1630,11 @@ const GOLD = UNWRITTEN_MAP_TOKENS.color.gold;
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#17150f" },
   backdrop: { ...StyleSheet.absoluteFillObject, overflow: "hidden", backgroundColor: "#17150f" },
-  edgeArt: { position: "absolute", top: 0, bottom: 0, width: "27%", height: "100%", opacity: 0.92 },
-  edgeArtLeft: { left: 0 },
-  edgeArtRight: { right: 0 },
-  resultBackdropBottom: { position: "absolute", left: "17%", right: "17%", bottom: 0, width: "66%", height: 150, opacity: 0.94 },
+  continuousBackdropArt: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  continuousBackdropVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(20,17,10,0.12)" },
+  resultBackdropVeil: { backgroundColor: "rgba(20,17,10,0.2)" },
   regionFrame: { position: "absolute", left: 12, right: 12, bottom: 10, zIndex: 2, minHeight: 48, paddingHorizontal: 14, borderTopWidth: 1, borderBottomWidth: 1, alignItems: "center", justifyContent: "center" },
   regionWash: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
-  parchmentWash: { ...StyleSheet.absoluteFillObject, left: "17%", right: "17%", backgroundColor: "rgba(220,195,137,0.93)" },
-  resultParchmentWash: { backgroundColor: "rgba(220,195,137,0.56)" },
   edgeVignette: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(31,24,14,0.13)" },
   loading: { flex: 1, zIndex: 2, alignItems: "center", justifyContent: "center", padding: 24 },
   loadingText: { color: INK, fontFamily: "Georgia", fontSize: 13, fontWeight: "800", letterSpacing: 2, marginTop: 14, textAlign: "center" },
@@ -1703,7 +1661,6 @@ const styles = StyleSheet.create({
   headerProgressLabelCompact: { fontSize: 6, letterSpacing: 0.8 },
   headerAgeRow: { minHeight: 46, alignItems: "center", justifyContent: "center" },
   titleScreen: { flexGrow: 1, minHeight: 680, alignItems: "center", justifyContent: "center", paddingHorizontal: 18, paddingVertical: 24, backgroundColor: "#17150f" },
-  entryWorldMap: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%", opacity: 0.96 },
   titleMap: { zIndex: 2, width: "68%", maxWidth: 650, minHeight: 560, alignItems: "center", justifyContent: "center" },
   titleMapCompact: { width: "94%", minHeight: 650 },
   entryParchmentDecoration: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
