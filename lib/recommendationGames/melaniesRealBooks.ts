@@ -1,6 +1,10 @@
 import type { NormalizedCandidate, SwipeSignalV2 } from "../../app/recommender-v2/types";
-import { canonicalBookIdentity, gameRecommendationCoverUrl } from "./gameRecommendationEngine";
-import { gameRecommendationDescription } from "./gameRecommendationDescription";
+import {
+  anonymousMelaniePremise,
+  catalogMelanieStories,
+  isUsableMelaniePremise,
+  type MelanieDescriptionDiagnostics,
+} from "./melanieDescriptionQuality";
 
 export type StoryBook = {
   id: string; source: string; sourceId: string | null; title: string; author: string;
@@ -14,35 +18,19 @@ export type StoryTournament = {
   phase: "choose" | "rank" | "reveal"; shownAt?: string; feedbackSaved?: boolean;
 };
 
-// Extract, never invent, a premise sentence; omit sentences that advertise an author/title.
 export function anonymousSynopsis(description: string, title: string, authors: string[]): string | null {
-  const identities = [title.replace(/\s*[:/].*$/, ""), ...authors].map(x => x.trim().toLowerCase()).filter(x => x.length > 3);
-  const sentences = typeof Intl.Segmenter === "function"
-    ? [...new Intl.Segmenter("en", { granularity: "sentence" }).segment(description)].map(x => x.segment.trim())
-    : description.match(/[^.!?]+[.!?]+(?:[”’"]|$)?/g) || [];
-  return sentences.find(sentence => {
-    const words = sentence.split(/\s+/).length;
-    return words >= 12 && words <= 65 && sentence.length <= 420 &&
-      !identities.some(identity => sentence.toLowerCase().includes(identity)) &&
-      !/bestsell|award.winning|\bISBN\b|starred review|\b(praise|edition|copyright|publisher|collection of|anthology)\b/i.test(sentence) &&
-      !/^[“"‘]|^(During that time|His |Her |Their |It |This )|\bI (started|wrote|wanted|think)\b/.test(sentence);
-  }) || null;
+  return anonymousMelaniePremise(description, title, authors);
 }
 
 export function catalogStories(candidates: readonly NormalizedCandidate[], localOnly: boolean): StoryBook[] {
-  const ids = new Set<string>(), premises = new Set<string>();
-  return candidates.flatMap(candidate => {
-    if (!candidate.formats.includes("book") || (localOnly && candidate.source !== "localLibrary")) return [];
-    const description = gameRecommendationDescription(candidate)?.text;
-    if (!description) return [];
-    const synopsis = anonymousSynopsis(description, candidate.title, candidate.creators);
-    const id = canonicalBookIdentity(candidate);
-    if (!synopsis || ids.has(id) || premises.has(synopsis.toLowerCase())) return [];
-    ids.add(id); premises.add(synopsis.toLowerCase());
-    return [{ id, source: candidate.source, sourceId: candidate.sourceId || null, title: candidate.title,
-      author: candidate.creators.join(", "), synopsis, description, coverUrl: gameRecommendationCoverUrl(candidate),
-      genres: candidate.genres, themes: candidate.themes, tones: candidate.tones, dynamics: candidate.characterDynamics }];
-  });
+  return catalogStoriesWithDiagnostics(candidates, localOnly).stories;
+}
+
+export function catalogStoriesWithDiagnostics(
+  candidates: readonly NormalizedCandidate[],
+  localOnly: boolean,
+): { stories: StoryBook[]; diagnostics: MelanieDescriptionDiagnostics } {
+  return catalogMelanieStories(candidates, localOnly);
 }
 
 function tokens(book: StoryBook): Set<string> {
@@ -109,7 +97,7 @@ export function restoreStoryTournament(raw: string | null, scope: string): Story
   try {
     const s = JSON.parse(raw || "null") as StoryTournament;
     if (!s || s.version !== 1 || s.scope !== scope || typeof s.sessionId !== "string" || !["choose", "rank", "reveal"].includes(s.phase) || !Array.isArray(s.pool) || s.pool.length < 4 || s.pool.length > 180) return null;
-    if (!s.pool.every(b => b && [b.id,b.title,b.author,b.synopsis,b.description,b.source].every(v => typeof v === "string") && [b.genres,b.themes,b.tones,b.dynamics].every(v => Array.isArray(v) && v.every(t => typeof t === "string")))) return null;
+    if (!s.pool.every(b => b && [b.id,b.title,b.author,b.synopsis,b.description,b.source].every(v => typeof v === "string") && isUsableMelaniePremise(b.synopsis) && [b.genres,b.themes,b.tones,b.dynamics].every(v => Array.isArray(v) && v.every(t => typeof t === "string")))) return null;
     const ids = new Set(s.pool.map(b => b.id));
     const valid = (list: unknown, length: number) => Array.isArray(list) && list.length === length && new Set(list).size === length && list.every(id => ids.has(id));
     if (ids.size !== s.pool.length || !valid(s.offered,s.offered?.length) || s.offered.length < 4 || s.offered.length > 6 || !Array.isArray(s.selected) || s.selected.length > 3 || new Set(s.selected).size !== s.selected.length || !s.selected.every(id => s.offered.includes(id)) || !Array.isArray(s.rounds) || s.rounds.length > 3) return null;

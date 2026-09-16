@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {melanieArtworkPhase} from "./melanieArtwork";
 import {anonymousSynopsis,startStoryTournament,finishStoryRound,restoreStoryTournament,storySignals,type StoryBook} from "./melaniesRealBooks";
 const pool:StoryBook[]=Array.from({length:30},(_,i)=>({id:`book-${i}`,source:"localLibrary",sourceId:`${i}`,title:`Title ${i}`,author:"Writer",synopsis:`A traveler explores strange worlds and discovers a secret that changes the future forever ${i}.`,description:"Catalog description",coverUrl:null,genres:[i%2?"fantasy":"mystery"],themes:[`theme-${i%4}`],tones:[],dynamics:[]}));
 test("three rounds retain ranked survivors and introduce unseen real contenders",()=>{
@@ -35,4 +36,13 @@ test("limited catalogs complete and restore without invented challengers",()=>{
   }
   assert.equal(s.selected.length,3);
  }
+});
+
+test("artwork phases follow the live tournament state",()=>{
+ assert.equal(melanieArtworkPhase(null,0),"opening");
+ assert.equal(melanieArtworkPhase("choose",0),"opening");
+ assert.equal(melanieArtworkPhase("rank",0),"ranking");
+ assert.equal(melanieArtworkPhase("choose",1),"challenger");
+ assert.equal(melanieArtworkPhase("rank",2),"ranking");
+ assert.equal(melanieArtworkPhase("reveal",3),"reveal");
 });

@@ -271,6 +271,7 @@ export const localLibrarySourceAdapter: SourceAdapterV2 = {
       return adaptLocalCollectionSourceRecord(record, {
         audienceBand,
         queryText: row.queryText || fallbackQuery,
+        sourceFormat: artifact?.metadata?.sourceFormat,
         tieBreakOrder: context.diversitySeed
           ? stableRecordOrder(record, context.diversitySeed)
           : undefined,
