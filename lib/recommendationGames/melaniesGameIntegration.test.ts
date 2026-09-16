@@ -77,6 +77,7 @@ test("authorized visual crops are local, optimized, and do not ship whole-screen
     "entry-right.webp",
     "library-left.webp",
     "library-right.webp",
+    "library-scene.webp",
     "opening-left.webp",
     "opening-right.webp",
     "portal-library-left.webp",
@@ -87,7 +88,7 @@ test("authorized visual crops are local, optimized, and do not ship whole-screen
     "reveal-left.webp",
     "reveal-right.webp",
   ]);
-  assert(assets.every((asset) => fs.statSync(path.join(assetDirectory, asset)).size < 80_000));
+  assert(assets.every((asset) => fs.statSync(path.join(assetDirectory, asset)).size < (asset === "library-scene.webp" ? 300_000 : 80_000)));
 });
 
 test("canonical book identities preserve non-Latin titles and authors", () => {

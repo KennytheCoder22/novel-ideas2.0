@@ -29,12 +29,21 @@ const defaultTheme: GameReadingAgeTheme = {
 };
 
 /** Remount gameplay on a route-age change so in-flight choices retain their original scope. */
-export function withGameReadingAge(Game: ComponentType, theme: GameReadingAgeTheme = defaultTheme) {
+export function withGameReadingAge(Game: ComponentType, theme: GameReadingAgeTheme = defaultTheme, options: { inline?: boolean } = {}) {
   return function GameWithReadingAge() {
     const params = useLocalSearchParams() as GameRouteParams;
     const age = normalizeGameRouteAgeBand(params.ageBand);
     return <View style={styles.frame}>
-      <View style={styles.bar} accessibilityLabel="Reading age">
+      {!options.inline && <GameReadingAgeControl theme={theme} />}
+      <Game key={`${age}:${params.readingAgeOverride || "inherited"}`} />
+    </View>;
+  };
+}
+
+export function GameReadingAgeControl({ theme = defaultTheme }: { theme?: GameReadingAgeTheme }) {
+  const params = useLocalSearchParams() as GameRouteParams;
+  const age = normalizeGameRouteAgeBand(params.ageBand);
+  return <View style={styles.bar} accessibilityLabel="Reading age">
         {bands.map(([id, label]) => {
           const selected = age === id;
           return (
@@ -71,10 +80,7 @@ export function withGameReadingAge(Game: ComponentType, theme: GameReadingAgeThe
             </Pressable>
           );
         })}
-      </View>
-      <Game key={`${age}:${params.readingAgeOverride || "inherited"}`} />
-    </View>;
-  };
+      </View>;
 }
 
 const styles = StyleSheet.create({
