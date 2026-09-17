@@ -1520,6 +1520,13 @@ async function main() {
     && route.includes("accessibilityState={{ disabled: busy }}")
     && route.includes("Same calibrated seven-ingredient effect."),
   "First Whisper artwork, live options, Back, fate, accessibility, and fallback must remain wired");
+  assert(route.includes("<Text style={styles.whisperFateText}>LET FATE DECIDE</Text>")
+    && route.includes("<Text style={styles.whisperFateSublabel}>SAME BOOST · NO PREFERENCE</Text>")
+    && route.includes('backgroundColor: "#17151C"')
+    && route.includes("whisperCinematicFateActive")
+    && route.includes("whisperCinematicFatePressed")
+    && !route.includes('{ backgroundColor: "#17151C", padding: 4 }'),
+  "cinematic First Whisper fate action must be one full-size live sign without a duplicate foreground plaque");
   checks.push("whisper_artwork_live_controls_and_fallback");
   const atlasArtworkPath = atlasArtwork.ALCHEMISTS_CASCADE_ATLAS_ARTWORK;
   assert(typeof atlasArtworkPath === "string" && atlasArtworkPath.endsWith("recipe-atlas.webp"),

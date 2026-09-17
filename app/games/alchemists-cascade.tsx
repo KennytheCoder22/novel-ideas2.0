@@ -1393,14 +1393,17 @@ function CascadeWhisperScreen(props: CascadeWhisperScreenProps) {
           layout.mode === "cinematic" ? styles.whisperCinematicFate : styles.whisperStackedFate,
           layout.mode === "cinematic" && layout.fate,
           (fateFocused || fateHovered) && styles.whisperControlActive,
+          layout.mode === "cinematic" && (fateFocused || fateHovered) && styles.whisperCinematicFateActive,
           pressed && styles.whisperControlPressed,
+          layout.mode === "cinematic" && pressed && styles.whisperCinematicFatePressed,
           props.busy && styles.disabled,
         ]}
       >
-          <>
-            <MaterialCommunityIcons name="dice-multiple-outline" size={22} color="#F6C957" accessible={false} />
-            <Text style={[styles.whisperFateText, { backgroundColor: "#17151C", padding: 4 }]}>LET FATE DECIDE — SAME BOOST, NO PREFERENCE</Text>
-          </>
+        <MaterialCommunityIcons name="dice-multiple-outline" size={22} color="#F6C957" accessible={false} />
+        <View style={styles.whisperFateCopy}>
+          <Text style={styles.whisperFateText}>LET FATE DECIDE</Text>
+          <Text style={styles.whisperFateSublabel}>SAME BOOST · NO PREFERENCE</Text>
+        </View>
       </Pressable>
     );
 
@@ -3821,9 +3824,17 @@ const styles = StyleSheet.create({
     minWidth: 44,
     minHeight: 44,
     borderWidth: 1,
-    borderColor: "transparent",
+    borderColor: "#C89B4C",
     borderRadius: 4,
+    backgroundColor: "#17151C",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 12,
   },
+  whisperCinematicFateActive: { backgroundColor: "#2B241D" },
+  whisperCinematicFatePressed: { backgroundColor: "#100E12", opacity: 1 },
   whisperCard: {
     width: "100%",
     height: "100%",
@@ -3985,7 +3996,9 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 14,
   },
-  whisperFateText: { flexShrink: 1, color: "#FBE8BD", fontSize: 12, fontWeight: "900", textAlign: "center" },
+  whisperFateCopy: { flexShrink: 1, alignItems: "center", justifyContent: "center" },
+  whisperFateText: { color: "#FBE8BD", fontSize: 12, fontWeight: "900", letterSpacing: 0.5, textAlign: "center" },
+  whisperFateSublabel: { color: "#C7B992", fontSize: 9, fontWeight: "800", letterSpacing: 0.7, textAlign: "center", marginTop: 2 },
   whisperStackedBalance: {
     color: "#BEB3A4",
     fontSize: 11,
