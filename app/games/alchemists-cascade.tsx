@@ -1399,11 +1399,15 @@ function CascadeWhisperScreen(props: CascadeWhisperScreenProps) {
           props.busy && styles.disabled,
         ]}
       >
-        <MaterialCommunityIcons name="dice-multiple-outline" size={22} color="#F6C957" accessible={false} />
-        <View style={styles.whisperFateCopy}>
-          <Text style={styles.whisperFateText}>LET FATE DECIDE</Text>
-          <Text style={styles.whisperFateSublabel}>SAME BOOST · NO PREFERENCE</Text>
-        </View>
+        {layout.mode === "stacked" ? (
+          <>
+            <MaterialCommunityIcons name="dice-multiple-outline" size={22} color="#F6C957" accessible={false} />
+            <View style={styles.whisperFateCopy}>
+              <Text style={styles.whisperFateText}>LET FATE DECIDE</Text>
+              <Text style={styles.whisperFateSublabel}>SAME BOOST · NO PREFERENCE</Text>
+            </View>
+          </>
+        ) : null}
       </Pressable>
     );
 
@@ -3823,18 +3827,22 @@ const styles = StyleSheet.create({
     position: "absolute",
     minWidth: 44,
     minHeight: 44,
-    borderWidth: 1,
-    borderColor: "#C89B4C",
+    borderWidth: 0,
+    borderColor: "transparent",
     borderRadius: 4,
-    backgroundColor: "#17151C",
+    backgroundColor: "transparent",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
     paddingHorizontal: 12,
   },
-  whisperCinematicFateActive: { backgroundColor: "#2B241D" },
-  whisperCinematicFatePressed: { backgroundColor: "#100E12", opacity: 1 },
+  whisperCinematicFateActive: {
+    borderWidth: 2,
+    borderColor: "#FFE5A6",
+    backgroundColor: "rgba(246, 201, 87, 0.12)",
+  },
+  whisperCinematicFatePressed: { backgroundColor: "rgba(246, 201, 87, 0.2)", opacity: 1 },
   whisperCard: {
     width: "100%",
     height: "100%",
