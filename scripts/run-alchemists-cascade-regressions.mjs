@@ -1502,7 +1502,7 @@ async function main() {
     && whisperDesktop.cards.length === 3
     && whisperDesktop.cards.every((bounds) => bounds.width >= 275 && bounds.height >= 460),
   "desktop First Whisper must preserve three full live card regions");
-  assert(whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_BOUNDS.fate.top === 723
+  assert(whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_BOUNDS.fate.top === 769
     && whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_BOUNDS.fate.height === 58,
   "desktop First Whisper fate control must align with the artwork plaque");
   assert(whisperMobile.mode === "stacked"
