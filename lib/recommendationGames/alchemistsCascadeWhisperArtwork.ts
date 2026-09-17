@@ -31,7 +31,7 @@ export const ALCHEMISTS_CASCADE_WHISPER_BOUNDS = {
     { left: 699, top: 248, width: 276, height: 489 },
     { left: 1002, top: 248, width: 276, height: 489 },
   ],
-  fate: { left: 565, top: 746, width: 543, height: 58 },
+  fate: { left: 565, top: 723, width: 543, height: 58 },
 } as const;
 
 type Bounds = { left: number; top: number; width: number; height: number };
