@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { get, put } from "@vercel/blob";
 import {
   gameRecommendationFeedbackStoragePath,
+  gameRecommendationFeedbackMaxLength,
   gameRecommendationSlateFeedbackStoragePath,
   normalizeGameRecommendationFeedbackEventV1,
   normalizeGameRecommendationSlateFeedbackEventV1,
@@ -64,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader("Retry-After", "60");
     return res.status(429).json({ error: "game_recommendation_feedback_rate_limited" });
   }
-  if (JSON.stringify(req.body || {}).length > 12_000) {
+  if (JSON.stringify(req.body || {}).length > gameRecommendationFeedbackMaxLength(req.body)) {
     return res.status(413).json({ error: "game_recommendation_feedback_event_too_large" });
   }
   const event = normalizeGameRecommendationFeedbackEventV1(req.body)

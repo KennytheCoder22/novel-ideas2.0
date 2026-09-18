@@ -13,10 +13,14 @@ export type StoryBook = {
 };
 export type StoryRound = { offered: string[]; ranked: string[] };
 export type StoryTournament = {
-  version: 1; scope: string; sessionId: string; pool: StoryBook[];
+  version: 2; scope: string; sessionId: string; pool: StoryBook[];
   offered: string[]; selected: string[]; rounds: StoryRound[];
+  held: string[];
+  deals: { offered: string[]; saved: string[] }[];
   phase: "choose" | "rank" | "reveal"; shownAt?: string; feedbackSaved?: boolean;
 };
+export const SECRET_HAND_TARGET = 5;
+export const SECRET_HAND_MINIMUM = 3;
 
 export function anonymousSynopsis(description: string, title: string, authors: string[]): string | null {
   return anonymousMelaniePremise(description, title, authors);
@@ -68,42 +72,79 @@ export function storyRoundCount(poolSize: number): number {
 }
 export function startStoryTournament(pool: StoryBook[], scope: string, sessionId: string): StoryTournament {
   if (pool.length < 4) throw new Error("Book sources returned too few usable descriptions to compare right now. Please try again shortly.");
-  return { version: 1, pool, scope, sessionId, offered: diverseStories(pool, 6, sessionId).map(b => b.id), selected: [], rounds: [], phase: "choose" };
+  if (new Set(pool.map(book => book.id)).size !== pool.length || pool.length > 180) throw new Error("Invalid story catalog.");
+  return { version: 2, pool, scope, sessionId, offered: diverseStories(pool, 6, sessionId).map(b => b.id), selected: [], held: [], deals: [], rounds: [], phase: "choose" };
+}
+export function unseenStories(state: StoryTournament): StoryBook[] {
+  const seen = new Set([...state.rounds.flatMap(round => round.offered), ...state.deals.flatMap(deal => deal.offered), ...state.offered, ...state.held]);
+  return state.pool.filter(book => !seen.has(book.id));
+}
+export function canRankSecretHand(state: StoryTournament): boolean {
+  return state.held.length >= SECRET_HAND_MINIMUM
+    || (state.held.length > 0 && state.offered.length === 0 && unseenStories(state).length === 0);
+}
+// Committing a deal records interest in selection order, not a fabricated ranking.
+export function saveStoryDeal(state: StoryTournament): StoryTournament {
+  if (state.phase !== "choose" || !state.offered.length) throw new Error("No active deal to save.");
+  if (new Set(state.selected).size !== state.selected.length || state.selected.some(id => !state.offered.includes(id) || state.held.includes(id))) throw new Error("Invalid saved stories.");
+  const held = [...state.held, ...state.selected];
+  const deals = [...state.deals, { offered: [...state.offered], saved: [...state.selected] }];
+  const anchors = held.map(id => state.pool.find(book => book.id === id)!);
+  const offered = diverseStories(unseenStories(state), 6, `${state.sessionId}:deal-${deals.length}`, anchors).map(book => book.id);
+  return { ...state, held, deals, offered, selected: [] };
+}
+export function rankSecretHand(state: StoryTournament): StoryTournament {
+  if (state.phase !== "choose") throw new Error("Finish collecting before ranking.");
+  // The combined CTA saves current genuine selections, but does not record an untouched
+  // deal as a rejection when the reader simply decides their existing hand is enough.
+  const next = state.selected.length ? saveStoryDeal(state) : state;
+  if (!canRankSecretHand(next)) throw new Error("Save at least three stories before ranking.");
+  return { ...next, selected: [...next.held], phase: "rank" };
 }
 export function finishStoryRound(state: StoryTournament): StoryTournament {
-  if (state.phase !== "rank" || state.selected.length !== 3 || new Set(state.selected).size !== 3 || state.selected.some(id => !state.offered.includes(id))) throw new Error("Rank three stories before continuing.");
-  const rounds = [...state.rounds, { offered: state.offered, ranked: state.selected }];
-  if (rounds.length === storyRoundCount(state.pool.length)) return { ...state, rounds, phase: "reveal", shownAt: new Date().toISOString() };
-  const seen = new Set(rounds.flatMap(round => round.offered));
-  const anchors = state.selected.map(id => state.pool.find(b => b.id === id)!);
-  const newcomers = diverseStories(state.pool.filter(b => !seen.has(b.id)), 3, state.sessionId + rounds.length, anchors);
-  if (!newcomers.length) throw new Error("Not enough unseen stories to continue.");
-  const offered = [...state.selected, ...newcomers.map(b => b.id)].sort((a, b) => hash(state.sessionId + rounds.length + a) - hash(state.sessionId + rounds.length + b));
-  return { ...state, rounds, offered, selected: [], phase: "choose" };
+  if (state.phase !== "rank" || !state.held.length || state.selected.length !== state.held.length || new Set(state.selected).size !== state.held.length || state.selected.some(id => !state.held.includes(id))) throw new Error("Rank every saved story exactly once before revealing.");
+  return { ...state, phase: "reveal", shownAt: new Date().toISOString() };
 }
 export function storySignals(state: StoryTournament): SwipeSignalV2[] {
-  // Each book contributes once using its latest comparison. Not selected means a weak relative
-  // preference, not a declaration that the reader dislikes the book or has read it.
-  const latest = new Map<string, SwipeSignalV2>();
-  for (const round of state.rounds) for (const id of round.offered) {
+  // Passed-over stories remain contextual evidence in deals, NEVER explicit dislikes.
+  // A saved hand is unordered until reveal. Each genuinely held book contributes once.
+  return state.held.map(id => {
     const book = state.pool.find(b => b.id === id)!;
-    const rank = round.ranked.indexOf(id);
-    latest.set(id, { id: `blind-synopsis:${id}`, action: rank < 0 ? "dislike" : "like", weight: rank < 0 ? 0.15 : [1, 0.7, 0.45][rank],
-      genres: book.genres, themes: book.themes, tones: book.tones, characterDynamics: book.dynamics, format: "book", source: "melanies_game" });
-  }
-  return [...latest.values()];
+    const rank = state.selected.indexOf(id);
+    const weight = state.phase === "reveal" ? 1 - 0.55 * rank / Math.max(1, state.held.length - 1) : 0.6;
+    return { id: `blind-synopsis:${id}`, action: "like", weight,
+      genres: book.genres, themes: book.themes, tones: book.tones, characterDynamics: book.dynamics, format: "book", source: "melanies_game" };
+  });
 }
 export function restoreStoryTournament(raw: string | null, scope: string): StoryTournament | null {
   try {
-    const s = JSON.parse(raw || "null") as StoryTournament;
-    if (!s || s.version !== 1 || s.scope !== scope || typeof s.sessionId !== "string" || !["choose", "rank", "reveal"].includes(s.phase) || !Array.isArray(s.pool) || s.pool.length < 4 || s.pool.length > 180) return null;
+    const s = JSON.parse(raw || "null") as Omit<StoryTournament, "version"> & { version: number };
+    if (!s || ![1,2].includes(s.version) || s.scope !== scope || typeof s.sessionId !== "string" || !["choose", "rank", "reveal"].includes(s.phase) || !Array.isArray(s.pool) || s.pool.length < 4 || s.pool.length > 180) return null;
     if (!s.pool.every(b => b && [b.id,b.title,b.author,b.synopsis,b.description,b.source].every(v => typeof v === "string") && isUsableMelaniePremise(b.synopsis) && [b.genres,b.themes,b.tones,b.dynamics].every(v => Array.isArray(v) && v.every(t => typeof t === "string")))) return null;
     const ids = new Set(s.pool.map(b => b.id));
     const valid = (list: unknown, length: number) => Array.isArray(list) && list.length === length && new Set(list).size === length && list.every(id => ids.has(id));
-    if (ids.size !== s.pool.length || !valid(s.offered,s.offered?.length) || s.offered.length < 4 || s.offered.length > 6 || !Array.isArray(s.selected) || s.selected.length > 3 || new Set(s.selected).size !== s.selected.length || !s.selected.every(id => s.offered.includes(id)) || !Array.isArray(s.rounds) || s.rounds.length > 3) return null;
+    if (ids.size !== s.pool.length || !valid(s.offered,s.offered?.length) || s.offered.length > 6 || !valid(s.selected,s.selected?.length) || !Array.isArray(s.rounds) || s.rounds.length > 3) return null;
     if (!s.rounds.every(r => valid(r.offered,r.offered?.length) && r.offered.length >= 4 && r.offered.length <= 6 && valid(r.ranked,3) && r.ranked.every(id => r.offered.includes(id)))) return null;
-    if ((s.phase === "rank" && s.selected.length !== 3) || (s.phase === "reveal" && (s.rounds.length !== storyRoundCount(s.pool.length) || s.selected.length !== 3)) || (s.phase !== "reveal" && s.rounds.length >= storyRoundCount(s.pool.length))) return null;
-    if (s.phase === "reveal" && (typeof s.shownAt !== "string" || !Number.isFinite(Date.parse(s.shownAt)) || JSON.stringify(s.selected) !== JSON.stringify(s.rounds[s.rounds.length - 1].ranked))) return null;
-    return s;
+    if (s.version === 1) {
+      if (s.offered.length < 4 || s.selected.length > 3 || !s.selected.every(id => s.offered.includes(id))) return null;
+      if ((s.phase === "rank" && s.selected.length !== 3) || (s.phase === "reveal" && (s.rounds.length !== storyRoundCount(s.pool.length) || s.selected.length !== 3)) || (s.phase !== "reveal" && s.rounds.length >= storyRoundCount(s.pool.length))) return null;
+      if (s.phase === "reveal" && (typeof s.shownAt !== "string" || !Number.isFinite(Date.parse(s.shownAt)) || JSON.stringify(s.selected) !== JSON.stringify(s.rounds[s.rounds.length - 1].ranked))) return null;
+      // Preserve historical tournament evidence and all confirmed interests; do not
+      // fabricate new deal evidence or change an already-revealed slate.
+      const held = s.phase === "reveal" ? [...s.selected] : [...new Set([...s.rounds.flatMap(r => r.ranked), ...(s.phase === "rank" ? s.selected : [])])];
+      const offered = s.offered.filter(id => !held.includes(id) && !s.rounds.some(r => r.offered.includes(id)));
+      return { ...s, version: 2, held, deals: [], offered, rounds: s.phase === "rank" ? [...s.rounds, { offered: [...s.offered], ranked: [...s.selected] }] : s.rounds, selected: s.phase === "choose" ? s.selected.filter(id => offered.includes(id)) : [...held] };
+    }
+    if (!valid(s.held,s.held?.length) || !Array.isArray(s.deals) || s.deals.length > 180) return null;
+    const dealt = new Set<string>();
+    for (const deal of s.deals) {
+      if (!valid(deal.offered,deal.offered?.length) || !deal.offered.length || deal.offered.length > 6 || !valid(deal.saved,deal.saved?.length) || !deal.saved.every(id => deal.offered.includes(id) && s.held.includes(id)) || deal.offered.some(id => dealt.has(id))) return null;
+      deal.offered.forEach(id => dealt.add(id));
+    }
+    const recordedHeld = new Set([...s.rounds.flatMap(r => r.ranked), ...s.deals.flatMap(d => d.saved)]);
+    if (s.held.some(id => !recordedHeld.has(id)) || s.offered.some(id => dealt.has(id) || s.held.includes(id))) return null;
+    if (s.phase === "choose" ? s.selected.some(id => !s.offered.includes(id)) : !s.held.length || s.selected.length !== s.held.length || s.selected.some(id => !s.held.includes(id))) return null;
+    if (s.phase === "reveal" && (typeof s.shownAt !== "string" || !Number.isFinite(Date.parse(s.shownAt)))) return null;
+    return s as StoryTournament;
   } catch { return null; }
 }

@@ -8,7 +8,7 @@ import { useGameRecommendationMilestone } from "../../../hooks/useGameRecommenda
 import { parseGameRouteConfig, gameRouteConfigScope, gameRouteSourceFlagsToEnabledSources, buildGamesPortalRouteParams, type GameRouteParams } from "../../../lib/recommendationGames/gameRecommendationRouteConfig";
 import { createMelaniesGameStorageInstanceId } from "../../../lib/recommendationGames/melaniesGamePersistence";
 import { melanieArtworkPhase } from "../../../lib/recommendationGames/melanieArtwork";
-import { catalogStoriesWithDiagnostics, storyRoundCount, startStoryTournament, finishStoryRound, restoreStoryTournament, storySignals, type StoryBook, type StoryTournament } from "../../../lib/recommendationGames/melaniesRealBooks";
+import { catalogStoriesWithDiagnostics, SECRET_HAND_TARGET, SECRET_HAND_MINIMUM, canRankSecretHand, saveStoryDeal, rankSecretHand, startStoryTournament, finishStoryRound, restoreStoryTournament, storySignals, type StoryBook, type StoryTournament } from "../../../lib/recommendationGames/melaniesRealBooks";
 
 function MelanieBackdrop({ compact }: { compact: boolean }) {
   return <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.backdrop}>
@@ -21,7 +21,7 @@ function Cover({ book, hidden = false }: { book: StoryBook; hidden?: boolean }) 
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [book.coverUrl]);
   return <View style={[styles.cover, hidden && styles.blurredCover]} accessible={!hidden} accessibilityElementsHidden={hidden} importantForAccessibility={hidden ? "no-hide-descendants" : "auto"} accessibilityLabel={hidden ? undefined : `Cover of ${book.title}`}>
-    {book.coverUrl && !failed ? <Image source={{ uri: book.coverUrl }} blurRadius={hidden ? 3 : 0} onError={() => setFailed(true)} style={[styles.coverImage, hidden && styles.defocusedImage]} accessible={false} /> : <View style={[styles.coverImage, { backgroundColor: "#899894" }]} />}
+    {hidden ? <View style={styles.secretCover}><Text style={styles.secretMark}>◇</Text></View> : book.coverUrl && !failed ? <Image source={{ uri: book.coverUrl }} onError={() => setFailed(true)} style={styles.coverImage} accessible={false} /> : <View style={[styles.coverImage, { backgroundColor: "#899894" }]} />}
     {!hidden && (failed || !book.coverUrl) ? <Text style={styles.placeholder}>Cover unavailable</Text> : null}
   </View>;
 }
@@ -50,6 +50,8 @@ export default function RealStoryTournament() {
   const [attempt, setAttempt] = useState(0);
   const [privacy, setPrivacy] = useState(false);
   const [expandedStories, setExpandedStories] = useState<string[]>([]);
+  const [reviewHand, setReviewHand] = useState(false);
+  const [savedMessage, setSavedMessage] = useState("");
   const lock = useRef(false);
   const scroll = useRef<ScrollView>(null);
   const active = useRef(storageKey);
@@ -59,12 +61,12 @@ export default function RealStoryTournament() {
 
   useEffect(() => {
     scroll.current?.scrollTo({ y: 0, animated: false });
-  }, [visibleState?.phase, visibleState?.rounds.length]);
+  }, [visibleState?.phase, visibleState?.deals.length]);
 
   useEffect(() => {
     if (Platform.OS === "web") document.title = "Melanie's Game — Story First";
     let cancelled = false;
-    setLoading(true); setState(null); setError(""); lock.current = false; setBusy(false);
+    setLoading(true); setState(null); setError(""); lock.current = false; setBusy(false); setReviewHand(false); setSavedMessage(""); setExpandedStories([]);
     const key = storageKey;
     void (async () => {
       try {
@@ -116,29 +118,37 @@ export default function RealStoryTournament() {
   }, [storageKey, attempt]);
 
   async function commit(next: StoryTournament, recordEvidence = false) {
-    if (lock.current) return;
+    if (lock.current) return false;
     lock.current = true; setBusy(true); setError("");
     const key = storageKey;
     try {
       await AsyncStorage.setItem(key, JSON.stringify(next));
-      if (active.current !== key) return;
+      if (active.current !== key) return false;
       setState(next);
       if (recordEvidence && !await integration.recordBookTournament(storySignals(next), next.phase === "reveal" ? next.selected : [])) {
-        setError("Your tournament is saved. Use Save results below if your preferences have not finished syncing.");
+        if (active.current === key) setError("Your hand is saved on this device. Retry saving preferences before leaving.");
       }
-    } catch { if (active.current === key) setError("That change could not be saved. Please try again."); }
+      return active.current === key;
+    } catch { if (active.current === key) setError("That change could not be saved. Please try again."); return false; }
     finally { if (active.current === key) { lock.current = false; setBusy(false); } }
   }
   function toggle(id: string) {
-    if (!visibleState || busy) return;
+    if (!visibleState || busy || visibleState.phase !== "choose") return;
     const selected = visibleState.selected.includes(id) ? visibleState.selected.filter(value => value !== id) : [...visibleState.selected,id];
-    if (selected.length <= 3) void commit({ ...visibleState, selected });
+    void commit({ ...visibleState, selected });
   }
   function move(index: number, step: number) {
-    if (!visibleState || busy) return;
+    if (!visibleState || busy || visibleState.phase !== "rank" || index+step < 0 || index+step >= visibleState.selected.length) return;
     const selected = [...visibleState.selected];
     [selected[index],selected[index+step]] = [selected[index+step],selected[index]];
     void commit({ ...visibleState, selected });
+  }
+  async function saveDeal() {
+    if (!visibleState || busy || lock.current) return;
+    const count = visibleState.selected.length;
+    if (!await commit(saveStoryDeal(visibleState), true)) return;
+    setSavedMessage(count ? `${count} ${count === 1 ? "story added" : "stories added"} to My Picks. Identities stay secret until the reveal.` : "Deal passed. No likes or dislikes recorded.");
+    setExpandedStories([]);
   }
   async function saveResults(preferredBookId: string | null) {
     if (!visibleState || lock.current) return;
@@ -160,7 +170,7 @@ export default function RealStoryTournament() {
   }
   const books = new Map(visibleState?.pool.map(book => [book.id,book]));
   const exit = () => router.push({ pathname:"/games", params:buildGamesPortalRouteParams(config, params) });
-  const artworkPhase = melanieArtworkPhase(visibleState?.phase || null, visibleState?.rounds.length || 0);
+  const artworkPhase = melanieArtworkPhase(visibleState?.phase || null, 0);
   const compact = width < 720;
   const openingGrid = artworkPhase === "opening" && width >= 1000;
   const openingPair = artworkPhase === "opening" && width >= 620 && width < 1000;
@@ -177,33 +187,42 @@ export default function RealStoryTournament() {
         <Text accessibilityRole="header" style={[styles.title, compact && styles.titleCompact]}>{visibleState?.phase === "rank" ? "Put your favorite first." : visibleState?.phase === "reveal" ? "The books behind your favorite stories." : "Let the story win."}</Text>
         <Text style={styles.intro}>{visibleState?.phase === "rank" ? "Rank the descriptions from most to least appealing." : "Real books. Hidden identities."}</Text>
       </View>
-      {privacy ? <Text style={styles.notice}>Your selections and rankings help NovelIdeas learn which story themes you prefer. Unselected stories count only as weaker choices in this comparison. These choices do not mean you have read or disliked a book. Titles and authors stay hidden until the reveal; cover artwork is deliberately blurred.</Text> : null}
+      {privacy ? <Text style={styles.notice}>Only stories you save count as interest. Passed-over stories are kept in your on-device deal history, not sent as dislikes. Your hand remembers which stories you saw, which you saved, and the order you saved them. Your final ranking gives stronger comparative preference evidence. None of this means you have read a book. Titles, authors, and real covers stay hidden until the reveal.</Text> : null}
       {loading ? <View style={styles.notice}><ActivityIndicator color="#eed59a" /><Text style={styles.copy}>Finding real stories{config.localCollectionOnly ? " in your library’s collection" : " across your enabled book sources"}…</Text></View> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {error && visibleState ? <Action label="Retry saving preferences" disabled={busy} onPress={()=>void commit(visibleState,true)} /> : null}
       {!loading && !visibleState ? <Action label="Retry loading stories" onPress={() => setAttempt(a=>a+1)} /> : null}
       {visibleState && !loading ? <View style={[styles.stage, artworkPhase !== "opening" && styles.narrowStage]}>
-        <Text style={styles.eyebrow}>{visibleState.phase === "reveal" ? "THE REVEAL" : `ROUND ${visibleState.rounds.length+1} OF ${storyRoundCount(visibleState.pool.length)} · ${visibleState.phase === "choose" ? "CHOOSE" : "RANK"}`}</Text>
+        <Text style={styles.eyebrow}>{visibleState.phase === "reveal" ? "THE REVEAL" : visibleState.phase === "rank" ? "RANK YOUR SECRET HAND" : `DEAL ${visibleState.deals.length+1} · BUILD YOUR SECRET HAND`}</Text>
         {visibleState.phase === "choose" ? <>
-          <View style={styles.parchmentHeading}><Text accessibilityRole="header" style={styles.parchmentTitle}>Which three would you read?</Text>
-          <Text style={styles.parchmentCopy}>{visibleState.rounds.length ? "Your three survivors meet new challengers. Choose on the premise alone." : "Pick three of these story descriptions. Every one belongs to a real book."}</Text></View>
-          <Text accessibilityLiveRegion="polite" style={styles.counter}>{visibleState.selected.length} of 3 selected</Text>
+          <View style={styles.handDock}>
+            <View style={styles.handHeading}><Text accessibilityRole="header" style={styles.counter}>MY PICKS · {visibleState.held.length}</Text><Text style={styles.copy}>{visibleState.held.length >= SECRET_HAND_TARGET ? "Your secret hand is ready." : `Aim for ${SECRET_HAND_TARGET}; you can rank from ${SECRET_HAND_MINIMUM}.`}</Text></View>
+            <ScrollView horizontal contentContainerStyle={styles.handCards} accessibilityLabel="Saved anonymous stories">{visibleState.held.map((id,index)=><Pressable key={id} accessibilityRole="button" accessibilityLabel={`Review saved story ${index+1}`} onPress={()=>setReviewHand(true)} style={styles.handCard}><Text style={styles.secretMark}>◇</Text><Text style={styles.handNumber}>{index+1}</Text></Pressable>)}</ScrollView>
+            {visibleState.held.length ? <Action label={reviewHand ? "Close hand review" : "Review my picks"} outline onPress={()=>setReviewHand(!reviewHand)} /> : <Text style={styles.copy}>Save only what genuinely intrigues you. It is fine to pass an entire deal.</Text>}
+            {reviewHand ? visibleState.held.map((id,index)=><Text key={id} style={styles.copy}>PICK {index+1} · {books.get(id)!.synopsis}</Text>) : null}
+            {(canRankSecretHand(visibleState) || visibleState.held.length + visibleState.selected.length >= SECRET_HAND_MINIMUM) ? <Action label={visibleState.selected.length ? "Save selections & rank my picks" : visibleState.held.length >= SECRET_HAND_TARGET ? "Rank my picks" : "Rank what I have"} disabled={busy} onPress={()=>void commit(rankSecretHand(visibleState),true)} /> : null}
+          </View>
+          {savedMessage ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{savedMessage}</Text> : null}
+          <View style={styles.parchmentHeading}><Text accessibilityRole="header" style={styles.parchmentTitle}>{visibleState.offered.length ? "Which stories intrigue you?" : "You’ve explored this collection."}</Text>
+          <Text style={styles.parchmentCopy}>{visibleState.offered.length ? `Keep any that appeal — even none. ${visibleState.offered.length < 6 ? `These are the ${visibleState.offered.length} remaining new stories.` : "Six anonymous stories, all real books."}` : visibleState.held.length ? "Rank your saved stories whenever you’re ready. No extra picks required." : "Nothing caught your interest this time. You can return to games without recording any preference."}</Text></View>
+          {visibleState.offered.length ? <Text accessibilityLiveRegion="polite" style={styles.counter}>{visibleState.selected.length} selected in this deal · {visibleState.held.length} saved</Text> : null}
           <View style={styles.grid}>{visibleState.offered.map((id,index) => {
             const book=books.get(id)!; const selected=visibleState.selected.includes(id);
             return <View key={id} style={[styles.card, {flexDirection:"column"}, artworkPhase === "opening" && styles.parchmentCard, openingGrid && styles.choiceCardWide, openingPair && styles.choiceCardPair, selected && styles.selected]}>
               <View style={styles.choiceBody}><Cover book={book} hidden /><View style={styles.cardText}><Text style={[styles.cardLabel, artworkPhase === "opening" && styles.inkLabel]}>STORY {index+1}</Text><Text numberOfLines={expandedStories.includes(id) ? undefined : 5} style={[styles.synopsis, artworkPhase === "opening" && styles.inkSynopsis]}>{book.synopsis}</Text>{book.synopsis.length > 100 ? <Pressable accessibilityRole="button" accessibilityLabel={`${expandedStories.includes(id) ? "Collapse" : "Read full"} synopsis for story ${index+1}`} onPress={event=>{event.stopPropagation();setExpandedStories(current=>current.includes(id)?current.filter(value=>value!==id):[...current,id]);}}><Text style={[styles.readMore, artworkPhase === "opening" && styles.inkLabel]}>{expandedStories.includes(id) ? "Show less" : "Read full synopsis"}</Text></Pressable> : null}</View></View>
-              <Pressable disabled={busy} onPress={()=>toggle(id)} accessibilityRole="checkbox" accessibilityState={{checked:selected}} accessibilityLabel={`Story ${index+1}. ${book.synopsis}`} style={[styles.selectionFooter, artworkPhase === "opening" && styles.parchmentFooter]}><Text style={[styles.selectionText, artworkPhase === "opening" && styles.inkLabel]}>{selected ? "☑  Story selected" : "□  Select this story"}</Text></Pressable>
+              <Pressable {...(Platform.OS === "web" ? {onKeyDown:(event: React.KeyboardEvent)=>{if(event.key === " " && !event.repeat){event.preventDefault();toggle(id);}}} : {})} disabled={busy} onPress={()=>toggle(id)} accessibilityRole="checkbox" aria-checked={selected} accessibilityState={{checked:selected}} accessibilityLabel={`Story ${index+1}. ${book.synopsis}`} style={[styles.selectionFooter, artworkPhase === "opening" && styles.parchmentFooter]}><Text style={[styles.selectionText, artworkPhase === "opening" && styles.inkLabel]}>{selected ? "☑  Story selected" : "□  Select this story"}</Text></Pressable>
             </View>;
           })}</View>
-          <View style={styles.actions}><Action label="Rank my three choices" disabled={busy || visibleState.selected.length!==3} onPress={()=>void commit({...visibleState,phase:"rank"})} /></View>
+          {visibleState.offered.length ? <View style={styles.actions}><Action label={visibleState.selected.length ? `Save ${visibleState.selected.length} & deal new stories` : "None of these — deal new stories"} disabled={busy} onPress={saveDeal} /></View> : <Action label="Back to games" onPress={exit} outline />}
         </> : visibleState.phase === "rank" ? <>
 
           <View style={styles.grid}>{visibleState.selected.map((id,index)=>{const book=books.get(id)!;return <View key={id} style={[styles.card, styles.rankCard, compact && styles.rankCardCompact]}>
-            <Cover book={book} hidden /><View style={styles.cardText}><Text style={styles.cardLabel}>YOUR #{index+1} · STORY {visibleState.offered.indexOf(id)+1}</Text><Text style={styles.synopsis}>{book.synopsis}</Text>
-            </View><View style={[styles.rankActions, compact && styles.rankActionsCompact]}><Action label={`Move rank ${index+1} up`} disabled={busy || index===0} onPress={()=>move(index,-1)} /><Action label={`Move rank ${index+1} down`} disabled={busy || index===2} onPress={()=>move(index,1)} /></View>
+            <Cover book={book} hidden /><View style={styles.cardText}><Text style={styles.cardLabel}>YOUR #{index+1} · PICK {visibleState.held.indexOf(id)+1}</Text><Text style={styles.synopsis}>{book.synopsis}</Text>
+            </View><View style={[styles.rankActions, compact && styles.rankActionsCompact]}><Action label={`Move rank ${index+1} up`} disabled={busy || index===0} onPress={()=>move(index,-1)} /><Action label={`Move rank ${index+1} down`} disabled={busy || index===visibleState.selected.length-1} onPress={()=>move(index,1)} /></View>
           </View>})}</View>
-          <View style={styles.actions}><Action label={visibleState.rounds.length===storyRoundCount(visibleState.pool.length)-1 ? "Reveal my books" : "Meet the next challengers"} disabled={busy} onPress={()=>void commit(finishStoryRound(visibleState),true)} /><Action label="Change my picks" disabled={busy} onPress={()=>void commit({...visibleState,phase:"choose"})} /></View>
+          <View style={styles.actions}><Action label="Reveal my books" disabled={busy} onPress={()=>void commit(finishStoryRound(visibleState),true)} /><Action label="Keep collecting" disabled={busy} onPress={()=>void commit({...visibleState,selected:[],phase:"choose"})} /></View>
         </> : <>
-          <Text style={styles.copy}>These are the three real books your synopsis choices brought to the top{config.localCollectionOnly ? ", all from your library’s collection" : ""}. Now that their identities are revealed, which would you choose?</Text>
+          <Text style={styles.copy}>{visibleState.selected.length === 1 ? "This is your saved book" : `These are your ${visibleState.selected.length} saved books in your final preference order`}{config.localCollectionOnly ? ", from your library’s collection" : ""}. With {visibleState.selected.length === 1 ? "its identity" : "their identities"} revealed, would you choose {visibleState.selected.length === 1 ? "it" : "one"}?</Text>
           <View style={styles.grid}>{visibleState.selected.map((id,index)=>{const book=books.get(id)!;return <View key={id} style={[styles.card, styles.revealCard]}>
             <Cover book={book} /><View style={styles.cardText}><Text style={styles.cardLabel}>{index===0 ? "YOUR TOP STORY MATCH" : `YOUR #${index+1} STORY MATCH`}</Text><Text style={styles.bookTitle}>{book.title}</Text><Text style={styles.author}>{book.author}</Text><Text style={styles.synopsis}>{book.description}</Text>
             <Action label={`I would choose ${book.title}`} disabled={busy || visibleState.feedbackSaved} onPress={()=>void saveResults(id)} /></View>
@@ -216,6 +235,7 @@ export default function RealStoryTournament() {
   </View>;
 }
 const styles=StyleSheet.create({
+  handDock:{width:"100%",padding:14,gap:10,borderRadius:10,borderWidth:1,borderColor:"#bba971",backgroundColor:"rgba(5,36,37,0.97)"},handHeading:{flexDirection:"row",flexWrap:"wrap",gap:10,alignItems:"center"},handCards:{gap:8},handCard:{width:46,height:62,borderRadius:5,borderWidth:1,borderColor:"#d9bd78",backgroundColor:"#284749",justifyContent:"center",alignItems:"center"},handNumber:{color:"#fff2d5",fontSize:12},secretCover:{flex:1,backgroundColor:"#284749",borderWidth:2,borderColor:"#bba971",justifyContent:"center",alignItems:"center"},secretMark:{color:"#eed59a",fontSize:26},
   page:{flex:1,backgroundColor:"#071b1d"},scroll:{flex:1},content:{width:"100%",maxWidth:1100,alignSelf:"center",paddingHorizontal:28,paddingTop:18,paddingBottom:48,gap:14},contentCompact:{paddingHorizontal:14,paddingTop:12},
   backdrop:{...StyleSheet.absoluteFillObject,overflow:"hidden",backgroundColor:"#071b1d"},vignette:{...StyleSheet.absoluteFillObject,backgroundColor:"rgba(0,0,0,0.18)"},
   hero:{alignItems:"center",gap:8,paddingVertical:10},eyebrow:{color:"#d9bd78",fontWeight:"800",fontSize:12,letterSpacing:2,textAlign:"center"},title:{color:"#fff2d5",fontFamily:"Georgia",fontSize:48,lineHeight:58,fontWeight:"700",textAlign:"center",textShadowColor:"rgba(0,0,0,0.65)",textShadowRadius:8},titleCompact:{fontSize:36,lineHeight:43},intro:{color:"#e0e8df",fontSize:17,lineHeight:26,textAlign:"center",maxWidth:760,fontFamily:"Georgia"},heading:{fontSize:28,lineHeight:35,fontFamily:"Georgia",fontWeight:"700",color:"#fff2d5"},bookTitle:{fontSize:25,lineHeight:31,fontFamily:"Georgia",fontWeight:"700",color:"#fff2d5"},author:{fontSize:15,lineHeight:22,color:"#d9bd78",fontWeight:"700"},copy:{fontSize:15,lineHeight:23,color:"#d1e0d7"},counter:{color:"#eed59a",fontWeight:"800",fontSize:15},
