@@ -256,19 +256,25 @@ const SLATE_EVENT_KEYS = [
   "ranking", "preferredBookId", "ageBand", "library", "shownAt", "respondedAt",
 ] as const;
 
+// Only Melanie can reveal a hand larger than a generated five-book slate.
+export function gameRecommendationFeedbackMaxLength(value: unknown): number {
+  const event = value as Record<string, unknown> | null;
+  return event?.game === "melanies_game" && event?.schemaVersion === GAME_RECOMMENDATION_SLATE_FEEDBACK_SCHEMA ? 500_000 : 12_000;
+}
+
 export function isGameRecommendationSlateFeedbackEventV1(
   value: unknown,
 ): value is GameRecommendationSlateFeedbackEventV1 {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const event = value as Record<string, unknown>;
-  if (JSON.stringify(event).length > 12_000 || !exactKeys(event, SLATE_EVENT_KEYS)) return false;
+  if (JSON.stringify(event).length > gameRecommendationFeedbackMaxLength(event) || !exactKeys(event, SLATE_EVENT_KEYS)) return false;
   if (event.schemaVersion !== GAME_RECOMMENDATION_SLATE_FEEDBACK_SCHEMA) return false;
   if (!isNonEmptyString(event.eventId, 260)) return false;
   if (!RECOMMENDATION_GAME_IDS.includes(event.game as RecommendationGameId)) return false;
   if (!isNonEmptyString(event.anonymousPlayerId, 160) || !isNonEmptyString(event.gameSessionId, 160)) return false;
   if (!isNonEmptyString(event.evidenceSnapshotVersion, 40) || !isValidEvidenceSnapshot(event.evidenceSnapshot)) return false;
   if (!GAME_RECOMMENDATION_EVIDENCE_MODES.includes(event.evidenceMode as GameRecommendationEvidenceMode)) return false;
-  if (!Array.isArray(event.recommendations) || event.recommendations.length < 1 || event.recommendations.length > 5
+  if (!Array.isArray(event.recommendations) || event.recommendations.length < 1 || event.recommendations.length > (event.game === "melanies_game" ? 180 : 5)
     || !event.recommendations.every(isValidBookIdentity)) return false;
   const recommendationIds = new Set((event.recommendations as GameRecommendationBookIdentity[]).map((book) => book.id));
   if (!Array.isArray(event.ranking) || event.ranking.length !== recommendationIds.size
