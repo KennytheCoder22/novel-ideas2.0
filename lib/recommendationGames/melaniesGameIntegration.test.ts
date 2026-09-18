@@ -57,7 +57,8 @@ test("real-story screen hides identities until reveal and saves session-scoped p
   const source = fs.readFileSync(path.join(process.cwd(), "features/recommendation-games/melanie/RealStoryTournament.tsx"), "utf8");
   assert(source.includes("sessionScopedEvidence: true"));
   assert(source.includes("submitFinalRecommendationFeedback"));
-  assert(source.includes('hidden ? <View style={styles.secretCover}'), "anonymous cards must not render recognizable cover art");
+  assert(source.includes("blurRadius={hidden ? 8 : 0}"), "real covers remain obscured until reveal");
+  assert(source.includes("<Cover book={books.get(id)!} hidden thumbnail />"), "saved hand uses the same anonymous cover component");
   assert(source.includes('importantForAccessibility={hidden ? "no-hide-descendants"'));
   assert(source.includes("recordBookTournament"));
   assert(source.includes("melanieArtworkPhase"));
