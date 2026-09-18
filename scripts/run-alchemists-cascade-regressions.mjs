@@ -1502,6 +1502,9 @@ async function main() {
     && whisperDesktop.cards.length === 3
     && whisperDesktop.cards.every((bounds) => bounds.width >= 275 && bounds.height >= 460),
   "desktop First Whisper must preserve three full live card regions");
+  assert(whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_BOUNDS.fate.top === 769
+    && whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_BOUNDS.fate.height === 58,
+  "desktop First Whisper fate control must align with the artwork plaque");
   assert(whisperMobile.mode === "stacked"
     && whisperMobile.header.height
       < whisperArtwork.ALCHEMISTS_CASCADE_WHISPER_BOUNDS.cards[0].top
@@ -1520,6 +1523,14 @@ async function main() {
     && route.includes("accessibilityState={{ disabled: busy }}")
     && route.includes("Same calibrated seven-ingredient effect."),
   "First Whisper artwork, live options, Back, fate, accessibility, and fallback must remain wired");
+  assert(route.includes("<Text style={styles.whisperFateText}>LET FATE DECIDE</Text>")
+    && route.includes("<Text style={styles.whisperFateSublabel}>SAME BOOST · NO PREFERENCE</Text>")
+    && route.includes('backgroundColor: "transparent"')
+    && route.includes('layout.mode === "stacked" ? (')
+    && route.includes("whisperCinematicFateActive")
+    && route.includes("whisperCinematicFatePressed")
+    && !route.includes('{ backgroundColor: "#17151C", padding: 4 }'),
+  "cinematic First Whisper fate action must expose the full artwork sign without duplicate foreground copy");
   checks.push("whisper_artwork_live_controls_and_fallback");
   const atlasArtworkPath = atlasArtwork.ALCHEMISTS_CASCADE_ATLAS_ARTWORK;
   assert(typeof atlasArtworkPath === "string" && atlasArtworkPath.endsWith("recipe-atlas.webp"),
