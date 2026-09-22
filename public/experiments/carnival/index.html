@@ -11,7 +11,11 @@
     <div class="composition">
       <img class="midway" src="./midway.png" width="1536" height="1024" alt="An empty moonlit carnival, with old striped tents and warm lamplight reflected in puddles.">
       <button class="wheel" aria-label="Explore the distant Ferris wheel" type="button">
-        <img src="./wheel.png" width="1319" height="1192" alt="" draggable="false">
+        <span class="assembly" aria-hidden="true">
+          <img class="support" src="./support.png" alt="" draggable="false">
+          <img class="frame" src="./wheel-frame.png" alt="" draggable="false">
+          <span class="gondolas"></span>
+        </span>
       </button>
       <!-- Exact copies of the unchanged background restore foreground occlusion.
            Polygon coordinates refer to the same 1536×1024 composition, not the viewport. -->

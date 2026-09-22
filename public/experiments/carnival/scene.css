@@ -9,19 +9,20 @@ main { position: relative; width: 100%; height: 100%; overflow: hidden; }
 .midway, .foreground { position: absolute; inset: 0; width: 100%; height: 100%; user-select: none; }
 .midway { z-index: 0; }
 .wheel {
-  position: absolute; left: 58%; top: 13%; width: 24%; aspect-ratio: 1319 / 1192;
+  position: absolute; left: 58%; top: 13%; width: 24%; aspect-ratio: 600 / 710;
   z-index: 1; padding: 0; border: 0; margin: 0; background: transparent; cursor: pointer;
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
-.wheel img { display: block; width: 100%; height: auto; pointer-events: none; filter: brightness(.48) saturate(.65); animation: lamplight 17s linear infinite; }
-/* No rotation: the supplied frame, support and gondolas are flattened together. */
-@keyframes lamplight {
-  0%, 100%, 47%, 53% { filter: brightness(.48) saturate(.65); }
-  21%, 77% { filter: brightness(.50) saturate(.65); }
-  49% { filter: brightness(.47) saturate(.65); }
-}
-.wheel.acknowledged img { animation: none; filter: brightness(.59) saturate(.65); }
-.wheel:focus-visible img { animation: none; filter: brightness(.62) saturate(.7); }
+.assembly { --angle: 0deg; display: block; position: absolute; inset: 0; filter: brightness(.48) saturate(.65); pointer-events: none; }
+.assembly img { display: block; height: auto; pointer-events: none; }
+/* One 600×710 coordinate system. Frame crop hub (280,280) + inset (25,25). */
+.support { position: absolute; left: 24.166667%; top: 35.633803%; width: 55%; }
+.frame { position: absolute; left: 4.166667%; top: 3.521127%; width: 91.666667%; transform-origin: 50.909091% 52.336449%; transform: rotate(var(--angle)); }
+.orbit { position: absolute; inset: 0; transform-origin: 50.833333% 42.957746%; transform: rotate(calc(var(--angle) + var(--offset))); }
+.hanger { position: absolute; left: 93.333333%; top: 42.957746%; width: 11.666667%; transform-origin: 0 0; transform: rotate(calc(-1 * (var(--angle) + var(--offset)))); }
+.hanger img { width: 100%; transform: translate(-48.341232%, -6.418919%); }
+.wheel.acknowledged .assembly { filter: brightness(.59) saturate(.65); }
+.wheel:focus-visible .assembly { filter: brightness(.62) saturate(.7); }
 .wheel:focus { outline: none; }
 .foreground { z-index: 2; pointer-events: auto; }
 .tents { clip-path: polygon(100% 0, 100% 100%, 54% 100%, 54% 49%, 61% 46%, 68% 40%, 75% 34%, 78% 26%, 80% 18%, 82% 15%, 85% 29%, 91% 26%, 94% 23%, 100% 15%); }
@@ -32,7 +33,7 @@ main { position: relative; width: 100%; height: 100%; overflow: hidden; }
   .composition { left: calc(50% - (150vh - 100vw) * .17); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .wheel img { animation: none; }
+  .assembly { --angle: 0deg !important; }
 }
 /* Explicit no-motion viewing option also permits a bounded visual check. */
-html[data-motion="still"] .wheel img { animation: none; }
+html[data-motion="still"] .assembly { --angle: 0deg !important; }
