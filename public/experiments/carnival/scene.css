@@ -1,0 +1,38 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #080e16; }
+main { position: relative; width: 100%; height: 100%; overflow: hidden; }
+/* One cover-scaled coordinate system: the wheel never moves independently on resize. */
+.composition {
+  position: absolute; width: max(100vw, 150vh); height: max(100vh, 66.666667vw);
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+}
+.midway, .foreground { position: absolute; inset: 0; width: 100%; height: 100%; user-select: none; }
+.midway { z-index: 0; }
+.wheel {
+  position: absolute; left: 58%; top: 13%; width: 24%; aspect-ratio: 1319 / 1192;
+  z-index: 1; padding: 0; border: 0; margin: 0; background: transparent; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.wheel img { display: block; width: 100%; height: auto; pointer-events: none; filter: brightness(.48) saturate(.65); animation: lamplight 17s linear infinite; }
+/* No rotation: the supplied frame, support and gondolas are flattened together. */
+@keyframes lamplight {
+  0%, 100%, 47%, 53% { filter: brightness(.48) saturate(.65); }
+  21%, 77% { filter: brightness(.50) saturate(.65); }
+  49% { filter: brightness(.47) saturate(.65); }
+}
+.wheel.acknowledged img { animation: none; filter: brightness(.59) saturate(.65); }
+.wheel:focus-visible img { animation: none; filter: brightness(.62) saturate(.7); }
+.wheel:focus { outline: none; }
+.foreground { z-index: 2; pointer-events: auto; }
+.tents { clip-path: polygon(100% 0, 100% 100%, 54% 100%, 54% 49%, 61% 46%, 68% 40%, 75% 34%, 78% 26%, 80% 18%, 82% 15%, 85% 29%, 91% 26%, 94% 23%, 100% 15%); }
+.pole { clip-path: polygon(72.9% 0, 74.7% 0, 74.7% 100%, 72.9% 100%); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-aspect-ratio: 3/2) {
+  /* Crop the entire artwork together toward the right-hand attraction. */
+  .composition { left: calc(50% - (150vh - 100vw) * .17); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wheel img { animation: none; }
+}
+/* Explicit no-motion viewing option also permits a bounded visual check. */
+html[data-motion="still"] .wheel img { animation: none; }
