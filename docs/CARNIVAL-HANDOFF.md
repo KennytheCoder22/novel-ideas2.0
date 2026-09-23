@@ -1,3 +1,71 @@
+# Carnival interactive Midway — current handoff
+
+Updated September 23, 2026. Work stays on `codex/carnival-visual-proof`. Do not merge.
+
+The accepted wheel and foreground corrections are the baseline at `68b8ca8`.
+`scene.js`, `scene.css`, wheel assets, the canonical background, and accepted
+foreground paths remain unchanged by the interactive additions. The older
+handoff below describes the pre-correction checkpoint, not the current state.
+
+## Interactive additions
+
+`midway.css` and `midway.js` layer independent supplied artwork into `index.html`.
+The tent, Rides & Games entrance, and wheel open returnable destination previews;
+no destination scene is implemented. The fox and puddle have close inspection
+views. The poster starts normal, then changes after the first inspection when
+attention moves to another object or destination. The distant woman disappears
+while attention is away. Crow poses change at irregular intervals without sound;
+the balloon gently drifts. Neither is clickable. Reduced motion/static viewing
+stops the added ambient motion. Hidden tabs pause the crow timer and balloon.
+
+Mobile preserves scene scale and the original initial crop. Three small camera
+controls move the whole composition left, center, or right to reach objects
+outside the crop. They do not label hotspots. Keyboard focus outlines remain for
+accessibility. Inspection uses a native modal dialog, Escape, a return button,
+and restored focus. The inspection art gently scales in unless motion is reduced.
+
+Session-only raw observations are capped at 200 records under
+`carnival-experiment-observations` in sessionStorage. They contain the chosen
+object/destination, return events, timestamps, and visible inspection duration
+(excluding time in a hidden tab). No network calls, genre inference, book scores,
+or production recommendation connections. Reload resets visual story state;
+raw observations survive reload for the current browser session only.
+
+## Assets and compromises
+
+The first balloon/woman/fox/poster files and the first replacement sheet were RGB
+with baked-in backgrounds; they were not used. The second `Multiple Assets..png`
+is RGBA and supplies the extracted woman, balloon, fox, two poster states, and
+two crow poses. Original retained RGB/alpha is preserved; polygon exclusions
+only separate neighboring pieces. Tent, entrance, and puddle are copied from the
+supplied transparent PNGs. The canonical empty background is unchanged.
+
+The populated reference has different architecture, so exact placement matching
+is impossible while preserving the canonical background and accepted wheel.
+Rides & Games is placed on the left side of the middle distance; the poster is
+mounted on the left booth; crow and fox occupy the right foreground. Asset edge
+quality and intrinsic perspective are inherited from the supplied art. Inspections
+are restrained close-up views, not reconstructed 3D camera travel. The existing
+wheel hotspot still includes transparent/occluded areas of its rectangular bounds.
+
+## Bounded validation
+
+Desktop 1280x720 and mobile 390x844 screenshots inspected. Normal/altered poster,
+puddle, fox, Tent Row, Rides & Games, wheel destination and return paths exercised.
+Mobile pan exposes both side objects and permits inspection/return. Native dialog
+focus containment and return focus checked through browser state. Focused wheel
+clock/artwork checks and JavaScript syntax checks pass. No full application build
+or repository-wide tests are necessary for this static experiment.
+
+## Local preview
+
+Serve `public` with `python -m http.server 4180 --bind 127.0.0.1 --directory public`.
+Route: `/experiments/carnival/index.html`. No merge or main deployment.
+
+---
+
+## Historical handoff (September 22)
+
 # Carnival experiment: home-to-work handoff
 
 Updated 2026-09-22. Branch: `codex/carnival-visual-proof`.
