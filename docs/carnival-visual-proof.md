@@ -67,3 +67,7 @@ Click/activation briefly raises brightness to .59 for 900ms, without an on-scree
 - `public/experiments/carnival/wheel.png`
 - `scripts/check-carnival-visual-proof.mjs`
 - `docs/carnival-visual-proof.md`
+
+## Foreground correction (September 23)
+Added an inline SVG clip over the unchanged midway artwork, tracing both tent roof slopes and the complete foreground light cable with its hanging bulbs. It shares the scene coordinate system and stays above all rotating parts. Original raster assets and wheel mechanics are unchanged. Verified in narrow and 1280x720 browser views at different rotation positions; no browser errors. The focused animation/artwork check passes.
+
