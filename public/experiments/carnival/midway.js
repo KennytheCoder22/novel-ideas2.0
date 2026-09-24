@@ -14,6 +14,8 @@
   let visibleTime = 0;
   let posterSeen = false;
   let posterAltered = false;
+  let foxGone = false;
+  let stopFox = () => {};
   const woman = document.querySelector('.woman');
   // Bounded, session-only raw observations; no production API or taste inference.
   const observations = [];
@@ -26,7 +28,12 @@
     const saved = JSON.parse(sessionStorage.getItem('carnival-experiment-observations') || '[]');
     if (Array.isArray(saved)) observations.push(...saved.slice(-200));
   } catch (_) { /* A fresh session is sufficient. */ }
+  function openFox() {
+    stopFox = window.startFoxCinema({scene, dialog, art, motion, still, record,
+      vanish() { foxGone = true; document.querySelector('.fox').hidden = true; }});
+  }
   function open(target, destination = false) {
+    if (target === 'fox' && foxGone) return;
     lastFocus = document.activeElement;
     inspection = target;
     visibleTime = 0;
@@ -39,6 +46,7 @@
     art.replaceChildren();
     copy.hidden = !destination;
     if (destination) copy.querySelector('h1').textContent = target;
+    else if (target === 'fox') openFox();
     else {
       const image = document.createElement('img');
       image.src = `./${target === "poster" && posterAltered ? "poster-altered" : target}.png`;
@@ -48,7 +56,7 @@
     record(destination ? 'destination_chosen' : 'object_inspected', target);
     dialog.showModal();
     const image = art.querySelector('img');
-    if (image && !motion.matches && !still) {
+    if (image && target !== 'fox' && !motion.matches && !still) {
       image.animate([{opacity:0, transform:'scale(.88)'},{opacity:1,transform:'scale(1)'}], {duration:650,easing:'ease-out'});
     }
   }
@@ -57,11 +65,13 @@
   document.querySelectorAll('[data-inspect]').forEach(button => button.addEventListener('click', () => open(button.dataset.inspect)));
   document.querySelector('.return').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => {
+    stopFox();
     if (inspectedAt !== null) visibleTime += performance.now() - inspectedAt;
     record('return_to_midway', inspection, {visibleInspectionMs:Math.round(visibleTime)});
     inspectedAt = null;
     woman.classList.add('departed');
-    lastFocus?.focus({preventScroll:true});
+    // A vanished fox cannot receive focus: return to the stable scene control.
+    (lastFocus?.hidden ? document.querySelector('.wheel') : lastFocus)?.focus({preventScroll:true});
   });
   let framing = 'start';
   function pan(direction) {

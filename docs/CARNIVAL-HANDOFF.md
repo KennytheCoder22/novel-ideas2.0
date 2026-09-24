@@ -1,6 +1,60 @@
 # Carnival interactive Midway — current handoff
 
-Updated September 23, 2026. Work stays on `codex/carnival-visual-proof`. Do not merge.
+## Resume at work — September 24, 2026
+
+Fetch the latest `codex/carnival-visual-proof` branch and read this document first.
+Preserve local changes; fast-forward only when clean, or use a separate worktree.
+The home fox rebuild is ready for Ken's playtest, not yet accepted by him.
+Start the static preview using the Local preview instructions below, then wait
+for his feedback. Do not merge to main or expand the experiment.
+
+All runtime fox artwork and animation code are included in this checkpoint.
+The extraction script references home-only source paths for provenance; it does
+not need to run at work. No school/home shared asset folder is required.
+Reload restores the fox for another test; after its breakup it stays gone until
+reload. On narrow screens use Look right to reach it. Click once and let the
+approximately 11-second sequence run automatically; MARA is not clickable.
+
+Keep the accepted wheel, gondolas, speed, occlusion, crow position, poster,
+balloon and original composition unchanged. Await feedback on the fox's motion,
+especially the edge-on pose turn and whether the breakup feels like fabric.
+Real-device performance and resizing/orientation during the sequence remain
+untested. No hosted preview deployment has been verified for this checkpoint.
+
+## Rebuilt fox choreography (home, September 24)
+
+The previous tag-click/wipe implementation was rejected and removed. Fox-only
+canvas choreography now lives in fox-cinema.js, called by midway.js. index.html
+only adds its script before midway.js; accepted SVG occlusion is unchanged.
+
+Automatic timeline: 1.6s approach/crouch moving the entire original scene plane;
+1.35s lift with an edge-on turn between supplied ground/held poses; 2.5s MARA
+hold; 2.7s seeded ragged-patch breakup; .3s surviving tag beat; .85s tag fall;
+1.6s gaze/stand/pullback. Total 10.9s. Background stays visible, softening behind
+the held toy. No tag action, black inspection cut, body wipe or body crossfade.
+768 small interlocking ragged body patches and 68 cloth/fiber elements fall
+independently. Tufts also sample the supplied broken-fox artwork. The survivor
+is the held image's actual tag pixels, excluded from the body patches.
+
+The fox stays gone after deterioration begins until reload. Escape and the
+keyboard-accessible Return control still leave immediately; cancellation cleans
+up camera styles. Reduced motion uses stationary restrained transitions instead
+of travel/particles. Hidden-tab time is excluded. Events remain factual and
+session-only. The accepted crow remains at top:48%; no ambient behavior changed.
+
+Checks: node scripts/check-fox-cinema.mjs covers automatic phases, hold, hidden
+pause, disappearance, reduced completion and early cleanup. Existing Carnival
+checks, syntax and diff checks pass. Desktop 1280x720 and mobile 390x844 sequence
+runs checked, with screenshots of inspection, ragged breakup and surviving tag.
+Final mobile run returned automatically with the fox absent and no browser
+console errors. No physical phone or OS reduced-motion toggle test. No merge.
+
+Limitations: source art is still a flat scene, not reconstructed 3D. Approach
+uses bounded whole-scene translation/scale; a continuous edge-on turn bridges
+the differing supplied fox poses. Breakup is textured ragged pieces, not a
+cloth physics simulation. Camera returns exactly to the prior crop/pan.
+
+Updated September 24, 2026. Work stays on `codex/carnival-visual-proof`. Do not merge.
 
 The accepted wheel and foreground corrections are the baseline at `68b8ca8`.
 `scene.js`, `scene.css`, wheel assets, the canonical background, and accepted
@@ -64,11 +118,12 @@ Serve `public` with `python -m http.server 4180 --bind 127.0.0.1 --directory pub
 Route: `/experiments/carnival/index.html`. No merge or main deployment.
 
 
-## Resume on the home computer
+## Setup on either computer
 
 Repository: `KennytheCoder22/novel-ideas2.0`.
 Branch: `codex/carnival-visual-proof`. Do NOT start from main.
-Latest implementation commit: `8fdde15` (balloon crossing).
+Previous work-computer implementation commit: `8fdde15` (balloon crossing).
+The latest branch checkpoint adds the home fox rebuild described above.
 Earlier milestones: `2a9e72e` (complete interactive assembly), `68b8ca8`
 (accepted center-facing light string mask), `55ea37d` (roof/right light masks).
 The handoff commit itself will be newer than these implementation commits.
