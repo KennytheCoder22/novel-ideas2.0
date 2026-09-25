@@ -1,7 +1,7 @@
 /* Fox-only choreography. The accepted scene is moved as one camera plane;
    no wheel, mask, ambient-object or original placement styles are edited. */
 (() => {
-  const files = ['fox.png','fox-picked-up.png','fox-breaking.png', ...Array.from({length:6},(_,i)=>`fox-fragment-${i}.png`)];
+  const files = ['fox.png','fox-picked-up.png','fox-breaking.png', ...Array.from({length:6},(_,i)=>`fox-fragment-${i}.png`), 'mara-front.png'];
   const images = files.map(file => { const image = new Image(); image.src = `./${file}`; return image; });
   const ready = Promise.all(images.map(image => image.decode()));
   ready.catch(() => {});
@@ -11,8 +11,10 @@
   function random(seed) { return () => { seed=(Math.imul(seed,1664525)+1013904223)>>>0; return seed/4294967296; }; }
   const tagPolygon = [[875,550],[943,570],[1052,712],[966,773],[850,601]];
   function path(ctx, points) { ctx.beginPath(); points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath(); }
-  window.startFoxCinema = ({scene,dialog,art,motion,still,record,vanish}) => {
+  window.startFoxCinema = ({scene,dialog,art,motion,still,record,vanish,cameraDepth=()=>{},landTag=()=>{}}) => {
     const fox = scene.querySelector('.fox');
+    const groundTag = scene.querySelector('.ground-tag');
+    groundTag.hidden = false; groundTag.style.visibility = 'hidden';
     const original = {transform:scene.style.transform, origin:scene.style.transformOrigin, filter:scene.style.filter, visibility:fox.style.visibility};
     const baseTransform = getComputedStyle(scene).transform;
     const sceneRect = scene.getBoundingClientRect();
@@ -69,6 +71,7 @@
       // Prefix a screen-space camera to the existing accepted crop/pan matrix.
       scene.style.transformOrigin='0 0';
       scene.style.transform=`translate(${dx+(scale-1)*scene.offsetLeft}px,${dy+(scale-1)*scene.offsetTop}px) scale(${scale}) ${baseTransform}`;
+      cameraDepth(scale);
       return {scale,dx,dy};
     }
     function drawImage(image,box,turn=1) {
@@ -129,15 +132,32 @@
         } else ctx.drawImage(images[p.image],-p.size/2,-p.size/2,p.size,p.size);
         ctx.restore();
       }
-      // The surviving tag is the same pixels at the same point on the toy.
-      const drop=Math.max(0,t-TAG);
-      if(t<RETURN){
-        ctx.save();
-        if(rm)ctx.globalAlpha=1-clamp(drop/.85);
-        else {ctx.translate(952+drop*38,660+drop*drop*(height/h)*2300);ctx.rotate(drop*2.9);ctx.translate(-952,-660);}
-        path(ctx,tagPolygon);ctx.clip();ctx.drawImage(images[1],0,0);ctx.restore();
-      }
       ctx.restore();
+      // Retain the painted tag through breakup, then carry those same pixels
+      // to the persistent tag's actual ground-plane bounds. Both follow cam.
+      const drop=clamp((t-TAG)/.85);
+      const tag=scene.querySelector('.ground-tag');
+      const target=tag.getBoundingClientRect();
+      const source={x:settled.x+952*w/1536,y:settled.y+660*h/1024};
+      const travel=drop*drop;
+      const size=mix(w/1536, target.width/202, smooth(drop));
+      const settle=smooth((drop-.7)/.3);
+      if(drop<1) {
+        ctx.save();
+        ctx.translate(mix(source.x,target.x+target.width/2,travel),mix(source.y,target.y+target.height/2,travel));
+        ctx.globalAlpha=1-settle;
+        ctx.rotate(-.227*smooth(drop));
+        ctx.scale(size,mix(h/1024,target.height/223,smooth(drop)));
+        ctx.translate(-952,-660);
+        ctx.filter='brightness('+mix(1,.55,smooth(drop))+') saturate('+mix(1,.65,smooth(drop))+')';
+        path(ctx,tagPolygon);ctx.clip();ctx.drawImage(images[1],0,0);ctx.restore();
+        if(settle>0) {
+          ctx.save();ctx.globalAlpha=settle;
+          ctx.translate(mix(source.x,target.x+target.width/2,travel),mix(source.y,target.y+target.height/2,travel));
+          ctx.rotate(-.227);ctx.filter='brightness(.55) saturate(.65)';
+          ctx.drawImage(images.at(-1),-target.width/2,-target.height/2,target.width,target.height);ctx.restore();
+        }
+      } else { groundTag.style.visibility = ''; landTag(); }
     }
     function tick(now) {
       if(cancelled||document.hidden)return;
@@ -156,6 +176,9 @@
       cancelled=true;cancelAnimationFrame(frame);
       document.removeEventListener('visibilitychange',visibility);removeEventListener('resize',resize);
       scene.style.transform=original.transform;scene.style.transformOrigin=original.origin;scene.style.filter=original.filter;
+      cameraDepth(1);
+      groundTag.style.visibility='';
+      if(gone)landTag();else groundTag.hidden=true;
       fox.style.visibility=original.visibility;dialog.classList.remove('fox-cinema');canvas.remove();
       if(gone)record('fox_returned_after_disintegration','fox',{completed:complete});
     };

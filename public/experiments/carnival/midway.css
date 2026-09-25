@@ -9,7 +9,9 @@
 .crow { position:absolute; left:86%; top:48%; width:9%; height:9%; z-index:4; pointer-events:none; filter:brightness(.68); }
 .crow img { width:100%; height:100%; object-fit:contain; object-position:center bottom; }
 .woman { position:absolute; left:48.3%; top:51.2%; width:3.6%; z-index:2; pointer-events:none; filter:brightness(.48) saturate(.65); }
-.woman.departed { visibility:hidden; }
+.woman-reflection { position:absolute; left:45.1%; top:58.8%; width:10%; height:6.8%; z-index:3; pointer-events:none; object-fit:fill; opacity:.94; filter:brightness(.8) saturate(.7); mask-image:radial-gradient(ellipse 50% 48% at 50% 53%, #000 64%, #000d 76%, transparent 100%); }
+.ground-tag { position:absolute; left:85.1%; top:86.4%; width:2.3%; height:1.15%; z-index:3; pointer-events:none; transform:rotate(-13deg) skewX(-16deg); filter:brightness(.55) saturate(.65) drop-shadow(1px 2px 1px #160e09aa); }
+.ground-tag[hidden] { display:none; }
 .balloon { position:absolute; left:30%; top:10.5%; width:8%; --balloon-travel:1000%; z-index:2; pointer-events:none; filter:brightness(.72) saturate(.85); transform-origin:50% 35%; animation:balloon-drift 100s linear forwards; }
 .fox { left:77%; top:76%; width:18%; filter:brightness(.72) saturate(.85); }
 .poster { left:3.5%; top:28%; width:12%; transform:perspective(700px) rotateY(10deg) rotate(-2deg); filter:brightness(.65) saturate(.8); }
@@ -45,3 +47,10 @@ html[data-hidden="true"] .balloon { animation-play-state:paused; }
 .fox-cinema .return { opacity:0; }
 .fox-cinema .return:hover, .fox-cinema .return:focus-visible { opacity:1; }
 
+
+.woman-approach { left:46%; top:50%; width:8%; height:14%; z-index:4; }
+.midway-retreat { position:absolute; left:18px; top:18px; z-index:6; border:1px solid #a28c67; border-radius:4px; color:#ecd7b1; padding:12px 18px; background:#111b1ee8; cursor:pointer; font:16px Georgia,serif; }
+.midway-retreat[hidden] { display:none; }
+
+.poster .poster-aged { position:absolute; inset:0; width:100%; height:100%; opacity:0; transition:opacity 1.25s ease-in-out; }
+.poster.is-aged .poster-aged { opacity:1; }
