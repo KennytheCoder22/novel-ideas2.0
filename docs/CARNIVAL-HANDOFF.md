@@ -12,6 +12,38 @@ Serve `public` from this branch with
 All runtime artwork is included; neither supplied sheet requires a work-computer
 folder or a generation/extraction step.
 
+### Resume this exact version from work
+
+Latest gameplay checkpoint: `ca63979fd058b5624b6ff5d60941ae897f3ebd6a`
+(complete clickable geography). This document-only portability checkpoint builds
+on it; fetch the current remote branch to get both. All runtime assets, including
+six production stages, are tracked in Git. No clipboard, Dreamscapes, OneDrive,
+home-computer temporary files, npm install, backend or image-generation step is
+needed to run the preview. A fresh export of the fetched remote was checked for
+linked resources and passed the wheel, geese, poster and fox checks.
+
+On the work computer, ask Codex to inspect the checkout for local changes first,
+fetch `origin`, and fast-forward `codex/carnival-visual-proof` to
+`origin/codex/carnival-visual-proof`. Preserve unrelated/uncommitted work; use a
+separate checkout if needed. Do not reset local changes or merge into main.
+Read this handoff before editing anything. Then, from the repository root:
+
+```sh
+python -m http.server 4180 --bind 127.0.0.1 --directory public
+```
+
+If Windows exposes Python as `py`, use `py -m http.server` with the same options.
+Open `http://localhost:4180/experiments/carnival/index.html` and reload the page.
+Use `?paths=debug` only when you want visible path bounds for testing.
+The localhost server must be started on the work computer; the running home
+preview cannot be accessed there. Check what owns port 4180 before reusing an
+already-running server, so it does not silently serve an older checkout.
+
+If no repository is available at work, clone the branch from
+`https://github.com/KennytheCoder22/novel-ideas2.0.git` using your GitHub access.
+GitHub authentication, Python availability and work-network access must be
+provided by that computer; they cannot be verified from the home machine.
+
 ### Navigation / geography checkpoint
 
 The three existing Midway destination controls now lead to approved empty stages:
