@@ -67,21 +67,24 @@ after Ken approves the appearance/motion. Do not restore the long wait yet.
 Hidden tabs pause both flight and waiting time; reduced motion/static viewing
 suppresses the event.
 
-The flock starts 42 scene pixels wide (about one-third of the previous 125),
-travels upper-left to lower-right over 28 seconds and shrinks another 33%, with
-slight deceleration. It crosses the moon's lower half. A feathered SVG mask
-aligned with the original sky openings hides it behind the near/far cloud banks;
-the original background is not repainted. Flight placement uses the same
-1536×1024 composition coordinates at all viewport sizes.
+The flock starts 42 scene pixels wide, emerges beside the bright star above-left
+of the moon, passes behind the small detached cloud below/right of that star,
+and curves across the lower moon toward the same far-cloud exit. Its new route
+uses a quadratic curve in the original 1536×1024 scene coordinates. The V rotates
+clockwise to follow the curve tangent (accounting for the artwork's own heading).
+It shrinks to 14 scene pixels wide, one-third of its initial width, by the exit.
+The slow 28-second duration, four-second first pass and eight-second playtest
+pause are unchanged. No other Midway behavior or artwork changed.
 
-Latest goose-only playtest correction: doubled the flight duration from 14 to
-28 seconds, preserving the route and total recession. Retraced the far side of
-the moon's clear-sky opening against the actual background; the previous mask
-cut across open sky and hid the flock before the cloud. The boundary now follows
-the cloud lip, with a narrower 1.4-pixel feather. The four-second first pass and
-eight-second playtest pause remain unchanged. Inspect birds approaching the edge
-as well as their eventual disappearance; being hidden before flight completion
-alone does not prove correct cloud alignment.
+The feathered SVG sky mask now includes the star's opening and a separate
+foreground cutout for the small cloud. The accepted far-side cloud contour and
+1.4-pixel feather remain unchanged. The original background is not repainted.
+Inspect the entry, intermediate cloud crossing, and final disappearance; being
+hidden before flight completion alone does not prove correct cloud alignment.
+
+Latest validation: enlarged browser frames inspected at star emergence, partial
+small-cloud occlusion, reappearance, moon approach and far-cloud entry. Full
+1280×720 desktop and 390×844 mobile checks supplement those close-up frames.
 
 Limitation: the supplied image is one static flock, without separate wing poses.
 No artificial per-bird slicing or synchronized flap distortion was added. The

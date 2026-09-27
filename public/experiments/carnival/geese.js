@@ -18,12 +18,13 @@
     <mask id="geese-sky" maskUnits="userSpaceOnUse" x="0" y="0" width="1536" height="1024" style="mask-type:luminance">
       <rect width="1536" height="1024" fill="black"/>
       <g fill="white" filter="url(#geese-cloud-feather)">
-        <path d="M449 115 C466 105 478 123 492 115 C510 103 515 124 532 128 L551 144 C529 141 526 157 509 151 C493 155 481 141 466 146 L436 146Z" opacity=".48"/>
+        <path d="M557 49 C565 50 568 44 577 45 L582 49 C589 45 596 51 606 51 L616 59 C627 57 630 69 640 69 L649 79 L659 80 L652 92 C660 96 666 101 676 101 L704 115 L696 154 L637 164 L599 139 L599 126 L596 114 L584 109 L585 99 L577 94 L583 88 L575 82 L580 75 L571 71 L570 61 L561 60Z"/>
         <path d="M599 126 C610 119 620 125 631 111 C643 114 649 123 659 113 C670 119 679 105 691 111 C705 120 713 108 725 114 C737 106 748 118 760 113 C771 121 787 119 794 132 L835 129 C829 139 820 139 820 149 C811 146 812 158 803 157 C800 166 792 161 788 171 C779 166 779 178 770 175 C766 185 756 178 751 188 C741 182 738 194 729 188 C718 185 708 194 697 186 C685 185 682 171 670 174 C664 161 650 172 641 161 C630 164 626 151 615 154Z"/>
-        <path d="M855 151 C868 142 877 149 887 139 C899 146 914 137 923 149 C934 146 943 156 957 154 L975 163 C958 170 946 169 932 183 C919 176 907 186 894 177 C883 183 874 170 861 173 L842 163Z" opacity=".42"/>
       </g>
+      <!-- The small detached cloud below/right of the bright star stays in front. -->
+      <path d="M589 78 C595 75 598 81 603 78 L608 74 L620 73 C618 78 613 79 613 83 L606 88 L603 94 L598 91 L594 88Z" fill="black" filter="url(#geese-cloud-feather)"/>
     </mask>
-  </defs><g mask="url(#geese-sky)"><image class="geese-flock" href="./geese.png" x="565" y="104" width="42" height="28" style="filter:brightness(.16) saturate(.2);opacity:0"/></g>`;
+  </defs><g mask="url(#geese-sky)"><image class="geese-flock" href="./geese.png" x="529" y="14" width="42" height="28" style="filter:brightness(.16) saturate(.2);opacity:0"/></g>`;
   scene.querySelector('.midway').after(layer);
   const flock = layer.querySelector('.geese-flock');
   // Temporary tuning cadence. Restore rare timing only after Ken approves it.
@@ -47,14 +48,20 @@
     flock.style.opacity = '0';
   }
   function position(progress) {
-    // Modest deceleration, 33% recession, fixed artwork coordinates: the V
-    // passes through the moon's lower half before the far cloud bank hides it.
+    // Curve from the star opening, behind its small cloud, to the accepted exit.
+    // The formation's native point is ~4 degrees below horizontal; align that
+    // point with the curve's tangent, rather than rotating around a screen corner.
     const travel = 1.12 * progress - .12 * progress * progress;
-    const size = 42 * (1 - .33 * progress);
-    flock.setAttribute('x', String(565 + 355 * travel));
-    flock.setAttribute('y', String(104 + 108 * travel));
+    const remaining = 1 - travel;
+    const x = remaining * remaining * 550 + 2 * remaining * travel * 625 + travel * travel * 806;
+    const y = remaining * remaining * 28 + 2 * remaining * travel * 150 + travel * travel * 179;
+    const angle = Math.atan2(remaining * 122 + travel * 29, remaining * 75 + travel * 181) * 180 / Math.PI - 4;
+    const size = 42 * (1 - (2 / 3) * progress);
+    flock.setAttribute('x', String(x - size / 2));
+    flock.setAttribute('y', String(y - size / 3));
     flock.setAttribute('width', String(size));
     flock.setAttribute('height', String(size / 1.5));
+    flock.setAttribute('transform', `rotate(${angle} ${x} ${y})`);
   }
   layer.dataset.phase = 'waiting';
   function tick(now) {
