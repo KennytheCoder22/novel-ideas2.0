@@ -8,6 +8,49 @@
   const crow = document.querySelector('.crow');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const still = new URLSearchParams(location.search).get('motion') === 'still';
+  // Viewports into the five supplied transparent faces; source pixels stay intact.
+  // This surface inherits the balloon's existing animation, never its own clock.
+  const balloonSurface = document.querySelector('.balloon-surface');
+  const balloonFace = document.querySelector('.balloon-face');
+  const balloonHover = matchMedia('(hover: hover) and (pointer: fine)');
+  const balloonFaces = [
+    '45 8 505 440', '599 43 610 391', '1251 24 480 408',
+    '297 452 575 408', '984 442 456 390',
+  ];
+  let lastBalloonFace = -1;
+  let balloonHovered = false;
+  let balloonHoverFrame = 0;
+  let balloonPointer = {x:0, y:0};
+  function hideBalloonFace() {
+    balloonHovered = false;
+    balloonSurface.classList.remove('has-face');
+    cancelAnimationFrame(balloonHoverFrame);
+    balloonHoverFrame = 0;
+  }
+  function checkBalloonHover() {
+    // CSS drift can move away from a still cursor without a pointerleave event.
+    const underPointer = document.elementFromPoint(balloonPointer.x, balloonPointer.y);
+    if (!balloonSurface.contains(underPointer)) { hideBalloonFace(); return; }
+    balloonHoverFrame = requestAnimationFrame(checkBalloonHover);
+  }
+  balloonSurface.addEventListener('pointermove', event => {
+    if (event.pointerType === 'mouse') balloonPointer = {x:event.clientX, y:event.clientY};
+  });
+  balloonSurface.addEventListener('pointerenter', event => {
+    if (event.pointerType !== 'mouse' || !balloonHover.matches || balloonHovered) return;
+    const choices = balloonFaces.map((_, index) => index).filter(index => index !== lastBalloonFace);
+    lastBalloonFace = choices[Math.floor(Math.random() * choices.length)];
+    balloonFace.setAttribute('viewBox', balloonFaces[lastBalloonFace]);
+    balloonHovered = true;
+    balloonPointer = {x:event.clientX, y:event.clientY};
+    balloonSurface.classList.add('has-face');
+    balloonHoverFrame = requestAnimationFrame(checkBalloonHover);
+  });
+  balloonSurface.addEventListener('pointerleave', hideBalloonFace);
+  balloonSurface.addEventListener('pointercancel', hideBalloonFace);
+  balloonHover.addEventListener('change', hideBalloonFace);
+  window.addEventListener('blur', hideBalloonFace);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hideBalloonFace(); });
   let lastFocus;
   let inspection = null;
   let inspectedAt = null;

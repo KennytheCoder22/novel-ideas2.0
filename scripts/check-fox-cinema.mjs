@@ -7,7 +7,8 @@ async function run(reduced=false,early=false) {
   let callback,closed=false,gone=false,removed=false;
   const events=[],listeners={},depths=[];let landed=false;
   const tag={style:{},hidden:true,getBoundingClientRect:()=>({x:1090,y:660,width:30,height:8})};
-  const context=new Proxy({}, {get:(o,k)=>o[k]??(()=>{}),set:(o,k,v)=>(o[k]=v,true)});
+  const rotations=[],scales=[];
+  const context=new Proxy({rotate:angle=>rotations.push(angle),scale:(x,y)=>scales.push([x,y])}, {get:(o,k)=>o[k]??(()=>{}),set:(o,k,v)=>(o[k]=v,true)});
   const canvas={dataset:{},setAttribute(){},getContext:()=>context,remove(){removed=true;}};
   const fox={style:{visibility:''},getBoundingClientRect:()=>({x:985,y:530,width:230,height:170})};
   const scene={style:{transform:'',transformOrigin:'',filter:''},offsetLeft:640,offsetTop:360,
@@ -25,6 +26,9 @@ async function run(reduced=false,early=false) {
   step(0);assert.equal(canvas.dataset.phase,'approach');
   step(1600);assert.equal(canvas.dataset.phase,'pickup');
   if(early){stop();assert.equal(gone,false);assert.equal(callback,null);assert.equal(scene.style.transform,'');return;}
+  for(const time of [1950,2300,2400,2600,2800]) step(time);
+  assert.deepEqual(rotations,[], 'Pickup must not rotate the fox');
+  assert.deepEqual(scales,[], 'Pickup must not turn the fox edge-on');
   step(2950);assert.equal(canvas.dataset.phase,'MARA');
   step(5400);assert.equal(gone,false);
   sandbox.document.hidden=true;listeners.visibilitychange();assert.equal(callback,null);

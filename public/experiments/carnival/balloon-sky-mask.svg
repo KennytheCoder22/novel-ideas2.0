@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024" preserveAspectRatio="none">
+  <!-- Balloon-only mask. Preserve the base poles/lights; replace the broad
+       supplemental wheel roof polygon with the actual roof contour, not sky. -->
+  <path fill="white" d="M0 0H1536V1024H0Z"/>
+  <path fill="black" d="M1312 187L1307 209L1293 229L1276 250L1257 270L1236 289L1213 309L1190 328L1167 344L1142 360L1117 375L1092 388L1065 401L1038 414L1010 430L983 445L952 466L900 498L850 506V1024H1536V72L1510 94L1480 117L1440 144L1425 155L1408 166L1390 178L1370 217L1347 248L1335 225Z"/>
+</svg>

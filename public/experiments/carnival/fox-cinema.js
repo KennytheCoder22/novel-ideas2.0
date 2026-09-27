@@ -58,7 +58,7 @@
     const fibers=Array.from({length:68},(_,i)=>({x:320+rng()*850,y:140+rng()*750,delay:rng()*1.45,size:i<40?5+rng()*14:20+rng()*35,vx:(rng()-.5)*210,vy:rng()*35,spin:(rng()-.5)*6,image:3+i%6,broken:i%9===0}));
     let frame=0,previous=null,elapsed=0,cancelled=false,loaded=false,gone=false,tagSeen=false,complete=false;
     const reduced=()=>motion.matches||still;
-    // Seconds: crouch 1.6; lift/turn 1.35; read 2.5; break 2.7;
+    // Seconds: crouch 1.6; grow/dissolve/lift 1.35; read 2.5; break 2.7;
     // tag lingers .3 and drops .85; gaze/stand/pullback 1.6.
     const BREAK=5.45,TAG=8.45,RETURN=9.3,END=10.9;
     function camera(amount,gaze=0) {
@@ -74,12 +74,14 @@
       cameraDepth(scale);
       return {scale,dx,dy};
     }
-    function drawImage(image,box,turn=1) {
-      ctx.save();ctx.translate(box.x+box.w/2,box.y+box.h/2);ctx.scale(turn,1);
+    const heldGrade = 'brightness(.60) saturate(.62) sepia(.10)';
+    function drawImage(image,box) {
+      ctx.save();ctx.translate(box.x+box.w/2,box.y+box.h/2);
       ctx.drawImage(image,-box.w/2,-box.h/2,box.w,box.h);ctx.restore();
     }
     function render(t) {
       ctx.clearRect(0,0,width,height);
+      ctx.filter = heldGrade;
       const rm=reduced();
       const approach=rm?0:smooth(t/1.6);
       const retreat=t>=RETURN?smooth((t-RETURN)/1.6):0;
@@ -92,14 +94,20 @@
       const start={x:ground.x*cam.scale+cam.dx,y:ground.y*cam.scale+cam.dy,w:ground.w*cam.scale,h:ground.h*cam.scale};
       const w=Math.min(width*1.03,(height*.79)*1.5,1050),h=w/1.5;
       const settled={x:(width-w)/2,y:(height-h)/2+height*.015,w,h};
-      const box={x:mix(start.x,settled.x,lift),y:mix(start.y,settled.y,lift)-Math.sin(lift*Math.PI)*height*.045,w:mix(start.w,w,lift),h:mix(start.h,h,lift)};
       if(t<2.95) {
         canvas.dataset.phase='pickup';
-        // A continuous lift and physical turn: change texture only edge-on,
-        // never an abrupt visible pose replacement or opacity crossfade.
-        const turn=Math.cos(lift*Math.PI);
-        ctx.save();ctx.filter=`brightness(${mix(.72,1,lift)}) saturate(${mix(.85,1,lift)})`;
-        drawImage(lift<.5?images[0]:images[1],box,rm?1:Math.max(.005,Math.abs(turn)));ctx.restore();
+        // Keep both poses face-on. Grow the ground toy first, dissolve for
+        // 190 ms with their heads aligned, then lift the held pose slightly.
+        const pickup=t-1.6, grow=rm?1:smooth(pickup/.78);
+        const dissolve=smooth((pickup-.69)/.19);
+        const rise=rm?1:smooth((pickup-.88)/.47);
+        const box={x:mix(start.x,settled.x,grow),y:mix(start.y,settled.y+height*.045,grow)-height*.045*rise,w:mix(start.w,w,grow),h:mix(start.h,h,grow)};
+        ctx.save();
+        ctx.globalAlpha=1-dissolve;
+        ctx.filter=`brightness(${.72*(1-.22*lift)}) saturate(.85)`;
+        drawImage(images[0],{x:box.x+box.w*.15*grow,y:box.y,w:box.w,h:box.w*ground.h/ground.w});
+        ctx.globalAlpha=dissolve;ctx.filter=heldGrade;
+        drawImage(images[1],box);ctx.restore();
         return;
       }
       if(!tagSeen){tagSeen=true;record('fox_tag_presented','fox');}
@@ -149,7 +157,7 @@
         ctx.rotate(-.227*smooth(drop));
         ctx.scale(size,mix(h/1024,target.height/223,smooth(drop)));
         ctx.translate(-952,-660);
-        ctx.filter='brightness('+mix(1,.55,smooth(drop))+') saturate('+mix(1,.65,smooth(drop))+')';
+        ctx.filter='brightness('+mix(.60,.55,smooth(drop))+') saturate('+mix(.62,.65,smooth(drop))+') sepia('+(1-smooth(drop))*.10+')';
         path(ctx,tagPolygon);ctx.clip();ctx.drawImage(images[1],0,0);ctx.restore();
         if(settle>0) {
           ctx.save();ctx.globalAlpha=settle;
