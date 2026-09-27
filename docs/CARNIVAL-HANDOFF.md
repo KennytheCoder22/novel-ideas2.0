@@ -12,6 +12,71 @@ Serve `public` from this branch with
 All runtime artwork is included; neither supplied sheet requires a work-computer
 folder or a generation/extraction step.
 
+### Navigation / geography checkpoint
+
+The three existing Midway destination controls now lead to approved empty stages:
+
+- Ferris wheel → Ferris-Wheel Platform (`ferris-platform`)
+- Rides & Games entrance → Rides & Games (`rides-games`)
+- Central tent → Tent Row (`tent-row`)
+
+Behind the Carnival (`behind-carnival`), Madame Zora (`fortune-teller`) and
+Forest’s Edge (`forest-edge`) are installed but have **no in-world entrances yet**.
+The Midway has no established fourth destination hotspot, and the supplied
+backgrounds do not establish an unambiguous deeper path. Do not invent entrances
+or add a scene-selection menu. Confirm those connections when building the areas.
+For development review only, append `?scene=behind-carnival`,
+`?scene=fortune-teller` or `?scene=forest-edge` to the normal preview URL.
+All six location IDs support this explicit preview parameter.
+
+`locations.js` is the shared stage registry and contains the current navigation
+edges, intrinsic image dimensions and initial narrow-screen framing.
+`navigation.js` mounts each visited stage once and manages a previous-location
+stack and a separate transition camera. It never replaces the Midway DOM or
+resets its timers, pan, woman approach, poster, fox or MARA state. Midway ambient
+clocks continue while away; document-hidden behavior is unchanged. The old
+destination-only inspection modal is bypassed; actual object inspections retain
+their existing behavior. Escape cannot move the hidden Midway camera while away.
+
+Normal movement lasts 2.4 seconds: the living outgoing scene initially pushes
+toward the clicked destination, then dissolves into the fixed arrival viewpoint.
+Back uses the same restrained transition. Reduced-motion / `?motion=still` uses
+a short 350 ms dissolve without camera scaling. Images decode before departure;
+a failed load leaves the current scene usable and can be retried. Transition-time
+input is gated, and inactive stages are inert. A small `‹ Back · dev` control is
+**temporary development navigation**, not a permanent game interface.
+
+`navigation.css` applies only to new navigation surfaces. New stage backgrounds
+use one aspect-correct cover plane, preserving the original image files and
+composition. Portrait viewports crop the viewport nondestructively, as the Midway
+does; small left/center/right look controls expose the full width. Backgrounds
+remain noninteractive. No objects, ambient overlays, new hotspot paths, occlusion
+layers, scene-state engine or recommendation integration have been implemented.
+The common stage plane can support separate layers later.
+
+Original production PNGs copied byte-for-byte into
+`public/experiments/carnival/locations/`:
+
+| File | Approved source | Dimensions |
+| --- | --- | --- |
+| `ferris-platform.png` | FW Platform(empty).png | 1672 × 941 |
+| `rides-games.png` | Rides and Games(empty).png | 1671 × 941 |
+| `tent-row.png` | Tent Row(empty).png | 1672 × 941 |
+| `fortune-teller.png` | Fortune Teller(empty).png | 1672 × 941 |
+| `behind-carnival.png` | Behind Carnival(empty).png | 1672 × 941 |
+| `forest-edge.png` | Forest's Edge(empty).png | 1672 × 941 |
+
+All assets are committed and portable; no home-machine source folders are needed.
+The navigation browser check locks their original SHA-256 hashes and tests all
+six desktop/390px stages, actual destination round trips, camera push/dissolve,
+Midway node identity/framing and MARA survival, reduced motion, image-load failure
+and retry, and absence of new in-world hotspots. Screenshots were visually checked.
+Run `node scripts/check-carnival-navigation.mjs` with the preview running and
+Playwright available. Optional `CARNIVAL_PLAYWRIGHT_MODULE` points to an existing
+Playwright module; `CARNIVAL_BROWSER_CHANNEL` selects an installed browser, and
+`CARNIVAL_PREVIEW_URL` overrides the local URL. No project dependency was added.
+Existing wheel, fox, geese and poster checks also pass. No main merge.
+
 ### Balloon
 
 The original red balloon image, size, 100-second path, bobbing, crop rules and

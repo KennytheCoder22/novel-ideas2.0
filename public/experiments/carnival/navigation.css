@@ -1,0 +1,11 @@
+/* Navigation-only surfaces; the accepted Midway styles are untouched. */
+.location-view { position:fixed; inset:0; overflow:hidden; background:#080e16; outline:none; }
+.location-plane { position:absolute; }
+.location-background { display:block; width:100%; height:100%; user-select:none; pointer-events:none; }
+.location-back { position:fixed; left:12px; bottom:16px; z-index:30; min-height:44px; padding:8px 10px; border:1px solid #ad976844; border-radius:4px; background:#091215b8; color:#d4c5ae; cursor:pointer; font:12px Georgia,serif; }
+.location-back[hidden], .location-look[hidden] { display:none; }
+.location-back:focus-visible, .location-look button:focus-visible { outline:2px solid #d5af75; outline-offset:2px; }
+.location-look { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); display:flex; gap:10px; }
+.location-look button { width:44px; height:44px; border:1px solid #ad976866; border-radius:50%; background:#091215b8; color:#ead6b2; cursor:pointer; font:26px Georgia,serif; }
+html[data-travelling] .location-back, html[data-travelling] .location-look,
+html[data-travelling] .look-controls, html[data-travelling] .midway-retreat { visibility:hidden; }

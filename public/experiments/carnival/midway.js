@@ -138,8 +138,14 @@
       image.animate([{opacity:0, transform:'scale(.88)'},{opacity:1,transform:'scale(1)'}], {duration:650,easing:'ease-out'});
     }
   }
-  document.querySelectorAll('[data-destination]').forEach(button => button.addEventListener('click', () => open(button.dataset.destination, true)));
-  document.querySelector('.wheel').addEventListener('click', () => open('Ferris-Wheel Platform', true));
+  function depart(destination, button) {
+    if (approaching) return;
+    window.CarnivalNavigation.go(destination, button).then(arrived => {
+      if (arrived) record('destination_chosen', destination);
+    });
+  }
+  document.querySelectorAll('[data-destination]').forEach(button => button.addEventListener('click', () => depart(button.dataset.destination, button)));
+  document.querySelector('.wheel').addEventListener('click', event => depart('Ferris-Wheel Platform', event.currentTarget));
   document.querySelectorAll('[data-inspect]').forEach(button => button.addEventListener('click', () => open(button.dataset.inspect)));
   document.querySelector('.return').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => {
@@ -199,7 +205,7 @@
   }
   document.querySelector('.woman-approach').addEventListener('click',()=>approach(1));
   retreat.addEventListener('click',()=>approach(0));
-  addEventListener('keydown',event=>{if(event.key==='Escape'&&!dialog.open&&approachProgress>0)approach(0);});
+  addEventListener('keydown',event=>{if(event.key==='Escape'&&!scene.closest('main').inert&&!dialog.open&&approachProgress>0)approach(0);});
   let framing = 'start';
   function pan(direction) {
     if (approachProgress > 0 || approaching) return;
