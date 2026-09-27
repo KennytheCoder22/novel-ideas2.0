@@ -18,7 +18,7 @@ vm.runInNewContext(source, {document:doc,matchMedia:()=>reduced,URLSearchParams,
 function step(ms) { time+=ms; assert.ok(callback); callback(time); }
 step(0);step(3900);assert.equal(layer.dataset.phase,'waiting');
 step(100);assert.equal(layer.dataset.phase,'flying');assert.equal(attrs.width,42);
-step(5000);
+step(10000);
 assert.ok(attrs.x>690&&attrs.x<710);
 assert.ok(attrs.y>140&&attrs.y<150);
 // Leading bird is at ~93% width / 55% height in the supplied V artwork.
@@ -28,10 +28,10 @@ const before={...attrs};
 doc.hidden=true;listeners.visibilitychange();assert.equal(callback,null);
 time+=90000;doc.hidden=false;listeners.visibilitychange();step(0);
 assert.deepEqual(attrs,before);
-step(9000);assert.equal(layer.dataset.phase,'resting');assert.equal(flock.style.opacity,'0');
+step(18000);assert.equal(layer.dataset.phase,'resting');assert.equal(flock.style.opacity,'0');
 assert.ok(Math.abs(attrs.width-42*.67)<.001);
 step(7900);assert.equal(layer.dataset.phase,'resting');step(100);assert.equal(layer.dataset.phase,'flying');
-step(14000);assert.equal(layer.dataset.phase,'resting');
+step(28000);assert.equal(layer.dataset.phase,'resting');
 step(7900);assert.equal(layer.dataset.phase,'resting');step(100);assert.equal(layer.dataset.phase,'flying');
 reduced.matches=true;listeners.motion();assert.equal(callback,null);assert.equal(flock.style.opacity,'0');
 assert.doesNotMatch(source,/record\(|sessionStorage|fetch\(|addEventListener\(['"](?:click|pointer)/);

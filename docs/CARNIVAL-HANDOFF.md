@@ -68,11 +68,20 @@ Hidden tabs pause both flight and waiting time; reduced motion/static viewing
 suppresses the event.
 
 The flock starts 42 scene pixels wide (about one-third of the previous 125),
-travels upper-left to lower-right over 14 seconds and shrinks another 33%, with
+travels upper-left to lower-right over 28 seconds and shrinks another 33%, with
 slight deceleration. It crosses the moon's lower half. A feathered SVG mask
 aligned with the original sky openings hides it behind the near/far cloud banks;
 the original background is not repainted. Flight placement uses the same
 1536×1024 composition coordinates at all viewport sizes.
+
+Latest goose-only playtest correction: doubled the flight duration from 14 to
+28 seconds, preserving the route and total recession. Retraced the far side of
+the moon's clear-sky opening against the actual background; the previous mask
+cut across open sky and hid the flock before the cloud. The boundary now follows
+the cloud lip, with a narrower 1.4-pixel feather. The four-second first pass and
+eight-second playtest pause remain unchanged. Inspect birds approaching the edge
+as well as their eventual disappearance; being hidden before flight completion
+alone does not prove correct cloud alignment.
 
 Limitation: the supplied image is one static flock, without separate wing poses.
 No artificial per-bird slicing or synchronized flap distortion was added. The
