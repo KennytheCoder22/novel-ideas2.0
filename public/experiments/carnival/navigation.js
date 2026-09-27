@@ -8,6 +8,8 @@
   const still = new URLSearchParams(location.search).get('motion') === 'still';
   const mounted = new Map([['midway', {view:midway, ready:Promise.resolve()}]]);
   const history = [];
+  const debug = new URLSearchParams(location.search).get('paths') === 'debug';
+  document.documentElement.classList.toggle('debug-paths', debug);
   let current = 'midway';
   let busy = false;
   const live = document.createElement('span');
@@ -26,13 +28,22 @@
     view.className = 'location-view'; view.dataset.scene = id;
     view.setAttribute('aria-label', definition.name); view.tabIndex = -1;
     view.style.visibility = 'hidden'; view.inert = true;
-    // One aspect-correct plane leaves room for later independent layers, without
-    // adding any ambient, object, state or interaction system in this pass.
+    // One aspect-correct plane registers backgrounds and paths together;
+    // object, ambient and state layers remain future work.
     const plane = document.createElement('div'); plane.className = 'location-plane';
     const image = new Image(definition.width, definition.height);
     image.className = 'location-background'; image.alt = definition.name;
     image.draggable = false; image.src = definition.background;
     plane.append(image); view.append(plane);
+    for (const path of definition.paths || []) {
+      const button = document.createElement('button');
+      button.className = 'location-path'; button.dataset.to = path.to;
+      button.setAttribute('aria-label', 'Walk to ' + definitions[path.to].name);
+      const [left,top,width,height] = path.area;
+      Object.assign(button.style,{left:left+'%',top:top+'%',width:width+'%',height:height+'%'});
+      button.addEventListener('click',()=>travel(path.to,button));
+      plane.append(button);
+    }
     const look = document.createElement('nav'); look.className = 'location-look';
     look.setAttribute('aria-label','Look around '+definition.name);
     let framing = definition.framing;
@@ -47,7 +58,12 @@
     for (const [label,glyph,value] of [['Look left','‹',0],['Look toward the center','·',.5],['Look right','›',1]]) {
       const button = document.createElement('button'); button.textContent = glyph;
       button.setAttribute('aria-label',label);
-      button.addEventListener('click',()=>{framing=value;layout();}); look.append(button);
+      button.addEventListener('click',()=>{
+        const overflow = Math.max(1, plane.offsetWidth-innerWidth);
+        const step = innerWidth*.75/overflow;
+        framing = value===.5 ? .5 : Math.max(0,Math.min(1,framing+(value===0?-step:step)));
+        layout();
+      }); look.append(button);
     }
     view.append(look); document.body.append(view);
     addEventListener('resize',layout); layout();
@@ -92,9 +108,10 @@
       source.style.visibility = 'hidden';
       target.view.style.opacity = ''; target.view.inert = false;
       current = id;
-      if (returning) history.pop(); else history.push({id:sourceId,trigger});
+      if (returning || history.at(-1)?.id === id) history.pop();
+      else history.push({id:sourceId,trigger});
       document.documentElement.dataset.location = id;
-      back.hidden = history.length === 0;
+      back.hidden = !debug || history.length === 0;
       live.textContent = definitions[id].name;
       if (returning && trigger?.isConnected && !trigger.hidden) trigger.focus({preventScroll:true});
       else target.view.focus({preventScroll:true});
@@ -124,8 +141,8 @@
       return id ? travel(id,trigger) : Promise.resolve(false);
     },
   });
-  // Explicit development links allow review of installed but unconnected stages.
-  // These are not in-world paths and add no speculative Midway hotspots.
+  // Explicit development links allow isolated stage review.
+  // Normal navigation follows only the declared geographic paths.
   const preview = new URLSearchParams(location.search).get('scene');
   if (preview && preview !== 'midway' && definitions[preview]) travel(preview,null);
 })();

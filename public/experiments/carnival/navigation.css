@@ -9,3 +9,7 @@
 .location-look button { width:44px; height:44px; border:1px solid #ad976866; border-radius:50%; background:#091215b8; color:#ead6b2; cursor:pointer; font:26px Georgia,serif; }
 html[data-travelling] .location-back, html[data-travelling] .location-look,
 html[data-travelling] .look-controls, html[data-travelling] .midway-retreat { visibility:hidden; }
+
+.location-path { position:absolute; padding:0; border:0; background:transparent; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.location-path:focus-visible { outline:1px solid #d5af75; outline-offset:2px; }
+.debug-paths .location-path { outline:1px dashed #e9ce8c; background:#e9ce8c18; }
