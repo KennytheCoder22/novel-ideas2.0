@@ -1,6 +1,6 @@
 # Carnival interactive Midway — current handoff
 
-## Current checkpoint — September 26, 2026
+## Current checkpoint — September 27, 2026
 
 Continue only on `codex/carnival-visual-proof`. This section supersedes the
 older behavior descriptions below. Ready for Ken's playtest; do not merge to
@@ -23,10 +23,11 @@ retain the red surface. A hover-only position check also clears the face when
 the balloon drifts away from a stationary cursor. Touch remains non-clickable.
 
 `balloon-plane` places the balloon above the tree fragments in the wheel's broad
-foreground overlay. Its separate `balloon-sky-mask.svg` traces the actual roof
-edge instead of masking a strip of sky/tree above it. The existing base
-`foreground.png` is subtracted too, preserving pole/light occlusion. Do not alter
-the wheel's existing foreground image or supplemental roof/light paths.
+foreground overlay. An inline `balloon-open-sky` clip traces the actual roof
+edge instead of masking a strip of sky/tree above it. This replaces the previous
+external multi-mask composition, removing that dependency from balloon
+visibility. The original movement and artwork are untouched. Do not alter the
+wheel's existing foreground image or supplemental roof/light paths.
 
 ### Fox
 
@@ -37,20 +38,32 @@ There is no edge-on turn, horizontal squash or pickup rotation.
 
 The held pose uses non-destructive canvas grading: brightness .60, saturation
 .62, sepia .10. This retains the worn fabric texture with muted orange and dirty
-cream under nighttime light. The same grading continues into the existing
-ragged-patch/fiber breakup so it does not suddenly brighten. Tag drop grading
+cream under nighttime light. The grade is now cached once on offscreen artwork
+canvases, rather than recomputed for every one of hundreds of fragment draws.
+This removes the expensive rendering work at breakup entry without changing
+the approved grading, pickup pose/dissolve, or fragment choreography. The same
+grading continues into the existing ragged-patch/fiber breakup. Tag drop grading
 blends into the existing ground tag. Breakup geometry, velocities, timing and
 tag persistence are unchanged. The fox remains gone across reloads in the same
 tab session after breakup (`carnival-mara-remains`); use a fresh browser session
 for another complete test. Do not restore the older reload-resets-fox behavior.
 
+The timeline remains automatic: held pose at 2.95 seconds, breakup at 5.45,
+tag fall at 8.45, return at 9.3 and completion at 10.9. No tag click is required.
+Real-time browser observation confirmed every phase and automatic completion,
+including approximately 2.6 seconds between the held view and breakup. Scripts
+and the changed stylesheet have a repair-version query to avoid stale cached
+resources after refresh. An already-open older page still needs reloading.
+
 ### Migrating geese
 
 `geese.js` and the supplied transparent `geese.png` add a non-clickable, silent
-ambient V formation. No observations or taste evidence are recorded. The first
-flight starts after the complete balloon/ribbon box has cleared the visible
-viewport for two seconds, including mobile crop and pan. Subsequent flights
-start 45–120 visible seconds after the previous flight ends, chosen randomly.
+ambient V formation. No observations or taste evidence are recorded. **Temporary
+playtest timing:** the first flight starts four visible seconds after the scene
+initializes; it no longer waits for the balloon. Subsequent flights start eight
+visible seconds after the previous flight ends, so they can be watched repeatedly
+without a new UI control. Restore rare randomized 45–120 second intervals only
+after Ken approves the appearance/motion. Do not restore the long wait yet.
 Hidden tabs pause both flight and waiting time; reduced motion/static viewing
 suppresses the event.
 
@@ -72,9 +85,10 @@ art-aligned 2D mask, not a volumetric cloud simulation.
 - Balloon entrance, tree overlap, roof overlap and exit sampled on the unchanged
   animation; hover fade/non-repeat/drift-away and mobile non-interaction checked.
 - Fox approach, growth, dissolve, held lighting, breakup, automatic return and
-  persistent tag checked. Frozen-clock frames confirm the pickup has no spin.
+  persistent tag checked. Real-time desktop/mobile passes supplement the earlier
+  frozen-clock frames; the pickup still has no spin.
 - Geese lower-moon crossing, small V, diagonal recession, initial delay, hidden
-  pause and randomized recurrence checked. Screenshot comparison verifies the
+  pause and short playtest recurrence checked. Screenshot comparison verifies the
   far cloud fully hides the flock before the flight ends. No page errors.
 - `node scripts/check-carnival-geese.mjs`,
   `node scripts/check-fox-cinema.mjs`,
@@ -83,8 +97,9 @@ art-aligned 2D mask, not a volumetric cloud simulation.
 - Wheel artwork, masks and animation remain unchanged. Woman/reflection, MARA
   persistence, poster and crow retain their prior behavior. No main merge.
 
-Browser validation used controlled time to inspect long ambient events. Physical
-mobile-device testing and a hosted deployment check have not been performed.
+Browser validation includes real-time playback and visual inspection, with
+controlled time only for distant balloon path samples and precise comparisons.
+Physical mobile-device testing and a hosted deployment check have not been performed.
 
 ## Historical notes (superseded where noted above)
 

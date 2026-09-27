@@ -14,7 +14,7 @@
 .ground-tag[hidden] { display:none; }
 .balloon { position:absolute; left:30%; top:10.5%; width:8%; --balloon-travel:1000%; z-index:2; pointer-events:none; filter:brightness(.72) saturate(.85); transform-origin:50% 35%; animation:balloon-drift 100s linear forwards; }
 /* The original image sets the exact animated box, including its ribbon. */
-.balloon-plane { position:absolute; inset:0; z-index:3; pointer-events:none; mask-image:url('./balloon-sky-mask.svg'),url('./foreground.png'); mask-mode:luminance,alpha; mask-composite:subtract; mask-size:100% 100%; mask-repeat:no-repeat; }
+.balloon-plane { position:absolute; inset:0; z-index:3; pointer-events:none; clip-path:url(#balloon-open-sky); }
 .balloon-art { display:block; width:100%; height:auto; user-select:none; }
 .balloon-surface { position:absolute; left:35%; top:2%; width:58%; height:42%; transform:rotate(29deg); clip-path:ellipse(50% 50%); cursor:default; }
 .balloon-face { position:absolute; left:12%; top:14%; width:76%; height:72%; overflow:hidden; pointer-events:none; opacity:0; mix-blend-mode:multiply; transition:opacity 220ms ease-in-out; }

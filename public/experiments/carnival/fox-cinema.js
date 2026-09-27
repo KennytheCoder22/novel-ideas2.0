@@ -3,7 +3,18 @@
 (() => {
   const files = ['fox.png','fox-picked-up.png','fox-breaking.png', ...Array.from({length:6},(_,i)=>`fox-fragment-${i}.png`), 'mara-front.png'];
   const images = files.map(file => { const image = new Image(); image.src = `./${file}`; return image; });
-  const ready = Promise.all(images.map(image => image.decode()));
+  const heldGrade = 'brightness(.60) saturate(.62) sepia(.10)';
+  const graded = [];
+  // Cache the approved grade once. Filtering the full source separately for
+  // every clipped fragment can stall the browser as breakup begins.
+  const ready = Promise.all(images.map(image => image.decode())).then(() => {
+    for (let index=1;index<images.length-1;index++) {
+      const source=images[index], buffer=document.createElement('canvas');
+      buffer.width=source.naturalWidth;buffer.height=source.naturalHeight;
+      const paint=buffer.getContext('2d');paint.filter=heldGrade;
+      paint.drawImage(source,0,0);graded[index]=buffer;
+    }
+  });
   ready.catch(() => {});
   const clamp = n => Math.max(0,Math.min(1,n));
   const smooth = n => { n=clamp(n); return n*n*(3-2*n); };
@@ -74,14 +85,13 @@
       cameraDepth(scale);
       return {scale,dx,dy};
     }
-    const heldGrade = 'brightness(.60) saturate(.62) sepia(.10)';
     function drawImage(image,box) {
       ctx.save();ctx.translate(box.x+box.w/2,box.y+box.h/2);
       ctx.drawImage(image,-box.w/2,-box.h/2,box.w,box.h);ctx.restore();
     }
     function render(t) {
       ctx.clearRect(0,0,width,height);
-      ctx.filter = heldGrade;
+      ctx.filter = 'none';
       const rm=reduced();
       const approach=rm?0:smooth(t/1.6);
       const retreat=t>=RETURN?smooth((t-RETURN)/1.6):0;
@@ -106,12 +116,12 @@
         ctx.globalAlpha=1-dissolve;
         ctx.filter=`brightness(${.72*(1-.22*lift)}) saturate(.85)`;
         drawImage(images[0],{x:box.x+box.w*.15*grow,y:box.y,w:box.w,h:box.w*ground.h/ground.w});
-        ctx.globalAlpha=dissolve;ctx.filter=heldGrade;
-        drawImage(images[1],box);ctx.restore();
+        ctx.globalAlpha=dissolve;ctx.filter='none';
+        drawImage(graded[1],box);ctx.restore();
         return;
       }
       if(!tagSeen){tagSeen=true;record('fox_tag_presented','fox');}
-      if(t<BREAK){canvas.dataset.phase='MARA';drawImage(images[1],settled);return;}
+      if(t<BREAK){canvas.dataset.phase='MARA';drawImage(graded[1],settled);return;}
       if(!gone){gone=true;vanish();record('fox_disintegration_seen','fox');}
       canvas.dataset.phase=t<TAG?'disintegration':t<RETURN?'tag-fall':'return';
       const age=t-BREAK;
@@ -126,7 +136,7 @@
         else {ctx.translate(p.cx+p.vx*a,p.cy+p.vy*a+760*a*a);ctx.rotate(p.spin*a);ctx.translate(-p.cx,-p.cy);ctx.globalAlpha=1-clamp((a-1.0)/.7);}
         path(ctx,p.vertices);ctx.clip();
         ctx.beginPath();ctx.rect(0,0,1536,1024);tagPolygon.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.clip('evenodd');
-        ctx.drawImage(images[1],0,0);ctx.restore();
+        ctx.drawImage(graded[1],0,0);ctx.restore();
       }
       if(!rm) for(const p of fibers) {
         const a=age-p.delay;if(a<0||a>1.8)continue;
@@ -136,8 +146,8 @@
           // Loose tufts sampled from the supplied deterioration artwork, not
           // a replacement full-body transition. Irregular local outlines only.
           path(ctx,[[-p.size*.4,-p.size*.25],[p.size*.1,-p.size*.5],[p.size*.5,0],[p.size*.15,p.size*.45],[-p.size*.45,p.size*.2]]);ctx.clip();
-          ctx.drawImage(images[2],500,180,100,100,-p.size/2,-p.size/2,p.size,p.size);
-        } else ctx.drawImage(images[p.image],-p.size/2,-p.size/2,p.size,p.size);
+          ctx.drawImage(graded[2],500,180,100,100,-p.size/2,-p.size/2,p.size,p.size);
+        } else ctx.drawImage(graded[p.image],-p.size/2,-p.size/2,p.size,p.size);
         ctx.restore();
       }
       ctx.restore();

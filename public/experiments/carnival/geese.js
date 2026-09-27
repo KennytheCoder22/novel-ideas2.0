@@ -2,7 +2,6 @@
 (() => {
   'use strict';
   const scene = document.querySelector('.composition');
-  const balloon = document.querySelector('.balloon');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const still = new URLSearchParams(location.search).get('motion') === 'still';
   const layer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -27,7 +26,8 @@
   </defs><g mask="url(#geese-sky)"><image class="geese-flock" href="./geese.png" x="565" y="104" width="42" height="28" style="filter:brightness(.16) saturate(.2);opacity:0"/></g>`;
   scene.querySelector('.midway').after(layer);
   const flock = layer.querySelector('.geese-flock');
-  const delay = 2000;
+  // Temporary tuning cadence. Restore rare timing only after Ken approves it.
+  const delay = 4000;
   const duration = 14000;
   let frame = 0;
   let previous = null;
@@ -42,7 +42,7 @@
     firstPass = false;
     flightTime = 0;
     restTime = 0;
-    interval = 45000 + Math.random() * 75000;
+    interval = 8000;
     layer.dataset.phase = 'resting';
     flock.style.opacity = '0';
   }
@@ -61,13 +61,8 @@
     const delta = previous === null ? 0 : now - previous;
     previous = now;
     if (!started) {
-      // Use the visible viewport, including mobile cropping and the current pan.
-      // The wrapper includes the ribbon: wait until the whole balloon is gone.
       if (firstPass) {
-        const bounds = balloon.getBoundingClientRect();
-        const clock = balloon.getAnimations()[0];
-        const cleared = clock && Number(clock.currentTime) > 0 && bounds.left >= innerWidth;
-        clearTime = cleared ? clearTime + delta : 0;
+        clearTime += delta;
       } else restTime += delta;
       if (firstPass ? clearTime >= delay : restTime >= interval) {
         started = true;
