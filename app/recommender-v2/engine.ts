@@ -10,7 +10,7 @@ import { annotatePreteenGoogleBooksPublicationIdentity, preteenGoogleBooksPublic
 import type { PreteenGoogleBooksPublicationIdentityAudit } from "./preteenGoogleBooksPublicationIdentity";
 import { sourceAdapters } from "./sources";
 import { buildTasteProfile } from "./tasteProfile";
-import type { AgeBandV2, NormalizedCandidate, RecommendationResultV2, ScoredCandidate, SearchPlan, SourceDiagnosticV2, SourcePlan, SourceResult, SourceStatusV2, SwipeSessionV2, TasteProfile } from "./types";
+import type { AgeBandV2, NormalizedCandidate, RecommendationResultV2, ScoredCandidate, SearchPlan, SourceDiagnosticV2, SourcePlan, SourceResult, SourceStatusV2, StudentContentSafetyDiagnosticsV2, SwipeSessionV2, TasteProfile } from "./types";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -3882,6 +3882,34 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   }
   rejectedReasons.local_library_final_selected_count = selected.filter((candidate) => candidate.source === "localLibrary").length;
   rejectedReasons.final_recommendation_count = selected.length;
+  const studentContentSafety = (rejectedReasons as unknown as Record<string, unknown>).studentContentSafety as StudentContentSafetyDiagnosticsV2 | undefined;
+  if (studentContentSafety) {
+    for (const result of sourceResults) {
+      const sourceRejections = studentContentSafety.rejectedCandidates.filter((row) => row.source === result.source);
+      result.diagnostics.studentContentSafetyGateApplied = studentContentSafety.applied;
+      result.diagnostics.studentContentSafetyPolicyVersion = studentContentSafety.policyVersion;
+      result.diagnostics.studentContentSafetyRejectedCount = sourceRejections.length;
+      result.diagnostics.studentContentSafetyRejectedTitles = sourceRejections.map((row) => row.title);
+      result.diagnostics.studentContentSafetyRejections = sourceRejections;
+    }
+    stages.push(stageDiagnostic(
+      "student_content_safety_gate",
+      {
+        evaluated: studentContentSafety.evaluatedCount,
+        eligible: studentContentSafety.eligibleCount,
+        rejected: studentContentSafety.rejectedCount,
+      },
+      {
+        applied: studentContentSafety.applied,
+        policyVersion: studentContentSafety.policyVersion,
+        ageBand: studentContentSafety.ageBand,
+        missingMetadataAllowedCount: studentContentSafety.missingMetadataAllowedCount,
+        rejectionReasonHistogram: studentContentSafety.rejectionReasonHistogram,
+        rejectionRuleHistogram: studentContentSafety.rejectionRuleHistogram,
+        rejectedCandidates: studentContentSafety.rejectedCandidates,
+      },
+    ));
+  }
   markPipelineObjects(selected, "selected", requestId);
   stages.push(stageDiagnostic("selected", { selected: selected.length }, { rejectedReasons }));
   if (middleGradesDeepDebugActive) {
