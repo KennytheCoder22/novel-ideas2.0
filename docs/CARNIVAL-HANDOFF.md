@@ -14,9 +14,9 @@ folder or a generation/extraction step.
 
 ### Resume this exact version from work
 
-Latest gameplay checkpoint: `ca63979fd058b5624b6ff5d60941ae897f3ebd6a`
-(complete clickable geography). This document-only portability checkpoint builds
-on it; fetch the current remote branch to get both. All runtime assets, including
+Complete-path baseline: `ca63979fd058b5624b6ff5d60941ae897f3ebd6a`.
+The current remote branch adds sign navigation on top of that baseline. Fetch
+the latest `origin/codex/carnival-visual-proof` to get the complete current version. All runtime assets, including
 six production stages, are tracked in Git. No clipboard, Dreamscapes, OneDrive,
 home-computer temporary files, npm install, backend or image-generation step is
 needed to run the preview. A fresh export of the fetched remote was checked for
@@ -43,6 +43,43 @@ If no repository is available at work, clone the branch from
 `https://github.com/KennytheCoder22/novel-ideas2.0.git` using your GitHub access.
 GitHub authentication, Python availability and work-network access must be
 provided by that computer; they cannot be verified from the home machine.
+
+### Global sign navigation
+
+Visible destination signs now have their own transparent hit areas on the same
+artwork plane as the background. `CarnivalSignDestinations` in `locations.js`
+centrally maps labels to real scenes; each scene declares the readable sign area.
+Apply this same rule whenever future stages or signs are added. Do not infer a
+new scene from decorative text, or create placeholders for unbuilt destinations.
+
+Current cross-scene signs:
+
+- Midway: RIDES & GAMES entrance arch → Rides & Games.
+- Ferris-Wheel Platform: GAMES sign above the distant left-hand booths → Rides & Games.
+- Madame Zora: right-hand RIDES and GAMES arrow boards → Rides & Games.
+
+All seven current views were audited. The Rides & Games scene's directional
+RIDES/GAMES boards and location headings such as TENT ROW, FERRIS WHEEL and
+MADAME ZORA already name the current stage; they do not trigger circular travel.
+FOOD, SNACKS, RESTROOMS, PRIZES, FUN HOUSE and individual game/food stalls have no
+separate installed destination, so they remain non-navigational. There are no
+painted FOREST, EXIT or BACKSTAGE directional signs in the current artwork.
+Sign routes supplement the walking graph; Zora's explicit RIDES/GAMES arrows can
+therefore take the player straight to that established area, as Ken requested.
+
+Clicking/tapping a sign uses a **700 ms full-scene opacity dissolve**, with no
+camera translation, zoom, menu or modal. Existing invisible path controls retain
+their accepted 2.4-second approach transitions. The sign's full readable board
+is the hit region; touch targets have a 44 px minimum. No normal hover/focus
+outline, glow, tooltip, arrow or label is drawn. A pointer cursor identifies the
+sign on desktop. `?paths=debug` can show sign bounds for alignment checks only.
+The separate sign controls on the Midway do not alter its art or effect scripts.
+
+`node scripts/check-carnival-signs.mjs` verifies every cross-scene sign on desktop
+and 390px touch, opacity-only timing, absence of unbuilt destination controls,
+unchanged walking transitions and a real-time dissolve. It uses the same optional
+Playwright/browser/preview environment settings as the navigation check. Asset
+files, scene geography, Midway effects and object behavior remain unchanged.
 
 ### Navigation / geography checkpoint
 

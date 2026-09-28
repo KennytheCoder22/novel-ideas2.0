@@ -13,3 +13,8 @@ html[data-travelling] .look-controls, html[data-travelling] .midway-retreat { vi
 .location-path { position:absolute; padding:0; border:0; background:transparent; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .location-path:focus-visible { outline:1px solid #d5af75; outline-offset:2px; }
 .debug-paths .location-path { outline:1px dashed #e9ce8c; background:#e9ce8c18; }
+
+/* Sign areas sit above existing path regions, without changing any artwork. */
+.location-sign { position:absolute; z-index:5; transform:translate(-50%,-50%); border:0; padding:0; background:transparent; outline:none; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+@media (pointer:coarse) { .location-sign { min-width:44px; min-height:44px; } }
+.debug-paths .location-sign { outline:1px dashed #9fbfd7; background:#9fbfd714; }
