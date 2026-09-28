@@ -1,6 +1,7 @@
 import type { NormalizedCandidate, ScoredCandidate, TasteProfile } from "./types";
 import { semanticSignalMatchedFieldsByField, signalPresentInText } from "./score";
 import { annotatePreteenGoogleBooksPublicationIdentity, preteenGoogleBooksPublicationIdentityAudit } from "./preteenGoogleBooksPublicationIdentity";
+import { applyFinalStudentContentSafetyGate } from "./studentContentSafety";
 
 type DeferredCandidate = { candidate: ScoredCandidate; reason: string };
 type TeenOpenLibrarySeriesPositionInfo = { seriesName: string; position: number; source: string };
@@ -9009,6 +9010,14 @@ function addNonAdultGoogleBooksSelectionLineageObservability(rankedCandidates: S
 
 export function selectRecommendations(candidates: ScoredCandidate[], profile: TasteProfile, limit = 10): { selected: ScoredCandidate[]; rejectedReasons: Record<string, number> } {
   const rejectedReasons: Record<string, number> = {};
+  const safetyGate = applyFinalStudentContentSafetyGate(candidates, profile.ageBand);
+  const eligibleCandidates = safetyGate.eligibleCandidates;
+  (rejectedReasons as unknown as Record<string, unknown>).studentContentSafety = safetyGate.diagnostics;
+  rejectedReasons.student_content_safety_rejected = safetyGate.diagnostics.rejectedCount;
+  rejectedReasons.student_content_safety_eligible = safetyGate.diagnostics.eligibleCount;
+  for (const [ruleId, count] of Object.entries(safetyGate.diagnostics.rejectionRuleHistogram)) {
+    rejectedReasons[`student_content_safety_${ruleId}`] = Number(count || 0);
+  }
   const selected: ScoredCandidate[] = [];
   const deferred: DeferredCandidate[] = [];
   const lowScoreRescue: ScoredCandidate[] = [];
@@ -9027,9 +9036,9 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   const seenAdultGoogleBooksClusterCounts: Record<string, number> = {};
   const seenAdultGoogleBooksClusterAuthors: Record<string, Set<string>> = {};
 
-  applyMiddleGradesQueryOnlyScoreCaps(candidates, profile, rejectedReasons);
+  applyMiddleGradesQueryOnlyScoreCaps(eligibleCandidates, profile, rejectedReasons);
   const rankedCandidates = adultGoogleBooksApplyNarrativeStrengthRanking(
-    [...candidates].sort((a, b) => compareForInitialSelection(a, b, profile)),
+    [...eligibleCandidates].sort((a, b) => compareForInitialSelection(a, b, profile)),
     profile,
   );
   const localLibraryRankedCount = rankedCandidates.filter((candidate) => candidate.source === "localLibrary").length;
@@ -9248,7 +9257,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     rejectedReasons.underfill_blocked_by_minimum_acceptable_slate = deferred.length;
   }
 
-  if (profile.ageBand === "teens" && selected.length < Math.min(5, limit) && candidates.some((candidate) => candidate.source === "openLibrary")) {
+  if (profile.ageBand === "teens" && selected.length < Math.min(5, limit) && eligibleCandidates.some((candidate) => candidate.source === "openLibrary")) {
     const teenOpenLibraryTarget = Math.min(5, limit);
     rejectedReasons.teen_openlibrary_underfill_deferred_available = deferred.filter((row) => row.candidate.source === "openLibrary").length;
     for (const row of deferred) {
@@ -9300,7 +9309,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     }
   }
 
-  if (profile.ageBand === "preteens" && selected.length < Math.min(5, limit) && candidates.some((candidate) => candidate.source === "openLibrary")) {
+  if (profile.ageBand === "preteens" && selected.length < Math.min(5, limit) && eligibleCandidates.some((candidate) => candidate.source === "openLibrary")) {
     const middleGradesOpenLibraryTarget = Math.min(5, limit);
     rejectedReasons.middle_grades_openlibrary_underfill_deferred_available = deferred.filter((row) => row.candidate.source === "openLibrary").length;
     for (const row of deferred) {

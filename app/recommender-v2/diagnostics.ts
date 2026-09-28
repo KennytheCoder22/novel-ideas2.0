@@ -1,4 +1,4 @@
-import type { DiagnosticReportV2, RecommendationResultV2, ScoredCandidate, SearchPlan, SourceDiagnosticV2, StageDiagnosticV2, TasteProfile } from "./types";
+import type { DiagnosticReportV2, RecommendationResultV2, ScoredCandidate, SearchPlan, SourceDiagnosticV2, StageDiagnosticV2, StudentContentSafetyDiagnosticsV2, TasteProfile } from "./types";
 
 export function stageDiagnostic(stage: string, counts?: Record<string, number>, details?: Record<string, unknown>): StageDiagnosticV2 {
   return { stage, status: "ok", counts, details };
@@ -15,6 +15,7 @@ export function buildDiagnosticReport(input: {
   rejectedReasons: Record<string, number>;
   finalItems: ScoredCandidate[];
 }): DiagnosticReportV2 {
+  const studentContentSafety = (input.rejectedReasons as unknown as Record<string, unknown>).studentContentSafety as StudentContentSafetyDiagnosticsV2 | undefined;
   return {
     requestId: input.requestId,
     startedAt: input.startedAt,
@@ -25,6 +26,7 @@ export function buildDiagnosticReport(input: {
     searchPlan: input.searchPlan,
     sources: input.sources,
     rejectedReasons: input.rejectedReasons,
+    studentContentSafety,
     finalSelectionTitles: input.finalItems.map((item) => item.title),
     finalItemsLength: input.finalItems.length,
     returnedItemsLength: input.finalItems.length,

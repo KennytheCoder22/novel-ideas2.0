@@ -49,6 +49,7 @@
     "test:v2:openlibrary-routing-regressions": "node scripts/run-v2-openlibrary-routing-regressions.mjs",
     "test:v2:openlibrary-query-lineage": "node scripts/run-v2-openlibrary-routing-regressions.mjs --query-lineage-only",
     "test:v2:ol-m1-maturity-boundary": "node scripts/run-v2-ol-m1-maturity-boundary-regressions.mjs",
+    "test:v2:student-content-safety": "node --import tsx --test scripts/student-content-safety.test.ts",
     "test:v2:kitsu-comicvine-contract": "node scripts/run-v2-kitsu-comicvine-contract-regressions.mjs",
     "audit:swipe-card-image-inventory": "node scripts/generate-swipe-card-image-inventory.mjs --assert",
     "audit:swipe-card-image-responses": "node scripts/generate-swipe-card-image-inventory.mjs --assert && node scripts/verify-swipe-card-image-responses.mjs",

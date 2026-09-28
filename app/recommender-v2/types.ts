@@ -8,6 +8,28 @@ export type SourceStatusV2 = "planned" | "attempted" | "skipped" | "succeeded" |
 
 export type CandidateFormatV2 = "book" | "manga" | "comic" | "graphicNovel" | "anime" | "unknown";
 
+export interface StudentContentSafetyRejectionDiagnosticV2 {
+  title: string;
+  source: SourceIdV2;
+  ageBand: Exclude<AgeBandV2, "adult">;
+  rejectionReason: string;
+  ruleId: string;
+  matchedSignals: string[];
+}
+
+export interface StudentContentSafetyDiagnosticsV2 {
+  policyVersion: string;
+  applied: boolean;
+  ageBand: AgeBandV2;
+  evaluatedCount: number;
+  eligibleCount: number;
+  rejectedCount: number;
+  missingMetadataAllowedCount: number;
+  rejectionReasonHistogram: Record<string, number>;
+  rejectionRuleHistogram: Record<string, number>;
+  rejectedCandidates: StudentContentSafetyRejectionDiagnosticV2[];
+}
+
 export interface SwipeSignalV2 {
   id?: string;
   title?: string;
@@ -190,6 +212,11 @@ export interface SourceDiagnosticV2 {
   finishedAt?: string;
   elapsedMs?: number;
   rawCount: number;
+  studentContentSafetyGateApplied?: boolean;
+  studentContentSafetyPolicyVersion?: string;
+  studentContentSafetyRejectedCount?: number;
+  studentContentSafetyRejectedTitles?: string[];
+  studentContentSafetyRejections?: StudentContentSafetyRejectionDiagnosticV2[];
   convertedCount?: number;
   duplicateCount?: number;
   scoringHandoffCount?: number;
@@ -814,6 +841,7 @@ export interface DiagnosticReportV2 {
   searchPlan: SearchPlan;
   sources: SourceDiagnosticV2[];
   rejectedReasons: Record<string, number>;
+  studentContentSafety?: StudentContentSafetyDiagnosticsV2;
   finalSelectionTitles: string[];
   finalItemsLength?: number;
   returnedItemsLength?: number;
