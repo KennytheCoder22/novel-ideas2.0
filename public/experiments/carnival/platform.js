@@ -24,11 +24,10 @@
       // Independent Platform clock: same 60-second revolution and equal/opposite
       // cabin rotation concept as Midway, without sharing or editing its code.
       const wheel = node('g', {class:'platform-wheel'});
-      // Source axle (175.5,55) in 351 x 472 artwork meets the rotor pivot.
-      const supportX = 995, supportY = -70 - 55 * 470 / 351;
-      const supportHeight = 472 * 470 / 351;
       const rearSupport = node('g', {class:'platform-support-rear'}, wheel);
-      art('./support.png',supportX,supportY,470,supportHeight,rearSupport);
+      window.CarnivalSupportStructure.mount(rearSupport, {
+        pivot:[1230,-70], feet:[975,1470], floor:620, thickness:1.25,
+      });
       const rotor = node('g', {class:'platform-rotor'}, wheel);
       // Frame source hub is (280,280); retain its scale and remove rounding drift.
       const frameScale = 1110 / 550;
@@ -47,14 +46,12 @@
         } else art('./gondola-01.png', -63, -8, 126, 176.76, cabin);
         cabins.push(cabin);
       }
-      // A complete near-side A-frame, not half of the far-side frame.
-      // Axle-relative perspective brings its feet toward the camera/left:
-      // wider stance, lower footing and shear, with the axle held exactly fixed.
-      const frontSupport = node('g', {
-        class:'platform-support-front',
-        transform:'translate(1230 -70) matrix(1.12 0 -0.20 1.08 0 0) translate(-1230 70)',
-      }, wheel);
-      art('./support.png',supportX,supportY,470,supportHeight,frontSupport);
+      // The camera-facing frame has a broader stance and nearer footings.
+      // Both full sloping legs converge at the same axle as the far frame.
+      const frontSupport = node('g', {class:'platform-support-front'}, wheel);
+      window.CarnivalSupportStructure.mount(frontSupport, {
+        pivot:[1230,-70], feet:[850,1605], floor:660, thickness:1.5, hubRadius:77,
+      });
       function startWheel() {
         const reduced = matchMedia('(prefers-reduced-motion: reduce)');
         const still = document.documentElement.dataset.motion === 'still';
