@@ -24,9 +24,15 @@
       // Independent Platform clock: same 60-second revolution and equal/opposite
       // cabin rotation concept as Midway, without sharing or editing its code.
       const wheel = node('g', {class:'platform-wheel'});
+      // Follow the full source timbers, excluding cross-tie stubs along their
+      // inside edges. These contours are Platform-only; Midway retains its art.
+      const legContours = {
+        left:'M118 55H151L145 90L137 130L130 165L125 190L120 220L115 260L112 300L108 340L103 380L100 402L112 423L139 440V472H0V432L32 416L42 400Z',
+        right:'M198 55H233L310 400L320 418L351 436V472H205V438L230 420L238 402L234 380L230 340L225 300L221 260L217 220L213 190L210 165L206 130L202 90Z',
+      };
       const rearSupport = node('g', {class:'platform-support-rear'}, wheel);
       window.CarnivalSupportStructure.mount(rearSupport, {
-        pivot:[1230,-70], feet:[975,1470], floor:620, thickness:1.25,
+        pivot:[1230,-70], feet:[975,1470], floor:620, thickness:1.25, legContours,
       });
       const rotor = node('g', {class:'platform-rotor'}, wheel);
       // Frame source hub is (280,280); retain its scale and remove rounding drift.
@@ -50,7 +56,7 @@
       // Both full sloping legs converge at the same axle as the far frame.
       const frontSupport = node('g', {class:'platform-support-front'}, wheel);
       window.CarnivalSupportStructure.mount(frontSupport, {
-        pivot:[1230,-70], feet:[850,1605], floor:660, thickness:1.5, hubRadius:77,
+        pivot:[1230,-70], feet:[850,1605], floor:660, thickness:1.5, hubRadius:77, legContours,
       });
       function startWheel() {
         const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -88,7 +94,9 @@
       // Original stage pixels occlude the assembly at the arch, booth and rails.
       // The base stays byte-for-byte intact; no populated reference is rendered.
       const foreground = node('clipPath', {id:'platform-architecture'}, defs);
-      node('path', {d:'M0 535H915V362L932 339L1025 289L1043 252L1082 234L1095 212L1117 226L1143 220L1160 252L1212 277L1309 285L1320 275L1350 287L1358 313L1402 281L1450 256L1475 253L1520 234L1563 249L1672 278V941H0Z M974 426L1156 412V610H974Z', 'clip-rule':'evenodd'}, foreground);
+      // Trace the actual sign crest/upper rail, not a coarse sky polygon: that
+      // polygon previously restored background fragments across the support legs.
+      node('path', {d:'M0 535H915V362L919 344Q917 336 924 333Q931 330 938 336L941 338Q964 334 985 321Q1006 308 1027 289L1034 279Q1038 262 1048 255L1060 251V249L1071 248Q1070 239 1080 232Q1088 226 1094 234Q1091 224 1101 219L1106 211Q1111 210 1119 219L1123 229Q1130 218 1138 224L1141 230Q1147 226 1154 230L1163 236L1168 235L1180 242Q1189 248 1187 255Q1193 259 1198 262Q1213 271 1230 274Q1265 280 1300 286Q1312 286 1320 282Q1331 269 1345 278Q1351 280 1351 293L1358 313L1402 281L1450 256L1475 253L1520 234L1563 249L1672 278V941H0Z M974 426L1156 412V610H974Z', 'clip-rule':'evenodd'}, foreground);
       const occlusion = art('./locations/ferris-platform.png',0,0,1672,941);
       occlusion.setAttribute('clip-path','url(#platform-architecture)');
       // Open only the loading bay behind its existing front rails. Reapply those
@@ -107,10 +115,11 @@
       const counter = art('./locations/ferris-platform.png',0,0,1672,941);
       counter.setAttribute('clip-path','url(#platform-counter)');
 
-      // Both shoes rest on the upper wooden deck, behind its front edge.
-      node('ellipse', {cx:1065,cy:614,rx:12,ry:2.5,fill:'#080c10',opacity:'.65'});
-      node('ellipse', {cx:1100,cy:620,rx:12,ry:2.5,fill:'#080c10',opacity:'.65'});
-      const passenger = art('./platform/waiting-passenger.png',1009,420,134.67,202);
+      // One tread down: retain horizontal placement and scale, with both shoe
+      // shadows on the next wooden surface rather than on its vertical riser.
+      node('ellipse', {cx:1065,cy:650,rx:12,ry:2.5,fill:'#080c10',opacity:'.65'});
+      node('ellipse', {cx:1100,cy:656,rx:12,ry:2.5,fill:'#080c10',opacity:'.65'});
+      const passenger = art('./platform/waiting-passenger.png',1009,456,134.67,202);
       passenger.setAttribute('class','platform-passenger');
       const rail = node('clipPath', {id:'platform-front-rail'}, defs);
       node('path', {d:'M1020 585L1100 573L1101 580L1020 594Z M1107 572L1198 558L1198 566L1107 581Z M1092 563L1100 559L1110 562L1114 567L1110 574L1112 706L1093 706Z M1190 554L1188 549L1193 546L1200 547L1204 552L1203 672L1190 675Z M1121 579L1126 578L1127 682L1122 684Z M1141 576L1146 575L1147 677L1142 679Z M1162 572L1167 571L1168 672L1163 674Z M1180 569L1184 568L1185 667L1181 669Z M1108 687L1196 658L1197 665L1109 696Z'}, rail);

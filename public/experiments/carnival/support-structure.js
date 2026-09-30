@@ -9,7 +9,7 @@
     parent.append(el);
     return el;
   }
-  function mount(parent, {pivot, feet, floor, thickness, hubRadius = 0}) {
+  function mount(parent, {pivot, feet, floor, thickness, hubRadius = 0, legContours = {}}) {
     const [x,y] = pivot, height = floor-y;
     const group = node('g', {'data-support-pivot':pivot.join(' ')}, parent);
     const defs = node('defs', {}, group);
@@ -43,7 +43,7 @@
     ]) {
       const shear = (foot-x-thickness*(shoe-root))/400;
       const scaleY = height/400;
-      piece(name,path,`matrix(${thickness} 0 ${shear} ${scaleY} ${x-thickness*root-shear*55} ${y-scaleY*55})`);
+      piece(name,legContours[name] || path,`matrix(${thickness} 0 ${shear} ${scaleY} ${x-thickness*root-shear*55} ${y-scaleY*55})`);
     }
     return group;
   }

@@ -1,5 +1,91 @@
 # Carnival interactive Midway — current handoff
 
+## End-of-day checkpoint — September 30, 2026 (work computer)
+
+**This section supersedes all older current-state notes below.** Resume the latest
+`origin/codex/carnival-visual-proof` in `KennytheCoder22/novel-ideas2.0`. This
+handoff and the final Platform cleanup are committed together. The commit
+containing this section is the end-of-day checkpoint; do not use the older
+`72b7b7d` implementation SHA as the final state. Preserve the visuals and wait for
+Ken's next direction. Do not merge to main or deploy.
+
+### Exact state preserved
+
+- Today's earlier support-layer revisions are already in the branch history
+  (`0cc9e62`, `8517acb`, `9ed4ace`). They include triangular axle-converging
+  front/rear support layers in both wheel scenes. The final cleanup changes only
+  the Platform rendering; the Midway output is identical to `9ed4ace`.
+- `support-structure.js` projects the committed `support.png` into continuous
+  structural legs. Platform-only leg contours remove clipped timber/brace
+  remnants. Rear support, rotor and front support are distinct depth layers.
+- Platform rotor and both support apices share scene axle `(1230, -70)`.
+  Rear feet are `(975, 620)` and `(1470, 620)`; front feet are `(850, 660)` and
+  `(1605, 660)`. The wheel position, scale, 60-second rotation and upright
+  counter-rotating gondolas are unchanged.
+- The foreground architecture mask now follows the ornate FERRIS WHEEL sign
+  crest closely, so the sign naturally covers continuous front legs without
+  restoring chopped background timber over them.
+- Passenger image is at `(1009, 456)`, size `134.67 x 202`, exactly 36 scene
+  pixels (one platform tread) below the preceding placement. Shoe shadows are
+  centered at `(1065, 650)` and `(1100, 656)`. Existing foreground rails cover
+  him. His horizontal position and scale are preserved.
+- Attendant, booth, queue rails, lighting, original backgrounds, ground details,
+  navigation and all other composition/behavior remain unchanged in this final
+  pass. Tent Row connects to Behind the Carnival, which connects to Forest's Edge.
+
+### Portability and verification
+
+The entire `public/experiments/carnival/` directory is the self-contained static
+runtime, including all PNGs, scripts and styles. `support-structure.js` is required
+alongside `platform.js`; support/foreground layers are generated from committed
+art and code at runtime, not from local-only generated images. No temporary image,
+UNC path, source sheet, image-generation tool, npm install, backend or API key is
+needed. Diagnostic crops outside the repository are not runtime dependencies.
+
+Final cleanup was visually inspected at 1920 x 1080 at multiple wheel phases and
+390 x 844. DOM matrix checks confirm both front/rear leg roots coincide with the
+rotation pivot and all cabins counter-rotate upright. JavaScript syntax and diff
+checks pass; generated Midway support output and Platform animation code are
+unchanged from the preceding commit. User visual acceptance remains pending.
+Browser session state does not transfer; the same artwork and behavior load on
+home, while animation phase/session interactions naturally restart.
+
+### Retrieve at home without risking existing edits
+
+From the existing home repository, inspect first, fetch, then create a separate
+checkout in a new directory (choose another unused path if this one exists):
+
+```sh
+git status --short --untracked-files=all
+git fetch origin codex/carnival-visual-proof
+git worktree add --detach ../carnival-sept30-checkpoint origin/codex/carnival-visual-proof
+cd ../carnival-sept30-checkpoint
+git rev-parse HEAD
+python -m http.server 4180 --bind 127.0.0.1 --directory public
+```
+
+Compare `HEAD` with the final SHA supplied in the end-of-day message. For an exact
+pinned checkout if the branch advances later, substitute that SHA for
+`origin/codex/carnival-visual-proof` in `git worktree add`. The detached checkout is
+for safe review; before new edits, inspect the existing local branch and preserve
+any home work before moving onto `codex/carnival-visual-proof`.
+
+Alternatively, in an unused directory:
+
+```sh
+git clone --branch codex/carnival-visual-proof --single-branch https://github.com/KennytheCoder22/novel-ideas2.0.git carnival-sept30-checkpoint
+cd carnival-sept30-checkpoint
+python -m http.server 4180 --bind 127.0.0.1 --directory public
+```
+
+Windows may use `py` instead of `python`. Ensure port 4180 serves this checkout,
+not an older process. Open:
+`http://localhost:4180/experiments/carnival/index.html?scene=ferris-platform`.
+Midway is `http://localhost:4180/experiments/carnival/index.html`.
+Read this handoff and wait for Ken; do not make new visual changes on resume.
+
+---
+
 ## Authoritative work-computer handoff — September 30, 2026
 
 **Read this section first. It supersedes every older checkpoint below.** The
