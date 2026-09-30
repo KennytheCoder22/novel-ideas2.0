@@ -27,12 +27,8 @@
       // Source axle (175.5,55) in 351 x 472 artwork meets the rotor pivot.
       const supportX = 995, supportY = -70 - 55 * 470 / 351;
       const supportHeight = 472 * 470 / 351;
-      const rearSupport = node('clipPath', {id:'platform-support-rear'}, defs);
-      node('rect', {x:supportX,y:supportY,width:235,height:supportHeight}, rearSupport);
-      const frontSupport = node('clipPath', {id:'platform-support-front'}, defs);
-      node('rect', {x:1230,y:supportY,width:235,height:supportHeight}, frontSupport);
-      const rear = art('./support.png',supportX,supportY,470,supportHeight,wheel);
-      rear.setAttribute('clip-path','url(#platform-support-rear)');
+      const rearSupport = node('g', {class:'platform-support-rear'}, wheel);
+      art('./support.png',supportX,supportY,470,supportHeight,rearSupport);
       const rotor = node('g', {class:'platform-rotor'}, wheel);
       // Frame source hub is (280,280); retain its scale and remove rounding drift.
       const frameScale = 1110 / 550;
@@ -51,9 +47,14 @@
         } else art('./gondola-01.png', -63, -8, 126, 176.76, cabin);
         cabins.push(cabin);
       }
-      // Near-side leg/brace is in front; the far-side leg remains behind.
-      const front = art('./support.png',supportX,supportY,470,supportHeight,wheel);
-      front.setAttribute('clip-path','url(#platform-support-front)');
+      // A complete near-side A-frame, not half of the far-side frame.
+      // Axle-relative perspective brings its feet toward the camera/left:
+      // wider stance, lower footing and shear, with the axle held exactly fixed.
+      const frontSupport = node('g', {
+        class:'platform-support-front',
+        transform:'translate(1230 -70) matrix(1.12 0 -0.20 1.08 0 0) translate(-1230 70)',
+      }, wheel);
+      art('./support.png',supportX,supportY,470,supportHeight,frontSupport);
       function startWheel() {
         const reduced = matchMedia('(prefers-reduced-motion: reduce)');
         const still = document.documentElement.dataset.motion === 'still';

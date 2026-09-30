@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NovelIdeas · Carnival visual study</title>
-  <link rel="stylesheet" href="./scene.css?v=20260930-support-depth">
+  <link rel="stylesheet" href="./scene.css?v=20260930-complete-aframes">
   <link rel="stylesheet" href="./midway.css?v=20260927-repair">
   <link rel="stylesheet" href="./navigation.css?v=20260927-signs">
   <link rel="stylesheet" href="./platform.css?v=20260930-ground-details">
@@ -41,10 +41,16 @@
       <div class="crow" aria-hidden="true"><img src="./crow-perched.png" alt="" draggable="false"></div>
       <button class="wheel" aria-label="Explore the distant Ferris wheel" type="button">
         <span class="assembly" aria-hidden="true">
-          <img class="support support-rear" src="./support.png" alt="" draggable="false">
-          <img class="frame" src="./wheel-frame.png" alt="" draggable="false">
-          <span class="gondolas"></span>
-          <img class="support support-front" src="./support.png" alt="" draggable="false">
+          <span class="wheel-structure-rear">
+            <img class="support support-rear" src="./support.png" alt="" draggable="false">
+          </span>
+          <span class="wheel-machine">
+            <img class="frame" src="./wheel-frame.png" alt="" draggable="false">
+            <span class="gondolas"></span>
+          </span>
+          <span class="wheel-structure-front">
+            <img class="support support-front" src="./support.png" alt="" draggable="false">
+          </span>
         </span>
       </button>
       <!-- Original background pixels with a silhouette alpha mask, registered 1:1. -->
@@ -78,7 +84,7 @@
   </main>
   <script src="./scene.js"></script>
   <script src="./locations.js?v=20260927-signs"></script>
-  <script src="./platform.js?v=20260930-support-depth"></script>
+  <script src="./platform.js?v=20260930-complete-aframes"></script>
   <script src="./navigation.js?v=20260929-platform"></script>
   <script src="./fox-cinema.js?v=20260927-repair"></script>
   <script src="./midway.js?v=20260927-signs"></script>
