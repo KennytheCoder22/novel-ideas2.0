@@ -108,8 +108,16 @@
       for (const [x,y,w] of [[969,820,11],[962,831,16],[973,839,9],[1127,758,13],[1122,768,9]]) {
         node('ellipse',{cx:x,cy:y,rx:w/2,ry:'.8'},shimmer);
       }
+      // Small discarded objects, in the ground plane and outside all path bounds.
+      node('ellipse', {cx:1040,cy:787,rx:10,ry:3,fill:'#080c10',opacity:'.3'});
+      const ticketGround = node('g', {transform:'translate(1040 786) rotate(-16) scale(1 .48)'});
+      const ticket = node('g', {class:'platform-loose-ticket'}, ticketGround);
+      art('./platform/loose-ticket.png',-11,-12.29,22,24.58,ticket);
+      node('ellipse', {cx:1116,cy:810,rx:3.8,ry:1.1,fill:'#080c10',opacity:'.5'});
+      const token = art('./platform/dropped-token.png',1112.25,807.3,7.5,2.84);
+      token.setAttribute('class','platform-dropped-token');
       plane.append(svg);
-      const urls = ['./wheel-frame.png','./support.png','./gondola-01.png','./platform/waiting-passenger.png','./platform/attendant.png','./platform/boarding-gondola.png'];
+      const urls = ['./wheel-frame.png','./support.png','./gondola-01.png','./platform/waiting-passenger.png','./platform/attendant.png','./platform/boarding-gondola.png','./platform/loose-ticket.png','./platform/dropped-token.png'];
       return Promise.all(urls.map(src=>{const img=new Image();img.src=src;return img.decode();})).then(startWheel);
     }
   });

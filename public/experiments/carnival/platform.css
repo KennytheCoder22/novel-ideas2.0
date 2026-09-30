@@ -11,3 +11,16 @@ html.platform-document-hidden .platform-passenger, html.platform-document-hidden
 html[data-motion="still"] .platform-passenger, html[data-motion="still"] .platform-reflection { animation:none; }
 
 .platform-attendant { filter:brightness(.65) saturate(.72); }
+
+/* The ticket rests for almost the entire cycle, then briefly lifts at one edge. */
+.platform-loose-ticket { filter:brightness(.62) saturate(.7); transform-box:fill-box; transform-origin:15% 85%; animation:platform-ticket-breeze 29s ease-in-out infinite; }
+.platform-dropped-token { filter:brightness(.72) saturate(.7); }
+@keyframes platform-ticket-breeze {
+  0%,87%,96%,100% { transform:translate(0,0) rotate(0deg); }
+  90% { transform:translate(.6px,-.7px) rotate(-2deg); }
+  93% { transform:translate(.2px,-.3px) rotate(.8deg); }
+}
+.location-view[inert] .platform-loose-ticket,
+html.platform-document-hidden .platform-loose-ticket { animation-play-state:paused; }
+@media (prefers-reduced-motion:reduce) { .platform-loose-ticket { animation:none; } }
+html[data-motion="still"] .platform-loose-ticket { animation:none; }

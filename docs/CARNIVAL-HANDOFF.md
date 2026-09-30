@@ -1,5 +1,38 @@
 # Carnival interactive Midway — current handoff
 
+## Loose ticket and dropped token — September 30, 2026
+
+The ticket/token transparency blocker is resolved. The replacement sheet is
+1536 x 1024 RGBA with alpha 0–254, including 632,259 fully transparent pixels;
+background samples between objects have alpha zero. The front ticket rectangle
+(35,60)-(520,602) and low-angle token rectangle (1150,770)-(1520,910) were cropped
+without changing any source RGB/alpha pixels. Their corners are fully transparent.
+The source sheet was not modified. Portable runtime crops are
+`platform/loose-ticket.png` (485 x 542) and `platform/dropped-token.png` (370 x 140).
+
+The loose ticket sits at scene (1040,786), 22 scene pixels wide, turned -16 degrees
+and foreshortened vertically to the ground plane. It has a faint contact shadow
+and subdued nighttime grading. Its 29-second cycle is stationary for almost all
+of the cycle; one short breeze shifts it by at most .6 horizontal/.7 local
+vertical pixels and 2 degrees before settling. It does not travel around the
+scene. Motion pauses off-stage/hidden and stops for reduced motion or still mode.
+The token is 7.5 x 2.84 scene pixels near (1116,810), using the supplied low-angle
+perspective and a small contact shadow. It has no animation.
+
+Both remain separate transparent SVG image layers, pointer-transparent, outside
+navigation bounds. No pickup, inventory, hover affordance, inference, story,
+boarding or other interaction was added. The rotating wheel, cabin counter-rotation,
+passenger coordinates and rail masks, attendant, boarding gondola and existing
+ambient behavior are unchanged. Midway remains locked and unchanged.
+
+Desktop 1280 x 720 and 390 x 844 views inspected at rest and at peak ticket flutter:
+transparent edges without rectangles, small environmental scale and token ground
+contact confirmed. Platform round trips, noninteraction, wheel rotation/upright
+cabins and reduced motion pass; the locked Midway wheel regression passes.
+The original Midway sources/art and full scene markup are unchanged.
+Preview remains running on port 4180; reload for this checkpoint. No main merge.
+Wait for Ken's playtest.
+
 ## Transparent replacement assets — September 29, 2026
 
 This checkpoint supersedes the attendant/gondola deferrals below. The newly
@@ -23,7 +56,7 @@ architecture mask now leaves the loading bay visible, with original foreground
 rail pixels restored in front of the cabin. The entrance sign/booth remain in
 front. The passenger placement and his corrected foreground rail mask are unchanged.
 
-**Still blocked:** the replacement `Tickets and Tokens.png` is 1536 x 1024 RGB,
+**Historical blocker (resolved September 30 above):** the earlier replacement `Tickets and Tokens.png` is 1536 x 1024 RGB,
 with no alpha channel and a baked checkerboard. Neither a loose ticket nor a
 dropped token was placed. No background removal, fabricated alpha or rectangular
 sheet overlay was used. Supply genuinely transparent pieces to finish these two
