@@ -1,5 +1,33 @@
 # Carnival interactive Midway — current handoff
 
+## Ferris-Wheel Platform correction checkpoint — September 29, 2026
+
+This supersedes the stationary-wheel and original passenger placement descriptions
+in Pass 1 below. Only the three requested corrections were made:
+
+- Passenger stays inside the same rear queue area. His image now starts at
+  (1064, 478), at 134.67 x 202 scene pixels, with separate shoe contact shadows
+  on the walking surface. The old shoes were above this surface.
+- The original stage artwork is restored over him through accurately traced
+  foreground handrail, posts, vertical bars and lower-rail SVG masks. The passenger
+  remains an independent transparent image; the gaps between bars stay open.
+- The Platform wheel has its own 60-second continuous clockwise rotation. One
+  clock rotates the frame/orbit around (1230, -70); each cabin counter-rotates
+  by exactly the opposite angle, preserving upright orientation. Supports stay
+  fixed. Existing architectural foreground masks remain above the assembly.
+  The clock pauses off-stage or in a hidden document, and resets to a stationary
+  pose for reduced motion or `?motion=still`. It does not share Midway state.
+
+Desktop 1280 x 720 and 390 x 844 mobile views were visually checked for shoe
+contact, genuine rail occlusion, architecture overlap and four wheel phases.
+Real-time movement and all 12 upright cabin matrices passed on both sizes.
+Platform round trips, noninteractive layers, reduced motion and off-stage pause
+pass the expanded `check-carnival-platform.mjs`. Existing sign-navigation and
+locked Midway wheel regression checks pass. Midway source, artwork, effects and
+entire scene markup remain unchanged. No additional interactions or artwork.
+The existing preview remains on port 4180; reload to get this correction.
+No merge to main. Wait for Ken's playtest.
+
 ## Ferris-Wheel Platform Pass 1 — September 29, 2026
 
 This checkpoint populates the approved platform with the usable supplied artwork.

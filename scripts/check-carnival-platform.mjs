@@ -19,6 +19,12 @@ const {chromium}=require(process.env.CARNIVAL_PLAYWRIGHT_MODULE || 'playwright')
   assert.equal(await p.locator('.platform-dressing button, .platform-dressing a, .platform-dressing [tabindex]').count(),0);
   assert.equal(await p.locator('.platform-dressing').evaluate(e=>getComputedStyle(e).pointerEvents),'none');
   assert.equal(await p.locator('.platform-passenger').evaluate(e=>getComputedStyle(e).animationPlayState),'running');
+  const rotationBefore = await p.locator('.platform-rotor').getAttribute('transform');
+  await p.waitForTimeout(2200);
+  assert.notEqual(await p.locator('.platform-rotor').getAttribute('transform'), rotationBefore, 'Wheel visibly rotates');
+  const cabins = await p.locator('.platform-cabin').evaluateAll(nodes=>nodes.map(e=>{const m=e.getCTM();return {a:m.a,b:m.b,c:m.c,d:m.d};}));
+  assert.equal(cabins.length,12);
+  cabins.forEach(m=>assert.ok(Math.abs(m.b)<1e-7 && Math.abs(m.c)<1e-7 && m.a>0 && m.d>0, 'Cabins remain upright'));
   await p.screenshot({path:join(shots,`platform-${width}.png`)});
   if(width===390) {
    for(let i=0;i<4;i++) await p.locator('[data-scene="ferris-platform"] button[aria-label="Look left"]').click();
@@ -27,14 +33,18 @@ const {chromium}=require(process.env.CARNIVAL_PLAYWRIGHT_MODULE || 'playwright')
   await p.locator('[data-scene="ferris-platform"] .location-path').click();
   await p.waitForFunction(()=>document.documentElement.dataset.location==='midway');
   assert.equal(await p.locator('.platform-passenger').evaluate(e=>getComputedStyle(e).animationPlayState),'paused');
+  const paused = await p.locator('.platform-rotor').getAttribute('transform');
+  await p.waitForTimeout(150);
+  assert.equal(await p.locator('.platform-rotor').getAttribute('transform'),paused, 'Wheel pauses away from platform');
   await p.screenshot({path:join(shots,`midway-${width}.png`)});
   await p.locator('.wheel').click();
   await p.waitForFunction(()=>document.documentElement.dataset.location==='ferris-platform');
   assert.equal(await p.locator('.platform-dressing').count(),1);
   await p.emulateMedia({reducedMotion:'reduce'});
   assert.equal(await p.locator('.platform-passenger').evaluate(e=>getComputedStyle(e).animationName),'none');
+  await p.waitForFunction(()=>document.querySelector('.platform-rotor').getAttribute('transform')==='rotate(0 1230 -70)');
   assert.deepEqual(errors,[]);
-  console.log(`${width}px: layers, noninteraction, navigation round trip, idle pause, reduced motion, errors PASS`);
+  console.log(`${width}px: layers, noninteraction, navigation round trip, idle pause, rotating wheel/upright cabins, reduced motion, errors PASS`);
   await p.close();
  }
  } finally { await b.close(); }
