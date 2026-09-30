@@ -1,5 +1,44 @@
 # Carnival interactive Midway — current handoff
 
+## Transparent replacement assets — September 29, 2026
+
+This checkpoint supersedes the attendant/gondola deferrals below. The newly
+supplied `Ticket Booth Attendant.png` (1140 x 1380 RGBA, 38.35% fully transparent)
+and `Boarding Gondola.png` (1274 x 1234 RGBA, 30.44% fully transparent) passed
+alpha inspection. They are copied unchanged to `platform/attendant.png` and
+`platform/boarding-gondola.png`; original source files are untouched.
+
+The attendant is a separate static SVG image at (1502, 521), 140 x 169.47 scene
+pixels. A window mask and original counter/register/lantern foreground put her
+inside the existing booth. CSS brightness .65 and saturation .72 fit the warm
+night scene. She has no idle animation or interaction.
+
+One of the 12 rotating Platform gondolas now uses the supplied ordinary boarding
+art. It is separately addressable as `.platform-boarding-gondola`, 180 x 174.35
+scene pixels, anchored at its top mounting lugs to the existing orbital pivot.
+It passes through the loading area on the unchanged 60-second clock and receives
+the same opposite rotation as the other upright cabins. It is not an extra
+floating parked cabin; no boarding or stopping sequence was added. The existing
+architecture mask now leaves the loading bay visible, with original foreground
+rail pixels restored in front of the cabin. The entrance sign/booth remain in
+front. The passenger placement and his corrected foreground rail mask are unchanged.
+
+**Still blocked:** the replacement `Tickets and Tokens.png` is 1536 x 1024 RGB,
+with no alpha channel and a baked checkerboard. Neither a loose ticket nor a
+dropped token was placed. No background removal, fabricated alpha or rectangular
+sheet overlay was used. Supply genuinely transparent pieces to finish these two
+details. The unusual gondola remains unused. No interactions were added.
+
+Validation: desktop 1280 x 720, 390 x 844 initial mobile view and rightward booth
+pan visually inspected; four wheel phases checked on each size, including the
+ordinary cabin passing the loading rails. No rectangular asset backgrounds.
+All 12 gondolas remain upright; passenger shoe contact and front-rail overlap
+remain intact. `check-carnival-platform.mjs`, `check-carnival-visual-proof.mjs`
+and `check-carnival-signs.mjs` pass. Source/art comparison confirms the locked
+Midway files, effects, full Midway scene markup and original platform background
+are unchanged. Preview remains on port 4180; reload for this checkpoint.
+No merge to main. Stop for Ken's playtest.
+
 ## Ferris-Wheel Platform correction checkpoint — September 29, 2026
 
 This supersedes the stationary-wheel and original passenger placement descriptions

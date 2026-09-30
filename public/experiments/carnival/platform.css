@@ -9,3 +9,5 @@
 html.platform-document-hidden .platform-passenger, html.platform-document-hidden .platform-reflection { animation-play-state:paused; }
 @media (prefers-reduced-motion:reduce) { .platform-passenger,.platform-reflection { animation:none; } }
 html[data-motion="still"] .platform-passenger, html[data-motion="still"] .platform-reflection { animation:none; }
+
+.platform-attendant { filter:brightness(.65) saturate(.72); }

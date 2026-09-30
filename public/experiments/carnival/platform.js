@@ -34,7 +34,11 @@
         const y = -70 + 517 * Math.sin(angle);
         const anchor = node('g', {transform:`translate(${x} ${y})`}, rotor);
         const cabin = node('g', {class:'platform-cabin'}, anchor);
-        art('./gondola-01.png', -63, -8, 126, 176.76, cabin);
+        if (i === 3) {
+          cabin.classList.add('platform-boarding-gondola');
+          // The supplied top mounting lugs sit at this cabin's orbital pivot.
+          art('./platform/boarding-gondola.png', -90, -8, 180, 174.35, cabin);
+        } else art('./gondola-01.png', -63, -8, 126, 176.76, cabin);
         cabins.push(cabin);
       }
       function startWheel() {
@@ -73,9 +77,25 @@
       // Original stage pixels occlude the assembly at the arch, booth and rails.
       // The base stays byte-for-byte intact; no populated reference is rendered.
       const foreground = node('clipPath', {id:'platform-architecture'}, defs);
-      node('path', {d:'M0 535H915V362L932 339L1025 289L1043 252L1082 234L1095 212L1117 226L1143 220L1160 252L1212 277L1309 285L1320 275L1350 287L1358 313L1402 281L1450 256L1475 253L1520 234L1563 249L1672 278V941H0Z'}, foreground);
+      node('path', {d:'M0 535H915V362L932 339L1025 289L1043 252L1082 234L1095 212L1117 226L1143 220L1160 252L1212 277L1309 285L1320 275L1350 287L1358 313L1402 281L1450 256L1475 253L1520 234L1563 249L1672 278V941H0Z M974 426L1156 412V610H974Z', 'clip-rule':'evenodd'}, foreground);
       const occlusion = art('./locations/ferris-platform.png',0,0,1672,941);
       occlusion.setAttribute('clip-path','url(#platform-architecture)');
+      // Open only the loading bay behind its existing front rails. Reapply those
+      // original rails so the moving ordinary cabin remains behind the queue.
+      const loadingRails = node('clipPath', {id:'platform-loading-rails'}, defs);
+      node('path', {d:'M974 535H1156V548H974Z M974 588L1156 562V574L974 602Z M985 535H994V610H985Z M1010 536H1018V610H1010Z M1035 535H1042V610H1035Z M1064 535H1072V610H1064Z M1093 529H1111V610H1093Z M1121 536H1127V610H1121Z M1141 536H1147V610H1141Z'}, loadingRails);
+      const loadingRailArt = art('./locations/ferris-platform.png',0,0,1672,941);
+      loadingRailArt.setAttribute('clip-path','url(#platform-loading-rails)');
+      // The portrait extends behind the window sill, not over the facade.
+      const windowClip = node('clipPath', {id:'platform-booth-window'}, defs);
+      node('path', {d:'M1508 516L1657 516L1657 642L1508 632Z'}, windowClip);
+      const attendantLayer = node('g', {class:'platform-attendant', 'clip-path':'url(#platform-booth-window)'});
+      art('./platform/attendant.png',1502,521,140,169.47,attendantLayer);
+      const counterClip = node('clipPath', {id:'platform-counter'}, defs);
+      node('path', {d:'M1589 584L1654 587L1653 643L1589 638Z M1645 519H1672V648H1645Z M1507 631L1672 642V660H1507Z'}, counterClip);
+      const counter = art('./locations/ferris-platform.png',0,0,1672,941);
+      counter.setAttribute('clip-path','url(#platform-counter)');
+
       node('ellipse', {cx:1120,cy:672,rx:12,ry:2.5,fill:'#080c10',opacity:'.65'});
       node('ellipse', {cx:1155,cy:678,rx:12,ry:2.5,fill:'#080c10',opacity:'.65'});
       const passenger = art('./platform/waiting-passenger.png',1064,478,134.67,202);
@@ -89,7 +109,7 @@
         node('ellipse',{cx:x,cy:y,rx:w/2,ry:'.8'},shimmer);
       }
       plane.append(svg);
-      const urls = ['./wheel-frame.png','./support.png','./gondola-01.png','./platform/waiting-passenger.png'];
+      const urls = ['./wheel-frame.png','./support.png','./gondola-01.png','./platform/waiting-passenger.png','./platform/attendant.png','./platform/boarding-gondola.png'];
       return Promise.all(urls.map(src=>{const img=new Image();img.src=src;return img.decode();})).then(startWheel);
     }
   });
