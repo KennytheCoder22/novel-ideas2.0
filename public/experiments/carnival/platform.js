@@ -24,9 +24,19 @@
       // Independent Platform clock: same 60-second revolution and equal/opposite
       // cabin rotation concept as Midway, without sharing or editing its code.
       const wheel = node('g', {class:'platform-wheel'});
-      art('./support.png', 870, -92, 470, 632.02, wheel);
+      // Source axle (175.5,55) in 351 x 472 artwork meets the rotor pivot.
+      const supportX = 995, supportY = -70 - 55 * 470 / 351;
+      const supportHeight = 472 * 470 / 351;
+      const rearSupport = node('clipPath', {id:'platform-support-rear'}, defs);
+      node('rect', {x:supportX,y:supportY,width:235,height:supportHeight}, rearSupport);
+      const frontSupport = node('clipPath', {id:'platform-support-front'}, defs);
+      node('rect', {x:1230,y:supportY,width:235,height:supportHeight}, frontSupport);
+      const rear = art('./support.png',supportX,supportY,470,supportHeight,wheel);
+      rear.setAttribute('clip-path','url(#platform-support-rear)');
       const rotor = node('g', {class:'platform-rotor'}, wheel);
-      art('./wheel-frame.png', 665, -635, 1110, 1079.73, rotor);
+      // Frame source hub is (280,280); retain its scale and remove rounding drift.
+      const frameScale = 1110 / 550;
+      art('./wheel-frame.png',1230-280*frameScale,-70-280*frameScale,1110,535*frameScale,rotor);
       const cabins = [];
       for (let i = 0; i < 12; i++) {
         const angle = (i * 30 + 8) * Math.PI / 180;
@@ -41,6 +51,9 @@
         } else art('./gondola-01.png', -63, -8, 126, 176.76, cabin);
         cabins.push(cabin);
       }
+      // Near-side leg/brace is in front; the far-side leg remains behind.
+      const front = art('./support.png',supportX,supportY,470,supportHeight,wheel);
+      front.setAttribute('clip-path','url(#platform-support-front)');
       function startWheel() {
         const reduced = matchMedia('(prefers-reduced-motion: reduce)');
         const still = document.documentElement.dataset.motion === 'still';
@@ -96,13 +109,16 @@
       const counter = art('./locations/ferris-platform.png',0,0,1672,941);
       counter.setAttribute('clip-path','url(#platform-counter)');
 
-      node('ellipse', {cx:1120,cy:672,rx:12,ry:2.5,fill:'#080c10',opacity:'.65'});
-      node('ellipse', {cx:1155,cy:678,rx:12,ry:2.5,fill:'#080c10',opacity:'.65'});
-      const passenger = art('./platform/waiting-passenger.png',1064,478,134.67,202);
+      // Both shoes rest on the upper wooden deck, behind its front edge.
+      node('ellipse', {cx:1065,cy:614,rx:12,ry:2.5,fill:'#080c10',opacity:'.65'});
+      node('ellipse', {cx:1100,cy:620,rx:12,ry:2.5,fill:'#080c10',opacity:'.65'});
+      const passenger = art('./platform/waiting-passenger.png',1009,420,134.67,202);
       passenger.setAttribute('class','platform-passenger');
       const rail = node('clipPath', {id:'platform-front-rail'}, defs);
       node('path', {d:'M1020 585L1100 573L1101 580L1020 594Z M1107 572L1198 558L1198 566L1107 581Z M1092 563L1100 559L1110 562L1114 567L1110 574L1112 706L1093 706Z M1190 554L1188 549L1193 546L1200 547L1204 552L1203 672L1190 675Z M1121 579L1126 578L1127 682L1122 684Z M1141 576L1146 575L1147 677L1142 679Z M1162 572L1167 571L1168 672L1163 674Z M1180 569L1184 568L1185 667L1181 669Z M1108 687L1196 658L1197 665L1109 696Z'}, rail);
       const railArt = art('./locations/ferris-platform.png',0,0,1672,941);
+      // Front pickets crossing the relocated passenger; rear rails stay behind.
+      node('path', {d:'M1049 585L1055 584L1056 686L1050 688Z M1071 582L1077 581L1078 686L1072 688Z'}, rail);
       railArt.setAttribute('clip-path','url(#platform-front-rail)');
       const shimmer = node('g', {class:'platform-reflection',fill:'#f6bb6c'});
       for (const [x,y,w] of [[969,820,11],[962,831,16],[973,839,9],[1127,758,13],[1122,768,9]]) {
