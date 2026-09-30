@@ -1,5 +1,137 @@
 # Carnival interactive Midway — current handoff
 
+## Authoritative work-computer handoff — September 30, 2026
+
+**Read this section first. It supersedes every older checkpoint below.** The
+Ferris-Wheel Platform Pass 1 additions and corrections are implemented and ready
+for Ken's playtest. Do not make further visual/behavioral changes on resume.
+Do not merge to main. Work only on `codex/carnival-visual-proof` in
+`KennytheCoder22/novel-ideas2.0`.
+
+The complete runtime implementation checkpoint is
+`72b7b7df7e35d3e95e355f98577e26037a90d523`. The handoff-only commit containing
+this section follows it. Fetch the latest remote branch, not an older SHA, to
+retrieve both the implementation and this handoff.
+
+### What is installed now
+
+- Approved `locations/ferris-platform.png` remains unchanged. Its ticket booth,
+  bench, queue/gate, bunting, signage and wet ground are permanent stage artwork.
+- Independent Platform wheel: one 60-second clockwise revolution, 12 upright
+  gondolas using equal counter-rotation, fixed support and foreground architecture
+  occlusion. Its clock is separate from the completely locked Midway wheel.
+- Waiting passenger: corrected ground contact in the rear queue; foreground
+  handrail, posts, bars and lower beam genuinely cover the appropriate body parts.
+  Tiny existing idle shift and contact shadows remain.
+- Attendant: static transparent portrait inside the right booth, behind the
+  window sill/register/lantern foreground, with nighttime grading. Pan right on
+  a narrow screen to see her.
+- Ordinary boarding gondola: one separately addressable cabin on the rotating
+  orbit, passing through the loading bay behind foreground rails. It stays upright.
+  There is no parked-cabin stop, boarding sequence or ride interaction.
+- Loose ticket: small separate transparent ground detail near scene (1040,786),
+  with brief, minimal flutter in a 29-second mostly-still cycle.
+- Dropped token: tiny low-angle separate image near (1116,810), completely still,
+  with a contact shadow. **All earlier transparency blockers are resolved.**
+- Restrained existing ground-reflection shimmer remains. Reduced motion/still
+  mode suppresses motion; hidden/inactive Platform motion pauses.
+- Existing look controls, walking paths and sign navigation remain intact. The
+  GAMES sign leads to Rides & Games; the left foreground path returns to Midway.
+  No new object hotspots, pickup, inventory, transaction, dialogue, story,
+  supernatural behavior or recommendation/taste inference exists.
+
+### All required artwork is committed
+
+Under `public/experiments/carnival/`:
+
+| Runtime artwork | Purpose |
+| --- | --- |
+| `locations/ferris-platform.png` | Approved unchanged production background |
+| `wheel-frame.png`, `support.png`, `gondola-01.png` | Read-only shared source artwork; independent Platform assembly |
+| `platform/waiting-passenger.png` | Transparent passenger |
+| `platform/attendant.png` | Transparent booth attendant replacement |
+| `platform/boarding-gondola.png` | Transparent ordinary gondola replacement |
+| `platform/loose-ticket.png` | Alpha-preserving crop of final ticket sheet |
+| `platform/dropped-token.png` | Alpha-preserving crop of final token sheet |
+
+`platform.js` and `platform.css` own the Platform dressing. SVG masks reuse the
+committed original background pixels for foreground occlusion. No home-only
+source sheet, Dreamscapes/OneDrive path, temporary extraction output, image
+regeneration or additional download is needed to run or continue from this state.
+Composition reference images are not runtime layers. The unusual gondola is unused.
+The other production stages and all accepted Midway runtime artwork are tracked too.
+
+### Resume safely at work
+
+1. Inspect repository/branch and local changes first (`git status --short`,
+   `git branch --show-current`). Preserve unrelated or uncommitted work. Prefer
+   the existing clean Carnival checkout; do not reset, discard or overwrite work.
+2. Fetch `git fetch origin codex/carnival-visual-proof`. In a clean Carnival
+   checkout, fast-forward with `git merge --ff-only origin/codex/carnival-visual-proof`.
+   If another branch is checked out, switch to the experiment only when safe.
+   If branches diverge or relevant local edits exist, inspect and preserve them;
+   do not force a reset, force-push, or merge into main.
+3. Read this handoff from the fetched branch. Confirm the current local commit
+   matches the intended remote checkpoint. Do not start from main.
+4. From the repository root, start the static preview:
+
+   ```sh
+   python -m http.server 4180 --bind 127.0.0.1 --directory public
+   ```
+
+   On Windows, `py -m http.server 4180 --bind 127.0.0.1 --directory public`
+   is an equivalent fallback when Python is exposed as `py`.
+5. Open the Platform directly:
+   `http://localhost:4180/experiments/carnival/index.html?scene=ferris-platform`
+   or begin at Midway:
+   `http://localhost:4180/experiments/carnival/index.html`.
+   Reload any older tab. Check the process owning port 4180 before reusing it;
+   an old server can silently serve another checkout. If occupied by unrelated
+   work, use a free port and adjust the URL.
+6. Leave the preview running and wait for Ken. Do not modify or merge anything.
+
+If no repository is available, clone the experiment branch with authenticated
+GitHub access: `git clone --branch codex/carnival-visual-proof --single-branch https://github.com/KennytheCoder22/novel-ideas2.0.git`.
+Then enter that repository and use the command above. The work computer needs Git,
+GitHub access and Python; the home localhost process does not transfer. No npm
+install, application build, backend, API keys or artwork tools are required to
+preview this static experiment. Browser session state (including Midway MARA state)
+is local to each browser and does not transfer between computers.
+
+### Verification and remaining playtest
+
+The final runtime was exported from Git into a fresh directory for portability
+validation, with no untracked/source files copied in. Platform desktop/mobile,
+sign-navigation and locked Midway wheel checks passed against that export. All 51
+exported runtime files returned successfully with matching contents. The first
+Platform run timed out on Midway re-entry; the unchanged retry passed desktop
+and mobile. This intermittent test timeout is recorded, not treated as a scene fix.
+Desktop 1280 x 720 and 390 x 844 visual inspections earlier in this session covered
+foot contact, rail occlusion, booth integration, ordinary cabin loading-bay passage,
+upright cabins at four wheel phases, transparent ticket/token edges, small scale,
+ground contact and restrained flutter. No visual/behavioral edits were made for
+this portability handoff.
+
+Optional checks (Node and Playwright are needed only for tests):
+`node scripts/check-carnival-platform.mjs`,
+`node scripts/check-carnival-signs.mjs`, and
+`node scripts/check-carnival-visual-proof.mjs`.
+`CARNIVAL_PLAYWRIGHT_MODULE` may point to an installed Playwright module;
+`CARNIVAL_BROWSER_CHANNEL` may select an installed browser;
+`CARNIVAL_PREVIEW_URL` may override the local preview URL. Do not copy the
+home-computer absolute dependency paths into project code.
+
+Ken's final visual acceptance/playtest remains pending. Physical-phone performance
+and hosted deployment were not verified. The broader navigation script previously
+had intermittent test timeouts, documented in historical notes; targeted real-time
+navigation and sign checks passed. Boarding, ride sequence, unusual gondola,
+interactions, dialogue, pickups and inference remain deliberately deferred.
+
+## Historical session notes
+
+The sections below record earlier states and decisions. They do not reintroduce
+resolved blockers or override the authoritative checkpoint above.
+
 ## Loose ticket and dropped token — September 30, 2026
 
 The ticket/token transparency blocker is resolved. The replacement sheet is
