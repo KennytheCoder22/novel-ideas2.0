@@ -49,12 +49,13 @@
     view.setAttribute('aria-label', definition.name); view.tabIndex = -1;
     view.style.visibility = 'hidden'; view.inert = true;
     // One aspect-correct plane registers backgrounds and paths together;
-    // object, ambient and state layers remain future work.
+    // platform dressing shares that plane without changing path geometry.
     const plane = document.createElement('div'); plane.className = 'location-plane';
     const image = new Image(definition.width, definition.height);
     image.className = 'location-background'; image.alt = definition.name;
     image.draggable = false; image.src = definition.background;
     plane.append(image); view.append(plane);
+    const dressingReady = id === 'ferris-platform' ? window.CarnivalPlatform.mount(plane) : Promise.resolve();
     for (const path of definition.paths || []) {
       const button = document.createElement('button');
       button.className = 'location-path'; button.dataset.to = path.to;
@@ -88,7 +89,7 @@
     }
     view.append(look); document.body.append(view);
     addEventListener('resize',layout); layout();
-    const entry = {view, ready:image.decode(), dispose:()=>removeEventListener('resize',layout)};
+    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>removeEventListener('resize',layout)};
     mounted.set(id,entry);
     return entry;
   }

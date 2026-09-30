@@ -1,0 +1,11 @@
+/* These selectors cannot target the locked Midway artwork or animation. */
+.platform-dressing { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; user-select:none; overflow:hidden; }
+.platform-wheel { filter:brightness(.68) saturate(.72); }
+.platform-passenger { filter:brightness(.60) saturate(.68); transform-box:fill-box; transform-origin:50% 98%; animation:platform-idle 17s ease-in-out infinite; }
+.platform-reflection { opacity:.08; animation:platform-shimmer 13s ease-in-out infinite; }
+@keyframes platform-idle { 0%,36%,73%,100% { transform:rotate(0deg); } 49%,58% { transform:rotate(.22deg); } }
+@keyframes platform-shimmer { 0%,32%,100% { opacity:.06; } 47% { opacity:.14; } 68% { opacity:.08; } }
+.location-view[inert] .platform-passenger, .location-view[inert] .platform-reflection,
+html.platform-document-hidden .platform-passenger, html.platform-document-hidden .platform-reflection { animation-play-state:paused; }
+@media (prefers-reduced-motion:reduce) { .platform-passenger,.platform-reflection { animation:none; } }
+html[data-motion="still"] .platform-passenger, html[data-motion="still"] .platform-reflection { animation:none; }

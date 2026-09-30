@@ -1,5 +1,80 @@
 # Carnival interactive Midway — current handoff
 
+## Ferris-Wheel Platform Pass 1 — September 29, 2026
+
+This checkpoint populates the approved platform with the usable supplied artwork.
+Continue only on `codex/carnival-visual-proof`; do not merge to main. The Midway
+wheel implementation, markup, artwork, timing, masks and all existing effects are
+locked and unchanged. The empty platform PNG is also byte-for-byte unchanged.
+
+### Presentation and separate layers
+
+`platform.js` / `platform.css` mount only in the Ferris Platform artwork plane.
+The base already supplies the ticket booth, bench, queue/gate, bunting, lanterns
+and wet ground; none were duplicated as new objects. The populated scene, High
+Wheel, queue, booth, bench and boarding images were composition guides, never
+runtime overlays. The platform uses the existing read-only `wheel-frame.png`,
+`support.png` and `gondola-01.png` extracts from the supplied wheel sheet as a
+separate parked assembly. It looms above the arch with upright cabins. Its fixed
+pose has no clock, rotation, activation response or dependency on Midway state.
+These small distant cabins do not substitute for the deferred boarding cabin.
+
+`platform/waiting-passenger.png` is copied byte-for-byte from
+`Waiting Passenger(isolated).png`, with genuine alpha (about 66% fully transparent).
+The passenger waits near the rear queue entrance, graded with CSS for night light,
+with a contact shadow. Original background pixels in SVG clip paths restore the
+entrance/booth foreground over the wheel and queue rails in front of the passenger.
+The background itself is never edited or flattened with these independent layers.
+All placement uses the same 1672 x 941 plane as navigation, so desktop resizing
+and mobile look controls move the entire scene together.
+
+Ambient motion is a 0.22-degree occasional idle shift over 17 seconds and a faint
+13-second variation of several small ground-reflection highlights. The wheel,
+structures and cabins stay still. Motion stops for reduced motion / `?motion=still`,
+pauses while the platform is inactive, and pauses when the document is hidden.
+The SVG is decorative and pointer-transparent; no new controls, interactions,
+dialogue, pickups, boarding, ride state, unusual event or inference were added.
+Existing return paths and the GAMES sign retain their behavior and hit regions.
+Platform art decodes before entry using the existing load-failure/retry handling.
+
+### Blocked source artwork / deferred work
+
+- `Ticket Booth Attendant.png`: RGB with a baked checkerboard, no alpha. Deferred.
+- `Regular Gondola(isolated).png`: RGB with a baked checkerboard, no alpha. Deferred.
+- `Tickets and Tokens.png`: RGBA, but the brown/black sheet background and labels
+  remain visible around the pieces; only about 0.02% of pixels are fully transparent.
+  Clean independent ticket/token extraction would require removing that background.
+  Both are deferred under the explicit transparency rule.
+- `Unusual Gondola.png`: deliberately not copied into runtime or revealed.
+
+No background removal, fake transparency or substitute artwork was used for these
+blocked items. Provide clean transparent replacements to finish those placements.
+There are no separate usable flag/puddle/bench overlays in the supplied batch;
+the corresponding painted features are retained. Source reference sheets are not
+needed to run this checkpoint; the usable runtime art is committed and portable.
+
+### Validation
+
+Preview: `http://localhost:4180/experiments/carnival/index.html?scene=ferris-platform`.
+Start with the existing Python static-server command below; no application build,
+backend, asset extraction, or npm install is needed. Leave the local preview
+running for Ken's playtest.
+
+Desktop 1280 x 720 and 390 x 844 touch views were visually inspected, including
+passenger/rail overlap, wheel/arch occlusion, mobile left pan and return to Midway.
+`node scripts/check-carnival-platform.mjs` exercises real-time return/re-entry,
+one-time layer mounting, absence of interactive decoration, idle pause when away,
+reduced motion and absence of page errors at both sizes. It accepts the same
+Playwright module, browser channel and preview URL overrides as existing checks.
+Wheel, geese, poster, fox and sign regression checks pass. The broad navigation test was run twice: one timeout on Tent Row to Zora,
+then a second run traversed all desktop/mobile paths before a reduced-motion
+timeout. Both timed-out flows passed isolated real-time checks; the full script
+is not recorded as a clean pass. Platform missing-art retry was also checked. No locked Midway files or artwork
+were changed; only extra stylesheet/script includes were added to index.html.
+Physical phone testing and hosted deployment verification were not performed.
+
+
+
 ## Current checkpoint — September 27, 2026
 
 Continue only on `codex/carnival-visual-proof`. This section supersedes the
