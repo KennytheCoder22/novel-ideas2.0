@@ -55,7 +55,8 @@
     image.className = 'location-background'; image.alt = definition.name;
     image.draggable = false; image.src = definition.background;
     plane.append(image); view.append(plane);
-    const dressingReady = id === 'ferris-platform' ? window.CarnivalPlatform.mount(plane) : Promise.resolve();
+    const dressingReady = id === 'ferris-platform' ? window.CarnivalPlatform.mount(plane)
+      : id === 'rides-games' ? window.CarnivalCarousel.mount(plane) : Promise.resolve();
     for (const path of definition.paths || []) {
       const button = document.createElement('button');
       button.className = 'location-path'; button.dataset.to = path.to;

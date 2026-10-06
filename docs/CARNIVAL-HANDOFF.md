@@ -1,5 +1,107 @@
 # Carnival interactive Midway — current handoff
 
+## Rides & Games carousel checkpoint — October 6, 2026
+
+**This section supersedes older current-state notes for the carousel only.**
+Continue on `codex/carnival-visual-proof`; fetch its latest remote checkpoint.
+Ken approved the carousel installation/composition and requested a correction:
+the complete carousel structure must share counterclockwise rotation, with the
+environment stationary. This correction is ready for review; do not populate
+mounts or make further visual changes before Ken's playtest. Do not merge to main.
+
+### Installation and shared rotation
+
+- `carousel.js`, `carousel.css` and `carousel/structure.png` are independent
+  Rides & Games dressing, mounted once by the existing navigation system.
+- The approved installation transform remains `translate(-625 -160) scale(.82)`
+  in the 1671 x 941 scene. The approved background is unchanged. Existing
+  foreground fence, bench, barrel and sign pixels are reapplied with the same
+  stationary masks above the carousel. Lighting remains brightness `.70`,
+  saturation `.76`; no light flashing or interaction was introduced.
+- One elapsed-time clock supplies a **72-second counterclockwise revolution**.
+  Yaw is `-2π * phase`. The horizontal deck, decorative apron, center column,
+  canopy/ceiling material, complete lamp standards and 12 attachment slots all
+  inherit this same angle. There is no separate floor speed or direction.
+- Canopy, column and apron use browser WebGL cylindrical surface projection of
+  the existing structure artwork, keeping the installed silhouette and viewpoint
+  rather than rotating the entire front-view image as a flat card. Texture bands
+  use arc-length coordinates to avoid stretching one side pixel across a surface.
+  The supplied front-view art is repeated/mirrored around the unpictured rear;
+  this is a projected artwork assembly, not a newly modeled/repainted carousel.
+  The exposed floor uses the same original wood pixels in a foreshortened plane.
+- Lamp standards remain upright while orbiting, and switch rear/front depth
+  layers. Slots behind the center column are covered by it; front slots precede
+  the canopy occlusion. Stationary foreground architecture covers every layer.
+- Motion pauses when the location is inactive or the document is hidden and
+  resumes from the held angle. Reduced motion freezes the current pose;
+  `?motion=still` starts and remains at phase zero. No independent mount bobbing.
+
+### Future mount slots
+
+Stable IDs are `data-carousel-slot="1"` through `"12"`, never renumbered by depth
+sorting. For zero-based slot `i`, phase `p`, the local structure coordinates are:
+
+```
+angle = 2π * (i / 12 - p)
+x = 768 + 630 * cos(angle)
+y = 835 + 32 * sin(angle)
+scale = 1 + .045 * sin(angle)
+```
+
+Each slot contains an empty `.carousel-mount-anchor` at local `(0,-135)`.
+Future mount/rider artwork and its own vertical-motion child should be attached
+there; that child can bob, be replaced or carry state without changing the parent
+orbit. `?scene=rides-games&carousel=debug` displays numbered anchor markers only
+for development. Normal play has no labels or carousel hotspots.
+
+### Asset provenance and portability
+
+The supplied `Carousel.png` was RGB with a baked checkerboard, not transparent.
+During the initial mechanism pass, the built-in image-generation tool prepared
+`carousel/structure.png`: real alpha transparency, empty interior openings and
+thin mount poles removed for independent slot poles. The original source was
+not overwritten. The rotation correction reused that prepared PNG unchanged;
+no new artwork was generated for the correction. The populated composition,
+mount sheets and assembled example remain references, not runtime layers.
+
+Final extraction prompt used: "Background removal ONLY. Make ALL background
+pixels genuinely transparent alpha zero: the brown/black sky surrounding the
+carousel AND the empty openings under its canopy on both sides of its center
+drum AND below platform. Preserve carousel exactly. No brown gradient, no
+checkerboard, no backdrop, no shadows outside object. Production isolated PNG
+cutout with real alpha channel. Keep the gold lamps and poles, canopy and
+platform unchanged."
+
+The runtime PNG, rendering code and styles are committed inside the Carnival
+directory. No Dreamscapes path, generated-image directory, temporary screenshot,
+image-generation service, npm install or backend is needed for preview. A modern
+browser with WebGL renders the structural surfaces. Mounts, riders, operator,
+selection, riding, branch/age contents, story events and taste/recommendation
+logic remain deferred.
+
+### Validation and preview
+
+Desktop 1280 x 720 and approximately 390 x 844 checks cover moving upright slots,
+front/rear occlusion, shared counterclockwise yaw, structural surface motion,
+exact 72-second loop closure, reduced motion, still mode, pause/resume, navigation
+round trips, retained Midway DOM and absence of mounts/interactions/browser
+errors. Multiple phases were inspected visually; user acceptance of the rotation
+correction is pending. Physical-phone performance is not yet verified.
+One deterministic phase-check run timed out waiting for the Rides & Games
+arrival after its desktop/mobile checks passed. An unchanged retry passed all
+checks with browser-error logging enabled; no browser errors were reported.
+
+`node scripts/check-carnival-carousel.mjs` is the reusable browser check.
+Platform and sign-navigation browser checks and the locked Midway wheel/artwork
+check also pass. Tests accept `CARNIVAL_PLAYWRIGHT_MODULE`,
+`CARNIVAL_BROWSER_CHANNEL` and `CARNIVAL_PREVIEW_URL` as documented below.
+
+Preview remains at `http://localhost:4180/experiments/carnival/index.html`.
+Direct carousel review: append `?scene=rides-games`. On a narrow screen, pan left
+with the existing look controls. At work, safely fetch/fast-forward the branch,
+read this handoff and start `python -m http.server 4180 --bind 127.0.0.1 --directory public`
+from the repository root. The localhost process itself does not transfer.
+
 ## End-of-day checkpoint — September 30, 2026 (work computer)
 
 **This section supersedes all older current-state notes below.** Resume the latest
