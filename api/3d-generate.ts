@@ -89,9 +89,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   form.append("vertex_count", String(vertexCount));
 
   let upstream: Response;
+  const upstreamController = new AbortController();
+  const upstreamTimeout = setTimeout(() => upstreamController.abort(), 70000);
   try {
     upstream = await fetch(STABILITY_ENDPOINT, {
       method: "POST",
+      signal: upstreamController.signal,
       headers: {
         authorization: `Bearer ${apiKey}`,
         accept: "model/gltf-binary",
@@ -100,9 +103,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: form,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("[3D WORKSHOP] upstream request failed", error);
-    return res.status(502).json({ error: "generator_unreachable" });
+    if (error?.name === "AbortError") {
+      return res.status(504).json({
+        error: "generator_timeout",
+        message: "Stability took too long to return the 3D model. Please try again.",
+      });
+    }
+    return res.status(502).json({
+      error: "generator_unreachable",
+      message: "NovelIdeas could not reach Stability's 3D service. Please try again.",
+    });
+  } finally {
+    clearTimeout(upstreamTimeout);
   }
 
   if (!upstream.ok) {
