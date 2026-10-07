@@ -23,6 +23,7 @@ type PickedImage = {
 const WEB_ONLY_MESSAGE = "3D Workshop V1 currently runs in the web version of NovelIdeas.";
 
 type QualityPreset = "balanced" | "detail" | "clean";
+type HiddenSideMode = "infer" | "mirror" | "another-view";
 
 const QUALITY_PRESETS = {
   balanced: { label: "Balanced", description: "Best first try for most objects.", textureResolution: "1024", foregroundRatio: 0.85, remesh: "none", vertexCount: -1 },
@@ -115,6 +116,7 @@ export default function ThreeDWorkshopRoute() {
   const [generationCount, setGenerationCount] = useState(0);
   const [autoFrame, setAutoFrame] = useState(true);
   const [preparedDataUrl, setPreparedDataUrl] = useState<string | null>(null);
+  const [hiddenSideMode, setHiddenSideMode] = useState<HiddenSideMode>("infer");
 
   useEffect(() => {
     return () => {
@@ -145,7 +147,7 @@ export default function ThreeDWorkshopRoute() {
         return;
       }
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = async () => {
         const dataUrl = typeof reader.result === "string" ? reader.result : "";
         if (!dataUrl) {
           setStatus("NovelIdeas could not read that image.");
@@ -153,13 +155,17 @@ export default function ThreeDWorkshopRoute() {
         }
         if (modelUrl) URL.revokeObjectURL(modelUrl);
         setModelUrl(null);
+        setGenerationCount(0);
+        setStatus("Preparing source image…");
+        const prepared = await autoFrameImage(dataUrl);
+        setPreparedDataUrl(prepared);
         setPicked({
           name: file.name || "image",
           mimeType: file.type || "image/png",
           dataUrl,
           size: file.size,
         });
-        setStatus("Image ready. Auto-frame is on; you can turn it off below if you prefer the original.");
+        setStatus("Image ready. Choose how NovelIdeas should treat the hidden side, then generate.");
       };
       reader.onerror = () => setStatus("NovelIdeas could not read that image.");
       reader.readAsDataURL(file);
@@ -170,18 +176,21 @@ export default function ThreeDWorkshopRoute() {
   async function generateModel() {
     if (!picked || generating || Platform.OS !== "web") return;
     setGenerating(true);
-    setStatus("Building the 3D model…");
+    const preset = QUALITY_PRESETS[qualityPreset];
+    setStatus(generationCount > 0 ? "Trying another reconstruction…" : "Building the 3D model…");
     try {
+      const usePrepared = autoFrame && !!preparedDataUrl;
       const response = await fetch("/api/3d-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64: picked.dataUrl,
-          mimeType: picked.mimeType,
-          textureResolution: "1024",
-          foregroundRatio: 0.85,
-          remesh: "none",
-          vertexCount: -1,
+          imageBase64: usePrepared ? preparedDataUrl : picked.dataUrl,
+          mimeType: usePrepared ? "image/png" : picked.mimeType,
+          textureResolution: preset.textureResolution,
+          foregroundRatio: preset.foregroundRatio,
+          remesh: preset.remesh,
+          vertexCount: preset.vertexCount,
+          hiddenSideMode,
         }),
       });
 
@@ -198,7 +207,12 @@ export default function ThreeDWorkshopRoute() {
       if (modelUrl) URL.revokeObjectURL(modelUrl);
       const nextUrl = URL.createObjectURL(blob);
       setModelUrl(nextUrl);
-      setStatus("Model ready. Drag to rotate it, scroll to zoom, or save the GLB.");
+      setGenerationCount((count) => count + 1);
+      setStatus(
+        hiddenSideMode === "mirror"
+          ? "Model ready. Mirror guidance is saved, but this Stable Fast 3D pass still infers the hidden side; true symmetric mesh mirroring is the next reconstruction step."
+          : "Model ready. Drag to rotate it, scroll to zoom, save it, or try another quality mode."
+      );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "The model could not be generated.");
     } finally {
@@ -291,6 +305,55 @@ export default function ThreeDWorkshopRoute() {
                         {autoFrame ? "ON" : "OFF"}
                       </Text>
                     </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.hiddenSideSection}>
+                    <Text style={styles.qualityTitle}>Hidden side</Text>
+                    <Text style={styles.hiddenSideHelp}>
+                      Tell NovelIdeas what is true about the side the camera cannot see.
+                    </Text>
+                    <View style={styles.hiddenSideGrid}>
+                      {([
+                        ["infer", "Infer it", "Let the 3D engine guess the unseen side."],
+                        ["mirror", "Same as visible side", "Use when the hidden side should mirror the visible side."],
+                        ["another-view", "I can provide another view", "Keep the option open for a second reference image."],
+                      ] as const).map(([key, label, description]) => {
+                        const selected = hiddenSideMode === key;
+                        return (
+                          <TouchableOpacity
+                            key={key}
+                            style={[styles.hiddenSideCard, selected && styles.hiddenSideCardSelected]}
+                            onPress={() => {
+                              setHiddenSideMode(key);
+                              setStatus(
+                                key === "mirror"
+                                  ? "Mirror guidance selected. NovelIdeas will preserve this instruction for symmetric reconstruction."
+                                  : key === "another-view"
+                                  ? "Second-view mode selected. Multi-view upload is the next Workshop step."
+                                  : "NovelIdeas will let the 3D engine infer the hidden side."
+                              );
+                            }}
+                            accessibilityRole="button"
+                          >
+                            <MaterialCommunityIcons
+                              name={key === "mirror" ? "flip-horizontal" : key === "another-view" ? "image-multiple-outline" : "creation-outline"}
+                              size={18}
+                              color={selected ? "#8dd8ff" : "#7890a4"}
+                            />
+                            <Text style={[styles.hiddenSideLabel, selected && styles.hiddenSideLabelSelected]}>{label}</Text>
+                            <Text style={styles.hiddenSideDescription}>{description}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    {hiddenSideMode === "mirror" ? (
+                      <View style={styles.experimentalNote}>
+                        <MaterialCommunityIcons name="flask-outline" size={16} color="#f7c873" />
+                        <Text style={styles.experimentalNoteText}>
+                          Experimental: the current Stability pass still predicts the back. The mirror choice is now captured so the next post-process can replace that prediction with a symmetric backside.
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
 
                   <View style={styles.qualitySection}>
@@ -423,6 +486,16 @@ const styles = StyleSheet.create({
   sourcePrepText: { color: "#7f95a7", fontSize: 11, lineHeight: 15, marginTop: 2 },
   sourcePrepState: { color: "#7890a4", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
   sourcePrepStateActive: { color: "#7bd4ff" },
+  hiddenSideSection: { marginTop: 16 },
+  hiddenSideHelp: { color: "#7f95a7", fontSize: 11, lineHeight: 16, marginTop: -2, marginBottom: 8 },
+  hiddenSideGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  hiddenSideCard: { flexGrow: 1, flexBasis: 105, minWidth: 100, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: "#24445a", backgroundColor: "#07111b" },
+  hiddenSideCardSelected: { borderColor: "#65bfe8", backgroundColor: "#0b2638" },
+  hiddenSideLabel: { color: "#b9c8d6", fontSize: 12, fontWeight: "900", marginTop: 5 },
+  hiddenSideLabelSelected: { color: "#8dd8ff" },
+  hiddenSideDescription: { color: "#7f95a7", fontSize: 10, lineHeight: 14, marginTop: 3 },
+  experimentalNote: { flexDirection: "row", alignItems: "flex-start", gap: 7, marginTop: 8, padding: 9, borderRadius: 9, borderWidth: 1, borderColor: "#67522a", backgroundColor: "#1a160d" },
+  experimentalNoteText: { flex: 1, color: "#c9b98b", fontSize: 10, lineHeight: 15 },
   qualitySection: { marginTop: 16 },
   qualityTitle: { color: "#dbe8f2", fontSize: 12, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 },
   qualityRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
