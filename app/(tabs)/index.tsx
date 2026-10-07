@@ -2441,6 +2441,13 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             >
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>Games</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerMenuItem}
+              accessibilityLabel="3D Workshop"
+              onPress={() => openInfoScreen("/3d-workshop")}
+            >
+              <Text style={[styles.headerMenuItemText, { color: theme.text }]}>3D Workshop</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.headerMenuItem} onPress={() => openInfoScreen("/how-it-works")}>
               <Text style={[styles.headerMenuItemText, { color: theme.text }]}>How to Use NovelIdeas</Text>
             </TouchableOpacity>
