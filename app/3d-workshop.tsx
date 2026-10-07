@@ -267,6 +267,60 @@ export default function ThreeDWorkshopRoute() {
                 </View>
               )}
 
+              {picked ? (
+                <>
+                  <View style={styles.sourcePrepSection}>
+                    <Text style={styles.qualityTitle}>Source preparation</Text>
+                    <TouchableOpacity
+                      style={[styles.sourcePrepCard, autoFrame && styles.sourcePrepCardActive]}
+                      onPress={() => setAutoFrame((value) => !value)}
+                      accessibilityRole="button"
+                    >
+                      <MaterialCommunityIcons
+                        name={autoFrame ? "crop-free" : "crop"}
+                        size={20}
+                        color={autoFrame ? "#7bd4ff" : "#7890a4"}
+                      />
+                      <View style={styles.sourcePrepCopy}>
+                        <Text style={styles.sourcePrepTitle}>Auto-frame object</Text>
+                        <Text style={styles.sourcePrepText}>
+                          Trim excess background and center the object in a square working image.
+                        </Text>
+                      </View>
+                      <Text style={[styles.sourcePrepState, autoFrame && styles.sourcePrepStateActive]}>
+                        {autoFrame ? "ON" : "OFF"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.qualitySection}>
+                    <Text style={styles.qualityTitle}>Quality mode</Text>
+                    <View style={styles.qualityRow}>
+                      {(Object.keys(QUALITY_PRESETS) as QualityPreset[]).map((key) => {
+                        const preset = QUALITY_PRESETS[key];
+                        const selected = key === qualityPreset;
+                        return (
+                          <TouchableOpacity
+                            key={key}
+                            style={[styles.qualityCard, selected && styles.qualityCardSelected]}
+                            onPress={() => setQualityPreset(key)}
+                            accessibilityRole="button"
+                          >
+                            <Text style={[styles.qualityLabel, selected && styles.qualityLabelSelected]}>
+                              {preset.label}
+                            </Text>
+                            <Text style={styles.qualityDescription}>{preset.description}</Text>
+                            <Text style={styles.qualityMeta}>
+                              {preset.textureResolution}px · {preset.remesh === "none" ? "native mesh" : "triangle remesh"}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                </>
+              ) : null}
+
               <TouchableOpacity
                 style={[styles.generateButton, (!picked || generating) && styles.disabledButton]}
                 onPress={generateModel}
