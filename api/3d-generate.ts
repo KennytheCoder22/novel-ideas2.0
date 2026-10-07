@@ -124,8 +124,12 @@ function mirrorVisibleSideInGlb(input: Buffer): { buffer: Buffer; applied: boole
         const next = triangle[(i + 1) % triangle.length];
         const dc = current.p[axis] - center;
         const dn = next.p[axis] - center;
-        const currentInside = dc >= -1e-7;
-        const nextInside = dn >= -1e-7;
+        // Stable Fast 3D places the camera-visible surface on the negative side
+        // of the thin reconstruction axis. Keep that side and mirror it across
+        // the center plane; keeping the positive side duplicates SF3D's inferred
+        // (and often smeared) hidden surface.
+        const currentInside = dc <= 1e-7;
+        const nextInside = dn <= 1e-7;
 
         if (currentInside) result.push(current);
         if (currentInside !== nextInside) {
