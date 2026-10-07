@@ -1,0 +1,140 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+
+const STABILITY_ENDPOINT = "https://api.stability.ai/v2beta/3d/stable-fast-3d";
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const ALLOWED_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+function requestOriginMatchesHost(req: VercelRequest): boolean {
+  const origin = String(req.headers.origin || "").trim();
+  const host = String(req.headers.host || "").trim();
+  if (!origin || !host) return true;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
+function decodeBase64Image(value: unknown): Buffer | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const trimmed = value.trim();
+  const comma = trimmed.indexOf(",");
+  const payload = trimmed.startsWith("data:") && comma >= 0 ? trimmed.slice(comma + 1) : trimmed;
+  try {
+    return Buffer.from(payload, "base64");
+  } catch {
+    return null;
+  }
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "method_not_allowed" });
+  }
+
+  if (!requestOriginMatchesHost(req)) {
+    return res.status(403).json({ error: "origin_rejected" });
+  }
+
+  const apiKey = process.env.STABILITY_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({
+      error: "stability_api_key_missing",
+      message: "3D Workshop is installed, but STABILITY_API_KEY is not configured on the server.",
+    });
+  }
+
+  const mimeType = String(req.body?.mimeType || "").toLowerCase();
+  if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+    return res.status(400).json({ error: "unsupported_image_type", message: "Use a PNG, JPEG, or WebP image." });
+  }
+
+  const imageBytes = decodeBase64Image(req.body?.imageBase64);
+  if (!imageBytes?.length) {
+    return res.status(400).json({ error: "invalid_image", message: "No readable image was supplied." });
+  }
+  if (imageBytes.length > MAX_IMAGE_BYTES) {
+    return res.status(413).json({
+      error: "image_too_large",
+      message: "For this first version, use an image smaller than 3 MB.",
+    });
+  }
+
+  const textureResolution = ["512", "1024", "2048"].includes(String(req.body?.textureResolution))
+    ? String(req.body.textureResolution)
+    : "1024";
+  const foregroundRatioRaw = Number(req.body?.foregroundRatio);
+  const foregroundRatio = Number.isFinite(foregroundRatioRaw)
+    ? Math.min(1, Math.max(0.1, foregroundRatioRaw))
+    : 0.85;
+  const remesh = ["none", "triangle", "quad"].includes(String(req.body?.remesh))
+    ? String(req.body.remesh)
+    : "none";
+  const vertexCountRaw = Number(req.body?.vertexCount);
+  const vertexCount = Number.isFinite(vertexCountRaw)
+    ? Math.min(20000, Math.max(-1, Math.round(vertexCountRaw)))
+    : -1;
+
+  const form = new FormData();
+  const extension = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
+  form.append(
+    "image",
+    new Blob([new Uint8Array(imageBytes)], { type: mimeType }),
+    `novelideas-input.${extension}`
+  );
+  form.append("texture_resolution", textureResolution);
+  form.append("foreground_ratio", String(foregroundRatio));
+  form.append("remesh", remesh);
+  form.append("vertex_count", String(vertexCount));
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(STABILITY_ENDPOINT, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        accept: "model/gltf-binary",
+        "stability-client-id": "NovelIdeas-3D-Workshop",
+        "stability-client-version": "1.0.0",
+      },
+      body: form,
+    });
+  } catch (error) {
+    console.error("[3D WORKSHOP] upstream request failed", error);
+    return res.status(502).json({ error: "generator_unreachable" });
+  }
+
+  if (!upstream.ok) {
+    const contentType = upstream.headers.get("content-type") || "";
+    let detail = "";
+    try {
+      detail = contentType.includes("application/json")
+        ? JSON.stringify(await upstream.json())
+        : await upstream.text();
+    } catch {
+      detail = "";
+    }
+    console.error("[3D WORKSHOP] Stability API error", upstream.status, detail.slice(0, 1200));
+    const publicMessage =
+      upstream.status === 401 ? "The configured Stability API key was rejected." :
+      upstream.status === 403 ? "The image was rejected by the 3D service." :
+      upstream.status === 413 ? "The image is too large for the 3D service." :
+      upstream.status === 429 ? "The 3D service is busy or rate-limited. Try again shortly." :
+      "The 3D service could not generate this model.";
+    return res.status(upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502).json({
+      error: "generation_failed",
+      message: publicMessage,
+    });
+  }
+
+  const glb = Buffer.from(await upstream.arrayBuffer());
+  if (!glb.length) {
+    return res.status(502).json({ error: "empty_model", message: "The 3D service returned an empty model." });
+  }
+
+  res.setHeader("Content-Type", "model/gltf-binary");
+  res.setHeader("Content-Disposition", 'inline; filename="novelideas-model.glb"');
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(200).send(glb);
+}
