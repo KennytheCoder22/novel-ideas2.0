@@ -30,6 +30,64 @@ const QUALITY_PRESETS = {
   clean: { label: "Cleaner mesh", description: "Simplifies geometry for easier game use.", textureResolution: "1024", foregroundRatio: 0.88, remesh: "triangle", vertexCount: 12000 },
 } as const;
 
+async function autoFrameImage(sourceDataUrl: string): Promise<string> {
+  if (Platform.OS !== "web") return sourceDataUrl;
+  const doc = (globalThis as any).document;
+  if (!doc) return sourceDataUrl;
+  return await new Promise((resolve) => {
+    const image = new (globalThis as any).Image();
+    image.onload = () => {
+      try {
+        const width = Number(image.naturalWidth || image.width || 1);
+        const height = Number(image.naturalHeight || image.height || 1);
+        const scan = doc.createElement("canvas");
+        scan.width = width;
+        scan.height = height;
+        const scanCtx = scan.getContext("2d", { willReadFrequently: true });
+        if (!scanCtx) return resolve(sourceDataUrl);
+        scanCtx.drawImage(image, 0, 0);
+        const data = scanCtx.getImageData(0, 0, width, height).data;
+        const corners = [0, (width - 1) * 4, ((height - 1) * width) * 4, ((height * width) - 1) * 4];
+        const bg = corners.reduce((acc, idx) => ({ r: acc.r + data[idx], g: acc.g + data[idx + 1], b: acc.b + data[idx + 2] }), { r: 0, g: 0, b: 0 });
+        bg.r /= 4; bg.g /= 4; bg.b /= 4;
+        let minX = width, minY = height, maxX = -1, maxY = -1;
+        const step = Math.max(1, Math.floor(Math.max(width, height) / 700));
+        for (let y = 0; y < height; y += step) {
+          for (let x = 0; x < width; x += step) {
+            const idx = (y * width + x) * 4;
+            if (data[idx + 3] < 20) continue;
+            const dr = data[idx] - bg.r, dg = data[idx + 1] - bg.g, db = data[idx + 2] - bg.b;
+            if (Math.sqrt(dr * dr + dg * dg + db * db) > 34) {
+              minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+            }
+          }
+        }
+        if (maxX < minX || maxY < minY) return resolve(sourceDataUrl);
+        const objectW = maxX - minX + 1, objectH = maxY - minY + 1;
+        const pad = Math.round(Math.max(objectW, objectH) * 0.12);
+        minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+        maxX = Math.min(width - 1, maxX + pad); maxY = Math.min(height - 1, maxY + pad);
+        const cropW = maxX - minX + 1, cropH = maxY - minY + 1;
+        const side = Math.max(cropW, cropH);
+        const canvas = doc.createElement("canvas");
+        canvas.width = 1024; canvas.height = 1024;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(sourceDataUrl);
+        ctx.fillStyle = "rgb(" + Math.round(bg.r) + "," + Math.round(bg.g) + "," + Math.round(bg.b) + ")";
+        ctx.fillRect(0, 0, 1024, 1024);
+        const scale = 1024 / side;
+        const drawW = cropW * scale, drawH = cropH * scale;
+        ctx.drawImage(image, minX, minY, cropW, cropH, (1024 - drawW) / 2, (1024 - drawH) / 2, drawW, drawH);
+        resolve(canvas.toDataURL("image/png"));
+      } catch {
+        resolve(sourceDataUrl);
+      }
+    };
+    image.onerror = () => resolve(sourceDataUrl);
+    image.src = sourceDataUrl;
+  });
+}
+
 function makeViewerHtml(modelUrl: string) {
   return `<!doctype html>
 <html>
@@ -52,7 +110,7 @@ export default function ThreeDWorkshopRoute() {
   const [picked, setPicked] = useState<PickedImage | null>(null);
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [status, setStatus] = useState("Choose a single object image to begin.");
-  const [generating, setGenerating] = useState(false);\n  const [qualityPreset, setQualityPreset] = useState<QualityPreset>("balanced");\n  const [generationCount, setGenerationCount] = useState(0);
+  const [generating, setGenerating] = useState(false);\n  const [qualityPreset, setQualityPreset] = useState<QualityPreset>("balanced");\n  const [generationCount, setGenerationCount] = useState(0);\n  const [autoFrame, setAutoFrame] = useState(true);\n  const [preparedDataUrl, setPreparedDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -97,7 +155,7 @@ export default function ThreeDWorkshopRoute() {
           dataUrl,
           size: file.size,
         });
-        setStatus("Image ready. Generate when you are ready.");
+        setStatus("Image ready. Auto-frame is on; you can turn it off below if you prefer the original.");
       };
       reader.onerror = () => setStatus("NovelIdeas could not read that image.");
       reader.readAsDataURL(file);
@@ -194,9 +252,9 @@ export default function ThreeDWorkshopRoute() {
 
               {picked ? (
                 <View style={styles.previewCard}>
-                  <Image source={{ uri: picked.dataUrl }} style={styles.previewImage} resizeMode="contain" />
+                  <Image source={{ uri: autoFrame && preparedDataUrl ? preparedDataUrl : picked.dataUrl }} style={styles.previewImage} resizeMode="contain" />
                   <Text style={styles.fileName} numberOfLines={1}>{picked.name}</Text>
-                  <Text style={styles.fileMeta}>{Math.max(1, Math.round(picked.size / 1024))} KB</Text>
+                  <Text style={styles.fileMeta}>{autoFrame ? "Auto-framed preview" : "Original image"} · {Math.max(1, Math.round(picked.size / 1024))} KB</Text>
                 </View>
               ) : (
                 <View style={styles.emptyPreview}>
@@ -299,5 +357,5 @@ const styles = StyleSheet.create({
   statusBox: { marginTop: 18, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: "#203d52", backgroundColor: "#07131e", flexDirection: "row", gap: 12, alignItems: "flex-start" },
   statusLabel: { color: "#68c9f7", fontSize: 11, fontWeight: "900", letterSpacing: 1.6, paddingTop: 2 },
   statusText: { flex: 1, color: "#c4d3df", fontSize: 14, lineHeight: 20 },
-  qualitySection: { marginTop: 16 },\n  qualityTitle: { color: "#dbe8f2", fontSize: 12, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 },\n  qualityRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },\n  qualityCard: { flexGrow: 1, flexBasis: 105, minWidth: 100, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: "#24445a", backgroundColor: "#07111b" },\n  qualityCardSelected: { borderColor: "#65bfe8", backgroundColor: "#0b2638" },\n  qualityLabel: { color: "#b9c8d6", fontSize: 13, fontWeight: "900" },\n  qualityLabelSelected: { color: "#8dd8ff" },\n  qualityDescription: { color: "#7f95a7", fontSize: 11, lineHeight: 15, marginTop: 3 },\n  qualityMeta: { color: "#58768b", fontSize: 10, marginTop: 6 },\n  engineNote: { color: "#657d90", fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 14 },
+  sourcePrepSection: { marginTop: 16 },\n  sourcePrepCard: { flexDirection: "row", alignItems: "center", gap: 10, padding: 11, borderRadius: 10, borderWidth: 1, borderColor: "#24445a", backgroundColor: "#07111b" },\n  sourcePrepCardActive: { borderColor: "#3d7897", backgroundColor: "#082033" },\n  sourcePrepCopy: { flex: 1 },\n  sourcePrepTitle: { color: "#e6eff6", fontSize: 13, fontWeight: "900" },\n  sourcePrepText: { color: "#7f95a7", fontSize: 11, lineHeight: 15, marginTop: 2 },\n  sourcePrepState: { color: "#7890a4", fontSize: 10, fontWeight: "900", letterSpacing: 1 },\n  sourcePrepStateActive: { color: "#7bd4ff" },\n  qualitySection: { marginTop: 16 },\n  qualityTitle: { color: "#dbe8f2", fontSize: 12, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 },\n  qualityRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },\n  qualityCard: { flexGrow: 1, flexBasis: 105, minWidth: 100, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: "#24445a", backgroundColor: "#07111b" },\n  qualityCardSelected: { borderColor: "#65bfe8", backgroundColor: "#0b2638" },\n  qualityLabel: { color: "#b9c8d6", fontSize: 13, fontWeight: "900" },\n  qualityLabelSelected: { color: "#8dd8ff" },\n  qualityDescription: { color: "#7f95a7", fontSize: 11, lineHeight: 15, marginTop: 3 },\n  qualityMeta: { color: "#58768b", fontSize: 10, marginTop: 6 },\n  engineNote: { color: "#657d90", fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 14 },
 });
