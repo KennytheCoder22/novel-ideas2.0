@@ -22,6 +22,14 @@ type PickedImage = {
 
 const WEB_ONLY_MESSAGE = "3D Workshop V1 currently runs in the web version of NovelIdeas.";
 
+type QualityPreset = "balanced" | "detail" | "clean";
+
+const QUALITY_PRESETS = {
+  balanced: { label: "Balanced", description: "Best first try for most objects.", textureResolution: "1024", foregroundRatio: 0.85, remesh: "none", vertexCount: -1 },
+  detail: { label: "More detail", description: "Higher texture detail and a tighter crop.", textureResolution: "2048", foregroundRatio: 0.92, remesh: "none", vertexCount: -1 },
+  clean: { label: "Cleaner mesh", description: "Simplifies geometry for easier game use.", textureResolution: "1024", foregroundRatio: 0.88, remesh: "triangle", vertexCount: 12000 },
+} as const;
+
 function makeViewerHtml(modelUrl: string) {
   return `<!doctype html>
 <html>
@@ -44,7 +52,7 @@ export default function ThreeDWorkshopRoute() {
   const [picked, setPicked] = useState<PickedImage | null>(null);
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [status, setStatus] = useState("Choose a single object image to begin.");
-  const [generating, setGenerating] = useState(false);
+  const [generating, setGenerating] = useState(false);\n  const [qualityPreset, setQualityPreset] = useState<QualityPreset>("balanced");\n  const [generationCount, setGenerationCount] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -204,7 +212,7 @@ export default function ThreeDWorkshopRoute() {
                 accessibilityRole="button"
               >
                 {generating ? <ActivityIndicator color="#06121f" /> : <MaterialCommunityIcons name="cube-outline" size={21} color="#06121f" />}
-                <Text style={styles.generateButtonText}>{generating ? "Generating…" : "Generate 3D model"}</Text>
+                <Text style={styles.generateButtonText}>{generating ? "Generating…" : generationCount > 0 ? "Generate another version" : "Generate 3D model"}</Text>
               </TouchableOpacity>
             </View>
 
@@ -291,5 +299,5 @@ const styles = StyleSheet.create({
   statusBox: { marginTop: 18, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: "#203d52", backgroundColor: "#07131e", flexDirection: "row", gap: 12, alignItems: "flex-start" },
   statusLabel: { color: "#68c9f7", fontSize: 11, fontWeight: "900", letterSpacing: 1.6, paddingTop: 2 },
   statusText: { flex: 1, color: "#c4d3df", fontSize: 14, lineHeight: 20 },
-  engineNote: { color: "#657d90", fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 14 },
+  qualitySection: { marginTop: 16 },\n  qualityTitle: { color: "#dbe8f2", fontSize: 12, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 },\n  qualityRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },\n  qualityCard: { flexGrow: 1, flexBasis: 105, minWidth: 100, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: "#24445a", backgroundColor: "#07111b" },\n  qualityCardSelected: { borderColor: "#65bfe8", backgroundColor: "#0b2638" },\n  qualityLabel: { color: "#b9c8d6", fontSize: 13, fontWeight: "900" },\n  qualityLabelSelected: { color: "#8dd8ff" },\n  qualityDescription: { color: "#7f95a7", fontSize: 11, lineHeight: 15, marginTop: 3 },\n  qualityMeta: { color: "#58768b", fontSize: 10, marginTop: 6 },\n  engineNote: { color: "#657d90", fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 14 },
 });
