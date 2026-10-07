@@ -244,7 +244,22 @@ function mirrorVisibleSideInGlb(input: Buffer): { buffer: Buffer; applied: boole
         if (selectedAxis === undefined) selectedAxis = axis;
         const center = (mins[axis] + maxs[axis]) / 2;
 
+        // The mirror plane handles left/right depth. Do not mirror the extreme
+        // ends of the object's longest axis: those regions often contain a
+        // single centerline feature (for example a head, nose, handle, spout,
+        // tail, or tip). Mirroring those whole regions can create a second
+        // head/feature instead of a symmetric hidden side.
+        const otherAxes = [0, 1, 2].filter((candidate) => candidate !== axis);
+        const longitudinalAxis = otherAxes.reduce((best, candidate) =>
+          extents[candidate] > extents[best] ? candidate : best
+        );
+        const longitudinalExtent = Math.max(extents[longitudinalAxis], 1e-9);
+        const endGuard = longitudinalExtent * 0.20;
+        const guardedMin = mins[longitudinalAxis] + endGuard;
+        const guardedMax = maxs[longitudinalAxis] - endGuard;
+
         const frontTriangles: ClipVertex[][] = [];
+        const preservedEndTriangles: ClipVertex[][] = [];
 
         for (let i = 0; i < indices.length; i += 3) {
           const ids = [indices[i], indices[i + 1], indices[i + 2]];
@@ -256,6 +271,17 @@ function mirrorVisibleSideInGlb(input: Buffer): { buffer: Buffer; applied: boole
             uv: canUseUvs ? readVector(uvInfo, id).slice(0, 2) : undefined,
           }));
 
+          const centroidLongitudinal =
+            (tri[0].p[longitudinalAxis] + tri[1].p[longitudinalAxis] + tri[2].p[longitudinalAxis]) / 3;
+
+          if (centroidLongitudinal < guardedMin || centroidLongitudinal > guardedMax) {
+            // Preserve Stability's original geometry at the longitudinal ends.
+            // This keeps singular centerline structures singular instead of
+            // cloning them across the symmetry plane.
+            preservedEndTriangles.push(tri);
+            continue;
+          }
+
           const clipped = clipTriangle(tri, axis, center);
           if (clipped.length < 3) continue;
 
@@ -264,7 +290,7 @@ function mirrorVisibleSideInGlb(input: Buffer): { buffer: Buffer; applied: boole
           }
         }
 
-        if (!frontTriangles.length) continue;
+        if (!frontTriangles.length && !preservedEndTriangles.length) continue;
 
         const positions: number[] = [];
         const normals: number[] = [];
@@ -281,6 +307,12 @@ function mirrorVisibleSideInGlb(input: Buffer): { buffer: Buffer; applied: boole
             uvs.push(uv[0], uv[1]);
           }
         };
+
+        for (const tri of preservedEndTriangles) {
+          emit(tri[0]);
+          emit(tri[1]);
+          emit(tri[2]);
+        }
 
         for (const tri of frontTriangles) {
           emit(tri[0]);
