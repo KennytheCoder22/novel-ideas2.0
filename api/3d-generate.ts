@@ -24,27 +24,30 @@ type GlbJson = {
 
 function mirrorVisibleSideInGlb(input: Buffer): { buffer: Buffer; applied: boolean; mirroredVertices: number; axis?: number } {
   try {
-    if (input.length < 20 || input.readUInt32LE(0) !== 0x46546c67) return { buffer: input, applied: false, mirroredVertices: 0 };
-    const out = Buffer.from(input);
-    let offset = 12;
-    let json: GlbJson | null = null;
-    let binOffset = -1;
+    if (input.length < 20 || input.readUInt32LE(0) !== 0x46546c67) {
+      return { buffer: input, applied: false, mirroredVertices: 0 };
+    }
 
-    while (offset + 8 <= out.length) {
-      const chunkLength = out.readUInt32LE(offset);
-      const chunkType = out.readUInt32LE(offset + 4);
+    let offset = 12;
+    let json: any = null;
+    let bin = Buffer.alloc(0);
+
+    while (offset + 8 <= input.length) {
+      const chunkLength = input.readUInt32LE(offset);
+      const chunkType = input.readUInt32LE(offset + 4);
       const chunkData = offset + 8;
-      if (chunkData + chunkLength > out.length) break;
+      if (chunkData + chunkLength > input.length) break;
+
       if (chunkType === 0x4e4f534a) {
-        const raw = out.subarray(chunkData, chunkData + chunkLength).toString("utf8").replace(/\u0000/g, "").trim();
+        const raw = input.subarray(chunkData, chunkData + chunkLength).toString("utf8").replace(/\u0000/g, "").trim();
         json = JSON.parse(raw);
       } else if (chunkType === 0x004e4942) {
-        binOffset = chunkData;
+        bin = Buffer.from(input.subarray(chunkData, chunkData + chunkLength));
       }
       offset = chunkData + chunkLength;
     }
 
-    if (!json || binOffset < 0 || !json.accessors || !json.bufferViews || !json.meshes) {
+    if (!json?.accessors || !json?.bufferViews || !json?.meshes || !bin.length) {
       return { buffer: input, applied: false, mirroredVertices: 0 };
     }
 
@@ -52,141 +55,299 @@ function mirrorVisibleSideInGlb(input: Buffer): { buffer: Buffer; applied: boole
       componentType === 5120 || componentType === 5121 ? 1 :
       componentType === 5122 || componentType === 5123 ? 2 :
       componentType === 5125 || componentType === 5126 ? 4 : 0;
-    const typeCount = (type: string) => type === "SCALAR" ? 1 : type === "VEC2" ? 2 : type === "VEC3" ? 3 : type === "VEC4" ? 4 : 0;
+
+    const typeCount = (type: string) =>
+      type === "SCALAR" ? 1 :
+      type === "VEC2" ? 2 :
+      type === "VEC3" ? 3 :
+      type === "VEC4" ? 4 : 0;
 
     const accessorInfo = (accessorIndex: number) => {
-      const accessor = json!.accessors![accessorIndex];
-      if (!accessor || accessor.sparse) return null;
-      const view = json!.bufferViews![accessor.bufferView];
-      if (!view) return null;
+      const accessor = json.accessors[accessorIndex];
+      if (!accessor || accessor.sparse || typeof accessor.bufferView !== "number") return null;
+      const view = json.bufferViews[accessor.bufferView];
+      if (!view || (view.buffer ?? 0) !== 0) return null;
       const bytes = componentBytes(accessor.componentType);
       const comps = typeCount(accessor.type);
       if (!bytes || !comps) return null;
       const stride = view.byteStride || bytes * comps;
-      const start = binOffset + (view.byteOffset || 0) + (accessor.byteOffset || 0);
+      const start = (view.byteOffset || 0) + (accessor.byteOffset || 0);
       return { accessor, view, bytes, comps, stride, start };
     };
 
-    const readFloat3 = (info: any, i: number): [number, number, number] | null => {
-      if (!info || info.accessor.componentType !== 5126 || info.comps < 3) return null;
-      const p = info.start + i * info.stride;
-      return [out.readFloatLE(p), out.readFloatLE(p + 4), out.readFloatLE(p + 8)];
+    const readComponent = (componentType: number, at: number) => {
+      switch (componentType) {
+        case 5120: return bin.readInt8(at);
+        case 5121: return bin.readUInt8(at);
+        case 5122: return bin.readInt16LE(at);
+        case 5123: return bin.readUInt16LE(at);
+        case 5125: return bin.readUInt32LE(at);
+        case 5126: return bin.readFloatLE(at);
+        default: return 0;
+      }
     };
 
-    const writeFloat3 = (info: any, i: number, v: [number, number, number]) => {
-      const p = info.start + i * info.stride;
-      out.writeFloatLE(v[0], p); out.writeFloatLE(v[1], p + 4); out.writeFloatLE(v[2], p + 8);
+    const readVector = (info: any, index: number): number[] => {
+      const at = info.start + index * info.stride;
+      const values: number[] = [];
+      for (let c = 0; c < info.comps; c++) {
+        values.push(readComponent(info.accessor.componentType, at + c * info.bytes));
+      }
+      return values;
     };
 
-    const copyAccessorElement = (info: any, from: number, to: number) => {
-      if (!info) return;
-      const byteLength = info.bytes * info.comps;
-      const source = Buffer.from(out.subarray(info.start + from * info.stride, info.start + from * info.stride + byteLength));
-      source.copy(out, info.start + to * info.stride);
+    const readIndices = (primitive: any, vertexCount: number): number[] | null => {
+      if (primitive.mode !== undefined && primitive.mode !== 4) return null;
+      if (typeof primitive.indices !== "number") {
+        return Array.from({ length: vertexCount }, (_, i) => i);
+      }
+      const info = accessorInfo(primitive.indices);
+      if (!info || info.comps !== 1) return null;
+      const result: number[] = [];
+      for (let i = 0; i < info.accessor.count; i++) result.push(readVector(info, i)[0]);
+      return result;
     };
 
-    let totalMirrored = 0;
+    type ClipVertex = { p: number[]; n?: number[]; uv?: number[] };
+
+    const lerp = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t);
+    const normalize3 = (v?: number[]) => {
+      if (!v || v.length < 3) return v;
+      const length = Math.hypot(v[0], v[1], v[2]) || 1;
+      return [v[0] / length, v[1] / length, v[2] / length];
+    };
+
+    const clipTriangle = (triangle: ClipVertex[], axis: number, center: number): ClipVertex[] => {
+      const result: ClipVertex[] = [];
+      for (let i = 0; i < triangle.length; i++) {
+        const current = triangle[i];
+        const next = triangle[(i + 1) % triangle.length];
+        const dc = current.p[axis] - center;
+        const dn = next.p[axis] - center;
+        const currentInside = dc >= -1e-7;
+        const nextInside = dn >= -1e-7;
+
+        if (currentInside) result.push(current);
+        if (currentInside !== nextInside) {
+          const denominator = dc - dn;
+          const t = Math.abs(denominator) < 1e-12 ? 0 : dc / denominator;
+          const p = lerp(current.p, next.p, t);
+          p[axis] = center;
+          const n = current.n && next.n ? normalize3(lerp(current.n, next.n, t)) : undefined;
+          const uv = current.uv && next.uv ? lerp(current.uv, next.uv, t) : undefined;
+          result.push({ p, n, uv });
+        }
+      }
+      return result;
+    };
+
+    const floatBuffer = (values: number[]) => {
+      const buffer = Buffer.allocUnsafe(values.length * 4);
+      values.forEach((value, i) => buffer.writeFloatLE(value, i * 4));
+      return buffer;
+    };
+
+    const binParts: Buffer[] = [bin];
+    let binLength = bin.length;
+
+    const align4 = () => {
+      const pad = (4 - (binLength % 4)) % 4;
+      if (pad) {
+        binParts.push(Buffer.alloc(pad));
+        binLength += pad;
+      }
+    };
+
+    const addBufferView = (data: Buffer, target?: number) => {
+      align4();
+      const byteOffset = binLength;
+      binParts.push(data);
+      binLength += data.length;
+      const view: any = { buffer: 0, byteOffset, byteLength: data.length };
+      if (target) view.target = target;
+      json.bufferViews.push(view);
+      return json.bufferViews.length - 1;
+    };
+
+    const addFloatAccessor = (values: number[], type: "VEC2" | "VEC3", target: number, includeBounds = false) => {
+      const comps = type === "VEC2" ? 2 : 3;
+      const viewIndex = addBufferView(floatBuffer(values), target);
+      const count = values.length / comps;
+      const accessor: any = {
+        bufferView: viewIndex,
+        byteOffset: 0,
+        componentType: 5126,
+        count,
+        type,
+      };
+      if (includeBounds && count) {
+        const min = Array(comps).fill(Infinity);
+        const max = Array(comps).fill(-Infinity);
+        for (let i = 0; i < count; i++) {
+          for (let c = 0; c < comps; c++) {
+            const value = values[i * comps + c];
+            min[c] = Math.min(min[c], value);
+            max[c] = Math.max(max[c], value);
+          }
+        }
+        accessor.min = min;
+        accessor.max = max;
+      }
+      json.accessors.push(accessor);
+      return json.accessors.length - 1;
+    };
+
+    let mirroredVertices = 0;
     let selectedAxis: number | undefined;
+    let processedPrimitives = 0;
 
     for (const mesh of json.meshes) {
       for (const primitive of mesh.primitives || []) {
-        const posIndex = primitive.attributes?.POSITION;
-        if (typeof posIndex !== "number") continue;
-        const pos = accessorInfo(posIndex);
-        if (!pos || pos.accessor.componentType !== 5126 || pos.comps !== 3) continue;
-        const count = Number(pos.accessor.count || 0);
-        if (!count) continue;
+        const positionIndex = primitive.attributes?.POSITION;
+        if (typeof positionIndex !== "number") continue;
 
-        const points: Array<[number, number, number]> = [];
+        const positionInfo = accessorInfo(positionIndex);
+        if (!positionInfo || positionInfo.accessor.componentType !== 5126 || positionInfo.comps !== 3) continue;
+
+        const vertexCount = Number(positionInfo.accessor.count || 0);
+        if (!vertexCount) continue;
+
+        const indices = readIndices(primitive, vertexCount);
+        if (!indices || indices.length < 3 || indices.length % 3 !== 0) continue;
+
+        const normalInfo =
+          typeof primitive.attributes?.NORMAL === "number" ? accessorInfo(primitive.attributes.NORMAL) : null;
+        const uvInfo =
+          typeof primitive.attributes?.TEXCOORD_0 === "number" ? accessorInfo(primitive.attributes.TEXCOORD_0) : null;
+        const canUseNormals = !!normalInfo && normalInfo.accessor.componentType === 5126 && normalInfo.comps >= 3;
+        const canUseUvs = !!uvInfo && uvInfo.accessor.componentType === 5126 && uvInfo.comps >= 2;
+
+        const sourcePositions: number[][] = [];
         const mins = [Infinity, Infinity, Infinity];
         const maxs = [-Infinity, -Infinity, -Infinity];
-        for (let i = 0; i < count; i++) {
-          const v = readFloat3(pos, i);
-          if (!v) continue;
-          points.push(v);
-          for (let a = 0; a < 3; a++) { mins[a] = Math.min(mins[a], v[a]); maxs[a] = Math.max(maxs[a], v[a]); }
-        }
-        if (points.length !== count) continue;
 
-        const extents = [maxs[0]-mins[0], maxs[1]-mins[1], maxs[2]-mins[2]];
+        for (let i = 0; i < vertexCount; i++) {
+          const p = readVector(positionInfo, i).slice(0, 3);
+          sourcePositions.push(p);
+          for (let a = 0; a < 3; a++) {
+            mins[a] = Math.min(mins[a], p[a]);
+            maxs[a] = Math.max(maxs[a], p[a]);
+          }
+        }
+
+        const extents = [maxs[0] - mins[0], maxs[1] - mins[1], maxs[2] - mins[2]];
         const axis = extents.indexOf(Math.min(...extents));
-        selectedAxis = axis;
+        if (selectedAxis === undefined) selectedAxis = axis;
         const center = (mins[axis] + maxs[axis]) / 2;
-        const other = [0,1,2].filter((a) => a !== axis);
-        const span = Math.max(extents[other[0]], extents[other[1]], 1e-5);
-        const cell = span / 120;
 
-        const visible: number[] = [];
-        const hidden: number[] = [];
-        for (let i = 0; i < count; i++) {
-          if (points[i][axis] >= center) visible.push(i); else hidden.push(i);
+        const frontTriangles: ClipVertex[][] = [];
+
+        for (let i = 0; i < indices.length; i += 3) {
+          const ids = [indices[i], indices[i + 1], indices[i + 2]];
+          if (ids.some((id) => id < 0 || id >= vertexCount)) continue;
+
+          const tri: ClipVertex[] = ids.map((id) => ({
+            p: sourcePositions[id].slice(),
+            n: canUseNormals ? readVector(normalInfo, id).slice(0, 3) : undefined,
+            uv: canUseUvs ? readVector(uvInfo, id).slice(0, 2) : undefined,
+          }));
+
+          const clipped = clipTriangle(tri, axis, center);
+          if (clipped.length < 3) continue;
+
+          for (let fan = 1; fan < clipped.length - 1; fan++) {
+            frontTriangles.push([clipped[0], clipped[fan], clipped[fan + 1]]);
+          }
         }
-        if (!visible.length || !hidden.length) continue;
 
-        const hash = new Map<string, number[]>();
-        const keyFor = (v: [number,number,number], dx=0, dy=0) => {
-          const q1 = Math.floor((v[other[0]] - mins[other[0]]) / cell) + dx;
-          const q2 = Math.floor((v[other[1]] - mins[other[1]]) / cell) + dy;
-          return q1 + ":" + q2;
+        if (!frontTriangles.length) continue;
+
+        const positions: number[] = [];
+        const normals: number[] = [];
+        const uvs: number[] = [];
+
+        const emit = (v: ClipVertex) => {
+          positions.push(v.p[0], v.p[1], v.p[2]);
+          if (canUseNormals) {
+            const n = normalize3(v.n) || [0, 1, 0];
+            normals.push(n[0], n[1], n[2]);
+          }
+          if (canUseUvs) {
+            const uv = v.uv || [0, 0];
+            uvs.push(uv[0], uv[1]);
+          }
         };
-        for (const i of visible) {
-          const k = keyFor(points[i]);
-          const bucket = hash.get(k);
-          if (bucket) bucket.push(i); else hash.set(k, [i]);
+
+        for (const tri of frontTriangles) {
+          emit(tri[0]);
+          emit(tri[1]);
+          emit(tri[2]);
+
+          const mirrored = [tri[0], tri[2], tri[1]].map((source) => {
+            const p = source.p.slice();
+            p[axis] = 2 * center - p[axis];
+            const n = source.n ? source.n.slice() : undefined;
+            if (n) n[axis] = -n[axis];
+            return { p, n, uv: source.uv ? source.uv.slice() : undefined };
+          });
+
+          emit(mirrored[0]);
+          emit(mirrored[1]);
+          emit(mirrored[2]);
+          mirroredVertices += 3;
         }
 
-        const normalIndex = primitive.attributes?.NORMAL;
-        const uvIndex = primitive.attributes?.TEXCOORD_0;
-        const normal = typeof normalIndex === "number" ? accessorInfo(normalIndex) : null;
-        const uv = typeof uvIndex === "number" ? accessorInfo(uvIndex) : null;
+        const attributes: any = {};
+        attributes.POSITION = addFloatAccessor(positions, "VEC3", 34962, true);
+        if (canUseNormals) attributes.NORMAL = addFloatAccessor(normals, "VEC3", 34962);
+        if (canUseUvs) attributes.TEXCOORD_0 = addFloatAccessor(uvs, "VEC2", 34962);
 
-        for (const hi of hidden) {
-          const hv = points[hi];
-          let best = -1;
-          let bestD = Infinity;
-          for (let radius = 0; radius <= 4 && best < 0; radius++) {
-            for (let dx = -radius; dx <= radius; dx++) {
-              for (let dy = -radius; dy <= radius; dy++) {
-                if (radius > 0 && Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
-                const bucket = hash.get(keyFor(hv, dx, dy));
-                if (!bucket) continue;
-                for (const vi of bucket) {
-                  const vv = points[vi];
-                  const d1 = vv[other[0]] - hv[other[0]];
-                  const d2 = vv[other[1]] - hv[other[1]];
-                  const d = d1*d1 + d2*d2;
-                  if (d < bestD) { bestD = d; best = vi; }
-                }
-              }
-            }
-          }
-          if (best < 0) continue;
-
-          const src = points[best];
-          const mirrored: [number,number,number] = [src[0], src[1], src[2]];
-          mirrored[axis] = 2 * center - src[axis];
-          writeFloat3(pos, hi, mirrored);
-
-          if (normal && normal.accessor.componentType === 5126 && normal.comps >= 3) {
-            const nv = readFloat3(normal, best);
-            if (nv) {
-              nv[axis] = -nv[axis];
-              writeFloat3(normal, hi, nv);
-            }
-          }
-          if (uv) copyAccessorElement(uv, best, hi);
-          totalMirrored++;
-        }
+        primitive.attributes = attributes;
+        delete primitive.indices;
+        delete primitive.targets;
+        primitive.mode = 4;
+        processedPrimitives++;
       }
     }
 
-    return { buffer: totalMirrored ? out : input, applied: totalMirrored > 0, mirroredVertices: totalMirrored, axis: selectedAxis };
+    if (!processedPrimitives || !mirroredVertices) {
+      return { buffer: input, applied: false, mirroredVertices: 0, axis: selectedAxis };
+    }
+
+    align4();
+    const newBin = Buffer.concat(binParts, binLength);
+    json.buffers = json.buffers || [{ byteLength: newBin.length }];
+    json.buffers[0] = { ...(json.buffers[0] || {}), byteLength: newBin.length };
+
+    let jsonChunk = Buffer.from(JSON.stringify(json), "utf8");
+    const jsonPad = (4 - (jsonChunk.length % 4)) % 4;
+    if (jsonPad) jsonChunk = Buffer.concat([jsonChunk, Buffer.alloc(jsonPad, 0x20)]);
+
+    const binPad = (4 - (newBin.length % 4)) % 4;
+    const binChunk = binPad ? Buffer.concat([newBin, Buffer.alloc(binPad)]) : newBin;
+
+    const totalLength = 12 + 8 + jsonChunk.length + 8 + binChunk.length;
+    const output = Buffer.allocUnsafe(totalLength);
+    let outOffset = 0;
+
+    output.writeUInt32LE(0x46546c67, outOffset); outOffset += 4;
+    output.writeUInt32LE(2, outOffset); outOffset += 4;
+    output.writeUInt32LE(totalLength, outOffset); outOffset += 4;
+
+    output.writeUInt32LE(jsonChunk.length, outOffset); outOffset += 4;
+    output.writeUInt32LE(0x4e4f534a, outOffset); outOffset += 4;
+    jsonChunk.copy(output, outOffset); outOffset += jsonChunk.length;
+
+    output.writeUInt32LE(binChunk.length, outOffset); outOffset += 4;
+    output.writeUInt32LE(0x004e4942, outOffset); outOffset += 4;
+    binChunk.copy(output, outOffset);
+
+    return { buffer: output, applied: true, mirroredVertices, axis: selectedAxis };
   } catch (error) {
-    console.error("[3D WORKSHOP] mirror post-process failed", error);
+    console.error("[3D WORKSHOP] mirror geometry rebuild failed", error);
     return { buffer: input, applied: false, mirroredVertices: 0 };
   }
 }
-
 function decodeBase64Image(value: unknown): Buffer | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const trimmed = value.trim();
