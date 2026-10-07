@@ -215,6 +215,8 @@ export default function ThreeDWorkshopRoute() {
         throw new Error(message);
       }
 
+      const mirrorResult = response.headers.get("X-NovelIdeas-Mirror");
+      const mirroredVertices = response.headers.get("X-NovelIdeas-Mirrored-Vertices");
       const blob = await response.blob();
       if (modelUrl) URL.revokeObjectURL(modelUrl);
       const nextUrl = URL.createObjectURL(blob);
@@ -222,7 +224,9 @@ export default function ThreeDWorkshopRoute() {
       setGenerationCount((count) => count + 1);
       setStatus(
         hiddenSideMode === "mirror"
-          ? "Model ready. Mirror guidance is saved, but this Stable Fast 3D pass still infers the hidden side; true symmetric mesh mirroring is the next reconstruction step."
+          ? mirrorResult === "applied"
+            ? "Model ready. NovelIdeas mirrored the visible side across the model after Stability generated it" + (mirroredVertices ? " (" + mirroredVertices + " vertices replaced)." : ".")
+            : "Model ready, but the symmetric post-process could not be applied to this GLB layout."
           : "Model ready. Drag to rotate it, scroll to zoom, save it, or try another quality mode."
       );
     } catch (error) {
@@ -339,7 +343,7 @@ export default function ThreeDWorkshopRoute() {
                               setHiddenSideMode(key);
                               setStatus(
                                 key === "mirror"
-                                  ? "Mirror guidance selected. NovelIdeas will preserve this instruction for symmetric reconstruction."
+                                  ? "Mirror mode selected. NovelIdeas will replace the hidden half of the generated mesh with a mirrored copy of the visible half."
                                   : key === "another-view"
                                   ? "Second-view mode selected. Multi-view upload is the next Workshop step."
                                   : "NovelIdeas will let the 3D engine infer the hidden side."
@@ -360,9 +364,9 @@ export default function ThreeDWorkshopRoute() {
                     </View>
                     {hiddenSideMode === "mirror" ? (
                       <View style={styles.experimentalNote}>
-                        <MaterialCommunityIcons name="flask-outline" size={16} color="#f7c873" />
+                        <MaterialCommunityIcons name="flip-horizontal" size={16} color="#f7c873" />
                         <Text style={styles.experimentalNoteText}>
-                          Experimental: the current Stability pass still predicts the back. The mirror choice is now captured so the next post-process can replace that prediction with a symmetric backside.
+                          Experimental: Stability generates the base model first, then NovelIdeas replaces the hidden half with a mirrored copy of the visible half. Best for genuinely symmetric objects.
                         </Text>
                       </View>
                     ) : null}
