@@ -15,6 +15,178 @@ function requestOriginMatchesHost(req: VercelRequest): boolean {
   }
 }
 
+
+type GlbJson = {
+  accessors?: Array<any>;
+  bufferViews?: Array<any>;
+  meshes?: Array<any>;
+};
+
+function mirrorVisibleSideInGlb(input: Buffer): { buffer: Buffer; applied: boolean; mirroredVertices: number; axis?: number } {
+  try {
+    if (input.length < 20 || input.readUInt32LE(0) !== 0x46546c67) return { buffer: input, applied: false, mirroredVertices: 0 };
+    const out = Buffer.from(input);
+    let offset = 12;
+    let json: GlbJson | null = null;
+    let binOffset = -1;
+
+    while (offset + 8 <= out.length) {
+      const chunkLength = out.readUInt32LE(offset);
+      const chunkType = out.readUInt32LE(offset + 4);
+      const chunkData = offset + 8;
+      if (chunkData + chunkLength > out.length) break;
+      if (chunkType === 0x4e4f534a) {
+        const raw = out.subarray(chunkData, chunkData + chunkLength).toString("utf8").replace(/\u0000/g, "").trim();
+        json = JSON.parse(raw);
+      } else if (chunkType === 0x004e4942) {
+        binOffset = chunkData;
+      }
+      offset = chunkData + chunkLength;
+    }
+
+    if (!json || binOffset < 0 || !json.accessors || !json.bufferViews || !json.meshes) {
+      return { buffer: input, applied: false, mirroredVertices: 0 };
+    }
+
+    const componentBytes = (componentType: number) =>
+      componentType === 5120 || componentType === 5121 ? 1 :
+      componentType === 5122 || componentType === 5123 ? 2 :
+      componentType === 5125 || componentType === 5126 ? 4 : 0;
+    const typeCount = (type: string) => type === "SCALAR" ? 1 : type === "VEC2" ? 2 : type === "VEC3" ? 3 : type === "VEC4" ? 4 : 0;
+
+    const accessorInfo = (accessorIndex: number) => {
+      const accessor = json!.accessors![accessorIndex];
+      if (!accessor || accessor.sparse) return null;
+      const view = json!.bufferViews![accessor.bufferView];
+      if (!view) return null;
+      const bytes = componentBytes(accessor.componentType);
+      const comps = typeCount(accessor.type);
+      if (!bytes || !comps) return null;
+      const stride = view.byteStride || bytes * comps;
+      const start = binOffset + (view.byteOffset || 0) + (accessor.byteOffset || 0);
+      return { accessor, view, bytes, comps, stride, start };
+    };
+
+    const readFloat3 = (info: any, i: number): [number, number, number] | null => {
+      if (!info || info.accessor.componentType !== 5126 || info.comps < 3) return null;
+      const p = info.start + i * info.stride;
+      return [out.readFloatLE(p), out.readFloatLE(p + 4), out.readFloatLE(p + 8)];
+    };
+
+    const writeFloat3 = (info: any, i: number, v: [number, number, number]) => {
+      const p = info.start + i * info.stride;
+      out.writeFloatLE(v[0], p); out.writeFloatLE(v[1], p + 4); out.writeFloatLE(v[2], p + 8);
+    };
+
+    const copyAccessorElement = (info: any, from: number, to: number) => {
+      if (!info) return;
+      const byteLength = info.bytes * info.comps;
+      const source = Buffer.from(out.subarray(info.start + from * info.stride, info.start + from * info.stride + byteLength));
+      source.copy(out, info.start + to * info.stride);
+    };
+
+    let totalMirrored = 0;
+    let selectedAxis: number | undefined;
+
+    for (const mesh of json.meshes) {
+      for (const primitive of mesh.primitives || []) {
+        const posIndex = primitive.attributes?.POSITION;
+        if (typeof posIndex !== "number") continue;
+        const pos = accessorInfo(posIndex);
+        if (!pos || pos.accessor.componentType !== 5126 || pos.comps !== 3) continue;
+        const count = Number(pos.accessor.count || 0);
+        if (!count) continue;
+
+        const points: Array<[number, number, number]> = [];
+        const mins = [Infinity, Infinity, Infinity];
+        const maxs = [-Infinity, -Infinity, -Infinity];
+        for (let i = 0; i < count; i++) {
+          const v = readFloat3(pos, i);
+          if (!v) continue;
+          points.push(v);
+          for (let a = 0; a < 3; a++) { mins[a] = Math.min(mins[a], v[a]); maxs[a] = Math.max(maxs[a], v[a]); }
+        }
+        if (points.length !== count) continue;
+
+        const extents = [maxs[0]-mins[0], maxs[1]-mins[1], maxs[2]-mins[2]];
+        const axis = extents.indexOf(Math.min(...extents));
+        selectedAxis = axis;
+        const center = (mins[axis] + maxs[axis]) / 2;
+        const other = [0,1,2].filter((a) => a !== axis);
+        const span = Math.max(extents[other[0]], extents[other[1]], 1e-5);
+        const cell = span / 120;
+
+        const visible: number[] = [];
+        const hidden: number[] = [];
+        for (let i = 0; i < count; i++) {
+          if (points[i][axis] >= center) visible.push(i); else hidden.push(i);
+        }
+        if (!visible.length || !hidden.length) continue;
+
+        const hash = new Map<string, number[]>();
+        const keyFor = (v: [number,number,number], dx=0, dy=0) => {
+          const q1 = Math.floor((v[other[0]] - mins[other[0]]) / cell) + dx;
+          const q2 = Math.floor((v[other[1]] - mins[other[1]]) / cell) + dy;
+          return q1 + ":" + q2;
+        };
+        for (const i of visible) {
+          const k = keyFor(points[i]);
+          const bucket = hash.get(k);
+          if (bucket) bucket.push(i); else hash.set(k, [i]);
+        }
+
+        const normalIndex = primitive.attributes?.NORMAL;
+        const uvIndex = primitive.attributes?.TEXCOORD_0;
+        const normal = typeof normalIndex === "number" ? accessorInfo(normalIndex) : null;
+        const uv = typeof uvIndex === "number" ? accessorInfo(uvIndex) : null;
+
+        for (const hi of hidden) {
+          const hv = points[hi];
+          let best = -1;
+          let bestD = Infinity;
+          for (let radius = 0; radius <= 4 && best < 0; radius++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+              for (let dy = -radius; dy <= radius; dy++) {
+                if (radius > 0 && Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+                const bucket = hash.get(keyFor(hv, dx, dy));
+                if (!bucket) continue;
+                for (const vi of bucket) {
+                  const vv = points[vi];
+                  const d1 = vv[other[0]] - hv[other[0]];
+                  const d2 = vv[other[1]] - hv[other[1]];
+                  const d = d1*d1 + d2*d2;
+                  if (d < bestD) { bestD = d; best = vi; }
+                }
+              }
+            }
+          }
+          if (best < 0) continue;
+
+          const src = points[best];
+          const mirrored: [number,number,number] = [src[0], src[1], src[2]];
+          mirrored[axis] = 2 * center - src[axis];
+          writeFloat3(pos, hi, mirrored);
+
+          if (normal && normal.accessor.componentType === 5126 && normal.comps >= 3) {
+            const nv = readFloat3(normal, best);
+            if (nv) {
+              nv[axis] = -nv[axis];
+              writeFloat3(normal, hi, nv);
+            }
+          }
+          if (uv) copyAccessorElement(uv, best, hi);
+          totalMirrored++;
+        }
+      }
+    }
+
+    return { buffer: totalMirrored ? out : input, applied: totalMirrored > 0, mirroredVertices: totalMirrored, axis: selectedAxis };
+  } catch (error) {
+    console.error("[3D WORKSHOP] mirror post-process failed", error);
+    return { buffer: input, applied: false, mirroredVertices: 0 };
+  }
+}
+
 function decodeBase64Image(value: unknown): Buffer | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const trimmed = value.trim();
@@ -162,9 +334,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  const glb = Buffer.from(await upstream.arrayBuffer());
+  let glb = Buffer.from(await upstream.arrayBuffer());
   if (!glb.length) {
     return res.status(502).json({ error: "empty_model", message: "The 3D service returned an empty model." });
+  }
+
+  const hiddenSideMode = String(req.body?.hiddenSideMode || "infer");
+  if (hiddenSideMode === "mirror") {
+    const mirrored = mirrorVisibleSideInGlb(glb);
+    glb = mirrored.buffer;
+    res.setHeader("X-NovelIdeas-Mirror", mirrored.applied ? "applied" : "skipped");
+    res.setHeader("X-NovelIdeas-Mirrored-Vertices", String(mirrored.mirroredVertices));
+    if (typeof mirrored.axis === "number") res.setHeader("X-NovelIdeas-Mirror-Axis", String(mirrored.axis));
+    console.log("[3D WORKSHOP] mirror post-process", {
+      applied: mirrored.applied,
+      mirroredVertices: mirrored.mirroredVertices,
+      axis: mirrored.axis,
+    });
   }
 
   res.setHeader("Content-Type", "model/gltf-binary");
