@@ -49,16 +49,26 @@ async function autoFrameImage(sourceDataUrl: string): Promise<string> {
         scanCtx.drawImage(image, 0, 0);
         const data = scanCtx.getImageData(0, 0, width, height).data;
         const corners = [0, (width - 1) * 4, ((height - 1) * width) * 4, ((height * width) - 1) * 4];
-        const bg = corners.reduce((acc, idx) => ({ r: acc.r + data[idx], g: acc.g + data[idx + 1], b: acc.b + data[idx + 2] }), { r: 0, g: 0, b: 0 });
-        bg.r /= 4; bg.g /= 4; bg.b /= 4;
+        const opaqueCorners = corners.filter((idx) => data[idx + 3] >= 20);
+        const hasTransparentBackground = opaqueCorners.length < corners.length;
+        const bg = opaqueCorners.length
+          ? opaqueCorners.reduce(
+              (acc, idx) => ({ r: acc.r + data[idx], g: acc.g + data[idx + 1], b: acc.b + data[idx + 2] }),
+              { r: 0, g: 0, b: 0 }
+            )
+          : { r: 255, g: 255, b: 255 };
+        const bgCount = Math.max(1, opaqueCorners.length);
+        bg.r /= bgCount; bg.g /= bgCount; bg.b /= bgCount;
         let minX = width, minY = height, maxX = -1, maxY = -1;
         const step = Math.max(1, Math.floor(Math.max(width, height) / 700));
         for (let y = 0; y < height; y += step) {
           for (let x = 0; x < width; x += step) {
             const idx = (y * width + x) * 4;
-            if (data[idx + 3] < 20) continue;
+            const alpha = data[idx + 3];
+            if (alpha < 20) continue;
             const dr = data[idx] - bg.r, dg = data[idx + 1] - bg.g, db = data[idx + 2] - bg.b;
-            if (Math.sqrt(dr * dr + dg * dg + db * db) > 34) {
+            const isForeground = hasTransparentBackground || Math.sqrt(dr * dr + dg * dg + db * db) > 34;
+            if (isForeground) {
               minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
             }
           }
@@ -74,7 +84,9 @@ async function autoFrameImage(sourceDataUrl: string): Promise<string> {
         canvas.width = 1024; canvas.height = 1024;
         const ctx = canvas.getContext("2d");
         if (!ctx) return resolve(sourceDataUrl);
-        ctx.fillStyle = "rgb(" + Math.round(bg.r) + "," + Math.round(bg.g) + "," + Math.round(bg.b) + ")";
+        ctx.fillStyle = hasTransparentBackground
+          ? "#ffffff"
+          : "rgb(" + Math.round(bg.r) + "," + Math.round(bg.g) + "," + Math.round(bg.b) + ")";
         ctx.fillRect(0, 0, 1024, 1024);
         const scale = 1024 / side;
         const drawW = cropW * scale, drawH = cropH * scale;
