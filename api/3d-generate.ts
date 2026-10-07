@@ -108,22 +108,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!upstream.ok) {
     const contentType = upstream.headers.get("content-type") || "";
     let detail = "";
+    let upstreamJson: any = null;
     try {
-      detail = contentType.includes("application/json")
-        ? JSON.stringify(await upstream.json())
-        : await upstream.text();
+      if (contentType.includes("application/json")) {
+        upstreamJson = await upstream.json();
+        detail = JSON.stringify(upstreamJson);
+      } else {
+        detail = await upstream.text();
+      }
     } catch {
       detail = "";
     }
+
     console.error("[3D WORKSHOP] Stability API error", upstream.status, detail.slice(0, 1200));
+
+    const upstreamErrors = Array.isArray(upstreamJson?.errors)
+      ? upstreamJson.errors.filter((value: unknown) => typeof value === "string").join(" ")
+      : "";
+    const upstreamMessage =
+      typeof upstreamJson?.message === "string" ? upstreamJson.message :
+      typeof upstreamJson?.error === "string" ? upstreamJson.error :
+      upstreamErrors;
+
     const publicMessage =
+      upstream.status === 400 && upstreamMessage ? `Stability rejected the generation settings: ${upstreamMessage}` :
       upstream.status === 401 ? "The configured Stability API key was rejected." :
-      upstream.status === 403 ? "The image was rejected by the 3D service." :
+      upstream.status === 402 ? "The Stability account does not have enough credits for another 3D generation." :
+      upstream.status === 403 ? "The image was rejected by Stability's content moderation system." :
       upstream.status === 413 ? "The image is too large for the 3D service." :
-      upstream.status === 429 ? "The 3D service is busy or rate-limited. Try again shortly." :
-      "The 3D service could not generate this model.";
+      upstream.status === 429 ? "The 3D service is rate-limited. Try again shortly." :
+      upstream.status === 500 ? "Stability's 3D service returned an internal error. Try again." :
+      upstreamMessage ? `The 3D service could not generate this model: ${upstreamMessage}` :
+      `The 3D service could not generate this model (HTTP ${upstream.status}).`;
+
     return res.status(upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502).json({
       error: "generation_failed",
+      status: upstream.status,
       message: publicMessage,
     });
   }
