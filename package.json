@@ -136,7 +136,8 @@
     "test:live-evidence:regressions": "node scripts/live-evidence/run-live-evidence-regressions.mjs",
     "probe:gcd:replay": "node scripts/live-evidence/run-gcd-live-probe.mjs --mode replay --profile all --verify-no-network",
     "probe:comicvine:replay": "node scripts/live-evidence/run-comicvine-live-probe.mjs --mode replay --profile all --verify-no-network",
-    "delta:live-evidence": "node scripts/live-evidence/run-frozen-live-delta.mjs"
+    "delta:live-evidence": "node scripts/live-evidence/run-frozen-live-delta.mjs",
+    "test:3d-workshop": "node scripts/run-3d-workshop-regressions.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
