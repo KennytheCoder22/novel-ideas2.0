@@ -110,7 +110,11 @@ export default function ThreeDWorkshopRoute() {
   const [picked, setPicked] = useState<PickedImage | null>(null);
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [status, setStatus] = useState("Choose a single object image to begin.");
-  const [generating, setGenerating] = useState(false);\n  const [qualityPreset, setQualityPreset] = useState<QualityPreset>("balanced");\n  const [generationCount, setGenerationCount] = useState(0);\n  const [autoFrame, setAutoFrame] = useState(true);\n  const [preparedDataUrl, setPreparedDataUrl] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [qualityPreset, setQualityPreset] = useState<QualityPreset>("balanced");
+  const [generationCount, setGenerationCount] = useState(0);
+  const [autoFrame, setAutoFrame] = useState(true);
+  const [preparedDataUrl, setPreparedDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -357,5 +361,22 @@ const styles = StyleSheet.create({
   statusBox: { marginTop: 18, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: "#203d52", backgroundColor: "#07131e", flexDirection: "row", gap: 12, alignItems: "flex-start" },
   statusLabel: { color: "#68c9f7", fontSize: 11, fontWeight: "900", letterSpacing: 1.6, paddingTop: 2 },
   statusText: { flex: 1, color: "#c4d3df", fontSize: 14, lineHeight: 20 },
-  sourcePrepSection: { marginTop: 16 },\n  sourcePrepCard: { flexDirection: "row", alignItems: "center", gap: 10, padding: 11, borderRadius: 10, borderWidth: 1, borderColor: "#24445a", backgroundColor: "#07111b" },\n  sourcePrepCardActive: { borderColor: "#3d7897", backgroundColor: "#082033" },\n  sourcePrepCopy: { flex: 1 },\n  sourcePrepTitle: { color: "#e6eff6", fontSize: 13, fontWeight: "900" },\n  sourcePrepText: { color: "#7f95a7", fontSize: 11, lineHeight: 15, marginTop: 2 },\n  sourcePrepState: { color: "#7890a4", fontSize: 10, fontWeight: "900", letterSpacing: 1 },\n  sourcePrepStateActive: { color: "#7bd4ff" },\n  qualitySection: { marginTop: 16 },\n  qualityTitle: { color: "#dbe8f2", fontSize: 12, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 },\n  qualityRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },\n  qualityCard: { flexGrow: 1, flexBasis: 105, minWidth: 100, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: "#24445a", backgroundColor: "#07111b" },\n  qualityCardSelected: { borderColor: "#65bfe8", backgroundColor: "#0b2638" },\n  qualityLabel: { color: "#b9c8d6", fontSize: 13, fontWeight: "900" },\n  qualityLabelSelected: { color: "#8dd8ff" },\n  qualityDescription: { color: "#7f95a7", fontSize: 11, lineHeight: 15, marginTop: 3 },\n  qualityMeta: { color: "#58768b", fontSize: 10, marginTop: 6 },\n  engineNote: { color: "#657d90", fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 14 },
+  sourcePrepSection: { marginTop: 16 },
+  sourcePrepCard: { flexDirection: "row", alignItems: "center", gap: 10, padding: 11, borderRadius: 10, borderWidth: 1, borderColor: "#24445a", backgroundColor: "#07111b" },
+  sourcePrepCardActive: { borderColor: "#3d7897", backgroundColor: "#082033" },
+  sourcePrepCopy: { flex: 1 },
+  sourcePrepTitle: { color: "#e6eff6", fontSize: 13, fontWeight: "900" },
+  sourcePrepText: { color: "#7f95a7", fontSize: 11, lineHeight: 15, marginTop: 2 },
+  sourcePrepState: { color: "#7890a4", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  sourcePrepStateActive: { color: "#7bd4ff" },
+  qualitySection: { marginTop: 16 },
+  qualityTitle: { color: "#dbe8f2", fontSize: 12, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 },
+  qualityRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  qualityCard: { flexGrow: 1, flexBasis: 105, minWidth: 100, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: "#24445a", backgroundColor: "#07111b" },
+  qualityCardSelected: { borderColor: "#65bfe8", backgroundColor: "#0b2638" },
+  qualityLabel: { color: "#b9c8d6", fontSize: 13, fontWeight: "900" },
+  qualityLabelSelected: { color: "#8dd8ff" },
+  qualityDescription: { color: "#7f95a7", fontSize: 11, lineHeight: 15, marginTop: 3 },
+  qualityMeta: { color: "#58768b", fontSize: 10, marginTop: 6 },
+  engineNote: { color: "#657d90", fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 14 },
 });
