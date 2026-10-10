@@ -1,0 +1,78 @@
+Normal symmetry repair: production integration
+
+Base: origin/main at 412a9a9d4887e9262197170731dd3e0232ee112c.
+The former candidate (39c84ca) and rescue branch remain reference-only.
+No old branch was merged or cherry-picked.
+
+Production order
+api/3d-generate.ts receives the provider GLB. Infer returns those bytes directly.
+Mirror calls processNormalSymmetry(input) with no request-supplied gate options.
+The processor computes global eligibility, its frozen local LIMITED path, the
+structural-continuity veto, and utility evidence from the input GLB. Only positive
+normal utility reaches the private reconstruction function. All declines, missing
+evidence and processing errors return the input Buffer unchanged. The production
+module exposes no reconstruction function or approved-mask overload.
+
+Frozen behavior
+The global/local predicates were moved from the frozen JavaScript modules to
+static imports. The Python/OpenCV structural and utility operations were ported
+to Node with the same policy values, Float32 image arithmetic, median context,
+3/7-pixel structural windows, surface-area weighting and six 512-pixel visibility
+views. Float reductions may differ in their last rounding bits between runtimes;
+no thresholds or decision rules are adjusted to compensate. Primary regions use
+the existing Broad correspondence and largest >=0.75-confidence component. There
+is no rescue, completion, synthesis, registration, propagation or tunable profile.
+
+No frozen masks, processed model files, ground truth, intent labels or fixture
+names are read in production. Correspondence and all evidence are computed from
+the provider GLB. Test oracles live exclusively under tests/3d.
+
+Mutation contract
+On positive utility only, source color replaces authorized texels on an independent
+material/texture. Original images and materials remain intact. Triangle material
+runs retain original ordered triangle indices; vertex/normal/UV accessors and
+scene hierarchy stay unchanged. No vertex construction, mirroring or movement.
+
+Tests
+npm run typecheck:3d-production
+npm run test:3d-production
+
+The API tests mock only the provider transport. They invoke the real request
+handler, gates and writer, with no network call or Stability credit consumption.
+They assert 1,161 exact clean-ground-truth repairs and zero other writes; all 15
+adversarial clean fixtures remain byte-identical. They also test unsupported
+models, invalid input, malicious approval/debug request fields, Infer pass-through,
+original accessor/binary preservation and ordered triangle equivalence.
+The fixture JSON is decoded geometry, run-length encoded clean pixels and sparse
+paint edits from the frozen panel cases. It is not a processed GLB. The test builds
+GLBs in memory and verifies the original fixture RGBA hashes before every case.
+
+Changed files and necessity
+api/3d-generate.ts: minimal generation endpoint (absent from main) and mandatory gate call.
+lib/3d/surface.mjs: required read-only GLB/BVH/raster helpers and serialization primitive.
+lib/3d/eligibility.mjs: frozen global compatibility, geometry and appearance eligibility.
+lib/3d/local.mjs: frozen per-texel local LIMITED admission; no rejected-region rescue.
+lib/3d/primary.mjs: derives the frozen primary correspondence domain from incoming geometry.
+lib/3d/structure.mjs: frozen structural-continuity veto in the production Node runtime.
+lib/3d/utility.mjs: frozen defect evidence and positive-utility decision.
+lib/3d/visibility.mjs: actual surface-area and occluded visible-footprint utility evidence.
+lib/3d/normal.mjs: sole gated production orchestration and private appearance-only writer.
+lib/3d/normal.d.mts: API-facing TypeScript declaration.
+tests/3d/fixtures.json: portable exact frozen test geometry/pixels and adversarial edits.
+tests/3d/fixtures.mjs: constructs those fixture GLBs in memory; no experimental GLBs committed.
+tests/3d/production.test.mjs: production-handler, bypass, abstention and invariant tests.
+package.json: two scoped test/type-check commands; no dependency changes.
+.github/workflows/3d-normal-production.yml: PR CI for the production contract; no deployment step.
+docs/3d/normal-production.txt: this scope, provenance and verification record.
+vercel.json: disables automatic deployment of this PR branch, honoring the no-deploy instruction.
+
+No Workshop screen, diagnostic UI, experiment runner, rescue code, saved output GLB,
+package dependency change or manual deployment. Only this PR branch has automatic
+Vercel deployments disabled; main and other branches retain their existing behavior.
+See https://vercel.com/docs/project-configuration/git-configuration.
+
+Local verification before PR: 20 initial production tests pass; the added independent
+nine-texel utility-veto test also passes (21 total). API type-check passes.
+Final original-corpus replay through the production API passes all 39 cases: exactly
+1,161 correct repairs in the positive case; the other 38 outputs are byte-identical.
+All 499 frozen reference files retain their recorded hashes. No gate logic changed.

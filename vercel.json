@@ -93,5 +93,10 @@
       "source": "/:libraryId([A-Za-z0-9_-]+)",
       "destination": "/"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "codex/3d-normal-production": false
+    }
+  }
 }
