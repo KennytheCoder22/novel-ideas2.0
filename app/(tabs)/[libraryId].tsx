@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { View, Text } from "react-native";
 import { HomeScreen } from "./index";
 import { setRuntimeLibraryId, setRuntimeLibraryName } from "../../constants/runtimeConfig";
@@ -30,6 +30,7 @@ export default function PersonalizedLibraryRoute() {
   useEffect(() => {
     const raw = Array.isArray(params.libraryId) ? params.libraryId[0] : params.libraryId;
     const normalized = normalizeHostedLibraryRouteId(raw || "");
+    if (normalized.toLowerCase() === "3d-workshop") return;
     if (isLegacyYvhsLibraryId(raw)) {
       router.replace(`/${encodeURIComponent(normalized)}` as any);
     }
@@ -40,10 +41,15 @@ export default function PersonalizedLibraryRoute() {
     setReady(true);
   }, [params.libraryId]);
 
+  const rawId = Array.isArray(params.libraryId) ? params.libraryId[0] : params.libraryId;
+  if (normalizeHostedLibraryRouteId(rawId || "").toLowerCase() === "3d-workshop") {
+    return <Redirect href="/3d-workshop" />;
+  }
+
   if (!ready) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#07182b" }}>
-        <Text style={{ color: "#e5efff", fontWeight: "900" }}>Opening your library…</Text>
+        <Text style={{ color: "#e5efff", fontWeight: "900" }}>Opening your libraryâ€¦</Text>
       </View>
     );
   }

@@ -30,6 +30,9 @@ export function validateLibraryIdForSave(
 ): { valid: boolean; normalizedId: string; message: string } {
   const normalizedId = normalizeHostedLibraryId(raw);
   const normalizedExistingScope = normalizeHostedLibraryId(existingScopeId);
+  if (normalizedId.toLowerCase() === "3d-workshop") {
+    return { valid: false, normalizedId, message: "This address is reserved for 3D Workshop." };
+  }
   if (!normalizedId) {
     return { valid: false, normalizedId, message: "Library ID is required." };
   }

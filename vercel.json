@@ -38,6 +38,10 @@
   ],
   "rewrites": [
     {
+      "source": "/3d-workshop",
+      "destination": "/"
+    },
+    {
       "source": "/testing",
       "destination": "/"
     },

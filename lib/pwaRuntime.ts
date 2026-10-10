@@ -4,6 +4,7 @@ export const PWA_LAUNCH_PATH_KEY = "novelideas:pwa-launch-path";
 
 const RESERVED_TOP_LEVEL_PATHS = new Set([
   "__pwa_launch__",
+  "3d-workshop",
   "about",
   "admin",
   "admin-collection",
