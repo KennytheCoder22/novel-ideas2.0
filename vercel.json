@@ -44,7 +44,7 @@
   "rewrites": [
     {
       "source": "/3d-workshop",
-      "destination": "/"
+      "destination": "/3d-workshop.html"
     },
     {
       "source": "/testing",

@@ -34,3 +34,11 @@ test('Workshop navigation does not replace a saved PWA library launch path', () 
   sandbox.exports.rememberPwaLaunchPath();
   assert.equal(values.get('novelideas:pwa-launch-path'),'/northbranch');
 });
+
+test('Workshop rewrite serves its own exported HTML before the library fallback', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+  const index = config.rewrites.findIndex(r => r.source === '/3d-workshop');
+  assert(index >= 0);
+  assert.equal(config.rewrites[index].destination, '/3d-workshop.html');
+  assert(index < config.rewrites.findIndex(r => r.source.startsWith('/:libraryId')));
+});
