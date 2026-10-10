@@ -27,6 +27,7 @@ export default function RootLayout() {
         <Stack.Screen name="admin/human-review" options={{ headerShown: false }} />
         <Stack.Screen name="admin/game-playtest" options={{ headerShown: false }} />
         <Stack.Screen name="admin/game-playtest-fixtures" options={{ headerShown: false }} />
+        <Stack.Screen name="3d-workshop" options={{ headerShown: false }} />
         <Stack.Screen name="testing" options={{ headerShown: false }} />
         <Stack.Screen name="games/index" options={{ headerShown: false }} />
         <Stack.Screen name="games/last-bookshop" options={{ headerShown: false }} />

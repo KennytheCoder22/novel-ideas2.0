@@ -2,6 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "redirects": [
     {
+      "source": "/3d-workshop/",
+      "destination": "/3d-workshop",
+      "permanent": true
+    },
+    {
       "source": "/y",
       "destination": "/yvhs",
       "permanent": true
@@ -37,6 +42,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/3d-workshop",
+      "destination": "/3d-workshop.html"
+    },
     {
       "source": "/testing",
       "destination": "/"
