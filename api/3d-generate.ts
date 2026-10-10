@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { processNormalSymmetry } from "../lib/3d/normal.mjs";
+import { processNormalSymmetry } from "../lib/3d/load-normal.cjs";
 
 const STABILITY_ENDPOINT = "https://api.stability.ai/v2beta/3d/stable-fast-3d";
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;

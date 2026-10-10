@@ -137,7 +137,7 @@
     "probe:gcd:replay": "node scripts/live-evidence/run-gcd-live-probe.mjs --mode replay --profile all --verify-no-network",
     "probe:comicvine:replay": "node scripts/live-evidence/run-comicvine-live-probe.mjs --mode replay --profile all --verify-no-network",
     "delta:live-evidence": "node scripts/live-evidence/run-frozen-live-delta.mjs",
-    "test:3d-production": "node --experimental-strip-types --test tests/3d/production.test.mjs",
+    "test:3d-production": "node --experimental-strip-types --test tests/3d/production.test.mjs tests/3d/module-loading.test.mjs",
     "typecheck:3d-production": "tsc --noEmit --skipLibCheck --types node --module nodenext --moduleResolution nodenext --target es2022 --esModuleInterop api/3d-generate.ts"
   },
   "dependencies": {
