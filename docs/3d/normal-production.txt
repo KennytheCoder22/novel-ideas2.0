@@ -73,4 +73,6 @@ See https://vercel.com/docs/project-configuration/git-configuration.
 
 Local verification before PR: 20 initial production tests pass; the added independent
 nine-texel utility-veto test also passes (21 total). API type-check passes.
-Extended original-corpus API parity is running separately; no gate logic changes.
+Final original-corpus replay through the production API passes all 39 cases: exactly
+1,161 correct repairs in the positive case; the other 38 outputs are byte-identical.
+All 499 frozen reference files retain their recorded hashes. No gate logic changed.
