@@ -1,0 +1,98 @@
+import {cropCanvas} from './crop-canvas.js';
+import {carouselPoleMaterial} from './carousel-pole-material.js';
+// Local-only 3D mount; the carousel clock supplies orbit and depth.
+import * as THREE from './vendor/three.module.js';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
+const NS='http://www.w3.org/2000/svg';
+const slotIndex=3; // Existing empty outer-ring pole, two rows after the 2D mount.
+const badge=document.createElement('div');
+badge.textContent='LOCAL PREVIEW · 7 rows · wider rings';
+badge.style.cssText='position:fixed;right:12px;top:12px;z-index:1000;padding:8px 12px;border:1px solid #aa9366;border-radius:6px;background:#17170edf;color:#efddb4;font:12px system-ui;pointer-events:none';
+document.body.append(badge);
+let mounted=false;
+async function mount(){
+ const svg=document.querySelector('.carousel-dressing');
+ const slot=svg?.querySelector(`[data-carousel-slot="${slotIndex+1}"]`);
+ if(!slot||mounted)return;
+ mounted=true;
+ const anchor=slot.querySelector('.carousel-mount-anchor');
+ // The source collar is wider than both existing traced post outlines at y=740.
+ // Clear its isolated footprint only; actual relocated posts use separate images.
+ const collarRemoval=document.createElementNS(NS,'rect');
+ for(const [key,value] of Object.entries({x:1296,y:700,width:52,height:75,fill:'black'}))collarRemoval.setAttribute(key,value);
+ svg.querySelector('#carousel-stationary-shell-mask').append(collarRemoval);
+ // Slot depth fading must not make the solid horse transparent.
+ slot.style.opacity='1';
+ const holder=document.createElementNS(NS,'foreignObject');
+ for(const [k,v] of Object.entries({x:-200,y:-150,width:400,height:300,class:'carousel-horse-3d-comparison'}))holder.setAttribute(k,v);
+ holder.style.pointerEvents='none';
+ const canvas=document.createElementNS('http://www.w3.org/1999/xhtml','canvas');
+ canvas.style.cssText='width:400px;height:300px;display:block;background:transparent';
+ holder.append(canvas);anchor.append(holder);
+ const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,preserveDrawingBuffer:true});
+ renderer.setSize(800,600,false);
+ renderer.setClearColor(0x000000,0);
+ renderer.outputColorSpace=THREE.SRGBColorSpace;
+ renderer.toneMapping=THREE.ACESFilmicToneMapping;
+ const scene=new THREE.Scene();
+ scene.add(new THREE.HemisphereLight(0xfff2de,0x514958,1.5));
+ const light=new THREE.DirectionalLight(0xffecd3,2);light.position.set(-2,3,4);scene.add(light);
+ const gltf=await new GLTFLoader().loadAsync('./carousel/horse-comparison.glb');
+ const model=gltf.scene;
+ const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+ // Parent transforms affect presentation only; imported nodes/materials/geometry remain intact.
+ const carouselFrame=new THREE.Group(),turn=new THREE.Group(),registration=new THREE.Group();
+ const assembly=svg.querySelector(".carousel-assembly");
+ // GLB nose points along -X. At the rightmost pole the 2D horse faces away (-Z).
+ // Negate the slot angle to convert the carousel X/depth plane to Three Y yaw.
+ // This fixed tangent heading is applied once; only the carousel parent rotates.
+ turn.rotation.y=-Math.floor(slotIndex/3)/window.CarnivalCarousel.rowCount*2*Math.PI-Math.PI/2;
+ // Model-space saddle-front center, registered to the existing crank anchor.
+ const mountPoint=new THREE.Vector3(-.12,.055,-.03);
+ registration.position.copy(mountPoint).multiplyScalar(-1);registration.add(model);turn.add(registration);carouselFrame.add(turn);scene.add(carouselFrame);
+ const span=size.y*1.5;
+ const camera=new THREE.OrthographicCamera(-span*2/3,span*2/3,span/2,-span/2,.01,20);
+ camera.position.set(0,.12,3);camera.lookAt(0,0,0);
+ // Resolve the shaft through the full vertical overlap with the horse.
+ // Raycast the unchanged horse to find its upper/lower surface along the pole.
+ model.updateWorldMatrix(true,true);
+ const cast=new THREE.Raycaster();
+ cast.set(new THREE.Vector3(0,size.y*2,0),new THREE.Vector3(0,-1,0));
+ const upper=cast.intersectObject(model,true)[0];
+ cast.set(new THREE.Vector3(0,-size.y*2,0),new THREE.Vector3(0,1,0));
+ const lower=cast.intersectObject(model,true)[0];
+ if(!upper||!lower)throw new Error('Mounting sleeve must intersect the horse');
+ // The shaft can overlap the head/mane above the saddle from some angles.
+ // Include that overlap in the depth buffer; keep the lower embedded tip short.
+ const tip=size.y*.015,top=box.max.y-mountPoint.y+tip,bottom=lower.point.y-tip;
+ const pole=new THREE.Mesh(new THREE.CylinderGeometry(span*4/300,span*4/300,span*2,24,1,true),carouselPoleMaterial(THREE,top-bottom,span));
+ pole.scale.y=(top-bottom)/(span*2);
+ pole.position.y=(top+bottom)/2;
+ scene.add(pole);
+ cropCanvas(THREE,{name:'horse',scene,camera,carouselFrame,renderer,holder});
+ // Keep the original shaft continuous outside the horse overlap. The aligned
+ // depth-tested segment can pass in front of the mane and behind the body.
+ slot.querySelectorAll('.carousel-pole-shaft').forEach(e=>e.removeAttribute('mask'));
+ slot.querySelector('.carousel-crank-collar').style.visibility='hidden';
+ holder.dataset.ready='true';
+ let previous=-1;
+ const opacityChildren=[...slot.children].filter(child=>child!==anchor).map(child=>({child,shaft:child.matches('.carousel-pole-shaft')}));
+ function render(){
+  if(!svg.isConnected){renderer.dispose();mounted=false;return;}
+  const yaw=Number(assembly.dataset.yaw||0);
+  if(yaw!==previous&&!document.hidden){
+   // SVG positive depth maps to +Z; Three Y rotation therefore reverses SVG yaw.
+   carouselFrame.rotation.y=-yaw;
+   const pose=window.CarnivalCarousel.pose(slotIndex,Number(svg.dataset.phase||0));
+   for(const {child,shaft} of opacityChildren){const opacity=shaft?'1':slot.getAttribute('opacity');if(child.style.opacity!==opacity)child.style.opacity=opacity;}
+   renderer.render(scene,camera);holder.dataset.yaw=String(carouselFrame.rotation.y+turn.rotation.y);previous=yaw;
+  }
+  requestAnimationFrame(render);
+ }
+ render();
+ window.carouselHorseComparison={slot:slotIndex+1,sourceBounds:box.toArray?.()||{min:box.min.toArray(),max:box.max.toArray()},renderer,model,turn,carouselFrame,camera,mountPoint,registration,pole};
+}
+const observer=new MutationObserver(()=>mount().catch(report));
+function report(error){badge.textContent='3D comparison could not load: '+error.message;console.error(error)}
+observer.observe(document.body,{childList:true,subtree:true});
+mount().catch(report);

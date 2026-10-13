@@ -1,0 +1,186 @@
+{
+  "declaredSlots": 21,
+  "period": 72000,
+  "slots": [
+    {
+      "id": 2,
+      "ring": "middle",
+      "row": 1,
+      "occupant": "EMPTY",
+      "x": 449.85938232406625,
+      "depth": 11.24882816162055,
+      "angleDegrees": 1.4323944878270822
+    },
+    {
+      "id": 3,
+      "ring": "inner",
+      "row": 1,
+      "occupant": "snail",
+      "x": 306.90406749664066,
+      "depth": -7.674200545816686,
+      "angleDegrees": 358.5676055121729
+    },
+    {
+      "id": 4,
+      "ring": "outer",
+      "row": 2,
+      "occupant": "horse",
+      "x": 369.7294525022289,
+      "depth": 463.6260691035417,
+      "angleDegrees": 51.428571428571445
+    },
+    {
+      "id": 5,
+      "ring": "middle",
+      "row": 2,
+      "occupant": "EMPTY",
+      "x": 271.6880491518964,
+      "depth": 358.7277574262086,
+      "angleDegrees": 52.86096591639847
+    },
+    {
+      "id": 6,
+      "ring": "inner",
+      "row": 2,
+      "occupant": "EMPTY",
+      "x": 197.35148782261274,
+      "depth": 235.16247628863144,
+      "angleDegrees": 49.99617694074436
+    },
+    {
+      "id": 7,
+      "ring": "outer",
+      "row": 3,
+      "occupant": "ostrich",
+      "x": -131.95491383609442,
+      "depth": 578.1322519238214,
+      "angleDegrees": 102.85714285714289
+    },
+    {
+      "id": 8,
+      "ring": "middle",
+      "row": 3,
+      "occupant": "rabbit",
+      "x": -111.06992645786272,
+      "depth": 436.0773686361687,
+      "angleDegrees": 104.28953734496992
+    },
+    {
+      "id": 9,
+      "ring": "inner",
+      "row": 3,
+      "occupant": "wolf",
+      "x": -60.810787418546624,
+      "depth": 300.9170120374326,
+      "angleDegrees": 101.42474836931581
+    },
+    {
+      "id": 10,
+      "ring": "outer",
+      "row": 4,
+      "occupant": "polar-bear",
+      "x": -534.2745386661345,
+      "depth": 257.29305729671205,
+      "angleDegrees": 154.28571428571433
+    },
+    {
+      "id": 11,
+      "ring": "middle",
+      "row": 4,
+      "occupant": "fox",
+      "x": -410.1899820312502,
+      "depth": 185.05182690587694,
+      "angleDegrees": 155.7181087735413
+    },
+    {
+      "id": 12,
+      "ring": "inner",
+      "row": 4,
+      "occupant": "brown-horse",
+      "x": -273.1812994195391,
+      "depth": 140.0749001336505,
+      "angleDegrees": 152.85331979788725
+    },
+    {
+      "id": 13,
+      "ring": "outer",
+      "row": 5,
+      "occupant": "elephant",
+      "x": -534.2745386661345,
+      "depth": -257.2930572967119,
+      "angleDegrees": 205.7142857142857
+    },
+    {
+      "id": 14,
+      "ring": "middle",
+      "row": 5,
+      "occupant": "tiger",
+      "x": -400.42861478434065,
+      "depth": -205.32151485388496,
+      "angleDegrees": 207.14668020211275
+    },
+    {
+      "id": 15,
+      "ring": "inner",
+      "row": 5,
+      "occupant": "stag",
+      "x": -279.84072107465295,
+      "depth": -126.2464685780093,
+      "angleDegrees": 204.28189122645864
+    },
+    {
+      "id": 16,
+      "ring": "outer",
+      "row": 6,
+      "occupant": "grizzly",
+      "x": -131.95491383609453,
+      "depth": -578.1322519238214,
+      "angleDegrees": 257.1428571428571
+    },
+    {
+      "id": 17,
+      "ring": "middle",
+      "row": 6,
+      "occupant": "EMPTY",
+      "x": -89.13633334966107,
+      "depth": -441.0835681330445,
+      "angleDegrees": 258.5752516306842
+    },
+    {
+      "id": 18,
+      "ring": "inner",
+      "row": 6,
+      "occupant": "cat",
+      "x": -75.77437205014212,
+      "depth": -297.50167149178617,
+      "angleDegrees": 255.71046265503003
+    },
+    {
+      "id": 19,
+      "ring": "outer",
+      "row": 7,
+      "occupant": "zebra",
+      "x": 369.7294525022289,
+      "depth": -463.62606910354174,
+      "angleDegrees": 308.57142857142856
+    },
+    {
+      "id": 20,
+      "ring": "middle",
+      "row": 7,
+      "occupant": "EMPTY",
+      "x": 289.27742514715214,
+      "depth": -344.70069814294504,
+      "angleDegrees": 310.00382305925564
+    },
+    {
+      "id": 21,
+      "ring": "inner",
+      "row": 7,
+      "occupant": "EMPTY",
+      "x": 185.3516246436269,
+      "depth": -244.7320478441024,
+      "angleDegrees": 307.1390340836015
+    }
+  ]
+}

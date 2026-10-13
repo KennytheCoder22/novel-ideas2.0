@@ -1,0 +1,21 @@
+7-ROW + SNAIL CHECKPOINT — 2026-10-12
+Preview: http://127.0.0.1:4200/experiments/carnival/index.html?scene=rides-games
+Start server: python .tmp/carousel-3d-comparison/serve-seven-row-firefox.py
+8-row reference remains unchanged on 4185.
+7 rows, 51.428571 degrees; radii Outer/Middle/Inner 593/450/307.
+Existing 13 mounts retain scale, registration, materials, bobbing, crop and 80% resolution. Cat corrected heading retained. Existing occupied IDs shift down by 3 from 8-row layout (empty row removed); ring assignments retained.
+Snail: inner ring, row 1, slot 3; reference scale .43; fixed local yaw 181.432394488 degrees; source pommel [0,.338,.44]; registration XYZ [0,-.14534,-.1892]. Matching brass spiral shaft, open ends; lower extension .0602 model-world units (.14 source units), approximately 6 inches visually. Source GLB copied unchanged.
+145 phase samples through full revolution passed tangent, registration, scale continuity, opacity and front/rear ordering assertions. Max Snail drift 3.93e-17. Conservative Snail minimum deck clearance 8.7887 SVG scene units. Mesh vertex clearance estimate: core 70.764, closest other pole 91.773 scene units. These clearance estimates are not exhaustive mesh/mesh collision proofs.
+20 usable positions, 14 occupied, 6 empty; outer slot 1 intentionally omitted.
+Row | Outer | Middle | Inner
+1 | 1 OMITTED | 2 EMPTY | 3 Snail
+2 | 4 Horse | 5 EMPTY | 6 EMPTY
+3 | 7 Ostrich | 8 Rabbit | 9 Wolf
+4 | 10 Polar Bear | 11 Fox | 12 Brown Horse
+5 | 13 Elephant | 14 Tiger | 15 Stag
+6 | 16 Grizzly | 17 EMPTY | 18 Cat
+7 | 19 Zebra | 20 EMPTY | 21 EMPTY
+Verification: snail-review/elephant-verification.json; cardinal screenshots same directory.
+Occupancy: occupancy-map/REPORT.txt, slots.csv, top-down.png.
+Crowding and view-dependent overlap remain; no other mounts repositioned. No new FPS benchmark performed. Existing SVG caching/reordering and cropped 80% buffers retained.
+Local only; no commit, merge or deployment.

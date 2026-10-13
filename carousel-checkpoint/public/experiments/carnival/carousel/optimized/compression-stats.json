@@ -1,0 +1,26 @@
+[
+  {
+    "name": "polar-bear",
+    "variant": "150000-2048",
+    "bytes": 8490536,
+    "losslessAccessorRoundtrip": true
+  },
+  {
+    "name": "polar-bear",
+    "variant": "75000-1024",
+    "bytes": 2260532,
+    "losslessAccessorRoundtrip": true
+  },
+  {
+    "name": "zebra",
+    "variant": "150000-2048",
+    "bytes": 8283928,
+    "losslessAccessorRoundtrip": true
+  },
+  {
+    "name": "zebra",
+    "variant": "75000-1024",
+    "bytes": 2318700,
+    "losslessAccessorRoundtrip": true
+  }
+]

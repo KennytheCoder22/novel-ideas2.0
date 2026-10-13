@@ -1,0 +1,37 @@
+CAROUSEL SLOT OCCUPANCY — 2026-10-12
+Source: live DOM and loaded mount entries at localhost:4200, checked against carousel.js and animal/horse-comparison.js.
+20 existing mountable slots; 14 occupied; 6 EMPTY. The declared 21-position lattice includes removed slot 1, which is unavailable.
+Outer: 6 present / 6 occupied / 0 empty. Middle: 7 / 3 / 4. Inner: 7 / 5 / 2.
+
+Orientation: starting phase 0, +X right, positive depth toward camera at bottom. Angles increase clockwise on this diagram; actual motion decreases angle (counterclockwise). Each row is 51.4286 degrees apart. Middle stagger +1.432 degrees; Inner -1.432 degrees.
+Ahead means next existing same-ring pole in decreasing-angle rotation order. Behind is the reverse. Outer 4 -> 19 spans 102.8571 degrees because slot 1 is removed. Other neighbors are 51.4286 degrees apart.
+
+OUTER
+Slot | Occupant | Starting angle | Ahead | Behind
+1 | REMOVED — former 2D slot | 0.000° | — | —
+4 | Horse | 51.429° | 19 | 7
+7 | Ostrich | 102.857° | 4 | 10
+10 | Polar Bear | 154.286° | 7 | 13
+13 | Elephant | 205.714° | 10 | 16
+16 | Grizzly | 257.143° | 13 | 19
+19 | Zebra | 308.571° | 16 | 4
+
+MIDDLE
+Slot | Occupant | Starting angle | Ahead | Behind
+2 | EMPTY | 1.432° | 20 | 5
+5 | EMPTY | 52.861° | 2 | 8
+8 | Rabbit | 104.290° | 5 | 11
+11 | Fox | 155.718° | 8 | 14
+14 | Tiger | 207.147° | 11 | 17
+17 | EMPTY | 258.575° | 14 | 20
+20 | EMPTY | 310.004° | 17 | 2
+
+INNER
+Slot | Occupant | Starting angle | Ahead | Behind
+3 | Snail | 358.568° | 21 | 6
+6 | EMPTY | 49.996° | 3 | 9
+9 | Wolf | 101.425° | 6 | 12
+12 | Brown Horse | 152.853° | 9 | 15
+15 | Stag | 204.282° | 12 | 18
+18 | Cat | 255.710° | 15 | 21
+21 | EMPTY | 307.139° | 18 | 3

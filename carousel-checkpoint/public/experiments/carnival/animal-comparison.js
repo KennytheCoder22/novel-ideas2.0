@@ -1,0 +1,70 @@
+import {cropCanvas} from './crop-canvas.js';
+import {carouselPoleMaterial} from './carousel-pole-material.js';
+import * as T from './vendor/three.module.js';
+import {GLTFLoader} from './vendor/GLTFLoader.js';
+const NS='http://www.w3.org/2000/svg';
+const specs=[{name:'snail',slotIndex:2,worldScale:.43,mount:[0,.338,.44]},{name:'brown-horse',slotIndex:11,worldScale:.52,mount:[0,.35,.21]},{name:'elephant',slotIndex:12,worldScale:.53,mount:[0,.41,.06]},{name:'grizzly',slotIndex:15,worldScale:.56,mount:[0,.40,.11]},{name:'wolf',slotIndex:8,worldScale:.52,mount:[0,.28,.22]},{name:'rabbit',slotIndex:7,worldScale:.50,mount:[0,.20,.33],localYaw:Math.PI/2-.025},{name:'fox',slotIndex:10,worldScale:.50,mount:[0,.24,.35],localYaw:Math.PI/3-.025},{name:'tiger',slotIndex:13,worldScale:.57,mount:[0,.32,.18],localYaw:Math.PI/6-.025},{name:'stag',slotIndex:14,worldScale:.52,mount:[0,.14,.25],localYaw:Math.PI/6+.025},{name:'cat',slotIndex:17,worldScale:.46,mount:[.08,.30,.05],localYaw:.025},{name:'ostrich',slotIndex:6,worldScale:.52,mount:[0,.26,.44]},{name:'polar-bear',label:'Polar Bear',slotIndex:9,worldScale:.52,mount:[-.023712,.40,-.0739895]},{name:'zebra',label:'Zebra',slotIndex:18,worldScale:.50,mount:[0,.335,.225]}];
+window.carouselAnimalComparisons=[];
+let started=false;
+async function start(){
+ const svg=document.querySelector('.carousel-dressing');if(!svg||started)return;started=true;
+ for(const spec of specs)await mount(svg,spec);
+}
+async function mount(svg,spec){
+ const slot=svg.querySelector(`[data-carousel-slot="${spec.slotIndex+1}"]`),anchor=slot.querySelector('.carousel-mount-anchor');
+ const model=(await new GLTFLoader().loadAsync('./carousel/'+spec.name+'.glb')).scene;
+ const bounds=new T.Box3().setFromObject(model),size=bounds.getSize(new T.Vector3());
+ const mountPoint=new T.Vector3(...spec.mount),scale=spec.worldScale;
+ const scene=new T.Scene();scene.add(new T.HemisphereLight(0xfff2de,0x514958,1.5));
+ const light=new T.DirectionalLight(0xffecd3,2);light.position.set(-2,3,4);scene.add(light);
+ const carouselFrame=new T.Group(),turn=new T.Group(),registration=new T.Group();
+ turn.rotation.y=Math.PI-Math.floor(spec.slotIndex/3)/window.CarnivalCarousel.rowCount*2*Math.PI-([0,.025,-.025][spec.slotIndex%3]);
+ // Cat's saddle/body axis is angled in the supplied GLB; rotate about the registered pommel.
+ if(spec.name==='cat')turn.rotation.y-=28.933873070460407*Math.PI/180;
+ registration.scale.setScalar(scale);registration.position.copy(mountPoint).multiplyScalar(-scale);
+ registration.add(model);turn.add(registration);carouselFrame.add(turn);scene.add(carouselFrame);
+ const span=.7324974536895752*1.5;
+ const camera=new T.OrthographicCamera(-span*5/6,span*5/6,span*2/3,-span,.01,20);camera.position.set(0,.12,3);camera.lookAt(0,0,0);
+ const holder=document.createElementNS(NS,'foreignObject');
+ for(const [k,v]of Object.entries({x:-250,y:-200,width:500,height:500,class:'carousel-animal-3d-comparison','data-animal':spec.name}))holder.setAttribute(k,v);
+ holder.style.pointerEvents='none';const canvas=document.createElementNS('http://www.w3.org/1999/xhtml','canvas');canvas.style.cssText='width:500px;height:500px;display:block';holder.append(canvas);anchor.append(holder);
+ const renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true,preserveDrawingBuffer:true});renderer.setSize(1000,1000,false);renderer.setClearColor(0,0);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;
+ // This is a carousel shaft segment, separate from the unmodified imported asset.
+ // The GLB and shaft share a depth buffer throughout the animal's vertical extent.
+ const top=(bounds.max.y-mountPoint.y)*scale+.01;
+ let bottom=(bounds.min.y-mountPoint.y)*scale;
+ if(spec.name==='snail'||spec.name==='brown-horse'||spec.name==='ostrich'||spec.name==='stag'||spec.name==='tiger'||spec.name==='fox'||spec.name==='rabbit'||spec.name==='wolf'||spec.name==='grizzly'||spec.name==='elephant') {
+   // End the added sleeve just below the body, not at the lowest foot.
+   model.updateWorldMatrix(true,true);
+   const ray=new T.Raycaster(new T.Vector3(0,top+1,0),new T.Vector3(0,-1,0));
+   const hits=ray.intersectObject(model,true);
+   if(!hits.length)throw new Error('Ostrich pole must intersect its pommel/body');
+   // About six inches relative to an approximately two-metre-long mount.
+   bottom=hits[hits.length-1].point.y-.14*scale;
+ }
+ const pole=new T.Mesh(new T.CylinderGeometry(span*4/300,span*4/300,top-bottom,24,1,true),carouselPoleMaterial(T,top-bottom,span));pole.position.y=(top+bottom)/2;
+ scene.add(pole);
+ cropCanvas(T,{name:spec.name,scene,camera,carouselFrame,renderer,holder});
+ // Reference model scale stays fixed; the whole slot uses the carousel depth factor.
+ // Scaling about the slot origin keeps the pole and registered saddle point aligned.
+ // Use a conservative rotated-bounds projection for deck clearance at every yaw.
+ const rx=Math.max(Math.abs(bounds.min.x-mountPoint.x),Math.abs(bounds.max.x-mountPoint.x));
+ const rz=Math.max(Math.abs(bounds.min.z-mountPoint.z),Math.abs(bounds.max.z-mountPoint.z));
+ const downwardPixels=((mountPoint.y-bounds.min.y)*scale+Math.hypot(rx,rz)*scale*.04)*300/span;
+ const bobAmplitude=12,mountHeight=Math.ceil(downwardPixels+bobAmplitude+8);
+ slot.dataset.constantScale='0';slot.dataset.mountHeight=String(mountHeight);slot.dataset.bobAmplitude=String(bobAmplitude);
+ const initialPose=window.CarnivalCarousel.pose(spec.slotIndex,Number(svg.dataset.phase||0));
+ slot.setAttribute('transform',`translate(${initialPose.x} ${initialPose.y}) scale(${initialPose.scale})`);
+ anchor.setAttribute('transform',`translate(0 ${-mountHeight-initialPose.lift*bobAmplitude/28})`);
+ slot.style.opacity='1';slot.querySelector('.carousel-crank-collar').style.visibility='hidden';
+ const entry={...spec,model,renderer,scene,camera,carouselFrame,turn,registration,mountPoint,scale,pole,slot,anchor,holder,mountHeight,bobAmplitude,downwardPixels};window.carouselAnimalComparisons.push(entry);
+ let previous=null;
+ const opacityChildren=[...slot.children].filter(child=>child!==anchor).map(child=>({child,shaft:child.matches('.carousel-pole-shaft')}));
+ const assembly=svg.querySelector('.carousel-assembly');
+ function render(){if(!svg.isConnected){renderer.dispose();return;}const yaw=Number(assembly.dataset.yaw||0);
+ if(yaw!==previous&&!document.hidden){carouselFrame.rotation.y=-yaw;for(const {child,shaft} of opacityChildren){const opacity=shaft?'1':slot.getAttribute('opacity');if(child.style.opacity!==opacity)child.style.opacity=opacity;}renderer.render(scene,camera);previous=yaw;}
+ requestAnimationFrame(render);}
+ render();holder.dataset.ready='true';
+}
+const observer=new MutationObserver(()=>start().catch(console.error));observer.observe(document.body,{childList:true,subtree:true});start().catch(console.error);
+
