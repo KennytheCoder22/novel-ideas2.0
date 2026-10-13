@@ -30,7 +30,9 @@
   const LIFT = 28;
   function pose(index, phase) {
     const row=Math.floor(index/RINGS.length),ring=index%RINGS.length;
-    const {radius,stagger}=RINGS[ring];
+    const {radius:ringRadius,stagger}=RINGS[ring];
+    // Moon Loveseat keeps slot 2 but moves halfway toward the outer ring.
+    const radius=ringRadius+(index===1?71.5:0);
     const angle=2*Math.PI*(row/ROWS-phase)+stagger;
     const depth=radius*Math.sin(angle);
     // One geared crank drives every attachment. Middle rings and neighboring

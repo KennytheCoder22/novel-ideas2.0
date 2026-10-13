@@ -1,3 +1,81 @@
+HISTORICAL/ITERATIVE NOTES. Current end-of-day state is in HANDOFF.md and README.md. Earlier counts below are historical.
+
+LOCAL CLEANED ROCKET ADDITION — 2026-10-13
+Middle slot 5, row 2, radius 450: between Horse (slot 4) and Griffin (slot 6).
+Reference scale .52; local yaw 217.139034084 degrees.
+Original socket [.01,.242,0]; XYZ registration [-.0052,-.12584,0].
+Exposed baked pole removed; 70 socket-edge triangles clipped. Retained vertex
+attributes, material/sampler definitions and texture bytes preserved exactly.
+Body/saddle/fins/nose/engine visually unchanged in front, rear, side and top views.
+Standard brass spiral pole; short lower sleeve .034285 world units, above bracket.
+145 phases passed; minimum calculated sampled deck clearance 13.5512 scene pixels.
+Closest mount separation >=40.1576; other pole clearance >=86.6398.
+19 occupied / 1 empty (middle slot 17). Outer 6/0; Middle 6/1; Inner 7/0.
+Existing setup and crops, 80% rendering, and all other mount transforms retained.
+No merge or deployment.
+
+--- Earlier notes (historical where superseded) ---
+LOCAL GRIFFIN ADDITION — 2026-10-13
+Inner slot 6, row 2, radius 307: behind Snail (slot 3), ahead of Wolf (slot 9).
+Reference scale .46; local yaw 130.003823059 degrees.
+Source front pommel [0,.40,.28]; XYZ registration [0,-.184,-.1288].
+Matching brass spiral pole; added lower sleeve .0644 world units (.14 source units).
+145 revolution phases passed; minimum calculated sampled deck clearance 13.7511.
+Nearest planar mount gap >=8.1904; neighboring poles >=87.8578 scene pixels.
+Some ordinary projected overlap remains; no calculated mount/pole intersections.
+18 occupied / 2 empty: Outer 6/0, Middle 5/2, Inner 7/0. Seven rows and base radii remain.
+Fixed crops and 80% buffers preserved. Griffin shares the established offscreen
+renderer with Flamingo and Dragon; no extra WebGL context is created.
+No merge or deployment.
+
+--- Earlier notes (historical where superseded) ---
+LOCAL FLAMINGO ADDITION — 2026-10-13
+Slot 20, middle ring, row 7, radius 450, directly beside Dragon in inner slot 21.
+Inner slot 6 remains EMPTY. Scale .50; local yaw -130.003823059 degrees.
+Source saddle [0,.32,.23]; XYZ registration [0,-.16,-.115].
+Latest folded-wing GLB unchanged; side tack hidden below wings; no outside wing straps added.
+Matching brass spiral pole. Added lower sleeve .07 world / .14 source units below body.
+145 phases passed drift, heading, scale/opacity, depth sorting, pole and clearance checks.
+Minimum calculated sampled deck clearance 13.8276 scene pixels.
+Conservative Dragon separation >=38.4564; neighboring poles >=90.7178.
+20 usable slots: 17 occupied / 3 empty. Outer 6/0; Middle 5/2; Inner 6/1.
+Shared offscreen renderer for Flamingo/Dragon avoids the 17th WebGL context loss;
+cardinal pixel comparisons match the original direct-renderer output exactly.
+Other mount transforms/crops, base radii and 80% rendering stay unchanged.
+No merge or deployment.
+
+--- Earlier placement notes (historical where superseded) ---
+LOCAL DRAGON INNER-RING PLACEMENT — 2026-10-13
+Slot 21, inner ring, row 7, radius 307. Slot 20 is EMPTY, reserved for a smaller mount.
+Reference scale .60; local yaw -127.139034084 degrees.
+Source front pommel [0,.105,.29]; XYZ registration [0,-.063,-.174].
+Compact supplied wings and tack remain unchanged; tack stays on the body under wings.
+Lower sleeve extends .084 world units (.14 source units) below the body.
+145 revolution phases passed. Minimum sampled deck clearance 16.1573 scene pixels.
+Conservative closest mount clearance >=7.8646; neighboring poles >=65.9544.
+20 usable slots: 16 occupied / 4 empty; Middle 4/3, Inner 6/1, Outer 6/0 occupied/empty.
+Moon Loveseat stays at radius 521.5 and scale .40.
+All other transforms, base ring radii, crops and 80% resolution remain unchanged.
+No merge or deployment.
+
+LOCAL MOON LOVESEAT ADDITION — 2026-10-13
+This section supersedes the older occupancy and preview notes below.
+Slot 2, middle ring, row 1; user-approved pole radius 521.5 (+71.5).
+Slot 3 Snail and every other pole remain unchanged.
+Reference scale .40; local yaw 178.567605512 degrees.
+Source socket axis [.136494,.873874,-.402161].
+XYZ registration [-.0545976,-.3495496,.1608644].
+One rigid mount; no separate furniture legs added. +Z is the passengers' forward direction.
+Minimum deck clearance 13.7950 SVG scene pixels over 145 phases.
+Conservative footprint separation from Snail >=62.3479; neighboring poles >=72.4598 scene pixels.
+Lower sleeve ends above the mounting bracket through all bob positions.
+20 usable slots, 15 occupied, 5 empty. Slot 1 stays omitted.
+The original 7 rows, 593/450/307 radii, existing crops and 80% buffers are unchanged.
+Local preview: http://127.0.0.1:4201/experiments/carnival/index.html?scene=rides-games
+Launch: python carousel-checkpoint/preview.py --port 4201
+No merge or deployment.
+
+--- Original checkpoint notes (historical) ---
 7-ROW + SNAIL CHECKPOINT — 2026-10-12
 Preview: http://127.0.0.1:4200/experiments/carnival/index.html?scene=rides-games
 Start server: python .tmp/carousel-3d-comparison/serve-seven-row-firefox.py
@@ -19,3 +97,5 @@ Verification: snail-review/elephant-verification.json; cardinal screenshots same
 Occupancy: occupancy-map/REPORT.txt, slots.csv, top-down.png.
 Crowding and view-dependent overlap remain; no other mounts repositioned. No new FPS benchmark performed. Existing SVG caching/reordering and cropped 80% buffers retained.
 Local only; no commit, merge or deployment.
+
+Unicorn added locally on 2026-10-13: middle slot 17 / row 6, between Grizzly 16 and Cat 18. Original model (9).glb geometry/textures retained. Reference scale .50; local yaw -78.5752516306842 degrees; XYZ registration [0,-.125,-.10], front pommel source [0,.25,.20]. Matching brass spiral pole with .07-world-unit lower body sleeve; no bottom bracket overrun. Fixed crop [-162,-90,324,249], 518x398 buffer, 80% rendering. 145 full-revolution samples passed; minimum deck clearance 13.9031 scene pixels; minimum neighboring mount separation 41.1685; neighboring pole clearance 100.5076. All prior mount settings/crops/poles retained; all 20 outputs active. Occupancy: 20 occupied / 0 empty (slot 1 remains omitted). Seven rows and base radii 593/450/307 retained. No merge, push, or deployment.

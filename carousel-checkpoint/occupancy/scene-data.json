@@ -6,10 +6,12 @@
       "id": 2,
       "ring": "middle",
       "row": 1,
-      "occupant": "EMPTY",
-      "x": 449.85938232406625,
-      "depth": 11.24882816162055,
-      "angleDegrees": 1.4323944878270822
+      "occupant": "moon-loveseat",
+      "x": 521.3370397377789,
+      "depth": 13.03614196952248,
+      "angleDegrees": 1.4323944878270822,
+      "radius": 521.5,
+      "radiusOffset": 71.5
     },
     {
       "id": 3,
@@ -33,7 +35,7 @@
       "id": 5,
       "ring": "middle",
       "row": 2,
-      "occupant": "EMPTY",
+      "occupant": "rocket",
       "x": 271.6880491518964,
       "depth": 358.7277574262086,
       "angleDegrees": 52.86096591639847
@@ -42,7 +44,7 @@
       "id": 6,
       "ring": "inner",
       "row": 2,
-      "occupant": "EMPTY",
+      "occupant": "griffin",
       "x": 197.35148782261274,
       "depth": 235.16247628863144,
       "angleDegrees": 49.99617694074436
@@ -141,7 +143,7 @@
       "id": 17,
       "ring": "middle",
       "row": 6,
-      "occupant": "EMPTY",
+      "occupant": "unicorn",
       "x": -89.13633334966107,
       "depth": -441.0835681330445,
       "angleDegrees": 258.5752516306842
@@ -168,7 +170,7 @@
       "id": 20,
       "ring": "middle",
       "row": 7,
-      "occupant": "EMPTY",
+      "occupant": "flamingo",
       "x": 289.27742514715214,
       "depth": -344.70069814294504,
       "angleDegrees": 310.00382305925564
@@ -177,7 +179,7 @@
       "id": 21,
       "ring": "inner",
       "row": 7,
-      "occupant": "EMPTY",
+      "occupant": "dragon",
       "x": 185.3516246436269,
       "depth": -244.7320478441024,
       "angleDegrees": 307.1390340836015

@@ -1,0 +1,18 @@
+{
+  "sourceTriangles": 75556,
+  "removedPoleTriangles": 7881,
+  "modifiedSocketBoundaryTriangles": 70,
+  "resultTriangles": 67709,
+  "originalVertexAttributesPreserved": true,
+  "unreferencedPoleVerticesRemoved": 7376,
+  "materialDefinitionsPreserved": true,
+  "textureBytesPreserved": true,
+  "cutPlanes": {
+    "upper": 0.242,
+    "lower": -0.115
+  },
+  "sourceSha256": "255ae6dca049e90a001d2f661f0af0d111725855aa2ca6dd7e41e3103512075f",
+  "cleanedSha256": "80e49c4dea53787d7560632c21168505689004c8eb48419ac08aafd02354d988",
+  "textureSha256": "54d32c5645b2149fd98d3b7f75bf4c15d4b0930f79a9845de6e490ec371e1226",
+  "textureSamplerDefinitionsPreserved": true
+}
