@@ -1,0 +1,35 @@
+/* Painted wood, iron nails, splayed legs and a ground shadow: one scene prop. */
+.carnival-exit {
+  position:absolute; z-index:7; width:clamp(142px, 12vw, 180px); height:120px;
+  color:#ffedbd; text-decoration:none; cursor:pointer; touch-action:manipulation;
+  -webkit-tap-highlight-color:#f2c67933; isolation:isolate;
+  filter:drop-shadow(3px 5px 3px #0009);
+}
+.carnival-exit::before {
+  content:""; position:absolute; inset:14px 12px 0;
+  background:repeating-linear-gradient(92deg,#2b1810 0 3px,#4a3020 4px 7px,#342016 8px 12px);
+  clip-path:polygon(17% 0,26% 0,12% 100%,1% 100%,17% 0,74% 0,83% 0,99% 100%,88% 100%,74% 0);
+}
+.carnival-exit::after {
+  content:""; position:absolute; bottom:-4px; left:-8%; width:116%; height:13px;
+  border-radius:50%; background:#080502aa; filter:blur(4px); z-index:-1;
+}
+.carnival-exit-face {
+  position:absolute; inset:0 0 24px; display:flex; flex-direction:column;
+  justify-content:center; align-items:center; padding:8px 11px;
+  border:3px solid #38251a; outline:1px solid #b18a524d;
+  border-radius:3px 7px 2px 5px; transform:rotate(-3deg) skewY(1deg);
+  background:
+    radial-gradient(circle at 8px 8px,#c2a477 0 1px,#21180f 2px 3px,transparent 4px),
+    radial-gradient(circle at calc(100% - 8px) calc(100% - 8px),#a28b66 0 1px,#21180f 2px 3px,transparent 4px),
+    repeating-linear-gradient(177deg,transparent 0 12px,#e0ae7020 13px,transparent 14px 24px),
+    linear-gradient(105deg,#2b2018,#62442c 38%,#422c20 73%,#271b15);
+  box-shadow:inset 0 0 0 2px #b18a5255,inset 0 0 18px #120b08a0,2px 4px 2px #0008;
+  text-shadow:1px 2px 1px #170b07; text-align:center;
+}
+.carnival-exit strong { font:700 27px/1.05 Georgia,serif; letter-spacing:.18em; padding-left:.18em; }
+.carnival-exit em { display:block; max-width:145px; margin-top:7px; font:italic 13px/1.25 Georgia,serif; }
+.carnival-exit:hover .carnival-exit-face { color:#fff5d9; box-shadow:inset 0 0 0 2px #d6ac6c,inset 0 0 18px #120b08a0,2px 4px 2px #0008; }
+.carnival-exit:focus-visible { outline:3px solid #ffe0a0; outline-offset:6px; border-radius:3px; }
+@media (max-height:500px) { .carnival-exit { height:102px; } .carnival-exit-face { bottom:17px; } }
+@media (forced-colors:active) { .carnival-exit-face { background:Canvas; color:LinkText; border-color:LinkText; text-shadow:none; } }

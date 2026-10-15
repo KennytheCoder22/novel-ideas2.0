@@ -15,12 +15,6 @@
   const live = document.createElement('span');
   live.className = 'sr-only'; live.setAttribute('role','status');
   document.body.append(live);
-  const back = document.createElement('button');
-  back.className = 'location-back'; back.textContent = '‹ Back · dev';
-  back.title = 'Development only: return to the previous location';
-  back.hidden = true;
-  document.body.append(back);
-
   function mountSigns(id, plane) {
     for (const sign of definitions[id].signs || []) {
       const to = window.CarnivalSignDestinations[sign.label];
@@ -40,6 +34,7 @@
     }
   }
   mountSigns('midway',document.querySelector('.composition'));
+  window.CarnivalExit.mount(document.querySelector('.composition'));
 
   function mount(id) {
     if (mounted.has(id)) return mounted.get(id);
@@ -67,6 +62,7 @@
       plane.append(button);
     }
     mountSigns(id,plane);
+    const disposeExit = window.CarnivalExit.mount(plane);
     const look = document.createElement('nav'); look.className = 'location-look';
     look.setAttribute('aria-label','Look around '+definition.name);
     let framing = definition.framing;
@@ -90,14 +86,14 @@
     }
     view.append(look); document.body.append(view);
     addEventListener('resize',layout); layout();
-    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>removeEventListener('resize',layout)};
+    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>{removeEventListener('resize',layout);disposeExit();}};
     mounted.set(id,entry);
     return entry;
   }
 
   async function travel(id, trigger, returning = false, kind = 'path') {
     if (busy || !definitions[id] || id === current) return false;
-    busy = true; back.disabled = true;
+    busy = true;
     const sourceId = current;
     const source = mounted.get(sourceId).view;
     const animations = [];
@@ -140,7 +136,6 @@
       if (returning || history.at(-1)?.id === id) history.pop();
       else history.push({id:sourceId,trigger});
       document.documentElement.dataset.location = id;
-      back.hidden = !debug || history.length === 0;
       live.textContent = definitions[id].name;
       if (returning && trigger?.isConnected && !trigger.hidden) trigger.focus({preventScroll:true});
       else target.view.focus({preventScroll:true});
@@ -157,13 +152,9 @@
       animations.forEach(animation=>animation.cancel());
       source.style.transformOrigin = '';
       delete document.documentElement.dataset.travelling;
-      busy = false; back.disabled = false;
+      busy = false;
     }
   }
-  back.addEventListener('click',()=>{
-    const previous = history.at(-1);
-    if (previous) travel(previous.id,previous.trigger,true);
-  });
   window.CarnivalNavigation = Object.freeze({
     go(destination, trigger) {
       const id = definitions[current].destinations?.[destination];

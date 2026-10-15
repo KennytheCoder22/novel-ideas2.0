@@ -5,10 +5,6 @@ import * as THREE from './vendor/three.module.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 const NS='http://www.w3.org/2000/svg';
 const slotIndex=3; // Existing empty outer-ring pole, two rows after the 2D mount.
-const badge=document.createElement('div');
-badge.textContent='LOCAL PREVIEW · 7 rows · wider rings';
-badge.style.cssText='position:fixed;right:12px;top:12px;z-index:1000;padding:8px 12px;border:1px solid #aa9366;border-radius:6px;background:#17170edf;color:#efddb4;font:12px system-ui;pointer-events:none';
-document.body.append(badge);
 let mounted=false;
 async function mount(){
  const svg=document.querySelector('.carousel-dressing');

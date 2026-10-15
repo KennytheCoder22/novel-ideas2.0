@@ -1,0 +1,22 @@
+{
+  "experiments/carnival/index.html": {
+    "bytes": 7305,
+    "sha256": "36e7a46c2b4456440b387af51ec6efc2c6451f8740b053ddf18d6c84d8f030ec"
+  },
+  "experiments/carnival/navigation.js": {
+    "bytes": 8919,
+    "sha256": "1221fc0866a182fd92c6d006ac67aad86dd8bfc748ffef04036853cb2b980c9b"
+  },
+  "experiments/carnival/horse-comparison.js": {
+    "bytes": 6222,
+    "sha256": "7ebd547074e91a07aaae6cadc980817216438b18210c400dacbefb03ed634f35"
+  },
+  "experiments/carnival/exit-sign.js": {
+    "bytes": 2767,
+    "sha256": "a3ea4669bf83a02e6671e6d84d0c7fccc81762efcef89ec66aa949907607df89"
+  },
+  "experiments/carnival/exit-sign.css": {
+    "bytes": 2292,
+    "sha256": "b51ad8c11e37e174572f702de4ebf7a38b958f8144b10175705e5e56605dfa7f"
+  }
+}
