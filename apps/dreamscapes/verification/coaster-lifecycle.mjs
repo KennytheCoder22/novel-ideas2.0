@@ -52,13 +52,19 @@ assert.equal(f.frames.size, 0, 'There must be no animation-frame loop between pa
 f.setNow(60000);
 const first = [...f.timers.entries()][0]; f.timers.delete(first[0]); first[1].fn();
 assert.equal(f.svg.dataset.coasterState, 'passing');
-f.tick(61550);
+f.tick(63100);
+assert.equal(f.svg.dataset.coasterState, 'passing', 'Pass must continue beyond the previous 3.1-second duration');
+f.tick(64650);
 const cars = f.svg.children[1].children;
 assert.equal(cars.filter(car => Number(car.attributes.opacity) > 0).length, 4);
-f.tick(63100);
+const halfwayTransform = cars[0].attributes.transform;
+f.tick(66000);
+assert.ok(Number(cars[0].attributes.transform.match(/translate\(([-\d.]+)/)[1]) >
+  Number(halfwayTransform.match(/translate\(([-\d.]+)/)[1]), 'Train must advance left-to-right');
+f.tick(69300);
 assert.equal(f.frames.size, 0);
 assert.ok(cars.every(car => car.attributes.opacity === '0'));
-assert.equal([...f.timers.values()][0].delay, 56900, 'Pass starts remain 60 seconds apart');
+assert.equal([...f.timers.values()][0].delay, 50700, 'Pass starts remain 60 seconds apart after the 9.3-second pass');
 f.document.hidden = true; f.sync();
 assert.equal(f.timers.size, 0);
 assert.equal(f.svg.dataset.coasterState, 'inactive');

@@ -2,8 +2,9 @@
 (() => {
   'use strict';
   const NS = 'http://www.w3.org/2000/svg';
-  const DURATION = 3100, SPACING = 31;
-  const TRACK = 'M 944 333 C 922 282 873 207 807 165 C 761 134 715 117 665 117 C 596 116 543 135 493 168 C 419 216 376 263 312 302 C 258 334 211 354 174 365';
+  const DURATION = 9300, SPACING = 31;
+  // Wheel contact follows the wooden running deck, below the service guardrail.
+  const TRACK = 'M 944 350 C 922 300 873 222 807 180 C 761 147 715 130 665 130 C 596 128 543 149 493 182 C 419 231 376 280 312 319 C 258 350 211 370 174 381';
   function element(name, attributes = {}) {
     const node = document.createElementNS(NS, name);
     for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
@@ -48,6 +49,8 @@
           preserveAspectRatio:'none', overflow:'hidden'});
         const art = element('use', {href:'#coaster-car-sheet'});
         if (index === 0) art.setAttribute('clip-path', 'url(#coaster-engine-crop)');
+        // Mirror each crop in place so the engine's nose leads toward the right.
+        art.setAttribute('transform', `translate(${index === 0 ? 452 : 1300} 0) scale(-1 1)`);
         sprite.append(art);
         car.append(sprite); train.append(car); cars.push(car);
       }
@@ -68,7 +71,8 @@
       function render(progress) {
         const head = progress * (length + SPACING * 5) - SPACING;
         cars.forEach((car, index) => {
-          const distance = head - index * SPACING;
+          // Traverse the traced curve left-to-right, with the remaining cars behind.
+          const distance = length - head + index * SPACING;
           if (distance <= 0 || distance >= length) { car.setAttribute('opacity', 0); return; }
           const position = distance / length * 256;
           const i = Math.min(255, Math.floor(position)), f = position - i;

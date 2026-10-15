@@ -11,8 +11,8 @@ extra track, or new dependencies are introduced.
 
 `coaster-train.js` moves the cars independently along a sampled SVG curve in the
 original 1671 × 941 background coordinates. Motion is **JavaScript-based**, using
-requestAnimationFrame only during the **3.1-second** pass. Each car follows the
-rail tangent. The curve is sampled once at mount; the loop performs no layout
+requestAnimationFrame only during the **9.3-second** pass. Each car follows the
+running-deck tangent. The train travels left-to-right, and each sprite is mirrored so the engine leads. The curve is sampled once at mount; the loop performs no layout
 or path queries. The SVG shares the background plane, so resizing and panning
 preserve registration. Foreground masks hide the train behind existing poles,
 marquee, tent and lighthouse. Carousel dressing remains above the train.
@@ -42,3 +42,7 @@ paths, look controls, keyboard navigation and the `/` exit link remain intact.
 
 Source is committed and pushed to `codex/dreamscapes-independent`; no deployment
 is part of this change.
+
+## Direction, speed and deck correction
+
+The pass was reversed to left-to-right and slowed to one third of its initial speed (9.3 seconds). The wheel-contact curve was retraced 13–18 source pixels below its original position onto the wooden running deck, rather than the upper service railing. The 50–70-second start cadence remains unchanged. Tests explicitly verify rightward motion and continued animation after 3.1 seconds.
