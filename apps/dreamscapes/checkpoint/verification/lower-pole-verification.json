@@ -1,0 +1,39 @@
+{
+  "checkpoint": "ea4599e8f4ef03d2cbf03da36cc77ed0d82179b0",
+  "phases": 145,
+  "pass": true,
+  "mounts": [
+    {
+      "name": "Snail",
+      "oldLength": 0.6688825619612241,
+      "newLength": 0.5840175469515904,
+      "newBottom": -0.4178574339411839,
+      "centerOffset": -0.12584866046538873,
+      "minGapScenePixels": 0.8222154379776809
+    },
+    {
+      "name": "Polar Bear",
+      "oldLength": 0.8879092502593994,
+      "newLength": 0.8561483502018931,
+      "newBottom": -0.6157899026501658,
+      "centerOffset": -0.18771572754921922,
+      "minGapScenePixels": 0.8046403735435083
+    },
+    {
+      "name": "Cat",
+      "oldLength": 0.8849937045574188,
+      "newLength": 0.8518151170541697,
+      "newBottom": -0.5424815809060984,
+      "centerOffset": -0.11657402237901357,
+      "minGapScenePixels": 0.8222767081441077
+    },
+    {
+      "name": "Zebra",
+      "oldLength": 0.8073900139331818,
+      "newLength": 0.7735122551937889,
+      "newBottom": -0.5351507487316917,
+      "centerOffset": -0.14839462113479723,
+      "minGapScenePixels": 0.8047676187335311
+    }
+  ]
+}

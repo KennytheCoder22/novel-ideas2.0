@@ -1,0 +1,27 @@
+{
+  "checkpointDate": "2026-10-13",
+  "branch": "codex/carousel-checkpoint-20261013",
+  "sourceCheckpointCommit": "ea4599e8f4ef03d2cbf03da36cc77ed0d82179b0",
+  "runtimeFilesCompared": 91,
+  "mismatches": [],
+  "mountedSelfContainedGLBs": 20,
+  "originalRocketRecoveryGLBs": 1,
+  "occupied": 20,
+  "empty": 0,
+  "freshGitTreeExtractionPassed": true,
+  "freshPreviewPort": 4202,
+  "freshPreviewReadyMounts": 20,
+  "freshPreviewConsoleErrors": [],
+  "trackedRuntimeAssetCheckPassed": true,
+  "portableRocketCleanerExactByteReproduction": true,
+  "runtimeFilesChangedForPackaging": 0,
+  "machineLocalRequiredAssets": [],
+  "gitDeploymentEnabled": false,
+  "githubWorkflowFiles": 0,
+  "vercelDetailedProjectInspection": "Connector returned 403; repository deployment guard inspected directly",
+  "requiredPreviewDependencies": [
+    "Python 3.9+ standard library",
+    "WebGL-capable browser"
+  ],
+  "localPreviewPort": 4201
+}

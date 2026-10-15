@@ -1,0 +1,366 @@
+{
+  "experiments/carnival/animal-comparison.js": {
+    "bytes": 9674,
+    "sha256": "85482b8d1a5de96970351d8752bb2352c3953dbae5619ce633959e280c0b1c5b"
+  },
+  "experiments/carnival/balloon-faces.png": {
+    "bytes": 997706,
+    "sha256": "c250843cd4203ddc92d89784032a575d53562f9b5d13ea18ebbaed9280cf1007"
+  },
+  "experiments/carnival/balloon.png": {
+    "bytes": 193042,
+    "sha256": "001a4ebc1765f49da03859f44d6f84ab3512cdadc28c56de34ec9be3d31060af"
+  },
+  "experiments/carnival/carousel/brown-horse.glb": {
+    "bytes": 8517876,
+    "sha256": "c21c8d731f212fa54b23ff152056dfe9bf54640c1f15ed48d600a653d23179a3"
+  },
+  "experiments/carnival/carousel/cat.glb": {
+    "bytes": 9158144,
+    "sha256": "cd832f99defa89fc789e79e21d47c76f2b09a57d001c0a664fe5c5ea2f379c04"
+  },
+  "experiments/carnival/carousel/dragon.glb": {
+    "bytes": 9324200,
+    "sha256": "71cd699b0a5cb6d7d9e96ab11fb2fc26905e99bfd2d8f937a4904e8a3db29ce8"
+  },
+  "experiments/carnival/carousel/elephant.glb": {
+    "bytes": 9434352,
+    "sha256": "02a904032ff406a1a376c04cd3f29ac600fa307560e52f820ba72faae48ab68e"
+  },
+  "experiments/carnival/carousel/flamingo.glb": {
+    "bytes": 7782500,
+    "sha256": "ac50feec52f2a4f5a375ec6c6dc7b3011f1a329d6f7c69fbeaf09d4f04f708cc"
+  },
+  "experiments/carnival/carousel/fox.glb": {
+    "bytes": 9171696,
+    "sha256": "8b14a1bbb2d87441b772687ea8eb1e858bce466f41a2ba37ac2a151d1a827944"
+  },
+  "experiments/carnival/carousel/griffin.glb": {
+    "bytes": 9118000,
+    "sha256": "dce4c0d946b891b5537756dac58b4b3300c384d2cdda9e6489659f4e55c2d8d5"
+  },
+  "experiments/carnival/carousel/grizzly.glb": {
+    "bytes": 10127864,
+    "sha256": "7547e6e98e673ef5eb57234b428320bb249ce9933ba094d0449c977d2472ccdc"
+  },
+  "experiments/carnival/carousel/horse-comparison.glb": {
+    "bytes": 1616500,
+    "sha256": "98476a8f606ac045841f5d80c6da5d522258c47e4b0a08afe4e68d6b7a0b5ba1"
+  },
+  "experiments/carnival/carousel/horse-test/back.png": {
+    "bytes": 136877,
+    "sha256": "d41e38f3d7ae9a499722f9e4fb5167cd074e453605c8a96bb10645262390fe10"
+  },
+  "experiments/carnival/carousel/horse-test/front.png": {
+    "bytes": 140782,
+    "sha256": "b78f50010d55093b42621a53b17c368d9afdce2a50f683a704cee3ac9d357047"
+  },
+  "experiments/carnival/carousel/horse-test/left.png": {
+    "bytes": 344215,
+    "sha256": "376de13aa14078d21b6145d19cd72185e5c24ed4b3258089c3fa292756772aa9"
+  },
+  "experiments/carnival/carousel/horse-test/right.png": {
+    "bytes": 346529,
+    "sha256": "39a9c5743aff467c8cb2b4f5f8af7a420a1a1b53050b0231943fa5b3a314b6ad"
+  },
+  "experiments/carnival/carousel/moon-loveseat.glb": {
+    "bytes": 9087456,
+    "sha256": "80bcd39eccd1949b37202557548ffe26f37becea2106ce80b9290e9138580df5"
+  },
+  "experiments/carnival/carousel/optimized/compression-stats.json": {
+    "bytes": 490,
+    "sha256": "b338d4a9066eb35a0700f3e9e22b3ae2a1b2b427acaf5864137d2399266d3dda"
+  },
+  "experiments/carnival/carousel/optimized/stats.json": {
+    "bytes": 934,
+    "sha256": "de398f377a071402f47760eb9a9319d3836b2a19d65b5937c7d007eb64d9ae71"
+  },
+  "experiments/carnival/carousel/ostrich.glb": {
+    "bytes": 9703916,
+    "sha256": "605e722d9ca030a6c416d8dafb916165545f1642a2b27c032a8efec2584b3a89"
+  },
+  "experiments/carnival/carousel/polar-bear.glb": {
+    "bytes": 2444760,
+    "sha256": "86ddfc3bd39f05cc75e8cbbd629d9457cf489b4939c8740b5178b77abc9e2778"
+  },
+  "experiments/carnival/carousel/rabbit.glb": {
+    "bytes": 9135424,
+    "sha256": "0bffb6e2a100cb584a4fcba20291b12afad79d2385759765995b3284986851b2"
+  },
+  "experiments/carnival/carousel/rocket.glb": {
+    "bytes": 7198104,
+    "sha256": "80e49c4dea53787d7560632c21168505689004c8eb48419ac08aafd02354d988"
+  },
+  "experiments/carnival/carousel/shell-column-repair.md": {
+    "bytes": 1712,
+    "sha256": "7c24e0aea458caceaab29475ba4f79493ce518e8188be25bf808fe8602667301"
+  },
+  "experiments/carnival/carousel/shell-column-repair.png": {
+    "bytes": 2585918,
+    "sha256": "c485e2cb99fd454c23bd04a7c84359a98fd1d91ca310768885b6d091f2e0c2c5"
+  },
+  "experiments/carnival/carousel/snail.glb": {
+    "bytes": 8877124,
+    "sha256": "8893c63a1c4a7f792200fbd751326a8db77c4973d5e6b2440db97c71a0e6de4c"
+  },
+  "experiments/carnival/carousel/stag.glb": {
+    "bytes": 8623476,
+    "sha256": "0bbcf8d313752bb4b9aae7bcbefb0a45fee798851146ae270853cc5b10ed147a"
+  },
+  "experiments/carnival/carousel/structure.png": {
+    "bytes": 2680355,
+    "sha256": "b1acddd0eef97141d71c8abeaf6971034d7fa466440fd62a04c88e00a118f0ff"
+  },
+  "experiments/carnival/carousel/tiger.glb": {
+    "bytes": 8817180,
+    "sha256": "e027ddac52524094d4ad9119a55425176dd00738337a6193a6f13f4608198696"
+  },
+  "experiments/carnival/carousel/unicorn.glb": {
+    "bytes": 9489344,
+    "sha256": "58afd423b7f9cc2e55a04c68c92e42ceddf6ab867d7911de50e77a9a8d113b8c"
+  },
+  "experiments/carnival/carousel/wolf.glb": {
+    "bytes": 9385524,
+    "sha256": "e597a6cac60b7d3fb8d706b58bdf00de31b09b3766a0f8782f3f6f71ac96ebc2"
+  },
+  "experiments/carnival/carousel/zebra.glb": {
+    "bytes": 2503456,
+    "sha256": "48c2aef88791a6212894a2ac442443ba85a54e5e13e8e5fcb0fc2952f210169f"
+  },
+  "experiments/carnival/carousel-pole-material.js": {
+    "bytes": 1239,
+    "sha256": "f04620439ec2595bce6bd509d50ba58d335a2743f5774e935f22498a62bd1761"
+  },
+  "experiments/carnival/carousel.css": {
+    "bytes": 270,
+    "sha256": "23873df407387a571fbe4073558029c50edbe9ce72ad231925b82a13a33d0c86"
+  },
+  "experiments/carnival/carousel.js": {
+    "bytes": 24600,
+    "sha256": "53a606955fd23ce960d1f5adc3614416d52fd6880fa7249d11090d3f04e8dadc"
+  },
+  "experiments/carnival/central-tent.png": {
+    "bytes": 2673905,
+    "sha256": "e4365e3f9ca032ff0d99b6bd647d843c38159bb407827577c315d070926382cd"
+  },
+  "experiments/carnival/crop-canvas.js": {
+    "bytes": 2682,
+    "sha256": "15d3027ff7516af5e66548f389ed393367d0e54ea28aa50a190ca1af5847648b"
+  },
+  "experiments/carnival/crow-call.png": {
+    "bytes": 87103,
+    "sha256": "703dd06bfcd3f1dfc5aa14180500e0b8d423cd203aecc847d87d2dc83c20860c"
+  },
+  "experiments/carnival/crow-perched.png": {
+    "bytes": 85972,
+    "sha256": "22804ff727764bfa5bb4ab9032e028f47659f58a70d7474d3b7ac8e35b5f2a2d"
+  },
+  "experiments/carnival/foreground.png": {
+    "bytes": 1380229,
+    "sha256": "4e22c9802c3c08cd886e1af13412948d23e36f8ea5cb2e1838b6b3bbe4a9c05f"
+  },
+  "experiments/carnival/fox-breaking.png": {
+    "bytes": 1509681,
+    "sha256": "45d4d3a74464d7ec0be6cb058a7693a77b680efd07c23b36fb82fc93d4141d9b"
+  },
+  "experiments/carnival/fox-cinema.js": {
+    "bytes": 12485,
+    "sha256": "09ed0fe39c0ce3ae8946c5d359ba0f2571a89d9cc0880ce49d4e67f0c5179d8a"
+  },
+  "experiments/carnival/fox-fragment-0.png": {
+    "bytes": 60467,
+    "sha256": "c53a1c9b76e661faee333ad55860f72c6aae50fffe85900db05101138df9bca3"
+  },
+  "experiments/carnival/fox-fragment-1.png": {
+    "bytes": 32879,
+    "sha256": "9e762ba25525cae78f5957f4a18ae8cf699a8eba63f899c2207fc1c346123e89"
+  },
+  "experiments/carnival/fox-fragment-2.png": {
+    "bytes": 52718,
+    "sha256": "8db6adcb1ccb7d746f33d6d4f5530043a78e205f161a8ff65976de77f030b155"
+  },
+  "experiments/carnival/fox-fragment-3.png": {
+    "bytes": 52363,
+    "sha256": "7a0ff2e53c6b35e023e77c295453f3cbb3768654afa54c29ae97783985e7273b"
+  },
+  "experiments/carnival/fox-fragment-4.png": {
+    "bytes": 46293,
+    "sha256": "741f2bbb5334f467fd8f2398b58c874b1bfede264962aee427f774b81f7772a0"
+  },
+  "experiments/carnival/fox-fragment-5.png": {
+    "bytes": 35349,
+    "sha256": "224fcc931981e6fce45a6a6b0bb7e785ee5bb4c371ca7829edd22441530d3c54"
+  },
+  "experiments/carnival/fox-picked-up.png": {
+    "bytes": 2391568,
+    "sha256": "cf79d8fcb5815cbc7d41b1b6d21442f25e765d4d203702350c009e80b92d3fd1"
+  },
+  "experiments/carnival/fox.png": {
+    "bytes": 195705,
+    "sha256": "dba99ea794c7b8a5c61144615764b462501d9bf70c7bc87295ede5a8c7e9e516"
+  },
+  "experiments/carnival/geese.js": {
+    "bytes": 5220,
+    "sha256": "b352e6c6ed727f884e6f49cf26402dc06dd4a4ad5ac74959d698afdbd6a7bb8f"
+  },
+  "experiments/carnival/geese.png": {
+    "bytes": 442955,
+    "sha256": "081758c39fec124ece674277bd02e0de236209f282f1f11631848f1efcb1c65e"
+  },
+  "experiments/carnival/gondola-01.png": {
+    "bytes": 124789,
+    "sha256": "3593caf47f275b41c18eb3cd2e1217a278976efff74dffaf3a145fd8d810ad6d"
+  },
+  "experiments/carnival/horse-comparison.js": {
+    "bytes": 6564,
+    "sha256": "6a8583112f03d7369fb5396e0cfccfb4e95e7b44a342e09d5960430e7bbf36c7"
+  },
+  "experiments/carnival/index.html": {
+    "bytes": 7193,
+    "sha256": "6e9800492bbe83fadf2963cf7fd1d329097b2066c6e62cf61e41d994be0ef6b5"
+  },
+  "experiments/carnival/locations/behind-carnival.png": {
+    "bytes": 2644423,
+    "sha256": "37f87bed898ff369e2794be646dc5b4ddb118d2235c911a02d536d8782c23746"
+  },
+  "experiments/carnival/locations/ferris-platform.png": {
+    "bytes": 2659786,
+    "sha256": "5f61282a5a30e577fc2e29f2997ac64ceb196982eff98eba94d2991e0d376ce0"
+  },
+  "experiments/carnival/locations/forest-edge.png": {
+    "bytes": 2830380,
+    "sha256": "ad560eea8f71be669de6d8dae3574478cb6b0648a897a4cd16e376acefa2c28d"
+  },
+  "experiments/carnival/locations/fortune-teller.png": {
+    "bytes": 2701672,
+    "sha256": "778d7ccbf553aedffc78a9d15bbe675b8b9a6dfdfd61281e71cf9b74d98517ac"
+  },
+  "experiments/carnival/locations/rides-games.png": {
+    "bytes": 2795663,
+    "sha256": "572e403e85e1faed527f5eac12a1f6d7a72e4403265f9327f20f0a9cdf0eeb02"
+  },
+  "experiments/carnival/locations/tent-row.png": {
+    "bytes": 2785399,
+    "sha256": "27f2c924cbf514bb79cf5a152b6b32ea34aeae05e5971c356b8fa3fcbeea7faa"
+  },
+  "experiments/carnival/locations.js": {
+    "bytes": 2569,
+    "sha256": "2e4fdbb9d70a214d6561e2d06413f64c8249c7203cce83e30ea98b3c9ef97350"
+  },
+  "experiments/carnival/mara-back.png": {
+    "bytes": 95257,
+    "sha256": "f858fc30029adc65945a0a83a24c00fa9f1e7711cd61b8a2464c408714583fa7"
+  },
+  "experiments/carnival/mara-front.png": {
+    "bytes": 96451,
+    "sha256": "36521d29743cf39a662adcb5e5a800ab1daf167cfd70a5f46462e0eefd09249f"
+  },
+  "experiments/carnival/midway.css": {
+    "bytes": 5566,
+    "sha256": "881ec63abca56d4863bbcf4806e6f0436555f6e7339c7aac6b0495cb0fa46f0e"
+  },
+  "experiments/carnival/midway.js": {
+    "bytes": 12266,
+    "sha256": "d4a562ddc5b77a335600f1454acc314042b696fb6b45a13fdc8c6be1c6045621"
+  },
+  "experiments/carnival/midway.png": {
+    "bytes": 3351230,
+    "sha256": "f370fcb22aeae37e4b1da0c922e41a4a634d5d64030301e889dc7e95bdb2a96a"
+  },
+  "experiments/carnival/navigation.css": {
+    "bytes": 2006,
+    "sha256": "59adbeb560360dfe9605b0706ce508b784513229323ffd549a319c9687daa305"
+  },
+  "experiments/carnival/navigation.js": {
+    "bytes": 9267,
+    "sha256": "e4e5390e0ae00e0d023b43d66160ad0381d5d6d9994b811732bccecf0f86139b"
+  },
+  "experiments/carnival/platform/attendant.png": {
+    "bytes": 1931792,
+    "sha256": "7ceeceb4a40ef7609f001251538414c3b7a44fb54cb538fc34c4ffeb5f73be4e"
+  },
+  "experiments/carnival/platform/boarding-gondola.png": {
+    "bytes": 2342723,
+    "sha256": "7b25be5e6e1f9db4654dfbc3b06d9199b68f17aa61919bcba521ddd264b927f0"
+  },
+  "experiments/carnival/platform/dropped-token.png": {
+    "bytes": 109075,
+    "sha256": "388c8188e8d2f5d20a79044ef6f6b80b37e59397c7cfb1ae701d9a2cbb2bb7d1"
+  },
+  "experiments/carnival/platform/loose-ticket.png": {
+    "bytes": 599939,
+    "sha256": "b9a84d72dbad96856a0dfa6a7073671ca493917d03f906e807c3c73793da10b3"
+  },
+  "experiments/carnival/platform/waiting-passenger.png": {
+    "bytes": 1907067,
+    "sha256": "95cf9ab1b5d74f91734da0e6cb7d21f5bb1fb7816a0ab06e3190b06a5c597b9f"
+  },
+  "experiments/carnival/platform.css": {
+    "bytes": 2085,
+    "sha256": "04ebd5bbf1dab9950da078b0b44952c0490365dae2a06bc6364e411cdef55f77"
+  },
+  "experiments/carnival/platform.js": {
+    "bytes": 10308,
+    "sha256": "9902ca9203bc77ef9c62ab136ba43e1bf9d92d301634e4744ec53f9c8f84de0e"
+  },
+  "experiments/carnival/poster-altered.png": {
+    "bytes": 294952,
+    "sha256": "fd928b00ba830d799ba24d8b177ad0ca0dc838b0bb2f02ce2bebcc641b016e2d"
+  },
+  "experiments/carnival/poster.png": {
+    "bytes": 297523,
+    "sha256": "4960b3c41edd41c47eb214c95bc4933d32fe3c558cd4c212d89a32de7169c3a2"
+  },
+  "experiments/carnival/puddle.png": {
+    "bytes": 2384566,
+    "sha256": "3889d4dad5895882e9f6264165bb05fc79d5dccaae5adbd3d20753d68dc0f0b2"
+  },
+  "experiments/carnival/rides-entrance.png": {
+    "bytes": 2442942,
+    "sha256": "fe40a182ac7e70994a92f422943bd24f8918d5bf7f557ef44dc2a4474c7b9188"
+  },
+  "experiments/carnival/scene.css": {
+    "bytes": 2839,
+    "sha256": "85f4183ff81b58cd265bf9c91ac2606aba2fad4d21670a65a1772aa887538c53"
+  },
+  "experiments/carnival/scene.js": {
+    "bytes": 2149,
+    "sha256": "550265989af6dba673895f12937b1827e160785fdbfc37e74493017a12005e2c"
+  },
+  "experiments/carnival/shared-mount-renderer.js": {
+    "bytes": 1407,
+    "sha256": "2e541568c29c2026cd2c2a811f9ae82e3520846777f2145f7d1cdb9b1a40fb84"
+  },
+  "experiments/carnival/support-structure.js": {
+    "bytes": 3368,
+    "sha256": "d0591faaddb2d699cef9b7ad15eb3bc21740dd3a57e3c42006c54f0003a52ae7"
+  },
+  "experiments/carnival/support.png": {
+    "bytes": 185870,
+    "sha256": "21c565ef09bcd0ffe685752d43ab1c543acbd2fd978e9aaad6d897765ec480ac"
+  },
+  "experiments/carnival/vendor/BufferGeometryUtils.js": {
+    "bytes": 31918,
+    "sha256": "3a6701d824adfe05dc28c09b6c1d64aeab9a183bc3b944d85f15f596e5c6c2b3"
+  },
+  "experiments/carnival/vendor/GLTFLoader.js": {
+    "bytes": 108527,
+    "sha256": "1f9b02acfbf219a6ebb77f09e355500449a3ba9e6a77d87e0de72c0b9315ea4e"
+  },
+  "experiments/carnival/vendor/three.module.js": {
+    "bytes": 1272972,
+    "sha256": "76dea8151bc9352aef3528b4262e249b2604f62543828328db978d060d61a495"
+  },
+  "experiments/carnival/wheel-frame.png": {
+    "bytes": 490367,
+    "sha256": "d5aebe789d1f9d47089b661ddcd732d428e68e9326f67cb8786a06678f32afcb"
+  },
+  "experiments/carnival/wheel.png": {
+    "bytes": 2281505,
+    "sha256": "e207b1116e693d5c45f7d1ae11459081a9195ca37b9fb37f96cf753552bed6e2"
+  },
+  "experiments/carnival/woman.png": {
+    "bytes": 454334,
+    "sha256": "8403d4ba97121ba1f7a04bbe171be4ebfeefc599208fba907a4dda9c17a24984"
+  }
+}

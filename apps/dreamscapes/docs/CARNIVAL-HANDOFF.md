@@ -1,0 +1,984 @@
+# Carnival interactive Midway — current handoff
+
+## Rides & Games carousel checkpoint — October 6, 2026
+
+**This section supersedes older current-state notes for the carousel only.**
+Continue on `codex/carnival-visual-proof`; fetch its latest remote checkpoint.
+Ken approved the carousel installation/composition and requested a correction:
+the complete carousel structure must share counterclockwise rotation, with the
+environment stationary. This correction is ready for review; do not populate
+mounts or make further visual changes before Ken's playtest. Do not merge to main.
+
+### Installation and shared rotation
+
+- `carousel.js`, `carousel.css` and `carousel/structure.png` are independent
+  Rides & Games dressing, mounted once by the existing navigation system.
+- The approved installation transform remains `translate(-625 -160) scale(.82)`
+  in the 1671 x 941 scene. The approved background is unchanged. Existing
+  foreground fence, bench, barrel and sign pixels are reapplied with the same
+  stationary masks above the carousel. Lighting remains brightness `.70`,
+  saturation `.76`; no light flashing or interaction was introduced.
+- One elapsed-time clock supplies a **72-second counterclockwise revolution**.
+  Yaw is `-2π * phase`. The horizontal deck, decorative apron, center column,
+  canopy/ceiling material, complete lamp standards and 12 attachment slots all
+  inherit this same angle. There is no separate floor speed or direction.
+- Canopy, column and apron use browser WebGL cylindrical surface projection of
+  the existing structure artwork, keeping the installed silhouette and viewpoint
+  rather than rotating the entire front-view image as a flat card. Texture bands
+  use arc-length coordinates to avoid stretching one side pixel across a surface.
+  The supplied front-view art is repeated/mirrored around the unpictured rear;
+  this is a projected artwork assembly, not a newly modeled/repainted carousel.
+  The exposed floor uses the same original wood pixels in a foreshortened plane.
+- Lamp standards remain upright while orbiting, and switch rear/front depth
+  layers. Slots behind the center column are covered by it; front slots precede
+  the canopy occlusion. Stationary foreground architecture covers every layer.
+- Motion pauses when the location is inactive or the document is hidden and
+  resumes from the held angle. Reduced motion freezes the current pose;
+  `?motion=still` starts and remains at phase zero. No independent mount bobbing.
+
+### Future mount slots
+
+Stable IDs are `data-carousel-slot="1"` through `"12"`, never renumbered by depth
+sorting. For zero-based slot `i`, phase `p`, the local structure coordinates are:
+
+```
+angle = 2π * (i / 12 - p)
+x = 768 + 630 * cos(angle)
+y = 835 + 32 * sin(angle)
+scale = 1 + .045 * sin(angle)
+```
+
+Each slot contains an empty `.carousel-mount-anchor` at local `(0,-135)`.
+Future mount/rider artwork and its own vertical-motion child should be attached
+there; that child can bob, be replaced or carry state without changing the parent
+orbit. `?scene=rides-games&carousel=debug` displays numbered anchor markers only
+for development. Normal play has no labels or carousel hotspots.
+
+### Asset provenance and portability
+
+The supplied `Carousel.png` was RGB with a baked checkerboard, not transparent.
+During the initial mechanism pass, the built-in image-generation tool prepared
+`carousel/structure.png`: real alpha transparency, empty interior openings and
+thin mount poles removed for independent slot poles. The original source was
+not overwritten. The rotation correction reused that prepared PNG unchanged;
+no new artwork was generated for the correction. The populated composition,
+mount sheets and assembled example remain references, not runtime layers.
+
+Final extraction prompt used: "Background removal ONLY. Make ALL background
+pixels genuinely transparent alpha zero: the brown/black sky surrounding the
+carousel AND the empty openings under its canopy on both sides of its center
+drum AND below platform. Preserve carousel exactly. No brown gradient, no
+checkerboard, no backdrop, no shadows outside object. Production isolated PNG
+cutout with real alpha channel. Keep the gold lamps and poles, canopy and
+platform unchanged."
+
+The runtime PNG, rendering code and styles are committed inside the Carnival
+directory. No Dreamscapes path, generated-image directory, temporary screenshot,
+image-generation service, npm install or backend is needed for preview. A modern
+browser with WebGL renders the structural surfaces. Mounts, riders, operator,
+selection, riding, branch/age contents, story events and taste/recommendation
+logic remain deferred.
+
+### Validation and preview
+
+Desktop 1280 x 720 and approximately 390 x 844 checks cover moving upright slots,
+front/rear occlusion, shared counterclockwise yaw, structural surface motion,
+exact 72-second loop closure, reduced motion, still mode, pause/resume, navigation
+round trips, retained Midway DOM and absence of mounts/interactions/browser
+errors. Multiple phases were inspected visually; user acceptance of the rotation
+correction is pending. Physical-phone performance is not yet verified.
+One deterministic phase-check run timed out waiting for the Rides & Games
+arrival after its desktop/mobile checks passed. An unchanged retry passed all
+checks with browser-error logging enabled; no browser errors were reported.
+
+`node scripts/check-carnival-carousel.mjs` is the reusable browser check.
+Platform and sign-navigation browser checks and the locked Midway wheel/artwork
+check also pass. Tests accept `CARNIVAL_PLAYWRIGHT_MODULE`,
+`CARNIVAL_BROWSER_CHANNEL` and `CARNIVAL_PREVIEW_URL` as documented below.
+
+Preview remains at `http://localhost:4180/experiments/carnival/index.html`.
+Direct carousel review: append `?scene=rides-games`. On a narrow screen, pan left
+with the existing look controls. At work, safely fetch/fast-forward the branch,
+read this handoff and start `python -m http.server 4180 --bind 127.0.0.1 --directory public`
+from the repository root. The localhost process itself does not transfer.
+
+## End-of-day checkpoint — September 30, 2026 (work computer)
+
+**This section supersedes all older current-state notes below.** Resume the latest
+`origin/codex/carnival-visual-proof` in `KennytheCoder22/novel-ideas2.0`. This
+handoff and the final Platform cleanup are committed together. The commit
+containing this section is the end-of-day checkpoint; do not use the older
+`72b7b7d` implementation SHA as the final state. Preserve the visuals and wait for
+Ken's next direction. Do not merge to main or deploy.
+
+### Exact state preserved
+
+- Today's earlier support-layer revisions are already in the branch history
+  (`0cc9e62`, `8517acb`, `9ed4ace`). They include triangular axle-converging
+  front/rear support layers in both wheel scenes. The final cleanup changes only
+  the Platform rendering; the Midway output is identical to `9ed4ace`.
+- `support-structure.js` projects the committed `support.png` into continuous
+  structural legs. Platform-only leg contours remove clipped timber/brace
+  remnants. Rear support, rotor and front support are distinct depth layers.
+- Platform rotor and both support apices share scene axle `(1230, -70)`.
+  Rear feet are `(975, 620)` and `(1470, 620)`; front feet are `(850, 660)` and
+  `(1605, 660)`. The wheel position, scale, 60-second rotation and upright
+  counter-rotating gondolas are unchanged.
+- The foreground architecture mask now follows the ornate FERRIS WHEEL sign
+  crest closely, so the sign naturally covers continuous front legs without
+  restoring chopped background timber over them.
+- Passenger image is at `(1009, 456)`, size `134.67 x 202`, exactly 36 scene
+  pixels (one platform tread) below the preceding placement. Shoe shadows are
+  centered at `(1065, 650)` and `(1100, 656)`. Existing foreground rails cover
+  him. His horizontal position and scale are preserved.
+- Attendant, booth, queue rails, lighting, original backgrounds, ground details,
+  navigation and all other composition/behavior remain unchanged in this final
+  pass. Tent Row connects to Behind the Carnival, which connects to Forest's Edge.
+
+### Portability and verification
+
+The entire `public/experiments/carnival/` directory is the self-contained static
+runtime, including all PNGs, scripts and styles. `support-structure.js` is required
+alongside `platform.js`; support/foreground layers are generated from committed
+art and code at runtime, not from local-only generated images. No temporary image,
+UNC path, source sheet, image-generation tool, npm install, backend or API key is
+needed. Diagnostic crops outside the repository are not runtime dependencies.
+
+Final cleanup was visually inspected at 1920 x 1080 at multiple wheel phases and
+390 x 844. DOM matrix checks confirm both front/rear leg roots coincide with the
+rotation pivot and all cabins counter-rotate upright. JavaScript syntax and diff
+checks pass; generated Midway support output and Platform animation code are
+unchanged from the preceding commit. User visual acceptance remains pending.
+Browser session state does not transfer; the same artwork and behavior load on
+home, while animation phase/session interactions naturally restart.
+
+### Retrieve at home without risking existing edits
+
+From the existing home repository, inspect first, fetch, then create a separate
+checkout in a new directory (choose another unused path if this one exists):
+
+```sh
+git status --short --untracked-files=all
+git fetch origin codex/carnival-visual-proof
+git worktree add --detach ../carnival-sept30-checkpoint origin/codex/carnival-visual-proof
+cd ../carnival-sept30-checkpoint
+git rev-parse HEAD
+python -m http.server 4180 --bind 127.0.0.1 --directory public
+```
+
+Compare `HEAD` with the final SHA supplied in the end-of-day message. For an exact
+pinned checkout if the branch advances later, substitute that SHA for
+`origin/codex/carnival-visual-proof` in `git worktree add`. The detached checkout is
+for safe review; before new edits, inspect the existing local branch and preserve
+any home work before moving onto `codex/carnival-visual-proof`.
+
+Alternatively, in an unused directory:
+
+```sh
+git clone --branch codex/carnival-visual-proof --single-branch https://github.com/KennytheCoder22/novel-ideas2.0.git carnival-sept30-checkpoint
+cd carnival-sept30-checkpoint
+python -m http.server 4180 --bind 127.0.0.1 --directory public
+```
+
+Windows may use `py` instead of `python`. Ensure port 4180 serves this checkout,
+not an older process. Open:
+`http://localhost:4180/experiments/carnival/index.html?scene=ferris-platform`.
+Midway is `http://localhost:4180/experiments/carnival/index.html`.
+Read this handoff and wait for Ken; do not make new visual changes on resume.
+
+---
+
+## Authoritative work-computer handoff — September 30, 2026
+
+**Read this section first. It supersedes every older checkpoint below.** The
+Ferris-Wheel Platform Pass 1 additions and corrections are implemented and ready
+for Ken's playtest. Do not make further visual/behavioral changes on resume.
+Do not merge to main. Work only on `codex/carnival-visual-proof` in
+`KennytheCoder22/novel-ideas2.0`.
+
+The complete runtime implementation checkpoint is
+`72b7b7df7e35d3e95e355f98577e26037a90d523`. The handoff-only commit containing
+this section follows it. Fetch the latest remote branch, not an older SHA, to
+retrieve both the implementation and this handoff.
+
+### What is installed now
+
+- Approved `locations/ferris-platform.png` remains unchanged. Its ticket booth,
+  bench, queue/gate, bunting, signage and wet ground are permanent stage artwork.
+- Independent Platform wheel: one 60-second clockwise revolution, 12 upright
+  gondolas using equal counter-rotation, fixed support and foreground architecture
+  occlusion. Its clock is separate from the completely locked Midway wheel.
+- Waiting passenger: corrected ground contact in the rear queue; foreground
+  handrail, posts, bars and lower beam genuinely cover the appropriate body parts.
+  Tiny existing idle shift and contact shadows remain.
+- Attendant: static transparent portrait inside the right booth, behind the
+  window sill/register/lantern foreground, with nighttime grading. Pan right on
+  a narrow screen to see her.
+- Ordinary boarding gondola: one separately addressable cabin on the rotating
+  orbit, passing through the loading bay behind foreground rails. It stays upright.
+  There is no parked-cabin stop, boarding sequence or ride interaction.
+- Loose ticket: small separate transparent ground detail near scene (1040,786),
+  with brief, minimal flutter in a 29-second mostly-still cycle.
+- Dropped token: tiny low-angle separate image near (1116,810), completely still,
+  with a contact shadow. **All earlier transparency blockers are resolved.**
+- Restrained existing ground-reflection shimmer remains. Reduced motion/still
+  mode suppresses motion; hidden/inactive Platform motion pauses.
+- Existing look controls, walking paths and sign navigation remain intact. The
+  GAMES sign leads to Rides & Games; the left foreground path returns to Midway.
+  No new object hotspots, pickup, inventory, transaction, dialogue, story,
+  supernatural behavior or recommendation/taste inference exists.
+
+### All required artwork is committed
+
+Under `public/experiments/carnival/`:
+
+| Runtime artwork | Purpose |
+| --- | --- |
+| `locations/ferris-platform.png` | Approved unchanged production background |
+| `wheel-frame.png`, `support.png`, `gondola-01.png` | Read-only shared source artwork; independent Platform assembly |
+| `platform/waiting-passenger.png` | Transparent passenger |
+| `platform/attendant.png` | Transparent booth attendant replacement |
+| `platform/boarding-gondola.png` | Transparent ordinary gondola replacement |
+| `platform/loose-ticket.png` | Alpha-preserving crop of final ticket sheet |
+| `platform/dropped-token.png` | Alpha-preserving crop of final token sheet |
+
+`platform.js` and `platform.css` own the Platform dressing. SVG masks reuse the
+committed original background pixels for foreground occlusion. No home-only
+source sheet, Dreamscapes/OneDrive path, temporary extraction output, image
+regeneration or additional download is needed to run or continue from this state.
+Composition reference images are not runtime layers. The unusual gondola is unused.
+The other production stages and all accepted Midway runtime artwork are tracked too.
+
+### Resume safely at work
+
+1. Inspect repository/branch and local changes first (`git status --short`,
+   `git branch --show-current`). Preserve unrelated or uncommitted work. Prefer
+   the existing clean Carnival checkout; do not reset, discard or overwrite work.
+2. Fetch `git fetch origin codex/carnival-visual-proof`. In a clean Carnival
+   checkout, fast-forward with `git merge --ff-only origin/codex/carnival-visual-proof`.
+   If another branch is checked out, switch to the experiment only when safe.
+   If branches diverge or relevant local edits exist, inspect and preserve them;
+   do not force a reset, force-push, or merge into main.
+3. Read this handoff from the fetched branch. Confirm the current local commit
+   matches the intended remote checkpoint. Do not start from main.
+4. From the repository root, start the static preview:
+
+   ```sh
+   python -m http.server 4180 --bind 127.0.0.1 --directory public
+   ```
+
+   On Windows, `py -m http.server 4180 --bind 127.0.0.1 --directory public`
+   is an equivalent fallback when Python is exposed as `py`.
+5. Open the Platform directly:
+   `http://localhost:4180/experiments/carnival/index.html?scene=ferris-platform`
+   or begin at Midway:
+   `http://localhost:4180/experiments/carnival/index.html`.
+   Reload any older tab. Check the process owning port 4180 before reusing it;
+   an old server can silently serve another checkout. If occupied by unrelated
+   work, use a free port and adjust the URL.
+6. Leave the preview running and wait for Ken. Do not modify or merge anything.
+
+If no repository is available, clone the experiment branch with authenticated
+GitHub access: `git clone --branch codex/carnival-visual-proof --single-branch https://github.com/KennytheCoder22/novel-ideas2.0.git`.
+Then enter that repository and use the command above. The work computer needs Git,
+GitHub access and Python; the home localhost process does not transfer. No npm
+install, application build, backend, API keys or artwork tools are required to
+preview this static experiment. Browser session state (including Midway MARA state)
+is local to each browser and does not transfer between computers.
+
+### Verification and remaining playtest
+
+The final runtime was exported from Git into a fresh directory for portability
+validation, with no untracked/source files copied in. Platform desktop/mobile,
+sign-navigation and locked Midway wheel checks passed against that export. All 51
+exported runtime files returned successfully with matching contents. The first
+Platform run timed out on Midway re-entry; the unchanged retry passed desktop
+and mobile. This intermittent test timeout is recorded, not treated as a scene fix.
+Desktop 1280 x 720 and 390 x 844 visual inspections earlier in this session covered
+foot contact, rail occlusion, booth integration, ordinary cabin loading-bay passage,
+upright cabins at four wheel phases, transparent ticket/token edges, small scale,
+ground contact and restrained flutter. No visual/behavioral edits were made for
+this portability handoff.
+
+Optional checks (Node and Playwright are needed only for tests):
+`node scripts/check-carnival-platform.mjs`,
+`node scripts/check-carnival-signs.mjs`, and
+`node scripts/check-carnival-visual-proof.mjs`.
+`CARNIVAL_PLAYWRIGHT_MODULE` may point to an installed Playwright module;
+`CARNIVAL_BROWSER_CHANNEL` may select an installed browser;
+`CARNIVAL_PREVIEW_URL` may override the local preview URL. Do not copy the
+home-computer absolute dependency paths into project code.
+
+Ken's final visual acceptance/playtest remains pending. Physical-phone performance
+and hosted deployment were not verified. The broader navigation script previously
+had intermittent test timeouts, documented in historical notes; targeted real-time
+navigation and sign checks passed. Boarding, ride sequence, unusual gondola,
+interactions, dialogue, pickups and inference remain deliberately deferred.
+
+## Historical session notes
+
+The sections below record earlier states and decisions. They do not reintroduce
+resolved blockers or override the authoritative checkpoint above.
+
+## Loose ticket and dropped token — September 30, 2026
+
+The ticket/token transparency blocker is resolved. The replacement sheet is
+1536 x 1024 RGBA with alpha 0–254, including 632,259 fully transparent pixels;
+background samples between objects have alpha zero. The front ticket rectangle
+(35,60)-(520,602) and low-angle token rectangle (1150,770)-(1520,910) were cropped
+without changing any source RGB/alpha pixels. Their corners are fully transparent.
+The source sheet was not modified. Portable runtime crops are
+`platform/loose-ticket.png` (485 x 542) and `platform/dropped-token.png` (370 x 140).
+
+The loose ticket sits at scene (1040,786), 22 scene pixels wide, turned -16 degrees
+and foreshortened vertically to the ground plane. It has a faint contact shadow
+and subdued nighttime grading. Its 29-second cycle is stationary for almost all
+of the cycle; one short breeze shifts it by at most .6 horizontal/.7 local
+vertical pixels and 2 degrees before settling. It does not travel around the
+scene. Motion pauses off-stage/hidden and stops for reduced motion or still mode.
+The token is 7.5 x 2.84 scene pixels near (1116,810), using the supplied low-angle
+perspective and a small contact shadow. It has no animation.
+
+Both remain separate transparent SVG image layers, pointer-transparent, outside
+navigation bounds. No pickup, inventory, hover affordance, inference, story,
+boarding or other interaction was added. The rotating wheel, cabin counter-rotation,
+passenger coordinates and rail masks, attendant, boarding gondola and existing
+ambient behavior are unchanged. Midway remains locked and unchanged.
+
+Desktop 1280 x 720 and 390 x 844 views inspected at rest and at peak ticket flutter:
+transparent edges without rectangles, small environmental scale and token ground
+contact confirmed. Platform round trips, noninteraction, wheel rotation/upright
+cabins and reduced motion pass; the locked Midway wheel regression passes.
+The original Midway sources/art and full scene markup are unchanged.
+Preview remains running on port 4180; reload for this checkpoint. No main merge.
+Wait for Ken's playtest.
+
+## Transparent replacement assets — September 29, 2026
+
+This checkpoint supersedes the attendant/gondola deferrals below. The newly
+supplied `Ticket Booth Attendant.png` (1140 x 1380 RGBA, 38.35% fully transparent)
+and `Boarding Gondola.png` (1274 x 1234 RGBA, 30.44% fully transparent) passed
+alpha inspection. They are copied unchanged to `platform/attendant.png` and
+`platform/boarding-gondola.png`; original source files are untouched.
+
+The attendant is a separate static SVG image at (1502, 521), 140 x 169.47 scene
+pixels. A window mask and original counter/register/lantern foreground put her
+inside the existing booth. CSS brightness .65 and saturation .72 fit the warm
+night scene. She has no idle animation or interaction.
+
+One of the 12 rotating Platform gondolas now uses the supplied ordinary boarding
+art. It is separately addressable as `.platform-boarding-gondola`, 180 x 174.35
+scene pixels, anchored at its top mounting lugs to the existing orbital pivot.
+It passes through the loading area on the unchanged 60-second clock and receives
+the same opposite rotation as the other upright cabins. It is not an extra
+floating parked cabin; no boarding or stopping sequence was added. The existing
+architecture mask now leaves the loading bay visible, with original foreground
+rail pixels restored in front of the cabin. The entrance sign/booth remain in
+front. The passenger placement and his corrected foreground rail mask are unchanged.
+
+**Historical blocker (resolved September 30 above):** the earlier replacement `Tickets and Tokens.png` is 1536 x 1024 RGB,
+with no alpha channel and a baked checkerboard. Neither a loose ticket nor a
+dropped token was placed. No background removal, fabricated alpha or rectangular
+sheet overlay was used. Supply genuinely transparent pieces to finish these two
+details. The unusual gondola remains unused. No interactions were added.
+
+Validation: desktop 1280 x 720, 390 x 844 initial mobile view and rightward booth
+pan visually inspected; four wheel phases checked on each size, including the
+ordinary cabin passing the loading rails. No rectangular asset backgrounds.
+All 12 gondolas remain upright; passenger shoe contact and front-rail overlap
+remain intact. `check-carnival-platform.mjs`, `check-carnival-visual-proof.mjs`
+and `check-carnival-signs.mjs` pass. Source/art comparison confirms the locked
+Midway files, effects, full Midway scene markup and original platform background
+are unchanged. Preview remains on port 4180; reload for this checkpoint.
+No merge to main. Stop for Ken's playtest.
+
+## Ferris-Wheel Platform correction checkpoint — September 29, 2026
+
+This supersedes the stationary-wheel and original passenger placement descriptions
+in Pass 1 below. Only the three requested corrections were made:
+
+- Passenger stays inside the same rear queue area. His image now starts at
+  (1064, 478), at 134.67 x 202 scene pixels, with separate shoe contact shadows
+  on the walking surface. The old shoes were above this surface.
+- The original stage artwork is restored over him through accurately traced
+  foreground handrail, posts, vertical bars and lower-rail SVG masks. The passenger
+  remains an independent transparent image; the gaps between bars stay open.
+- The Platform wheel has its own 60-second continuous clockwise rotation. One
+  clock rotates the frame/orbit around (1230, -70); each cabin counter-rotates
+  by exactly the opposite angle, preserving upright orientation. Supports stay
+  fixed. Existing architectural foreground masks remain above the assembly.
+  The clock pauses off-stage or in a hidden document, and resets to a stationary
+  pose for reduced motion or `?motion=still`. It does not share Midway state.
+
+Desktop 1280 x 720 and 390 x 844 mobile views were visually checked for shoe
+contact, genuine rail occlusion, architecture overlap and four wheel phases.
+Real-time movement and all 12 upright cabin matrices passed on both sizes.
+Platform round trips, noninteractive layers, reduced motion and off-stage pause
+pass the expanded `check-carnival-platform.mjs`. Existing sign-navigation and
+locked Midway wheel regression checks pass. Midway source, artwork, effects and
+entire scene markup remain unchanged. No additional interactions or artwork.
+The existing preview remains on port 4180; reload to get this correction.
+No merge to main. Wait for Ken's playtest.
+
+## Ferris-Wheel Platform Pass 1 — September 29, 2026
+
+This checkpoint populates the approved platform with the usable supplied artwork.
+Continue only on `codex/carnival-visual-proof`; do not merge to main. The Midway
+wheel implementation, markup, artwork, timing, masks and all existing effects are
+locked and unchanged. The empty platform PNG is also byte-for-byte unchanged.
+
+### Presentation and separate layers
+
+`platform.js` / `platform.css` mount only in the Ferris Platform artwork plane.
+The base already supplies the ticket booth, bench, queue/gate, bunting, lanterns
+and wet ground; none were duplicated as new objects. The populated scene, High
+Wheel, queue, booth, bench and boarding images were composition guides, never
+runtime overlays. The platform uses the existing read-only `wheel-frame.png`,
+`support.png` and `gondola-01.png` extracts from the supplied wheel sheet as a
+separate parked assembly. It looms above the arch with upright cabins. Its fixed
+pose has no clock, rotation, activation response or dependency on Midway state.
+These small distant cabins do not substitute for the deferred boarding cabin.
+
+`platform/waiting-passenger.png` is copied byte-for-byte from
+`Waiting Passenger(isolated).png`, with genuine alpha (about 66% fully transparent).
+The passenger waits near the rear queue entrance, graded with CSS for night light,
+with a contact shadow. Original background pixels in SVG clip paths restore the
+entrance/booth foreground over the wheel and queue rails in front of the passenger.
+The background itself is never edited or flattened with these independent layers.
+All placement uses the same 1672 x 941 plane as navigation, so desktop resizing
+and mobile look controls move the entire scene together.
+
+Ambient motion is a 0.22-degree occasional idle shift over 17 seconds and a faint
+13-second variation of several small ground-reflection highlights. The wheel,
+structures and cabins stay still. Motion stops for reduced motion / `?motion=still`,
+pauses while the platform is inactive, and pauses when the document is hidden.
+The SVG is decorative and pointer-transparent; no new controls, interactions,
+dialogue, pickups, boarding, ride state, unusual event or inference were added.
+Existing return paths and the GAMES sign retain their behavior and hit regions.
+Platform art decodes before entry using the existing load-failure/retry handling.
+
+### Blocked source artwork / deferred work
+
+- `Ticket Booth Attendant.png`: RGB with a baked checkerboard, no alpha. Deferred.
+- `Regular Gondola(isolated).png`: RGB with a baked checkerboard, no alpha. Deferred.
+- `Tickets and Tokens.png`: RGBA, but the brown/black sheet background and labels
+  remain visible around the pieces; only about 0.02% of pixels are fully transparent.
+  Clean independent ticket/token extraction would require removing that background.
+  Both are deferred under the explicit transparency rule.
+- `Unusual Gondola.png`: deliberately not copied into runtime or revealed.
+
+No background removal, fake transparency or substitute artwork was used for these
+blocked items. Provide clean transparent replacements to finish those placements.
+There are no separate usable flag/puddle/bench overlays in the supplied batch;
+the corresponding painted features are retained. Source reference sheets are not
+needed to run this checkpoint; the usable runtime art is committed and portable.
+
+### Validation
+
+Preview: `http://localhost:4180/experiments/carnival/index.html?scene=ferris-platform`.
+Start with the existing Python static-server command below; no application build,
+backend, asset extraction, or npm install is needed. Leave the local preview
+running for Ken's playtest.
+
+Desktop 1280 x 720 and 390 x 844 touch views were visually inspected, including
+passenger/rail overlap, wheel/arch occlusion, mobile left pan and return to Midway.
+`node scripts/check-carnival-platform.mjs` exercises real-time return/re-entry,
+one-time layer mounting, absence of interactive decoration, idle pause when away,
+reduced motion and absence of page errors at both sizes. It accepts the same
+Playwright module, browser channel and preview URL overrides as existing checks.
+Wheel, geese, poster, fox and sign regression checks pass. The broad navigation test was run twice: one timeout on Tent Row to Zora,
+then a second run traversed all desktop/mobile paths before a reduced-motion
+timeout. Both timed-out flows passed isolated real-time checks; the full script
+is not recorded as a clean pass. Platform missing-art retry was also checked. No locked Midway files or artwork
+were changed; only extra stylesheet/script includes were added to index.html.
+Physical phone testing and hosted deployment verification were not performed.
+
+
+
+## Current checkpoint — September 27, 2026
+
+Continue only on `codex/carnival-visual-proof`. This section supersedes the
+older behavior descriptions below. Ready for Ken's playtest; do not merge to
+main or expand the experiment without his next instruction.
+
+Serve `public` from this branch with
+`python -m http.server 4180 --bind 127.0.0.1 --directory public`, then open
+`http://localhost:4180/experiments/carnival/index.html`.
+All runtime artwork is included; neither supplied sheet requires a work-computer
+folder or a generation/extraction step.
+
+### Resume this exact version from work
+
+Complete-path baseline: `ca63979fd058b5624b6ff5d60941ae897f3ebd6a`.
+The current remote branch adds sign navigation on top of that baseline. Fetch
+the latest `origin/codex/carnival-visual-proof` to get the complete current version. All runtime assets, including
+six production stages, are tracked in Git. No clipboard, Dreamscapes, OneDrive,
+home-computer temporary files, npm install, backend or image-generation step is
+needed to run the preview. A fresh export of the fetched remote was checked for
+linked resources and passed the wheel, geese, poster and fox checks.
+
+On the work computer, ask Codex to inspect the checkout for local changes first,
+fetch `origin`, and fast-forward `codex/carnival-visual-proof` to
+`origin/codex/carnival-visual-proof`. Preserve unrelated/uncommitted work; use a
+separate checkout if needed. Do not reset local changes or merge into main.
+Read this handoff before editing anything. Then, from the repository root:
+
+```sh
+python -m http.server 4180 --bind 127.0.0.1 --directory public
+```
+
+If Windows exposes Python as `py`, use `py -m http.server` with the same options.
+Open `http://localhost:4180/experiments/carnival/index.html` and reload the page.
+Use `?paths=debug` only when you want visible path bounds for testing.
+The localhost server must be started on the work computer; the running home
+preview cannot be accessed there. Check what owns port 4180 before reusing an
+already-running server, so it does not silently serve an older checkout.
+
+If no repository is available at work, clone the branch from
+`https://github.com/KennytheCoder22/novel-ideas2.0.git` using your GitHub access.
+GitHub authentication, Python availability and work-network access must be
+provided by that computer; they cannot be verified from the home machine.
+
+### Global sign navigation
+
+Visible destination signs now have their own transparent hit areas on the same
+artwork plane as the background. `CarnivalSignDestinations` in `locations.js`
+centrally maps labels to real scenes; each scene declares the readable sign area.
+Apply this same rule whenever future stages or signs are added. Do not infer a
+new scene from decorative text, or create placeholders for unbuilt destinations.
+
+Current cross-scene signs:
+
+- Midway: RIDES & GAMES entrance arch → Rides & Games.
+- Ferris-Wheel Platform: GAMES sign above the distant left-hand booths → Rides & Games.
+- Madame Zora: right-hand RIDES and GAMES arrow boards → Rides & Games.
+
+All seven current views were audited. The Rides & Games scene's directional
+RIDES/GAMES boards and location headings such as TENT ROW, FERRIS WHEEL and
+MADAME ZORA already name the current stage; they do not trigger circular travel.
+FOOD, SNACKS, RESTROOMS, PRIZES, FUN HOUSE and individual game/food stalls have no
+separate installed destination, so they remain non-navigational. There are no
+painted FOREST, EXIT or BACKSTAGE directional signs in the current artwork.
+Sign routes supplement the walking graph; Zora's explicit RIDES/GAMES arrows can
+therefore take the player straight to that established area, as Ken requested.
+
+Clicking/tapping a sign uses a **700 ms full-scene opacity dissolve**, with no
+camera translation, zoom, menu or modal. Existing invisible path controls retain
+their accepted 2.4-second approach transitions. The sign's full readable board
+is the hit region; touch targets have a 44 px minimum. No normal hover/focus
+outline, glow, tooltip, arrow or label is drawn. A pointer cursor identifies the
+sign on desktop. `?paths=debug` can show sign bounds for alignment checks only.
+The separate sign controls on the Midway do not alter its art or effect scripts.
+
+`node scripts/check-carnival-signs.mjs` verifies every cross-scene sign on desktop
+and 390px touch, opacity-only timing, absence of unbuilt destination controls,
+unchanged walking transitions and a real-time dissolve. It uses the same optional
+Playwright/browser/preview environment settings as the navigation check. Asset
+files, scene geography, Midway effects and object behavior remain unchanged.
+
+### Navigation / geography checkpoint
+
+The three existing Midway destination controls now lead to approved empty stages:
+
+- Ferris wheel → Ferris-Wheel Platform (`ferris-platform`)
+- Rides & Games entrance → Rides & Games (`rides-games`)
+- Central tent → Tent Row (`tent-row`)
+
+Ken approved the initial navigation presentation. The complete geographic graph
+now adds invisible, temporary path regions to the empty stages:
+
+- Tent Row → Madame Zora, Behind the Carnival, Main Midway
+- Madame Zora → Tent Row
+- Behind the Carnival → Tent Row, Forest’s Edge
+- Forest’s Edge → Behind the Carnival
+- Ferris-Wheel Platform and Rides & Games → Main Midway
+
+No direct Midway shortcuts lead to the deeper stages. Tent Row's central tent
+entrance represents Zora; the passage to its right leads backstage. The rear
+fence gate in Behind the Carnival leads toward the forest, and the open tent-side
+passage returns to Tent Row. Forest's Edge uses the lit path toward the carnival.
+Platform and game-area returns use their foreground walkways; Zora's return uses
+the left-side aisle. These regions are temporary geographic assignments only:
+no attendants, objects or other populated interactions are added.
+
+Paths use percentages on the same aspect-correct artwork plane and stay attached
+to the image when panning/resizing. They are invisible during ordinary play, with
+keyboard focus feedback only. `?paths=debug` exposes their bounds and the old
+small development Back control; normal play returns through the actual paths.
+Explicit `?scene=<location-id>` preview links remain available for isolated review.
+
+`locations.js` is the shared stage registry and contains the current navigation
+edges and path bounds, intrinsic image dimensions and initial narrow-screen framing.
+`navigation.js` mounts each visited stage once and manages a previous-location
+stack and a separate transition camera. It never replaces the Midway DOM or
+resets its timers, pan, woman approach, poster, fox or MARA state. Midway ambient
+clocks continue while away; document-hidden behavior is unchanged. The old
+destination-only inspection modal is bypassed; actual object inspections retain
+their existing behavior. Escape cannot move the hidden Midway camera while away.
+
+Normal movement lasts 2.4 seconds: the living outgoing scene initially pushes
+toward the clicked destination, then dissolves into the fixed arrival viewpoint.
+Every clickable return path pushes toward its own region before dissolving. Reduced-motion / `?motion=still` uses
+a short 350 ms dissolve without camera scaling. Images decode before departure;
+a failed load leaves the current scene usable and can be retried. Transition-time
+input is gated, and inactive stages are inert. The small `‹ Back · dev` control exists only in `?paths=debug` mode.
+
+`navigation.css` applies only to new navigation surfaces. New stage backgrounds
+use one aspect-correct cover plane, preserving the original image files and
+composition. Portrait viewports crop the viewport nondestructively, as the Midway
+does; small left/center/right look controls expose the full width. Left/right now move
+in overlapping viewport steps so narrow mobile paths cannot fall between fixed
+crop positions; the center control recenters. The original Midway controls are unchanged. Backgrounds
+remain noninteractive beneath separate path buttons. No objects, ambient overlays, occlusion
+layers, scene-state engine or recommendation integration have been implemented.
+The common stage plane can support separate layers later.
+
+Original production PNGs copied byte-for-byte into
+`public/experiments/carnival/locations/`:
+
+| File | Approved source | Dimensions |
+| --- | --- | --- |
+| `ferris-platform.png` | FW Platform(empty).png | 1672 × 941 |
+| `rides-games.png` | Rides and Games(empty).png | 1671 × 941 |
+| `tent-row.png` | Tent Row(empty).png | 1672 × 941 |
+| `fortune-teller.png` | Fortune Teller(empty).png | 1672 × 941 |
+| `behind-carnival.png` | Behind Carnival(empty).png | 1672 × 941 |
+| `forest-edge.png` | Forest's Edge(empty).png | 1672 × 941 |
+
+All assets are committed and portable; no home-machine source folders are needed.
+The navigation browser check locks their original SHA-256 hashes and tests all
+six desktop/390px stages, actual destination round trips, camera push/dissolve,
+Midway node identity/framing and MARA survival, reduced motion, image-load failure
+and retry, and the exact approved graph with all directed paths clicked. Screenshots were visually checked.
+Run `node scripts/check-carnival-navigation.mjs` with the preview running and
+Playwright available. Optional `CARNIVAL_PLAYWRIGHT_MODULE` points to an existing
+Playwright module; `CARNIVAL_BROWSER_CHANNEL` selects an installed browser, and
+`CARNIVAL_PREVIEW_URL` overrides the local URL. No project dependency was added.
+Existing wheel, fox, geese and poster checks also pass. No main merge.
+
+### Balloon
+
+The original red balloon image, size, 100-second path, bobbing, crop rules and
+hidden-tab/reduced-motion behavior are unchanged. Its five feature overlays use
+the exact supplied transparent `balloon-faces.png`, viewed through individual
+SVG viewports. Mouse entry randomly selects a different face from the previous
+entry; that face stays fixed until exit. A 220 ms fade and multiply blending
+retain the red surface. A hover-only position check also clears the face when
+the balloon drifts away from a stationary cursor. Touch remains non-clickable.
+
+`balloon-plane` places the balloon above the tree fragments in the wheel's broad
+foreground overlay. An inline `balloon-open-sky` clip traces the actual roof
+edge instead of masking a strip of sky/tree above it. This replaces the previous
+external multi-mask composition, removing that dependency from balloon
+visibility. The original movement and artwork are untouched. Do not alter the
+wheel's existing foreground image or supplemental roof/light paths.
+
+### Fox
+
+The camera still lowers/advances for 1.6 seconds. The pickup then enlarges the
+ground pose at its natural aspect ratio, uses a 190 ms cross-dissolve with nearly
+aligned heads, and lifts the held pose slightly before the existing hold.
+There is no edge-on turn, horizontal squash or pickup rotation.
+
+The held pose uses non-destructive canvas grading: brightness .60, saturation
+.62, sepia .10. This retains the worn fabric texture with muted orange and dirty
+cream under nighttime light. The grade is now cached once on offscreen artwork
+canvases, rather than recomputed for every one of hundreds of fragment draws.
+This removes the expensive rendering work at breakup entry without changing
+the approved grading, pickup pose/dissolve, or fragment choreography. The same
+grading continues into the existing ragged-patch/fiber breakup. Tag drop grading
+blends into the existing ground tag. Breakup geometry, velocities, timing and
+tag persistence are unchanged. The fox remains gone across reloads in the same
+tab session after breakup (`carnival-mara-remains`); use a fresh browser session
+for another complete test. Do not restore the older reload-resets-fox behavior.
+
+The timeline remains automatic: held pose at 2.95 seconds, breakup at 5.45,
+tag fall at 8.45, return at 9.3 and completion at 10.9. No tag click is required.
+Real-time browser observation confirmed every phase and automatic completion,
+including approximately 2.6 seconds between the held view and breakup. Scripts
+and the changed stylesheet have a repair-version query to avoid stale cached
+resources after refresh. An already-open older page still needs reloading.
+
+### Migrating geese
+
+`geese.js` and the supplied transparent `geese.png` add a non-clickable, silent
+ambient V formation. No observations or taste evidence are recorded. **Temporary
+playtest timing:** the first flight starts four visible seconds after the scene
+initializes; it no longer waits for the balloon. Subsequent flights start eight
+visible seconds after the previous flight ends, so they can be watched repeatedly
+without a new UI control. Restore rare randomized 45–120 second intervals only
+after Ken approves the appearance/motion. Do not restore the long wait yet.
+Hidden tabs pause both flight and waiting time; reduced motion/static viewing
+suppresses the event.
+
+The flock starts 42 scene pixels wide, emerges beside the bright star above-left
+of the moon, passes behind the small detached cloud below/right of that star,
+and curves across the lower moon toward the same far-cloud exit. Its new route
+uses a quadratic curve in the original 1536×1024 scene coordinates. The V rotates
+clockwise to follow the curve tangent (accounting for the artwork's own heading).
+It shrinks to 14 scene pixels wide, one-third of its initial width, by the exit.
+The slow 28-second duration, four-second first pass and eight-second playtest
+pause are unchanged. No other Midway behavior or artwork changed.
+
+The feathered SVG sky mask now includes the star's opening and a separate
+foreground cutout for the small cloud. The accepted far-side cloud contour and
+1.4-pixel feather remain unchanged. The original background is not repainted.
+Inspect the entry, intermediate cloud crossing, and final disappearance; being
+hidden before flight completion alone does not prove correct cloud alignment.
+
+Latest validation: enlarged browser frames inspected at star emergence, partial
+small-cloud occlusion, reappearance, moon approach and far-cloud entry. Full
+1280×720 desktop and 390×844 mobile checks supplement those close-up frames.
+
+Limitation: the supplied image is one static flock, without separate wing poses.
+No artificial per-bird slicing or synchronized flap distortion was added. The
+original V stays intact and glides at a distant scale. Cloud occlusion is an
+art-aligned 2D mask, not a volumetric cloud simulation.
+
+### Validation for this checkpoint
+
+- Desktop 1280×720 and mobile 390×844 browser checks and screenshots inspected.
+- Balloon entrance, tree overlap, roof overlap and exit sampled on the unchanged
+  animation; hover fade/non-repeat/drift-away and mobile non-interaction checked.
+- Fox approach, growth, dissolve, held lighting, breakup, automatic return and
+  persistent tag checked. Real-time desktop/mobile passes supplement the earlier
+  frozen-clock frames; the pickup still has no spin.
+- Geese lower-moon crossing, small V, diagonal recession, initial delay, hidden
+  pause and short playtest recurrence checked. Screenshot comparison verifies the
+  far cloud fully hides the flock before the flight ends. No page errors.
+- `node scripts/check-carnival-geese.mjs`,
+  `node scripts/check-fox-cinema.mjs`,
+  `node scripts/check-carnival-poster.mjs`, and
+  `node scripts/check-carnival-visual-proof.mjs` pass, plus syntax/diff checks.
+- Wheel artwork, masks and animation remain unchanged. Woman/reflection, MARA
+  persistence, poster and crow retain their prior behavior. No main merge.
+
+Browser validation includes real-time playback and visual inspection, with
+controlled time only for distant balloon path samples and precise comparisons.
+Physical mobile-device testing and a hosted deployment check have not been performed.
+
+## Historical notes (superseded where noted above)
+
+## Resume at work — September 24, 2026
+
+Fetch the latest `codex/carnival-visual-proof` branch and read this document first.
+Preserve local changes; fast-forward only when clean, or use a separate worktree.
+The home fox rebuild is ready for Ken's playtest, not yet accepted by him.
+Start the static preview using the Local preview instructions below, then wait
+for his feedback. Do not merge to main or expand the experiment.
+
+All runtime fox artwork and animation code are included in this checkpoint.
+The extraction script references home-only source paths for provenance; it does
+not need to run at work. No school/home shared asset folder is required.
+Reload restores the fox for another test; after its breakup it stays gone until
+reload. On narrow screens use Look right to reach it. Click once and let the
+approximately 11-second sequence run automatically; MARA is not clickable.
+
+Keep the accepted wheel, gondolas, speed, occlusion, crow position, poster,
+balloon and original composition unchanged. Await feedback on the fox's motion,
+especially the edge-on pose turn and whether the breakup feels like fabric.
+Real-device performance and resizing/orientation during the sequence remain
+untested. No hosted preview deployment has been verified for this checkpoint.
+
+## Rebuilt fox choreography (home, September 24)
+
+The previous tag-click/wipe implementation was rejected and removed. Fox-only
+canvas choreography now lives in fox-cinema.js, called by midway.js. index.html
+only adds its script before midway.js; accepted SVG occlusion is unchanged.
+
+Automatic timeline: 1.6s approach/crouch moving the entire original scene plane;
+1.35s lift with an edge-on turn between supplied ground/held poses; 2.5s MARA
+hold; 2.7s seeded ragged-patch breakup; .3s surviving tag beat; .85s tag fall;
+1.6s gaze/stand/pullback. Total 10.9s. Background stays visible, softening behind
+the held toy. No tag action, black inspection cut, body wipe or body crossfade.
+768 small interlocking ragged body patches and 68 cloth/fiber elements fall
+independently. Tufts also sample the supplied broken-fox artwork. The survivor
+is the held image's actual tag pixels, excluded from the body patches.
+
+The fox stays gone after deterioration begins until reload. Escape and the
+keyboard-accessible Return control still leave immediately; cancellation cleans
+up camera styles. Reduced motion uses stationary restrained transitions instead
+of travel/particles. Hidden-tab time is excluded. Events remain factual and
+session-only. The accepted crow remains at top:48%; no ambient behavior changed.
+
+Checks: node scripts/check-fox-cinema.mjs covers automatic phases, hold, hidden
+pause, disappearance, reduced completion and early cleanup. Existing Carnival
+checks, syntax and diff checks pass. Desktop 1280x720 and mobile 390x844 sequence
+runs checked, with screenshots of inspection, ragged breakup and surviving tag.
+Final mobile run returned automatically with the fox absent and no browser
+console errors. No physical phone or OS reduced-motion toggle test. No merge.
+
+Limitations: source art is still a flat scene, not reconstructed 3D. Approach
+uses bounded whole-scene translation/scale; a continuous edge-on turn bridges
+the differing supplied fox poses. Breakup is textured ragged pieces, not a
+cloth physics simulation. Camera returns exactly to the prior crop/pan.
+
+Updated September 24, 2026. Work stays on `codex/carnival-visual-proof`. Do not merge.
+
+The accepted wheel and foreground corrections are the baseline at `68b8ca8`.
+`scene.js`, `scene.css`, wheel assets, the canonical background, and accepted
+foreground paths remain unchanged by the interactive additions. The older
+handoff below describes the pre-correction checkpoint, not the current state.
+
+## Interactive additions
+
+`midway.css` and `midway.js` layer independent supplied artwork into `index.html`.
+The tent, Rides & Games entrance, and wheel open returnable destination previews;
+no destination scene is implemented. The fox and puddle have close inspection
+views. The poster starts normal, then changes after the first inspection when
+attention moves to another object or destination. The distant woman disappears
+while attention is away. Crow poses change at irregular intervals without sound;
+the balloon crosses slowly left to right once, then leaves the scene (100 seconds,
+linear travel with gentle bobbing; no loop). Reload starts a new crossing. Neither is clickable. Reduced motion/static viewing
+stops the added ambient motion. Hidden tabs pause the crow timer and balloon.
+
+Mobile preserves scene scale and the original initial crop. Three small camera
+controls move the whole composition left, center, or right to reach objects
+outside the crop. They do not label hotspots. Keyboard focus outlines remain for
+accessibility. Inspection uses a native modal dialog, Escape, a return button,
+and restored focus. The inspection art gently scales in unless motion is reduced.
+
+Session-only raw observations are capped at 200 records under
+`carnival-experiment-observations` in sessionStorage. They contain the chosen
+object/destination, return events, timestamps, and visible inspection duration
+(excluding time in a hidden tab). No network calls, genre inference, book scores,
+or production recommendation connections. Reload resets visual story state;
+raw observations survive reload for the current browser session only.
+
+## Assets and compromises
+
+The first balloon/woman/fox/poster files and the first replacement sheet were RGB
+with baked-in backgrounds; they were not used. The second `Multiple Assets..png`
+is RGBA and supplies the extracted woman, balloon, fox, two poster states, and
+two crow poses. Original retained RGB/alpha is preserved; polygon exclusions
+only separate neighboring pieces. Tent, entrance, and puddle are copied from the
+supplied transparent PNGs. The canonical empty background is unchanged.
+
+The populated reference has different architecture, so exact placement matching
+is impossible while preserving the canonical background and accepted wheel.
+Rides & Games is placed on the left side of the middle distance; the poster is
+mounted on the left booth; crow and fox occupy the right foreground. Asset edge
+quality and intrinsic perspective are inherited from the supplied art. Inspections
+are restrained close-up views, not reconstructed 3D camera travel. The existing
+wheel hotspot still includes transparent/occluded areas of its rectangular bounds.
+
+## Bounded validation
+
+Desktop 1280x720 and mobile 390x844 screenshots inspected. Normal/altered poster,
+puddle, fox, Tent Row, Rides & Games, wheel destination and return paths exercised.
+Mobile pan exposes both side objects and permits inspection/return. Native dialog
+focus containment and return focus checked through browser state. Focused wheel
+clock/artwork checks and JavaScript syntax checks pass. No full application build
+or repository-wide tests are necessary for this static experiment.
+
+## Local preview
+
+Serve `public` with `python -m http.server 4180 --bind 127.0.0.1 --directory public`.
+Route: `/experiments/carnival/index.html`. No merge or main deployment.
+
+
+## Setup on either computer
+
+Repository: `KennytheCoder22/novel-ideas2.0`.
+Branch: `codex/carnival-visual-proof`. Do NOT start from main.
+Previous work-computer implementation commit: `8fdde15` (balloon crossing).
+The latest branch checkpoint adds the home fox rebuild described above.
+Earlier milestones: `2a9e72e` (complete interactive assembly), `68b8ca8`
+(accepted center-facing light string mask), `55ea37d` (roof/right light masks).
+The handoff commit itself will be newer than these implementation commits.
+All of these implementation commits have been pushed to the experiment branch.
+No merge into main has occurred. This experiment is not in the Games menu.
+
+1. Inspect local Git status before switching. Preserve any home-computer edits.
+2. Fetch `origin`, then check out `codex/carnival-visual-proof`. If clean and behind,
+   update with `git pull --ff-only origin codex/carnival-visual-proof`.
+   If diverged, inspect the differences; do not reset or overwrite local work.
+3. If necessary use a separate worktree based on the remote experiment branch.
+4. Serve `public` using the Python command above (no npm install, app build,
+   backend, API keys, or Expo server required). Pick another port if 4180 is busy.
+5. Open `http://localhost:4180/experiments/carnival/index.html`.
+   The work-computer localhost URL and server do NOT transfer to the home computer.
+6. Read this handoff before proposing new work. Ask Ken which element or scene
+   to work on next; there is no authorization to build every destination.
+
+Branch pushes may trigger Vercel preview builds. A deployment-specific old URL
+stays on its old version. Use the latest deployment for this exact branch and
+append `/experiments/carnival/index.html`. Latest hosted deployment status has
+not been verified; the final assembly was verified locally.
+
+## Locked behavior and implementation map
+
+Do not change the accepted wheel artwork, scale, placement, colors, brightness,
+60-second revolution, upright cabin counter-rotation, supports, or masks.
+The wheel remains at 58% left / 13% top / 24% width in a 1536x1024 composition.
+`scene.js` owns only the accepted animation and its brief activation response.
+`scene.css` owns the accepted wheel geometry and base scene crop.
+
+`index.html` contains the wheel, added objects, modal, camera controls, and
+**supplemental inline SVG foreground paths** added after the original mask.
+These paths are essential: both roof slopes and BOTH light-string spans at the
+middle right pole must stay in front of cabins, spokes, and rim. The span toward
+the screen center was the last correction and was explicitly accepted by Ken.
+Do not remove these paths after rebuilding `foreground.png`: they are NOT in
+`scripts/carnival-foreground.json`. That JSON and its PowerShell builder describe
+the older base mask only. Retain the base mask and the SVG supplement together.
+
+`midway.css` adds placement, balloon motion, close-up styling and mobile camera
+controls. It translates the whole composition when the user pans; it does not
+move the wheel independently. `midway.js` owns modal interactions, raw session
+observations, poster state, woman disappearance, crow timing, and camera controls.
+
+Balloon: one 100-second crossing with `forwards` fill. Desktop starts at 30% of
+scene width and ends at 110%; portrait starts at 48% and also ends at 110%.
+It stays off-scene after finishing. Reduced-motion and `?motion=still` leave it
+stationary. Its latest timing/direction CSS was checked in the browser; the full
+100-second departure was not separately watched end to end after that final edit.
+
+## Portable assets
+
+All runtime PNGs are committed under `public/experiments/carnival/`:
+- Existing: midway, foreground, wheel, wheel-frame, support, gondola-01.
+- New: central-tent, rides-entrance, puddle, woman, balloon, fox, poster,
+  poster-altered, crow-perched, crow-call.
+
+Do not depend on the school UNC drive or work-computer TEMP paths. Original
+reference images and the replacement multi-asset sheet are not committed, but
+are not required to run or continue using the extracted assets. If re-extraction
+or direct comparison to the original populated reference is needed, ask Ken for
+those sources. Do not substitute the earlier RGB/checkerboard versions.
+The untracked `crow-states.png` in the work checkout was an intermediate source
+and is not used by the final scene; it is not needed on the home computer.
+
+## Focused checks for later edits
+
+```sh
+node scripts/check-carnival-visual-proof.mjs
+node --check public/experiments/carnival/scene.js
+node --check public/experiments/carnival/midway.js
+git diff --check
+```
+
+The wheel test checks original-art hashes, 12 cabins, timing/wrap, hidden-tab
+pause, reduced motion, activation cleanup, and absence of data collection in
+`scene.js`. It does not prove visual mask accuracy or exercise `midway.js`.
+For relevant edits only, inspect desktop 1280x720 and mobile 390x844 and exercise
+the changed flow. Check multiple rotation phases if touching occlusion. Avoid
+broad repo tests, full app builds, or an expensive autonomous playtest.
+
+## Scope and next-work caveats
+
+- Do not merge or deploy to main without new explicit permission.
+- Do not integrate into the Games menu or production recommendations.
+- Do not infer taste from skill, reaction speed, inactivity, or missed objects.
+- Keep ambient balloon/crow/woman non-clickable. Fox is stationary and optional.
+- No hotspot labels, glow, quest counters, puzzles, or explanatory anomaly text.
+- Destination views are intentionally placeholders; no Platform, Tent Row,
+  Rides & Games, Fortune Teller, forest, or other scene has been built.
+- The initial mobile crop favors the wheel; use the camera controls to see sides.
+- Visual story state resets on reload; session observations are local, not synced.
+- Physical phone touch performance and actual OS reduced-motion toggling were
+  not tested. No production or remote deployment verification was performed.
+- Inspection is a modal art close-up, not a continuous spatial camera zoom.
+
+Ken has asked for a portable handoff for tonight, not further visual revisions.
+Preserve this checkpoint and wait for his next creative direction.

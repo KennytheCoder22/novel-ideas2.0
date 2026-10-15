@@ -1,0 +1,42 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #080e16; }
+main { position: relative; width: 100%; height: 100%; overflow: hidden; }
+/* One cover-scaled coordinate system: the wheel never moves independently on resize. */
+.composition {
+  position: absolute; width: max(100vw, 150vh); height: max(100vh, 66.666667vw);
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+}
+.midway, .foreground { position: absolute; inset: 0; width: 100%; height: 100%; user-select: none; }
+.midway { z-index: 0; }
+.wheel {
+  position: absolute; left: 58%; top: 13%; width: 24%; aspect-ratio: 600 / 710;
+  z-index: 1; padding: 0; border: 0; margin: 0; background: transparent; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.assembly { --angle: 0deg; display: block; position: absolute; inset: 0; filter: brightness(.48) saturate(.65); pointer-events: none; }
+.assembly img { display: block; height: auto; pointer-events: none; }
+/* One 600×710 coordinate system. Frame crop hub (280,280) + inset (25,25). */
+.support-structure { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+/* Three complete depth planes; the moving group's coordinate system is unchanged. */
+.wheel-structure-rear, .wheel-machine, .wheel-structure-front { position:absolute; inset:0; }
+.wheel-structure-rear { z-index:0; }
+.wheel-machine { z-index:1; }
+.wheel-structure-front { z-index:2; }
+.frame { position: absolute; left: 4.166667%; top: 3.521127%; width: 91.666667%; transform-origin: 50.909091% 52.336449%; transform: rotate(var(--angle)); }
+.orbit { position: absolute; inset: 0; transform-origin: 50.833333% 42.957746%; transform: rotate(calc(var(--angle) + var(--offset))); }
+.hanger { position: absolute; left: 93.333333%; top: 42.957746%; width: 11.666667%; transform-origin: 0 0; transform: rotate(calc(-1 * (var(--angle) + var(--offset)))); }
+.hanger img { width: 100%; transform: translate(-48.341232%, -6.418919%); }
+.wheel.acknowledged .assembly { filter: brightness(.59) saturate(.65); }
+.wheel:focus-visible .assembly { filter: brightness(.62) saturate(.7); }
+.wheel:focus { outline: none; }
+.foreground { z-index: 2; pointer-events: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-aspect-ratio: 3/2) {
+  /* Crop the entire artwork together toward the right-hand attraction. */
+  .composition { left: calc(50% - (150vh - 100vw) * .17); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assembly { --angle: 0deg !important; }
+}
+/* Explicit no-motion viewing option also permits a bounded visual check. */
+html[data-motion="still"] .assembly { --angle: 0deg !important; }
