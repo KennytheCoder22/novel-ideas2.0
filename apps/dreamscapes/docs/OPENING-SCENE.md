@@ -1,6 +1,10 @@
 # Opening scene — 2026-10-15
 
-## Current artwork replacement
+## Current landscape artwork
+
+The current entry uses the exact user-supplied Dreamscapes_ Choose a Dream.png (1672 x 941), copied to public/opening/choose-a-dream.png. The complete illustration fits within both viewport dimensions, centered without cropping or scrolling. A percentage-positioned link follows the Creepy Carnival portal; all seven other portals and age bands remain inactive. The Carnival runtime is unchanged.
+
+## Previous artwork replacement
 
 The user supplied Enchanted Dreamscapes Portal Selection.png after the initial implementation. The current entry page displays that exact image, copied without modification to public/opening/enchanted-portal-selection.png (1316 x 1195). It replaces the earlier assembled banner and portal gallery described below.
 

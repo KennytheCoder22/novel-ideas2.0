@@ -1,18 +1,18 @@
 :root { color-scheme: dark; background: #0c142d; }
 * { box-sizing: border-box; }
 body { margin: 0; }
-.dreamscapes { max-width: 1600px; margin: auto; }
-.opening-scene { position: relative; }
+.dreamscapes { display: grid; place-items: center; width: 100%; height: 100vh; height: 100dvh; }
+.opening-scene { position: relative; width: min(100%, calc(100vh * 1672 / 941)); width: min(100%, calc(100dvh * 1672 / 941)); aspect-ratio: 1672 / 941; }
 .opening-art { display: block; width: 100%; height: auto; }
-/* Coordinates use the supplied 1316 x 1195 artwork. Keeping the original
+/* Coordinates use the supplied 1672 x 941 artwork. Keeping the original
    aspect ratio makes the link follow the Carnival portal at every width.
    There are deliberately no links or overlays over the other seven portals. */
 .carnival-entry {
   position: absolute;
-  left: 50.6%;
-  top: 26.1%;
-  width: 21.9%;
-  height: 28.6%;
+  left: 50.5%;
+  top: 29.3%;
+  width: 18.9%;
+  height: 31.1%;
   border-radius: 48% 48% 0 0 / 28% 28% 0 0;
   cursor: pointer;
   -webkit-tap-highlight-color: #ffd87c33;
