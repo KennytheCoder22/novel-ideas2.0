@@ -1,0 +1,70 @@
+[
+  {
+    "scene": "midway",
+    "errors": [],
+    "failed": [],
+    "mounts": null
+  },
+  {
+    "scene": "ferris-platform",
+    "errors": [],
+    "failed": [],
+    "mounts": null
+  },
+  {
+    "scene": "rides-games",
+    "errors": [],
+    "failed": [],
+    "mounts": {
+      "names": [
+        "unicorn",
+        "rocket",
+        "griffin",
+        "flamingo",
+        "dragon",
+        "moon-loveseat",
+        "snail",
+        "brown-horse",
+        "elephant",
+        "grizzly",
+        "wolf",
+        "rabbit",
+        "fox",
+        "tiger",
+        "stag",
+        "cat",
+        "ostrich",
+        "polar-bear",
+        "zebra",
+        "horse"
+      ],
+      "contextsLost": [],
+      "rows": 7,
+      "slots": 21
+    }
+  },
+  {
+    "scene": "tent-row",
+    "errors": [],
+    "failed": [],
+    "mounts": null
+  },
+  {
+    "scene": "fortune-teller",
+    "errors": [],
+    "failed": [],
+    "mounts": null
+  },
+  {
+    "scene": "behind-carnival",
+    "errors": [],
+    "failed": [],
+    "mounts": null
+  },
+  {
+    "scene": "forest-edge",
+    "errors": [],
+    "failed": [],
+    "mounts": null
+  }
+]

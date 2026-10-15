@@ -1,0 +1,457 @@
+[
+  {
+    "path": "experiments/carnival/animal-comparison.js",
+    "ok": true,
+    "bytes": 9674
+  },
+  {
+    "path": "experiments/carnival/balloon-faces.png",
+    "ok": true,
+    "bytes": 997706
+  },
+  {
+    "path": "experiments/carnival/balloon.png",
+    "ok": true,
+    "bytes": 193042
+  },
+  {
+    "path": "experiments/carnival/carousel/brown-horse.glb",
+    "ok": true,
+    "bytes": 8517876
+  },
+  {
+    "path": "experiments/carnival/carousel/cat.glb",
+    "ok": true,
+    "bytes": 9158144
+  },
+  {
+    "path": "experiments/carnival/carousel/dragon.glb",
+    "ok": true,
+    "bytes": 9324200
+  },
+  {
+    "path": "experiments/carnival/carousel/elephant.glb",
+    "ok": true,
+    "bytes": 9434352
+  },
+  {
+    "path": "experiments/carnival/carousel/flamingo.glb",
+    "ok": true,
+    "bytes": 7782500
+  },
+  {
+    "path": "experiments/carnival/carousel/fox.glb",
+    "ok": true,
+    "bytes": 9171696
+  },
+  {
+    "path": "experiments/carnival/carousel/griffin.glb",
+    "ok": true,
+    "bytes": 9118000
+  },
+  {
+    "path": "experiments/carnival/carousel/grizzly.glb",
+    "ok": true,
+    "bytes": 10127864
+  },
+  {
+    "path": "experiments/carnival/carousel/horse-comparison.glb",
+    "ok": true,
+    "bytes": 1616500
+  },
+  {
+    "path": "experiments/carnival/carousel/horse-test/back.png",
+    "ok": true,
+    "bytes": 136877
+  },
+  {
+    "path": "experiments/carnival/carousel/horse-test/front.png",
+    "ok": true,
+    "bytes": 140782
+  },
+  {
+    "path": "experiments/carnival/carousel/horse-test/left.png",
+    "ok": true,
+    "bytes": 344215
+  },
+  {
+    "path": "experiments/carnival/carousel/horse-test/right.png",
+    "ok": true,
+    "bytes": 346529
+  },
+  {
+    "path": "experiments/carnival/carousel/moon-loveseat.glb",
+    "ok": true,
+    "bytes": 9087456
+  },
+  {
+    "path": "experiments/carnival/carousel/optimized/compression-stats.json",
+    "ok": true,
+    "bytes": 490
+  },
+  {
+    "path": "experiments/carnival/carousel/optimized/stats.json",
+    "ok": true,
+    "bytes": 934
+  },
+  {
+    "path": "experiments/carnival/carousel/ostrich.glb",
+    "ok": true,
+    "bytes": 9703916
+  },
+  {
+    "path": "experiments/carnival/carousel/polar-bear.glb",
+    "ok": true,
+    "bytes": 2444760
+  },
+  {
+    "path": "experiments/carnival/carousel/rabbit.glb",
+    "ok": true,
+    "bytes": 9135424
+  },
+  {
+    "path": "experiments/carnival/carousel/rocket.glb",
+    "ok": true,
+    "bytes": 7198104
+  },
+  {
+    "path": "experiments/carnival/carousel/shell-column-repair.md",
+    "ok": true,
+    "bytes": 1712
+  },
+  {
+    "path": "experiments/carnival/carousel/shell-column-repair.png",
+    "ok": true,
+    "bytes": 2585918
+  },
+  {
+    "path": "experiments/carnival/carousel/snail.glb",
+    "ok": true,
+    "bytes": 8877124
+  },
+  {
+    "path": "experiments/carnival/carousel/stag.glb",
+    "ok": true,
+    "bytes": 8623476
+  },
+  {
+    "path": "experiments/carnival/carousel/structure.png",
+    "ok": true,
+    "bytes": 2680355
+  },
+  {
+    "path": "experiments/carnival/carousel/tiger.glb",
+    "ok": true,
+    "bytes": 8817180
+  },
+  {
+    "path": "experiments/carnival/carousel/unicorn.glb",
+    "ok": true,
+    "bytes": 9489344
+  },
+  {
+    "path": "experiments/carnival/carousel/wolf.glb",
+    "ok": true,
+    "bytes": 9385524
+  },
+  {
+    "path": "experiments/carnival/carousel/zebra.glb",
+    "ok": true,
+    "bytes": 2503456
+  },
+  {
+    "path": "experiments/carnival/carousel-pole-material.js",
+    "ok": true,
+    "bytes": 1239
+  },
+  {
+    "path": "experiments/carnival/carousel.css",
+    "ok": true,
+    "bytes": 270
+  },
+  {
+    "path": "experiments/carnival/carousel.js",
+    "ok": true,
+    "bytes": 24600
+  },
+  {
+    "path": "experiments/carnival/central-tent.png",
+    "ok": true,
+    "bytes": 2673905
+  },
+  {
+    "path": "experiments/carnival/crop-canvas.js",
+    "ok": true,
+    "bytes": 2682
+  },
+  {
+    "path": "experiments/carnival/crow-call.png",
+    "ok": true,
+    "bytes": 87103
+  },
+  {
+    "path": "experiments/carnival/crow-perched.png",
+    "ok": true,
+    "bytes": 85972
+  },
+  {
+    "path": "experiments/carnival/foreground.png",
+    "ok": true,
+    "bytes": 1380229
+  },
+  {
+    "path": "experiments/carnival/fox-breaking.png",
+    "ok": true,
+    "bytes": 1509681
+  },
+  {
+    "path": "experiments/carnival/fox-cinema.js",
+    "ok": true,
+    "bytes": 12485
+  },
+  {
+    "path": "experiments/carnival/fox-fragment-0.png",
+    "ok": true,
+    "bytes": 60467
+  },
+  {
+    "path": "experiments/carnival/fox-fragment-1.png",
+    "ok": true,
+    "bytes": 32879
+  },
+  {
+    "path": "experiments/carnival/fox-fragment-2.png",
+    "ok": true,
+    "bytes": 52718
+  },
+  {
+    "path": "experiments/carnival/fox-fragment-3.png",
+    "ok": true,
+    "bytes": 52363
+  },
+  {
+    "path": "experiments/carnival/fox-fragment-4.png",
+    "ok": true,
+    "bytes": 46293
+  },
+  {
+    "path": "experiments/carnival/fox-fragment-5.png",
+    "ok": true,
+    "bytes": 35349
+  },
+  {
+    "path": "experiments/carnival/fox-picked-up.png",
+    "ok": true,
+    "bytes": 2391568
+  },
+  {
+    "path": "experiments/carnival/fox.png",
+    "ok": true,
+    "bytes": 195705
+  },
+  {
+    "path": "experiments/carnival/geese.js",
+    "ok": true,
+    "bytes": 5220
+  },
+  {
+    "path": "experiments/carnival/geese.png",
+    "ok": true,
+    "bytes": 442955
+  },
+  {
+    "path": "experiments/carnival/gondola-01.png",
+    "ok": true,
+    "bytes": 124789
+  },
+  {
+    "path": "experiments/carnival/horse-comparison.js",
+    "ok": true,
+    "bytes": 6564
+  },
+  {
+    "path": "experiments/carnival/index.html",
+    "ok": true,
+    "bytes": 7193
+  },
+  {
+    "path": "experiments/carnival/locations/behind-carnival.png",
+    "ok": true,
+    "bytes": 2644423
+  },
+  {
+    "path": "experiments/carnival/locations/ferris-platform.png",
+    "ok": true,
+    "bytes": 2659786
+  },
+  {
+    "path": "experiments/carnival/locations/forest-edge.png",
+    "ok": true,
+    "bytes": 2830380
+  },
+  {
+    "path": "experiments/carnival/locations/fortune-teller.png",
+    "ok": true,
+    "bytes": 2701672
+  },
+  {
+    "path": "experiments/carnival/locations/rides-games.png",
+    "ok": true,
+    "bytes": 2795663
+  },
+  {
+    "path": "experiments/carnival/locations/tent-row.png",
+    "ok": true,
+    "bytes": 2785399
+  },
+  {
+    "path": "experiments/carnival/locations.js",
+    "ok": true,
+    "bytes": 2569
+  },
+  {
+    "path": "experiments/carnival/mara-back.png",
+    "ok": true,
+    "bytes": 95257
+  },
+  {
+    "path": "experiments/carnival/mara-front.png",
+    "ok": true,
+    "bytes": 96451
+  },
+  {
+    "path": "experiments/carnival/midway.css",
+    "ok": true,
+    "bytes": 5566
+  },
+  {
+    "path": "experiments/carnival/midway.js",
+    "ok": true,
+    "bytes": 12266
+  },
+  {
+    "path": "experiments/carnival/midway.png",
+    "ok": true,
+    "bytes": 3351230
+  },
+  {
+    "path": "experiments/carnival/navigation.css",
+    "ok": true,
+    "bytes": 2006
+  },
+  {
+    "path": "experiments/carnival/navigation.js",
+    "ok": true,
+    "bytes": 9267
+  },
+  {
+    "path": "experiments/carnival/platform/attendant.png",
+    "ok": true,
+    "bytes": 1931792
+  },
+  {
+    "path": "experiments/carnival/platform/boarding-gondola.png",
+    "ok": true,
+    "bytes": 2342723
+  },
+  {
+    "path": "experiments/carnival/platform/dropped-token.png",
+    "ok": true,
+    "bytes": 109075
+  },
+  {
+    "path": "experiments/carnival/platform/loose-ticket.png",
+    "ok": true,
+    "bytes": 599939
+  },
+  {
+    "path": "experiments/carnival/platform/waiting-passenger.png",
+    "ok": true,
+    "bytes": 1907067
+  },
+  {
+    "path": "experiments/carnival/platform.css",
+    "ok": true,
+    "bytes": 2085
+  },
+  {
+    "path": "experiments/carnival/platform.js",
+    "ok": true,
+    "bytes": 10308
+  },
+  {
+    "path": "experiments/carnival/poster-altered.png",
+    "ok": true,
+    "bytes": 294952
+  },
+  {
+    "path": "experiments/carnival/poster.png",
+    "ok": true,
+    "bytes": 297523
+  },
+  {
+    "path": "experiments/carnival/puddle.png",
+    "ok": true,
+    "bytes": 2384566
+  },
+  {
+    "path": "experiments/carnival/rides-entrance.png",
+    "ok": true,
+    "bytes": 2442942
+  },
+  {
+    "path": "experiments/carnival/scene.css",
+    "ok": true,
+    "bytes": 2839
+  },
+  {
+    "path": "experiments/carnival/scene.js",
+    "ok": true,
+    "bytes": 2149
+  },
+  {
+    "path": "experiments/carnival/shared-mount-renderer.js",
+    "ok": true,
+    "bytes": 1407
+  },
+  {
+    "path": "experiments/carnival/support-structure.js",
+    "ok": true,
+    "bytes": 3368
+  },
+  {
+    "path": "experiments/carnival/support.png",
+    "ok": true,
+    "bytes": 185870
+  },
+  {
+    "path": "experiments/carnival/vendor/BufferGeometryUtils.js",
+    "ok": true,
+    "bytes": 31918
+  },
+  {
+    "path": "experiments/carnival/vendor/GLTFLoader.js",
+    "ok": true,
+    "bytes": 108527
+  },
+  {
+    "path": "experiments/carnival/vendor/three.module.js",
+    "ok": true,
+    "bytes": 1272972
+  },
+  {
+    "path": "experiments/carnival/wheel-frame.png",
+    "ok": true,
+    "bytes": 490367
+  },
+  {
+    "path": "experiments/carnival/wheel.png",
+    "ok": true,
+    "bytes": 2281505
+  },
+  {
+    "path": "experiments/carnival/woman.png",
+    "ok": true,
+    "bytes": 454334
+  }
+]
