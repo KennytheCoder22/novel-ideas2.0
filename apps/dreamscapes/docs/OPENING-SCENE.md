@@ -1,5 +1,17 @@
 # Opening scene — 2026-10-15
 
+## Current artwork replacement
+
+The user supplied Enchanted Dreamscapes Portal Selection.png after the initial implementation. The current entry page displays that exact image, copied without modification to public/opening/enchanted-portal-selection.png (1316 x 1195). It replaces the earlier assembled banner and portal gallery described below.
+
+Only one transparent, keyboard-accessible link overlays the Creepy Carnival portal (top row, third). It leads directly to experiments/carnival/index.html, the Midway. Percentage positioning tracks the original image as it scales, without cropping or rearrangement. The other seven portals and the illustrated age-band controls are inactive. No JavaScript is needed for the entry page. Earlier artwork and portal configuration are retained as design source material but are not loaded by the page.
+
+No release is performed by this source update; the explicit/manual release policy remains in effect. Carnival runtime files remain unchanged.
+
+Replacement verification: the browser loads the 1316px-wide supplied image, exposes exactly one link and no other interactive controls, and follows that link to the visible Midway. At a 390px viewport, hit-testing all eight portal centers identifies only the third as a link; there is no horizontal overflow. The original 91-runtime-file checksum and 20-model build checks pass.
+
+## Initial implementation record
+
 Implemented on codex/dreamscapes-independent from 08e5d6f. This is a saved source update for the next explicit release; production remains a33f9d8. No merge to main or production NovelIdeas change.
 
 The new public/index.html is the Dreamscapes entry point. The dedicated app's root redirect was removed so the next manual release serves that page. Existing Carnival deep links and all checkpoint runtime bytes are unchanged.

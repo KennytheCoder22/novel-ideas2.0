@@ -18,7 +18,7 @@ node apps/dreamscapes/build.mjs
 python -m http.server 4200 --bind 127.0.0.1 --directory apps/dreamscapes/dist
 ```
 Open http://127.0.0.1:4200/ for the Dreamscapes opening scene. Creepy Carnival enters the Midway; the direct /experiments/carnival/index.html link and ?scene=rides-games Carousel link remain available.
-Opening-scene source, branding, replaceable portal configuration, artwork provenance and verification are documented in docs/OPENING-SCENE.md.
+The opening scene uses the supplied Enchanted Dreamscapes Portal Selection image with only Creepy Carnival linked. Source details, artwork provenance and verification are documented in docs/OPENING-SCENE.md.
 The build verifies original checkpoint hashes before copying assets. Update the manifest deliberately only when an approved runtime change is intended.
 
 ## Isolated deployment
