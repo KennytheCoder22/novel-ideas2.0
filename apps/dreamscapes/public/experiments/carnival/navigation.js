@@ -50,6 +50,7 @@
     image.className = 'location-background'; image.alt = definition.name;
     image.draggable = false; image.src = definition.background;
     plane.append(image); view.append(plane);
+    const disposeCoaster = id === 'rides-games' ? window.CarnivalCoaster.mount(plane) : () => {};
     const dressingReady = id === 'ferris-platform' ? window.CarnivalPlatform.mount(plane)
       : id === 'rides-games' ? window.CarnivalCarousel.mount(plane) : Promise.resolve();
     for (const path of definition.paths || []) {
@@ -86,7 +87,7 @@
     }
     view.append(look); document.body.append(view);
     addEventListener('resize',layout); layout();
-    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>{removeEventListener('resize',layout);disposeExit();}};
+    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>{removeEventListener('resize',layout);disposeExit();disposeCoaster();}};
     mounted.set(id,entry);
     return entry;
   }
