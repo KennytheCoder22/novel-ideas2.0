@@ -1,0 +1,27 @@
+[
+  {
+    "imageLoaded": true,
+    "name": "Ferris-Wheel Platform",
+    "scene": "ferris-platform"
+  },
+  {
+    "imageLoaded": true,
+    "name": "Tent Row",
+    "scene": "tent-row"
+  },
+  {
+    "imageLoaded": true,
+    "name": "Madame Zora / Fortune Teller",
+    "scene": "fortune-teller"
+  },
+  {
+    "imageLoaded": true,
+    "name": "Behind the Carnival",
+    "scene": "behind-carnival"
+  },
+  {
+    "imageLoaded": true,
+    "name": "Forest’s Edge",
+    "scene": "forest-edge"
+  }
+]

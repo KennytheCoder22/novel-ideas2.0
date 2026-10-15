@@ -4,13 +4,6 @@
   "buildCommand": "node build.mjs",
   "installCommand": "echo No dependencies required",
   "outputDirectory": "dist",
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "/experiments/carnival/index.html",
-      "permanent": false
-    }
-  ],
   "headers": [
     {
       "source": "/experiments/carnival/(.*)",

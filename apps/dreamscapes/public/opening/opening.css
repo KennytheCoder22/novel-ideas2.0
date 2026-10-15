@@ -1,0 +1,48 @@
+:root { color-scheme: dark; font-family: Georgia, 'Times New Roman', serif; background: #080f24; color: #fff0cd; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: radial-gradient(ellipse at 5% 32%, #5f426258, transparent 48%), radial-gradient(ellipse at 90% 18%, #28448580, transparent 48%), radial-gradient(ellipse at 50% 96%, #79523775, transparent 47%), linear-gradient(#111d40, #131931 65%, #171523); }
+body::before { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .5; background-image: radial-gradient(1px 1px at 15% 20%, #ffe7b7 98%, transparent), radial-gradient(1px 1px at 77% 55%, #fff 98%, transparent), radial-gradient(1px 1px at 50% 14%, #ead9ac 98%, transparent); background-size: 157px 193px, 233px 277px, 311px 337px; }
+.dreamscapes { position: relative; max-width: 1240px; padding: 12px 32px 25px; margin: auto; }
+.scroll { position: relative; isolation: isolate; width: 100%; min-height: 300px; display: grid; place-items: center; margin: 0 auto -6px; background: url('./scroll-banner.png') center / 100% 100% no-repeat; filter: drop-shadow(0 9px 18px #0008); }
+.scroll-copy { width: 66%; color: #231509; padding: 35px 0 39px; text-align: center; }
+.brand { display: flex; align-items: center; gap: 9px; width: fit-content; margin: 0 0 0 9%; font-size: clamp(16px, 1.9vw, 25px); white-space: nowrap; letter-spacing: -.035em; }
+.brand-icon { width: 37px; height: 37px; display: grid; place-items: center; border: 2px solid #f6c744; border-radius: 9px; background: #08192b; box-shadow: 0 1px 3px #47331670; }
+.brand-icon img { width: 27px; height: 27px; }
+h1 { margin: -3px 0 0; font-family: 'Palatino Linotype', 'Book Antiqua', Georgia, serif; font-weight: 500; font-style: italic; font-size: clamp(42px, 6.2vw, 78px); line-height: 1.04; letter-spacing: -.065em; color: #552607; text-shadow: 0 1px #ffeda7, 1px 2px 1px #b56b2a70; }
+.tagline { margin: 1px 0 0; font-size: clamp(15px, 2vw, 24px); letter-spacing: -.025em; }
+.portal-gallery { position: relative; padding: 5px 14px 0; }
+.portal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px 17px; }
+.portal { position: relative; display: block; height: clamp(200px, 27vw, 335px); border-radius: 46% 46% 4px 4px / 29% 29% 4px 4px; isolation: isolate; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.portal-art { position: absolute; inset: 0; background-repeat: no-repeat; border-radius: inherit; box-shadow: inset 0 0 15px #0008, 0 10px 18px #0005; }
+.portal-destination { transition: filter .25s ease, transform .25s ease; }
+.portal-destination:hover { filter: brightness(1.14) drop-shadow(0 0 15px #f8b44d80); transform: translateY(-3px); }
+.portal-destination:focus-visible { outline: 3px solid #ffe0a0; outline-offset: 5px; }
+.portal-sign { position: absolute; bottom: 9%; left: 4%; width: 92%; padding: 8px 3px; text-align: center; font-size: clamp(14px, 1.8vw, 25px); font-weight: bold; color: #4c160b; border: 2px solid #9f591c; border-radius: 40% 15% 35% 15% / 25%; background: linear-gradient(95deg, #bf8039, #ffe4a0 20%, #f8d28e 80%, #c28a44); box-shadow: 0 3px 8px #150d06c0, inset 0 0 0 2px #ffdfa477; text-shadow: 0 1px #ffe8b9; }
+.reader-options { padding: 25px 14px 0; text-align: center; }
+.age-bands { display: flex; justify-content: center; gap: 17px; max-width: 790px; margin: auto; }
+.age { position: relative; flex: 1; min-height: 49px; padding: 7px 12px; font: 24px Georgia, serif; color: #fff0d5; border: 2px solid #e2b66a; border-radius: 42% 18% 42% 18% / 50%; box-shadow: inset 0 0 0 2px #885323, inset 0 0 18px #0008, 0 3px 9px #0008; background: linear-gradient(#205856, #153e43); text-shadow: 0 2px 2px #0008; cursor: default; }
+.age:focus-visible { outline: 3px solid #fff0c5; outline-offset: 5px; }
+.preteens { background: linear-gradient(#293c83, #142549); }
+.teens { background: linear-gradient(#55296e, #301444); }
+.adults { background: linear-gradient(#92501c, #53250e); }
+.whisper { margin: 19px 0 0; font-size: 13px; letter-spacing: .08em; color: #d4bd9d; }
+.no-script { text-align: center; } .no-script a { color: #ffe0a0; }
+@media (min-width: 1450px) { .dreamscapes { max-width: 1280px; } }
+@media (max-width: 700px) {
+  .dreamscapes { padding: 8px 12px 22px; }
+  .scroll { min-height: 168px; margin-bottom: 6px; }
+  .scroll-copy { width: 72%; padding: 29px 0; }
+  .brand { margin-left: 8%; gap: 5px; font-size: 16px; }
+  .brand-icon { width: 26px; height: 26px; border-radius: 6px; }
+  .brand-icon img { width: 19px; height: 19px; }
+  h1 { font-size: clamp(35px, 8.5vw, 59px); }
+  .tagline { font-size: clamp(12px, 3vw, 19px); }
+  .portal-gallery { padding: 0 5px; }
+  .portal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; }
+  .portal { height: auto; aspect-ratio: 2 / 3; }
+  .portal-sign { font-size: clamp(13px, 3.4vw, 23px); padding: 6px 2px; }
+  .reader-options { padding: 23px 5px 0; }
+  .age-bands { gap: 8px; flex-wrap: wrap; }
+  .age { flex-basis: 44%; min-height: 45px; font-size: 21px; }
+}
+@media (prefers-reduced-motion: reduce) { .portal-destination { transition: none; } .portal-destination:hover { transform: none; } }
