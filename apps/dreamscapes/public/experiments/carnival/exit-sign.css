@@ -1,35 +1,30 @@
-/* Painted wood, iron nails, splayed legs and a ground shadow: one scene prop. */
+/* Exact supplied PNG, with a hit shape traced from its alpha silhouette.
+   The noninteractive wrapper owns placement and shadows; only the clipped link
+   can receive pointer input. Transparent margins and the gaps between legs pass through. */
+.carnival-exit-prop {
+  position:absolute; z-index:7; height:clamp(180px, 26vh, 230px); aspect-ratio:1122 / 1402;
+  pointer-events:none; visibility:hidden; isolation:isolate;
+  filter:drop-shadow(2px 3px 2px #0009);
+}
+.carnival-exit-prop.is-ready { visibility:inherit; }
+.carnival-exit-prop::after {
+  content:""; position:absolute; z-index:-1; left:4%; bottom:1%; width:94%; height:4%;
+  border-radius:50%; background:#08050299; filter:blur(3px); pointer-events:none;
+}
 .carnival-exit {
-  position:absolute; z-index:7; width:clamp(142px, 12vw, 180px); height:120px;
-  color:#ffedbd; text-decoration:none; cursor:pointer; touch-action:manipulation;
-  -webkit-tap-highlight-color:#f2c67933; isolation:isolate;
-  filter:drop-shadow(3px 5px 3px #0009);
+  display:block; width:100%; height:100%; color:#fff0c4; text-decoration:none;
+  pointer-events:auto; cursor:pointer; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  clip-path:polygon(22.371% 2.140%, 21.836% 2.782%, 21.123% 5.350%, 20.677% 5.920%, 19.430% 14.194%, 14.795% 39.016%, 14.349% 40.086%, 13.547% 45.720%, 9.804% 64.622%, 9.269% 65.621%, 9.358% 66.762%, 8.645% 69.044%, 7.843% 74.536%, 7.130% 76.676%, 6.595% 77.247%, 6.774% 78.388%, 5.526% 81.954%, 5.258% 83.951%, 4.278% 84.950%, 4.278% 85.521%, 3.476% 86.091%, 3.743% 86.947%, 2.941% 87.803%, 3.030% 88.445%, 6.328% 89.586%, 8.200% 89.586%, 9.358% 89.087%, 14.171% 88.516%, 13.993% 85.735%, 14.706% 84.736%, 14.349% 83.809%, 14.795% 83.096%, 14.706% 81.027%, 15.419% 78.317%, 15.152% 77.033%, 15.775% 74.893%, 29.501% 74.108%, 29.857% 74.893%, 30.570% 83.595%, 30.036% 84.736%, 30.392% 85.592%, 30.303% 92.297%, 29.590% 93.795%, 29.857% 95.506%, 29.501% 96.362%, 30.036% 97.004%, 32.264% 98.074%, 34.403% 98.288%, 35.383% 97.789%, 38.770% 97.860%, 41.266% 97.575%, 41.622% 96.790%, 40.196% 95.578%, 39.929% 93.224%, 40.374% 92.511%, 39.840% 91.940%, 39.394% 88.873%, 39.037% 88.302%, 43.137% 87.874%, 43.672% 88.374%, 44.207% 87.732%, 50.624% 87.161%, 51.070% 87.732%, 51.515% 87.732%, 52.139% 86.947%, 55.348% 86.733%, 55.882% 87.090%, 56.595% 86.591%, 57.219% 87.090%, 57.754% 86.519%, 80.927% 84.736%, 81.462% 84.950%, 81.818% 85.663%, 82.175% 85.663%, 83.066% 84.593%, 87.968% 84.308%, 89.305% 91.298%, 91.533% 91.298%, 94.474% 92.083%, 96.168% 92.083%, 99.465% 91.441%, 99.822% 91.084%, 99.733% 89.586%, 97.594% 79.315%, 97.950% 77.675%, 96.970% 76.320%, 95.633% 68.331%, 95.811% 67.190%, 95.276% 66.405%, 95.455% 65.549%, 95.098% 65.050%, 95.187% 64.051%, 94.831% 63.695%, 89.750% 35.663%, 89.216% 35.021%, 89.394% 33.951%, 87.968% 27.461%, 87.255% 26.748%, 87.522% 25.250%, 86.185% 19.544%, 86.453% 18.474%, 85.472% 13.552%, 84.848% 13.053%, 83.957% 10.271%, 82.709% 9.629%, 79.590% 9.486%, 76.381% 10.485%, 75.758% 11.484%, 72.103% 10.842%, 71.212% 10.984%, 61.586% 9.201%, 60.517% 8.773%, 59.626% 8.916%, 54.278% 8.203%, 50.891% 7.418%, 46.078% 6.990%, 44.563% 6.419%, 43.672% 6.562%, 37.077% 5.278%, 36.185% 5.421%, 31.016% 4.636%, 30.570% 2.639%, 29.679% 2.068%, 24.866% 1.641%);
 }
-.carnival-exit::before {
-  content:""; position:absolute; inset:14px 12px 0;
-  background:repeating-linear-gradient(92deg,#2b1810 0 3px,#4a3020 4px 7px,#342016 8px 12px);
-  clip-path:polygon(17% 0,26% 0,12% 100%,1% 100%,17% 0,74% 0,83% 0,99% 100%,88% 100%,74% 0);
-}
-.carnival-exit::after {
-  content:""; position:absolute; bottom:-4px; left:-8%; width:116%; height:13px;
-  border-radius:50%; background:#080502aa; filter:blur(4px); z-index:-1;
-}
-.carnival-exit-face {
-  position:absolute; inset:0 0 24px; display:flex; flex-direction:column;
-  justify-content:center; align-items:center; padding:8px 11px;
-  border:3px solid #38251a; outline:1px solid #b18a524d;
-  border-radius:3px 7px 2px 5px; transform:rotate(-3deg) skewY(1deg);
-  background:
-    radial-gradient(circle at 8px 8px,#c2a477 0 1px,#21180f 2px 3px,transparent 4px),
-    radial-gradient(circle at calc(100% - 8px) calc(100% - 8px),#a28b66 0 1px,#21180f 2px 3px,transparent 4px),
-    repeating-linear-gradient(177deg,transparent 0 12px,#e0ae7020 13px,transparent 14px 24px),
-    linear-gradient(105deg,#2b2018,#62442c 38%,#422c20 73%,#271b15);
-  box-shadow:inset 0 0 0 2px #b18a5255,inset 0 0 18px #120b08a0,2px 4px 2px #0008;
-  text-shadow:1px 2px 1px #170b07; text-align:center;
-}
-.carnival-exit strong { font:700 27px/1.05 Georgia,serif; letter-spacing:.18em; padding-left:.18em; }
-.carnival-exit em { display:block; max-width:145px; margin-top:7px; font:italic 13px/1.25 Georgia,serif; }
-.carnival-exit:hover .carnival-exit-face { color:#fff5d9; box-shadow:inset 0 0 0 2px #d6ac6c,inset 0 0 18px #120b08a0,2px 4px 2px #0008; }
-.carnival-exit:focus-visible { outline:3px solid #ffe0a0; outline-offset:6px; border-radius:3px; }
-@media (max-height:500px) { .carnival-exit { height:102px; } .carnival-exit-face { bottom:17px; } }
-@media (forced-colors:active) { .carnival-exit-face { background:Canvas; color:LinkText; border-color:LinkText; text-shadow:none; } }
+.carnival-exit img { display:block; width:100%; height:100%; pointer-events:none; user-select:none; }
+.carnival-exit:hover img { filter:brightness(1.16); }
+.carnival-exit:focus-visible { outline:none; }
+.carnival-exit:focus-visible img { filter:brightness(1.2) contrast(1.08); }
+.carnival-exit-prop:has(.carnival-exit:focus-visible) { filter:drop-shadow(0 0 2px #fff3c0) drop-shadow(0 0 6px #e9b75b); }
+/* A compact visible fallback keeps the native link usable after an asset error. */
+.art-unavailable { height:auto; width:164px; aspect-ratio:auto; }
+.art-unavailable .carnival-exit { clip-path:none; padding:12px; background:#493020; border:2px solid #c09961; font:700 16px/1.4 Georgia,serif; }
+.art-unavailable .carnival-exit:focus-visible { outline:3px solid #ffe0a0; outline-offset:3px; }
+@media (max-height:500px) { .carnival-exit-prop { height:156px; } }
+@media (forced-colors:active) { .carnival-exit-prop:has(.carnival-exit:focus-visible) { outline:3px solid LinkText; outline-offset:3px; } }

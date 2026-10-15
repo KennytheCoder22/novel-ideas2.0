@@ -1,7 +1,7 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 7305,
-    "sha256": "36e7a46c2b4456440b387af51ec6efc2c6451f8740b053ddf18d6c84d8f030ec"
+    "bytes": 7325,
+    "sha256": "a106a917d901ab33d80937f7fc66c22ddf5c3c025681ff9dd9fea022e41f5a54"
   },
   "experiments/carnival/navigation.js": {
     "bytes": 8919,
@@ -12,11 +12,15 @@
     "sha256": "7ebd547074e91a07aaae6cadc980817216438b18210c400dacbefb03ed634f35"
   },
   "experiments/carnival/exit-sign.js": {
-    "bytes": 2767,
-    "sha256": "a3ea4669bf83a02e6671e6d84d0c7fccc81762efcef89ec66aa949907607df89"
+    "sha256": "23fe83b7358086f4182cba56e0716bf942fd3cad4c91f18eda25aa87a4f99d81",
+    "bytes": 3307
   },
   "experiments/carnival/exit-sign.css": {
-    "bytes": 2292,
-    "sha256": "b51ad8c11e37e174572f702de4ebf7a38b958f8144b10175705e5e56605dfa7f"
+    "bytes": 4018,
+    "sha256": "5e5dc23246d8c48997b1bfe519005abdf69d5ee3e1d220de71f8640fffe0bb0d"
+  },
+  "experiments/carnival/exit-sign.png": {
+    "bytes": 2496991,
+    "sha256": "5826f77c8ff650dfddd7e663d3ee2a8e9b143b64370fe24c9d03907d45432e32"
   }
 }
