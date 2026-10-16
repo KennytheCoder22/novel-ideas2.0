@@ -16,7 +16,7 @@ using a universal lower-left fallback.
 | Scene | Desktop anchor x / feet y / height | Portrait anchor x / feet y / height | Ground patch |
 | --- | --- | --- | --- |
 | Main Midway | .105 / .89 / .22 | .68 / .90 / .20 | Open foreground, clear of the poster, puddle, figure and fox |
-| Ferris platform | .65 / .985 / .18 | .65 / .915 / .18 | Open front approach, away from the left banner and queue clutter |
+| Ferris platform | .332 / 1.025 / .17 | .65 / .915 / .18 | Desktop gap between barrel and LINE STARTS HERE; portrait keeps its reviewed open approach |
 | Tent Row | .39 / .98 / .20 | .62 / .81 / .17 | Walkway edge, away from the left booth and barrel cluster |
 | Madame Zora | .57 / .985 / .16 | .60 / .985 / .145 | Front rug corner, opposite the black stars sign |
 | Rides & Games / Carousel | .73 / .965 / .15 | .64 / .805 / .17 | Clear ground beyond the carousel fence and Ride Laugh Repeat sign |
@@ -62,3 +62,17 @@ are saved in `verification/2026-10-15-exit-placement.json`.
 
 This change is committed only to `codex/dreamscapes-independent`. It does not
 release or change the current production deployment.
+
+## Ferris gap adjustment, 2026-10-16
+
+The desktop Ferris EXIT is now in the small gap between the foreground barrel
+and LINE STARTS HERE sign. Its pose allows at most the bottom 14% of the artwork
+to extend below the viewport, leaving all lettering above the edge. Other scenes
+retain their own poses. The existing portrait placement is retained because the
+barrel/queue-sign gap is outside that camera's initial crop.
+
+Verified at 1366 x 768: sign box x=401, y=655.44, width=104.61, height=130.72;
+18.16 px of feet are clipped. All wording is visible. At 390 x 844 the original
+portrait placement remains fully visible. Neither view overlaps a navigation
+hotspot. All 644 on-screen independent alpha sample hit checks pass; keyboard and
+pointer activation return to `/`. See `verification/2026-10-16-ferris-exit-gap.json`.

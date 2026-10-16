@@ -5,7 +5,7 @@
   // Portrait crops have their own composition; neither side nor scale is shared.
   const placements = {
     'midway':         {wide:[.105,.89,.22], cropped:[.68,.90,.20]},
-    'ferris-platform':{wide:[.65,.985,.18], cropped:[.65,.915,.18]},
+    'ferris-platform':{wide:[.332,1.025,.17], cropped:[.65,.915,.18], cropFeet:true},
     'tent-row':       {wide:[.39,.98,.20], cropped:[.62,.81,.17]},
     'fortune-teller': {wide:[.57,.985,.16], cropped:[.60,.985,.145], besideLook:true},
     'rides-games':    {wide:[.73,.965,.15], cropped:[.64,.805,.17]},
@@ -72,7 +72,10 @@
         // Fit the entry camera on resize, never chase its position while panning.
         const x = Math.max(entryLeft + 12, Math.min(entryLeft + innerWidth - signWidth - 12,
           width * pose[0] - signWidth / 2));
-        const bottom = Math.min(height * pose[1], (height + innerHeight) / 2 - 10);
+        // Ferris' narrow barrel/queue-sign gap permits the feet below the frame.
+        // Limit that crop to the bottom 14% of the artwork, below all lettering.
+        const bottomInset = placement.cropFeet && !cropped ? -boxHeight * .14 : 10;
+        const bottom = Math.min(height * pose[1], (height + innerHeight) / 2 - bottomInset);
         prop.style.left = x + 'px';
         prop.style.top = (bottom - boxHeight) + 'px';
       }
