@@ -1,0 +1,404 @@
+{
+  "desktop": [
+    {
+      "box": {
+        "height": 200.40625,
+        "width": 160.375,
+        "x": 63.421875,
+        "y": 539.453125
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "midway",
+      "sourceAnchor": "63.43px",
+      "sourceTop": "610.79px",
+      "viewport": [
+        1366,
+        768
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 138.40625,
+        "width": 110.75,
+        "x": 832.390625,
+        "y": 619.0625
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "ferris-platform",
+      "sourceAnchor": "832.4px",
+      "sourceTop": "619.465px",
+      "viewport": [
+        1366,
+        768
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 153.796875,
+        "width": 123.078125,
+        "x": 471.234375,
+        "y": 599.21875
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "tent-row",
+      "sourceAnchor": "471.24px",
+      "sourceTop": "599.62px",
+      "viewport": [
+        1366,
+        768
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 123.03125,
+        "width": 98.453125,
+        "x": 729.609375,
+        "y": 634.0625
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "fortune-teller",
+      "sourceAnchor": "729.62px",
+      "sourceTop": "634.465px",
+      "viewport": [
+        1366,
+        768
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 115.34375,
+        "width": 92.296875,
+        "x": 951.171875,
+        "y": 626.46875
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "rides-games",
+      "sourceAnchor": "951.18px",
+      "sourceTop": "627.085px",
+      "viewport": [
+        1366,
+        768
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 161.484375,
+        "width": 129.21875,
+        "x": 1069.265625,
+        "y": 576.84375
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "behind-carnival",
+      "sourceAnchor": "1069.28px",
+      "sourceTop": "577.24px",
+      "viewport": [
+        1366,
+        768
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 146.109375,
+        "width": 116.921875,
+        "x": 1020.625,
+        "y": 599.53125
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "forest-edge",
+      "sourceAnchor": "1020.64px",
+      "sourceTop": "599.93px",
+      "viewport": [
+        1366,
+        768
+      ],
+      "visible": true
+    }
+  ],
+  "mobile": [
+    {
+      "box": {
+        "height": 168.796875,
+        "width": 135.078125,
+        "x": 206.453125,
+        "y": 590.59375
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "midway",
+      "sourceAnchor": "793.38px",
+      "sourceTop": "590.6px",
+      "viewport": [
+        390,
+        844
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 151.90625,
+        "width": 121.5625,
+        "x": 137.25,
+        "y": 620.25
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "ferris-platform",
+      "sourceAnchor": "914px",
+      "sourceTop": "620.26px",
+      "viewport": [
+        390,
+        844
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 143.46875,
+        "width": 114.8125,
+        "x": 162.328125,
+        "y": 540.625
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "tent-row",
+      "sourceAnchor": "872.5px",
+      "sourceTop": "540.64px",
+      "viewport": [
+        390,
+        844
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 122.375,
+        "width": 97.921875,
+        "x": 280.1875,
+        "y": 709.328125
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "fortune-teller",
+      "sourceAnchor": "835px",
+      "sourceTop": "709.34px",
+      "viewport": [
+        390,
+        844
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 143.46875,
+        "width": 114.8125,
+        "x": 181.171875,
+        "y": 536.40625
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "rides-games",
+      "sourceAnchor": "901.86px",
+      "sourceTop": "536.42px",
+      "viewport": [
+        390,
+        844
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 160.359375,
+        "width": 128.328125,
+        "x": 250.203125,
+        "y": 599.59375
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "behind-carnival",
+      "sourceAnchor": "893.8px",
+      "sourceTop": "599.6px",
+      "viewport": [
+        390,
+        844
+      ],
+      "visible": true
+    },
+    {
+      "box": {
+        "height": 151.90625,
+        "width": 121.5625,
+        "x": 245.765625,
+        "y": 603.375
+      },
+      "destination": "/",
+      "hitChecks": 339,
+      "hitMismatches": [],
+      "imageLoaded": true,
+      "overlaps": [],
+      "scene": "forest-edge",
+      "sourceAnchor": "734px",
+      "sourceTop": "603.38px",
+      "viewport": [
+        390,
+        844
+      ],
+      "visible": true
+    }
+  ],
+  "smallPhone": {
+    "box": {
+      "height": 79.96875,
+      "width": 63.984375,
+      "x": 244.078125,
+      "y": 648.890625
+    },
+    "destination": "/",
+    "hitChecks": 339,
+    "hitMismatches": [],
+    "imageLoaded": true,
+    "overlaps": [],
+    "scene": "fortune-teller",
+    "sourceAnchor": "741.5px",
+    "sourceTop": "648.9px",
+    "viewport": [
+      320,
+      740
+    ],
+    "visible": true
+  },
+  "keyboard": [
+    {
+      "focus": true,
+      "focusVisible": true,
+      "inView": true,
+      "scene": "midway",
+      "portal": true
+    },
+    {
+      "focus": true,
+      "focusVisible": true,
+      "inView": true,
+      "scene": "ferris-platform",
+      "portal": true
+    },
+    {
+      "focus": true,
+      "focusVisible": true,
+      "inView": true,
+      "scene": "tent-row",
+      "portal": true
+    },
+    {
+      "focus": true,
+      "focusVisible": true,
+      "inView": true,
+      "scene": "fortune-teller",
+      "portal": true
+    },
+    {
+      "focus": true,
+      "focusVisible": true,
+      "inView": true,
+      "scene": "rides-games",
+      "portal": true
+    },
+    {
+      "focus": true,
+      "focusVisible": true,
+      "inView": true,
+      "scene": "behind-carnival",
+      "portal": true
+    },
+    {
+      "focus": true,
+      "focusVisible": true,
+      "inView": true,
+      "scene": "forest-edge",
+      "portal": true
+    }
+  ],
+  "pointer": [
+    {
+      "scene": "midway",
+      "portal": true
+    },
+    {
+      "scene": "ferris-platform",
+      "portal": true
+    },
+    {
+      "scene": "tent-row",
+      "portal": true
+    },
+    {
+      "scene": "fortune-teller",
+      "portal": true
+    },
+    {
+      "scene": "rides-games",
+      "portal": true
+    },
+    {
+      "scene": "behind-carnival",
+      "portal": true
+    },
+    {
+      "scene": "forest-edge",
+      "portal": true
+    }
+  ],
+  "reviewedBaseCommit": "9619c4dd3e5a4f26ad51546fb5c63fc5c588d903",
+  "verification": "All seven scenes captured and reviewed individually at desktop and portrait mobile sizes. World-registered placements; panning may move the prop out of frame; keyboard focus restores entry framing."
+}

@@ -34,7 +34,7 @@
     }
   }
   mountSigns('midway',document.querySelector('.composition'));
-  window.CarnivalExit.mount(document.querySelector('.composition'));
+  window.CarnivalExit.mount(document.querySelector('.composition'), 'midway');
 
   function mount(id) {
     if (mounted.has(id)) return mounted.get(id);
@@ -63,7 +63,7 @@
       plane.append(button);
     }
     mountSigns(id,plane);
-    const disposeExit = window.CarnivalExit.mount(plane);
+    const disposeExit = window.CarnivalExit.mount(plane, id);
     const look = document.createElement('nav'); look.className = 'location-look';
     look.setAttribute('aria-label','Look around '+definition.name);
     let framing = definition.framing;
@@ -86,8 +86,10 @@
       }); look.append(button);
     }
     view.append(look); document.body.append(view);
+    const revealExit = () => { framing = definition.framing; layout(); };
+    plane.addEventListener('carnival-exit-focus', revealExit);
     addEventListener('resize',layout); layout();
-    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>{removeEventListener('resize',layout);disposeExit();disposeCoaster();}};
+    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>{removeEventListener('resize',layout);plane.removeEventListener('carnival-exit-focus',revealExit);disposeExit();disposeCoaster();}};
     mounted.set(id,entry);
     return entry;
   }

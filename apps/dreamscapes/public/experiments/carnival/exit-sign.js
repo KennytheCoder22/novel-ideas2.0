@@ -1,10 +1,24 @@
 /* A shared foreground prop, registered inside each scene's camera plane. */
 (() => {
   'use strict';
+  // Each pose is a ground anchor [centre x, feet y, height] in scene fractions.
+  // Portrait crops have their own composition; neither side nor scale is shared.
+  const placements = {
+    'midway':         {wide:[.105,.89,.22], cropped:[.68,.90,.20]},
+    'ferris-platform':{wide:[.65,.985,.18], cropped:[.65,.915,.18]},
+    'tent-row':       {wide:[.39,.98,.20], cropped:[.62,.81,.17]},
+    'fortune-teller': {wide:[.57,.985,.16], cropped:[.60,.985,.145], besideLook:true},
+    'rides-games':    {wide:[.73,.965,.15], cropped:[.64,.805,.17]},
+    'behind-carnival':{wide:[.83,.96,.21], cropped:[.64,.90,.19]},
+    'forest-edge':    {wide:[.79,.97,.19], cropped:[.53,.895,.18]},
+  };
   window.CarnivalExit = Object.freeze({
-    mount(plane) {
+    mount(plane, scene) {
+      const placement = placements[scene];
+      if (!placement) throw new Error('Missing EXIT placement for ' + scene);
       const prop = document.createElement('span');
       prop.className = 'carnival-exit-prop';
+      prop.dataset.exitScene = scene;
       const sign = document.createElement('a');
       sign.className = 'carnival-exit';
       sign.href = '/';
@@ -17,6 +31,17 @@
       sign.append(image);
       prop.append(sign);
       plane.append(prop);
+      // Keyboard users can return to the reviewed camera framing after panning.
+      let focusFrame;
+      sign.addEventListener('focus', () => {
+        if (!sign.matches(':focus-visible')) return;
+        focusFrame = requestAnimationFrame(() => {
+          // Native focus may scroll an overflow-hidden camera before this frame.
+          plane.parentElement.scrollLeft = 0;
+          plane.parentElement.scrollTop = 0;
+          plane.dispatchEvent(new Event('carnival-exit-focus'));
+        });
+      });
       image.decode().then(() => {
         prop.classList.add('is-ready');
         schedule();
@@ -29,44 +54,40 @@
       let frame;
       function place() {
         frame = null;
-        const rect = plane.getBoundingClientRect();
-        const sx = rect.width / plane.offsetWidth, sy = rect.height / plane.offsetHeight;
-        if (!sx || !sy) return;
-        const box = prop.getBoundingClientRect();
-        const margin = Math.max(16, innerWidth * .035);
-        const obstacles = [...plane.parentElement.querySelectorAll('button')].filter(button => !button.hidden)
-          .map(button => button.getBoundingClientRect());
-        const lookControls = [...plane.parentElement.querySelectorAll('.look-controls, .location-look')]
-          .map(control => control.getBoundingClientRect()).filter(box => box.height > 0);
-        const ground = Math.min(innerHeight * .96, ...lookControls.map(box => box.top - 10));
-        let best;
-        // Keep the prop in the requested lower-left foreground. Choose the
-        // clearest ground level in the visible camera, including mobile crops.
-        for (const bottom of [ground, innerHeight * .81, innerHeight * .68]) {
-          const x = margin, y = bottom - box.height;
-          const overlap = obstacles.reduce((sum, b) => sum +
-            Math.max(0, Math.min(x + box.width + 8, b.right) - Math.max(x - 8, b.left)) *
-            Math.max(0, Math.min(y + box.height + 8, b.bottom) - Math.max(y - 8, b.top)), 0);
-          if (!best || overlap < best.overlap) best = {x, y, overlap};
-          if (!best.overlap) break;
-        }
-        prop.style.left = (best.x - rect.left) / sx + 'px';
-        prop.style.top = (best.y - rect.top) / sy + 'px';
+        const width = plane.offsetWidth, height = plane.offsetHeight;
+        if (!width || !height) return;
+        const cropped = innerWidth / innerHeight < 1.2;
+        const pose = placement[cropped ? 'cropped' : 'wide'];
+        let signHeight = Math.min(height * pose[2], innerHeight * .29);
+        // Zora's open rug corner sits beside, rather than above, the look controls.
+        // Fit that scene's side gutter even on small phones without covering them.
+        const look = plane.parentElement.querySelector('.location-look');
+        if (cropped && placement.besideLook && look && !look.hidden)
+          signHeight = Math.min(signHeight, Math.max(44, (innerWidth - look.offsetWidth) / 2 - 20) * 1402 / 1122);
+        if (!prop.classList.contains('art-unavailable')) prop.style.height = signHeight + 'px';
+        const signWidth = prop.offsetWidth, boxHeight = prop.offsetHeight;
+        const framing = scene === 'midway' ? (innerWidth / innerHeight < 1.5 ? .67 : .5)
+          : window.CarnivalScenes[scene].framing;
+        const entryLeft = Math.max(0, width - innerWidth) * framing;
+        // Fit the entry camera on resize, never chase its position while panning.
+        const x = Math.max(entryLeft + 12, Math.min(entryLeft + innerWidth - signWidth - 12,
+          width * pose[0] - signWidth / 2));
+        const bottom = Math.min(height * pose[1], (height + innerHeight) / 2 - 10);
+        prop.style.left = x + 'px';
+        prop.style.top = (bottom - boxHeight) + 'px';
       }
       function schedule() {
         if (!frame) frame = requestAnimationFrame(place);
       }
       const resize = new ResizeObserver(schedule);
       resize.observe(plane);
-      const camera = new MutationObserver(schedule);
-      camera.observe(plane, {attributes:true, attributeFilter:['style']});
       addEventListener('resize', schedule);
       document.fonts.ready.then(schedule);
       place();
       return () => {
-        resize.disconnect(); camera.disconnect();
+        resize.disconnect();
         removeEventListener('resize', schedule);
-        cancelAnimationFrame(frame);
+        cancelAnimationFrame(frame); cancelAnimationFrame(focusFrame);
       };
     },
   });

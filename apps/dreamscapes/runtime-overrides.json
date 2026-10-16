@@ -1,23 +1,23 @@
 {
   "experiments/carnival/index.html": {
-    "sha256": "c1c8bb8c0f498fa7ea69d490d77b3f71a649efc9a510c1c79e778a199e44c5d7",
-    "bytes": 7450
+    "bytes": 7464,
+    "sha256": "ec375efae00b5a99e13ca101956f632ba92c629a6a8c6a93d5a87e826fdbb937"
   },
   "experiments/carnival/navigation.js": {
-    "sha256": "d10d6ccd1fa763b29c9a4f2df2802b3cd63d641cb798884b1d7e4335ca3ccd13",
-    "bytes": 9035
+    "bytes": 9248,
+    "sha256": "04791be3cf3d78122ab5ba7beea622933218aab49f12844e3eae41d8ea49accd"
   },
   "experiments/carnival/horse-comparison.js": {
     "bytes": 6222,
     "sha256": "7ebd547074e91a07aaae6cadc980817216438b18210c400dacbefb03ed634f35"
   },
   "experiments/carnival/exit-sign.js": {
-    "sha256": "23fe83b7358086f4182cba56e0716bf942fd3cad4c91f18eda25aa87a4f99d81",
-    "bytes": 3307
+    "bytes": 4532,
+    "sha256": "df420195891736dae33897d21b92080b7a41f7430e90239f9fcbad4a9dcc30bf"
   },
   "experiments/carnival/exit-sign.css": {
-    "bytes": 4018,
-    "sha256": "5e5dc23246d8c48997b1bfe519005abdf69d5ee3e1d220de71f8640fffe0bb0d"
+    "bytes": 3930,
+    "sha256": "b202af812ddac465f9f7dd775e91b7f1dee53cbc874dbf438444d98eafe3c0f9"
   },
   "experiments/carnival/exit-sign.png": {
     "bytes": 2496991,
@@ -34,5 +34,9 @@
   "experiments/carnival/coaster-train-sheet.png": {
     "sha256": "bceb8d2901b01be51815b1380c83c0e76e7754bcacc843d5d1b451f118359932",
     "bytes": 2056469
+  },
+  "experiments/carnival/midway.js": {
+    "bytes": 12336,
+    "sha256": "1e89d7c2c9bfd72f63145daa1f99381746f6f91100ef93e3d04b60fecbbc54d2"
   }
 }

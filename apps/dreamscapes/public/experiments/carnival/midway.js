@@ -216,6 +216,7 @@
     const delta = {start:0,left:.67,center:.17,right:-.33}[direction] * overflow;
     scene.style.setProperty('--pan', `${delta}px`);
   }
+  scene.addEventListener('carnival-exit-focus', () => pan('start'));
   document.querySelectorAll('[data-pan]').forEach(button => button.addEventListener('click', () => pan(button.dataset.pan)));
   addEventListener('resize', () => approachBase ? renderApproach() : pan(framing));
   let crowTimer;

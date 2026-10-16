@@ -2,7 +2,7 @@
    The noninteractive wrapper owns placement and shadows; only the clipped link
    can receive pointer input. Transparent margins and the gaps between legs pass through. */
 .carnival-exit-prop {
-  position:absolute; z-index:7; height:clamp(180px, 26vh, 230px); aspect-ratio:1122 / 1402;
+  position:absolute; z-index:7; height:180px; aspect-ratio:1122 / 1402;
   pointer-events:none; visibility:hidden; isolation:isolate;
   filter:drop-shadow(2px 3px 2px #0009);
 }
@@ -26,5 +26,4 @@
 .art-unavailable { height:auto; width:164px; aspect-ratio:auto; }
 .art-unavailable .carnival-exit { clip-path:none; padding:12px; background:#493020; border:2px solid #c09961; font:700 16px/1.4 Georgia,serif; }
 .art-unavailable .carnival-exit:focus-visible { outline:3px solid #ffe0a0; outline-offset:3px; }
-@media (max-height:500px) { .carnival-exit-prop { height:156px; } }
 @media (forced-colors:active) { .carnival-exit-prop:has(.carnival-exit:focus-visible) { outline:3px solid LinkText; outline-offset:3px; } }
