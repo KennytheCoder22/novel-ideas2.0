@@ -20,7 +20,7 @@ using a universal lower-left fallback.
 | Tent Row | .13 / .92 / .20 | .62 / .81 / .17 | Desktop tucked left of and behind the GOOD GAMES GOOD PEOPLE barrel; portrait uses the open walkway |
 | Madame Zora | .034 / .84 / .32 | .60 / .985 / .145 | Wide view: left of the black stars placard, top-aligned; narrow view: front rug corner |
 | Rides & Games / Carousel | .73 / .965 / .15 | .64 / .805 / .17 | Clear ground beyond the carousel fence and Ride Laugh Repeat sign |
-| Behind the Carnival | .83 / .96 / .21 | .64 / .90 / .19 | Right foreground, clear of the tent doorway and forest path |
+| Behind the Carnival | .075 / .985 / .2625 | .50 / .90 / .2375 | Far-left foreground, 25% larger; clear of the tent doorway and forest path |
 | Forest's Edge | .79 / .97 / .19 | .53 / .895 / .18 | Open trail shoulder, clear of the return path and fences |
 
 An aspect ratio below 1.2 selects the portrait pose (below 1.7 for Zora, whose left-side placard falls outside narrower camera crops). On resize, the pose fits the
@@ -113,3 +113,7 @@ each view; no transparent samples accept clicks. Desktop keyboard EXIT and mobil
 pointer EXIT return to `/`. The raised Tent Row target opens Tent Row on desktop
 and on mobile after looking left. No browser errors were logged. Measurements
 are in `verification/2026-10-16-zora-exit-aligned.json`. No deployment performed.
+
+### Behind the Carnival foreground adjustment — 16 October 2026
+
+Moved only this scene’s EXIT to the far-left foreground and increased both desktop and portrait pose heights by 25%. The original artwork, silhouette click boundary and `/` destination are unchanged. Checked at 1366×768 and 390×844: all wording visible, no navigation hotspot overlaps, and 339 silhouette samples per viewport match the clickable area. Keyboard focus/Enter and mobile click return to the portal. Evidence: `verification/2026-10-16-behind-exit-left.json`. Not deployed.

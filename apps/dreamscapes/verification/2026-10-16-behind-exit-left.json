@@ -1,0 +1,42 @@
+{
+  "scene": "behind-carnival",
+  "desktop": {
+    "box": {
+      "height": 201.859375,
+      "width": 161.53125,
+      "x": 21.4375,
+      "y": 555.0625
+    },
+    "destination": "/",
+    "hitChecks": 339,
+    "hitMismatches": 0,
+    "hotspotOverlaps": [],
+    "viewport": [
+      1366,
+      768
+    ],
+    "visible": true
+  },
+  "mobile": {
+    "box": {
+      "height": 200.4375,
+      "width": 160.40625,
+      "x": 26.40625,
+      "y": 559.59375
+    },
+    "destination": "/",
+    "hitChecks": 339,
+    "hitMismatches": 0,
+    "hotspotOverlaps": [],
+    "viewport": [
+      390,
+      844
+    ],
+    "visible": true
+  },
+  "keyboardFocusVisible": true,
+  "keyboardReturnToPortal": true,
+  "mobileReturnToPortal": true,
+  "desktopScaleIncrease": 1.25,
+  "mobileScaleIncrease": 1.25
+}
