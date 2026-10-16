@@ -16,7 +16,7 @@
       occlusion:[[.50,0,.115],[.56,0,.105],[.65,0,.098],[.75,0,.089],[.85,0,.080],[1,0,.072]]},
     'rides-games':    {wide:[.73,.965,.15], cropped:[.64,.805,.17]},
     'behind-carnival':{wide:[.075,.985,.2625], cropped:[.50,.90,.2375]},
-    'forest-edge':    {wide:[.79,.97,.19], cropped:[.53,.895,.18]},
+    'forest-edge':    {wide:[.785,.80,.19], cropped:[.53,.81,.18]},
   };
   window.CarnivalExit = Object.freeze({
     mount(plane, scene) {
