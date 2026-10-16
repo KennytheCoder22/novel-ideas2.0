@@ -6,7 +6,10 @@
   const placements = {
     'midway':         {wide:[.105,.89,.22], cropped:[.68,.90,.20]},
     'ferris-platform':{wide:[.332,1.025,.17], cropped:[.65,.915,.18], cropFeet:true},
-    'tent-row':       {wide:[.39,.98,.20], cropped:[.62,.81,.17]},
+    'tent-row':       {wide:[.13,.92,.20], cropped:[.62,.81,.17],
+      // Source-space clearance between the near post and the barrel's left edge.
+      // Hiding the frame behind those baked-in props also removes its hit area.
+      occlusion:[[.70,.075,.205],[.73,.085,.176],[.80,.115,.171],[.90,.115,.168],[1,.115,.168]]},
     'fortune-teller': {wide:[.57,.985,.16], cropped:[.60,.985,.145], besideLook:true},
     'rides-games':    {wide:[.73,.965,.15], cropped:[.64,.805,.17]},
     'behind-carnival':{wide:[.83,.96,.21], cropped:[.64,.90,.19]},
@@ -77,7 +80,22 @@
         const bottomInset = placement.cropFeet && !cropped ? -boxHeight * .14 : 10;
         const bottom = Math.min(height * pose[1], (height + innerHeight) / 2 - bottomInset);
         prop.style.left = x + 'px';
-        prop.style.top = (bottom - boxHeight) + 'px';
+        const top = bottom - boxHeight;
+        prop.style.top = top + 'px';
+        const profile = placement.occlusion;
+        if (profile && !cropped && !prop.classList.contains('art-unavailable')) {
+          const edge = (y, side) => {
+            let i = 0;
+            while (i < profile.length - 2 && y > profile[i + 1][0]) i++;
+            const a = profile[i], b = profile[i + 1];
+            const t = Math.max(0, Math.min(1, (y - a[0]) / (b[0] - a[0])));
+            return Math.max(0, Math.min(signWidth, (a[side] + (b[side] - a[side]) * t) * width - x));
+          };
+          const ys = [top / height, ...profile.map(p => p[0]).filter(y => y > top / height && y < bottom / height), bottom / height];
+          const outline = [...ys.map(y => [edge(y, 1), y * height - top]),
+            ...ys.toReversed().map(y => [edge(y, 2), y * height - top])];
+          prop.style.clipPath = 'polygon(' + outline.map(([x,y]) => x + 'px ' + y + 'px').join(',') + ')';
+        } else prop.style.clipPath = '';
       }
       function schedule() {
         if (!frame) frame = requestAnimationFrame(place);

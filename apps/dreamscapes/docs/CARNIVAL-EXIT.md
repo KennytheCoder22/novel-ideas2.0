@@ -17,7 +17,7 @@ using a universal lower-left fallback.
 | --- | --- | --- | --- |
 | Main Midway | .105 / .89 / .22 | .68 / .90 / .20 | Open foreground, clear of the poster, puddle, figure and fox |
 | Ferris platform | .332 / 1.025 / .17 | .65 / .915 / .18 | Desktop gap between barrel and LINE STARTS HERE; portrait keeps its reviewed open approach |
-| Tent Row | .39 / .98 / .20 | .62 / .81 / .17 | Walkway edge, away from the left booth and barrel cluster |
+| Tent Row | .13 / .92 / .20 | .62 / .81 / .17 | Desktop tucked left of and behind the GOOD GAMES GOOD PEOPLE barrel; portrait uses the open walkway |
 | Madame Zora | .57 / .985 / .16 | .60 / .985 / .145 | Front rug corner, opposite the black stars sign |
 | Rides & Games / Carousel | .73 / .965 / .15 | .64 / .805 / .17 | Clear ground beyond the carousel fence and Ride Laugh Repeat sign |
 | Behind the Carnival | .83 / .96 / .21 | .64 / .90 / .19 | Right foreground, clear of the tent doorway and forest path |
@@ -76,3 +76,20 @@ Verified at 1366 x 768: sign box x=401, y=655.44, width=104.61, height=130.72;
 portrait placement remains fully visible. Neither view overlaps a navigation
 hotspot. All 644 on-screen independent alpha sample hit checks pass; keyboard and
 pointer activation return to `/`. See `verification/2026-10-16-ferris-exit-gap.json`.
+
+## Tent Row barrel adjustment, 2026-10-16
+
+The desktop Tent Row sign now sits just left of and farther back than the GOOD
+GAMES GOOD PEOPLE barrel. A source-space clearance profile clips the outer frame
+where it passes behind the foreground post and barrel. This reveals the original
+background pixels, preserves all lettering, and removes pointer input from those
+hidden portions. The PNGs are unchanged. The existing portrait composition keeps
+its clear walkway placement because the barrel is outside that initial crop.
+
+Desktop 1366 x 768 and mobile 390 x 844 checks passed. All 80 independently
+sampled opaque points across the wording remain clickable in each view. Forty
+opaque frame samples hidden behind desktop props correctly pass through, including
+separate left-post and right-barrel probes. No transparent sample receives clicks,
+and no navigation hotspot overlaps either sign. Keyboard and pointer activation
+return to `/`. Measurements are recorded in
+`verification/2026-10-16-tent-exit-barrel.json`. No production release is performed.
