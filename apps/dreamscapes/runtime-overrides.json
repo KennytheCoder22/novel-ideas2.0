@@ -1,15 +1,15 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 7471,
-    "sha256": "7c96e9eebe427b06e93593a6d03c4e49d154b47e0587ebc5a1333af916220338"
+    "bytes": 7472,
+    "sha256": "0b03f5b1650d81df25fae81aa5aa64331d3a8f57f78544b2ad238e51bbce6482"
   },
   "experiments/carnival/navigation.js": {
     "bytes": 9248,
     "sha256": "04791be3cf3d78122ab5ba7beea622933218aab49f12844e3eae41d8ea49accd"
   },
   "experiments/carnival/horse-comparison.js": {
-    "bytes": 6222,
-    "sha256": "7ebd547074e91a07aaae6cadc980817216438b18210c400dacbefb03ed634f35"
+    "bytes": 6464,
+    "sha256": "e48a79d307e9f8226e98f14160ea12cacb7435e1d5f737c6d03b8c969d4fb55b"
   },
   "experiments/carnival/exit-sign.js": {
     "bytes": 6503,
@@ -42,5 +42,185 @@
   "experiments/carnival/locations.js": {
     "bytes": 2568,
     "sha256": "bb101cdd8d5f1c87c221d320629f87ac855195624e33f66c197b6f4228b01b3d"
+  },
+  "experiments/carnival/animal-comparison.js": {
+    "bytes": 9925,
+    "sha256": "d8b7e77470c9b5d23f0a63d4f0e61d5174d1efca275abacbf3990fb036a86e85"
+  },
+  "experiments/carnival/carousel-variants.js": {
+    "bytes": 7801,
+    "sha256": "9f7acf93b301fd2befa2357c71bb0c7eb79425ea72f210dec1dab866cc147e6c"
+  },
+  "experiments/carnival/mount-variants.js": {
+    "bytes": 1281,
+    "sha256": "d86ba7300fa5f8d1acdecb66b8a43d284c5c7035734759c53ea6733f4a55af5a"
+  },
+  "experiments/carnival/carousel-variants.css": {
+    "bytes": 1598,
+    "sha256": "926681b54426911a2c27496311a5325b0f3d74590b22d4aa935a46e26ac74ef6"
+  },
+  "experiments/carnival/carousel/variants/plain/brown-horse.glb": {
+    "bytes": 7188200,
+    "sha256": "7b3d47ce3dafa8ef7cbf1126e0523dade0acd62bd80e7db628143fa50740b73a"
+  },
+  "experiments/carnival/carousel/variants/plain/cat.glb": {
+    "bytes": 8980716,
+    "sha256": "c95061e4548b79e46068c4428f053970331365a36f3263812bee0c0363fd93aa"
+  },
+  "experiments/carnival/carousel/variants/plain/dragon.glb": {
+    "bytes": 8087600,
+    "sha256": "2dd2581b9947e09da4994b00cf9550418642a1f956db04d574b5787e163d95cf"
+  },
+  "experiments/carnival/carousel/variants/plain/elephant.glb": {
+    "bytes": 7516548,
+    "sha256": "c644e990ca8164972fa03514f450d623984743dbcad73780d047941fb8fe040b"
+  },
+  "experiments/carnival/carousel/variants/plain/flamingo.glb": {
+    "bytes": 7174588,
+    "sha256": "e41678cbdd08fe03b71b0e1f8cf53c3e7cfe93439ad62291af32a69f0321e020"
+  },
+  "experiments/carnival/carousel/variants/plain/fox.glb": {
+    "bytes": 8958448,
+    "sha256": "96e473965238147f4fefc25a18ca0102f129f1daa8c6e8652e767605a3b272a7"
+  },
+  "experiments/carnival/carousel/variants/plain/griffin.glb": {
+    "bytes": 8842892,
+    "sha256": "2ef519f003ee7a505f5b541a138c2a839c20fc7d7fb7727f90c21b8c3afd6322"
+  },
+  "experiments/carnival/carousel/variants/plain/grizzly.glb": {
+    "bytes": 9401588,
+    "sha256": "cf16c4ecefd3a4b7e214a65f4baf7af0411279edce19abf8b30267870c1d4b3e"
+  },
+  "experiments/carnival/carousel/variants/plain/horse.glb": {
+    "bytes": 6835456,
+    "sha256": "8fc20a5df86241136c37ca9cf84fc49f573102e9d2e2a91f285762f8e1cabb41"
+  },
+  "experiments/carnival/carousel/variants/plain/moon-loveseat.glb": {
+    "bytes": 7417120,
+    "sha256": "94b75440558324e0c819238131b87bb14d304544b0a2aaee025eed7704321bd8"
+  },
+  "experiments/carnival/carousel/variants/plain/ostrich.glb": {
+    "bytes": 9282100,
+    "sha256": "d875ece484518ee897437f27d9bb8e8d7f9a78aef73a5436b67c3f9f646eed69"
+  },
+  "experiments/carnival/carousel/variants/plain/polar-bear.glb": {
+    "bytes": 8571444,
+    "sha256": "79d8dddd0c5b46758f6feff26cdb5f46f927f4413b5402864bfe32ef47a13c63"
+  },
+  "experiments/carnival/carousel/variants/plain/rabbit.glb": {
+    "bytes": 7948420,
+    "sha256": "b2482c1631a4f717c0c0bd29be4361eb0382939324f6e85344a40703f30a2c32"
+  },
+  "experiments/carnival/carousel/variants/plain/rocket.glb": {
+    "bytes": 8373896,
+    "sha256": "617252fdd110632010a1071c5ef95627c19959bfd62be8a8db02cff56a1de47b"
+  },
+  "experiments/carnival/carousel/variants/plain/snail.glb": {
+    "bytes": 7829036,
+    "sha256": "f6649e01ede1aa3740b4eda45fafce7a65627b5f4aa9dbdddd0e445481bbfc5d"
+  },
+  "experiments/carnival/carousel/variants/plain/stag.glb": {
+    "bytes": 7618304,
+    "sha256": "dcae5e7b513511048b3574cd68bb89b11ba03c0b011cd28bc689929fc15ce6dd"
+  },
+  "experiments/carnival/carousel/variants/plain/tiger.glb": {
+    "bytes": 8016024,
+    "sha256": "21e07dde79ee77615efaa94df17e36094800aacfaf989e880af090d36ea190e5"
+  },
+  "experiments/carnival/carousel/variants/plain/unicorn.glb": {
+    "bytes": 7792268,
+    "sha256": "c60c03899479821c43bbb782834b07b68f8bf6e0e0968a8254c95a0d3cbbfd92"
+  },
+  "experiments/carnival/carousel/variants/plain/wolf.glb": {
+    "bytes": 8782008,
+    "sha256": "2a1499b1255342f09b222297a5f79b4dbc348d64ce57c80ac160657bbe500e4d"
+  },
+  "experiments/carnival/carousel/variants/plain/zebra.glb": {
+    "bytes": 7618224,
+    "sha256": "dc0636a0c59aaf995a980837d6034e81ec580420d51148ab3c21c72f379acdf4"
+  },
+  "experiments/carnival/carousel/variants/stuffed/brown-horse.glb": {
+    "bytes": 7187084,
+    "sha256": "6eac4ae252cd0852cdbc7be5867712b9a365dc42ec802c91a326c6a902f6f1db"
+  },
+  "experiments/carnival/carousel/variants/stuffed/cat.glb": {
+    "bytes": 9076564,
+    "sha256": "46f0867ff22765a4774f2cc567fbe925fe536ab15b237452189a793a5ac4f7ba"
+  },
+  "experiments/carnival/carousel/variants/stuffed/dragon.glb": {
+    "bytes": 7428300,
+    "sha256": "9cf04a4d7ba67761527fe6513e744873084726a90438079e2b8ea3c1a8f02ba2"
+  },
+  "experiments/carnival/carousel/variants/stuffed/elephant.glb": {
+    "bytes": 7586180,
+    "sha256": "01d75031a9295012c89f3ed23d30ba6d74a755024318c35eea8a3fb4fae2250e"
+  },
+  "experiments/carnival/carousel/variants/stuffed/flamingo.glb": {
+    "bytes": 7613300,
+    "sha256": "35895848df713b6a3292432eeebd6cd6737237296c20c009df7f4aa7527e9b04"
+  },
+  "experiments/carnival/carousel/variants/stuffed/fox.glb": {
+    "bytes": 7237456,
+    "sha256": "7587441541fe142c6e4240910a093074beaa1b3d89079097c9c0183f6255e851"
+  },
+  "experiments/carnival/carousel/variants/stuffed/griffin.glb": {
+    "bytes": 7915044,
+    "sha256": "20b1c54ab3bd7dd94caaf0cea15dde4ef42d09e16383874ec63a261b1ebd2977"
+  },
+  "experiments/carnival/carousel/variants/stuffed/grizzly.glb": {
+    "bytes": 8437432,
+    "sha256": "50ed0793554cd1c54f1cbbe2b07defde39c596ccdb2fc4c62490f16a3ae834bf"
+  },
+  "experiments/carnival/carousel/variants/stuffed/horse.glb": {
+    "bytes": 7034064,
+    "sha256": "eaea831373579cbafb37e857d65ec968c40a21d224d3190d879a76ad553b68f7"
+  },
+  "experiments/carnival/carousel/variants/stuffed/moon-loveseat.glb": {
+    "bytes": 7660648,
+    "sha256": "69bd2c413a210cfba917a87988e522e78d26f7e2bd86aca3fdc3571caf425049"
+  },
+  "experiments/carnival/carousel/variants/stuffed/ostrich.glb": {
+    "bytes": 7314904,
+    "sha256": "d139b2e3c156edce5e61f8be493fb626bcf78824e2fabf52192de528bd262d01"
+  },
+  "experiments/carnival/carousel/variants/stuffed/polar-bear.glb": {
+    "bytes": 7044016,
+    "sha256": "e35a866e72332536ea11cc51accabbb03e85fbd5861ec17e968a8600ba7a15e6"
+  },
+  "experiments/carnival/carousel/variants/stuffed/rabbit.glb": {
+    "bytes": 7486988,
+    "sha256": "66ce8c750cd3e39598c5a445f9f064386b154a86fccdec377c03138060f936a2"
+  },
+  "experiments/carnival/carousel/variants/stuffed/rocket.glb": {
+    "bytes": 7777124,
+    "sha256": "28d27d1811897b535864dc22bb85709c205c6221a0941728f042d0940d7bae7f"
+  },
+  "experiments/carnival/carousel/variants/stuffed/snail.glb": {
+    "bytes": 8791900,
+    "sha256": "fd10ad42a3645f75e9c352e2cdcf65f4ddb216d9e18f91fc90d941c45260ee84"
+  },
+  "experiments/carnival/carousel/variants/stuffed/stag.glb": {
+    "bytes": 7976788,
+    "sha256": "b888ef401ab0a0e06b20acd0b80d98ea97214d7302f98a77b7d91bdccbadbbff"
+  },
+  "experiments/carnival/carousel/variants/stuffed/tiger.glb": {
+    "bytes": 7292732,
+    "sha256": "f7c3ee29cd2a3d3c2097f87a604b44edc63d74227fcbfdefebad758a6eddc043"
+  },
+  "experiments/carnival/carousel/variants/stuffed/unicorn.glb": {
+    "bytes": 7025144,
+    "sha256": "b3a0be6e161ff62a2d08fdcbf90dedb558e62567db40479ba657514030e767cf"
+  },
+  "experiments/carnival/carousel/variants/stuffed/wolf.glb": {
+    "bytes": 8304044,
+    "sha256": "28af5d01e80c406f619a26e22d000abbb7c04f6e9aa7c1c2d10f0f61ab620796"
+  },
+  "experiments/carnival/carousel/variants/stuffed/zebra.glb": {
+    "bytes": 7716148,
+    "sha256": "68f36e00e915a6f4264dc9c08c4f0b3b9b2a13372615ae96315e7a4933f84a13"
+  },
+  "experiments/carnival/variant-registration.js": {
+    "bytes": 1772,
+    "sha256": "46a607af6397f1dce14db1ad40b2f486bdf8d3603b13fa0877b69d63714e457f"
   }
 }

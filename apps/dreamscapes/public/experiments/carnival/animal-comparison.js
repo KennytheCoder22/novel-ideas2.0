@@ -1,3 +1,4 @@
+import {registerVariantMount} from './carousel-variants.js';
 import {cropCanvas} from './crop-canvas.js';
 import {sharedMountRenderer} from './shared-mount-renderer.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
@@ -90,6 +91,7 @@ async function mount(svg,spec){
  if(yaw!==previous&&!document.hidden){carouselFrame.rotation.y=-yaw;for(const {child,shaft} of opacityChildren){const opacity=shaft?'1':slot.getAttribute('opacity');if(child.style.opacity!==opacity)child.style.opacity=opacity;}renderer.render(scene,camera);previous=yaw;}
  requestAnimationFrame(render);}
  render();holder.dataset.ready='true';
+ registerVariantMount({identity:spec.name,slotNumber:spec.slotIndex+1,model,registration,mountPoint,turn,carouselFrame,scene,camera,renderer,holder,slot,invalidate:()=>{previous=null;}});
 }
 const observer=new MutationObserver(()=>start().catch(console.error));observer.observe(document.body,{childList:true,subtree:true});start().catch(console.error);
 

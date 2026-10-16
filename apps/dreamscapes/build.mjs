@@ -11,8 +11,9 @@ for(const [name,meta] of Object.entries(runtime)){
  const bytes=readFileSync(path.join(root,'public',name));
  if(createHash('sha256').update(bytes).digest('hex')!==meta.sha256)throw Error('Verified runtime changed: '+name);
 }
+const variantCount=Object.keys(runtime).filter(name=>name.includes('/carousel/variants/')&&name.endsWith('.glb')).length;
 const assets=path.join(root,'public/experiments/carnival/carousel');
 if(readdirSync(assets).filter(f=>f.endsWith('.glb')).length!==20)throw Error('Expected 20 GLBs');
 mkdirSync(path.join(root,'dist'),{recursive:true});
 cpSync(path.join(root,'public'),path.join(root,'dist'),{recursive:true});
-console.log('Built Dreamscapes: verified '+Object.keys(runtime).length+' runtime files (checkpoint + reviewed UI overrides) and 20 GLBs.');
+console.log('Built Dreamscapes: verified '+Object.keys(runtime).length+' runtime files (checkpoint + reviewed UI overrides), 20 Ornate GLBs and '+variantCount+' variant GLBs.');

@@ -1,0 +1,1083 @@
+{
+  "canonicalGeometry": [
+    {
+      "anchor": "translate(0 -174)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "212",
+          "width": "340",
+          "x": "-170",
+          "y": "-44"
+        }
+      ],
+      "mountHeight": "186",
+      "slot": "16"
+    },
+    {
+      "anchor": "translate(0 -194)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "234",
+          "width": "330",
+          "x": "-165",
+          "y": "-70"
+        }
+      ],
+      "mountHeight": "182",
+      "slot": "19"
+    },
+    {
+      "anchor": "translate(0 -189)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "249",
+          "width": "324",
+          "x": "-162",
+          "y": "-90"
+        }
+      ],
+      "mountHeight": "177",
+      "slot": "17"
+    },
+    {
+      "anchor": "translate(0 -188)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "272",
+          "width": "284",
+          "x": "-142",
+          "y": "-93"
+        }
+      ],
+      "mountHeight": "200",
+      "slot": "20"
+    },
+    {
+      "anchor": "translate(0 -172)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "255",
+          "width": "300",
+          "x": "-150",
+          "y": "-89"
+        }
+      ],
+      "mountHeight": "184",
+      "slot": "18"
+    },
+    {
+      "anchor": "translate(0 -219)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "258",
+          "width": "302",
+          "x": "-151",
+          "y": "-69"
+        }
+      ],
+      "mountHeight": "207",
+      "slot": "13"
+    },
+    {
+      "anchor": "translate(0 -204)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "306",
+          "width": "416",
+          "x": "-208",
+          "y": "-135"
+        }
+      ],
+      "mountHeight": "192",
+      "slot": "21"
+    },
+    {
+      "anchor": "translate(0 -162)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "209",
+          "width": "362",
+          "x": "-181",
+          "y": "-53"
+        }
+      ],
+      "mountHeight": "174",
+      "slot": "14"
+    },
+    {
+      "anchor": "translate(0 -194)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "287",
+          "width": "326",
+          "x": "-163",
+          "y": "-122"
+        }
+      ],
+      "mountHeight": "182",
+      "slot": "15"
+    },
+    {
+      "anchor": "translate(0 -162)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "192",
+          "width": "336",
+          "x": "-168",
+          "y": "-50"
+        }
+      ],
+      "mountHeight": "150",
+      "slot": "3"
+    },
+    {
+      "anchor": "translate(0 -210)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "216",
+          "width": "282",
+          "x": "-141",
+          "y": "-12"
+        }
+      ],
+      "mountHeight": "222",
+      "slot": "2"
+    },
+    {
+      "anchor": "translate(0 -178)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "243",
+          "width": "340",
+          "x": "-170",
+          "y": "-70"
+        }
+      ],
+      "mountHeight": "190",
+      "slot": "12"
+    },
+    {
+      "anchor": "translate(0 -158)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "187",
+          "width": "362",
+          "x": "-181",
+          "y": "-59"
+        }
+      ],
+      "mountHeight": "146",
+      "slot": "11"
+    },
+    {
+      "anchor": "translate(0 -170)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "223",
+          "width": "326",
+          "x": "-163",
+          "y": "-59"
+        }
+      ],
+      "mountHeight": "182",
+      "slot": "6"
+    },
+    {
+      "anchor": "translate(0 -192)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "256",
+          "width": "300",
+          "x": "-150",
+          "y": "-71"
+        }
+      ],
+      "mountHeight": "204",
+      "slot": "10"
+    },
+    {
+      "anchor": "translate(0 -155)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "170",
+          "width": "342",
+          "x": "-171",
+          "y": "-47"
+        }
+      ],
+      "mountHeight": "143",
+      "slot": "9"
+    },
+    {
+      "anchor": "translate(0 -108)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "107",
+          "width": "282",
+          "x": "-141",
+          "y": "-29"
+        }
+      ],
+      "mountHeight": "96",
+      "slot": "5"
+    },
+    {
+      "anchor": "translate(0 -134)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "199",
+          "width": "360",
+          "x": "-180",
+          "y": "-70"
+        }
+      ],
+      "mountHeight": "146",
+      "slot": "8"
+    },
+    {
+      "anchor": "translate(0 -107)",
+      "canvas": [
+        {
+          "height": "217",
+          "width": "348",
+          "x": "-174",
+          "y": "-92"
+        }
+      ],
+      "slot": "4"
+    },
+    {
+      "anchor": "translate(0 -195)",
+      "bobAmplitude": "12",
+      "canvas": [
+        {
+          "height": "247",
+          "width": "406",
+          "x": "-203",
+          "y": "-87"
+        }
+      ],
+      "mountHeight": "183",
+      "slot": "7"
+    }
+  ],
+  "plain": {
+    "geometryPreserved": true,
+    "mounts": [
+      {
+        "identity": "grizzly",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.8599252650220367,
+          "offset": [
+            -0.009523556738554349,
+            0.00117845128324906,
+            0.015466664044288468
+          ],
+          "scale": 0.8599252650220367,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "zebra",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 1.0002135396050091,
+          "offset": [
+            -0.001182171245172918,
+            0.010019561796005104,
+            -0.000582960854483866
+          ],
+          "scale": 1.0002135396050091,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "unicorn",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9924652138018896,
+          "offset": [
+            -0.022262944249531423,
+            0.0029351118068627613,
+            0.001768056346419189
+          ],
+          "scale": 0.9924652138018896,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "flamingo",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9995612150299468,
+          "offset": [
+            -0.0002782530260177261,
+            0.00006939368236402732,
+            0.013043034556974392
+          ],
+          "scale": 0.9995612150299468,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "cat",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 1.1056598865630876,
+          "offset": [
+            -0.01902752599134841,
+            0.0006314941908533989,
+            -0.009327980742455257
+          ],
+          "scale": 1.1056598865630876,
+          "yaw": 0.5049913504336554
+        }
+      },
+      {
+        "identity": "elephant",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9837499090606476,
+          "offset": [
+            0.0028649653934832635,
+            0.04035935614728853,
+            -0.006637330671360728
+          ],
+          "scale": 0.9837499090606476,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "dragon",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9892869890830596,
+          "offset": [
+            0.018322883149372207,
+            -0.002274191900274364,
+            0.0021807472477852197
+          ],
+          "scale": 0.9892869890830596,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "tiger",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.8528904757473478,
+          "offset": [
+            0.0008897683987740948,
+            0.0005330336591768403,
+            0.02676527692201761
+          ],
+          "scale": 0.8528904757473478,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "stag",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9282852406781784,
+          "offset": [
+            -0.009163506547921156,
+            0.010343442042815789,
+            -0.010857402084629986
+          ],
+          "scale": 0.9282852406781784,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "snail",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9860224986251828,
+          "offset": [
+            -0.0012317824018132214,
+            0.0005880128920528471,
+            0.005546474502306775
+          ],
+          "scale": 0.9860224986251828,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "moon-loveseat",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 1.1452845900595188,
+          "offset": [
+            -0.01984670871839095,
+            0.0009981797947655746,
+            -0.1078856771407498
+          ],
+          "scale": 1.1452845900595188,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "brown-horse",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.8607564187518335,
+          "offset": [
+            0.00002686579033404929,
+            0.005744565889606423,
+            0.03201086978356066
+          ],
+          "scale": 0.8607564187518335,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "fox",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.8428117909055658,
+          "offset": [
+            -0.0016340005962196895,
+            -0.006225510115934474,
+            0.05609568877776261
+          ],
+          "scale": 0.8428117909055658,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "griffin",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 1.024119187971559,
+          "offset": [
+            0.01354495938971403,
+            -0.014547147570189878,
+            -0.006990725716315038
+          ],
+          "scale": 1.024119187971559,
+          "yaw": -1.5707963267948966
+        }
+      },
+      {
+        "identity": "polar-bear",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.956076634092498,
+          "offset": [
+            0.009480457685227529,
+            -0.0006527348759117757,
+            -0.003973461843823425
+          ],
+          "scale": 0.956076634092498,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "wolf",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9271613896329453,
+          "offset": [
+            0.0008258306977285382,
+            0.01568855461606672,
+            0.015243913174600832
+          ],
+          "scale": 0.9271613896329453,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "rocket",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.7334418097488578,
+          "offset": [
+            0.002589140841678118,
+            0.0755227672366649,
+            -0.00018684037104745865
+          ],
+          "scale": 0.7334418097488578,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "rabbit",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.8493014151880832,
+          "offset": [
+            -0.007539130901534853,
+            -0.003770802121395356,
+            0.05613162618940759
+          ],
+          "scale": 0.8493014151880832,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "horse",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.418710688807844,
+          "offset": [
+            -0.016118594229200534,
+            -0.003807031850148225,
+            -0.028857896849104097
+          ],
+          "scale": 0.418710688807844,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "ostrich",
+        "style": "plain",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.866874052003748,
+          "offset": [
+            -0.0013869672652432198,
+            -0.0008429054815733417,
+            0.0675019355645094
+          ],
+          "scale": 0.866874052003748,
+          "yaw": 0
+        }
+      }
+    ]
+  },
+  "stuffed": {
+    "geometryPreserved": true,
+    "mounts": [
+      {
+        "identity": "grizzly",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.7504421371819011,
+          "offset": [
+            -0.0039803670525008815,
+            0.0018185888277210127,
+            0.02960656405039308
+          ],
+          "scale": 0.7504421371819011,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "zebra",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9214749264060766,
+          "offset": [
+            -0.0006134645867179857,
+            -0.00541734312307951,
+            0.016810697286870596
+          ],
+          "scale": 0.9214749264060766,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "unicorn",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9321931201594312,
+          "offset": [
+            -0.001733676916283115,
+            -0.00039552918165869366,
+            0.013574520106696464
+          ],
+          "scale": 0.9321931201594312,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "flamingo",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.8326182045262448,
+          "offset": [
+            0.000354306074829665,
+            0.0534594969048911,
+            -0.0043161699536254095
+          ],
+          "scale": 0.8326182045262448,
+          "yaw": 1.5707963267948966
+        }
+      },
+      {
+        "identity": "cat",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 1.0424989553108237,
+          "offset": [
+            -0.03071536617463698,
+            0.0016903542346934364,
+            -0.011039002628421356
+          ],
+          "scale": 1.0424989553108237,
+          "yaw": 0.5049913504336554
+        }
+      },
+      {
+        "identity": "elephant",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9044522525933764,
+          "offset": [
+            -0.0008109483937925483,
+            -0.004811345541569034,
+            -0.0010991602085878157
+          ],
+          "scale": 0.9044522525933764,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "dragon",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9998682097149016,
+          "offset": [
+            0.012327119080685367,
+            0.0005613804053098692,
+            -0.0008896274712282826
+          ],
+          "scale": 0.9998682097149016,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "tiger",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.699759158053789,
+          "offset": [
+            0.0009883200934804831,
+            -0.0024062406008373283,
+            0.05403068982104228
+          ],
+          "scale": 0.699759158053789,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "stag",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9127141443004404,
+          "offset": [
+            -0.0016455921135983672,
+            0.012264063917449277,
+            -0.008525652790731253
+          ],
+          "scale": 0.9127141443004404,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "snail",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9984868921149636,
+          "offset": [
+            -0.003260383913413525,
+            0.0023622035605082026,
+            0.00006857298087581398
+          ],
+          "scale": 0.9984868921149636,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "moon-loveseat",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 1.0793113332585031,
+          "offset": [
+            -0.010747876034079227,
+            0.0014765259341471548,
+            -0.10933153053030986
+          ],
+          "scale": 1.0793113332585031,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "brown-horse",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.912904285392339,
+          "offset": [
+            0.0011643532085339637,
+            -0.0005885811783917783,
+            0.015946650475536173
+          ],
+          "scale": 0.912904285392339,
+          "yaw": 1.5707963267948966
+        }
+      },
+      {
+        "identity": "fox",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.8736700479645747,
+          "offset": [
+            0.0008435005598897553,
+            -0.0035929176908126026,
+            0.045926346006005925
+          ],
+          "scale": 0.8736700479645747,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "griffin",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 1.0256343321111012,
+          "offset": [
+            0.007415494269647683,
+            -0.004835724683003584,
+            -0.007048074157515294
+          ],
+          "scale": 1.0256343321111012,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "polar-bear",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.9994428300174436,
+          "offset": [
+            0.0032074664965066092,
+            0.000672377538431912,
+            -0.0003284343017298935
+          ],
+          "scale": 0.9994428300174436,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "wolf",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.8378513202861926,
+          "offset": [
+            -0.004827445768783582,
+            0.013899912279123294,
+            0.0364550617637652
+          ],
+          "scale": 0.8378513202861926,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "rocket",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.651827024281636,
+          "offset": [
+            0.0031320623578675695,
+            0.07477311720809077,
+            -0.00016905440972500156
+          ],
+          "scale": 0.651827024281636,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "rabbit",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.7631507316904192,
+          "offset": [
+            0.00007949847765500606,
+            -0.0027403486407421296,
+            0.07847592853009544
+          ],
+          "scale": 0.7631507316904192,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "horse",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.4241007226395862,
+          "offset": [
+            -0.01494452115325856,
+            -0.00359574760993199,
+            -0.032346992673730264
+          ],
+          "scale": 0.4241007226395862,
+          "yaw": 0
+        }
+      },
+      {
+        "identity": "ostrich",
+        "style": "stuffed",
+        "transform": {
+          "correction": [
+            0,
+            0,
+            0
+          ],
+          "fit": 0.8958101511265589,
+          "offset": [
+            -0.001572435193413386,
+            -0.001696429097533425,
+            0.04567990064591543
+          ],
+          "scale": 0.8958101511265589,
+          "yaw": 0
+        }
+      }
+    ]
+  },
+  "realMissingGlbFallback": {
+    "identity": "griffin",
+    "requested": "plain",
+    "actual": "ornate",
+    "otherMountsPlain": 19,
+    "restored": true
+  },
+  "desktop": [
+    1440,
+    1000
+  ],
+  "mobile": [
+    390,
+    844
+  ],
+  "keyboardStyleSwitch": true,
+  "phoneLookControls": true,
+  "visualReview": {
+    "positionsPerStyle": 20,
+    "styles": [
+      "ornate",
+      "plain",
+      "stuffed"
+    ],
+    "angles": [
+      90,
+      180,
+      270
+    ],
+    "originalGlbsUnchanged": true
+  }
+}

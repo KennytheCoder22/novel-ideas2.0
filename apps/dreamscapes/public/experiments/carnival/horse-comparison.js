@@ -1,3 +1,4 @@
+import {registerVariantMount} from './carousel-variants.js';
 import {cropCanvas} from './crop-canvas.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
 // Local-only 3D mount; the carousel clock supplies orbit and depth.
@@ -86,6 +87,7 @@ async function mount(){
   requestAnimationFrame(render);
  }
  render();
+ registerVariantMount({identity:'horse',slotNumber:slotIndex+1,model,registration,mountPoint,turn,carouselFrame,scene,camera,renderer,holder,slot,invalidate:()=>{previous=-1;}});
  window.carouselHorseComparison={slot:slotIndex+1,sourceBounds:box.toArray?.()||{min:box.min.toArray(),max:box.max.toArray()},renderer,model,turn,carouselFrame,camera,mountPoint,registration,pole};
 }
 const observer=new MutationObserver(()=>mount().catch(report));

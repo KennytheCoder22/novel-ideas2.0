@@ -1,0 +1,1802 @@
+[
+  {
+    "identity": "brown-horse",
+    "style": "plain",
+    "sourceFile": "3D Plain Brown Horse.glb",
+    "path": "experiments/carnival/carousel/variants/plain/brown-horse.glb",
+    "bytes": 7188200,
+    "sha256": "7b3d47ce3dafa8ef7cbf1126e0523dade0acd62bd80e7db628143fa50740b73a",
+    "positionBounds": [
+      [
+        [
+          -0.26416704058647156,
+          -0.9331380724906921,
+          -0.9546070098876953
+        ],
+        [
+          0.2632770240306854,
+          0.9159611463546753,
+          0.9449170231819153
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "cat",
+    "style": "plain",
+    "sourceFile": "3D Plain Cat.glb",
+    "path": "experiments/carnival/carousel/variants/plain/cat.glb",
+    "bytes": 8980716,
+    "sha256": "c95061e4548b79e46068c4428f053970331365a36f3263812bee0c0363fd93aa",
+    "positionBounds": [
+      [
+        [
+          -0.35040798783302307,
+          -0.8569440245628357,
+          -0.9512270092964172
+        ],
+        [
+          0.3483330011367798,
+          0.8571470379829407,
+          0.9509040117263794
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "dragon",
+    "style": "plain",
+    "sourceFile": "3D Plain Dragon.glb",
+    "path": "experiments/carnival/carousel/variants/plain/dragon.glb",
+    "bytes": 8087600,
+    "sha256": "2dd2581b9947e09da4994b00cf9550418642a1f956db04d574b5787e163d95cf",
+    "positionBounds": [
+      [
+        [
+          -0.48335200548171997,
+          -0.8978109955787659,
+          -0.9507889151573181
+        ],
+        [
+          0.48547303676605225,
+          0.8979600071907043,
+          0.9504760503768921
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "elephant",
+    "style": "plain",
+    "sourceFile": "3D Plain Elephant.glb",
+    "path": "experiments/carnival/carousel/variants/plain/elephant.glb",
+    "bytes": 7516548,
+    "sha256": "c644e990ca8164972fa03514f450d623984743dbcad73780d047941fb8fe040b",
+    "positionBounds": [
+      [
+        [
+          -0.3847759962081909,
+          -0.7510290741920471,
+          -0.9512169361114502
+        ],
+        [
+          0.3764840066432953,
+          0.7519690990447998,
+          0.9506459832191467
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "flamingo",
+    "style": "plain",
+    "sourceFile": "3D Plain Flamingo.glb",
+    "path": "experiments/carnival/carousel/variants/plain/flamingo.glb",
+    "bytes": 7174588,
+    "sha256": "e41678cbdd08fe03b71b0e1f8cf53c3e7cfe93439ad62291af32a69f0321e020",
+    "positionBounds": [
+      [
+        [
+          -0.2824069857597351,
+          -0.951664924621582,
+          -0.7018870115280151
+        ],
+        [
+          0.2820029854774475,
+          0.9510489702224731,
+          0.7076559662818909
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "fox",
+    "style": "plain",
+    "sourceFile": "3D plain Fox.glb",
+    "path": "experiments/carnival/carousel/variants/plain/fox.glb",
+    "bytes": 8958448,
+    "sha256": "96e473965238147f4fefc25a18ca0102f129f1daa8c6e8652e767605a3b272a7",
+    "positionBounds": [
+      [
+        [
+          -0.30235299468040466,
+          -0.7399511337280273,
+          -0.9507500529289246
+        ],
+        [
+          0.30570101737976074,
+          0.7427691221237183,
+          0.9512271285057068
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "griffin",
+    "style": "plain",
+    "sourceFile": "3D Plain Griffon.glb",
+    "path": "experiments/carnival/carousel/variants/plain/griffin.glb",
+    "bytes": 8842892,
+    "sha256": "2ef519f003ee7a505f5b541a138c2a839c20fc7d7fb7727f90c21b8c3afd6322",
+    "positionBounds": [
+      [
+        [
+          -0.9502359628677368,
+          -0.8023009896278381,
+          -0.45660099387168884
+        ],
+        [
+          0.9510839581489563,
+          0.808118999004364,
+          0.4682829976081848
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "moon-loveseat",
+    "style": "plain",
+    "sourceFile": "3D Plain Loveseat.glb",
+    "path": "experiments/carnival/carousel/variants/plain/moon-loveseat.glb",
+    "bytes": 7417120,
+    "sha256": "94b75440558324e0c819238131b87bb14d304544b0a2aaee025eed7704321bd8",
+    "positionBounds": [
+      [
+        [
+          -0.9516159296035767,
+          -0.7946760058403015,
+          -0.4397430121898651
+        ],
+        [
+          0.9506540298461914,
+          0.7931939959526062,
+          0.4385320544242859
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "ostrich",
+    "style": "plain",
+    "sourceFile": "3D Plain Ostrich.glb",
+    "path": "experiments/carnival/carousel/variants/plain/ostrich.glb",
+    "bytes": 9282100,
+    "sha256": "d875ece484518ee897437f27d9bb8e8d7f9a78aef73a5436b67c3f9f646eed69",
+    "positionBounds": [
+      [
+        [
+          -0.4090059995651245,
+          -0.9516319632530212,
+          -0.9387280941009521
+        ],
+        [
+          0.40824902057647705,
+          0.9501991271972656,
+          0.932108998298645
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "polar-bear",
+    "style": "plain",
+    "sourceFile": "3D Plain Polar Bear.glb",
+    "path": "experiments/carnival/carousel/variants/plain/polar-bear.glb",
+    "bytes": 8571444,
+    "sha256": "79d8dddd0c5b46758f6feff26cdb5f46f927f4413b5402864bfe32ef47a13c63",
+    "positionBounds": [
+      [
+        [
+          -0.5289369821548462,
+          -0.8834409713745117,
+          -0.9507099986076355
+        ],
+        [
+          0.5273759961128235,
+          0.882408082485199,
+          0.9502699375152588
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "rabbit",
+    "style": "plain",
+    "sourceFile": "3D Plain Rabbit.glb",
+    "path": "experiments/carnival/carousel/variants/plain/rabbit.glb",
+    "bytes": 7948420,
+    "sha256": "b2482c1631a4f717c0c0bd29be4361eb0382939324f6e85344a40703f30a2c32",
+    "positionBounds": [
+      [
+        [
+          -0.29155200719833374,
+          -0.7813200354576111,
+          -0.9523199200630188
+        ],
+        [
+          0.30883800983428955,
+          0.7833529710769653,
+          0.9404829740524292
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "rocket",
+    "style": "plain",
+    "sourceFile": "3D Plain Rocket.glb",
+    "path": "experiments/carnival/carousel/variants/plain/rocket.glb",
+    "bytes": 8373896,
+    "sha256": "617252fdd110632010a1071c5ef95627c19959bfd62be8a8db02cff56a1de47b",
+    "positionBounds": [
+      [
+        [
+          -0.9522289633750916,
+          -0.4406549632549286,
+          -0.5372520089149475
+        ],
+        [
+          0.9505999684333801,
+          0.4389840066432953,
+          0.5364589691162109
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "snail",
+    "style": "plain",
+    "sourceFile": "3D Plain Snail.glb",
+    "path": "experiments/carnival/carousel/variants/plain/snail.glb",
+    "bytes": 7829036,
+    "sha256": "f6649e01ede1aa3740b4eda45fafce7a65627b5f4aa9dbdddd0e445481bbfc5d",
+    "positionBounds": [
+      [
+        [
+          -0.5015440583229065,
+          -0.7124999761581421,
+          -0.9520440101623535
+        ],
+        [
+          0.5013859868049622,
+          0.7105061411857605,
+          0.9507349729537964
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "stag",
+    "style": "plain",
+    "sourceFile": "3D Plain Stag.glb",
+    "path": "experiments/carnival/carousel/variants/plain/stag.glb",
+    "bytes": 7618304,
+    "sha256": "dcae5e7b513511048b3574cd68bb89b11ba03c0b011cd28bc689929fc15ce6dd",
+    "positionBounds": [
+      [
+        [
+          -0.4357050359249115,
+          -0.9518719911575317,
+          -0.912071943283081
+        ],
+        [
+          0.45485803484916687,
+          0.9503340721130371,
+          0.9116530418395996
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "horse",
+    "style": "plain",
+    "sourceFile": "3D Plain Test Horse.glb",
+    "path": "experiments/carnival/carousel/variants/plain/horse.glb",
+    "bytes": 6835456,
+    "sha256": "8fc20a5df86241136c37ca9cf84fc49f573102e9d2e2a91f285762f8e1cabb41",
+    "positionBounds": [
+      [
+        [
+          -0.9516779184341431,
+          -0.8745619654655457,
+          -0.24591600894927979
+        ],
+        [
+          0.9502819180488586,
+          0.8748499155044556,
+          0.24201399087905884
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "tiger",
+    "style": "plain",
+    "sourceFile": "3D Plain Tiger.glb",
+    "path": "experiments/carnival/carousel/variants/plain/tiger.glb",
+    "bytes": 8016024,
+    "sha256": "21e07dde79ee77615efaa94df17e36094800aacfaf989e880af090d36ea190e5",
+    "positionBounds": [
+      [
+        [
+          -0.29626601934432983,
+          -0.7260851263999939,
+          -0.9517180919647217
+        ],
+        [
+          0.295973002910614,
+          0.7176420092582703,
+          0.9504539966583252
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "unicorn",
+    "style": "plain",
+    "sourceFile": "3D Plain Unicorn.glb",
+    "path": "experiments/carnival/carousel/variants/plain/unicorn.glb",
+    "bytes": 7792268,
+    "sha256": "c60c03899479821c43bbb782834b07b68f8bf6e0e0968a8254c95a0d3cbbfd92",
+    "positionBounds": [
+      [
+        [
+          -0.2651979923248291,
+          -0.8570971488952637,
+          -0.9526830315589905
+        ],
+        [
+          0.3083679974079132,
+          0.8496770858764648,
+          0.9508819580078125
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "wolf",
+    "style": "plain",
+    "sourceFile": "3D Plain Wolf.glb",
+    "path": "experiments/carnival/carousel/variants/plain/wolf.glb",
+    "bytes": 8782008,
+    "sha256": "2a1499b1255342f09b222297a5f79b4dbc348d64ce57c80ac160657bbe500e4d",
+    "positionBounds": [
+      [
+        [
+          -0.2451150119304657,
+          -0.5932769775390625,
+          -0.9478080868721008
+        ],
+        [
+          0.2422880083322525,
+          0.5838611125946045,
+          0.9497299790382385
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "zebra",
+    "style": "plain",
+    "sourceFile": "3D Plain Zebra.glb",
+    "path": "experiments/carnival/carousel/variants/plain/zebra.glb",
+    "bytes": 7618224,
+    "sha256": "dc0636a0c59aaf995a980837d6034e81ec580420d51148ab3c21c72f379acdf4",
+    "positionBounds": [
+      [
+        [
+          -0.2532219886779785,
+          -0.7654579281806946,
+          -0.9517999291419983
+        ],
+        [
+          0.2534950077533722,
+          0.7624959945678711,
+          0.9506759643554688
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "grizzly",
+    "style": "plain",
+    "sourceFile": "Plain Grizzly.glb",
+    "path": "experiments/carnival/carousel/variants/plain/grizzly.glb",
+    "bytes": 9401588,
+    "sha256": "cf16c4ecefd3a4b7e214a65f4baf7af0411279edce19abf8b30267870c1d4b3e",
+    "positionBounds": [
+      [
+        [
+          -0.700993001461029,
+          -0.7397950887680054,
+          -0.9500340223312378
+        ],
+        [
+          0.7076820135116577,
+          0.7377880215644836,
+          0.95073401927948
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "brown-horse",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Brown Horse.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/brown-horse.glb",
+    "bytes": 7187084,
+    "sha256": "6eac4ae252cd0852cdbc7be5867712b9a365dc42ec802c91a326c6a902f6f1db",
+    "positionBounds": [
+      [
+        [
+          -0.9522079825401306,
+          -0.8728970289230347,
+          -0.297184020280838
+        ],
+        [
+          0.9511920213699341,
+          0.870576024055481,
+          0.2937059998512268
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "cat",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Cat.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/cat.glb",
+    "bytes": 9076564,
+    "sha256": "46f0867ff22765a4774f2cc567fbe925fe536ab15b237452189a793a5ac4f7ba",
+    "positionBounds": [
+      [
+        [
+          -0.5270829200744629,
+          -0.9142699837684631,
+          -0.9500779509544373
+        ],
+        [
+          0.5221059918403625,
+          0.9103459715843201,
+          0.9491729140281677
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "dragon",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Dragon.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/dragon.glb",
+    "bytes": 7428300,
+    "sha256": "9cf04a4d7ba67761527fe6513e744873084726a90438079e2b8ea3c1a8f02ba2",
+    "positionBounds": [
+      [
+        [
+          -0.30234000086784363,
+          -0.8807520270347595,
+          -0.9513920545578003
+        ],
+        [
+          0.3021169900894165,
+          0.8774661421775818,
+          0.9507840275764465
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "elephant",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Elephant.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/elephant.glb",
+    "bytes": 7586180,
+    "sha256": "01d75031a9295012c89f3ed23d30ba6d74a755024318c35eea8a3fb4fae2250e",
+    "positionBounds": [
+      [
+        [
+          -0.4532119631767273,
+          -0.9190310835838318,
+          -0.9516890048980713
+        ],
+        [
+          0.4520709812641144,
+          0.918624997138977,
+          0.9507110118865967
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "flamingo",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Flamingo.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/flamingo.glb",
+    "bytes": 7613300,
+    "sha256": "35895848df713b6a3292432eeebd6cd6737237296c20c009df7f4aa7527e9b04",
+    "positionBounds": [
+      [
+        [
+          -0.925180971622467,
+          -0.9514409899711609,
+          -0.3211199939250946
+        ],
+        [
+          0.92439204454422,
+          0.9510160684585571,
+          0.3191789984703064
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "fox",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Fox.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/fox.glb",
+    "bytes": 7237456,
+    "sha256": "7587441541fe142c6e4240910a093074beaa1b3d89079097c9c0183f6255e851",
+    "positionBounds": [
+      [
+        [
+          -0.32512998580932617,
+          -0.7168291211128235,
+          -0.9521990418434143
+        ],
+        [
+          0.3226349949836731,
+          0.7135210633277893,
+          0.9509080052375793
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "griffin",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Griffon.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/griffin.glb",
+    "bytes": 7915044,
+    "sha256": "20b1c54ab3bd7dd94caaf0cea15dde4ef42d09e16383874ec63a261b1ebd2977",
+    "positionBounds": [
+      [
+        [
+          -0.3871850073337555,
+          -0.7937189936637878,
+          -0.9507759809494019
+        ],
+        [
+          0.3850570023059845,
+          0.7918210625648499,
+          0.9508250951766968
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "grizzly",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Grizzly.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/grizzly.glb",
+    "bytes": 8437432,
+    "sha256": "50ed0793554cd1c54f1cbbe2b07defde39c596ccdb2fc4c62490f16a3ae834bf",
+    "positionBounds": [
+      [
+        [
+          -0.40137797594070435,
+          -0.8485779166221619,
+          -0.9510438442230225
+        ],
+        [
+          0.40315598249435425,
+          0.8445720076560974,
+          0.946506917476654
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "moon-loveseat",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Loveseat.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/moon-loveseat.glb",
+    "bytes": 7660648,
+    "sha256": "69bd2c413a210cfba917a87988e522e78d26f7e2bd86aca3fdc3571caf425049",
+    "positionBounds": [
+      [
+        [
+          -0.9516581296920776,
+          -0.8436940312385559,
+          -0.46545499563217163
+        ],
+        [
+          0.9505350589752197,
+          0.8412350416183472,
+          0.46733206510543823
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "ostrich",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Ostrich.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/ostrich.glb",
+    "bytes": 7314904,
+    "sha256": "d139b2e3c156edce5e61f8be493fb626bcf78824e2fabf52192de528bd262d01",
+    "positionBounds": [
+      [
+        [
+          -0.352679967880249,
+          -0.9199399352073669,
+          -0.9510429501533508
+        ],
+        [
+          0.3527750074863434,
+          0.920458972454071,
+          0.9509579539299011
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "polar-bear",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Polar Bear.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/polar-bear.glb",
+    "bytes": 7044016,
+    "sha256": "e35a866e72332536ea11cc51accabbb03e85fbd5861ec17e968a8600ba7a15e6",
+    "positionBounds": [
+      [
+        [
+          -0.47178003191947937,
+          -0.8433160781860352,
+          -0.9518280029296875
+        ],
+        [
+          0.47900402545928955,
+          0.8416850566864014,
+          0.9505569338798523
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "rabbit",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Rabbit.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/rabbit.glb",
+    "bytes": 7486988,
+    "sha256": "66ce8c750cd3e39598c5a445f9f064386b154a86fccdec377c03138060f936a2",
+    "positionBounds": [
+      [
+        [
+          -0.3698509931564331,
+          -0.8708720803260803,
+          -0.9517019391059875
+        ],
+        [
+          0.3690670132637024,
+          0.8704339861869812,
+          0.950760006904602
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "rocket",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Rocket.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/rocket.glb",
+    "bytes": 7777124,
+    "sha256": "28d27d1811897b535864dc22bb85709c205c6221a0941728f042d0940d7bae7f",
+    "positionBounds": [
+      [
+        [
+          -0.9518568515777588,
+          -0.49467897415161133,
+          -0.476239949464798
+        ],
+        [
+          0.951090931892395,
+          0.49509894847869873,
+          0.47560396790504456
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "snail",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Snail.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/snail.glb",
+    "bytes": 8791900,
+    "sha256": "fd10ad42a3645f75e9c352e2cdcf65f4ddb216d9e18f91fc90d941c45260ee84",
+    "positionBounds": [
+      [
+        [
+          -0.6036460399627686,
+          -0.6982100009918213,
+          -0.952034056186676
+        ],
+        [
+          0.6069700121879578,
+          0.6973550915718079,
+          0.9507120847702026
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "stag",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Stag.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/stag.glb",
+    "bytes": 7976788,
+    "sha256": "b888ef401ab0a0e06b20acd0b80d98ea97214d7302f98a77b7d91bdccbadbbff",
+    "positionBounds": [
+      [
+        [
+          -0.31309598684310913,
+          -0.9521930813789368,
+          -0.921428918838501
+        ],
+        [
+          0.31628504395484924,
+          0.9510579705238342,
+          0.9200220108032227
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "horse",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Test Horse.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/horse.glb",
+    "bytes": 7034064,
+    "sha256": "eaea831373579cbafb37e857d65ec968c40a21d224d3190d879a76ad553b68f7",
+    "positionBounds": [
+      [
+        [
+          -0.9510590434074402,
+          -0.8639450669288635,
+          -0.2991080582141876
+        ],
+        [
+          0.9502679705619812,
+          0.8632329702377319,
+          0.3121219873428345
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "tiger",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Tiger.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/tiger.glb",
+    "bytes": 7292732,
+    "sha256": "f7c3ee29cd2a3d3c2097f87a604b44edc63d74227fcbfdefebad758a6eddc043",
+    "positionBounds": [
+      [
+        [
+          -0.3709140419960022,
+          -0.8807770609855652,
+          -0.9517249464988708
+        ],
+        [
+          0.3703339993953705,
+          0.8788871169090271,
+          0.9510520100593567
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "unicorn",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Unicorn.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/unicorn.glb",
+    "bytes": 7025144,
+    "sha256": "b3a0be6e161ff62a2d08fdcbf90dedb558e62567db40479ba657514030e767cf",
+    "positionBounds": [
+      [
+        [
+          -0.2629539668560028,
+          -0.9089409112930298,
+          -0.9513998627662659
+        ],
+        [
+          0.2651139795780182,
+          0.9081869125366211,
+          0.9504568576812744
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "wolf",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Wolf.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/wolf.glb",
+    "bytes": 8304044,
+    "sha256": "28af5d01e80c406f619a26e22d000abbb7c04f6e9aa7c1c2d10f0f61ab620796",
+    "positionBounds": [
+      [
+        [
+          -0.358242005109787,
+          -0.654382050037384,
+          -0.9526969790458679
+        ],
+        [
+          0.36820700764656067,
+          0.648232102394104,
+          0.9498960375785828
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  {
+    "identity": "zebra",
+    "style": "stuffed",
+    "sourceFile": "3D Stuffed Zebra.glb",
+    "path": "experiments/carnival/carousel/variants/stuffed/zebra.glb",
+    "bytes": 7716148,
+    "sha256": "68f36e00e915a6f4264dc9c08c4f0b3b9b2a13372615ae96315e7a4933f84a13",
+    "positionBounds": [
+      [
+        [
+          -0.4171150028705597,
+          -0.8656119108200073,
+          -0.9515669941902161
+        ],
+        [
+          0.4150129556655884,
+          0.8650700449943542,
+          0.9511719346046448
+        ]
+      ]
+    ],
+    "nodes": [
+      {
+        "mesh": 0,
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  }
+]

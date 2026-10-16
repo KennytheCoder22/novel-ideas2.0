@@ -1,0 +1,15 @@
+.carousel-variant-dev {position:fixed;right:12px;top:12px;z-index:40;max-width:calc(100vw - 24px);padding:10px;background:#101725ed;color:#ffedc4;border:1px solid #a98346;border-radius:7px;font:13px/1.4 system-ui;}
+.carousel-variant-dev strong {display:block;margin-bottom:6px;}
+.carousel-variant-dev button,.variant-review button {padding:7px 10px;margin:3px;border:1px solid #a98346;border-radius:4px;background:#26374c;color:#fff2d1;cursor:pointer;}
+.carousel-variant-dev button[aria-pressed=true] {background:#70512b;}
+.carousel-variant-dev button:disabled {opacity:.5;cursor:wait;}
+.carousel-variant-dev button:focus-visible,.variant-review button:focus-visible {outline:3px solid #ffda80;outline-offset:2px;}
+body:not(:has(section[data-scene="rides-games"]:not([inert]))) .carousel-variant-dev {display:none;}
+.variant-review {box-sizing:border-box;max-width:98vw;max-height:96dvh;width:1200px;padding:12px;border:1px solid #a98346;border-radius:8px;background:#101725;color:#ffedc4;overflow:auto;}
+.variant-review::backdrop {background:#000b;}
+.variant-review-controls {position:sticky;top:-12px;z-index:1;background:#101725;padding:6px;}
+.variant-review-grid {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
+.variant-review figure {margin:0;padding:5px;background:#26313d;border:1px solid #56606c;}
+.variant-review canvas {display:block;width:100%;height:180px;object-fit:contain;}
+.variant-review figcaption {font:12px/1.4 system-ui;}
+@media(max-width:700px){.variant-review-grid {grid-template-columns:repeat(2,minmax(0,1fr));}.variant-review canvas {height:150px;}}
