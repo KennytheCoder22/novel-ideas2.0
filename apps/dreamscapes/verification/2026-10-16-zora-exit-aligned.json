@@ -1,0 +1,56 @@
+{
+  "desktop": {
+    "box": {
+      "height": 246.078125,
+      "width": 196.921875,
+      "x": -52.046875,
+      "y": 399.5625
+    },
+    "clip": "polygon(52.056px -5.68434e-14px, 52.056px 30.68px, 52.056px 99.89px, 52.056px 176.79px, 52.056px 246px, 162.565px 246px, 173.63px 176.79px, 185.924px 99.89px, 195.486px 30.68px, 197px -5.68434e-14px)",
+    "destination": "/",
+    "hiddenWordErrors": 0,
+    "occludedOpaqueSamples": 11,
+    "overlap": false,
+    "tentTarget": {
+      "height": 69.1875,
+      "width": 136.59375,
+      "x": 13.65625,
+      "y": 314.796875
+    },
+    "transparentHitErrors": 0,
+    "viewport": [
+      1366,
+      768
+    ],
+    "wordSamples": 80
+  },
+  "mobile": {
+    "box": {
+      "height": 122.375,
+      "width": 97.921875,
+      "x": 280.1875,
+      "y": 709.328125
+    },
+    "clip": "",
+    "destination": "/",
+    "hiddenWordErrors": 0,
+    "occludedOpaqueSamples": 0,
+    "overlap": false,
+    "tentTarget": {
+      "height": 75.953125,
+      "width": 149.953125,
+      "x": -539.828125,
+      "y": 346.03125
+    },
+    "transparentHitErrors": 0,
+    "viewport": [
+      390,
+      844
+    ],
+    "wordSamples": 80
+  },
+  "desktopTentRowRoute": "passed",
+  "mobileTentRowRoute": "tent-row",
+  "keyboardExit": "passed",
+  "pointerExit": "passed"
+}

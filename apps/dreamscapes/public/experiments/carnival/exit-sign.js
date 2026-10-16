@@ -10,7 +10,10 @@
       // Source-space clearance between the near post and the barrel's left edge.
       // Hiding the frame behind those baked-in props also removes its hit area.
       occlusion:[[.70,.075,.205],[.73,.085,.176],[.80,.115,.171],[.90,.115,.168],[1,.115,.168]]},
-    'fortune-teller': {wide:[.57,.985,.16], cropped:[.60,.985,.145], besideLook:true},
+    'fortune-teller': {wide:[.034,.84,.32], cropped:[.60,.985,.145], besideLook:true,
+      wideAspect:1.7, maxViewportHeight:.34, cropLeft:true,
+      // Existing black placard hides only the right edge of the EXIT frame.
+      occlusion:[[.50,0,.115],[.56,0,.105],[.65,0,.098],[.75,0,.089],[.85,0,.080],[1,0,.072]]},
     'rides-games':    {wide:[.73,.965,.15], cropped:[.64,.805,.17]},
     'behind-carnival':{wide:[.83,.96,.21], cropped:[.64,.90,.19]},
     'forest-edge':    {wide:[.79,.97,.19], cropped:[.53,.895,.18]},
@@ -59,9 +62,9 @@
         frame = null;
         const width = plane.offsetWidth, height = plane.offsetHeight;
         if (!width || !height) return;
-        const cropped = innerWidth / innerHeight < 1.2;
+        const cropped = innerWidth / innerHeight < (placement.wideAspect || 1.2);
         const pose = placement[cropped ? 'cropped' : 'wide'];
-        let signHeight = Math.min(height * pose[2], innerHeight * .29);
+        let signHeight = Math.min(height * pose[2], innerHeight * (cropped ? .29 : placement.maxViewportHeight || .29));
         // Zora's open rug corner sits beside, rather than above, the look controls.
         // Fit that scene's side gutter even on small phones without covering them.
         const look = plane.parentElement.querySelector('.location-look');
@@ -73,8 +76,10 @@
           : window.CarnivalScenes[scene].framing;
         const entryLeft = Math.max(0, width - innerWidth) * framing;
         // Fit the entry camera on resize, never chase its position while panning.
-        const x = Math.max(entryLeft + 12, Math.min(entryLeft + innerWidth - signWidth - 12,
-          width * pose[0] - signWidth / 2));
+        const preferredX = width * pose[0] - signWidth / 2;
+        // Zora's wide pose can crop the unused back frame at the left edge.
+        const x = placement.cropLeft && !cropped ? preferredX : Math.max(entryLeft + 12,
+          Math.min(entryLeft + innerWidth - signWidth - 12, preferredX));
         // Ferris' narrow barrel/queue-sign gap permits the feet below the frame.
         // Limit that crop to the bottom 14% of the artwork, below all lettering.
         const bottomInset = placement.cropFeet && !cropped ? -boxHeight * .14 : 10;

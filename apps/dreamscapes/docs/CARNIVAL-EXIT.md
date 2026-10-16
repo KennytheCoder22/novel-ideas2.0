@@ -18,14 +18,14 @@ using a universal lower-left fallback.
 | Main Midway | .105 / .89 / .22 | .68 / .90 / .20 | Open foreground, clear of the poster, puddle, figure and fox |
 | Ferris platform | .332 / 1.025 / .17 | .65 / .915 / .18 | Desktop gap between barrel and LINE STARTS HERE; portrait keeps its reviewed open approach |
 | Tent Row | .13 / .92 / .20 | .62 / .81 / .17 | Desktop tucked left of and behind the GOOD GAMES GOOD PEOPLE barrel; portrait uses the open walkway |
-| Madame Zora | .57 / .985 / .16 | .60 / .985 / .145 | Front rug corner, opposite the black stars sign |
+| Madame Zora | .034 / .84 / .32 | .60 / .985 / .145 | Wide view: left of the black stars placard, top-aligned; narrow view: front rug corner |
 | Rides & Games / Carousel | .73 / .965 / .15 | .64 / .805 / .17 | Clear ground beyond the carousel fence and Ride Laugh Repeat sign |
 | Behind the Carnival | .83 / .96 / .21 | .64 / .90 / .19 | Right foreground, clear of the tent doorway and forest path |
 | Forest's Edge | .79 / .97 / .19 | .53 / .895 / .18 | Open trail shoulder, clear of the return path and fences |
 
-An aspect ratio below 1.2 selects the portrait pose. On resize, the pose fits the
+An aspect ratio below 1.2 selects the portrait pose (below 1.7 for Zora, whose left-side placard falls outside narrower camera crops). On resize, the pose fits the
 scene's entry camera with a 12 px horizontal inset and a 10 px bottom inset; height
-is capped at 29% of the viewport. Zora's portrait scale also fits the right gutter
+is capped at 29% of the viewport, with a 34% allowance for Zora's taller wide-view sign. Zora's portrait scale also fits the right gutter
 beside the existing look controls, including at 320 px phone width.
 
 The sign remains registered to the artwork when panning. It can naturally leave
@@ -93,3 +93,23 @@ separate left-post and right-barrel probes. No transparent sample receives click
 and no navigation hotspot overlaps either sign. Keyboard and pointer activation
 return to `/`. Measurements are recorded in
 `verification/2026-10-16-tent-exit-barrel.json`. No production release is performed.
+
+## Madame Zora sign alignment and Tent Row target, 2026-10-16
+
+The wide-view EXIT is now immediately left of the black WHAT DO THE STARS HOLD
+FOR YOU? placard. Its visible top frame aligns with the existing placard's top
+frame, at roughly three-quarters of that placard's height. The unused back frame
+may extend beyond the left edge; all lettering remains on-screen. A clearance
+profile lets the existing placard cover only the EXIT frame's right edge. Narrow
+views retain the reviewed rug-corner pose and clear look controls.
+
+The Tent Row target moved from [1,60,12,27] to [1,41,10,9] in scene percentages,
+above both sign objects. Its route still leads to Tent Row. The HTML script query
+versions were updated so navigation and EXIT changes load together.
+
+Verified at 1366 x 768 and 390 x 844: no overlap between EXIT and the Tent Row
+target; 80 independent opaque samples across the wording remain clickable in
+each view; no transparent samples accept clicks. Desktop keyboard EXIT and mobile
+pointer EXIT return to `/`. The raised Tent Row target opens Tent Row on desktop
+and on mobile after looking left. No browser errors were logged. Measurements
+are in `verification/2026-10-16-zora-exit-aligned.json`. No deployment performed.
