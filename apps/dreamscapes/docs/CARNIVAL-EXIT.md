@@ -21,7 +21,7 @@ using a universal lower-left fallback.
 | Madame Zora | .034 / .84 / .32 | .60 / .985 / .145 | Wide view: left of the black stars placard, top-aligned; narrow view: front rug corner |
 | Rides & Games / Carousel | .73 / .965 / .15 | .64 / .805 / .17 | Clear ground beyond the carousel fence and Ride Laugh Repeat sign |
 | Behind the Carnival | .075 / .985 / .2625 | .50 / .90 / .2375 | Far-left foreground, 25% larger; clear of the tent doorway and forest path |
-| Forest's Edge | .785 / .80 / .19 | .53 / .81 / .18 | Open trail shoulder, clear of the return path and fences |
+| Forest's Edge | .80 / .725 / .135 | .53 / .73 / .135 | Open trail shoulder, clear of the return path and fences |
 
 An aspect ratio below 1.2 selects the portrait pose (below 1.7 for Zora, whose left-side placard falls outside narrower camera crops). On resize, the pose fits the
 scene's entry camera with a 12 px horizontal inset and a 10 px bottom inset; height
@@ -121,3 +121,7 @@ Moved only this scene’s EXIT to the far-left foreground and increased both des
 ### Forest’s Edge canopy placement — 16 October 2026
 
 Moved the desktop EXIT into the path between the two right-hand trees, preserving its height at .19 of the scene. Portrait height remains .18, with a separate visible crop placement. A scene-specific CSS brightness (.62) and saturation (.8) treatment places the unchanged PNG under the canopy shadow; hover and keyboard focus remain visible. Verified desktop 1366×768 and phone 390×844, 339 alpha/hit samples each, no travel hotspot overlap, keyboard focus/Enter and tap return to `/`. Evidence: `verification/2026-10-16-forest-exit-shadow.json`.
+
+### Forest’s Edge distance refinement — 16 October 2026
+
+Moved this sign farther up the wooded path to suggest another 6–8 feet of distance. Desktop scene height reduced from .19 to .135 (about 29% smaller); portrait from .18 to .135 (25% smaller). Ground anchors .80/.725 desktop and .53/.73 portrait. Deeper canopy shading uses brightness .48 and saturation .72, with the same artwork and silhouette link. Desktop/mobile checks each pass 339 alpha/hit samples with no hotspot overlap; keyboard Enter and pointer exit both return to `/`. Evidence: `verification/2026-10-16-forest-exit-depth.json`.

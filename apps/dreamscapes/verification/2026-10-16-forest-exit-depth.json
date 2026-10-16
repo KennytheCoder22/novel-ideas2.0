@@ -1,0 +1,40 @@
+{
+  "desktop": {
+    "box": {
+      "height": 103.8125,
+      "width": 83.078125,
+      "x": 1051.296875,
+      "y": 453.125
+    },
+    "destination": "/",
+    "filter": "brightness(0.48) saturate(0.72)",
+    "hitChecks": 339,
+    "hitMismatches": 0,
+    "hotspotOverlaps": [],
+    "viewport": [
+      1366,
+      768
+    ],
+    "visible": true
+  },
+  "mobile": {
+    "box": {
+      "height": 113.9375,
+      "width": 91.171875,
+      "x": 261.265625,
+      "y": 502.109375
+    },
+    "destination": "/",
+    "filter": "brightness(0.48) saturate(0.72)",
+    "hitChecks": 339,
+    "hitMismatches": 0,
+    "hotspotOverlaps": [],
+    "viewport": [
+      390,
+      844
+    ],
+    "visible": true
+  },
+  "keyboardExit": true,
+  "mobileExit": true
+}

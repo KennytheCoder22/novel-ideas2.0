@@ -29,4 +29,4 @@
 @media (forced-colors:active) { .carnival-exit-prop:has(.carnival-exit:focus-visible) { outline:3px solid LinkText; outline-offset:3px; } }
 
 /* Tree canopy shades this prop while preserving the supplied artwork. */
-.carnival-exit-prop[data-exit-scene="forest-edge"] { --exit-brightness:.62; --exit-saturation:.8; }
+.carnival-exit-prop[data-exit-scene="forest-edge"] { --exit-brightness:.48; --exit-saturation:.72; }
