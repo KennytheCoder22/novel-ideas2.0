@@ -8,8 +8,8 @@
     "sha256": "04791be3cf3d78122ab5ba7beea622933218aab49f12844e3eae41d8ea49accd"
   },
   "experiments/carnival/horse-comparison.js": {
-    "bytes": 6464,
-    "sha256": "e48a79d307e9f8226e98f14160ea12cacb7435e1d5f737c6d03b8c969d4fb55b"
+    "bytes": 5850,
+    "sha256": "14e2eaeade68e09ca3a2f0ba4cea49c1f1d05da423a5b0ba14f4635fed4ee32c"
   },
   "experiments/carnival/exit-sign.js": {
     "bytes": 6503,
@@ -44,12 +44,12 @@
     "sha256": "bb101cdd8d5f1c87c221d320629f87ac855195624e33f66c197b6f4228b01b3d"
   },
   "experiments/carnival/animal-comparison.js": {
-    "bytes": 9925,
-    "sha256": "d8b7e77470c9b5d23f0a63d4f0e61d5174d1efca275abacbf3990fb036a86e85"
+    "bytes": 7758,
+    "sha256": "dd56f52bb6844c2b20a0e1c13fec0a23086d3375c2d6f83173fcc2ee568dad62"
   },
   "experiments/carnival/carousel-variants.js": {
-    "bytes": 8293,
-    "sha256": "8fa27b9a94b00937a1677c9e0b97e50fd1d556ba0a0bcb068aa3298a2a69bcba"
+    "bytes": 9894,
+    "sha256": "7b9b0b3bbb5f44ef0cc11acf54bc98f6be03140c8c42852ae26082179c9da64c"
   },
   "experiments/carnival/mount-variants.js": {
     "bytes": 1281,
@@ -224,8 +224,8 @@
     "sha256": "46a607af6397f1dce14db1ad40b2f486bdf8d3603b13fa0877b69d63714e457f"
   },
   "age-band.js": {
-    "bytes": 1913,
-    "sha256": "7b7489df1e78d62685561355f22a8326d84af05e428e940a2672ef840c5bf821"
+    "bytes": 2232,
+    "sha256": "ffa70c90fe43815b6b24e250ec0b9a572609f8ff63965a2ce56dd74875a5f879"
   },
   "opening/age-buttons.js": {
     "bytes": 431,
@@ -238,5 +238,17 @@
   "opening/opening.css": {
     "bytes": 1782,
     "sha256": "c2f57205e52f124169af00e9b6de88ecf9f2a250f96ce246f7cec2a3b40a6edf"
+  },
+  "mount-preload.js": {
+    "bytes": 2220,
+    "sha256": "3b582b30672a0d41160a4896d08493f43e4b55ce2f25eddf8f823104e0b6e12e"
+  },
+  "experiments/carnival/crop-canvas.js": {
+    "bytes": 3675,
+    "sha256": "d3699eef706bac7f9fea7828e18b37987c56fe3499fc141e5d3cd049aaa4bbba"
+  },
+  "experiments/carnival/mount-rigs.js": {
+    "bytes": 13531,
+    "sha256": "026dc0ae5a42f8e3008f3ba17f66cfe710cf2d52889cecc615eafb111e719177"
   }
 }

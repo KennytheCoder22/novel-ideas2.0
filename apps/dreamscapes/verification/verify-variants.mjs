@@ -5,6 +5,7 @@ import {runInNewContext} from 'node:vm';
 import * as T from '../public/experiments/carnival/vendor/three.module.js';
 import {GLTFLoader} from '../public/experiments/carnival/vendor/GLTFLoader.js';
 import {mountVariants,resolveMountVariant} from '../public/experiments/carnival/mount-variants.js';
+import {mountRigs} from '../public/experiments/carnival/mount-rigs.js';
 import {envelope,prepareVariant} from '../public/experiments/carnival/variant-registration.js';
 
 const root=new URL('../public/experiments/carnival/',import.meta.url);
@@ -32,6 +33,9 @@ for(const spec of specs){
   assert.equal(createHash('sha256').update(original).digest('hex'),checkpoint[key].sha256,'Ornate source changed: '+spec.name);
   const reference=await geometry(mapping.ornate.url),mountPoint=new T.Vector3(...spec.mount);
   const entry={bounds:new T.Box3().setFromObject(reference),radius:envelope(reference,mountPoint),mountPoint};
+  assert.deepEqual(entry.bounds.min.toArray(),mountRigs[spec.name].bounds.min,'Frozen bounds min '+spec.name);
+  assert.deepEqual(entry.bounds.max.toArray(),mountRigs[spec.name].bounds.max,'Frozen bounds max '+spec.name);
+  assert(Math.abs(entry.radius-mountRigs[spec.name].radius)<1e-10,'Frozen radius '+spec.name);
   for(const style of ['plain','stuffed']){
     const model=await geometry(mapping[style].url),config=mapping[style];
     const prepared=prepareVariant(entry,model,config),bounds=new T.Box3().setFromObject(prepared.wrapper);

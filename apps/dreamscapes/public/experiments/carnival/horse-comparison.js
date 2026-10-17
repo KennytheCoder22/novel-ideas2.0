@@ -3,7 +3,7 @@ import {cropCanvas} from './crop-canvas.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
 // Local-only 3D mount; the carousel clock supplies orbit and depth.
 import * as THREE from './vendor/three.module.js';
-import { GLTFLoader } from './vendor/GLTFLoader.js';
+import {mountRigs} from './mount-rigs.js';
 const NS='http://www.w3.org/2000/svg';
 const slotIndex=3; // Existing empty outer-ring pole, two rows after the 2D mount.
 let mounted=false;
@@ -22,7 +22,7 @@ async function mount(){
  slot.style.opacity='1';
  const holder=document.createElementNS(NS,'foreignObject');
  for(const [k,v] of Object.entries({x:-200,y:-150,width:400,height:300,class:'carousel-horse-3d-comparison'}))holder.setAttribute(k,v);
- holder.style.pointerEvents='none';
+ holder.style.pointerEvents='none';holder.style.visibility='hidden';
  const canvas=document.createElementNS('http://www.w3.org/1999/xhtml','canvas');
  canvas.style.cssText='width:400px;height:300px;display:block;background:transparent';
  holder.append(canvas);anchor.append(holder);
@@ -34,9 +34,8 @@ async function mount(){
  const scene=new THREE.Scene();
  scene.add(new THREE.HemisphereLight(0xfff2de,0x514958,1.5));
  const light=new THREE.DirectionalLight(0xffecd3,2);light.position.set(-2,3,4);scene.add(light);
- const gltf=await new GLTFLoader().loadAsync('./carousel/horse-comparison.glb');
- const model=gltf.scene;
- const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+ const rig=mountRigs.horse,model=new THREE.Group();
+ const box=new THREE.Box3(new THREE.Vector3(...rig.bounds.min),new THREE.Vector3(...rig.bounds.max)),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
  // Parent transforms affect presentation only; imported nodes/materials/geometry remain intact.
  const carouselFrame=new THREE.Group(),turn=new THREE.Group(),registration=new THREE.Group();
  const assembly=svg.querySelector(".carousel-assembly");
@@ -50,21 +49,10 @@ async function mount(){
  const span=size.y*1.5;
  const camera=new THREE.OrthographicCamera(-span*2/3,span*2/3,span/2,-span/2,.01,20);
  camera.position.set(0,.12,3);camera.lookAt(0,0,0);
- // Resolve the shaft through the full vertical overlap with the horse.
- // Raycast the unchanged horse to find its upper/lower surface along the pole.
- model.updateWorldMatrix(true,true);
- const cast=new THREE.Raycaster();
- cast.set(new THREE.Vector3(0,size.y*2,0),new THREE.Vector3(0,-1,0));
- const upper=cast.intersectObject(model,true)[0];
- cast.set(new THREE.Vector3(0,-size.y*2,0),new THREE.Vector3(0,1,0));
- const lower=cast.intersectObject(model,true)[0];
- if(!upper||!lower)throw new Error('Mounting sleeve must intersect the horse');
- // The shaft can overlap the head/mane above the saddle from some angles.
- // Include that overlap in the depth buffer; keep the lower embedded tip short.
- const tip=size.y*.015,top=box.max.y-mountPoint.y+tip,bottom=lower.point.y-tip;
- const pole=new THREE.Mesh(new THREE.CylinderGeometry(span*4/300,span*4/300,span*2,24,1,true),carouselPoleMaterial(THREE,top-bottom,span));
- pole.scale.y=(top-bottom)/(span*2);
- pole.position.y=(top+bottom)/2;
+ // Use the verified shaft endpoints without downloading an Ornate placeholder.
+ const top=rig.pole.y+rig.pole.height*rig.pole.scaleY/2,bottom=rig.pole.y-rig.pole.height*rig.pole.scaleY/2;
+ const pole=new THREE.Mesh(new THREE.CylinderGeometry(span*4/300,span*4/300,rig.pole.height,24,1,true),carouselPoleMaterial(THREE,top-bottom,span));
+ pole.scale.y=rig.pole.scaleY;pole.position.y=rig.pole.y;
  scene.add(pole);
  cropCanvas(THREE,{name:'horse',scene,camera,carouselFrame,renderer,holder});
  // Keep the original shaft continuous outside the horse overlap. The aligned
@@ -77,7 +65,7 @@ async function mount(){
  function render(){
   if(!svg.isConnected){renderer.dispose();mounted=false;return;}
   const yaw=Number(assembly.dataset.yaw||0);
-  if(yaw!==previous&&!document.hidden){
+  if(holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden){
    // SVG positive depth maps to +Z; Three Y rotation therefore reverses SVG yaw.
    carouselFrame.rotation.y=-yaw;
    const pose=window.CarnivalCarousel.pose(slotIndex,Number(svg.dataset.phase||0));
@@ -91,6 +79,6 @@ async function mount(){
  window.carouselHorseComparison={slot:slotIndex+1,sourceBounds:box.toArray?.()||{min:box.min.toArray(),max:box.max.toArray()},renderer,model,turn,carouselFrame,camera,mountPoint,registration,pole};
 }
 const observer=new MutationObserver(()=>mount().catch(report));
-function report(error){badge.textContent='3D comparison could not load: '+error.message;console.error(error)}
+function report(error){console.error(error)}
 observer.observe(document.body,{childList:true,subtree:true});
 mount().catch(report);

@@ -4,7 +4,7 @@ Portal artwork and layout are unchanged. Native transparent buttons overlay the 
 
 Kids -> Stuffed; Pre-Teens -> Stuffed; Teens -> Plain; Adults -> Ornate. Adults is the default for a new/invalid preference. `dreamscapes.age-band` in localStorage persists across reloads and Carnival scenes; no network/account tracking is added. Storage access errors are caught (selection is then in-memory only). The band is used only for mount model style, not other scene behavior.
 
-The existing batch variant loader waits for all twenty canonical mounts, prepares replacements and commits them together. Missing mappings, failed GLB requests or preparation errors retain that mount's Ornate model. Existing fixed transforms, poles, timing, crop cameras, scales and rendering behavior are unchanged. Original Ornate files and all variant GLBs are unchanged.
+The portal preloads only the selected style, using four concurrent downloads and a versioned browser cache shared with Carnival navigation. The Carousel initializes the verified fixed rig without downloading Ornate placeholders. Three model-loading jobs parse/prepare requested models; each canvas stays hidden until its correct model has rendered. Missing mappings or genuine load failures request only that mount's Ornate fallback. Loaded models are reused on revisits and style changes. Existing fixed transforms, poles, timing, crop cameras, scales and rendering behavior are unchanged. Original Ornate files and all variant GLBs are unchanged.
 
 Review locally:
 ```

@@ -1,3 +1,4 @@
+import {preloadMountStyle} from './mount-preload.js';
 export const bands=Object.freeze({kids:{label:'Kids',style:'stuffed'},'pre-teens':{label:'Pre-Teens',style:'stuffed'},teens:{label:'Teens',style:'plain'},adults:{label:'Adults',style:'ornate'}});
 const key='dreamscapes.age-band';
 let saved;try{saved=localStorage.getItem(key);}catch{}
@@ -17,3 +18,6 @@ document.addEventListener('dreamscapes-age-band',update);
 document.addEventListener('carousel-variant-loading',event=>{active=event.detail.style;loading=event.detail.target;update();});
 document.addEventListener('carousel-variant-changed',event=>{active=event.detail.style;loading=null;update();if(event.detail.failures)badge.textContent+=' · '+event.detail.failures+' Ornate fallback'+(event.detail.failures===1?'':'s');});
 document.body.append(badge);update();
+document.addEventListener('dreamscapes-age-band',()=>preloadMountStyle(getAgeBand().style));
+// No speculative Ornate prefetch before a first-time visitor chooses a band.
+if(saved||location.pathname.includes('/carnival/'))preloadMountStyle(getAgeBand().style);

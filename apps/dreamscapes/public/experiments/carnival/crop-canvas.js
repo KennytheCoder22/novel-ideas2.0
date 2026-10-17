@@ -1,5 +1,17 @@
+import {mountRigs} from './mount-rigs.js';
 // Local experiment: fixed all-yaw crop, unchanged pixels per world/SVG unit.
 export function cropCanvas(T,{name,scene,camera,carouselFrame,renderer,holder}) {
+ const fixed=mountRigs[name]?.crop;
+ if(fixed){
+  const {old,crop}=fixed,canvas=renderer.domElement;
+  camera.left=old.left+(old.right-old.left)*crop.x/old.width;camera.right=old.left+(old.right-old.left)*(crop.x+crop.width)/old.width;
+  camera.top=old.top-(old.top-old.bottom)*crop.y/old.height;camera.bottom=old.top-(old.top-old.bottom)*(crop.y+crop.height)/old.height;camera.updateProjectionMatrix();
+  holder.setAttribute('x',old.x+crop.x*old.cssWidth/old.width);holder.setAttribute('y',old.y+crop.y*old.cssHeight/old.height);
+  holder.setAttribute('width',crop.width*old.cssWidth/old.width);holder.setAttribute('height',crop.height*old.cssHeight/old.height);
+  canvas.style.width=crop.width*old.cssWidth/old.width+'px';canvas.style.height=crop.height*old.cssHeight/old.height+'px';
+  renderer.setSize(Math.round(crop.width*.8),Math.round(crop.height*.8),false);
+  (window.carouselCropDiagnostics ||= []).push(fixed);return fixed;
+ }
  const canvas=renderer.domElement,W=canvas.width,H=canvas.height;
  const old={width:W,height:H,x:+holder.getAttribute('x'),y:+holder.getAttribute('y'),cssWidth:+holder.getAttribute('width'),cssHeight:+holder.getAttribute('height'),left:camera.left,right:camera.right,top:camera.top,bottom:camera.bottom};
  camera.updateMatrixWorld(true);const v=camera.matrixWorldInverse.elements;

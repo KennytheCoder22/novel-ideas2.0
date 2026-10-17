@@ -3,7 +3,7 @@ import {cropCanvas} from './crop-canvas.js';
 import {sharedMountRenderer} from './shared-mount-renderer.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
 import * as T from './vendor/three.module.js';
-import {GLTFLoader} from './vendor/GLTFLoader.js';
+import {mountRigs} from './mount-rigs.js';
 const NS='http://www.w3.org/2000/svg';
 // Moon Loveseat: one rigid two-person seat, +Z faces forward; mount is its socket axis.
 // Dragon: front pommel axis stays ahead of the wing roots; supplied tack stays rigid.
@@ -19,8 +19,8 @@ async function start(){
 }
 async function mount(svg,spec){
  const slot=svg.querySelector(`[data-carousel-slot="${spec.slotIndex+1}"]`),anchor=slot.querySelector('.carousel-mount-anchor');
- const model=(await new GLTFLoader().loadAsync('./carousel/'+spec.name+'.glb')).scene;
- const bounds=new T.Box3().setFromObject(model),size=bounds.getSize(new T.Vector3());
+ const rig=mountRigs[spec.name],model=new T.Group();
+ const bounds=new T.Box3(new T.Vector3(...rig.bounds.min),new T.Vector3(...rig.bounds.max)),size=bounds.getSize(new T.Vector3());
  const mountPoint=new T.Vector3(...spec.mount),scale=spec.worldScale;
  const scene=new T.Scene();scene.add(new T.HemisphereLight(0xfff2de,0x514958,1.5));
  const light=new T.DirectionalLight(0xffecd3,2);light.position.set(-2,3,4);scene.add(light);
@@ -35,26 +35,11 @@ async function mount(svg,spec){
  const camera=new T.OrthographicCamera(-span*5/6,span*5/6,span*2/3,-span,.01,20);camera.position.set(0,.12,3);camera.lookAt(0,0,0);
  const holder=document.createElementNS(NS,'foreignObject');
  for(const [k,v]of Object.entries({x:-250,y:-200,width:500,height:500,class:'carousel-animal-3d-comparison','data-animal':spec.name}))holder.setAttribute(k,v);
- holder.style.pointerEvents='none';const canvas=document.createElementNS('http://www.w3.org/1999/xhtml','canvas');canvas.style.cssText='width:500px;height:500px;display:block';holder.append(canvas);anchor.append(holder);
+ holder.style.pointerEvents='none';holder.style.visibility='hidden';const canvas=document.createElementNS('http://www.w3.org/1999/xhtml','canvas');canvas.style.cssText='width:500px;height:500px;display:block';holder.append(canvas);anchor.append(holder);
  const renderer=(spec.name==='unicorn'||spec.name==='rocket'||spec.name==='griffin'||spec.name==='flamingo'||spec.name==='dragon')?sharedMountRenderer(T,canvas):new T.WebGLRenderer({canvas,alpha:true,antialias:true,preserveDrawingBuffer:true});renderer.setSize(1000,1000,false);renderer.setClearColor(0,0);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;
  // This is a carousel shaft segment, separate from the unmodified imported asset.
  // The GLB and shaft share a depth buffer throughout the animal's vertical extent.
- const top=(bounds.max.y-mountPoint.y)*scale+.01;
- let bottom=(bounds.min.y-mountPoint.y)*scale;
- if(spec.name==='unicorn'||spec.name==='griffin'||spec.name==='flamingo'||spec.name==='dragon'||spec.name==='moon-loveseat'||spec.name==='snail'||spec.name==='brown-horse'||spec.name==='ostrich'||spec.name==='stag'||spec.name==='tiger'||spec.name==='fox'||spec.name==='rabbit'||spec.name==='wolf'||spec.name==='grizzly'||spec.name==='elephant') {
-   // End the added sleeve just below the body, not at the lowest foot.
-   model.updateWorldMatrix(true,true);
-   const ray=new T.Raycaster(new T.Vector3(0,top+1,0),new T.Vector3(0,-1,0));
-   const hits=ray.intersectObject(model,true);
-   if(!hits.length)throw new Error('Ostrich pole must intersect its pommel/body');
-   // About six inches relative to an approximately two-metre-long mount.
-   // Flamingo legs lie below the saddle axis; use the body's first exit, not its feet.
-   const bodyExit=spec.name==='flamingo'?hits.find(hit=>hit.point.y<-.05*scale):hits[hits.length-1];
-   if(!bodyExit)throw new Error('Carousel sleeve must intersect the body');
-   bottom=bodyExit.point.y-.14*scale;
- }
- // Cleaned Rocket's lower socket is at source y=-.115; use a short sleeve below it.
- if(spec.name==='rocket')bottom=(-.115-mountPoint.y-.14)*scale;
+ const top=rig.pole.y+rig.pole.height*rig.pole.scaleY/2,bottom=rig.pole.y-rig.pole.height*rig.pole.scaleY/2;
  const pole=new T.Mesh(new T.CylinderGeometry(span*4/300,span*4/300,top-bottom,24,1,true),carouselPoleMaterial(T,top-bottom,span));pole.position.y=(top+bottom)/2;
  scene.add(pole);
  cropCanvas(T,{name:spec.name,scene,camera,carouselFrame,renderer,holder});
@@ -65,19 +50,6 @@ async function mount(svg,spec){
  const rz=Math.max(Math.abs(bounds.min.z-mountPoint.z),Math.abs(bounds.max.z-mountPoint.z));
  const downwardPixels=((mountPoint.y-bounds.min.y)*scale+Math.hypot(rx,rz)*scale*.04)*300/span;
  const bobAmplitude=12,mountHeight=Math.ceil(downwardPixels+bobAmplitude+8);
- // Keep the checkpoint crop and upper endpoint fixed. Shorten only these lower sleeves.
- if(['unicorn','rocket','griffin','flamingo','dragon','moon-loveseat','snail','polar-bear','cat','zebra'].includes(spec.name)) {
-   // The bracket starts at slot y=-22 (stroke reaches -23). Allow one pixel
-   // of clearance at the lowest bob; higher bob positions increase that gap.
-   const pixelsPerWorldY=300/span*camera.matrixWorldInverse.elements[5];
-   const bracketBottom=(24+bobAmplitude-mountHeight)/pixelsPerWorldY;
-   // Dragon uses the usual short body sleeve; never lengthen it to the bracket.
-   const lowerBottom=(spec.name==='unicorn'||spec.name==='rocket'||spec.name==='griffin'||spec.name==='dragon'||spec.name==='flamingo')?Math.max(bottom,bracketBottom):bracketBottom;
-   pole.geometry.dispose();
-   pole.geometry=new T.CylinderGeometry(span*4/300,span*4/300,top-lowerBottom,24,1,true);
-   pole.material.dispose();pole.material=carouselPoleMaterial(T,top-lowerBottom,span);
-   pole.position.y=(top+lowerBottom)/2;
- }
  slot.dataset.constantScale='0';slot.dataset.mountHeight=String(mountHeight);slot.dataset.bobAmplitude=String(bobAmplitude);
  const initialPose=window.CarnivalCarousel.pose(spec.slotIndex,Number(svg.dataset.phase||0));
  slot.setAttribute('transform',`translate(${initialPose.x} ${initialPose.y}) scale(${initialPose.scale})`);
@@ -88,7 +60,7 @@ async function mount(svg,spec){
  const opacityChildren=[...slot.children].filter(child=>child!==anchor).map(child=>({child,shaft:child.matches('.carousel-pole-shaft')}));
  const assembly=svg.querySelector('.carousel-assembly');
  function render(){if(!svg.isConnected){renderer.dispose();return;}const yaw=Number(assembly.dataset.yaw||0);
- if(yaw!==previous&&!document.hidden){carouselFrame.rotation.y=-yaw;for(const {child,shaft} of opacityChildren){const opacity=shaft?'1':slot.getAttribute('opacity');if(child.style.opacity!==opacity)child.style.opacity=opacity;}renderer.render(scene,camera);previous=yaw;}
+ if(holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden){carouselFrame.rotation.y=-yaw;for(const {child,shaft} of opacityChildren){const opacity=shaft?'1':slot.getAttribute('opacity');if(child.style.opacity!==opacity)child.style.opacity=opacity;}renderer.render(scene,camera);previous=yaw;}
  requestAnimationFrame(render);}
  render();holder.dataset.ready='true';
  registerVariantMount({identity:spec.name,slotNumber:spec.slotIndex+1,model,registration,mountPoint,turn,carouselFrame,scene,camera,renderer,holder,slot,invalidate:()=>{previous=null;}});

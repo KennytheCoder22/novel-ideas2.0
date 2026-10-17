@@ -1,74 +1,89 @@
 import {getAgeBand} from '../../age-band.js';
+import {fetchMount,preloadMountStyle} from '../../mount-preload.js';
+import {mountRigs} from './mount-rigs.js';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
 import {sharedMountRenderer} from './shared-mount-renderer.js';
 import {mountVariants,resolveMountVariant} from './mount-variants.js';
-import {envelope,prepareVariant} from './variant-registration.js';
+import {prepareVariant} from './variant-registration.js';
 
 const entries=new Map(),loader=new GLTFLoader();
 let requested=getAgeBand().style;
-let selected='ornate',busy=false,panel,status,gallery,angle=Math.PI/2;
+let selected=null,busy=false,panel,status,gallery,angle=Math.PI/2;
 const developer=new URLSearchParams(location.search).get('carousel-dev')==='1';
 
-function dispose(model){
-  const textures=new Set(),materials=new Set(),geometry=new Set();
-  model.traverse(mesh=>{if(!mesh.isMesh)return;geometry.add(mesh.geometry);for(const m of [].concat(mesh.material)){materials.add(m);for(const value of Object.values(m))if(value?.isTexture)textures.add(value);}});
-  textures.forEach(t=>{t.dispose();t.source?.data?.close?.();});materials.forEach(m=>m.dispose());geometry.forEach(g=>g.dispose());
-}
+const metrics=[];
 export function registerVariantMount(entry){
-  const identity=entry.identity;
-  if(entries.has(identity))throw new Error('Duplicate Carousel identity: '+identity);
-  // Compute canonical bounds before adding any variant parent transform.
-  const reference=entry.model.clone(true);
-  const bounds=new T.Box3().setFromObject(reference);
-  const canonical={...entry,bounds,radius:envelope(reference,entry.mountPoint),ornate:entry.model,current:entry.model,style:'ornate',transform:null};
-  entries.set(identity,canonical);
-  entry.holder.dataset.variant='ornate';
-  if(developer&&!panel)createPanel();
-  updateStatus();
-  if(entries.size===20)syncAgeBand();
+ const identity=entry.identity;
+ if(entries.has(identity))throw new Error('Duplicate Carousel identity: '+identity);
+ const rig=mountRigs[identity];
+ const bounds=new T.Box3(new T.Vector3(...rig.bounds.min),new T.Vector3(...rig.bounds.max));
+ entry.registration.remove(entry.model);
+ entries.set(identity,{...entry,bounds,radius:rig.radius,current:null,style:null,transform:null,loaded:new Map()});
+ entry.holder.dataset.variant='loading';entry.holder.style.visibility='hidden';
+ if(developer&&!panel)createPanel();updateStatus();
+ if(entries.size===20)syncAgeBand();
+}
+async function loadPrepared(entry,style){
+ const config=resolveMountVariant(entry.identity,style);
+ const actual=config===mountVariants[entry.identity].ornate?'ornate':style;
+ if(entry.loaded.has(actual))return entry.loaded.get(actual);
+ const task=(async()=>{
+  const start=performance.now(),bytes=await fetchMount(config),downloaded=performance.now();
+  const model=(await loader.parseAsync(bytes,new URL('./carousel/',import.meta.url).href)).scene;
+  const parsed=performance.now();
+  const prepared=actual==='ornate'?{wrapper:model,transform:null}:prepareVariant(entry,model,config);
+  metrics.push({identity:entry.identity,style:actual,bytes:bytes.byteLength,fetchWaitMs:downloaded-start,parseMs:parsed-downloaded,prepareMs:performance.now()-parsed});
+  return {current:prepared.wrapper,style:actual,transform:prepared.transform};
+ })();
+ entry.loaded.set(actual,task);task.catch(()=>entry.loaded.delete(actual));return task;
 }
 function updateStatus(message){
   if(!status)return;
-  status.textContent=message||`${entries.size}/20 mounts ready · ${selected[0].toUpperCase()+selected.slice(1)}`;
+  status.textContent=message||`${entries.size}/20 mounts ready · ${(selected||requested)[0].toUpperCase()+(selected||requested).slice(1)}`;
   const inspect=panel.querySelector('[data-inspect]');if(inspect)inspect.disabled=busy||entries.size!==20;
   panel.querySelectorAll('[data-style]').forEach(b=>{b.disabled=busy||entries.size!==20;b.setAttribute('aria-pressed',String(b.dataset.style===selected));});
 }
 async function changeStyle(style){
-  if(busy||entries.size!==20||!['ornate','plain','stuffed'].includes(style))return;
-  if(style===selected)return;
-  busy=true;document.dispatchEvent(new CustomEvent('carousel-variant-loading',{detail:{style:selected,target:style}}));updateStatus(`Loading ${style} models…`);
-  const staged=[];let failures=0;
-  try{
-    for(const entry of entries.values()){
-      const config=resolveMountVariant(entry.identity,style);
-      if(style==='ornate'||config===mountVariants[entry.identity].ornate){if(style!=='ornate')failures++;staged.push({entry,current:entry.ornate,style:'ornate',transform:null});continue;}
-      let model;
-      try{
-        model=(await loader.loadAsync(config.url)).scene;
-        const prepared=prepareVariant(entry,model,config);
-        staged.push({entry,current:prepared.wrapper,model,style,transform:prepared.transform});
-      }catch(error){
-        if(model)dispose(model);
-        failures++;console.warn(`Carousel ${entry.identity}/${style}: using Ornate`,error);
-        staged.push({entry,current:entry.ornate,style:'ornate',transform:null});
-      }
-      updateStatus(`Loading ${style} models… ${staged.length}/20`);
+ if(busy||entries.size!==20||!['ornate','plain','stuffed'].includes(style)||style===selected)return;
+ busy=true;selected=null;let failures=0,unavailable=0,completed=0;
+ preloadMountStyle(style);
+ document.dispatchEvent(new CustomEvent('carousel-variant-loading',{detail:{style:null,target:style}}));
+ for(const entry of entries.values())entry.holder.style.visibility='hidden';
+ updateStatus(`Loading ${style} models…`);
+ const list=[...entries.values()];let index=0;
+ try{
+  // Three bounded parse/prepare jobs; fetch queue independently caps downloads at four.
+  await Promise.all(Array.from({length:3},async()=>{
+   while(index<list.length&&requested===style){
+    const entry=list[index++];let next;
+    try{next=await loadPrepared(entry,style);if(next.style!==style)failures++;}
+    catch(error){
+     if(requested!==style)continue;
+     if(style==='ornate'){unavailable++;entry.holder.dataset.variant='error';console.warn('Carousel mount unavailable',entry.identity,error);continue;}
+     failures++;console.warn(`Carousel ${entry.identity}/${style}: using Ornate after load failure`,error);
+     try{next=await loadPrepared(entry,'ornate');}catch(fallbackError){unavailable++;entry.holder.dataset.variant='error';console.warn('Carousel fallback unavailable',entry.identity,fallbackError);continue;}
     }
-    // Commit the complete batch in one JS turn. No intermediate mixed styles.
-    for(const next of staged){
-      const entry=next.entry,old=entry.current;
-      entry.registration.remove(old);entry.registration.add(next.current);
-      if(old!==entry.ornate)dispose(old);
-      entry.current=next.current;entry.style=next.style;entry.transform=next.transform;
-      entry.holder.dataset.variant=next.style;
-      entry.holder.dataset.variantTransform=JSON.stringify(next.transform);entry.invalidate();
-    }
-    selected=style;
-    document.dispatchEvent(new CustomEvent('carousel-variant-changed',{detail:{style,failures}}));
-    if(gallery?.open)renderGallery();
-    updateStatus(`${style[0].toUpperCase()+style.slice(1)} · ${20-failures}/20 models${failures?' · '+failures+' Ornate fallbacks':''}`);
-  }finally{busy=false;updateStatus(status?.textContent);if(requested!==selected)syncAgeBand();}
+    if(requested!==style)continue;
+    if(entry.current)entry.registration.remove(entry.current);
+    entry.registration.add(next.current);entry.current=next.current;entry.style=next.style;entry.transform=next.transform;
+    entry.holder.dataset.variant=next.style;entry.holder.dataset.variantTransform=JSON.stringify(next.transform);
+    // Render the correct asset before exposing its canvas, never a stale/wrong-style frame.
+    entry.carouselFrame.rotation.y=-Number(entry.slot.closest('.carousel-dressing')?.querySelector('.carousel-assembly')?.dataset.yaw||0);
+    const renderStart=performance.now();entry.renderer.render(entry.scene,entry.camera);
+    metrics.push({identity:entry.identity,style:next.style,firstRenderCpuMs:performance.now()-renderStart,readyAtMs:performance.now()});
+    entry.holder.style.visibility='visible';entry.invalidate();completed++;
+    const diagnostic=entry.identity==='horse'?window.carouselHorseComparison:window.carouselAnimalComparisons?.find(m=>m.name===entry.identity);if(diagnostic)diagnostic.model=next.current;
+    updateStatus(`Loading ${style} models… ${completed}/20`);
+   }
+  }));
+  if(requested===style){
+   selected=style;
+   document.dispatchEvent(new CustomEvent('carousel-variant-changed',{detail:{style,failures,unavailable}}));
+   if(gallery?.open)renderGallery();
+   updateStatus(`${style} · ${completed}/20 ready${failures?' · '+failures+' Ornate fallbacks':''}${unavailable?' · '+unavailable+' unavailable':''}`);
+  }
+ }finally{busy=false;updateStatus(status?.textContent);if(requested!==style)syncAgeBand();}
 }
 function renderGallery(){
   const grid=gallery.querySelector('.variant-review-grid');
@@ -108,10 +123,10 @@ function createPanel(){
 }
 // Read-only diagnostics make pose and model registration reviewable without
 // exposing geometry mutation through the temporary developer control.
-window.carouselVariantDiagnostics=()=>({selected,busy,mounts:[...entries.values()].map(e=>({identity:e.identity,slot:e.slotNumber,style:e.style,transform:e.transform,holder:{x:e.holder.getAttribute('x'),y:e.holder.getAttribute('y'),width:e.holder.getAttribute('width'),height:e.holder.getAttribute('height')},mountHeight:e.slot.dataset.mountHeight,bobAmplitude:e.slot.dataset.bobAmplitude,turn:e.turn.rotation.y,registration:e.registration.position.toArray()}))});
+window.carouselVariantDiagnostics=()=>({selected,requested,busy,metrics:metrics.slice(),mounts:[...entries.values()].map(e=>({identity:e.identity,slot:e.slotNumber,style:e.style,visible:e.holder.style.visibility!=='hidden',transform:e.transform,holder:{x:e.holder.getAttribute('x'),y:e.holder.getAttribute('y'),width:e.holder.getAttribute('width'),height:e.holder.getAttribute('height')},mountHeight:e.slot.dataset.mountHeight,bobAmplitude:e.slot.dataset.bobAmplitude,turn:e.turn.rotation.y,registration:e.registration.position.toArray()}))});
 
 function syncAgeBand(){
  if(busy||entries.size!==20)return;
  changeStyle(requested).catch(console.error);
 }
-document.addEventListener('dreamscapes-age-band',()=>{requested=getAgeBand().style;syncAgeBand();});
+document.addEventListener('dreamscapes-age-band',()=>{requested=getAgeBand().style;if(!busy&&requested===selected)return;for(const e of entries.values())e.holder.style.visibility='hidden';syncAgeBand();});
