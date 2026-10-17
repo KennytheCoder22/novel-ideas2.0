@@ -1,7 +1,7 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 7472,
-    "sha256": "0b03f5b1650d81df25fae81aa5aa64331d3a8f57f78544b2ad238e51bbce6482"
+    "bytes": 7529,
+    "sha256": "506eb67e926f105e4686a0903f826cfbc77e1bc0aa3bfc3b442635dbc759bcde"
   },
   "experiments/carnival/navigation.js": {
     "bytes": 9248,
@@ -48,8 +48,8 @@
     "sha256": "d8b7e77470c9b5d23f0a63d4f0e61d5174d1efca275abacbf3990fb036a86e85"
   },
   "experiments/carnival/carousel-variants.js": {
-    "bytes": 7801,
-    "sha256": "9f7acf93b301fd2befa2357c71bb0c7eb79425ea72f210dec1dab866cc147e6c"
+    "bytes": 8293,
+    "sha256": "8fa27b9a94b00937a1677c9e0b97e50fd1d556ba0a0bcb068aa3298a2a69bcba"
   },
   "experiments/carnival/mount-variants.js": {
     "bytes": 1281,
@@ -222,5 +222,21 @@
   "experiments/carnival/variant-registration.js": {
     "bytes": 1772,
     "sha256": "46a607af6397f1dce14db1ad40b2f486bdf8d3603b13fa0877b69d63714e457f"
+  },
+  "age-band.js": {
+    "bytes": 1913,
+    "sha256": "7b7489df1e78d62685561355f22a8326d84af05e428e940a2672ef840c5bf821"
+  },
+  "opening/age-buttons.js": {
+    "bytes": 431,
+    "sha256": "256cea54919a5d1ac4ff0bb148494cebe9c32578aeded2a00ccf7a5523127d29"
+  },
+  "index.html": {
+    "bytes": 1973,
+    "sha256": "aca30d51fe75514602be125068abf1f7a5aabcc97d30cf020224dd32c2e787dd"
+  },
+  "opening/opening.css": {
+    "bytes": 1782,
+    "sha256": "c2f57205e52f124169af00e9b6de88ecf9f2a250f96ce246f7cec2a3b40a6edf"
   }
 }

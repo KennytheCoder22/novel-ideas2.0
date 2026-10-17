@@ -20,3 +20,11 @@ body { margin: 0; }
 .carnival-entry:hover { box-shadow: inset 0 0 22px #ffca6840; }
 .carnival-entry:focus-visible { outline: 3px solid #ffe1a0; outline-offset: 3px; box-shadow: 0 0 20px #ffca6870; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* Transparent semantic controls follow the existing painted age buttons. */
+.age-band-button {position:absolute;top:87.1%;height:5.9%;padding:0;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer;touch-action:manipulation;}
+.age-band-button[data-age-band="kids"] {left:23.2%;width:11.8%;}
+.age-band-button[data-age-band="pre-teens"] {left:36.2%;width:12.8%;}
+.age-band-button[data-age-band="teens"] {left:50.4%;width:12.6%;}
+.age-band-button[data-age-band="adults"] {left:64.3%;width:12.5%;}
+.age-band-button:focus-visible {outline:3px solid #ffe1a0;outline-offset:3px;}

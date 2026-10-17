@@ -1,0 +1,50 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "band": "adults",
+      "style": "ornate",
+      "mobile": false,
+      "fallback": false,
+      "mounts": 20,
+      "settingsUnchanged": true,
+      "errors": []
+    },
+    {
+      "band": "kids",
+      "style": "stuffed",
+      "mobile": false,
+      "fallback": false,
+      "mounts": 20,
+      "settingsUnchanged": true,
+      "errors": []
+    },
+    {
+      "band": "pre-teens",
+      "style": "stuffed",
+      "mobile": true,
+      "fallback": false,
+      "mounts": 20,
+      "settingsUnchanged": true,
+      "errors": []
+    },
+    {
+      "band": "teens",
+      "style": "plain",
+      "mobile": true,
+      "fallback": false,
+      "mounts": 20,
+      "settingsUnchanged": true,
+      "errors": []
+    },
+    {
+      "band": "teens",
+      "style": "plain",
+      "mobile": false,
+      "fallback": true,
+      "mounts": 20,
+      "settingsUnchanged": true,
+      "errors": []
+    }
+  ]
+}

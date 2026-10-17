@@ -1,3 +1,4 @@
+import {getAgeBand} from '../../age-band.js';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
 import {sharedMountRenderer} from './shared-mount-renderer.js';
@@ -5,6 +6,7 @@ import {mountVariants,resolveMountVariant} from './mount-variants.js';
 import {envelope,prepareVariant} from './variant-registration.js';
 
 const entries=new Map(),loader=new GLTFLoader();
+let requested=getAgeBand().style;
 let selected='ornate',busy=false,panel,status,gallery,angle=Math.PI/2;
 const developer=new URLSearchParams(location.search).get('carousel-dev')==='1';
 
@@ -24,6 +26,7 @@ export function registerVariantMount(entry){
   entry.holder.dataset.variant='ornate';
   if(developer&&!panel)createPanel();
   updateStatus();
+  if(entries.size===20)syncAgeBand();
 }
 function updateStatus(message){
   if(!status)return;
@@ -34,7 +37,7 @@ function updateStatus(message){
 async function changeStyle(style){
   if(busy||entries.size!==20||!['ornate','plain','stuffed'].includes(style))return;
   if(style===selected)return;
-  busy=true;updateStatus(`Loading ${style} models…`);
+  busy=true;document.dispatchEvent(new CustomEvent('carousel-variant-loading',{detail:{style:selected,target:style}}));updateStatus(`Loading ${style} models…`);
   const staged=[];let failures=0;
   try{
     for(const entry of entries.values()){
@@ -65,7 +68,7 @@ async function changeStyle(style){
     document.dispatchEvent(new CustomEvent('carousel-variant-changed',{detail:{style,failures}}));
     if(gallery?.open)renderGallery();
     updateStatus(`${style[0].toUpperCase()+style.slice(1)} · ${20-failures}/20 models${failures?' · '+failures+' Ornate fallbacks':''}`);
-  }finally{busy=false;updateStatus(status?.textContent);}
+  }finally{busy=false;updateStatus(status?.textContent);if(requested!==selected)syncAgeBand();}
 }
 function renderGallery(){
   const grid=gallery.querySelector('.variant-review-grid');
@@ -90,7 +93,7 @@ function createPanel(){
   panel=document.createElement('aside');panel.className='carousel-variant-dev';panel.setAttribute('aria-label','Developer Carousel variants');
   const title=document.createElement('strong');title.textContent='Carousel model review';panel.append(title);
   for(const style of ['ornate','plain','stuffed']){
-    const b=document.createElement('button');b.type='button';b.dataset.style=style;b.textContent=style[0].toUpperCase()+style.slice(1);b.addEventListener('click',()=>changeStyle(style).catch(console.error));panel.append(b);
+    const b=document.createElement('button');b.type='button';b.dataset.style=style;b.textContent=style[0].toUpperCase()+style.slice(1);b.addEventListener('click',()=>{requested=style;changeStyle(style).catch(console.error);});panel.append(b);
   }
   status=document.createElement('div');status.setAttribute('role','status');status.setAttribute('aria-live','polite');panel.append(status);
   const inspect=document.createElement('button');inspect.type='button';inspect.dataset.inspect='';inspect.textContent='Inspect all 20';panel.append(inspect);
@@ -106,3 +109,9 @@ function createPanel(){
 // Read-only diagnostics make pose and model registration reviewable without
 // exposing geometry mutation through the temporary developer control.
 window.carouselVariantDiagnostics=()=>({selected,busy,mounts:[...entries.values()].map(e=>({identity:e.identity,slot:e.slotNumber,style:e.style,transform:e.transform,holder:{x:e.holder.getAttribute('x'),y:e.holder.getAttribute('y'),width:e.holder.getAttribute('width'),height:e.holder.getAttribute('height')},mountHeight:e.slot.dataset.mountHeight,bobAmplitude:e.slot.dataset.bobAmplitude,turn:e.turn.rotation.y,registration:e.registration.position.toArray()}))});
+
+function syncAgeBand(){
+ if(busy||entries.size!==20)return;
+ changeStyle(requested).catch(console.error);
+}
+document.addEventListener('dreamscapes-age-band',()=>{requested=getAgeBand().style;syncAgeBand();});
