@@ -1,3 +1,4 @@
+import {coverMountDepth} from './mount-pole-depth.js';
 import {registerVariantMount} from './carousel-variants.js';
 import {cropCanvas} from './crop-canvas.js';
 import {sharedMountRenderer} from './shared-mount-renderer.js';
@@ -43,6 +44,8 @@ async function mount(svg,spec){
  const pole=new T.Mesh(new T.CylinderGeometry(span*4/300,span*4/300,top-bottom,24,1,true),carouselPoleMaterial(T,top-bottom,span));pole.position.y=(top+bottom)/2;
  scene.add(pole);
  cropCanvas(T,{name:spec.name,scene,camera,carouselFrame,renderer,holder});
+ pole.userData.originalScaleY=pole.scale.y;
+ coverMountDepth(T,pole,camera);
  // Reference model scale stays fixed; the whole slot uses the carousel depth factor.
  // Scaling about the slot origin keeps the pole and registered saddle point aligned.
  // Use a conservative rotated-bounds projection for deck clearance at every yaw.

@@ -1,0 +1,8 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');const fs=require('fs'),path=require('path');
+(async()=>{const b=await chromium.launch({executablePath:process.env.BROWSER_EXE,headless:true});try{for(const [style,band] of [['plain','teens'],['stuffed','kids'],['ornate','adults']]){
+const c=await b.newContext({viewport:{width:1920,height:1080}}),p=await c.newPage();await p.addInitScript(b=>localStorage.setItem('dreamscapes.age-band',b),band);await p.goto('http://127.0.0.1:4204/experiments/carnival/index.html?scene=rides-games&motion=still');await p.waitForFunction(s=>window.carouselVariantDiagnostics?.().selected===s&&!carouselVariantDiagnostics().busy,style,{timeout:240000});
+const out=path.join('apps/dreamscapes/verification/pole-audit',process.env.AUDIT_PASS||'before',style);fs.mkdirSync(out,{recursive:true});
+for(let i=0;i<16;i++){
+ const data=await p.evaluate(i=>{return [window.carouselHorseComparison,...carouselAnimalComparisons].map(e=>{const old=e.carouselFrame.rotation.y;e.carouselFrame.rotation.y=i*Math.PI/8-e.turn.rotation.y;e.renderer.render(e.scene||e.pole.parent,e.camera);const png=e.renderer.domElement.toDataURL();e.carouselFrame.rotation.y=old;return {id:e.name||'horse',png};});},i);
+ for(const r of data)fs.writeFileSync(path.join(out,`${r.id}-${i}.png`),Buffer.from(r.png.split(',')[1],'base64'));
+}fs.writeFileSync(path.join(out,'settings.json'),JSON.stringify(await p.evaluate(()=>carouselVariantDiagnostics()),null,2));console.log(style+' captured 20 mounts x 16 angles');await c.close();}}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});

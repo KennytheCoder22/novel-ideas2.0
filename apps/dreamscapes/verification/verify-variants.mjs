@@ -46,7 +46,7 @@ for(const spec of specs){
     // A nonzero correction changes only the variant wrapper, never its anchor.
     const point=mountPoint.clone(),adjusted=prepareVariant(entry,model,{...config,offset:[.01,-.02,.03]});
     assert.deepEqual(mountPoint.toArray(),point.toArray());
-    assert(Math.abs(adjusted.wrapper.position.x-prepared.wrapper.position.x-.01)<1e-8);
+    assert(Math.abs(adjusted.wrapper.position.x-prepared.wrapper.position.x-(.01-config.offset[0]))<1e-8);
     model.traverse(o=>o.geometry?.dispose());count++;
   }
   const saved=mapping.plain;delete mapping.plain;
