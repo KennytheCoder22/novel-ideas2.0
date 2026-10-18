@@ -18,3 +18,19 @@ export function coverMountDepth(T,pole,camera){
  pole.material.map.repeat.y=(top-bottom)/pitch;
  pole.userData.depthCoverage={bottom,top};
 }
+
+// Clip only the added depth-tested shaft at the stationary SVG bottom bracket.
+// Use the lowest possible bob position once, avoiding frame-order lag.
+// The animal and its pommel never move. End inside the bracket (shaft y=-4),
+// allowing for the tilted camera's projection of the cylinder radius.
+export function limitMountPoleBottom(pole,camera,holder,anchorHeight){
+ const view=camera.matrixWorldInverse.elements;
+ const cssY=Number(holder.getAttribute('y')),cssHeight=Number(holder.getAttribute('height'));
+ const viewY=camera.top-(anchorHeight-4-cssY)/cssHeight*(camera.top-camera.bottom);
+ const bottom=Math.max(pole.userData.depthCoverage.bottom,(viewY-view[13]+Math.abs(view[9])*pole.geometry.parameters.radiusTop)/view[5]);
+ const top=pole.userData.depthCoverage.top;
+ pole.scale.y=(top-bottom)/pole.geometry.parameters.height;
+ pole.position.y=(top+bottom)/2;
+ pole.material.map.repeat.y=(top-bottom)/pole.userData.twistPitch;
+ pole.userData.bracketBottom=bottom;
+}

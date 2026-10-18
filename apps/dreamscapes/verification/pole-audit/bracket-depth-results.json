@@ -1,0 +1,185 @@
+{
+  "passed": true,
+  "mounts": [
+    {
+      "name": "horse",
+      "originalBottomNDC": -0.3155581166158302,
+      "top": 0.3665182800227098,
+      "bottom": -0.487477010900421,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "unicorn",
+      "originalBottomNDC": -0.41827402084116094,
+      "top": 0.3591874478483031,
+      "bottom": -0.6121011578653354,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "rocket",
+      "originalBottomNDC": -0.6635514018691588,
+      "top": 0.13559706652889764,
+      "bottom": -0.31520245480186265,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "griffin",
+      "originalBottomNDC": -0.4853145101579007,
+      "top": 0.24555954914499872,
+      "bottom": -0.6304282383013524,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "flamingo",
+      "originalBottomNDC": -0.2672478886835478,
+      "top": 0.3701836961099132,
+      "bottom": -0.6854094796094028,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "dragon",
+      "originalBottomNDC": -0.6046718952116001,
+      "top": 0.5241311717724547,
+      "bottom": -0.6560861509117759,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "moon-loveseat",
+      "originalBottomNDC": -0.8333333333333335,
+      "top": 0.07328499304644043,
+      "bottom": -0.777044881789487,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "snail",
+      "originalBottomNDC": -0.7083333333333333,
+      "top": 0.2125708043601684,
+      "bottom": -0.5497890843828783,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "brown-horse",
+      "originalBottomNDC": -0.39973676665702595,
+      "top": 0.2858791261042357,
+      "bottom": -0.6634169830861827,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "elephant",
+      "originalBottomNDC": -0.5386085938575771,
+      "top": 0.2822137100170324,
+      "bottom": -0.7220636404814367,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "grizzly",
+      "originalBottomNDC": -0.5612121157254895,
+      "top": 0.19057830783694824,
+      "bottom": -0.6450899026501659,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "wolf",
+      "originalBottomNDC": -0.5730814632280967,
+      "top": 0.20157455609855832,
+      "bottom": -0.4801461787260143,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "rabbit",
+      "originalBottomNDC": -0.6755627888779459,
+      "top": 0.2858791261042357,
+      "bottom": -0.5021386752492345,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "fox",
+      "originalBottomNDC": -0.5179905392848694,
+      "top": 0.24555954914499872,
+      "bottom": -0.49847325916203106,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "tiger",
+      "originalBottomNDC": -0.41790996264177793,
+      "top": 0.22356705262177848,
+      "bottom": -0.6011049096037253,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "stag",
+      "originalBottomNDC": -0.48160204438286186,
+      "top": 0.4764807626388109,
+      "bottom": -0.6340936543885558,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "cat",
+      "originalBottomNDC": -0.8588235294117648,
+      "top": 0.3555220317610997,
+      "bottom": -0.6377590704757592,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "ostrich",
+      "originalBottomNDC": -0.5776028216684921,
+      "top": 0.348191199586693,
+      "bottom": -0.6157665739525388,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "polar-bear",
+      "originalBottomNDC": -0.8671875000000001,
+      "top": 0.2895445421914391,
+      "bottom": -0.707401976132623,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    },
+    {
+      "name": "zebra",
+      "originalBottomNDC": -0.8461538461538458,
+      "top": 0.2858791261042357,
+      "bottom": -0.6304282383013524,
+      "wholeCropDepthCovered": true,
+      "shaftAxisUnchanged": true,
+      "twistPitchUnchanged": true
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import {coverMountDepth} from './mount-pole-depth.js';
+import {coverMountDepth,limitMountPoleBottom} from './mount-pole-depth.js';
 import {registerVariantMount} from './carousel-variants.js';
 import {cropCanvas} from './crop-canvas.js';
 import {sharedMountRenderer} from './shared-mount-renderer.js';
@@ -53,6 +53,7 @@ async function mount(svg,spec){
  const rz=Math.max(Math.abs(bounds.min.z-mountPoint.z),Math.abs(bounds.max.z-mountPoint.z));
  const downwardPixels=((mountPoint.y-bounds.min.y)*scale+Math.hypot(rx,rz)*scale*.04)*300/span;
  const bobAmplitude=12,mountHeight=Math.ceil(downwardPixels+bobAmplitude+8);
+ limitMountPoleBottom(pole,camera,holder,mountHeight-bobAmplitude);
  slot.dataset.constantScale='0';slot.dataset.mountHeight=String(mountHeight);slot.dataset.bobAmplitude=String(bobAmplitude);
  const initialPose=window.CarnivalCarousel.pose(spec.slotIndex,Number(svg.dataset.phase||0));
  slot.setAttribute('transform',`translate(${initialPose.x} ${initialPose.y}) scale(${initialPose.scale})`);

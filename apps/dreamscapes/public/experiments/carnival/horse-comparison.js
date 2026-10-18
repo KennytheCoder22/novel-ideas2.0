@@ -1,4 +1,4 @@
-import {coverMountDepth} from './mount-pole-depth.js';
+import {coverMountDepth,limitMountPoleBottom} from './mount-pole-depth.js';
 import {registerVariantMount} from './carousel-variants.js';
 import {cropCanvas} from './crop-canvas.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
@@ -58,6 +58,7 @@ async function mount(){
  cropCanvas(THREE,{name:'horse',scene,camera,carouselFrame,renderer,holder});
  pole.userData.originalScaleY=pole.scale.y;
  coverMountDepth(THREE,pole,camera);
+ limitMountPoleBottom(pole,camera,holder,135-28);
  // Keep the original shaft continuous outside the horse overlap. The aligned
  // depth-tested segment can pass in front of the mane and behind the body.
  slot.querySelectorAll('.carousel-pole-shaft').forEach(e=>e.removeAttribute('mask'));
