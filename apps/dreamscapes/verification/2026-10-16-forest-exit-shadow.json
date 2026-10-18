@@ -1,0 +1,43 @@
+{
+  "scene": "forest-edge",
+  "desktop": {
+    "box": {
+      "height": 146.109375,
+      "width": 116.921875,
+      "x": 1013.796875,
+      "y": 468.796875
+    },
+    "destination": "/",
+    "filter": "brightness(0.62) saturate(0.8)",
+    "hitChecks": 339,
+    "hitMismatches": 0,
+    "hotspotOverlaps": [],
+    "viewport": [
+      1366,
+      768
+    ],
+    "visible": true
+  },
+  "mobile": {
+    "box": {
+      "height": 151.90625,
+      "width": 121.5625,
+      "x": 245.765625,
+      "y": 531.625
+    },
+    "destination": "/",
+    "filter": "brightness(0.62) saturate(0.8)",
+    "hitChecks": 339,
+    "hitMismatches": 0,
+    "hotspotOverlaps": [],
+    "viewport": [
+      390,
+      844
+    ],
+    "visible": true
+  },
+  "keyboardFocusVisible": true,
+  "keyboardReturnToPortal": true,
+  "mobileReturnToPortal": true,
+  "artworkUnchanged": true
+}

@@ -1,0 +1,729 @@
+{
+  "animals": [
+    {
+      "name": "snail",
+      "slot": 3,
+      "scale": 0.43,
+      "localYaw": 3.166592653589793,
+      "sourcePommel": [
+        0,
+        0.338,
+        0.44
+      ],
+      "registrationOffset": [
+        0,
+        -0.14534,
+        -0.1892
+      ],
+      "mountHeight": 150,
+      "bobAmplitude": 12,
+      "buffer": [
+        538,
+        307
+      ],
+      "crop": {
+        "x": -168.0,
+        "y": -50.0,
+        "width": 336.0,
+        "height": 192.0
+      },
+      "pole": {
+        "top": 0.16616011301040645,
+        "bottom": -0.4178574339411839,
+        "length": 0.5840175469515904,
+        "center": -0.12584866046538873
+      },
+      "localYawDegrees": 181.43239448782705
+    },
+    {
+      "name": "brown-horse",
+      "slot": 12,
+      "scale": 0.52,
+      "localYaw": 0.4737989505128276,
+      "sourcePommel": [
+        0,
+        0.35,
+        0.21
+      ],
+      "registrationOffset": [
+        0,
+        -0.182,
+        -0.1092
+      ],
+      "mountHeight": 190,
+      "bobAmplitude": 12,
+      "buffer": [
+        544,
+        389
+      ],
+      "crop": {
+        "x": -170.0,
+        "y": -70.0,
+        "width": 340.0,
+        "height": 243.0
+      },
+      "pole": {
+        "top": 0.24096528100967407,
+        "bottom": -0.3667909198718591,
+        "length": 0.6077562008815331,
+        "center": -0.06291281943109249
+      },
+      "localYawDegrees": 27.146680202112773
+    },
+    {
+      "name": "elephant",
+      "slot": 13,
+      "scale": 0.53,
+      "localYaw": -0.4487989505128276,
+      "sourcePommel": [
+        0,
+        0.41,
+        0.06
+      ],
+      "registrationOffset": [
+        0,
+        -0.2173,
+        -0.0318
+      ],
+      "mountHeight": 207,
+      "bobAmplitude": 12,
+      "buffer": [
+        483,
+        413
+      ],
+      "crop": {
+        "x": -151.0,
+        "y": -69.0,
+        "width": 302.0,
+        "height": 258.0
+      },
+      "pole": {
+        "top": 0.23050178427696233,
+        "bottom": -0.4745999392296718,
+        "length": 0.7051017235066341,
+        "center": -0.12204907747635475
+      },
+      "localYawDegrees": -25.714285714285715
+    },
+    {
+      "name": "grizzly",
+      "slot": 16,
+      "scale": 0.56,
+      "localYaw": -1.3463968515384828,
+      "sourcePommel": [
+        0,
+        0.4,
+        0.11
+      ],
+      "registrationOffset": [
+        0,
+        -0.22400000000000003,
+        -0.06160000000000001
+      ],
+      "mountHeight": 186,
+      "bobAmplitude": 12,
+      "buffer": [
+        544,
+        339
+      ],
+      "crop": {
+        "x": -170.0,
+        "y": -44.0,
+        "width": 340.0,
+        "height": 212.0
+      },
+      "pole": {
+        "top": 0.1419477663040161,
+        "bottom": -0.4453058446418554,
+        "length": 0.5872536109458715,
+        "center": -0.15167903916891964
+      },
+      "localYawDegrees": -77.14285714285714
+    },
+    {
+      "name": "wolf",
+      "slot": 9,
+      "scale": 0.52,
+      "localYaw": 1.3713968515384827,
+      "sourcePommel": [
+        0,
+        0.28,
+        0.22
+      ],
+      "registrationOffset": [
+        0,
+        -0.1456,
+        -0.1144
+      ],
+      "mountHeight": 143,
+      "bobAmplitude": 12,
+      "buffer": [
+        547,
+        272
+      ],
+      "crop": {
+        "x": -171.0,
+        "y": -47.0,
+        "width": 342.0,
+        "height": 170.0
+      },
+      "pole": {
+        "top": 0.15405145826339722,
+        "bottom": -0.3178352825542444,
+        "length": 0.47188674081764165,
+        "center": -0.0818919121454236
+      },
+      "localYawDegrees": 78.57525163068419
+    },
+    {
+      "name": "rabbit",
+      "slot": 8,
+      "scale": 0.5,
+      "localYaw": 1.3213968515384829,
+      "sourcePommel": [
+        0,
+        0.2,
+        0.33
+      ],
+      "registrationOffset": [
+        0,
+        -0.1,
+        -0.165
+      ],
+      "mountHeight": 146,
+      "bobAmplitude": 12,
+      "buffer": [
+        576,
+        318
+      ],
+      "crop": {
+        "x": -180.0,
+        "y": -70.0,
+        "width": 360.0,
+        "height": 199.0
+      },
+      "pole": {
+        "top": 0.24076599240303037,
+        "bottom": -0.3545135366422843,
+        "length": 0.5952795290453147,
+        "center": -0.05687377211962695
+      },
+      "localYawDegrees": 75.71046265503008
+    },
+    {
+      "name": "fox",
+      "slot": 11,
+      "scale": 0.5,
+      "localYaw": 0.42379895051282757,
+      "sourcePommel": [
+        0,
+        0.24,
+        0.35
+      ],
+      "registrationOffset": [
+        0,
+        -0.12,
+        -0.175
+      ],
+      "mountHeight": 146,
+      "bobAmplitude": 12,
+      "buffer": [
+        579,
+        299
+      ],
+      "crop": {
+        "x": -181.0,
+        "y": -59.0,
+        "width": 362.0,
+        "height": 187.0
+      },
+      "pole": {
+        "top": 0.19989453196525578,
+        "bottom": -0.3039807100177666,
+        "length": 0.5038752419830224,
+        "center": -0.0520430890262554
+      },
+      "localYawDegrees": 24.281891226458654
+    },
+    {
+      "name": "tiger",
+      "slot": 14,
+      "scale": 0.57,
+      "localYaw": -0.4737989505128276,
+      "sourcePommel": [
+        0,
+        0.32,
+        0.18
+      ],
+      "registrationOffset": [
+        0,
+        -0.18239999999999998,
+        -0.10259999999999998
+      ],
+      "mountHeight": 174,
+      "bobAmplitude": 12,
+      "buffer": [
+        579,
+        334
+      ],
+      "crop": {
+        "x": -181.0,
+        "y": -53.0,
+        "width": 362.0,
+        "height": 209.0
+      },
+      "pole": {
+        "top": 0.17678374896049498,
+        "bottom": -0.34884348104826035,
+        "length": 0.5256272300087553,
+        "center": -0.08602986604388269
+      },
+      "localYawDegrees": -27.146680202112773
+    },
+    {
+      "name": "stag",
+      "slot": 15,
+      "scale": 0.52,
+      "localYaw": -0.42379895051282757,
+      "sourcePommel": [
+        0,
+        0.14,
+        0.25
+      ],
+      "registrationOffset": [
+        0,
+        -0.0728,
+        -0.13
+      ],
+      "mountHeight": 182,
+      "bobAmplitude": 12,
+      "buffer": [
+        522,
+        459
+      ],
+      "crop": {
+        "x": -163.0,
+        "y": -122.0,
+        "width": 326.0,
+        "height": 287.0
+      },
+      "pole": {
+        "top": 0.43158221693038934,
+        "bottom": -0.33212296081429704,
+        "length": 0.7637051777446864,
+        "center": 0.04972962805804618
+      },
+      "localYawDegrees": -24.281891226458654
+    },
+    {
+      "name": "cat",
+      "slot": 18,
+      "scale": 0.46,
+      "localYaw": -1.8263882019721382,
+      "sourcePommel": [
+        0.08,
+        0.3,
+        0.05
+      ],
+      "registrationOffset": [
+        -0.0368,
+        -0.138,
+        -0.023000000000000003
+      ],
+      "mountHeight": 184,
+      "bobAmplitude": 12,
+      "buffer": [
+        480,
+        408
+      ],
+      "crop": {
+        "x": -150.0,
+        "y": -89.0,
+        "width": 300.0,
+        "height": 255.0
+      },
+      "pole": {
+        "top": 0.30933353614807124,
+        "bottom": -0.5424815809060984,
+        "length": 0.8518151170541697,
+        "center": -0.11657402237901357
+      },
+      "localYawDegrees": -104.64433572549049
+    },
+    {
+      "name": "ostrich",
+      "slot": 7,
+      "scale": 0.52,
+      "localYaw": 1.3463968515384828,
+      "sourcePommel": [
+        0,
+        0.26,
+        0.44
+      ],
+      "registrationOffset": [
+        0,
+        -0.13520000000000001,
+        -0.2288
+      ],
+      "mountHeight": 183,
+      "bobAmplitude": 12,
+      "buffer": [
+        650,
+        395
+      ],
+      "crop": {
+        "x": -203.0,
+        "y": -87.0,
+        "width": 406.0,
+        "height": 247.0
+      },
+      "pole": {
+        "top": 0.3026872323036194,
+        "bottom": -0.3952562894908048,
+        "length": 0.6979435217944242,
+        "center": -0.04628452859359272
+      },
+      "localYawDegrees": 77.14285714285714
+    },
+    {
+      "name": "polar-bear",
+      "slot": 10,
+      "scale": 0.52,
+      "localYaw": 0.4487989505128276,
+      "sourcePommel": [
+        -0.023712,
+        0.4,
+        -0.0739895
+      ],
+      "registrationOffset": [
+        0.012330240000000001,
+        -0.20800000000000002,
+        0.03847454
+      ],
+      "mountHeight": 204,
+      "bobAmplitude": 12,
+      "buffer": [
+        480,
+        410
+      ],
+      "crop": {
+        "x": -150.0,
+        "y": -71.0,
+        "width": 300.0,
+        "height": 256.0
+      },
+      "pole": {
+        "top": 0.2403584475517273,
+        "bottom": -0.6157899026501658,
+        "length": 0.8561483502018931,
+        "center": -0.18771572754921922
+      },
+      "localYawDegrees": 25.714285714285715
+    },
+    {
+      "name": "zebra",
+      "slot": 19,
+      "scale": 0.5,
+      "localYaw": -2.243994752564138,
+      "sourcePommel": [
+        0,
+        0.335,
+        0.225
+      ],
+      "registrationOffset": [
+        0,
+        -0.1675,
+        -0.1125
+      ],
+      "mountHeight": 182,
+      "bobAmplitude": 12,
+      "buffer": [
+        528,
+        374
+      ],
+      "crop": {
+        "x": -165.0,
+        "y": -70.0,
+        "width": 330.0,
+        "height": 234.0
+      },
+      "pole": {
+        "top": 0.2383615064620972,
+        "bottom": -0.5351507487316917,
+        "length": 0.7735122551937889,
+        "center": -0.14839462113479723
+      },
+      "localYawDegrees": -128.57142857142858
+    },
+    {
+      "name": "dragon",
+      "slot": 21,
+      "ring": "inner",
+      "row": 7,
+      "radius": 307,
+      "scale": 0.6,
+      "localYaw": -2.218994752564138,
+      "sourcePommel": [
+        0,
+        0.105,
+        0.29
+      ],
+      "registrationOffset": [
+        0,
+        -0.063,
+        -0.174
+      ],
+      "mountHeight": 192,
+      "bobAmplitude": 12,
+      "buffer": [
+        666,
+        490
+      ],
+      "crop": {
+        "x": -208.0,
+        "y": -135.0,
+        "width": 416.0,
+        "height": 306.0
+      },
+      "pole": {
+        "top": 0.47863957595825196,
+        "bottom": -0.40508272567447795,
+        "length": 0.8837223016327299,
+        "center": 0.036778425141887006
+      },
+      "localYawDegrees": -127.13903408360152
+    },
+    {
+      "name": "flamingo",
+      "slot": 20,
+      "ring": "middle",
+      "row": 7,
+      "radius": 450,
+      "scale": 0.5,
+      "localYaw": -2.268994752564138,
+      "sourcePommel": [
+        0,
+        0.32,
+        0.23
+      ],
+      "registrationOffset": [
+        0,
+        -0.16,
+        -0.115
+      ],
+      "mountHeight": 200,
+      "bobAmplitude": 12,
+      "buffer": [
+        454,
+        435
+      ],
+      "crop": {
+        "x": -142.0,
+        "y": -93.0,
+        "width": 284.0,
+        "height": 272.0
+      },
+      "pole": {
+        "top": 0.3253505289554596,
+        "bottom": -0.2908350523711911,
+        "length": 0.6161855813266507,
+        "center": 0.017257738292134228
+      },
+      "localYawDegrees": -130.00382305925564
+    },
+    {
+      "name": "griffin",
+      "slot": 6,
+      "ring": "inner",
+      "row": 2,
+      "radius": 307,
+      "scale": 0.46,
+      "localYaw": 2.268994752564138,
+      "sourcePommel": [
+        0,
+        0.4,
+        0.28
+      ],
+      "registrationOffset": [
+        0,
+        -0.184,
+        -0.1288
+      ],
+      "mountHeight": 182,
+      "bobAmplitude": 12,
+      "buffer": [
+        522,
+        357
+      ],
+      "crop": {
+        "x": -163.0,
+        "y": -59.0,
+        "width": 326.0,
+        "height": 223.0
+      },
+      "pole": {
+        "top": 0.20000899171829223,
+        "bottom": -0.3907794214149649,
+        "length": 0.5907884131332571,
+        "center": -0.09538521484833633
+      },
+      "localYawDegrees": 130.00382305925564
+    },
+    {
+      "name": "rocket",
+      "type": "rocket vehicle",
+      "slot": 5,
+      "ring": "middle",
+      "row": 2,
+      "radius": 450,
+      "scale": 0.52,
+      "localYaw": 3.7897910793590346,
+      "sourcePommel": [
+        0.01,
+        0.242,
+        0
+      ],
+      "registrationOffset": [
+        -0.0052,
+        -0.12584,
+        0
+      ],
+      "mountHeight": 96,
+      "bobAmplitude": 12,
+      "buffer": [
+        451,
+        171
+      ],
+      "crop": {
+        "x": -141.0,
+        "y": -29.0,
+        "width": 282.0,
+        "height": 107.0
+      },
+      "pole": {
+        "top": 0.09085583559036256,
+        "bottom": -0.21992496523220204,
+        "length": 0.3107808008225646,
+        "center": -0.06453456482091974
+      },
+      "localYawDegrees": 217.13903408360153
+    },
+    {
+      "name": "unicorn",
+      "slot": 17,
+      "row": 6,
+      "ring": "middle",
+      "scale": 0.5,
+      "localYaw": -1.3713968515384827,
+      "sourcePommel": [
+        0,
+        0.25,
+        0.2
+      ],
+      "registrationOffset": [
+        0,
+        -0.125,
+        -0.1
+      ],
+      "mountHeight": 177,
+      "bobAmplitude": 12,
+      "buffer": [
+        518,
+        398
+      ],
+      "crop": {
+        "x": -162.0,
+        "y": -90.0,
+        "width": 324.0,
+        "height": 249.0
+      },
+      "lowerPoleBottom": -0.3173338214523944,
+      "minimumDeckClearance": 13.903088461652715,
+      "pole": {
+        "top": 0.30810503125190736,
+        "bottom": -0.3173338214523944,
+        "length": 0.6254388527043018,
+        "center": -0.004614395100243501
+      },
+      "localYawDegrees": -78.57525163068419
+    }
+  ],
+  "horse": {
+    "slot": 4,
+    "scale": [
+      1,
+      1,
+      1
+    ],
+    "registrationOffset": [
+      0.12,
+      -0.055,
+      0.03
+    ],
+    "buffer": [
+      557,
+      347
+    ],
+    "crop": {
+      "height": 217,
+      "width": 348,
+      "x": -174,
+      "y": -92
+    },
+    "localYaw": -2.4683942278205517,
+    "sourcePommel": [
+      -0.12,
+      0.055,
+      -0.03
+    ]
+  },
+  "rigidMounts": [
+    {
+      "name": "moon-loveseat",
+      "type": "two-person loveseat",
+      "slot": 2,
+      "ring": "middle",
+      "row": 1,
+      "scale": 0.4,
+      "localYaw": 3.116592653589793,
+      "localYawDegrees": 178.56760551217295,
+      "sourceMountingAxis": [
+        0.136494,
+        0.873874,
+        -0.402161
+      ],
+      "registrationOffset": [
+        -0.0545976,
+        -0.3495496,
+        0.1608644
+      ],
+      "mountHeight": 222,
+      "bobAmplitude": 12,
+      "buffer": [
+        451,
+        346
+      ],
+      "crop": {
+        "x": -141.0,
+        "y": -12.0,
+        "width": 282.0,
+        "height": 216.0
+      },
+      "pole": {
+        "top": 0.024222816114807144,
+        "bottom": -0.6817673922198264,
+        "length": 0.7059902083346336,
+        "center": -0.32877228805250963
+      },
+      "radius": 521.5,
+      "radiusOffset": 71.5
+    }
+  ],
+  "sharedRenderContext": [
+    "rocket",
+    "griffin",
+    "flamingo",
+    "dragon",
+    "unicorn"
+  ]
+}

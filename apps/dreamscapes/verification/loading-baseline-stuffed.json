@@ -1,0 +1,929 @@
+{
+  "resources": [
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/horse-comparison.glb",
+      "duration": 555.1000000238419,
+      "bytes": 1616500,
+      "start": 13966.800000011921
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/unicorn.glb",
+      "duration": 591,
+      "bytes": 9489344,
+      "start": 14099.600000023842
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/rocket.glb",
+      "duration": 1654.800000011921,
+      "bytes": 7198104,
+      "start": 17356.30000001192
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/griffin.glb",
+      "duration": 1796.9000000357628,
+      "bytes": 9118000,
+      "start": 45402.5
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/flamingo.glb",
+      "duration": 649.5999999642372,
+      "bytes": 7782500,
+      "start": 49442.90000003576
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/dragon.glb",
+      "duration": 526,
+      "bytes": 9324200,
+      "start": 52605.40000003576
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/moon-loveseat.glb",
+      "duration": 447.2000000476837,
+      "bytes": 9087456,
+      "start": 55468.5
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/snail.glb",
+      "duration": 1477.5999999642372,
+      "bytes": 8877124,
+      "start": 58561.200000047684
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/brown-horse.glb",
+      "duration": 2022.1000000238419,
+      "bytes": 8517876,
+      "start": 63460.60000002384
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/elephant.glb",
+      "duration": 821.8999999761581,
+      "bytes": 9434352,
+      "start": 68217.40000003576
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/grizzly.glb",
+      "duration": 1065.199999988079,
+      "bytes": 10127864,
+      "start": 72964.10000002384
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/wolf.glb",
+      "duration": 1062.199999988079,
+      "bytes": 9385524,
+      "start": 78139.70000004768
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/rabbit.glb",
+      "duration": 1785.199999988079,
+      "bytes": 9135424,
+      "start": 82505.40000003576
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/fox.glb",
+      "duration": 1573.300000011921,
+      "bytes": 9171696,
+      "start": 87583
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/tiger.glb",
+      "duration": 1165,
+      "bytes": 8817180,
+      "start": 91350.30000001192
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/stag.glb",
+      "duration": 4764.300000011921,
+      "bytes": 8623476,
+      "start": 96540.10000002384
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/cat.glb",
+      "duration": 1179.5999999642372,
+      "bytes": 9158144,
+      "start": 104046.20000004768
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/ostrich.glb",
+      "duration": 3096.599999964237,
+      "bytes": 9703916,
+      "start": 108172.20000004768
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/polar-bear.glb",
+      "duration": 1462,
+      "bytes": 2444760,
+      "start": 113858.30000001192
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/zebra.glb",
+      "duration": 749,
+      "bytes": 2503456,
+      "start": 117369
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/horse.glb",
+      "duration": 825,
+      "bytes": 7034064,
+      "start": 119851.20000004768
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/unicorn.glb",
+      "duration": 942.0999999642372,
+      "bytes": 7025144,
+      "start": 123308.20000004768
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/rocket.glb",
+      "duration": 2426.699999988079,
+      "bytes": 7777124,
+      "start": 127361.80000001192
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/griffin.glb",
+      "duration": 967.5,
+      "bytes": 7915044,
+      "start": 135377.70000004768
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/flamingo.glb",
+      "duration": 1365.300000011921,
+      "bytes": 7613300,
+      "start": 139511.10000002384
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/dragon.glb",
+      "duration": 1054.6000000238419,
+      "bytes": 7428300,
+      "start": 144718.80000001192
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/moon-loveseat.glb",
+      "duration": 1094.5,
+      "bytes": 7660648,
+      "start": 148474.5
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/snail.glb",
+      "duration": 447.19999998807907,
+      "bytes": 8791900,
+      "start": 152375.20000004768
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/brown-horse.glb",
+      "duration": 1620.1000000238419,
+      "bytes": 7187084,
+      "start": 153989.80000001192
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/elephant.glb",
+      "duration": 1259.199999988079,
+      "bytes": 7586180,
+      "start": 157927.80000001192
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/grizzly.glb",
+      "duration": 1048.800000011921,
+      "bytes": 8437432,
+      "start": 161248.30000001192
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/wolf.glb",
+      "duration": 1904.800000011921,
+      "bytes": 8304044,
+      "start": 166507.60000002384
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/rabbit.glb",
+      "duration": 485.10000002384186,
+      "bytes": 7486988,
+      "start": 170860.10000002384
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/fox.glb",
+      "duration": 921.5,
+      "bytes": 7237456,
+      "start": 173421
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/tiger.glb",
+      "duration": 695.0999999642372,
+      "bytes": 7292732,
+      "start": 176880.70000004768
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/stag.glb",
+      "duration": 531.5,
+      "bytes": 7976788,
+      "start": 179613.60000002384
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/cat.glb",
+      "duration": 1266.7000000476837,
+      "bytes": 9076564,
+      "start": 183060
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/ostrich.glb",
+      "duration": 1678.5,
+      "bytes": 7314904,
+      "start": 186996.60000002384
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/polar-bear.glb",
+      "duration": 1236.300000011921,
+      "bytes": 7044016,
+      "start": 191039.40000003576
+    },
+    {
+      "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/stuffed/zebra.glb",
+      "duration": 768.2999999523163,
+      "bytes": 7716148,
+      "start": 195378.20000004768
+    }
+  ],
+  "settings": {
+    "selected": "stuffed",
+    "busy": false,
+    "mounts": [
+      {
+        "identity": "horse",
+        "slot": 4,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.4241007226395862,
+          "scale": 0.4241007226395862,
+          "yaw": 0,
+          "offset": [
+            -0.014944521153258561,
+            -0.00359574760993199,
+            -0.032346992673730264
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-174",
+          "y": "-92",
+          "width": "348",
+          "height": "217"
+        },
+        "turn": -2.4683942278205517,
+        "registration": [
+          0.12,
+          -0.055,
+          0.03
+        ]
+      },
+      {
+        "identity": "unicorn",
+        "slot": 17,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.9321931201594313,
+          "scale": 0.9321931201594313,
+          "yaw": 0,
+          "offset": [
+            -0.0017336769162831153,
+            -0.00039552918165869366,
+            0.013574520106696464
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-162",
+          "y": "-90",
+          "width": "324",
+          "height": "249"
+        },
+        "mountHeight": "177",
+        "bobAmplitude": "12",
+        "turn": -1.3713968515384827,
+        "registration": [
+          0,
+          -0.125,
+          -0.1
+        ]
+      },
+      {
+        "identity": "rocket",
+        "slot": 5,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.651827024281636,
+          "scale": 0.651827024281636,
+          "yaw": 0,
+          "offset": [
+            0.0031320623578675695,
+            0.07477311720809077,
+            -0.00016905440972500156
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-141",
+          "y": "-29",
+          "width": "282",
+          "height": "107"
+        },
+        "mountHeight": "96",
+        "bobAmplitude": "12",
+        "turn": 3.7897910793590346,
+        "registration": [
+          -0.005200000000000001,
+          -0.12584,
+          0
+        ]
+      },
+      {
+        "identity": "griffin",
+        "slot": 6,
+        "style": "stuffed",
+        "transform": {
+          "fit": 1.0256343321111012,
+          "scale": 1.0256343321111012,
+          "yaw": 0,
+          "offset": [
+            0.0074154942696476826,
+            -0.004835724683003584,
+            -0.007048074157515294
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-163",
+          "y": "-59",
+          "width": "326",
+          "height": "223"
+        },
+        "mountHeight": "182",
+        "bobAmplitude": "12",
+        "turn": 2.268994752564138,
+        "registration": [
+          0,
+          -0.18400000000000002,
+          -0.12880000000000003
+        ]
+      },
+      {
+        "identity": "flamingo",
+        "slot": 20,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.8326182045262448,
+          "scale": 0.8326182045262448,
+          "yaw": 1.5707963267948966,
+          "offset": [
+            0.000354306074829665,
+            0.0534594969048911,
+            -0.0043161699536254095
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-142",
+          "y": "-93",
+          "width": "284",
+          "height": "272"
+        },
+        "mountHeight": "200",
+        "bobAmplitude": "12",
+        "turn": -2.268994752564138,
+        "registration": [
+          0,
+          -0.16,
+          -0.115
+        ]
+      },
+      {
+        "identity": "dragon",
+        "slot": 21,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.9998682097149016,
+          "scale": 0.9998682097149016,
+          "yaw": 0,
+          "offset": [
+            0.012327119080685369,
+            0.0005613804053098692,
+            -0.0008896274712282826
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-208",
+          "y": "-135",
+          "width": "416",
+          "height": "306"
+        },
+        "mountHeight": "192",
+        "bobAmplitude": "12",
+        "turn": -2.218994752564138,
+        "registration": [
+          0,
+          -0.063,
+          -0.174
+        ]
+      },
+      {
+        "identity": "moon-loveseat",
+        "slot": 2,
+        "style": "stuffed",
+        "transform": {
+          "fit": 1.0793113332585031,
+          "scale": 1.0793113332585031,
+          "yaw": 0,
+          "offset": [
+            -0.010747876034079229,
+            0.0014765259341471548,
+            -0.10933153053030986
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-141",
+          "y": "-12",
+          "width": "282",
+          "height": "216"
+        },
+        "mountHeight": "222",
+        "bobAmplitude": "12",
+        "turn": 3.116592653589793,
+        "registration": [
+          -0.0545976,
+          -0.3495496,
+          0.16086440000000002
+        ]
+      },
+      {
+        "identity": "snail",
+        "slot": 3,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.9984868921149636,
+          "scale": 0.9984868921149636,
+          "yaw": 0,
+          "offset": [
+            -0.003260383913413525,
+            0.0023622035605082026,
+            0.00006857298087581398
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-168",
+          "y": "-50",
+          "width": "336",
+          "height": "192"
+        },
+        "mountHeight": "150",
+        "bobAmplitude": "12",
+        "turn": 3.166592653589793,
+        "registration": [
+          0,
+          -0.14534,
+          -0.1892
+        ]
+      },
+      {
+        "identity": "brown-horse",
+        "slot": 12,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.912904285392339,
+          "scale": 0.912904285392339,
+          "yaw": 1.5707963267948966,
+          "offset": [
+            0.0011643532085339637,
+            -0.0005885811783917783,
+            0.015946650475536173
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-170",
+          "y": "-70",
+          "width": "340",
+          "height": "243"
+        },
+        "mountHeight": "190",
+        "bobAmplitude": "12",
+        "turn": 0.4737989505128276,
+        "registration": [
+          0,
+          -0.182,
+          -0.1092
+        ]
+      },
+      {
+        "identity": "elephant",
+        "slot": 13,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.9044522525933765,
+          "scale": 0.9044522525933765,
+          "yaw": 0,
+          "offset": [
+            -0.0008109483937925483,
+            -0.004811345541569034,
+            -0.0010991602085878155
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-151",
+          "y": "-69",
+          "width": "302",
+          "height": "258"
+        },
+        "mountHeight": "207",
+        "bobAmplitude": "12",
+        "turn": -0.4487989505128276,
+        "registration": [
+          0,
+          -0.2173,
+          -0.0318
+        ]
+      },
+      {
+        "identity": "grizzly",
+        "slot": 16,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.7504421371819011,
+          "scale": 0.7504421371819011,
+          "yaw": 0,
+          "offset": [
+            -0.0039803670525008815,
+            0.0018185888277210127,
+            0.02960656405039308
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-170",
+          "y": "-44",
+          "width": "340",
+          "height": "212"
+        },
+        "mountHeight": "186",
+        "bobAmplitude": "12",
+        "turn": -1.3463968515384828,
+        "registration": [
+          0,
+          -0.22400000000000003,
+          -0.06160000000000001
+        ]
+      },
+      {
+        "identity": "wolf",
+        "slot": 9,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.8378513202861926,
+          "scale": 0.8378513202861926,
+          "yaw": 0,
+          "offset": [
+            -0.004827445768783582,
+            0.013899912279123294,
+            0.0364550617637652
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-171",
+          "y": "-47",
+          "width": "342",
+          "height": "170"
+        },
+        "mountHeight": "143",
+        "bobAmplitude": "12",
+        "turn": 1.3713968515384827,
+        "registration": [
+          0,
+          -0.1456,
+          -0.1144
+        ]
+      },
+      {
+        "identity": "rabbit",
+        "slot": 8,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.7631507316904192,
+          "scale": 0.7631507316904192,
+          "yaw": 0,
+          "offset": [
+            0.00007949847765500606,
+            -0.0027403486407421296,
+            0.07847592853009544
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-180",
+          "y": "-70",
+          "width": "360",
+          "height": "199"
+        },
+        "mountHeight": "146",
+        "bobAmplitude": "12",
+        "turn": 1.3213968515384829,
+        "registration": [
+          0,
+          -0.1,
+          -0.165
+        ]
+      },
+      {
+        "identity": "fox",
+        "slot": 11,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.8736700479645747,
+          "scale": 0.8736700479645747,
+          "yaw": 0,
+          "offset": [
+            0.0008435005598897553,
+            -0.0035929176908126026,
+            0.045926346006005925
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-181",
+          "y": "-59",
+          "width": "362",
+          "height": "187"
+        },
+        "mountHeight": "146",
+        "bobAmplitude": "12",
+        "turn": 0.42379895051282757,
+        "registration": [
+          0,
+          -0.12,
+          -0.175
+        ]
+      },
+      {
+        "identity": "tiger",
+        "slot": 14,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.699759158053789,
+          "scale": 0.699759158053789,
+          "yaw": 0,
+          "offset": [
+            0.0009883200934804831,
+            -0.0024062406008373283,
+            0.05403068982104228
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-181",
+          "y": "-53",
+          "width": "362",
+          "height": "209"
+        },
+        "mountHeight": "174",
+        "bobAmplitude": "12",
+        "turn": -0.4737989505128276,
+        "registration": [
+          0,
+          -0.18239999999999998,
+          -0.10259999999999998
+        ]
+      },
+      {
+        "identity": "stag",
+        "slot": 15,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.9127141443004405,
+          "scale": 0.9127141443004405,
+          "yaw": 0,
+          "offset": [
+            -0.0016455921135983672,
+            0.012264063917449275,
+            -0.008525652790731253
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-163",
+          "y": "-122",
+          "width": "326",
+          "height": "287"
+        },
+        "mountHeight": "182",
+        "bobAmplitude": "12",
+        "turn": -0.42379895051282757,
+        "registration": [
+          0,
+          -0.0728,
+          -0.13
+        ]
+      },
+      {
+        "identity": "cat",
+        "slot": 18,
+        "style": "stuffed",
+        "transform": {
+          "fit": 1.0424989553108235,
+          "scale": 1.0424989553108235,
+          "yaw": 0.5049913504336554,
+          "offset": [
+            -0.03071536617463698,
+            0.0016903542346934364,
+            -0.011039002628421356
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-150",
+          "y": "-89",
+          "width": "300",
+          "height": "255"
+        },
+        "mountHeight": "184",
+        "bobAmplitude": "12",
+        "turn": -1.8263882019721382,
+        "registration": [
+          -0.0368,
+          -0.138,
+          -0.023000000000000003
+        ]
+      },
+      {
+        "identity": "ostrich",
+        "slot": 7,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.8958101511265589,
+          "scale": 0.8958101511265589,
+          "yaw": 0,
+          "offset": [
+            -0.001572435193413386,
+            -0.001696429097533425,
+            0.04567990064591543
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-203",
+          "y": "-87",
+          "width": "406",
+          "height": "247"
+        },
+        "mountHeight": "183",
+        "bobAmplitude": "12",
+        "turn": 1.3463968515384828,
+        "registration": [
+          0,
+          -0.13520000000000001,
+          -0.2288
+        ]
+      },
+      {
+        "identity": "polar-bear",
+        "slot": 10,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.9994428300174435,
+          "scale": 0.9994428300174435,
+          "yaw": 0,
+          "offset": [
+            0.0032074664965066092,
+            0.000672377538431912,
+            -0.0003284343017298935
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-150",
+          "y": "-71",
+          "width": "300",
+          "height": "256"
+        },
+        "mountHeight": "204",
+        "bobAmplitude": "12",
+        "turn": 0.4487989505128276,
+        "registration": [
+          0.012330240000000001,
+          -0.20800000000000002,
+          0.03847454
+        ]
+      },
+      {
+        "identity": "zebra",
+        "slot": 19,
+        "style": "stuffed",
+        "transform": {
+          "fit": 0.9214749264060766,
+          "scale": 0.9214749264060766,
+          "yaw": 0,
+          "offset": [
+            -0.0006134645867179857,
+            -0.00541734312307951,
+            0.016810697286870596
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-165",
+          "y": "-70",
+          "width": "330",
+          "height": "234"
+        },
+        "mountHeight": "182",
+        "bobAmplitude": "12",
+        "turn": -2.243994752564138,
+        "registration": [
+          0,
+          -0.1675,
+          -0.1125
+        ]
+      }
+    ]
+  },
+  "totalMs": 219726
+}

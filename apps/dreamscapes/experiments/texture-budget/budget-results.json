@@ -1,0 +1,374 @@
+[
+  {
+    "style": "plain",
+    "identity": "brown-horse",
+    "bytes": 4523640,
+    "originalBytes": 7188200,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "cat",
+    "bytes": 5335720,
+    "originalBytes": 8980716,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "dragon",
+    "bytes": 4699564,
+    "originalBytes": 8087600,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "elephant",
+    "bytes": 4212704,
+    "originalBytes": 7516548,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "flamingo",
+    "bytes": 4132356,
+    "originalBytes": 7174588,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "fox",
+    "bytes": 5258184,
+    "originalBytes": 8958448,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "griffin",
+    "bytes": 5264004,
+    "originalBytes": 8842892,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "grizzly",
+    "bytes": 6058336,
+    "originalBytes": 9401588,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "horse",
+    "bytes": 3796648,
+    "originalBytes": 6835456,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "moon-loveseat",
+    "bytes": 4180856,
+    "originalBytes": 7417120,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "ostrich",
+    "bytes": 5703192,
+    "originalBytes": 9282100,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "polar-bear",
+    "sourceSha256": "3f807b9189522fb92299c1a99a844cb78075f2fe4fa30c078469fd1b22cafbd3",
+    "sourceBytes": 8462520,
+    "bytes": 4151432,
+    "quality": 75,
+    "maxResolution": 1024,
+    "geometryViewsUnchanged": true,
+    "originalBytes": 8571444
+  },
+  {
+    "style": "plain",
+    "identity": "rabbit",
+    "bytes": 4431268,
+    "originalBytes": 7948420,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "rocket",
+    "sourceSha256": "dfd0d5e4b69b376c7466461f0cd8478c3d27d2c9d3e1e2082f4053e15ddfe0d6",
+    "sourceBytes": 8121432,
+    "bytes": 4577880,
+    "quality": 75,
+    "maxResolution": 2048,
+    "geometryViewsUnchanged": true,
+    "originalBytes": 8373896
+  },
+  {
+    "style": "plain",
+    "identity": "snail",
+    "bytes": 4406104,
+    "originalBytes": 7829036,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "stag",
+    "bytes": 4274840,
+    "originalBytes": 7618304,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "tiger",
+    "bytes": 4737804,
+    "originalBytes": 8016024,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "unicorn",
+    "bytes": 4794664,
+    "originalBytes": 7792268,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "wolf",
+    "bytes": 5357752,
+    "originalBytes": 8782008,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "plain",
+    "identity": "zebra",
+    "sourceSha256": "424bbbe36d5af8e31b9c9b55eb948ba632c7031d635de8370d94e611db403d0b",
+    "sourceBytes": 7533120,
+    "bytes": 4145332,
+    "quality": 75,
+    "maxResolution": 1024,
+    "geometryViewsUnchanged": true,
+    "originalBytes": 7618224
+  },
+  {
+    "style": "stuffed",
+    "identity": "brown-horse",
+    "bytes": 4093240,
+    "originalBytes": 7187084,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "cat",
+    "bytes": 5705032,
+    "originalBytes": 9076564,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "dragon",
+    "bytes": 4217372,
+    "originalBytes": 7428300,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "elephant",
+    "bytes": 4626148,
+    "originalBytes": 7586180,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "flamingo",
+    "bytes": 4309192,
+    "originalBytes": 7613300,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "fox",
+    "bytes": 3969776,
+    "originalBytes": 7237456,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "griffin",
+    "bytes": 4644280,
+    "originalBytes": 7915044,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "grizzly",
+    "bytes": 5258520,
+    "originalBytes": 8437432,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "horse",
+    "bytes": 3932636,
+    "originalBytes": 7034064,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "moon-loveseat",
+    "bytes": 4387528,
+    "originalBytes": 7660648,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "ostrich",
+    "bytes": 4255780,
+    "originalBytes": 7314904,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "polar-bear",
+    "sourceSha256": "e0c3a07db442e49e0e0da79b4ed18ad9a2ea233bc2c67318462911e701e29b97",
+    "sourceBytes": 6981624,
+    "bytes": 3378008,
+    "quality": 75,
+    "maxResolution": 1024,
+    "geometryViewsUnchanged": true,
+    "originalBytes": 7044016
+  },
+  {
+    "style": "stuffed",
+    "identity": "rabbit",
+    "bytes": 4205968,
+    "originalBytes": 7486988,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "rocket",
+    "sourceSha256": "0ec45a62214f89c6896371399143581c11b943354af3f96aaceab282bdc8ed93",
+    "sourceBytes": 7478304,
+    "bytes": 4092232,
+    "quality": 75,
+    "maxResolution": 2048,
+    "geometryViewsUnchanged": true,
+    "originalBytes": 7777124
+  },
+  {
+    "style": "stuffed",
+    "identity": "snail",
+    "bytes": 5233624,
+    "originalBytes": 8791900,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "stag",
+    "bytes": 4732264,
+    "originalBytes": 7976788,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "tiger",
+    "bytes": 4180516,
+    "originalBytes": 7292732,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "unicorn",
+    "bytes": 3992272,
+    "originalBytes": 7025144,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "wolf",
+    "bytes": 5000440,
+    "originalBytes": 8304044,
+    "geometryUnchanged": true,
+    "quality": 75,
+    "maxResolution": 2048
+  },
+  {
+    "style": "stuffed",
+    "identity": "zebra",
+    "sourceSha256": "c4f6889a7cdfd717915096a14f0feaa54d295871e8a42adfc4d88691ef28816a",
+    "sourceBytes": 7630304,
+    "bytes": 3577912,
+    "quality": 75,
+    "maxResolution": 1024,
+    "geometryViewsUnchanged": true,
+    "originalBytes": 7716148
+  }
+]

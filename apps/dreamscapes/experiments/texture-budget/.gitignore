@@ -1,0 +1,6 @@
+copies/
+mesh-copies/
+review/
+visual-review/
+__pycache__/
+tools/node_modules/

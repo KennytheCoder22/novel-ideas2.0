@@ -1,0 +1,18 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const base=process.env.BASE_URL||'http://127.0.0.1:4204';
+const expected=JSON.parse(fs.readFileSync('apps/dreamscapes/verification/loading-baseline-rig.json')).settings.mounts;
+const settings=mounts=>mounts.map(({identity,slot,holder,mountHeight,bobAmplitude,turn,registration})=>({identity,slot,holder,mountHeight,bobAmplitude,turn,registration})).sort((a,b)=>a.slot-b.slot);
+(async()=>{const browser=await chromium.launch({executablePath:process.env.BROWSER_EXE,headless:true});const results=[];
+try{for(const [band,style] of [['teens','plain'],['kids','stuffed']]){
+ const context=await browser.newContext({viewport:{width:1440,height:1000}});const page=await context.newPage(),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().endsWith('.glb'))requests.push(r.url());});
+ await page.addInitScript(s=>{window.wrongStyleFrames=[];function check(){for(const h of document.querySelectorAll('[data-variant]'))if(h.style.visibility!=='hidden'&&h.dataset.variant!==s)wrongStyleFrames.push(h.dataset.variant);requestAnimationFrame(check);}requestAnimationFrame(check);},style);
+ await page.goto(base+'/');await page.locator(`[data-age-band="${band}"]`).click();
+ await page.goto(base+'/experiments/carnival/index.html?scene=rides-games',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(s=>window.carouselVariantDiagnostics?.().selected===s&&!carouselVariantDiagnostics().busy,style,{timeout:240000}).catch(async e=>{console.log(JSON.stringify(await page.evaluate(()=>({state:window.carouselVariantDiagnostics?.(),preload:window.carouselPreloadDiagnostics?.()}))));console.log(errors);throw e;});
+ let first=await page.evaluate(()=>({state:carouselVariantDiagnostics(),wrong:wrongStyleFrames}));assert.deepEqual(first.wrong,[]);assert.equal(first.state.mounts.length,20);assert(first.state.mounts.every(m=>m.visible&&m.style===style));assert.deepEqual(JSON.parse(JSON.stringify(settings(first.state.mounts))),JSON.parse(JSON.stringify(settings(expected))));assert(requests.every(u=>u.includes('/variants/optimized/'+style+'/')));
+ const parses=first.state.metrics.filter(m=>m.parseMs!==undefined).length;await page.evaluate(()=>{CarnivalNavigation.go('Midway');CarnivalNavigation.go('Rides & Games');});assert.equal(await page.evaluate(()=>carouselVariantDiagnostics().metrics.filter(m=>m.parseMs!==undefined).length),parses);
+ const before=requests.length;await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.carouselVariantDiagnostics&&!carouselVariantDiagnostics().busy,{},{timeout:240000});
+ const revisit=await page.evaluate(()=>({state:carouselVariantDiagnostics(),preload:carouselPreloadDiagnostics(),wrong:wrongStyleFrames}));assert.deepEqual(revisit.wrong,[]);assert.equal(revisit.preload.assets.length,20);assert(revisit.preload.assets.every(a=>a.persistentCacheHit));assert.equal(requests.length,before,'Reload fetched GLBs despite CacheStorage');assert(revisit.state.mounts.every(m=>m.visible&&m.style===style));assert.deepEqual(errors,[]);
+ results.push({band,style,mounts:20,wrongStyleFrames:0,samePageRevisitReparsed:0,reloadCacheHits:20,reloadGLBRequests:0,transformsUnchanged:true,first,cache:revisit.preload,errors});console.log(JSON.stringify({band,style,mounts:20,wrongFrames:0,cacheHits:20}));await page.screenshot({path:`apps/dreamscapes/verification/promoted-${style}.png`});await context.close();
+}fs.writeFileSync('apps/dreamscapes/verification/promoted-loading-results.json',JSON.stringify({passed:true,results},null,2));}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

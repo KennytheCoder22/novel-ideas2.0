@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101a38">
+  <meta name="description" content="Choose a Dream, Find a Book. Step through a portal into Dreamscapes by Novel Ideas.">
+  <title>Dreamscapes · Novel Ideas</title>
+  <link rel="icon" href="./opening/novelideas-icon.png">
+  <link rel="stylesheet" href="./opening/opening.css">
+</head>
+<body>
+  <main class="dreamscapes">
+    <h1 class="sr-only">Dreamscapes — Novel Ideas</h1>
+    <p class="sr-only">Choose a Dream, Find a Book. Seven portals are awaiting future destinations. Choose a reader age band to select the Carousel mount style.</p>
+    <div class="opening-scene">
+      <img class="opening-art" src="./opening/choose-a-dream.png" width="1672" height="941" fetchpriority="high" alt="An ornate Dreamscapes parchment banner above eight magical portals in two rows of four. Creepy Carnival is the third portal in the top row; the other seven contain stars and mist.">
+      <a class="carnival-entry" href="./experiments/carnival/index.html" aria-label="Enter Creepy Carnival — Midway"><span class="sr-only">Enter Creepy Carnival</span></a>
+      <div role="group" aria-label="Reader age band">
+        <button type="button" class="age-band-button" data-age-band="kids" aria-pressed="false"><span class="sr-only">Kids</span></button>
+        <button type="button" class="age-band-button" data-age-band="pre-teens" aria-pressed="false"><span class="sr-only">Pre-Teens</span></button>
+        <button type="button" class="age-band-button" data-age-band="teens" aria-pressed="false"><span class="sr-only">Teens</span></button>
+        <button type="button" class="age-band-button" data-age-band="adults" aria-pressed="false"><span class="sr-only">Adults</span></button>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="./opening/age-buttons.js"></script>
+</body>
+</html>

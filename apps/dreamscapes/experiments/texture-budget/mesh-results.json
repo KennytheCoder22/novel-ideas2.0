@@ -1,0 +1,44 @@
+[
+  {
+    "style": "plain",
+    "name": "polar-bear",
+    "before": 77857,
+    "target": 75000,
+    "after": 74999
+  },
+  {
+    "style": "plain",
+    "name": "zebra",
+    "before": 77309,
+    "target": 75000,
+    "after": 74999
+  },
+  {
+    "style": "plain",
+    "name": "rocket",
+    "before": 75041,
+    "target": 68000,
+    "after": 67999
+  },
+  {
+    "style": "stuffed",
+    "name": "polar-bear",
+    "before": 76803,
+    "target": 75000,
+    "after": 74999
+  },
+  {
+    "style": "stuffed",
+    "name": "zebra",
+    "before": 77368,
+    "target": 75000,
+    "after": 75000
+  },
+  {
+    "style": "stuffed",
+    "name": "rocket",
+    "before": 76201,
+    "target": 68000,
+    "after": 67999
+  }
+]

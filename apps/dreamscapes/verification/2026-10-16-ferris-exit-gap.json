@@ -1,0 +1,42 @@
+{
+  "desktop": {
+    "box": {
+      "height": 130.71875,
+      "width": 104.609375,
+      "x": 401,
+      "y": 655.4375
+    },
+    "destination": "/",
+    "feetClipped": 18.15625,
+    "hitChecks": 305,
+    "hitMismatches": 0,
+    "hotspotOverlaps": [],
+    "scene": "ferris-platform",
+    "viewport": [
+      1366,
+      768
+    ],
+    "wordsVisible": true
+  },
+  "mobile": {
+    "box": {
+      "height": 151.90625,
+      "width": 121.5625,
+      "x": 137.25,
+      "y": 620.25
+    },
+    "destination": "/",
+    "feetClipped": 0,
+    "hitChecks": 339,
+    "hitMismatches": 0,
+    "hotspotOverlaps": [],
+    "scene": "ferris-platform",
+    "viewport": [
+      390,
+      844
+    ],
+    "wordsVisible": true
+  },
+  "keyboardExit": "passed",
+  "pointerExit": "passed"
+}

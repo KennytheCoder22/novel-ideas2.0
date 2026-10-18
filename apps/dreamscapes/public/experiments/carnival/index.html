@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NovelIdeas · Carnival visual study</title>
+  <link rel="stylesheet" href="./scene.css?v=20260930-triangular-aframes">
+  <link rel="stylesheet" href="./midway.css?v=20260927-repair">
+  <link rel="stylesheet" href="./navigation.css?v=20260927-signs">
+  <link rel="stylesheet" href="./platform.css?v=20260930-ground-details">
+  <link rel="stylesheet" href="./carousel.css?v=20261006-one-horse-test">
+  <link rel="stylesheet" href="./exit-sign.css?v=20261016-forest-depth">
+  <link rel="stylesheet" href="./coaster-train.css?v=20261015">
+</head>
+<body>
+  <main aria-label="A moonlit carnival midway">
+    <div class="composition">
+      <img class="midway" src="./midway.png" width="1536" height="1024" alt="An empty moonlit carnival, with old striped tents and warm lamplight reflected in puddles.">
+      <button class="scene-object tent" data-destination="Tent Row" aria-label="Walk toward Tent Row"><img src="./central-tent.png" alt="" draggable="false"></button>
+      <button class="scene-object entrance" data-destination="Rides &amp; Games" aria-label="Walk toward Rides and Games"><img src="./rides-entrance.png" alt="" draggable="false"></button>
+      <button class="scene-object puddle" data-inspect="puddle" aria-label="Look into the puddle"></button>
+      <img class="woman-reflection" src="./puddle.png" alt="" aria-hidden="true" draggable="false">
+      <img class="ground-tag" src="./mara-front.png" alt="" aria-hidden="true" draggable="false" hidden>
+      <button class="scene-object woman-approach" aria-label="Walk toward the distant figure" type="button"></button>
+      <img class="woman" src="./woman.png" alt="" aria-hidden="true" draggable="false">
+      <div class="balloon-plane" aria-hidden="true">
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+        <defs><clipPath id="balloon-open-sky" clipPathUnits="objectBoundingBox">
+          <!-- Balloon-only sky/roof boundary; the accepted wheel masks stay intact. -->
+          <path clip-rule="evenodd" transform="scale(.000651041667 .0009765625)" d="M0 0H1536V1024H0Z M1312 187L1307 209L1293 229L1276 250L1257 270L1236 289L1213 309L1190 328L1167 344L1142 360L1117 375L1092 388L1065 401L1038 414L1010 430L983 445L952 466L900 498L850 506V1024H1536V72L1510 94L1480 117L1440 144L1425 155L1408 166L1390 178L1370 217L1347 248L1335 225Z"/>
+        </clipPath></defs>
+      </svg>
+      <div class="balloon" aria-hidden="true">
+        <img class="balloon-art" src="./balloon.png" width="295" height="486" alt="" draggable="false">
+        <div class="balloon-surface">
+          <svg class="balloon-face" viewBox="45 8 505 440" preserveAspectRatio="none" focusable="false">
+            <image href="./balloon-faces.png" width="1774" height="887" />
+          </svg>
+        </div>
+      </div>
+      </div>
+      <button class="scene-object fox" data-inspect="fox" aria-label="Examine the abandoned stuffed fox"><img src="./fox.png" alt="" draggable="false"></button>
+      <button class="scene-object poster" data-inspect="poster" aria-label="Examine the old carnival poster"><img src="./poster.png" alt="" draggable="false"><img class="poster-aged" src="./poster-altered.png" alt="" draggable="false"></button>
+      <div class="crow" aria-hidden="true"><img src="./crow-perched.png" alt="" draggable="false"></div>
+      <button class="wheel" aria-label="Explore the distant Ferris wheel" type="button">
+        <span class="assembly" aria-hidden="true">
+          <span class="wheel-structure-rear"></span>
+          <span class="wheel-machine">
+            <img class="frame" src="./wheel-frame.png" alt="" draggable="false">
+            <span class="gondolas"></span>
+          </span>
+          <span class="wheel-structure-front"></span>
+        </span>
+      </button>
+      <!-- Original background pixels with a silhouette alpha mask, registered 1:1. -->
+      <img class="foreground" src="./foreground.png" width="1536" height="1024" alt="" aria-hidden="true">
+      <!-- Restore original foreground pixels above every animated wheel part.
+           Paths use the same 1536 x 1024 artwork coordinates as the scene. -->
+      <svg class="foreground foreground-detail" viewBox="0 0 1536 1024" aria-hidden="true" focusable="false">
+        <defs>
+          <clipPath id="roof-and-lights">
+            <!-- Upper striped roof: follow its curved left silhouette, not the eaves. -->
+            <path d="M 1312 187 L 1307 209 L 1293 229 L 1276 250 L 1257 270 L 1236 289 L 1213 309 L 1190 328 L 1167 344 L 1142 360 L 1117 375 L 1092 388 L 1065 401 L 1038 414 L 1010 430 L 983 445 L 952 466 L 900 498 L 900 650 L 1536 650 L 1536 180 Z"/>
+            <!-- Smaller pointed roof, including its left slope and lower skirt. -->
+            <path d="M 1016 369 L 1012 384 L 1006 401 L 997 417 L 986 431 L 972 445 L 953 459 L 932 474 L 912 486 L 912 550 L 1062 550 L 1062 428 L 1045 413 L 1030 395 L 1021 378 Z"/>
+            <!-- Center-facing span attaches to the middle post at (961,321).
+                 It crosses the descending cabins before reaching that post. -->
+            <path d="M 840 392 L 860 385 L 880 377 L 900 367 L 920 354 L 940 338 L 961 319 L 965 330 L 945 352 L 925 371 L 905 386 L 885 395 L 865 402 L 840 412 Z"/>
+            <!-- Right-facing span, drops, bulbs and their warm halos. -->
+            <path d="M 963 319 L 980 328 L 1000 339 L 1020 348 L 1040 355 L 1060 360 L 1080 363 L 1100 364 L 1120 362 L 1137 357 L 1137 374 L 1120 381 L 1100 383 L 1080 382 L 1060 379 L 1040 374 L 1020 368 L 1000 359 L 980 348 L 963 337 Z"/>
+          </clipPath>
+        </defs>
+        <image href="./midway.png" width="1536" height="1024" clip-path="url(#roof-and-lights)"/>
+      </svg>
+    </div>
+    <nav class="look-controls" aria-label="Look along the midway"><button data-pan="left" aria-label="Look left">‹</button><button data-pan="center" aria-label="Look toward the center">·</button><button data-pan="right" aria-label="Look right">›</button></nav>
+    <dialog class="inspection" aria-label="A closer look">
+      <button class="return" autofocus>← Return to the midway</button>
+      <div class="inspection-art"></div>
+      <div class="destination-copy" hidden><h1></h1><p>The path continues beyond the Midway.</p></div>
+    </dialog>
+    <span class="sr-only" role="status" aria-live="polite"></span>
+  </main>
+  <script src="./scene.js"></script>
+  <script src="./locations.js?v=20261016-zora-align"></script>
+  <script src="./support-structure.js?v=20260930-triangular-aframes"></script>
+  <script src="./platform.js?v=20260930-triangular-aframes"></script>
+  <script src="./carousel.js?v=constant-mount-scale"></script>
+  <script src="./exit-sign.js?v=20261016-forest-depth"></script>
+  <script src="./coaster-train.js?v=20261015"></script>
+  <script src="./navigation.js?v=20261015-scene-exits"></script>
+  <script src="./fox-cinema.js?v=20260927-repair"></script>
+  <script src="./midway.js?v=20261015-scene-exits"></script>
+  <script src="./geese.js?v=20260927-star-cloud-route"></script>
+  <script type="module" src="./horse-comparison.js?v=20261016-variants"></script>
+<script type="module" src="./animal-comparison.js?v=20261016-variants"></script>
+<script type="module" src="../../age-band.js"></script>
+</body>
+</html>

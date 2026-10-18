@@ -1,0 +1,58 @@
+[
+  {
+    "name": "polar-bear",
+    "target": 150000,
+    "res": 2048,
+    "triangles": 149990,
+    "bytes": 9725968
+  },
+  {
+    "name": "polar-bear",
+    "target": 150000,
+    "res": 1024,
+    "triangles": 149990,
+    "bytes": 5271896
+  },
+  {
+    "name": "polar-bear",
+    "target": 75000,
+    "res": 2048,
+    "triangles": 74982,
+    "bytes": 6898824
+  },
+  {
+    "name": "polar-bear",
+    "target": 75000,
+    "res": 1024,
+    "triangles": 74982,
+    "bytes": 2444760
+  },
+  {
+    "name": "zebra",
+    "target": 150000,
+    "res": 2048,
+    "triangles": 149990,
+    "bytes": 9525504
+  },
+  {
+    "name": "zebra",
+    "target": 150000,
+    "res": 1024,
+    "triangles": 149990,
+    "bytes": 5305024
+  },
+  {
+    "name": "zebra",
+    "target": 75000,
+    "res": 2048,
+    "triangles": 74988,
+    "bytes": 6723936
+  },
+  {
+    "name": "zebra",
+    "target": 75000,
+    "res": 1024,
+    "triangles": 74988,
+    "bytes": 2503456
+  }
+]

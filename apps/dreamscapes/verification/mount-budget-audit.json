@@ -1,0 +1,2177 @@
+[
+  {
+    "identity": "horse",
+    "style": "ornate",
+    "bytes": 1616500,
+    "triangles": 21904,
+    "vertices": 15628,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 419012,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "38c507c1da142a838eb144a6264bb6a3949ddb2df1f9b8a108adc9444aaf2a03",
+        "jpegQuantizationRange": [
+          5,
+          61
+        ]
+      },
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 432756,
+        "format": "JPEG",
+        "roles": [
+          "normal"
+        ],
+        "metadataBytes": 0,
+        "sha256": "c09e532a5dc4e7c2c31df64d4e0ed99d778aa88ed5fbb0ccbcb983d46723e3ec",
+        "jpegQuantizationRange": [
+          5,
+          61
+        ]
+      }
+    ],
+    "textureBytes": 851768,
+    "nonTextureBytes": 764732,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "98476a8f606ac045841f5d80c6da5d522258c47e4b0a08afe4e68d6b7a0b5ba1"
+  },
+  {
+    "identity": "rocket",
+    "style": "ornate",
+    "bytes": 7198104,
+    "triangles": 67709,
+    "vertices": 66275,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4263163,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "54d32c5645b2149fd98d3b7f75bf4c15d4b0930f79a9845de6e490ec371e1226",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4263163,
+    "nonTextureBytes": 2934941,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "80e49c4dea53787d7560632c21168505689004c8eb48419ac08aafd02354d988"
+  },
+  {
+    "identity": "griffin",
+    "style": "ornate",
+    "bytes": 9118000,
+    "triangles": 77655,
+    "vertices": 94772,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5151571,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "b0f902f66e469929534cd1bb594dcad1a16c8683a55bad04ed57315cd7293cee",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5151571,
+    "nonTextureBytes": 3966429,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "dce4c0d946b891b5537756dac58b4b3300c384d2cdda9e6489659f4e55c2d8d5"
+  },
+  {
+    "identity": "ostrich",
+    "style": "ornate",
+    "bytes": 9703916,
+    "triangles": 77940,
+    "vertices": 110880,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5218608,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "2f115206c4177489d1ac077262a7fe927fd84b01057061290b42da2ccd908e31",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5218608,
+    "nonTextureBytes": 4485308,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "605e722d9ca030a6c416d8dafb916165545f1642a2b27c032a8efec2584b3a89"
+  },
+  {
+    "identity": "rabbit",
+    "style": "ornate",
+    "bytes": 9135424,
+    "triangles": 77793,
+    "vertices": 89889,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5323608,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "57624ce11aadb852196fd67d5efba4d036ed6fc5c026f1aa33df0fee634f3eca",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5323608,
+    "nonTextureBytes": 3811816,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "0bffb6e2a100cb584a4fcba20291b12afad79d2385759765995b3284986851b2"
+  },
+  {
+    "identity": "wolf",
+    "style": "ornate",
+    "bytes": 9385524,
+    "triangles": 77936,
+    "vertices": 95181,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5402651,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "e7c45207e19cb7ed448cabed51c62f134ea4a71207fb0b0378528ea3ce2e3127",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5402651,
+    "nonTextureBytes": 3982873,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "e597a6cac60b7d3fb8d706b58bdf00de31b09b3766a0f8782f3f6f71ac96ebc2"
+  },
+  {
+    "identity": "polar-bear",
+    "style": "ornate",
+    "bytes": 2444760,
+    "triangles": 74982,
+    "vertices": 52448,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 1024,
+        "height": 1024,
+        "bytes": 315231,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "1e8418ee304f29c30f9545d3c79d034d5ecb284cf4e93b2da64768b23cf15d3d",
+        "jpegQuantizationRange": [
+          4,
+          48
+        ]
+      }
+    ],
+    "textureBytes": 315231,
+    "nonTextureBytes": 2129529,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "86ddfc3bd39f05cc75e8cbbd629d9457cf489b4939c8740b5178b77abc9e2778"
+  },
+  {
+    "identity": "fox",
+    "style": "ornate",
+    "bytes": 9171696,
+    "triangles": 77882,
+    "vertices": 96572,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5144954,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "fe4805cb0b123b49714bc1bf281122c138c408736e0ddce02c44882d9bbf4762",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5144954,
+    "nonTextureBytes": 4026742,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "8b14a1bbb2d87441b772687ea8eb1e858bce466f41a2ba37ac2a151d1a827944"
+  },
+  {
+    "identity": "brown-horse",
+    "style": "ornate",
+    "bytes": 8517876,
+    "triangles": 77718,
+    "vertices": 85392,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4850847,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "e1feae2a146b44d04cd0a73c30e1e0dc2f531bc0398e6cde79336ce3eb4b9159",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4850847,
+    "nonTextureBytes": 3667029,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "c21c8d731f212fa54b23ff152056dfe9bf54640c1f15ed48d600a653d23179a3"
+  },
+  {
+    "identity": "elephant",
+    "style": "ornate",
+    "bytes": 9434352,
+    "triangles": 77897,
+    "vertices": 98869,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5333912,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "92dfb0932acba47e5a0ba145596d7dcefe3ed3dc476475018a7b495e645b8445",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5333912,
+    "nonTextureBytes": 4100440,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "02a904032ff406a1a376c04cd3f29ac600fa307560e52f820ba72faae48ab68e"
+  },
+  {
+    "identity": "tiger",
+    "style": "ornate",
+    "bytes": 8817180,
+    "triangles": 77386,
+    "vertices": 80099,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5323518,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "a8d4bab985ec0caa82289fd85820ac45b1cdc81d2a43dd73b0e126548a372f5a",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5323518,
+    "nonTextureBytes": 3493662,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "e027ddac52524094d4ad9119a55425176dd00738337a6193a6f13f4608198696"
+  },
+  {
+    "identity": "stag",
+    "style": "ornate",
+    "bytes": 8623476,
+    "triangles": 77902,
+    "vertices": 80134,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5122530,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "1086f67bd99e795b580611beb9bbc621a55f888bbe990e29d7d919f815c049f5",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5122530,
+    "nonTextureBytes": 3500946,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "0bbcf8d313752bb4b9aae7bcbefb0a45fee798851146ae270853cc5b10ed147a"
+  },
+  {
+    "identity": "grizzly",
+    "style": "ornate",
+    "bytes": 10127864,
+    "triangles": 78157,
+    "vertices": 121066,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5314012,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "2b08259ff8f28e4f7222586110819d0f24d877aea78ac07b4678007420f658b2",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5314012,
+    "nonTextureBytes": 4813852,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "7547e6e98e673ef5eb57234b428320bb249ce9933ba094d0449c977d2472ccdc"
+  },
+  {
+    "identity": "unicorn",
+    "style": "ornate",
+    "bytes": 9489344,
+    "triangles": 77910,
+    "vertices": 100577,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5334107,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "bdcaea060ec686b1b880846a052d5c772b8f744ab8d43fb7a1a8c7d15dea92ff",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5334107,
+    "nonTextureBytes": 4155237,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "58afd423b7f9cc2e55a04c68c92e42ceddf6ab867d7911de50e77a9a8d113b8c"
+  },
+  {
+    "identity": "cat",
+    "style": "ornate",
+    "bytes": 9158144,
+    "triangles": 78025,
+    "vertices": 98929,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5054255,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "547f1bcfa37302e1b11c19025cd4232f256218e3b8536a092b7f79f38e1ab223",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5054255,
+    "nonTextureBytes": 4103889,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "cd832f99defa89fc789e79e21d47c76f2b09a57d001c0a664fe5c5ea2f379c04"
+  },
+  {
+    "identity": "zebra",
+    "style": "ornate",
+    "bytes": 2503456,
+    "triangles": 74988,
+    "vertices": 52951,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 1024,
+        "height": 1024,
+        "bytes": 357800,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "9f6576f8cd77eca98bad07fb85eb2cb569b55ca2587513b1f803e3ae9ca1711d",
+        "jpegQuantizationRange": [
+          4,
+          48
+        ]
+      }
+    ],
+    "textureBytes": 357800,
+    "nonTextureBytes": 2145656,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "48c2aef88791a6212894a2ac442443ba85a54e5e13e8e5fcb0fc2952f210169f"
+  },
+  {
+    "identity": "flamingo",
+    "style": "ornate",
+    "bytes": 7782500,
+    "triangles": 77430,
+    "vertices": 84123,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4159551,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "5773215a1f8cd8db82a56136bee914c8683ae93b12811a5a87d88c7573d77d37",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4159551,
+    "nonTextureBytes": 3622949,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "ac50feec52f2a4f5a375ec6c6dc7b3011f1a329d6f7c69fbeaf09d4f04f708cc"
+  },
+  {
+    "identity": "dragon",
+    "style": "ornate",
+    "bytes": 9324200,
+    "triangles": 77683,
+    "vertices": 92188,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5440136,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "5dcc8e526ca481099b7b22f57718dd6fa737a372c655da8f6c5e9e37e1c2d0ed",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5440136,
+    "nonTextureBytes": 3884064,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "71cd699b0a5cb6d7d9e96ab11fb2fc26905e99bfd2d8f937a4904e8a3db29ce8"
+  },
+  {
+    "identity": "moon-loveseat",
+    "style": "ornate",
+    "bytes": 9087456,
+    "triangles": 75628,
+    "vertices": 106618,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4766287,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "84d611d36fed37344579ae342b702e1fa9aac087cb5977825bd27fabd9a11f05",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4766287,
+    "nonTextureBytes": 4321169,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "80bcd39eccd1949b37202557548ffe26f37becea2106ce80b9290e9138580df5"
+  },
+  {
+    "identity": "snail",
+    "style": "ornate",
+    "bytes": 8877124,
+    "triangles": 77243,
+    "vertices": 87140,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5159873,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "d3436fe1dacb411e8c94dd82ad8aec7f42393c09e47a8d501e553c4e9fb9687d",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5159873,
+    "nonTextureBytes": 3717251,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "8893c63a1c4a7f792200fbd751326a8db77c4973d5e6b2440db97c71a0e6de4c"
+  },
+  {
+    "identity": "horse",
+    "style": "plain",
+    "bytes": 6835456,
+    "triangles": 77005,
+    "vertices": 63722,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3870442,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "de8c577c4d0dc0cb710f6667776c5e8b8af810d16f1064b65006506cd3dcc335",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3870442,
+    "nonTextureBytes": 2965014,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "8fc20a5df86241136c37ca9cf84fc49f573102e9d2e2a91f285762f8e1cabb41"
+  },
+  {
+    "identity": "rocket",
+    "style": "plain",
+    "bytes": 8373896,
+    "triangles": 75041,
+    "vertices": 83423,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4802096,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "5addb47ce1a5c9d3d0a6a9bb73cbfbb1f1d18235e636bc04e36e0d3076dc9373",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4802096,
+    "nonTextureBytes": 3571800,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "617252fdd110632010a1071c5ef95627c19959bfd62be8a8db02cff56a1de47b"
+  },
+  {
+    "identity": "griffin",
+    "style": "plain",
+    "bytes": 8842892,
+    "triangles": 77362,
+    "vertices": 95294,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4863319,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "530301dea5c5b6bf5a667c48009f8864a04e83cec881fb0643a5f78fd7423201",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4863319,
+    "nonTextureBytes": 3979573,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "2ef519f003ee7a505f5b541a138c2a839c20fc7d7fb7727f90c21b8c3afd6322"
+  },
+  {
+    "identity": "ostrich",
+    "style": "plain",
+    "bytes": 9282100,
+    "triangles": 78023,
+    "vertices": 105606,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4964591,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "0ff9dd3c3dfe97b1ef1a750825d8feb4c88159c0723f8bb5738042d5fbcbd1aa",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4964591,
+    "nonTextureBytes": 4317509,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "d875ece484518ee897437f27d9bb8e8d7f9a78aef73a5436b67c3f9f646eed69"
+  },
+  {
+    "identity": "rabbit",
+    "style": "plain",
+    "bytes": 7948420,
+    "triangles": 77312,
+    "vertices": 71225,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4739605,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "f9c4090fd3316b04ae95572cded20b1d3fd16d04b9057f97c1c469864ff06b29",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4739605,
+    "nonTextureBytes": 3208815,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "b2482c1631a4f717c0c0bd29be4361eb0382939324f6e85344a40703f30a2c32"
+  },
+  {
+    "identity": "wolf",
+    "style": "plain",
+    "bytes": 8782008,
+    "triangles": 77821,
+    "vertices": 101811,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4588334,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "f87a292280113db389b48bdb7da41a7f8d53b05f37cac193c6515748551967a6",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4588334,
+    "nonTextureBytes": 4193674,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "2a1499b1255342f09b222297a5f79b4dbc348d64ce57c80ac160657bbe500e4d"
+  },
+  {
+    "identity": "polar-bear",
+    "style": "plain",
+    "bytes": 8571444,
+    "triangles": 77857,
+    "vertices": 93933,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4629459,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "3d33751b8313e1da2fb1e6bca41821bded3fa14652d23c6a3a49826c6234dc1c",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4629459,
+    "nonTextureBytes": 3941985,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "79d8dddd0c5b46758f6feff26cdb5f46f927f4413b5402864bfe32ef47a13c63"
+  },
+  {
+    "identity": "fox",
+    "style": "plain",
+    "bytes": 8958448,
+    "triangles": 77702,
+    "vertices": 94091,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5013244,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "08f8fb3ca66315f0e393eb94ea219659580ca96952635ffb167823d133205d8f",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5013244,
+    "nonTextureBytes": 3945204,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "96e473965238147f4fefc25a18ca0102f129f1daa8c6e8652e767605a3b272a7"
+  },
+  {
+    "identity": "brown-horse",
+    "style": "plain",
+    "bytes": 7188200,
+    "triangles": 77674,
+    "vertices": 92325,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3299857,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "4871e2c8bb1be7fb1c70c782f3787f2d583e37f113ef707b8d0438b37d063f06",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3299857,
+    "nonTextureBytes": 3888343,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "7b3d47ce3dafa8ef7cbf1126e0523dade0acd62bd80e7db628143fa50740b73a"
+  },
+  {
+    "identity": "elephant",
+    "style": "plain",
+    "bytes": 7516548,
+    "triangles": 77308,
+    "vertices": 71001,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4314970,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "58b24fb454831b7340e924a861039922dbe65bd284f6ea9db9b58ee46d3e2cf5",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4314970,
+    "nonTextureBytes": 3201578,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "c644e990ca8164972fa03514f450d623984743dbcad73780d047941fb8fe040b"
+  },
+  {
+    "identity": "tiger",
+    "style": "plain",
+    "bytes": 8016024,
+    "triangles": 77631,
+    "vertices": 84964,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4363738,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "e5cf7c3a6a6dbf2d442244a67ece9e7df4146fc8498a57ba801140094c20cd0a",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4363738,
+    "nonTextureBytes": 3652286,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "21e07dde79ee77615efaa94df17e36094800aacfaf989e880af090d36ea190e5"
+  },
+  {
+    "identity": "stag",
+    "style": "plain",
+    "bytes": 7618304,
+    "triangles": 77278,
+    "vertices": 71865,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4389434,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "c389297e8440706703f77461261e97bb0ce23edf89e41c4028e6f8af71ce9b94",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4389434,
+    "nonTextureBytes": 3228870,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "dcae5e7b513511048b3574cd68bb89b11ba03c0b011cd28bc689929fc15ce6dd"
+  },
+  {
+    "identity": "grizzly",
+    "style": "plain",
+    "bytes": 9401588,
+    "triangles": 78347,
+    "vertices": 128692,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4341464,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "295a704b94975a1ed9224df6e901a54b03bd332f1f1fb58eeafb4417dc900619",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4341464,
+    "nonTextureBytes": 5060124,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "cf16c4ecefd3a4b7e214a65f4baf7af0411279edce19abf8b30267870c1d4b3e"
+  },
+  {
+    "identity": "unicorn",
+    "style": "plain",
+    "bytes": 7792268,
+    "triangles": 77480,
+    "vertices": 94931,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3822849,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "a5cc818316d3c4c59173b97052be00d13b5937acb229f7a04983f06d8e22cf0e",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3822849,
+    "nonTextureBytes": 3969419,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "c60c03899479821c43bbb782834b07b68f8bf6e0e0968a8254c95a0d3cbbfd92"
+  },
+  {
+    "identity": "cat",
+    "style": "plain",
+    "bytes": 8980716,
+    "triangles": 77976,
+    "vertices": 94888,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 5006754,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "796e82ff11250b420c2c3e024d03ff2a48ace19299851495784edef9b4f8ad1c",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 5006754,
+    "nonTextureBytes": 3973962,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "c95061e4548b79e46068c4428f053970331365a36f3263812bee0c0363fd93aa"
+  },
+  {
+    "identity": "zebra",
+    "style": "plain",
+    "bytes": 7618224,
+    "triangles": 77309,
+    "vertices": 95171,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3643193,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "7c28e360f03a964c42b95b9cf7d092abf210ddf35f969be2e3b7ed38224aeb1e",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3643193,
+    "nonTextureBytes": 3975031,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "dc0636a0c59aaf995a980837d6034e81ec580420d51148ab3c21c72f379acdf4"
+  },
+  {
+    "identity": "flamingo",
+    "style": "plain",
+    "bytes": 7174588,
+    "triangles": 77073,
+    "vertices": 71958,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3945205,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "dc76c974ddef304681d0720c44b1ad5f70f64beede6b2f201bfa827e87495217",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3945205,
+    "nonTextureBytes": 3229383,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "e41678cbdd08fe03b71b0e1f8cf53c3e7cfe93439ad62291af32a69f0321e020"
+  },
+  {
+    "identity": "dragon",
+    "style": "plain",
+    "bytes": 8087600,
+    "triangles": 77669,
+    "vertices": 83204,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4491210,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "8a48ae1b774c760de15f9880aacc4a2f3cae03a5fa6d0dcd68de2855a8765039",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4491210,
+    "nonTextureBytes": 3596390,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "2dd2581b9947e09da4994b00cf9550418642a1f956db04d574b5787e163d95cf"
+  },
+  {
+    "identity": "moon-loveseat",
+    "style": "plain",
+    "bytes": 7417120,
+    "triangles": 73205,
+    "vertices": 69938,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4298868,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "91309abd0024e194a76523d44eb7bf4c534e844a60f8ae2e36460598ded451d3",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4298868,
+    "nonTextureBytes": 3118252,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "94b75440558324e0c819238131b87bb14d304544b0a2aaee025eed7704321bd8"
+  },
+  {
+    "identity": "snail",
+    "style": "plain",
+    "bytes": 7829036,
+    "triangles": 76932,
+    "vertices": 72866,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4572287,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "d17a1a690a9f005404c1b77b93e6d3aef6996ac4576f1c4b5581b444bac769cd",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4572287,
+    "nonTextureBytes": 3256749,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "f6649e01ede1aa3740b4eda45fafce7a65627b5f4aa9dbdddd0e445481bbfc5d"
+  },
+  {
+    "identity": "horse",
+    "style": "stuffed",
+    "bytes": 7034064,
+    "triangles": 77161,
+    "vertices": 67288,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3953067,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "8a0663b39ea1974f113fc30b9b6755f542f26c0e8df06a56989ef1d3a2ad8fa3",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3953067,
+    "nonTextureBytes": 3080997,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "eaea831373579cbafb37e857d65ec968c40a21d224d3190d879a76ad553b68f7"
+  },
+  {
+    "identity": "rocket",
+    "style": "stuffed",
+    "bytes": 7777124,
+    "triangles": 76201,
+    "vertices": 74387,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4480474,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "e1454aa063c59b2a503d1ca25afa776b84bf57b2ea64009c0948ed9b439617c4",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4480474,
+    "nonTextureBytes": 3296650,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "28d27d1811897b535864dc22bb85709c205c6221a0941728f042d0940d7bae7f"
+  },
+  {
+    "identity": "griffin",
+    "style": "stuffed",
+    "bytes": 7915044,
+    "triangles": 77341,
+    "vertices": 85896,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4236463,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "7fe79dad76b9e2092f868e82db8314445da9cf539c832600465f7b451d858877",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4236463,
+    "nonTextureBytes": 3678581,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "20b1c54ab3bd7dd94caaf0cea15dde4ef42d09e16383874ec63a261b1ebd2977"
+  },
+  {
+    "identity": "ostrich",
+    "style": "stuffed",
+    "bytes": 7314904,
+    "triangles": 77953,
+    "vertices": 76808,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3919745,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "45ffef55fe958beb3d02b7e01d63af77590ecfd819273ebc92fb119f47083c12",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3919745,
+    "nonTextureBytes": 3395159,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "d139b2e3c156edce5e61f8be493fb626bcf78824e2fabf52192de528bd262d01"
+  },
+  {
+    "identity": "rabbit",
+    "style": "stuffed",
+    "bytes": 7486988,
+    "triangles": 77133,
+    "vertices": 71907,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4258538,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "7a61f8439439d4b6ce29665924dfc80ad108f60238533054c67e61b8fc458aa1",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4258538,
+    "nonTextureBytes": 3228450,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "66ce8c750cd3e39598c5a445f9f064386b154a86fccdec377c03138060f936a2"
+  },
+  {
+    "identity": "wolf",
+    "style": "stuffed",
+    "bytes": 8304044,
+    "triangles": 77474,
+    "vertices": 95757,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4308282,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "f7be5fb1eef200de437a707e18619243d7d2d8451d881cfdeab1c16a9282a6ef",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4308282,
+    "nonTextureBytes": 3995762,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "28af5d01e80c406f619a26e22d000abbb7c04f6e9aa7c1c2d10f0f61ab620796"
+  },
+  {
+    "identity": "polar-bear",
+    "style": "stuffed",
+    "bytes": 7044016,
+    "triangles": 76803,
+    "vertices": 71664,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3827279,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "c0f1b657843684630cf858b2bfda29a2fad3c605208933dda4860c896c0b0136",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3827279,
+    "nonTextureBytes": 3216737,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "e35a866e72332536ea11cc51accabbb03e85fbd5861ec17e968a8600ba7a15e6"
+  },
+  {
+    "identity": "fox",
+    "style": "stuffed",
+    "bytes": 7237456,
+    "triangles": 77704,
+    "vertices": 66580,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4172616,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "3bd228c44a54028163b8b82ec3e803d93d0fbca37fdced2553ce44cb3dde8798",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4172616,
+    "nonTextureBytes": 3064840,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "7587441541fe142c6e4240910a093074beaa1b3d89079097c9c0183f6255e851"
+  },
+  {
+    "identity": "brown-horse",
+    "style": "stuffed",
+    "bytes": 7187084,
+    "triangles": 77352,
+    "vertices": 74016,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3888486,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "a04e84ab39f7a365afe67686b405f8e001adc3d643a0887d2c59330c3b2f392a",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3888486,
+    "nonTextureBytes": 3298598,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "6eac4ae252cd0852cdbc7be5867712b9a365dc42ec802c91a326c6a902f6f1db"
+  },
+  {
+    "identity": "elephant",
+    "style": "stuffed",
+    "bytes": 7586180,
+    "triangles": 77214,
+    "vertices": 89118,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3805966,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "af1774e4ae1decd1ca28ffc97c94fe149531157849fa7e44f524109059c89b7b",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3805966,
+    "nonTextureBytes": 3780214,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "01d75031a9295012c89f3ed23d30ba6d74a755024318c35eea8a3fb4fae2250e"
+  },
+  {
+    "identity": "tiger",
+    "style": "stuffed",
+    "bytes": 7292732,
+    "triangles": 77216,
+    "vertices": 72441,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4046193,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "8207114344b9e0f105019cba2501b5caa0b61495a63cc181292b02babd601e01",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4046193,
+    "nonTextureBytes": 3246539,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "f7c3ee29cd2a3d3c2097f87a604b44edc63d74227fcbfdefebad758a6eddc043"
+  },
+  {
+    "identity": "stag",
+    "style": "stuffed",
+    "bytes": 7976788,
+    "triangles": 77610,
+    "vertices": 87476,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4244369,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "8dee51577b16121f6d71d560ab2123f61a90c4d30aa4c9c9fd3870f82e9eaadd",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4244369,
+    "nonTextureBytes": 3732419,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "b888ef401ab0a0e06b20acd0b80d98ea97214d7302f98a77b7d91bdccbadbbff"
+  },
+  {
+    "identity": "grizzly",
+    "style": "stuffed",
+    "bytes": 8437432,
+    "triangles": 78376,
+    "vertices": 108283,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4029995,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "8a47d779aa9903ca41be6caf294e4613ebb3818d0d16b96b1c9f63536138761e",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4029995,
+    "nonTextureBytes": 4407437,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "50ed0793554cd1c54f1cbbe2b07defde39c596ccdb2fc4c62490f16a3ae834bf"
+  },
+  {
+    "identity": "unicorn",
+    "style": "stuffed",
+    "bytes": 7025144,
+    "triangles": 77100,
+    "vertices": 71309,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 3816224,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "5c841c804891f3894e2c507fedec4e3fb7596198cefa60128e26f8084a5fadc6",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 3816224,
+    "nonTextureBytes": 3208920,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "b3a0be6e161ff62a2d08fdcbf90dedb558e62567db40479ba657514030e767cf"
+  },
+  {
+    "identity": "cat",
+    "style": "stuffed",
+    "bytes": 9076564,
+    "triangles": 78299,
+    "vertices": 116227,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4415841,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "4d70262848e55239f49ae3192d4da0c0dc16432cb33c8e70706353d361e44dec",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4415841,
+    "nonTextureBytes": 4660723,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "46f0867ff22765a4774f2cc567fbe925fe536ab15b237452189a793a5ac4f7ba"
+  },
+  {
+    "identity": "zebra",
+    "style": "stuffed",
+    "bytes": 7716148,
+    "triangles": 77368,
+    "vertices": 76154,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4348938,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "87b68dfbfc12e5561cbac2185e7f54882b6265cf4b440f8d0ce7678780ffda34",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4348938,
+    "nonTextureBytes": 3367210,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "68f36e00e915a6f4264dc9c08c4f0b3b9b2a13372615ae96315e7a4933f84a13"
+  },
+  {
+    "identity": "flamingo",
+    "style": "stuffed",
+    "bytes": 7613300,
+    "triangles": 76661,
+    "vertices": 77045,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4226067,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "57c6cb2a55e292b61b9933700aabdf416e22f738a7dc8bf3a8e6a7648fbb8dde",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4226067,
+    "nonTextureBytes": 3387233,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "35895848df713b6a3292432eeebd6cd6737237296c20c009df7f4aa7527e9b04"
+  },
+  {
+    "identity": "dragon",
+    "style": "stuffed",
+    "bytes": 7428300,
+    "triangles": 76897,
+    "vertices": 73609,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4148183,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "0ed85a7c85ddcc7ebb08a3ce133369b5b6f9f099c999ca1428277b02e76a2c0f",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4148183,
+    "nonTextureBytes": 3280117,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "9cf04a4d7ba67761527fe6513e744873084726a90438079e2b8ea3c1a8f02ba2"
+  },
+  {
+    "identity": "moon-loveseat",
+    "style": "stuffed",
+    "bytes": 7660648,
+    "triangles": 76747,
+    "vertices": 77259,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4265527,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "54d2059372650afbb1b8e25ab80fa5ef62c5fae4954a84cd4be7558b6d41db98",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4265527,
+    "nonTextureBytes": 3395121,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "69bd2c413a210cfba917a87988e522e78d26f7e2bd86aca3fdc3571caf425049"
+  },
+  {
+    "identity": "snail",
+    "style": "stuffed",
+    "bytes": 8791900,
+    "triangles": 76961,
+    "vertices": 98949,
+    "primitives": 1,
+    "attributes": [
+      "NORMAL",
+      "POSITION",
+      "TEXCOORD_0"
+    ],
+    "images": [
+      {
+        "width": 2048,
+        "height": 2048,
+        "bytes": 4700162,
+        "format": "JPEG",
+        "roles": [
+          "baseColor"
+        ],
+        "metadataBytes": 0,
+        "sha256": "9415432c99717ba0ba742d27b8ccd51a6cf9270bf39cd87f0b6a97e6cfe2ad0d",
+        "jpegQuantizationRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "textureBytes": 4700162,
+    "nonTextureBytes": 4091738,
+    "skins": 0,
+    "animations": 0,
+    "extensions": [],
+    "sha256": "fd10ad42a3645f75e9c352e2cdcf65f4ddb216d9e18f91fc90d941c45260ee84"
+  }
+]

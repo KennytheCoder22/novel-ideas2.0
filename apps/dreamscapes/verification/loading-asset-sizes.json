@@ -1,0 +1,472 @@
+{
+  "totalStuffedBytes": 153905860,
+  "totalOrnateBytes": 159516896,
+  "mounts": [
+    {
+      "identity": "cat",
+      "stuffedBytes": 9076564,
+      "ornateBytes": 9158144,
+      "ratio": 0.99,
+      "triangles": 78299,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4415841,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5054255,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "snail",
+      "stuffedBytes": 8791900,
+      "ornateBytes": 8877124,
+      "ratio": 0.99,
+      "triangles": 76961,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4700162,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5159873,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "grizzly",
+      "stuffedBytes": 8437432,
+      "ornateBytes": 10127864,
+      "ratio": 0.83,
+      "triangles": 78376,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4029995,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5314012,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "wolf",
+      "stuffedBytes": 8304044,
+      "ornateBytes": 9385524,
+      "ratio": 0.88,
+      "triangles": 77474,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4308282,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5402651,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "stag",
+      "stuffedBytes": 7976788,
+      "ornateBytes": 8623476,
+      "ratio": 0.93,
+      "triangles": 77610,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4244369,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5122530,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "griffin",
+      "stuffedBytes": 7915044,
+      "ornateBytes": 9118000,
+      "ratio": 0.87,
+      "triangles": 77341,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4236463,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5151571,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "rocket",
+      "stuffedBytes": 7777124,
+      "ornateBytes": 7198104,
+      "ratio": 1.08,
+      "triangles": 76201,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4480474,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4263163,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "zebra",
+      "stuffedBytes": 7716148,
+      "ornateBytes": 2503456,
+      "ratio": 3.08,
+      "triangles": 77368,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4348938,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "bytes": 357800,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "moon-loveseat",
+      "stuffedBytes": 7660648,
+      "ornateBytes": 9087456,
+      "ratio": 0.84,
+      "triangles": 76747,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4265527,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4766287,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "flamingo",
+      "stuffedBytes": 7613300,
+      "ornateBytes": 7782500,
+      "ratio": 0.98,
+      "triangles": 76661,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4226067,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4159551,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "elephant",
+      "stuffedBytes": 7586180,
+      "ornateBytes": 9434352,
+      "ratio": 0.8,
+      "triangles": 77214,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 3805966,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5333912,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "rabbit",
+      "stuffedBytes": 7486988,
+      "ornateBytes": 9135424,
+      "ratio": 0.82,
+      "triangles": 77133,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4258538,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5323608,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "dragon",
+      "stuffedBytes": 7428300,
+      "ornateBytes": 9324200,
+      "ratio": 0.8,
+      "triangles": 76897,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4148183,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5440136,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "ostrich",
+      "stuffedBytes": 7314904,
+      "ornateBytes": 9703916,
+      "ratio": 0.75,
+      "triangles": 77953,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 3919745,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5218608,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "tiger",
+      "stuffedBytes": 7292732,
+      "ornateBytes": 8817180,
+      "ratio": 0.83,
+      "triangles": 77216,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4046193,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5323518,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "fox",
+      "stuffedBytes": 7237456,
+      "ornateBytes": 9171696,
+      "ratio": 0.79,
+      "triangles": 77704,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4172616,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5144954,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "brown-horse",
+      "stuffedBytes": 7187084,
+      "ornateBytes": 8517876,
+      "ratio": 0.84,
+      "triangles": 77352,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 3888486,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 4850847,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "polar-bear",
+      "stuffedBytes": 7044016,
+      "ornateBytes": 2444760,
+      "ratio": 2.88,
+      "triangles": 76803,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 3827279,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 1024,
+          "height": 1024,
+          "bytes": 315231,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "horse",
+      "stuffedBytes": 7034064,
+      "ornateBytes": 1616500,
+      "ratio": 4.35,
+      "triangles": 77161,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 3953067,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 419012,
+          "format": "JPEG"
+        },
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 432756,
+          "format": "JPEG"
+        }
+      ]
+    },
+    {
+      "identity": "unicorn",
+      "stuffedBytes": 7025144,
+      "ornateBytes": 9489344,
+      "ratio": 0.74,
+      "triangles": 77100,
+      "stuffedTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 3816224,
+          "format": "JPEG"
+        }
+      ],
+      "ornateTextures": [
+        {
+          "width": 2048,
+          "height": 2048,
+          "bytes": 5334107,
+          "format": "JPEG"
+        }
+      ]
+    }
+  ]
+}

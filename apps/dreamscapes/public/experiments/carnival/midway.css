@@ -1,0 +1,65 @@
+/* All additions share the accepted artwork coordinates; wheel CSS stays locked. */
+.composition { transform: translate(calc(-50% + var(--pan, 0px)), -50%); }
+.scene-object { position:absolute; border:0; padding:0; background:none; cursor:pointer; z-index:3; }
+.scene-object img { display:block; width:100%; pointer-events:none; user-select:none; }
+.scene-object:focus-visible { outline:1px solid #d5af75; outline-offset:4px; }
+.tent { left:39%; top:38%; width:22%; z-index:1; }
+.entrance { left:22.5%; top:41%; width:17%; filter:brightness(.72) saturate(.8); }
+.puddle { left:40%; top:74%; width:20%; height:12%; border-radius:50%; }
+.crow { position:absolute; left:86%; top:48%; width:9%; height:9%; z-index:4; pointer-events:none; filter:brightness(.68); }
+.crow img { width:100%; height:100%; object-fit:contain; object-position:center bottom; }
+.woman { position:absolute; left:48.3%; top:51.2%; width:3.6%; z-index:2; pointer-events:none; filter:brightness(.48) saturate(.65); }
+.woman-reflection { position:absolute; left:45.1%; top:58.8%; width:10%; height:6.8%; z-index:3; pointer-events:none; object-fit:fill; opacity:.94; filter:brightness(.8) saturate(.7); mask-image:radial-gradient(ellipse 50% 48% at 50% 53%, #000 64%, #000d 76%, transparent 100%); }
+.ground-tag { position:absolute; left:85.1%; top:86.4%; width:2.3%; height:1.15%; z-index:3; pointer-events:none; transform:rotate(-13deg) skewX(-16deg); filter:brightness(.55) saturate(.65) drop-shadow(1px 2px 1px #160e09aa); }
+.ground-tag[hidden] { display:none; }
+.balloon { position:absolute; left:30%; top:10.5%; width:8%; --balloon-travel:1000%; z-index:2; pointer-events:none; filter:brightness(.72) saturate(.85); transform-origin:50% 35%; animation:balloon-drift 100s linear forwards; }
+/* The original image sets the exact animated box, including its ribbon. */
+.balloon-plane { position:absolute; inset:0; z-index:3; pointer-events:none; clip-path:url(#balloon-open-sky); }
+.balloon-art { display:block; width:100%; height:auto; user-select:none; }
+.balloon-surface { position:absolute; left:35%; top:2%; width:58%; height:42%; transform:rotate(29deg); clip-path:ellipse(50% 50%); cursor:default; }
+.balloon-face { position:absolute; left:12%; top:14%; width:76%; height:72%; overflow:hidden; pointer-events:none; opacity:0; mix-blend-mode:multiply; transition:opacity 220ms ease-in-out; }
+@media (hover:hover) and (pointer:fine) {
+ .balloon-surface { pointer-events:auto; }
+ .balloon-surface.has-face .balloon-face { opacity:.76; }
+}
+.fox { left:77%; top:76%; width:18%; filter:brightness(.72) saturate(.85); }
+.poster { left:3.5%; top:28%; width:12%; transform:perspective(700px) rotateY(10deg) rotate(-2deg); filter:brightness(.65) saturate(.8); }
+/* One slow crossing, ending beyond the complete scene; it does not loop back. */
+@keyframes balloon-drift {
+  0% { transform:translate(0,0) rotate(-3deg); }
+  25% { transform:translate(calc(var(--balloon-travel) * .25),-8px) rotate(1deg); }
+  50% { transform:translate(calc(var(--balloon-travel) * .5),-3px) rotate(-2deg); }
+  75% { transform:translate(calc(var(--balloon-travel) * .75),-12px) rotate(2deg); }
+  100% { transform:translate(var(--balloon-travel),-6px) rotate(-1deg); }
+}
+html[data-motion="still"] .balloon { animation:none; }
+html[data-hidden="true"] .balloon { animation-play-state:paused; }
+.look-controls { display:none; }
+.inspection { position:fixed; inset:0; width:100vw; max-width:none; height:100dvh; max-height:none; margin:0; padding:0; border:0; color:#edd7af; background:#080b0ef5; }
+.inspection::backdrop { background:#06090b; }
+.return { position:absolute; top:18px; left:18px; z-index:2; border:1px solid #a28c67; border-radius:4px; color:#ecd7b1; padding:12px 18px; background:#111b1ee8; cursor:pointer; font:16px Georgia,serif; }
+.inspection-art { position:absolute; inset:70px 0 0; display:grid; place-items:center; }
+.inspection-art img { max-width:96%; max-height:calc(100dvh - 90px); object-fit:contain; }
+.destination-copy { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(85%,480px); text-align:center; font:18px/1.6 Georgia,serif; }
+.destination-copy h1 { font-size:32px; }
+@media (max-aspect-ratio:3/2) {
+ .balloon { left:48%; --balloon-travel:775%; }
+ .look-controls { display:flex; position:absolute; bottom:18px; left:50%; transform:translateX(-50%); gap:12px; z-index:5; }
+ .look-controls button { width:44px; height:44px; border:1px solid #ad976866; border-radius:50%; background:#091215b8; color:#ead6b2; font:26px Georgia,serif; cursor:pointer; }
+}
+@media (prefers-reduced-motion:reduce) { .balloon { animation:none; } }
+
+.fox[hidden] { display:none; }
+.inspection.fox-cinema, .inspection.fox-cinema::backdrop { background:transparent; }
+.fox-cinema .inspection-art { inset:0; display:block; pointer-events:none; }
+.fox-cinema canvas { position:absolute; inset:0; width:100%; height:100%; }
+.fox-cinema .return { opacity:0; }
+.fox-cinema .return:hover, .fox-cinema .return:focus-visible { opacity:1; }
+
+
+.woman-approach { left:46%; top:50%; width:8%; height:14%; z-index:4; }
+.midway-retreat { position:absolute; left:18px; top:18px; z-index:6; border:1px solid #a28c67; border-radius:4px; color:#ecd7b1; padding:12px 18px; background:#111b1ee8; cursor:pointer; font:16px Georgia,serif; }
+.midway-retreat[hidden] { display:none; }
+
+.poster .poster-aged { position:absolute; inset:0; width:100%; height:100%; opacity:0; transition:opacity 1.25s ease-in-out; }
+.poster.is-aged .poster-aged { opacity:1; }

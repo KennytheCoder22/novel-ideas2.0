@@ -1,0 +1,1176 @@
+{
+  "v": {
+    "selected": "plain",
+    "requested": "plain",
+    "busy": false,
+    "metrics": [
+      {
+        "identity": "rocket",
+        "style": "plain",
+        "bytes": 8373896,
+        "fetchWaitMs": 1281,
+        "parseMs": 833.5,
+        "prepareMs": 18.30000001192093
+      },
+      {
+        "identity": "rocket",
+        "style": "plain",
+        "firstRenderCpuMs": 355.4000000357628,
+        "readyAtMs": 7976.900000035763
+      },
+      {
+        "identity": "horse",
+        "style": "plain",
+        "bytes": 6835456,
+        "fetchWaitMs": 1564.9000000357628,
+        "parseMs": 1128.5999999642372,
+        "prepareMs": 25.900000035762787
+      },
+      {
+        "identity": "horse",
+        "style": "plain",
+        "firstRenderCpuMs": 156.89999997615814,
+        "readyAtMs": 8365
+      },
+      {
+        "identity": "unicorn",
+        "style": "plain",
+        "bytes": 7792268,
+        "fetchWaitMs": 2957.199999988079,
+        "parseMs": 1286.6000000238419,
+        "prepareMs": 65.59999996423721
+      },
+      {
+        "identity": "unicorn",
+        "style": "plain",
+        "firstRenderCpuMs": 90.59999996423721,
+        "readyAtMs": 9888.699999988079
+      },
+      {
+        "identity": "griffin",
+        "style": "plain",
+        "bytes": 8842892,
+        "fetchWaitMs": 0.10000002384185791,
+        "parseMs": 2077,
+        "prepareMs": 22
+      },
+      {
+        "identity": "griffin",
+        "style": "plain",
+        "firstRenderCpuMs": 110.80000001192093,
+        "readyAtMs": 10187.400000035763
+      },
+      {
+        "identity": "flamingo",
+        "style": "plain",
+        "bytes": 7174588,
+        "fetchWaitMs": 3577.699999988079,
+        "parseMs": 2681.600000023842,
+        "prepareMs": 28.299999952316284
+      },
+      {
+        "identity": "flamingo",
+        "style": "plain",
+        "firstRenderCpuMs": 88.89999997615814,
+        "readyAtMs": 14741.699999988079
+      },
+      {
+        "identity": "moon-loveseat",
+        "style": "plain",
+        "bytes": 7417120,
+        "fetchWaitMs": 6004.600000023842,
+        "parseMs": 2221.100000023842,
+        "prepareMs": 34.59999996423721
+      },
+      {
+        "identity": "moon-loveseat",
+        "style": "plain",
+        "firstRenderCpuMs": 144.60000002384186,
+        "readyAtMs": 18593.30000001192
+      },
+      {
+        "identity": "dragon",
+        "style": "plain",
+        "bytes": 8087600,
+        "fetchWaitMs": 6214.600000023842,
+        "parseMs": 2598.599999964237,
+        "prepareMs": 13.699999988079071
+      },
+      {
+        "identity": "dragon",
+        "style": "plain",
+        "firstRenderCpuMs": 99.79999995231628,
+        "readyAtMs": 18816.69999998808
+      },
+      {
+        "identity": "brown-horse",
+        "style": "plain",
+        "bytes": 7188200,
+        "fetchWaitMs": 0.10000002384185791,
+        "parseMs": 1752.300000011921,
+        "prepareMs": 20
+      },
+      {
+        "identity": "brown-horse",
+        "style": "plain",
+        "firstRenderCpuMs": 190.79999995231628,
+        "readyAtMs": 20556.69999998808
+      },
+      {
+        "identity": "elephant",
+        "style": "plain",
+        "bytes": 7516548,
+        "fetchWaitMs": 0.800000011920929,
+        "parseMs": 2351.899999976158,
+        "prepareMs": 10.300000011920929
+      },
+      {
+        "identity": "elephant",
+        "style": "plain",
+        "firstRenderCpuMs": 155.19999998807907,
+        "readyAtMs": 21335.80000001192
+      },
+      {
+        "identity": "wolf",
+        "style": "plain",
+        "bytes": 8782008,
+        "fetchWaitMs": 0.09999996423721313,
+        "parseMs": 1746.1000000238419,
+        "prepareMs": 15.599999964237213
+      },
+      {
+        "identity": "wolf",
+        "style": "plain",
+        "firstRenderCpuMs": 195.39999997615814,
+        "readyAtMs": 23293.30000001192
+      },
+      {
+        "identity": "snail",
+        "style": "plain",
+        "bytes": 7829036,
+        "fetchWaitMs": 6185,
+        "parseMs": 2588.600000023842,
+        "prepareMs": 7.799999952316284
+      },
+      {
+        "identity": "snail",
+        "style": "plain",
+        "firstRenderCpuMs": 329.60000002384186,
+        "readyAtMs": 23852.900000035763
+      },
+      {
+        "identity": "grizzly",
+        "style": "plain",
+        "bytes": 9401588,
+        "fetchWaitMs": 1574.3999999761581,
+        "parseMs": 1925.7000000476837,
+        "prepareMs": 53.299999952316284
+      },
+      {
+        "identity": "grizzly",
+        "style": "plain",
+        "firstRenderCpuMs": 181.30000001192093,
+        "readyAtMs": 24291.600000023842
+      },
+      {
+        "identity": "tiger",
+        "style": "plain",
+        "bytes": 8016024,
+        "fetchWaitMs": 0,
+        "parseMs": 1455.800000011921,
+        "prepareMs": 9.5
+      },
+      {
+        "identity": "tiger",
+        "style": "plain",
+        "firstRenderCpuMs": 147.0999999642372,
+        "readyAtMs": 25904.19999998808
+      },
+      {
+        "identity": "fox",
+        "style": "plain",
+        "bytes": 8958448,
+        "fetchWaitMs": 0,
+        "parseMs": 2172.800000011921,
+        "prepareMs": 11.100000023841858
+      },
+      {
+        "identity": "fox",
+        "style": "plain",
+        "firstRenderCpuMs": 195,
+        "readyAtMs": 26232.100000023842
+      },
+      {
+        "identity": "rabbit",
+        "style": "plain",
+        "bytes": 7948420,
+        "fetchWaitMs": 0.09999996423721313,
+        "parseMs": 3155.199999988079,
+        "prepareMs": 51.30000001192093
+      },
+      {
+        "identity": "rabbit",
+        "style": "plain",
+        "firstRenderCpuMs": 335.7000000476837,
+        "readyAtMs": 26835.900000035763
+      },
+      {
+        "identity": "stag",
+        "style": "plain",
+        "bytes": 7618304,
+        "fetchWaitMs": 0,
+        "parseMs": 4605.400000035763,
+        "prepareMs": 25.599999964237213
+      },
+      {
+        "identity": "stag",
+        "style": "plain",
+        "firstRenderCpuMs": 152.89999997615814,
+        "readyAtMs": 30688.30000001192
+      },
+      {
+        "identity": "cat",
+        "style": "plain",
+        "bytes": 8980716,
+        "fetchWaitMs": 0,
+        "parseMs": 4607.300000011921,
+        "prepareMs": 17.30000001192093
+      },
+      {
+        "identity": "cat",
+        "style": "plain",
+        "firstRenderCpuMs": 215.60000002384186,
+        "readyAtMs": 31072.600000023842
+      },
+      {
+        "identity": "ostrich",
+        "style": "plain",
+        "bytes": 9282100,
+        "fetchWaitMs": 0.10000002384185791,
+        "parseMs": 5007.699999988079,
+        "prepareMs": 82.80000001192093
+      },
+      {
+        "identity": "ostrich",
+        "style": "plain",
+        "firstRenderCpuMs": 260.30000001192093,
+        "readyAtMs": 32187
+      },
+      {
+        "identity": "zebra",
+        "style": "plain",
+        "bytes": 7618224,
+        "fetchWaitMs": 0.09999996423721313,
+        "parseMs": 3410,
+        "prepareMs": 31.600000023841858
+      },
+      {
+        "identity": "zebra",
+        "style": "plain",
+        "firstRenderCpuMs": 220.10000002384186,
+        "readyAtMs": 34734.90000003576
+      },
+      {
+        "identity": "polar-bear",
+        "style": "plain",
+        "bytes": 8571444,
+        "fetchWaitMs": 0,
+        "parseMs": 4181.299999952316,
+        "prepareMs": 12.900000035762787
+      },
+      {
+        "identity": "polar-bear",
+        "style": "plain",
+        "firstRenderCpuMs": 181.39999997615814,
+        "readyAtMs": 35064.19999998808
+      }
+    ],
+    "mounts": [
+      {
+        "identity": "horse",
+        "slot": 4,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.418710688807844,
+          "scale": 0.418710688807844,
+          "yaw": 0,
+          "offset": [
+            -0.016118594229200534,
+            -0.003807031850148225,
+            -0.028857896849104097
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-174",
+          "y": "-92",
+          "width": "348",
+          "height": "217"
+        },
+        "turn": -2.4683942278205517,
+        "registration": [
+          0.12,
+          -0.055,
+          0.03
+        ]
+      },
+      {
+        "identity": "unicorn",
+        "slot": 17,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.9924652138018895,
+          "scale": 0.9924652138018895,
+          "yaw": 0,
+          "offset": [
+            -0.022262944249531423,
+            0.0029351118068627613,
+            0.001768056346419189
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-162",
+          "y": "-90",
+          "width": "324",
+          "height": "249"
+        },
+        "mountHeight": "177",
+        "bobAmplitude": "12",
+        "turn": -1.3713968515384827,
+        "registration": [
+          0,
+          -0.125,
+          -0.1
+        ]
+      },
+      {
+        "identity": "rocket",
+        "slot": 5,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.7334418097488578,
+          "scale": 0.7334418097488578,
+          "yaw": 0,
+          "offset": [
+            0.002589140841678118,
+            0.0755227672366649,
+            -0.00018684037104745865
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-141",
+          "y": "-29",
+          "width": "282",
+          "height": "107"
+        },
+        "mountHeight": "96",
+        "bobAmplitude": "12",
+        "turn": 3.7897910793590346,
+        "registration": [
+          -0.005200000000000001,
+          -0.12584,
+          0
+        ]
+      },
+      {
+        "identity": "griffin",
+        "slot": 6,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 1.024119187971559,
+          "scale": 1.024119187971559,
+          "yaw": -1.5707963267948966,
+          "offset": [
+            0.01354495938971403,
+            -0.014547147570189878,
+            -0.006990725716315038
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-163",
+          "y": "-59",
+          "width": "326",
+          "height": "223"
+        },
+        "mountHeight": "182",
+        "bobAmplitude": "12",
+        "turn": 2.268994752564138,
+        "registration": [
+          0,
+          -0.18400000000000002,
+          -0.12880000000000003
+        ]
+      },
+      {
+        "identity": "flamingo",
+        "slot": 20,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.9995612150299469,
+          "scale": 0.9995612150299469,
+          "yaw": 0,
+          "offset": [
+            -0.0002782530260177261,
+            0.00006939368236402732,
+            0.013043034556974392
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-142",
+          "y": "-93",
+          "width": "284",
+          "height": "272"
+        },
+        "mountHeight": "200",
+        "bobAmplitude": "12",
+        "turn": -2.268994752564138,
+        "registration": [
+          0,
+          -0.16,
+          -0.115
+        ]
+      },
+      {
+        "identity": "dragon",
+        "slot": 21,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.9892869890830595,
+          "scale": 0.9892869890830595,
+          "yaw": 0,
+          "offset": [
+            0.018322883149372207,
+            -0.002274191900274364,
+            0.0021807472477852197
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-208",
+          "y": "-135",
+          "width": "416",
+          "height": "306"
+        },
+        "mountHeight": "192",
+        "bobAmplitude": "12",
+        "turn": -2.218994752564138,
+        "registration": [
+          0,
+          -0.063,
+          -0.174
+        ]
+      },
+      {
+        "identity": "moon-loveseat",
+        "slot": 2,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 1.1452845900595188,
+          "scale": 1.1452845900595188,
+          "yaw": 0,
+          "offset": [
+            -0.01984670871839095,
+            0.0009981797947655746,
+            -0.10788567714074981
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-141",
+          "y": "-12",
+          "width": "282",
+          "height": "216"
+        },
+        "mountHeight": "222",
+        "bobAmplitude": "12",
+        "turn": 3.116592653589793,
+        "registration": [
+          -0.0545976,
+          -0.3495496,
+          0.16086440000000002
+        ]
+      },
+      {
+        "identity": "snail",
+        "slot": 3,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.9860224986251827,
+          "scale": 0.9860224986251827,
+          "yaw": 0,
+          "offset": [
+            -0.0012317824018132214,
+            0.0005880128920528471,
+            0.005546474502306775
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-168",
+          "y": "-50",
+          "width": "336",
+          "height": "192"
+        },
+        "mountHeight": "150",
+        "bobAmplitude": "12",
+        "turn": 3.166592653589793,
+        "registration": [
+          0,
+          -0.14534,
+          -0.1892
+        ]
+      },
+      {
+        "identity": "brown-horse",
+        "slot": 12,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.8607564187518335,
+          "scale": 0.8607564187518335,
+          "yaw": 0,
+          "offset": [
+            0.00002686579033404929,
+            0.005744565889606423,
+            0.03201086978356066
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-170",
+          "y": "-70",
+          "width": "340",
+          "height": "243"
+        },
+        "mountHeight": "190",
+        "bobAmplitude": "12",
+        "turn": 0.4737989505128276,
+        "registration": [
+          0,
+          -0.182,
+          -0.1092
+        ]
+      },
+      {
+        "identity": "elephant",
+        "slot": 13,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.9837499090606475,
+          "scale": 0.9837499090606475,
+          "yaw": 0,
+          "offset": [
+            0.0028649653934832635,
+            0.04035935614728853,
+            -0.006637330671360728
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-151",
+          "y": "-69",
+          "width": "302",
+          "height": "258"
+        },
+        "mountHeight": "207",
+        "bobAmplitude": "12",
+        "turn": -0.4487989505128276,
+        "registration": [
+          0,
+          -0.2173,
+          -0.0318
+        ]
+      },
+      {
+        "identity": "grizzly",
+        "slot": 16,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.8599252650220367,
+          "scale": 0.8599252650220367,
+          "yaw": 0,
+          "offset": [
+            -0.009523556738554349,
+            0.0011784512832490601,
+            0.015466664044288467
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-170",
+          "y": "-44",
+          "width": "340",
+          "height": "212"
+        },
+        "mountHeight": "186",
+        "bobAmplitude": "12",
+        "turn": -1.3463968515384828,
+        "registration": [
+          0,
+          -0.22400000000000003,
+          -0.06160000000000001
+        ]
+      },
+      {
+        "identity": "wolf",
+        "slot": 9,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.9271613896329453,
+          "scale": 0.9271613896329453,
+          "yaw": 0,
+          "offset": [
+            0.0008258306977285382,
+            0.01568855461606672,
+            0.015243913174600832
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-171",
+          "y": "-47",
+          "width": "342",
+          "height": "170"
+        },
+        "mountHeight": "143",
+        "bobAmplitude": "12",
+        "turn": 1.3713968515384827,
+        "registration": [
+          0,
+          -0.1456,
+          -0.1144
+        ]
+      },
+      {
+        "identity": "rabbit",
+        "slot": 8,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.8493014151880832,
+          "scale": 0.8493014151880832,
+          "yaw": 0,
+          "offset": [
+            -0.0075391309015348535,
+            -0.0037708021213953558,
+            0.05613162618940759
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-180",
+          "y": "-70",
+          "width": "360",
+          "height": "199"
+        },
+        "mountHeight": "146",
+        "bobAmplitude": "12",
+        "turn": 1.3213968515384829,
+        "registration": [
+          0,
+          -0.1,
+          -0.165
+        ]
+      },
+      {
+        "identity": "fox",
+        "slot": 11,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.8428117909055658,
+          "scale": 0.8428117909055658,
+          "yaw": 0,
+          "offset": [
+            -0.0016340005962196895,
+            -0.006225510115934474,
+            0.05609568877776261
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-181",
+          "y": "-59",
+          "width": "362",
+          "height": "187"
+        },
+        "mountHeight": "146",
+        "bobAmplitude": "12",
+        "turn": 0.42379895051282757,
+        "registration": [
+          0,
+          -0.12,
+          -0.175
+        ]
+      },
+      {
+        "identity": "tiger",
+        "slot": 14,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.8528904757473478,
+          "scale": 0.8528904757473478,
+          "yaw": 0,
+          "offset": [
+            0.0008897683987740948,
+            0.0005330336591768403,
+            0.026765276922017606
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-181",
+          "y": "-53",
+          "width": "362",
+          "height": "209"
+        },
+        "mountHeight": "174",
+        "bobAmplitude": "12",
+        "turn": -0.4737989505128276,
+        "registration": [
+          0,
+          -0.18239999999999998,
+          -0.10259999999999998
+        ]
+      },
+      {
+        "identity": "stag",
+        "slot": 15,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.9282852406781784,
+          "scale": 0.9282852406781784,
+          "yaw": 0,
+          "offset": [
+            -0.009163506547921155,
+            0.010343442042815787,
+            -0.010857402084629986
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-163",
+          "y": "-122",
+          "width": "326",
+          "height": "287"
+        },
+        "mountHeight": "182",
+        "bobAmplitude": "12",
+        "turn": -0.42379895051282757,
+        "registration": [
+          0,
+          -0.0728,
+          -0.13
+        ]
+      },
+      {
+        "identity": "cat",
+        "slot": 18,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 1.1056598865630876,
+          "scale": 1.1056598865630876,
+          "yaw": 0.5049913504336554,
+          "offset": [
+            -0.01902752599134841,
+            0.0006314941908533989,
+            -0.009327980742455257
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-150",
+          "y": "-89",
+          "width": "300",
+          "height": "255"
+        },
+        "mountHeight": "184",
+        "bobAmplitude": "12",
+        "turn": -1.8263882019721382,
+        "registration": [
+          -0.0368,
+          -0.138,
+          -0.023000000000000003
+        ]
+      },
+      {
+        "identity": "ostrich",
+        "slot": 7,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.866874052003748,
+          "scale": 0.866874052003748,
+          "yaw": 0,
+          "offset": [
+            -0.0013869672652432198,
+            -0.0008429054815733417,
+            0.0675019355645094
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-203",
+          "y": "-87",
+          "width": "406",
+          "height": "247"
+        },
+        "mountHeight": "183",
+        "bobAmplitude": "12",
+        "turn": 1.3463968515384828,
+        "registration": [
+          0,
+          -0.13520000000000001,
+          -0.2288
+        ]
+      },
+      {
+        "identity": "polar-bear",
+        "slot": 10,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 0.9560766340924979,
+          "scale": 0.9560766340924979,
+          "yaw": 0,
+          "offset": [
+            0.009480457685227529,
+            -0.0006527348759117757,
+            -0.003973461843823425
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-150",
+          "y": "-71",
+          "width": "300",
+          "height": "256"
+        },
+        "mountHeight": "204",
+        "bobAmplitude": "12",
+        "turn": 0.4487989505128276,
+        "registration": [
+          0.012330240000000001,
+          -0.20800000000000002,
+          0.03847454
+        ]
+      },
+      {
+        "identity": "zebra",
+        "slot": 19,
+        "style": "plain",
+        "visible": true,
+        "transform": {
+          "fit": 1.0002135396050091,
+          "scale": 1.0002135396050091,
+          "yaw": 0,
+          "offset": [
+            -0.001182171245172918,
+            0.010019561796005105,
+            -0.000582960854483866
+          ],
+          "correction": [
+            0,
+            0,
+            0
+          ]
+        },
+        "holder": {
+          "x": "-165",
+          "y": "-70",
+          "width": "330",
+          "height": "234"
+        },
+        "mountHeight": "182",
+        "bobAmplitude": "12",
+        "turn": -2.243994752564138,
+        "registration": [
+          0,
+          -0.1675,
+          -0.1125
+        ]
+      }
+    ]
+  },
+  "p": {
+    "style": "plain",
+    "active": 0,
+    "queued": 0,
+    "assets": [
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/griffin.glb",
+        "bytes": 8842892,
+        "fetchMs": 1916.2999999523163,
+        "cacheLookupMs": 1338.2999999523163,
+        "downloadOrCacheReadMs": 326.60000002384186,
+        "cacheWriteMs": 251.39999997615814,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/rocket.glb",
+        "bytes": 8373896,
+        "fetchMs": 2575.7000000476837,
+        "cacheLookupMs": 1337.1000000238419,
+        "downloadOrCacheReadMs": 887.6000000238419,
+        "cacheWriteMs": 351,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/horse.glb",
+        "bytes": 6835456,
+        "fetchMs": 2861.199999988079,
+        "cacheLookupMs": 1325.699999988079,
+        "downloadOrCacheReadMs": 1393.1000000238419,
+        "cacheWriteMs": 142.39999997615814,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/ostrich.glb",
+        "bytes": 9282100,
+        "fetchMs": 4186.699999988079,
+        "cacheLookupMs": 1338.800000011921,
+        "downloadOrCacheReadMs": 1958.2999999523163,
+        "cacheWriteMs": 889.6000000238419,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/unicorn.glb",
+        "bytes": 7792268,
+        "fetchMs": 2335.300000011921,
+        "cacheLookupMs": 9.600000023841858,
+        "downloadOrCacheReadMs": 1962.0999999642372,
+        "cacheWriteMs": 363.60000002384186,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/rabbit.glb",
+        "bytes": 7948420,
+        "fetchMs": 1959.2999999523163,
+        "cacheLookupMs": 142.39999997615814,
+        "downloadOrCacheReadMs": 1567.800000011921,
+        "cacheWriteMs": 249.0999999642372,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/wolf.glb",
+        "bytes": 8782008,
+        "fetchMs": 2161.100000023842,
+        "cacheLookupMs": 91.80000001192093,
+        "downloadOrCacheReadMs": 1534.5,
+        "cacheWriteMs": 534.8000000119209,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/flamingo.glb",
+        "bytes": 7174588,
+        "fetchMs": 3486.600000023842,
+        "cacheLookupMs": 307.10000002384186,
+        "downloadOrCacheReadMs": 2771.899999976158,
+        "cacheWriteMs": 407.60000002384186,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/polar-bear.glb",
+        "bytes": 8571444,
+        "fetchMs": 3562,
+        "cacheLookupMs": 376.89999997615814,
+        "downloadOrCacheReadMs": 2884.2000000476837,
+        "cacheWriteMs": 300.89999997615814,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/brown-horse.glb",
+        "bytes": 7188200,
+        "fetchMs": 3509.900000035763,
+        "cacheLookupMs": 59.5,
+        "downloadOrCacheReadMs": 3271.900000035763,
+        "cacheWriteMs": 178.5,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/fox.glb",
+        "bytes": 8958448,
+        "fetchMs": 4228.699999988079,
+        "cacheLookupMs": 470.30000001192093,
+        "downloadOrCacheReadMs": 3357.199999988079,
+        "cacheWriteMs": 401.19999998807907,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/elephant.glb",
+        "bytes": 7516548,
+        "fetchMs": 3232.699999988079,
+        "cacheLookupMs": 829.3999999761581,
+        "downloadOrCacheReadMs": 2184.800000011921,
+        "cacheWriteMs": 218.5,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/dragon.glb",
+        "bytes": 8087600,
+        "fetchMs": 4153.700000047684,
+        "cacheLookupMs": 829.5,
+        "downloadOrCacheReadMs": 3107.900000035763,
+        "cacheWriteMs": 216.30000001192093,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/moon-loveseat.glb",
+        "bytes": 7417120,
+        "fetchMs": 3461.600000023842,
+        "cacheLookupMs": 326.2000000476837,
+        "downloadOrCacheReadMs": 2884.199999988079,
+        "cacheWriteMs": 251.19999998807907,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/tiger.glb",
+        "bytes": 8016024,
+        "fetchMs": 3442.199999988079,
+        "cacheLookupMs": 175.69999998807907,
+        "downloadOrCacheReadMs": 2805.300000011921,
+        "cacheWriteMs": 461.19999998807907,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/stag.glb",
+        "bytes": 7618304,
+        "fetchMs": 1716.4000000357628,
+        "cacheLookupMs": 116.80000001192093,
+        "downloadOrCacheReadMs": 1189.800000011921,
+        "cacheWriteMs": 409.80000001192093,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/snail.glb",
+        "bytes": 7829036,
+        "fetchMs": 4714.800000011921,
+        "cacheLookupMs": 386.60000002384186,
+        "downloadOrCacheReadMs": 3468.199999988079,
+        "cacheWriteMs": 860,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/grizzly.glb",
+        "bytes": 9401588,
+        "fetchMs": 6013.5,
+        "cacheLookupMs": 479.80000001192093,
+        "downloadOrCacheReadMs": 3537.699999988079,
+        "cacheWriteMs": 1996,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/zebra.glb",
+        "bytes": 7618224,
+        "fetchMs": 5357.299999952316,
+        "cacheLookupMs": 166.5,
+        "downloadOrCacheReadMs": 3888.099999964237,
+        "cacheWriteMs": 1302.699999988079,
+        "persistentCacheHit": false
+      },
+      {
+        "url": "http://127.0.0.1:4204/experiments/carnival/carousel/variants/plain/cat.glb",
+        "bytes": 8980716,
+        "fetchMs": 6269.300000011921,
+        "cacheLookupMs": 512.1000000238419,
+        "downloadOrCacheReadMs": 4829,
+        "cacheWriteMs": 928.1999999880791,
+        "persistentCacheHit": false
+      }
+    ]
+  }
+}

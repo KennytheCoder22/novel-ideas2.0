@@ -105,7 +105,8 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "codex/3d-normal-production": false
+      "codex/3d-normal-production": false,
+      "codex/dreamscapes-independent": false
     }
   }
 }

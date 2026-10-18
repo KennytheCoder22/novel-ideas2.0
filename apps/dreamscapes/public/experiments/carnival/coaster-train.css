@@ -1,0 +1,10 @@
+/* Registered to the Rides & Games background, behind Carousel and foreground UI. */
+.coaster-atmosphere {
+  position:absolute; inset:0; width:100%; height:100%; overflow:hidden;
+  pointer-events:none; user-select:none;
+}
+.coaster-atmosphere * { pointer-events:none; }
+.coaster-train { filter:brightness(.58) saturate(.64); }
+@media (prefers-reduced-motion:reduce) {
+  .coaster-atmosphere:not([data-coaster-state="review"]) { visibility:hidden; }
+}

@@ -1,0 +1,74 @@
+{
+  "desktop": {
+    "box": {
+      "height": 153.796875,
+      "width": 123.078125,
+      "x": 116.078125,
+      "y": 553.078125
+    },
+    "clip": "polygon(0px 0px, 0.03px 7.89px, 41.01px 61.72px, 41.01px 138.62px, 41.01px 154px, 113.408px 154px, 113.408px 138.62px, 117.506px 61.72px, 123px 7.89px, 123px 0px)",
+    "destination": "/",
+    "frameProbes": [
+      {
+        "hit": false,
+        "opaque": true,
+        "x": 0.1,
+        "y": 0.85
+      },
+      {
+        "hit": false,
+        "opaque": true,
+        "x": 0.95,
+        "y": 0.85
+      }
+    ],
+    "hiddenWordErrors": 0,
+    "hotspotOverlaps": [],
+    "occludedOpaqueSamples": 40,
+    "scene": "tent-row",
+    "transparentHitErrors": 0,
+    "viewport": [
+      1366,
+      768
+    ],
+    "visible": true,
+    "visibleWordSamples": 80
+  },
+  "mobile": {
+    "box": {
+      "height": 143.46875,
+      "width": 114.8125,
+      "x": 162.328125,
+      "y": 540.625
+    },
+    "clip": "",
+    "destination": "/",
+    "frameProbes": [
+      {
+        "hit": true,
+        "opaque": true,
+        "x": 0.1,
+        "y": 0.85
+      },
+      {
+        "hit": true,
+        "opaque": true,
+        "x": 0.95,
+        "y": 0.85
+      }
+    ],
+    "hiddenWordErrors": 0,
+    "hotspotOverlaps": [],
+    "occludedOpaqueSamples": 0,
+    "scene": "tent-row",
+    "transparentHitErrors": 0,
+    "viewport": [
+      390,
+      844
+    ],
+    "visible": true,
+    "visibleWordSamples": 80
+  },
+  "keyboardExit": "passed",
+  "pointerExit": "passed"
+}

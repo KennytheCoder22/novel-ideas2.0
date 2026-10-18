@@ -1,0 +1,686 @@
+[
+  {
+    "name": "unicorn",
+    "contextLost": false,
+    "actualScale": 0.9684940308476396,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 3.0531133177191805e-16,
+    "correctLayer": true,
+    "bottom": -0.3173338214523944,
+    "top": 0.30810503125190736,
+    "length": 0.6254388527043018,
+    "center": -0.004614395100243501,
+    "gap": 76.76768906860882,
+    "scale": 0.5,
+    "yaw": -1.3713968515384827,
+    "mountHeight": 177,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.125,
+      -0.1
+    ],
+    "slot": 16,
+    "crop": [
+      "-162",
+      "-90",
+      "324",
+      "249"
+    ],
+    "buffer": [
+      518,
+      398
+    ]
+  },
+  {
+    "name": "rocket",
+    "contextLost": false,
+    "actualScale": 1.025623411244729,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.21992496523220204,
+    "top": 0.09085583559036256,
+    "length": 0.3107808008225646,
+    "center": -0.06453456482091974,
+    "gap": 25.476617692687693,
+    "scale": 0.52,
+    "yaw": 3.7897910793590346,
+    "mountHeight": 96,
+    "bob": 12,
+    "registration": [
+      -0.005200000000000001,
+      -0.12584,
+      0
+    ],
+    "slot": 4,
+    "crop": [
+      "-141",
+      "-29",
+      "282",
+      "107"
+    ],
+    "buffer": [
+      451,
+      171
+    ]
+  },
+  {
+    "name": "griffin",
+    "contextLost": false,
+    "actualScale": 1.0167973197349023,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 1.3877787807814457e-17,
+    "tangentError": 2.482534153247273e-16,
+    "correctLayer": true,
+    "bottom": -0.3907794214149649,
+    "top": 0.20000899171829223,
+    "length": 0.5907884131332571,
+    "center": -0.09538521484833633,
+    "gap": 40.90327364196202,
+    "scale": 0.46,
+    "yaw": 2.268994752564138,
+    "mountHeight": 182,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.18400000000000002,
+      -0.12880000000000003
+    ],
+    "slot": 5,
+    "crop": [
+      "-163",
+      "-59",
+      "326",
+      "223"
+    ],
+    "buffer": [
+      522,
+      357
+    ]
+  },
+  {
+    "name": "flamingo",
+    "contextLost": false,
+    "actualScale": 0.9753785215612182,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 3.1401849173675503e-16,
+    "correctLayer": true,
+    "bottom": -0.2908350523711911,
+    "top": 0.3253505289554596,
+    "length": 0.6161855813266507,
+    "center": 0.017257738292134228,
+    "gap": 83.38941287107647,
+    "scale": 0.5,
+    "yaw": -2.268994752564138,
+    "mountHeight": 200,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.16,
+      -0.115
+    ],
+    "slot": 19,
+    "crop": [
+      "-142",
+      "-93",
+      "284",
+      "272"
+    ],
+    "buffer": [
+      454,
+      435
+    ]
+  },
+  {
+    "name": "dragon",
+    "contextLost": false,
+    "actualScale": 0.9825191394397069,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 1.3877787807814457e-17,
+    "tangentError": 5.551115123125783e-16,
+    "correctLayer": true,
+    "bottom": -0.40508272567447795,
+    "top": 0.47863957595825196,
+    "length": 0.8837223016327299,
+    "center": 0.036778425141887006,
+    "gap": 69.09598013789531,
+    "scale": 0.6,
+    "yaw": -2.218994752564138,
+    "mountHeight": 192,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.063,
+      -0.174
+    ],
+    "slot": 20,
+    "crop": [
+      "-208",
+      "-135",
+      "416",
+      "306"
+    ],
+    "buffer": [
+      666,
+      490
+    ]
+  },
+  {
+    "name": "moon-loveseat",
+    "contextLost": false,
+    "actualScale": 1.000931152997823,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 6.938893903907228e-18,
+    "tangentError": 3.122502256758253e-17,
+    "correctLayer": true,
+    "bottom": -0.6817673922198264,
+    "top": 0.024222816114807144,
+    "length": 0.7059902083346336,
+    "center": -0.32877228805250963,
+    "gap": 0.8409119177882173,
+    "scale": 0.4,
+    "yaw": 3.116592653589793,
+    "mountHeight": 222,
+    "bob": 12,
+    "registration": [
+      -0.0545976,
+      -0.3495496,
+      0.16086440000000002
+    ],
+    "slot": 1,
+    "crop": [
+      "-141",
+      "-12",
+      "282",
+      "216"
+    ],
+    "buffer": [
+      451,
+      346
+    ]
+  },
+  {
+    "name": "snail",
+    "contextLost": false,
+    "actualScale": 0.9994518428181559,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.4178574339411839,
+    "top": 0.16616011301040645,
+    "length": 0.5840175469515904,
+    "center": -0.12584866046538873,
+    "gap": 24.826507757563373,
+    "scale": 0.43,
+    "yaw": 3.166592653589793,
+    "mountHeight": 150,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.14534,
+      -0.1892
+    ],
+    "slot": 2,
+    "crop": [
+      "-168",
+      "-50",
+      "336",
+      "192"
+    ],
+    "buffer": [
+      538,
+      307
+    ]
+  },
+  {
+    "name": "brown-horse",
+    "contextLost": false,
+    "actualScale": 1.0100053500095465,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 6.938893903907228e-18,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.3667909198718591,
+    "top": 0.24096528100967407,
+    "length": 0.6077562008815331,
+    "center": -0.06291281943109249,
+    "gap": 55.320125308908125,
+    "scale": 0.52,
+    "yaw": 0.4737989505128276,
+    "mountHeight": 190,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.182,
+      -0.1092
+    ],
+    "slot": 11,
+    "crop": [
+      "-170",
+      "-70",
+      "340",
+      "243"
+    ],
+    "buffer": [
+      544,
+      389
+    ]
+  },
+  {
+    "name": "elephant",
+    "contextLost": false,
+    "actualScale": 0.9816219244788063,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.4745999392296718,
+    "top": 0.23050178427696233,
+    "length": 0.7051017235066341,
+    "center": -0.12204907747635475,
+    "gap": 65.1400564849406,
+    "scale": 0.53,
+    "yaw": -0.4487989505128276,
+    "mountHeight": 207,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.2173,
+      -0.0318
+    ],
+    "slot": 12,
+    "crop": [
+      "-151",
+      "-69",
+      "302",
+      "258"
+    ],
+    "buffer": [
+      483,
+      413
+    ]
+  },
+  {
+    "name": "grizzly",
+    "contextLost": false,
+    "actualScale": 0.9587048391482985,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 6.938893903907228e-18,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.4453058446418554,
+    "top": 0.1419477663040161,
+    "length": 0.5872536109458715,
+    "center": -0.15167903916891964,
+    "gap": 28.13956022427102,
+    "scale": 0.56,
+    "yaw": -1.3463968515384828,
+    "mountHeight": 186,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.22400000000000003,
+      -0.06160000000000001
+    ],
+    "slot": 15,
+    "crop": [
+      "-170",
+      "-44",
+      "340",
+      "212"
+    ],
+    "buffer": [
+      544,
+      339
+    ]
+  },
+  {
+    "name": "wolf",
+    "contextLost": false,
+    "actualScale": 1.021494072288388,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.3178352825542444,
+    "top": 0.15405145826339722,
+    "length": 0.47188674081764165,
+    "center": -0.0818919121454236,
+    "gap": 46.09819049844073,
+    "scale": 0.52,
+    "yaw": 1.3713968515384827,
+    "mountHeight": 143,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.1456,
+      -0.1144
+    ],
+    "slot": 8,
+    "crop": [
+      "-171",
+      "-47",
+      "342",
+      "170"
+    ],
+    "buffer": [
+      547,
+      272
+    ]
+  },
+  {
+    "name": "rabbit",
+    "contextLost": false,
+    "actualScale": 1.031148383474012,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.3545135366422843,
+    "top": 0.24076599240303037,
+    "length": 0.5952795290453147,
+    "center": -0.05687377211962695,
+    "gap": 14.561498316388183,
+    "scale": 0.5,
+    "yaw": 1.3213968515384829,
+    "mountHeight": 146,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.1,
+      -0.165
+    ],
+    "slot": 7,
+    "crop": [
+      "-180",
+      "-70",
+      "360",
+      "199"
+    ],
+    "buffer": [
+      576,
+      318
+    ]
+  },
+  {
+    "name": "fox",
+    "contextLost": false,
+    "actualScale": 1.013217987636134,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.3039807100177666,
+    "top": 0.19989453196525578,
+    "length": 0.5038752419830224,
+    "center": -0.0520430890262554,
+    "gap": 52.59413001037674,
+    "scale": 0.5,
+    "yaw": 0.42379895051282757,
+    "mountHeight": 146,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.12,
+      -0.175
+    ],
+    "slot": 10,
+    "crop": [
+      "-181",
+      "-59",
+      "362",
+      "187"
+    ],
+    "buffer": [
+      579,
+      299
+    ]
+  },
+  {
+    "name": "tiger",
+    "contextLost": false,
+    "actualScale": 0.9853341775104368,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 1.5515838457795457e-17,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.34884348104826035,
+    "top": 0.17678374896049498,
+    "length": 0.5256272300087553,
+    "center": -0.08602986604388269,
+    "gap": 43.02809832440612,
+    "scale": 0.57,
+    "yaw": -0.4737989505128276,
+    "mountHeight": 174,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.18239999999999998,
+      -0.10259999999999998
+    ],
+    "slot": 13,
+    "crop": [
+      "-181",
+      "-53",
+      "362",
+      "209"
+    ],
+    "buffer": [
+      579,
+      334
+    ]
+  },
+  {
+    "name": "stag",
+    "contextLost": false,
+    "actualScale": 0.9909823951015707,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.33212296081429704,
+    "top": 0.43158221693038934,
+    "length": 0.7637051777446864,
+    "center": 0.04972962805804618,
+    "gap": 79.50674772572704,
+    "scale": 0.52,
+    "yaw": -0.42379895051282757,
+    "mountHeight": 182,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.0728,
+      -0.13
+    ],
+    "slot": 14,
+    "crop": [
+      "-163",
+      "-122",
+      "326",
+      "287"
+    ],
+    "buffer": [
+      522,
+      459
+    ]
+  },
+  {
+    "name": "cat",
+    "contextLost": false,
+    "actualScale": 0.9787498806077296,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.5424815809060984,
+    "top": 0.30933353614807124,
+    "length": 0.8518151170541697,
+    "center": -0.11657402237901357,
+    "gap": 0.8222767081441077,
+    "scale": 0.46,
+    "yaw": -1.8263882019721382,
+    "mountHeight": 184,
+    "bob": 12,
+    "registration": [
+      -0.0368,
+      -0.138,
+      -0.023000000000000003
+    ],
+    "slot": 17,
+    "crop": [
+      "-150",
+      "-89",
+      "300",
+      "255"
+    ],
+    "buffer": [
+      480,
+      408
+    ]
+  },
+  {
+    "name": "ostrich",
+    "contextLost": false,
+    "actualScale": 1.0412951608517016,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 2.7755575615628914e-17,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.3952562894908048,
+    "top": 0.3026872323036194,
+    "length": 0.6979435217944242,
+    "center": -0.04628452859359272,
+    "gap": 66.649326714202,
+    "scale": 0.52,
+    "yaw": 1.3463968515384828,
+    "mountHeight": 183,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.13520000000000001,
+      -0.2288
+    ],
+    "slot": 6,
+    "crop": [
+      "-203",
+      "-87",
+      "406",
+      "247"
+    ],
+    "buffer": [
+      650,
+      395
+    ]
+  },
+  {
+    "name": "polar-bear",
+    "contextLost": false,
+    "actualScale": 1.0183780755211937,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.6157899026501658,
+    "top": 0.2403584475517273,
+    "length": 0.8561483502018931,
+    "center": -0.18771572754921922,
+    "gap": 0.8555661188827675,
+    "scale": 0.52,
+    "yaw": 0.4487989505128276,
+    "mountHeight": 204,
+    "bob": 12,
+    "registration": [
+      0.012330240000000001,
+      -0.20800000000000002,
+      0.03847454
+    ],
+    "slot": 9,
+    "crop": [
+      "-150",
+      "-71",
+      "300",
+      "256"
+    ],
+    "buffer": [
+      480,
+      410
+    ]
+  },
+  {
+    "name": "zebra",
+    "contextLost": false,
+    "actualScale": 0.9668838522068899,
+    "scaleError": 0,
+    "opacityCorrect": true,
+    "depthOrder": true,
+    "axisDrift": 0,
+    "tangentError": 0,
+    "correctLayer": true,
+    "bottom": -0.5351507487316917,
+    "top": 0.2383615064620972,
+    "length": 0.7735122551937889,
+    "center": -0.14839462113479723,
+    "gap": 24.01751994879335,
+    "scale": 0.5,
+    "yaw": -2.243994752564138,
+    "mountHeight": 182,
+    "bob": 12,
+    "registration": [
+      0,
+      -0.1675,
+      -0.1125
+    ],
+    "slot": 18,
+    "crop": [
+      "-165",
+      "-70",
+      "330",
+      "234"
+    ],
+    "buffer": [
+      528,
+      374
+    ]
+  }
+]
