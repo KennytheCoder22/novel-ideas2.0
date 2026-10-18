@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "originalBackupsVerified": 40,
+  "approvedCopiesVerified": 40,
+  "ornateCount": 20,
+  "plainBytes": 94042280,
+  "stuffedBytes": 87792740,
+  "allGLBBytes": 341351916,
+  "productionBuildBytes": 410002827,
+  "buildFiles": 155,
+  "sourceBackupBytes": 316140740
+}

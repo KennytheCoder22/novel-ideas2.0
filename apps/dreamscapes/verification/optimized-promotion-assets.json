@@ -1,0 +1,362 @@
+[
+  {
+    "identity": "brown-horse",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/brown-horse.glb",
+    "sourceSha256": "7b3d47ce3dafa8ef7cbf1126e0523dade0acd62bd80e7db628143fa50740b73a",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/brown-horse.glb",
+    "bytes": 4523640,
+    "sha256": "a2042cb9810d841891ce34d6cfa5ec972172f225792028b71793b567332253de"
+  },
+  {
+    "identity": "cat",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/cat.glb",
+    "sourceSha256": "c95061e4548b79e46068c4428f053970331365a36f3263812bee0c0363fd93aa",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/cat.glb",
+    "bytes": 5335720,
+    "sha256": "20b38b1cde04e32d73d261188c49fd71a7d895f66b6a7eba35db32aeea5f1b0d"
+  },
+  {
+    "identity": "dragon",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/dragon.glb",
+    "sourceSha256": "2dd2581b9947e09da4994b00cf9550418642a1f956db04d574b5787e163d95cf",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/dragon.glb",
+    "bytes": 4699564,
+    "sha256": "85fe5ef4ea7fe79726fdfd4acf7911fd181060b31aede8da429ac1defc18fde1"
+  },
+  {
+    "identity": "elephant",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/elephant.glb",
+    "sourceSha256": "c644e990ca8164972fa03514f450d623984743dbcad73780d047941fb8fe040b",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/elephant.glb",
+    "bytes": 4212704,
+    "sha256": "47be01da29b4fcbb388933d7ad99014e99d7c5ee93b8b873309f02829cb2e5d0"
+  },
+  {
+    "identity": "flamingo",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/flamingo.glb",
+    "sourceSha256": "e41678cbdd08fe03b71b0e1f8cf53c3e7cfe93439ad62291af32a69f0321e020",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/flamingo.glb",
+    "bytes": 4132356,
+    "sha256": "4a0d9c78804f3d7f1035a0d65d1252a0c77a60e3b5a75c676b8f4326fc650157"
+  },
+  {
+    "identity": "fox",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/fox.glb",
+    "sourceSha256": "96e473965238147f4fefc25a18ca0102f129f1daa8c6e8652e767605a3b272a7",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/fox.glb",
+    "bytes": 5258184,
+    "sha256": "9af3e5eeb69b93021a2a43c7f7449018feb9118b0c0a440128fbdb553db9960f"
+  },
+  {
+    "identity": "griffin",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/griffin.glb",
+    "sourceSha256": "2ef519f003ee7a505f5b541a138c2a839c20fc7d7fb7727f90c21b8c3afd6322",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/griffin.glb",
+    "bytes": 5264004,
+    "sha256": "96e167655057c9f87e252717dc1dd497beff2c74edaa60329b8d28d3f1b6030f"
+  },
+  {
+    "identity": "grizzly",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/grizzly.glb",
+    "sourceSha256": "cf16c4ecefd3a4b7e214a65f4baf7af0411279edce19abf8b30267870c1d4b3e",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/grizzly.glb",
+    "bytes": 6058336,
+    "sha256": "c45027a59faef2b03297b447b24b46e4ae95232149ef06f7034db88ed49e2ae3"
+  },
+  {
+    "identity": "horse",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/horse.glb",
+    "sourceSha256": "8fc20a5df86241136c37ca9cf84fc49f573102e9d2e2a91f285762f8e1cabb41",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/horse.glb",
+    "bytes": 3796648,
+    "sha256": "358b7a203158a7414d83bdeac83adbc8d27752db8283959d7f9de8b672451831"
+  },
+  {
+    "identity": "moon-loveseat",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/moon-loveseat.glb",
+    "sourceSha256": "94b75440558324e0c819238131b87bb14d304544b0a2aaee025eed7704321bd8",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/moon-loveseat.glb",
+    "bytes": 4180856,
+    "sha256": "a9f86fb02a99d546ec12ec69b506a1f5dd82b27544015cbdd5cf408ba39487f1"
+  },
+  {
+    "identity": "ostrich",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/ostrich.glb",
+    "sourceSha256": "d875ece484518ee897437f27d9bb8e8d7f9a78aef73a5436b67c3f9f646eed69",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/ostrich.glb",
+    "bytes": 5703192,
+    "sha256": "636c756e944adb3b4c22e58a784bdce0915dad432397135051f53c9e6af419c7"
+  },
+  {
+    "identity": "polar-bear",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/polar-bear.glb",
+    "sourceSha256": "79d8dddd0c5b46758f6feff26cdb5f46f927f4413b5402864bfe32ef47a13c63",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/polar-bear.glb",
+    "bytes": 4151432,
+    "sha256": "d0494ba23b72fe2b82c676c1843654afbcd9ff29a56a47da23312831988f47f8"
+  },
+  {
+    "identity": "rabbit",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/rabbit.glb",
+    "sourceSha256": "b2482c1631a4f717c0c0bd29be4361eb0382939324f6e85344a40703f30a2c32",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/rabbit.glb",
+    "bytes": 4431268,
+    "sha256": "82404b847ea72fc5413509cfa1ceb5da2a12e9ada7a3b6bdae8e9b9b16cbb10b"
+  },
+  {
+    "identity": "rocket",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/rocket.glb",
+    "sourceSha256": "617252fdd110632010a1071c5ef95627c19959bfd62be8a8db02cff56a1de47b",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/rocket.glb",
+    "bytes": 4577880,
+    "sha256": "15eeaeb8f0dbc9092deb0bc106675d791a25484793203831f3b12ff03bc2ed81"
+  },
+  {
+    "identity": "snail",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/snail.glb",
+    "sourceSha256": "f6649e01ede1aa3740b4eda45fafce7a65627b5f4aa9dbdddd0e445481bbfc5d",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/snail.glb",
+    "bytes": 4406104,
+    "sha256": "281540c96c7dbd755d25d6b55793b2cd6dfd5503b65a1758ab95f9e54a333a8a"
+  },
+  {
+    "identity": "stag",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/stag.glb",
+    "sourceSha256": "dcae5e7b513511048b3574cd68bb89b11ba03c0b011cd28bc689929fc15ce6dd",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/stag.glb",
+    "bytes": 4274840,
+    "sha256": "dfc391de1e35993905f532c888b307cd602150586898b7c2b4d4ec8b5431b9ed"
+  },
+  {
+    "identity": "tiger",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/tiger.glb",
+    "sourceSha256": "21e07dde79ee77615efaa94df17e36094800aacfaf989e880af090d36ea190e5",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/tiger.glb",
+    "bytes": 4737804,
+    "sha256": "7471ffe10af54db88cf2874c06da9528f3316979de670393c7b969e0dcbaeb65"
+  },
+  {
+    "identity": "unicorn",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/unicorn.glb",
+    "sourceSha256": "c60c03899479821c43bbb782834b07b68f8bf6e0e0968a8254c95a0d3cbbfd92",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/unicorn.glb",
+    "bytes": 4794664,
+    "sha256": "c205cf6fb21f0ef8b9362b3cebd4bbff8afe031652f2163623b43cff71b85d18"
+  },
+  {
+    "identity": "wolf",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/wolf.glb",
+    "sourceSha256": "2a1499b1255342f09b222297a5f79b4dbc348d64ce57c80ac160657bbe500e4d",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/wolf.glb",
+    "bytes": 5357752,
+    "sha256": "46d9a4a2de5d988a04cb3a420e30af814983bb7cf5f9e481239a9b77c562aaa6"
+  },
+  {
+    "identity": "zebra",
+    "style": "plain",
+    "backup": "source-assets/carousel-variants/plain/zebra.glb",
+    "sourceSha256": "dc0636a0c59aaf995a980837d6034e81ec580420d51148ab3c21c72f379acdf4",
+    "active": "experiments/carnival/carousel/variants/optimized/plain/zebra.glb",
+    "bytes": 4145332,
+    "sha256": "3facedc09cc15c06858b17810acaf8ace525d11c9a74c8a27c0ee40c4c159dd9"
+  },
+  {
+    "identity": "brown-horse",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/brown-horse.glb",
+    "sourceSha256": "6eac4ae252cd0852cdbc7be5867712b9a365dc42ec802c91a326c6a902f6f1db",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/brown-horse.glb",
+    "bytes": 4093240,
+    "sha256": "03a54d05beae3db495b8b2c52dbaafd9afccb3b78b0521edaa351786f32074e4"
+  },
+  {
+    "identity": "cat",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/cat.glb",
+    "sourceSha256": "46f0867ff22765a4774f2cc567fbe925fe536ab15b237452189a793a5ac4f7ba",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/cat.glb",
+    "bytes": 5705032,
+    "sha256": "60ece41d8f14efab583a8dab48f904e9fecb54fdd12fe1fb2dd5d401b09d82d4"
+  },
+  {
+    "identity": "dragon",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/dragon.glb",
+    "sourceSha256": "9cf04a4d7ba67761527fe6513e744873084726a90438079e2b8ea3c1a8f02ba2",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/dragon.glb",
+    "bytes": 4217372,
+    "sha256": "eb4983c8e5b961a2ab0eddeb3e4589d920124b40714ef7534a9014df2534e7b4"
+  },
+  {
+    "identity": "elephant",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/elephant.glb",
+    "sourceSha256": "01d75031a9295012c89f3ed23d30ba6d74a755024318c35eea8a3fb4fae2250e",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/elephant.glb",
+    "bytes": 4626148,
+    "sha256": "7095aa9ac2a32d65a91deaf43dc9adf70e32f98b70b7abf61b010ddf84c56048"
+  },
+  {
+    "identity": "flamingo",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/flamingo.glb",
+    "sourceSha256": "35895848df713b6a3292432eeebd6cd6737237296c20c009df7f4aa7527e9b04",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/flamingo.glb",
+    "bytes": 4309192,
+    "sha256": "b0122e2ab1ed5666465c2b0f581132809d5857e6e759a843a28b63ff8af2a2b7"
+  },
+  {
+    "identity": "fox",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/fox.glb",
+    "sourceSha256": "7587441541fe142c6e4240910a093074beaa1b3d89079097c9c0183f6255e851",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/fox.glb",
+    "bytes": 3969776,
+    "sha256": "0f1cf4ad8b0071c943f074bdea0dabe4466eeb040253a9ec789ea2f754c32e2e"
+  },
+  {
+    "identity": "griffin",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/griffin.glb",
+    "sourceSha256": "20b1c54ab3bd7dd94caaf0cea15dde4ef42d09e16383874ec63a261b1ebd2977",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/griffin.glb",
+    "bytes": 4644280,
+    "sha256": "f9d30056763634b45f1a09439eec0e4f7cc0419f01b0da77e7da4d9ee100d2a9"
+  },
+  {
+    "identity": "grizzly",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/grizzly.glb",
+    "sourceSha256": "50ed0793554cd1c54f1cbbe2b07defde39c596ccdb2fc4c62490f16a3ae834bf",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/grizzly.glb",
+    "bytes": 5258520,
+    "sha256": "aaa2adc984f7f3c0c0663c3d70eef7cbc29d6a91f43a494e34a18530852abbcf"
+  },
+  {
+    "identity": "horse",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/horse.glb",
+    "sourceSha256": "eaea831373579cbafb37e857d65ec968c40a21d224d3190d879a76ad553b68f7",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/horse.glb",
+    "bytes": 3932636,
+    "sha256": "e6e7faf23f13a41f2d47535594da1eee9bef7d5572e70034bd888cb037b846d4"
+  },
+  {
+    "identity": "moon-loveseat",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/moon-loveseat.glb",
+    "sourceSha256": "69bd2c413a210cfba917a87988e522e78d26f7e2bd86aca3fdc3571caf425049",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/moon-loveseat.glb",
+    "bytes": 4387528,
+    "sha256": "8bf6315d529972b938028ad1e1040fde52f27af74fc76c2ac96c3ee376c3365a"
+  },
+  {
+    "identity": "ostrich",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/ostrich.glb",
+    "sourceSha256": "d139b2e3c156edce5e61f8be493fb626bcf78824e2fabf52192de528bd262d01",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/ostrich.glb",
+    "bytes": 4255780,
+    "sha256": "d42d29626318e47d0e48fcb67b96f0c590b0117854a196a77d2180952208f3fd"
+  },
+  {
+    "identity": "polar-bear",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/polar-bear.glb",
+    "sourceSha256": "e35a866e72332536ea11cc51accabbb03e85fbd5861ec17e968a8600ba7a15e6",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/polar-bear.glb",
+    "bytes": 3378008,
+    "sha256": "40d681bbae039e43547a7b0b4f18e6522dae57e26685d68c510caaae4c2e0817"
+  },
+  {
+    "identity": "rabbit",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/rabbit.glb",
+    "sourceSha256": "66ce8c750cd3e39598c5a445f9f064386b154a86fccdec377c03138060f936a2",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/rabbit.glb",
+    "bytes": 4205968,
+    "sha256": "a429fc8315e80d7c295b3335aea6c5f30c09aa648747b9c903c1c10cdd3dbf5a"
+  },
+  {
+    "identity": "rocket",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/rocket.glb",
+    "sourceSha256": "28d27d1811897b535864dc22bb85709c205c6221a0941728f042d0940d7bae7f",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/rocket.glb",
+    "bytes": 4092232,
+    "sha256": "af5549f3bc5c2fbd030c392be69516d0437bed667ee01c3cb8906fb2399bfb64"
+  },
+  {
+    "identity": "snail",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/snail.glb",
+    "sourceSha256": "fd10ad42a3645f75e9c352e2cdcf65f4ddb216d9e18f91fc90d941c45260ee84",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/snail.glb",
+    "bytes": 5233624,
+    "sha256": "6ea0e2e88063d372410726fbfea551a3afbab550c3da419d82c7e91345c6213c"
+  },
+  {
+    "identity": "stag",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/stag.glb",
+    "sourceSha256": "b888ef401ab0a0e06b20acd0b80d98ea97214d7302f98a77b7d91bdccbadbbff",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/stag.glb",
+    "bytes": 4732264,
+    "sha256": "b56b6da1e371d0e72b94784a0b163dad619a4edf81052bc9d4cbd690f7d66658"
+  },
+  {
+    "identity": "tiger",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/tiger.glb",
+    "sourceSha256": "f7c3ee29cd2a3d3c2097f87a604b44edc63d74227fcbfdefebad758a6eddc043",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/tiger.glb",
+    "bytes": 4180516,
+    "sha256": "87b430e144c3c3092b4be3f20062ed8bc4ecadeeb2f2721ab32e0aa7a93d278a"
+  },
+  {
+    "identity": "unicorn",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/unicorn.glb",
+    "sourceSha256": "b3a0be6e161ff62a2d08fdcbf90dedb558e62567db40479ba657514030e767cf",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/unicorn.glb",
+    "bytes": 3992272,
+    "sha256": "4f7a6efccd5f1d046f88fca6d92bfc34804e3bd6bad49b0ffb2cea55a8f3f627"
+  },
+  {
+    "identity": "wolf",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/wolf.glb",
+    "sourceSha256": "28af5d01e80c406f619a26e22d000abbb7c04f6e9aa7c1c2d10f0f61ab620796",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/wolf.glb",
+    "bytes": 5000440,
+    "sha256": "93b64a0967f0397efb34735621bfec0c18699e3b34be0e5056a092ea4a847eeb"
+  },
+  {
+    "identity": "zebra",
+    "style": "stuffed",
+    "backup": "source-assets/carousel-variants/stuffed/zebra.glb",
+    "sourceSha256": "68f36e00e915a6f4264dc9c08c4f0b3b9b2a13372615ae96315e7a4933f84a13",
+    "active": "experiments/carnival/carousel/variants/optimized/stuffed/zebra.glb",
+    "bytes": 3577912,
+    "sha256": "974c2965cdc6166a08cbfb0f2a52ce3400e73b3391b1493e7778452643442b02"
+  }
+]

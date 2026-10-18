@@ -8,7 +8,7 @@ try{for(const mode of ['cold','preloaded','missing']){
  const context=await browser.newContext({viewport:{width:1440,height:1000}});const page=await context.newPage(),errors=[],requests=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().endsWith('.glb'))requests.push(r.url());});
  await page.addInitScript(()=>{window.wrongStyleFrames=[];function check(){for(const h of document.querySelectorAll('[data-variant]'))if(h.style.visibility!=='hidden'&&h.dataset.variant!=='stuffed'&&!(h.dataset.animal==='dragon'&&window.allowFallback))wrongStyleFrames.push(h.dataset.variant);requestAnimationFrame(check);}requestAnimationFrame(check);});
- if(mode==='missing'){await page.addInitScript(()=>window.allowFallback=true);await page.route('**/variants/stuffed/dragon.glb',r=>r.fulfill({status:404,body:'Missing GLB fixture'}));}
+ if(mode==='missing'){await page.addInitScript(()=>window.allowFallback=true);await page.route('**/variants/optimized/stuffed/dragon.glb',r=>r.fulfill({status:404,body:'Missing GLB fixture'}));}
  const start=Date.now();await page.goto(base+'/',{waitUntil:'domcontentloaded',timeout:120000});await page.locator('[data-age-band="kids"]').click();
  if(mode==='preloaded')await page.waitForFunction(()=>carouselPreloadDiagnostics().assets.length===20,{},{timeout:240000});
  const portalMs=Date.now()-start;
@@ -18,7 +18,7 @@ try{for(const mode of ['cold','preloaded','missing']){
  assert.deepEqual(result.wrong,[],'Wrong style became visible');assert.equal(result.state.mounts.length,20);
  for(const m of result.state.mounts){assert(m.visible);assert.equal(m.style,mode==='missing'&&m.identity==='dragon'?'ornate':'stuffed');}
  assert.deepEqual(JSON.parse(JSON.stringify(settings(result.state.mounts))),JSON.parse(JSON.stringify(settings(expected))),'Canonical mounting/crops changed');
- assert(!requests.some(u=>u.includes('/variants/plain/')));assert(!requests.some(u=>!u.includes('/variants/')&&!(mode==='missing'&&u.endsWith('/dragon.glb'))),'Unrequested Ornate downloaded');
+ assert(!requests.some(u=>u.includes('/variants/optimized/plain/')));assert(!requests.some(u=>!u.includes('/variants/')&&!(mode==='missing'&&u.endsWith('/dragon.glb'))),'Unrequested Ornate downloaded');
  const parsed=result.state.metrics.filter(m=>m.parseMs!==undefined).length;
  await page.evaluate(()=>CarnivalNavigation.go('Midway'));await page.evaluate(()=>CarnivalNavigation.go('Rides & Games'));
  assert.equal(await page.evaluate(()=>carouselVariantDiagnostics().metrics.filter(m=>m.parseMs!==undefined).length),parsed,'Revisit reparsed models');

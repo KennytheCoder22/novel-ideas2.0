@@ -1,0 +1,3986 @@
+[
+  {
+    "style": "plain",
+    "profile": "original",
+    "preloadMs": 5368,
+    "readyMs": 24237.69999998808,
+    "runtime": {
+      "selected": "plain",
+      "requested": "plain",
+      "busy": false,
+      "metrics": [
+        {
+          "identity": "horse",
+          "style": "plain",
+          "bytes": 6835456,
+          "fetchWaitMs": 402.19999998807907,
+          "parseMs": 1124.199999988079,
+          "prepareMs": 94.69999998807907
+        },
+        {
+          "identity": "horse",
+          "style": "plain",
+          "firstRenderCpuMs": 323.9000000357628,
+          "readyAtMs": 7890.300000011921
+        },
+        {
+          "identity": "rocket",
+          "style": "plain",
+          "bytes": 8373896,
+          "fetchWaitMs": 578.8000000119209,
+          "parseMs": 1468.800000011921,
+          "prepareMs": 43.10000002384186
+        },
+        {
+          "identity": "rocket",
+          "style": "plain",
+          "firstRenderCpuMs": 216.5,
+          "readyAtMs": 8252.5
+        },
+        {
+          "identity": "unicorn",
+          "style": "plain",
+          "bytes": 7792268,
+          "fetchWaitMs": 1028.2000000476837,
+          "parseMs": 1378.3999999761581,
+          "prepareMs": 11.800000011920929
+        },
+        {
+          "identity": "unicorn",
+          "style": "plain",
+          "firstRenderCpuMs": 87.69999998807907,
+          "readyAtMs": 8451.399999976158
+        },
+        {
+          "identity": "griffin",
+          "style": "plain",
+          "bytes": 8842892,
+          "fetchWaitMs": 0,
+          "parseMs": 1345.4000000357628,
+          "prepareMs": 28.799999952316284
+        },
+        {
+          "identity": "griffin",
+          "style": "plain",
+          "firstRenderCpuMs": 119.69999998807907,
+          "readyAtMs": 9384.5
+        },
+        {
+          "identity": "flamingo",
+          "style": "plain",
+          "bytes": 7174588,
+          "fetchWaitMs": 423.30000001192093,
+          "parseMs": 1396.199999988079,
+          "prepareMs": 18.600000023841858
+        },
+        {
+          "identity": "flamingo",
+          "style": "plain",
+          "firstRenderCpuMs": 110.39999997615814,
+          "readyAtMs": 10201.399999976158
+        },
+        {
+          "identity": "dragon",
+          "style": "plain",
+          "bytes": 8087600,
+          "fetchWaitMs": 503.5,
+          "parseMs": 1996.800000011921,
+          "prepareMs": 22.69999998807907
+        },
+        {
+          "identity": "dragon",
+          "style": "plain",
+          "firstRenderCpuMs": 78.69999998807907,
+          "readyAtMs": 11053.399999976158
+        },
+        {
+          "identity": "moon-loveseat",
+          "style": "plain",
+          "bytes": 7417120,
+          "fetchWaitMs": 332.10000002384186,
+          "parseMs": 2495.599999964237,
+          "prepareMs": 9.100000023841858
+        },
+        {
+          "identity": "moon-loveseat",
+          "style": "plain",
+          "firstRenderCpuMs": 229.30000001192093,
+          "readyAtMs": 12450.899999976158
+        },
+        {
+          "identity": "snail",
+          "style": "plain",
+          "bytes": 7829036,
+          "fetchWaitMs": 0,
+          "parseMs": 2421.5,
+          "prepareMs": 9.699999988079071
+        },
+        {
+          "identity": "snail",
+          "style": "plain",
+          "firstRenderCpuMs": 148.30000001192093,
+          "readyAtMs": 12781.399999976158
+        },
+        {
+          "identity": "brown-horse",
+          "style": "plain",
+          "bytes": 7188200,
+          "fetchWaitMs": 0.09999996423721313,
+          "parseMs": 1887.300000011921,
+          "prepareMs": 18.80000001192093
+        },
+        {
+          "identity": "brown-horse",
+          "style": "plain",
+          "firstRenderCpuMs": 171.89999997615814,
+          "readyAtMs": 13131.899999976158
+        },
+        {
+          "identity": "elephant",
+          "style": "plain",
+          "bytes": 7516548,
+          "fetchWaitMs": 0.19999998807907104,
+          "parseMs": 2277.600000023842,
+          "prepareMs": 10.099999964237213
+        },
+        {
+          "identity": "elephant",
+          "style": "plain",
+          "firstRenderCpuMs": 197.30000001192093,
+          "readyAtMs": 14936.5
+        },
+        {
+          "identity": "grizzly",
+          "style": "plain",
+          "bytes": 9401588,
+          "fetchWaitMs": 0,
+          "parseMs": 2309.800000011921,
+          "prepareMs": 13.799999952316284
+        },
+        {
+          "identity": "grizzly",
+          "style": "plain",
+          "firstRenderCpuMs": 160.9000000357628,
+          "readyAtMs": 15266
+        },
+        {
+          "identity": "wolf",
+          "style": "plain",
+          "bytes": 8782008,
+          "fetchWaitMs": 0.09999996423721313,
+          "parseMs": 2335.300000011921,
+          "prepareMs": 164.5
+        },
+        {
+          "identity": "wolf",
+          "style": "plain",
+          "firstRenderCpuMs": 175.70000004768372,
+          "readyAtMs": 15807.800000011921
+        },
+        {
+          "identity": "fox",
+          "style": "plain",
+          "bytes": 8958448,
+          "fetchWaitMs": 0,
+          "parseMs": 1765.6000000238419,
+          "prepareMs": 107.5
+        },
+        {
+          "identity": "fox",
+          "style": "plain",
+          "firstRenderCpuMs": 182.5999999642372,
+          "readyAtMs": 17322
+        },
+        {
+          "identity": "rabbit",
+          "style": "plain",
+          "bytes": 7948420,
+          "fetchWaitMs": 0.19999998807907104,
+          "parseMs": 2633.800000011921,
+          "prepareMs": 13
+        },
+        {
+          "identity": "rabbit",
+          "style": "plain",
+          "firstRenderCpuMs": 184.29999995231628,
+          "readyAtMs": 17768.099999964237
+        },
+        {
+          "identity": "tiger",
+          "style": "plain",
+          "bytes": 8016024,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 2323.300000011921,
+          "prepareMs": 49.39999997615814
+        },
+        {
+          "identity": "tiger",
+          "style": "plain",
+          "firstRenderCpuMs": 214.5,
+          "readyAtMs": 18395.30000001192
+        },
+        {
+          "identity": "stag",
+          "style": "plain",
+          "bytes": 7618304,
+          "fetchWaitMs": 0,
+          "parseMs": 2674.300000011921,
+          "prepareMs": 24
+        },
+        {
+          "identity": "stag",
+          "style": "plain",
+          "firstRenderCpuMs": 281.19999998807907,
+          "readyAtMs": 20301.69999998808
+        },
+        {
+          "identity": "ostrich",
+          "style": "plain",
+          "bytes": 9282100,
+          "fetchWaitMs": 0.19999998807907104,
+          "parseMs": 2175.100000023842,
+          "prepareMs": 26.69999998807907
+        },
+        {
+          "identity": "ostrich",
+          "style": "plain",
+          "firstRenderCpuMs": 242.10000002384186,
+          "readyAtMs": 20840.69999998808
+        },
+        {
+          "identity": "cat",
+          "style": "plain",
+          "bytes": 8980716,
+          "fetchWaitMs": 0,
+          "parseMs": 3323.699999988079,
+          "prepareMs": 177.30000001192093
+        },
+        {
+          "identity": "cat",
+          "style": "plain",
+          "firstRenderCpuMs": 244,
+          "readyAtMs": 21513.399999976158
+        },
+        {
+          "identity": "zebra",
+          "style": "plain",
+          "bytes": 7618224,
+          "fetchWaitMs": 0.09999996423721313,
+          "parseMs": 2327.300000011921,
+          "prepareMs": 15.699999988079071
+        },
+        {
+          "identity": "zebra",
+          "style": "plain",
+          "firstRenderCpuMs": 342.2000000476837,
+          "readyAtMs": 23526.30000001192
+        },
+        {
+          "identity": "polar-bear",
+          "style": "plain",
+          "bytes": 8571444,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 3514.099999964237,
+          "prepareMs": 8.800000011920929
+        },
+        {
+          "identity": "polar-bear",
+          "style": "plain",
+          "firstRenderCpuMs": 412.89999997615814,
+          "readyAtMs": 24237.69999998808
+        }
+      ],
+      "mounts": [
+        {
+          "identity": "horse",
+          "slot": 4,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.418710688807844,
+            "scale": 0.418710688807844,
+            "yaw": 0,
+            "offset": [
+              -0.016118594229200534,
+              -0.003807031850148225,
+              -0.028857896849104097
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-174",
+            "y": "-92",
+            "width": "348",
+            "height": "217"
+          },
+          "turn": -2.4683942278205517,
+          "registration": [
+            0.12,
+            -0.055,
+            0.03
+          ]
+        },
+        {
+          "identity": "unicorn",
+          "slot": 17,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9924652138018895,
+            "scale": 0.9924652138018895,
+            "yaw": 0,
+            "offset": [
+              -0.022262944249531423,
+              0.0029351118068627613,
+              0.001768056346419189
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-162",
+            "y": "-90",
+            "width": "324",
+            "height": "249"
+          },
+          "mountHeight": "177",
+          "bobAmplitude": "12",
+          "turn": -1.3713968515384827,
+          "registration": [
+            0,
+            -0.125,
+            -0.1
+          ]
+        },
+        {
+          "identity": "rocket",
+          "slot": 5,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.7334418097488578,
+            "scale": 0.7334418097488578,
+            "yaw": 0,
+            "offset": [
+              0.002589140841678118,
+              0.0755227672366649,
+              -0.00018684037104745865
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-141",
+            "y": "-29",
+            "width": "282",
+            "height": "107"
+          },
+          "mountHeight": "96",
+          "bobAmplitude": "12",
+          "turn": 3.7897910793590346,
+          "registration": [
+            -0.005200000000000001,
+            -0.12584,
+            0
+          ]
+        },
+        {
+          "identity": "griffin",
+          "slot": 6,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 1.024119187971559,
+            "scale": 1.024119187971559,
+            "yaw": -1.5707963267948966,
+            "offset": [
+              0.01354495938971403,
+              -0.014547147570189878,
+              -0.006990725716315038
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-163",
+            "y": "-59",
+            "width": "326",
+            "height": "223"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": 2.268994752564138,
+          "registration": [
+            0,
+            -0.18400000000000002,
+            -0.12880000000000003
+          ]
+        },
+        {
+          "identity": "flamingo",
+          "slot": 20,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9995612150299469,
+            "scale": 0.9995612150299469,
+            "yaw": 0,
+            "offset": [
+              -0.0002782530260177261,
+              0.00006939368236402732,
+              0.013043034556974392
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-142",
+            "y": "-93",
+            "width": "284",
+            "height": "272"
+          },
+          "mountHeight": "200",
+          "bobAmplitude": "12",
+          "turn": -2.268994752564138,
+          "registration": [
+            0,
+            -0.16,
+            -0.115
+          ]
+        },
+        {
+          "identity": "dragon",
+          "slot": 21,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9892869890830595,
+            "scale": 0.9892869890830595,
+            "yaw": 0,
+            "offset": [
+              0.018322883149372207,
+              -0.002274191900274364,
+              0.0021807472477852197
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-208",
+            "y": "-135",
+            "width": "416",
+            "height": "306"
+          },
+          "mountHeight": "192",
+          "bobAmplitude": "12",
+          "turn": -2.218994752564138,
+          "registration": [
+            0,
+            -0.063,
+            -0.174
+          ]
+        },
+        {
+          "identity": "moon-loveseat",
+          "slot": 2,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 1.1452845900595188,
+            "scale": 1.1452845900595188,
+            "yaw": 0,
+            "offset": [
+              -0.01984670871839095,
+              0.0009981797947655746,
+              -0.10788567714074981
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-141",
+            "y": "-12",
+            "width": "282",
+            "height": "216"
+          },
+          "mountHeight": "222",
+          "bobAmplitude": "12",
+          "turn": 3.116592653589793,
+          "registration": [
+            -0.0545976,
+            -0.3495496,
+            0.16086440000000002
+          ]
+        },
+        {
+          "identity": "snail",
+          "slot": 3,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9860224986251827,
+            "scale": 0.9860224986251827,
+            "yaw": 0,
+            "offset": [
+              -0.0012317824018132214,
+              0.0005880128920528471,
+              0.005546474502306775
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-168",
+            "y": "-50",
+            "width": "336",
+            "height": "192"
+          },
+          "mountHeight": "150",
+          "bobAmplitude": "12",
+          "turn": 3.166592653589793,
+          "registration": [
+            0,
+            -0.14534,
+            -0.1892
+          ]
+        },
+        {
+          "identity": "brown-horse",
+          "slot": 12,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.8607564187518335,
+            "scale": 0.8607564187518335,
+            "yaw": 0,
+            "offset": [
+              0.00002686579033404929,
+              0.005744565889606423,
+              0.03201086978356066
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-170",
+            "y": "-70",
+            "width": "340",
+            "height": "243"
+          },
+          "mountHeight": "190",
+          "bobAmplitude": "12",
+          "turn": 0.4737989505128276,
+          "registration": [
+            0,
+            -0.182,
+            -0.1092
+          ]
+        },
+        {
+          "identity": "elephant",
+          "slot": 13,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9837499090606475,
+            "scale": 0.9837499090606475,
+            "yaw": 0,
+            "offset": [
+              0.0028649653934832635,
+              0.04035935614728853,
+              -0.006637330671360728
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-151",
+            "y": "-69",
+            "width": "302",
+            "height": "258"
+          },
+          "mountHeight": "207",
+          "bobAmplitude": "12",
+          "turn": -0.4487989505128276,
+          "registration": [
+            0,
+            -0.2173,
+            -0.0318
+          ]
+        },
+        {
+          "identity": "grizzly",
+          "slot": 16,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.8599252650220367,
+            "scale": 0.8599252650220367,
+            "yaw": 0,
+            "offset": [
+              -0.009523556738554349,
+              0.0011784512832490601,
+              0.015466664044288467
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-170",
+            "y": "-44",
+            "width": "340",
+            "height": "212"
+          },
+          "mountHeight": "186",
+          "bobAmplitude": "12",
+          "turn": -1.3463968515384828,
+          "registration": [
+            0,
+            -0.22400000000000003,
+            -0.06160000000000001
+          ]
+        },
+        {
+          "identity": "wolf",
+          "slot": 9,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9271613896329453,
+            "scale": 0.9271613896329453,
+            "yaw": 0,
+            "offset": [
+              0.0008258306977285382,
+              0.01568855461606672,
+              0.015243913174600832
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-171",
+            "y": "-47",
+            "width": "342",
+            "height": "170"
+          },
+          "mountHeight": "143",
+          "bobAmplitude": "12",
+          "turn": 1.3713968515384827,
+          "registration": [
+            0,
+            -0.1456,
+            -0.1144
+          ]
+        },
+        {
+          "identity": "rabbit",
+          "slot": 8,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.8493014151880832,
+            "scale": 0.8493014151880832,
+            "yaw": 0,
+            "offset": [
+              -0.0075391309015348535,
+              -0.0037708021213953558,
+              0.05613162618940759
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-180",
+            "y": "-70",
+            "width": "360",
+            "height": "199"
+          },
+          "mountHeight": "146",
+          "bobAmplitude": "12",
+          "turn": 1.3213968515384829,
+          "registration": [
+            0,
+            -0.1,
+            -0.165
+          ]
+        },
+        {
+          "identity": "fox",
+          "slot": 11,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.8428117909055658,
+            "scale": 0.8428117909055658,
+            "yaw": 0,
+            "offset": [
+              -0.0016340005962196895,
+              -0.006225510115934474,
+              0.05609568877776261
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-181",
+            "y": "-59",
+            "width": "362",
+            "height": "187"
+          },
+          "mountHeight": "146",
+          "bobAmplitude": "12",
+          "turn": 0.42379895051282757,
+          "registration": [
+            0,
+            -0.12,
+            -0.175
+          ]
+        },
+        {
+          "identity": "tiger",
+          "slot": 14,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.8528904757473478,
+            "scale": 0.8528904757473478,
+            "yaw": 0,
+            "offset": [
+              0.0008897683987740948,
+              0.0005330336591768403,
+              0.026765276922017606
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-181",
+            "y": "-53",
+            "width": "362",
+            "height": "209"
+          },
+          "mountHeight": "174",
+          "bobAmplitude": "12",
+          "turn": -0.4737989505128276,
+          "registration": [
+            0,
+            -0.18239999999999998,
+            -0.10259999999999998
+          ]
+        },
+        {
+          "identity": "stag",
+          "slot": 15,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9282852406781784,
+            "scale": 0.9282852406781784,
+            "yaw": 0,
+            "offset": [
+              -0.009163506547921155,
+              0.010343442042815787,
+              -0.010857402084629986
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-163",
+            "y": "-122",
+            "width": "326",
+            "height": "287"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": -0.42379895051282757,
+          "registration": [
+            0,
+            -0.0728,
+            -0.13
+          ]
+        },
+        {
+          "identity": "cat",
+          "slot": 18,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 1.1056598865630876,
+            "scale": 1.1056598865630876,
+            "yaw": 0.5049913504336554,
+            "offset": [
+              -0.01902752599134841,
+              0.0006314941908533989,
+              -0.009327980742455257
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-150",
+            "y": "-89",
+            "width": "300",
+            "height": "255"
+          },
+          "mountHeight": "184",
+          "bobAmplitude": "12",
+          "turn": -1.8263882019721382,
+          "registration": [
+            -0.0368,
+            -0.138,
+            -0.023000000000000003
+          ]
+        },
+        {
+          "identity": "ostrich",
+          "slot": 7,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.866874052003748,
+            "scale": 0.866874052003748,
+            "yaw": 0,
+            "offset": [
+              -0.0013869672652432198,
+              -0.0008429054815733417,
+              0.0675019355645094
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-203",
+            "y": "-87",
+            "width": "406",
+            "height": "247"
+          },
+          "mountHeight": "183",
+          "bobAmplitude": "12",
+          "turn": 1.3463968515384828,
+          "registration": [
+            0,
+            -0.13520000000000001,
+            -0.2288
+          ]
+        },
+        {
+          "identity": "polar-bear",
+          "slot": 10,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9560766340924979,
+            "scale": 0.9560766340924979,
+            "yaw": 0,
+            "offset": [
+              0.009480457685227529,
+              -0.0006527348759117757,
+              -0.003973461843823425
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-150",
+            "y": "-71",
+            "width": "300",
+            "height": "256"
+          },
+          "mountHeight": "204",
+          "bobAmplitude": "12",
+          "turn": 0.4487989505128276,
+          "registration": [
+            0.012330240000000001,
+            -0.20800000000000002,
+            0.03847454
+          ]
+        },
+        {
+          "identity": "zebra",
+          "slot": 19,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 1.0002135396050091,
+            "scale": 1.0002135396050091,
+            "yaw": 0,
+            "offset": [
+              -0.001182171245172918,
+              0.010019561796005105,
+              -0.000582960854483866
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-165",
+            "y": "-70",
+            "width": "330",
+            "height": "234"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": -2.243994752564138,
+          "registration": [
+            0,
+            -0.1675,
+            -0.1125
+          ]
+        }
+      ]
+    },
+    "meanFrameMs": 171.56382978774135,
+    "frames": 47,
+    "errors": []
+  },
+  {
+    "style": "plain",
+    "profile": "budget",
+    "preloadMs": 4159,
+    "readyMs": 17345.5,
+    "runtime": {
+      "selected": "plain",
+      "requested": "plain",
+      "busy": false,
+      "metrics": [
+        {
+          "identity": "rocket",
+          "style": "plain",
+          "bytes": 4577880,
+          "fetchWaitMs": 913.1999999880791,
+          "parseMs": 1063.9000000357628,
+          "prepareMs": 113
+        },
+        {
+          "identity": "rocket",
+          "style": "plain",
+          "firstRenderCpuMs": 816.9000000357628,
+          "readyAtMs": 6190.600000023842
+        },
+        {
+          "identity": "horse",
+          "style": "plain",
+          "bytes": 3796648,
+          "fetchWaitMs": 668.5999999642372,
+          "parseMs": 2441.900000035763,
+          "prepareMs": 57.69999998807907
+        },
+        {
+          "identity": "horse",
+          "style": "plain",
+          "firstRenderCpuMs": 198.39999997615814,
+          "readyAtMs": 6649.300000011921
+        },
+        {
+          "identity": "unicorn",
+          "style": "plain",
+          "bytes": 4794664,
+          "fetchWaitMs": 1427,
+          "parseMs": 2008,
+          "prepareMs": 35.799999952316284
+        },
+        {
+          "identity": "unicorn",
+          "style": "plain",
+          "firstRenderCpuMs": 134.5999999642372,
+          "readyAtMs": 6888.5
+        },
+        {
+          "identity": "griffin",
+          "style": "plain",
+          "bytes": 5264004,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 1425.0999999642372,
+          "prepareMs": 21.5
+        },
+        {
+          "identity": "griffin",
+          "style": "plain",
+          "firstRenderCpuMs": 93.09999996423721,
+          "readyAtMs": 7731.600000023842
+        },
+        {
+          "identity": "flamingo",
+          "style": "plain",
+          "bytes": 4132356,
+          "fetchWaitMs": 789.6999999880791,
+          "parseMs": 877.5,
+          "prepareMs": 9.600000023841858
+        },
+        {
+          "identity": "flamingo",
+          "style": "plain",
+          "firstRenderCpuMs": 64.60000002384186,
+          "readyAtMs": 8391.300000011921
+        },
+        {
+          "identity": "dragon",
+          "style": "plain",
+          "bytes": 4699564,
+          "fetchWaitMs": 922.3999999761581,
+          "parseMs": 739.3000000119209,
+          "prepareMs": 9.300000011920929
+        },
+        {
+          "identity": "dragon",
+          "style": "plain",
+          "firstRenderCpuMs": 84.5,
+          "readyAtMs": 8644.199999988079
+        },
+        {
+          "identity": "brown-horse",
+          "style": "plain",
+          "bytes": 4523640,
+          "fetchWaitMs": 0,
+          "parseMs": 1053.8999999761581,
+          "prepareMs": 11.199999988079071
+        },
+        {
+          "identity": "brown-horse",
+          "style": "plain",
+          "firstRenderCpuMs": 172.9000000357628,
+          "readyAtMs": 9882.600000023842
+        },
+        {
+          "identity": "moon-loveseat",
+          "style": "plain",
+          "bytes": 4180856,
+          "fetchWaitMs": 1154.4000000357628,
+          "parseMs": 1128.699999988079,
+          "prepareMs": 8.800000011920929
+        },
+        {
+          "identity": "moon-loveseat",
+          "style": "plain",
+          "firstRenderCpuMs": 150.0999999642372,
+          "readyAtMs": 10174
+        },
+        {
+          "identity": "snail",
+          "style": "plain",
+          "bytes": 4406104,
+          "fetchWaitMs": 831.8999999761581,
+          "parseMs": 1457.300000011921,
+          "prepareMs": 24.30000001192093
+        },
+        {
+          "identity": "snail",
+          "style": "plain",
+          "firstRenderCpuMs": 168.39999997615814,
+          "readyAtMs": 10874.300000011921
+        },
+        {
+          "identity": "elephant",
+          "style": "plain",
+          "bytes": 4212704,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 1401,
+          "prepareMs": 10.899999976158142
+        },
+        {
+          "identity": "elephant",
+          "style": "plain",
+          "firstRenderCpuMs": 147.19999998807907,
+          "readyAtMs": 11442.100000023842
+        },
+        {
+          "identity": "grizzly",
+          "style": "plain",
+          "bytes": 6058336,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 1393.800000011921,
+          "prepareMs": 22
+        },
+        {
+          "identity": "grizzly",
+          "style": "plain",
+          "firstRenderCpuMs": 141.30000001192093,
+          "readyAtMs": 11731.300000011921
+        },
+        {
+          "identity": "wolf",
+          "style": "plain",
+          "bytes": 5357752,
+          "fetchWaitMs": 0,
+          "parseMs": 1549,
+          "prepareMs": 22.30000001192093
+        },
+        {
+          "identity": "wolf",
+          "style": "plain",
+          "firstRenderCpuMs": 179.69999998807907,
+          "readyAtMs": 12625.600000023842
+        },
+        {
+          "identity": "rabbit",
+          "style": "plain",
+          "bytes": 4431268,
+          "fetchWaitMs": 0.09999996423721313,
+          "parseMs": 1638.7000000476837,
+          "prepareMs": 9.699999988079071
+        },
+        {
+          "identity": "rabbit",
+          "style": "plain",
+          "firstRenderCpuMs": 193.20000004768372,
+          "readyAtMs": 13283.900000035763
+        },
+        {
+          "identity": "fox",
+          "style": "plain",
+          "bytes": 5258184,
+          "fetchWaitMs": 0,
+          "parseMs": 1737.0999999642372,
+          "prepareMs": 39.80000001192093
+        },
+        {
+          "identity": "fox",
+          "style": "plain",
+          "firstRenderCpuMs": 189.60000002384186,
+          "readyAtMs": 13698.100000023842
+        },
+        {
+          "identity": "tiger",
+          "style": "plain",
+          "bytes": 4737804,
+          "fetchWaitMs": 0,
+          "parseMs": 2292.5,
+          "prepareMs": 44.200000047683716
+        },
+        {
+          "identity": "tiger",
+          "style": "plain",
+          "firstRenderCpuMs": 532.8000000119209,
+          "readyAtMs": 15495.300000011921
+        },
+        {
+          "identity": "stag",
+          "style": "plain",
+          "bytes": 4274840,
+          "fetchWaitMs": 0,
+          "parseMs": 2403.100000023842,
+          "prepareMs": 7.699999988079071
+        },
+        {
+          "identity": "stag",
+          "style": "plain",
+          "firstRenderCpuMs": 248.89999997615814,
+          "readyAtMs": 15944.800000011921
+        },
+        {
+          "identity": "cat",
+          "style": "plain",
+          "bytes": 5335720,
+          "fetchWaitMs": 0,
+          "parseMs": 2458,
+          "prepareMs": 21.30000001192093
+        },
+        {
+          "identity": "cat",
+          "style": "plain",
+          "firstRenderCpuMs": 388.9000000357628,
+          "readyAtMs": 16571.600000023842
+        },
+        {
+          "identity": "zebra",
+          "style": "plain",
+          "bytes": 4145332,
+          "fetchWaitMs": 0,
+          "parseMs": 388.30000001192093,
+          "prepareMs": 9.800000011920929
+        },
+        {
+          "identity": "zebra",
+          "style": "plain",
+          "firstRenderCpuMs": 47.69999998807907,
+          "readyAtMs": 17018
+        },
+        {
+          "identity": "polar-bear",
+          "style": "plain",
+          "bytes": 4151432,
+          "fetchWaitMs": 0.09999996423721313,
+          "parseMs": 1076.800000011921,
+          "prepareMs": 9.5
+        },
+        {
+          "identity": "polar-bear",
+          "style": "plain",
+          "firstRenderCpuMs": 43.89999997615814,
+          "readyAtMs": 17075.30000001192
+        },
+        {
+          "identity": "ostrich",
+          "style": "plain",
+          "bytes": 5703192,
+          "fetchWaitMs": 0,
+          "parseMs": 1593.699999988079,
+          "prepareMs": 10.800000011920929
+        },
+        {
+          "identity": "ostrich",
+          "style": "plain",
+          "firstRenderCpuMs": 245.5,
+          "readyAtMs": 17345.5
+        }
+      ],
+      "mounts": [
+        {
+          "identity": "horse",
+          "slot": 4,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.418710688807844,
+            "scale": 0.418710688807844,
+            "yaw": 0,
+            "offset": [
+              -0.016118594229200534,
+              -0.003807031850148225,
+              -0.028857896849104097
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-174",
+            "y": "-92",
+            "width": "348",
+            "height": "217"
+          },
+          "turn": -2.4683942278205517,
+          "registration": [
+            0.12,
+            -0.055,
+            0.03
+          ]
+        },
+        {
+          "identity": "unicorn",
+          "slot": 17,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9924652138018895,
+            "scale": 0.9924652138018895,
+            "yaw": 0,
+            "offset": [
+              -0.022262944249531423,
+              0.0029351118068627613,
+              0.001768056346419189
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-162",
+            "y": "-90",
+            "width": "324",
+            "height": "249"
+          },
+          "mountHeight": "177",
+          "bobAmplitude": "12",
+          "turn": -1.3713968515384827,
+          "registration": [
+            0,
+            -0.125,
+            -0.1
+          ]
+        },
+        {
+          "identity": "rocket",
+          "slot": 5,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.7334418097488578,
+            "scale": 0.7334418097488578,
+            "yaw": 0,
+            "offset": [
+              0.002589140841678118,
+              0.0755227672366649,
+              -0.00018684037104745865
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-141",
+            "y": "-29",
+            "width": "282",
+            "height": "107"
+          },
+          "mountHeight": "96",
+          "bobAmplitude": "12",
+          "turn": 3.7897910793590346,
+          "registration": [
+            -0.005200000000000001,
+            -0.12584,
+            0
+          ]
+        },
+        {
+          "identity": "griffin",
+          "slot": 6,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 1.024119187971559,
+            "scale": 1.024119187971559,
+            "yaw": -1.5707963267948966,
+            "offset": [
+              0.01354495938971403,
+              -0.014547147570189878,
+              -0.006990725716315038
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-163",
+            "y": "-59",
+            "width": "326",
+            "height": "223"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": 2.268994752564138,
+          "registration": [
+            0,
+            -0.18400000000000002,
+            -0.12880000000000003
+          ]
+        },
+        {
+          "identity": "flamingo",
+          "slot": 20,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9995612150299469,
+            "scale": 0.9995612150299469,
+            "yaw": 0,
+            "offset": [
+              -0.0002782530260177261,
+              0.00006939368236402732,
+              0.013043034556974392
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-142",
+            "y": "-93",
+            "width": "284",
+            "height": "272"
+          },
+          "mountHeight": "200",
+          "bobAmplitude": "12",
+          "turn": -2.268994752564138,
+          "registration": [
+            0,
+            -0.16,
+            -0.115
+          ]
+        },
+        {
+          "identity": "dragon",
+          "slot": 21,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9892869890830595,
+            "scale": 0.9892869890830595,
+            "yaw": 0,
+            "offset": [
+              0.018322883149372207,
+              -0.002274191900274364,
+              0.0021807472477852197
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-208",
+            "y": "-135",
+            "width": "416",
+            "height": "306"
+          },
+          "mountHeight": "192",
+          "bobAmplitude": "12",
+          "turn": -2.218994752564138,
+          "registration": [
+            0,
+            -0.063,
+            -0.174
+          ]
+        },
+        {
+          "identity": "moon-loveseat",
+          "slot": 2,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 1.1452845900595188,
+            "scale": 1.1452845900595188,
+            "yaw": 0,
+            "offset": [
+              -0.01984670871839095,
+              0.0009981797947655746,
+              -0.10788567714074981
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-141",
+            "y": "-12",
+            "width": "282",
+            "height": "216"
+          },
+          "mountHeight": "222",
+          "bobAmplitude": "12",
+          "turn": 3.116592653589793,
+          "registration": [
+            -0.0545976,
+            -0.3495496,
+            0.16086440000000002
+          ]
+        },
+        {
+          "identity": "snail",
+          "slot": 3,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9860224986251827,
+            "scale": 0.9860224986251827,
+            "yaw": 0,
+            "offset": [
+              -0.0012317824018132214,
+              0.0005880128920528471,
+              0.005546474502306775
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-168",
+            "y": "-50",
+            "width": "336",
+            "height": "192"
+          },
+          "mountHeight": "150",
+          "bobAmplitude": "12",
+          "turn": 3.166592653589793,
+          "registration": [
+            0,
+            -0.14534,
+            -0.1892
+          ]
+        },
+        {
+          "identity": "brown-horse",
+          "slot": 12,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.8607564187518335,
+            "scale": 0.8607564187518335,
+            "yaw": 0,
+            "offset": [
+              0.00002686579033404929,
+              0.005744565889606423,
+              0.03201086978356066
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-170",
+            "y": "-70",
+            "width": "340",
+            "height": "243"
+          },
+          "mountHeight": "190",
+          "bobAmplitude": "12",
+          "turn": 0.4737989505128276,
+          "registration": [
+            0,
+            -0.182,
+            -0.1092
+          ]
+        },
+        {
+          "identity": "elephant",
+          "slot": 13,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9837499090606475,
+            "scale": 0.9837499090606475,
+            "yaw": 0,
+            "offset": [
+              0.0028649653934832635,
+              0.04035935614728853,
+              -0.006637330671360728
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-151",
+            "y": "-69",
+            "width": "302",
+            "height": "258"
+          },
+          "mountHeight": "207",
+          "bobAmplitude": "12",
+          "turn": -0.4487989505128276,
+          "registration": [
+            0,
+            -0.2173,
+            -0.0318
+          ]
+        },
+        {
+          "identity": "grizzly",
+          "slot": 16,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.8599252650220367,
+            "scale": 0.8599252650220367,
+            "yaw": 0,
+            "offset": [
+              -0.009523556738554349,
+              0.0011784512832490601,
+              0.015466664044288467
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-170",
+            "y": "-44",
+            "width": "340",
+            "height": "212"
+          },
+          "mountHeight": "186",
+          "bobAmplitude": "12",
+          "turn": -1.3463968515384828,
+          "registration": [
+            0,
+            -0.22400000000000003,
+            -0.06160000000000001
+          ]
+        },
+        {
+          "identity": "wolf",
+          "slot": 9,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9271613896329453,
+            "scale": 0.9271613896329453,
+            "yaw": 0,
+            "offset": [
+              0.0008258306977285382,
+              0.01568855461606672,
+              0.015243913174600832
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-171",
+            "y": "-47",
+            "width": "342",
+            "height": "170"
+          },
+          "mountHeight": "143",
+          "bobAmplitude": "12",
+          "turn": 1.3713968515384827,
+          "registration": [
+            0,
+            -0.1456,
+            -0.1144
+          ]
+        },
+        {
+          "identity": "rabbit",
+          "slot": 8,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.8493014151880832,
+            "scale": 0.8493014151880832,
+            "yaw": 0,
+            "offset": [
+              -0.0075391309015348535,
+              -0.0037708021213953558,
+              0.05613162618940759
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-180",
+            "y": "-70",
+            "width": "360",
+            "height": "199"
+          },
+          "mountHeight": "146",
+          "bobAmplitude": "12",
+          "turn": 1.3213968515384829,
+          "registration": [
+            0,
+            -0.1,
+            -0.165
+          ]
+        },
+        {
+          "identity": "fox",
+          "slot": 11,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.8428117909055658,
+            "scale": 0.8428117909055658,
+            "yaw": 0,
+            "offset": [
+              -0.0016340005962196895,
+              -0.006225510115934474,
+              0.05609568877776261
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-181",
+            "y": "-59",
+            "width": "362",
+            "height": "187"
+          },
+          "mountHeight": "146",
+          "bobAmplitude": "12",
+          "turn": 0.42379895051282757,
+          "registration": [
+            0,
+            -0.12,
+            -0.175
+          ]
+        },
+        {
+          "identity": "tiger",
+          "slot": 14,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.8528904757473478,
+            "scale": 0.8528904757473478,
+            "yaw": 0,
+            "offset": [
+              0.0008897683987740948,
+              0.0005330336591768403,
+              0.026765276922017606
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-181",
+            "y": "-53",
+            "width": "362",
+            "height": "209"
+          },
+          "mountHeight": "174",
+          "bobAmplitude": "12",
+          "turn": -0.4737989505128276,
+          "registration": [
+            0,
+            -0.18239999999999998,
+            -0.10259999999999998
+          ]
+        },
+        {
+          "identity": "stag",
+          "slot": 15,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9282852406781784,
+            "scale": 0.9282852406781784,
+            "yaw": 0,
+            "offset": [
+              -0.009163506547921155,
+              0.010343442042815787,
+              -0.010857402084629986
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-163",
+            "y": "-122",
+            "width": "326",
+            "height": "287"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": -0.42379895051282757,
+          "registration": [
+            0,
+            -0.0728,
+            -0.13
+          ]
+        },
+        {
+          "identity": "cat",
+          "slot": 18,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 1.1056598865630876,
+            "scale": 1.1056598865630876,
+            "yaw": 0.5049913504336554,
+            "offset": [
+              -0.01902752599134841,
+              0.0006314941908533989,
+              -0.009327980742455257
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-150",
+            "y": "-89",
+            "width": "300",
+            "height": "255"
+          },
+          "mountHeight": "184",
+          "bobAmplitude": "12",
+          "turn": -1.8263882019721382,
+          "registration": [
+            -0.0368,
+            -0.138,
+            -0.023000000000000003
+          ]
+        },
+        {
+          "identity": "ostrich",
+          "slot": 7,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.866874052003748,
+            "scale": 0.866874052003748,
+            "yaw": 0,
+            "offset": [
+              -0.0013869672652432198,
+              -0.0008429054815733417,
+              0.0675019355645094
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-203",
+            "y": "-87",
+            "width": "406",
+            "height": "247"
+          },
+          "mountHeight": "183",
+          "bobAmplitude": "12",
+          "turn": 1.3463968515384828,
+          "registration": [
+            0,
+            -0.13520000000000001,
+            -0.2288
+          ]
+        },
+        {
+          "identity": "polar-bear",
+          "slot": 10,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 0.9560766340924979,
+            "scale": 0.9560766340924979,
+            "yaw": 0,
+            "offset": [
+              0.009480457685227529,
+              -0.0006527348759117757,
+              -0.003973461843823425
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-150",
+            "y": "-71",
+            "width": "300",
+            "height": "256"
+          },
+          "mountHeight": "204",
+          "bobAmplitude": "12",
+          "turn": 0.4487989505128276,
+          "registration": [
+            0.012330240000000001,
+            -0.20800000000000002,
+            0.03847454
+          ]
+        },
+        {
+          "identity": "zebra",
+          "slot": 19,
+          "style": "plain",
+          "visible": true,
+          "transform": {
+            "fit": 1.0002135396050091,
+            "scale": 1.0002135396050091,
+            "yaw": 0,
+            "offset": [
+              -0.001182171245172918,
+              0.010019561796005105,
+              -0.000582960854483866
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-165",
+            "y": "-70",
+            "width": "330",
+            "height": "234"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": -2.243994752564138,
+          "registration": [
+            0,
+            -0.1675,
+            -0.1125
+          ]
+        }
+      ]
+    },
+    "meanFrameMs": 139.70862068965513,
+    "frames": 58,
+    "errors": []
+  },
+  {
+    "style": "stuffed",
+    "profile": "original",
+    "preloadMs": 5964,
+    "readyMs": 28590.400000035763,
+    "runtime": {
+      "selected": "stuffed",
+      "requested": "stuffed",
+      "busy": false,
+      "metrics": [
+        {
+          "identity": "horse",
+          "style": "stuffed",
+          "bytes": 7034064,
+          "fetchWaitMs": 668.2999999523163,
+          "parseMs": 1039.5,
+          "prepareMs": 75
+        },
+        {
+          "identity": "horse",
+          "style": "stuffed",
+          "firstRenderCpuMs": 356,
+          "readyAtMs": 10835.800000011921
+        },
+        {
+          "identity": "rocket",
+          "style": "stuffed",
+          "bytes": 7777124,
+          "fetchWaitMs": 751.8999999761581,
+          "parseMs": 1484.300000011921,
+          "prepareMs": 13
+        },
+        {
+          "identity": "rocket",
+          "style": "stuffed",
+          "firstRenderCpuMs": 143.10000002384186,
+          "readyAtMs": 11089.100000023842
+        },
+        {
+          "identity": "unicorn",
+          "style": "stuffed",
+          "bytes": 7025144,
+          "fetchWaitMs": 1188.0999999642372,
+          "parseMs": 1269.699999988079,
+          "prepareMs": 82.40000003576279
+        },
+        {
+          "identity": "unicorn",
+          "style": "stuffed",
+          "firstRenderCpuMs": 88.80000001192093,
+          "readyAtMs": 11325.800000011921
+        },
+        {
+          "identity": "griffin",
+          "style": "stuffed",
+          "bytes": 7915044,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 1912.5999999642372,
+          "prepareMs": 13.600000023841858
+        },
+        {
+          "identity": "griffin",
+          "style": "stuffed",
+          "firstRenderCpuMs": 116,
+          "readyAtMs": 12878.400000035763
+        },
+        {
+          "identity": "flamingo",
+          "style": "stuffed",
+          "bytes": 7613300,
+          "fetchWaitMs": 1146.800000011921,
+          "parseMs": 1231.800000011921,
+          "prepareMs": 9.899999976158142
+        },
+        {
+          "identity": "flamingo",
+          "style": "stuffed",
+          "firstRenderCpuMs": 102.10000002384186,
+          "readyAtMs": 13580.200000047684
+        },
+        {
+          "identity": "dragon",
+          "style": "stuffed",
+          "bytes": 7428300,
+          "fetchWaitMs": 1140.9000000357628,
+          "parseMs": 1341.699999988079,
+          "prepareMs": 18.80000001192093
+        },
+        {
+          "identity": "dragon",
+          "style": "stuffed",
+          "firstRenderCpuMs": 110,
+          "readyAtMs": 13942.800000011921
+        },
+        {
+          "identity": "moon-loveseat",
+          "style": "stuffed",
+          "bytes": 7660648,
+          "fetchWaitMs": 0,
+          "parseMs": 1372.4000000357628,
+          "prepareMs": 8.800000011920929
+        },
+        {
+          "identity": "moon-loveseat",
+          "style": "stuffed",
+          "firstRenderCpuMs": 175.19999998807907,
+          "readyAtMs": 14435.200000047684
+        },
+        {
+          "identity": "snail",
+          "style": "stuffed",
+          "bytes": 8791900,
+          "fetchWaitMs": 0,
+          "parseMs": 2459.600000023842,
+          "prepareMs": 24.399999976158142
+        },
+        {
+          "identity": "snail",
+          "style": "stuffed",
+          "firstRenderCpuMs": 215.5999999642372,
+          "readyAtMs": 16280
+        },
+        {
+          "identity": "brown-horse",
+          "style": "stuffed",
+          "bytes": 7187084,
+          "fetchWaitMs": 0.19999998807907104,
+          "parseMs": 2480.300000011921,
+          "prepareMs": 61.19999998807907
+        },
+        {
+          "identity": "brown-horse",
+          "style": "stuffed",
+          "firstRenderCpuMs": 157,
+          "readyAtMs": 16642.600000023842
+        },
+        {
+          "identity": "elephant",
+          "style": "stuffed",
+          "bytes": 7586180,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 2423.199999988079,
+          "prepareMs": 13.899999976158142
+        },
+        {
+          "identity": "elephant",
+          "style": "stuffed",
+          "firstRenderCpuMs": 175.79999995231628,
+          "readyAtMs": 17048.5
+        },
+        {
+          "identity": "grizzly",
+          "style": "stuffed",
+          "bytes": 8437432,
+          "fetchWaitMs": 0,
+          "parseMs": 2052.300000011921,
+          "prepareMs": 37.80000001192093
+        },
+        {
+          "identity": "grizzly",
+          "style": "stuffed",
+          "firstRenderCpuMs": 342.39999997615814,
+          "readyAtMs": 18712.80000001192
+        },
+        {
+          "identity": "wolf",
+          "style": "stuffed",
+          "bytes": 8304044,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 2333.5,
+          "prepareMs": 10.5
+        },
+        {
+          "identity": "wolf",
+          "style": "stuffed",
+          "firstRenderCpuMs": 236,
+          "readyAtMs": 19222.80000001192
+        },
+        {
+          "identity": "rabbit",
+          "style": "stuffed",
+          "bytes": 7486988,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 2580.899999976158,
+          "prepareMs": 85.69999998807907
+        },
+        {
+          "identity": "rabbit",
+          "style": "stuffed",
+          "firstRenderCpuMs": 157.60000002384186,
+          "readyAtMs": 19873.200000047684
+        },
+        {
+          "identity": "fox",
+          "style": "stuffed",
+          "bytes": 7237456,
+          "fetchWaitMs": 0,
+          "parseMs": 2678.899999976158,
+          "prepareMs": 9.400000035762787
+        },
+        {
+          "identity": "fox",
+          "style": "stuffed",
+          "firstRenderCpuMs": 260.5999999642372,
+          "readyAtMs": 21662
+        },
+        {
+          "identity": "tiger",
+          "style": "stuffed",
+          "bytes": 7292732,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 2712.699999988079,
+          "prepareMs": 16.30000001192093
+        },
+        {
+          "identity": "tiger",
+          "style": "stuffed",
+          "firstRenderCpuMs": 274.0999999642372,
+          "readyAtMs": 22226.30000001192
+        },
+        {
+          "identity": "stag",
+          "style": "stuffed",
+          "bytes": 7976788,
+          "fetchWaitMs": 0,
+          "parseMs": 2545,
+          "prepareMs": 12.5
+        },
+        {
+          "identity": "stag",
+          "style": "stuffed",
+          "firstRenderCpuMs": 374.2000000476837,
+          "readyAtMs": 22805.200000047684
+        },
+        {
+          "identity": "ostrich",
+          "style": "stuffed",
+          "bytes": 7314904,
+          "fetchWaitMs": 0,
+          "parseMs": 2490.699999988079,
+          "prepareMs": 32.80000001192093
+        },
+        {
+          "identity": "ostrich",
+          "style": "stuffed",
+          "firstRenderCpuMs": 324.4000000357628,
+          "readyAtMs": 25074.700000047684
+        },
+        {
+          "identity": "cat",
+          "style": "stuffed",
+          "bytes": 9076564,
+          "fetchWaitMs": 0,
+          "parseMs": 3795.399999976158,
+          "prepareMs": 38.10000002384186
+        },
+        {
+          "identity": "cat",
+          "style": "stuffed",
+          "firstRenderCpuMs": 232.5,
+          "readyAtMs": 25729.400000035763
+        },
+        {
+          "identity": "polar-bear",
+          "style": "stuffed",
+          "bytes": 7044016,
+          "fetchWaitMs": 0.19999998807907104,
+          "parseMs": 3536.800000011921,
+          "prepareMs": 91.89999997615814
+        },
+        {
+          "identity": "polar-bear",
+          "style": "stuffed",
+          "firstRenderCpuMs": 429.9000000357628,
+          "readyAtMs": 26864.200000047684
+        },
+        {
+          "identity": "zebra",
+          "style": "stuffed",
+          "bytes": 7716148,
+          "fetchWaitMs": 0.09999996423721313,
+          "parseMs": 3188.100000023842,
+          "prepareMs": 7.5
+        },
+        {
+          "identity": "zebra",
+          "style": "stuffed",
+          "firstRenderCpuMs": 319.60000002384186,
+          "readyAtMs": 28590.400000035763
+        }
+      ],
+      "mounts": [
+        {
+          "identity": "horse",
+          "slot": 4,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.4241007226395862,
+            "scale": 0.4241007226395862,
+            "yaw": 0,
+            "offset": [
+              -0.014944521153258561,
+              -0.00359574760993199,
+              -0.032346992673730264
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-174",
+            "y": "-92",
+            "width": "348",
+            "height": "217"
+          },
+          "turn": -2.4683942278205517,
+          "registration": [
+            0.12,
+            -0.055,
+            0.03
+          ]
+        },
+        {
+          "identity": "unicorn",
+          "slot": 17,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9321931201594313,
+            "scale": 0.9321931201594313,
+            "yaw": 0,
+            "offset": [
+              -0.0017336769162831153,
+              -0.00039552918165869366,
+              0.013574520106696464
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-162",
+            "y": "-90",
+            "width": "324",
+            "height": "249"
+          },
+          "mountHeight": "177",
+          "bobAmplitude": "12",
+          "turn": -1.3713968515384827,
+          "registration": [
+            0,
+            -0.125,
+            -0.1
+          ]
+        },
+        {
+          "identity": "rocket",
+          "slot": 5,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.651827024281636,
+            "scale": 0.651827024281636,
+            "yaw": 0,
+            "offset": [
+              0.0031320623578675695,
+              0.07477311720809077,
+              -0.00016905440972500156
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-141",
+            "y": "-29",
+            "width": "282",
+            "height": "107"
+          },
+          "mountHeight": "96",
+          "bobAmplitude": "12",
+          "turn": 3.7897910793590346,
+          "registration": [
+            -0.005200000000000001,
+            -0.12584,
+            0
+          ]
+        },
+        {
+          "identity": "griffin",
+          "slot": 6,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 1.0256343321111012,
+            "scale": 1.0256343321111012,
+            "yaw": 0,
+            "offset": [
+              0.0074154942696476826,
+              -0.004835724683003584,
+              -0.007048074157515294
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-163",
+            "y": "-59",
+            "width": "326",
+            "height": "223"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": 2.268994752564138,
+          "registration": [
+            0,
+            -0.18400000000000002,
+            -0.12880000000000003
+          ]
+        },
+        {
+          "identity": "flamingo",
+          "slot": 20,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.8326182045262448,
+            "scale": 0.8326182045262448,
+            "yaw": 1.5707963267948966,
+            "offset": [
+              0.000354306074829665,
+              0.0534594969048911,
+              -0.0043161699536254095
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-142",
+            "y": "-93",
+            "width": "284",
+            "height": "272"
+          },
+          "mountHeight": "200",
+          "bobAmplitude": "12",
+          "turn": -2.268994752564138,
+          "registration": [
+            0,
+            -0.16,
+            -0.115
+          ]
+        },
+        {
+          "identity": "dragon",
+          "slot": 21,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9998682097149016,
+            "scale": 0.9998682097149016,
+            "yaw": 0,
+            "offset": [
+              0.012327119080685369,
+              0.0005613804053098692,
+              -0.0008896274712282826
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-208",
+            "y": "-135",
+            "width": "416",
+            "height": "306"
+          },
+          "mountHeight": "192",
+          "bobAmplitude": "12",
+          "turn": -2.218994752564138,
+          "registration": [
+            0,
+            -0.063,
+            -0.174
+          ]
+        },
+        {
+          "identity": "moon-loveseat",
+          "slot": 2,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 1.0793113332585031,
+            "scale": 1.0793113332585031,
+            "yaw": 0,
+            "offset": [
+              -0.010747876034079229,
+              0.0014765259341471548,
+              -0.10933153053030986
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-141",
+            "y": "-12",
+            "width": "282",
+            "height": "216"
+          },
+          "mountHeight": "222",
+          "bobAmplitude": "12",
+          "turn": 3.116592653589793,
+          "registration": [
+            -0.0545976,
+            -0.3495496,
+            0.16086440000000002
+          ]
+        },
+        {
+          "identity": "snail",
+          "slot": 3,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9984868921149636,
+            "scale": 0.9984868921149636,
+            "yaw": 0,
+            "offset": [
+              -0.003260383913413525,
+              0.0023622035605082026,
+              0.00006857298087581398
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-168",
+            "y": "-50",
+            "width": "336",
+            "height": "192"
+          },
+          "mountHeight": "150",
+          "bobAmplitude": "12",
+          "turn": 3.166592653589793,
+          "registration": [
+            0,
+            -0.14534,
+            -0.1892
+          ]
+        },
+        {
+          "identity": "brown-horse",
+          "slot": 12,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.912904285392339,
+            "scale": 0.912904285392339,
+            "yaw": 1.5707963267948966,
+            "offset": [
+              0.0011643532085339637,
+              -0.0005885811783917783,
+              0.015946650475536173
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-170",
+            "y": "-70",
+            "width": "340",
+            "height": "243"
+          },
+          "mountHeight": "190",
+          "bobAmplitude": "12",
+          "turn": 0.4737989505128276,
+          "registration": [
+            0,
+            -0.182,
+            -0.1092
+          ]
+        },
+        {
+          "identity": "elephant",
+          "slot": 13,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9044522525933765,
+            "scale": 0.9044522525933765,
+            "yaw": 0,
+            "offset": [
+              -0.0008109483937925483,
+              -0.004811345541569034,
+              -0.0010991602085878155
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-151",
+            "y": "-69",
+            "width": "302",
+            "height": "258"
+          },
+          "mountHeight": "207",
+          "bobAmplitude": "12",
+          "turn": -0.4487989505128276,
+          "registration": [
+            0,
+            -0.2173,
+            -0.0318
+          ]
+        },
+        {
+          "identity": "grizzly",
+          "slot": 16,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.7504421371819011,
+            "scale": 0.7504421371819011,
+            "yaw": 0,
+            "offset": [
+              -0.0039803670525008815,
+              0.0018185888277210127,
+              0.02960656405039308
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-170",
+            "y": "-44",
+            "width": "340",
+            "height": "212"
+          },
+          "mountHeight": "186",
+          "bobAmplitude": "12",
+          "turn": -1.3463968515384828,
+          "registration": [
+            0,
+            -0.22400000000000003,
+            -0.06160000000000001
+          ]
+        },
+        {
+          "identity": "wolf",
+          "slot": 9,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.8378513202861926,
+            "scale": 0.8378513202861926,
+            "yaw": 0,
+            "offset": [
+              -0.004827445768783582,
+              0.013899912279123294,
+              0.0364550617637652
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-171",
+            "y": "-47",
+            "width": "342",
+            "height": "170"
+          },
+          "mountHeight": "143",
+          "bobAmplitude": "12",
+          "turn": 1.3713968515384827,
+          "registration": [
+            0,
+            -0.1456,
+            -0.1144
+          ]
+        },
+        {
+          "identity": "rabbit",
+          "slot": 8,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.7631507316904192,
+            "scale": 0.7631507316904192,
+            "yaw": 0,
+            "offset": [
+              0.00007949847765500606,
+              -0.0027403486407421296,
+              0.07847592853009544
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-180",
+            "y": "-70",
+            "width": "360",
+            "height": "199"
+          },
+          "mountHeight": "146",
+          "bobAmplitude": "12",
+          "turn": 1.3213968515384829,
+          "registration": [
+            0,
+            -0.1,
+            -0.165
+          ]
+        },
+        {
+          "identity": "fox",
+          "slot": 11,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.8736700479645747,
+            "scale": 0.8736700479645747,
+            "yaw": 0,
+            "offset": [
+              0.0008435005598897553,
+              -0.0035929176908126026,
+              0.045926346006005925
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-181",
+            "y": "-59",
+            "width": "362",
+            "height": "187"
+          },
+          "mountHeight": "146",
+          "bobAmplitude": "12",
+          "turn": 0.42379895051282757,
+          "registration": [
+            0,
+            -0.12,
+            -0.175
+          ]
+        },
+        {
+          "identity": "tiger",
+          "slot": 14,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.699759158053789,
+            "scale": 0.699759158053789,
+            "yaw": 0,
+            "offset": [
+              0.0009883200934804831,
+              -0.0024062406008373283,
+              0.05403068982104228
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-181",
+            "y": "-53",
+            "width": "362",
+            "height": "209"
+          },
+          "mountHeight": "174",
+          "bobAmplitude": "12",
+          "turn": -0.4737989505128276,
+          "registration": [
+            0,
+            -0.18239999999999998,
+            -0.10259999999999998
+          ]
+        },
+        {
+          "identity": "stag",
+          "slot": 15,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9127141443004405,
+            "scale": 0.9127141443004405,
+            "yaw": 0,
+            "offset": [
+              -0.0016455921135983672,
+              0.012264063917449275,
+              -0.008525652790731253
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-163",
+            "y": "-122",
+            "width": "326",
+            "height": "287"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": -0.42379895051282757,
+          "registration": [
+            0,
+            -0.0728,
+            -0.13
+          ]
+        },
+        {
+          "identity": "cat",
+          "slot": 18,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 1.0424989553108235,
+            "scale": 1.0424989553108235,
+            "yaw": 0.5049913504336554,
+            "offset": [
+              -0.03071536617463698,
+              0.0016903542346934364,
+              -0.011039002628421356
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-150",
+            "y": "-89",
+            "width": "300",
+            "height": "255"
+          },
+          "mountHeight": "184",
+          "bobAmplitude": "12",
+          "turn": -1.8263882019721382,
+          "registration": [
+            -0.0368,
+            -0.138,
+            -0.023000000000000003
+          ]
+        },
+        {
+          "identity": "ostrich",
+          "slot": 7,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.8958101511265589,
+            "scale": 0.8958101511265589,
+            "yaw": 0,
+            "offset": [
+              -0.001572435193413386,
+              -0.001696429097533425,
+              0.04567990064591543
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-203",
+            "y": "-87",
+            "width": "406",
+            "height": "247"
+          },
+          "mountHeight": "183",
+          "bobAmplitude": "12",
+          "turn": 1.3463968515384828,
+          "registration": [
+            0,
+            -0.13520000000000001,
+            -0.2288
+          ]
+        },
+        {
+          "identity": "polar-bear",
+          "slot": 10,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9994428300174435,
+            "scale": 0.9994428300174435,
+            "yaw": 0,
+            "offset": [
+              0.0032074664965066092,
+              0.000672377538431912,
+              -0.0003284343017298935
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-150",
+            "y": "-71",
+            "width": "300",
+            "height": "256"
+          },
+          "mountHeight": "204",
+          "bobAmplitude": "12",
+          "turn": 0.4487989505128276,
+          "registration": [
+            0.012330240000000001,
+            -0.20800000000000002,
+            0.03847454
+          ]
+        },
+        {
+          "identity": "zebra",
+          "slot": 19,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9214749264060766,
+            "scale": 0.9214749264060766,
+            "yaw": 0,
+            "offset": [
+              -0.0006134645867179857,
+              -0.00541734312307951,
+              0.016810697286870596
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-165",
+            "y": "-70",
+            "width": "330",
+            "height": "234"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": -2.243994752564138,
+          "registration": [
+            0,
+            -0.1675,
+            -0.1125
+          ]
+        }
+      ]
+    },
+    "meanFrameMs": 150.22727272705603,
+    "frames": 55,
+    "errors": []
+  },
+  {
+    "style": "stuffed",
+    "profile": "budget",
+    "preloadMs": 4689,
+    "readyMs": 21859.5,
+    "runtime": {
+      "selected": "stuffed",
+      "requested": "stuffed",
+      "busy": false,
+      "metrics": [
+        {
+          "identity": "horse",
+          "style": "stuffed",
+          "bytes": 3932636,
+          "fetchWaitMs": 716.3000000119209,
+          "parseMs": 2300.899999976158,
+          "prepareMs": 17.19999998807907
+        },
+        {
+          "identity": "horse",
+          "style": "stuffed",
+          "firstRenderCpuMs": 653.5,
+          "readyAtMs": 9578.600000023842
+        },
+        {
+          "identity": "rocket",
+          "style": "stuffed",
+          "bytes": 4092232,
+          "fetchWaitMs": 870.8999999761581,
+          "parseMs": 2942.400000035763,
+          "prepareMs": 71.09999996423721
+        },
+        {
+          "identity": "rocket",
+          "style": "stuffed",
+          "firstRenderCpuMs": 291.5,
+          "readyAtMs": 10066.800000011921
+        },
+        {
+          "identity": "unicorn",
+          "style": "stuffed",
+          "bytes": 3992272,
+          "fetchWaitMs": 2972.300000011921,
+          "parseMs": 1772.699999988079,
+          "prepareMs": 37.39999997615814
+        },
+        {
+          "identity": "unicorn",
+          "style": "stuffed",
+          "firstRenderCpuMs": 68.69999998807907,
+          "readyAtMs": 10741.899999976158
+        },
+        {
+          "identity": "griffin",
+          "style": "stuffed",
+          "bytes": 4644280,
+          "fetchWaitMs": 0,
+          "parseMs": 1292.699999988079,
+          "prepareMs": 13.200000047683716
+        },
+        {
+          "identity": "griffin",
+          "style": "stuffed",
+          "firstRenderCpuMs": 92.19999998807907,
+          "readyAtMs": 10978
+        },
+        {
+          "identity": "flamingo",
+          "style": "stuffed",
+          "bytes": 4309192,
+          "fetchWaitMs": 367.69999998807907,
+          "parseMs": 732.1000000238419,
+          "prepareMs": 10.300000011920929
+        },
+        {
+          "identity": "flamingo",
+          "style": "stuffed",
+          "firstRenderCpuMs": 85.80000001192093,
+          "readyAtMs": 11263.100000023842
+        },
+        {
+          "identity": "dragon",
+          "style": "stuffed",
+          "bytes": 4217372,
+          "fetchWaitMs": 1162.199999988079,
+          "parseMs": 930,
+          "prepareMs": 19.80000001192093
+        },
+        {
+          "identity": "dragon",
+          "style": "stuffed",
+          "firstRenderCpuMs": 95.5,
+          "readyAtMs": 12949.899999976158
+        },
+        {
+          "identity": "moon-loveseat",
+          "style": "stuffed",
+          "bytes": 4387528,
+          "fetchWaitMs": 1218.5,
+          "parseMs": 881.2999999523163,
+          "prepareMs": 48.5
+        },
+        {
+          "identity": "moon-loveseat",
+          "style": "stuffed",
+          "firstRenderCpuMs": 148.19999998807907,
+          "readyAtMs": 13274.699999988079
+        },
+        {
+          "identity": "snail",
+          "style": "stuffed",
+          "bytes": 5233624,
+          "fetchWaitMs": 1025,
+          "parseMs": 1118.300000011921,
+          "prepareMs": 13.199999988079071
+        },
+        {
+          "identity": "snail",
+          "style": "stuffed",
+          "firstRenderCpuMs": 161.9000000357628,
+          "readyAtMs": 13581.800000011921
+        },
+        {
+          "identity": "brown-horse",
+          "style": "stuffed",
+          "bytes": 4093240,
+          "fetchWaitMs": 0,
+          "parseMs": 1471.7999999523163,
+          "prepareMs": 12
+        },
+        {
+          "identity": "brown-horse",
+          "style": "stuffed",
+          "firstRenderCpuMs": 167.5,
+          "readyAtMs": 14601.5
+        },
+        {
+          "identity": "grizzly",
+          "style": "stuffed",
+          "bytes": 5258520,
+          "fetchWaitMs": 0,
+          "parseMs": 1155.5999999642372,
+          "prepareMs": 29.30000001192093
+        },
+        {
+          "identity": "grizzly",
+          "style": "stuffed",
+          "firstRenderCpuMs": 166.70000004768372,
+          "readyAtMs": 14933.600000023842
+        },
+        {
+          "identity": "elephant",
+          "style": "stuffed",
+          "bytes": 4626148,
+          "fetchWaitMs": 0,
+          "parseMs": 1818.1000000238419,
+          "prepareMs": 12.300000011920929
+        },
+        {
+          "identity": "elephant",
+          "style": "stuffed",
+          "firstRenderCpuMs": 169.4000000357628,
+          "readyAtMs": 15275.100000023842
+        },
+        {
+          "identity": "rabbit",
+          "style": "stuffed",
+          "bytes": 4205968,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 1637,
+          "prepareMs": 13.199999988079071
+        },
+        {
+          "identity": "rabbit",
+          "style": "stuffed",
+          "firstRenderCpuMs": 185.29999995231628,
+          "readyAtMs": 16769.399999976158
+        },
+        {
+          "identity": "fox",
+          "style": "stuffed",
+          "bytes": 3969776,
+          "fetchWaitMs": 0,
+          "parseMs": 1648,
+          "prepareMs": 17.900000035762787
+        },
+        {
+          "identity": "fox",
+          "style": "stuffed",
+          "firstRenderCpuMs": 221.69999998807907,
+          "readyAtMs": 17163
+        },
+        {
+          "identity": "wolf",
+          "style": "stuffed",
+          "bytes": 5000440,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 2749.5,
+          "prepareMs": 38.19999998807907
+        },
+        {
+          "identity": "wolf",
+          "style": "stuffed",
+          "firstRenderCpuMs": 164.80000001192093,
+          "readyAtMs": 17554.80000001192
+        },
+        {
+          "identity": "stag",
+          "style": "stuffed",
+          "bytes": 4732264,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 1618.3999999761581,
+          "prepareMs": 17.899999976158142
+        },
+        {
+          "identity": "stag",
+          "style": "stuffed",
+          "firstRenderCpuMs": 240.80000001192093,
+          "readyAtMs": 19040.30000001192
+        },
+        {
+          "identity": "tiger",
+          "style": "stuffed",
+          "bytes": 4180516,
+          "fetchWaitMs": 0,
+          "parseMs": 2520.2999999523163,
+          "prepareMs": 10.600000023841858
+        },
+        {
+          "identity": "tiger",
+          "style": "stuffed",
+          "firstRenderCpuMs": 230.69999998807907,
+          "readyAtMs": 19531.399999976158
+        },
+        {
+          "identity": "cat",
+          "style": "stuffed",
+          "bytes": 5705032,
+          "fetchWaitMs": 0,
+          "parseMs": 2156.300000011921,
+          "prepareMs": 38.39999997615814
+        },
+        {
+          "identity": "cat",
+          "style": "stuffed",
+          "firstRenderCpuMs": 167,
+          "readyAtMs": 19916.600000023842
+        },
+        {
+          "identity": "polar-bear",
+          "style": "stuffed",
+          "bytes": 3378008,
+          "fetchWaitMs": 0.10000002384185791,
+          "parseMs": 1117.5,
+          "prepareMs": 42.80000001192093
+        },
+        {
+          "identity": "polar-bear",
+          "style": "stuffed",
+          "firstRenderCpuMs": 104.5,
+          "readyAtMs": 20796.399999976158
+        },
+        {
+          "identity": "zebra",
+          "style": "stuffed",
+          "bytes": 3577912,
+          "fetchWaitMs": 0.09999996423721313,
+          "parseMs": 1275.1000000238419,
+          "prepareMs": 52.19999998807907
+        },
+        {
+          "identity": "zebra",
+          "style": "stuffed",
+          "firstRenderCpuMs": 68.90000003576279,
+          "readyAtMs": 21313.30000001192
+        },
+        {
+          "identity": "ostrich",
+          "style": "stuffed",
+          "bytes": 4255780,
+          "fetchWaitMs": 0,
+          "parseMs": 2503.7000000476837,
+          "prepareMs": 14.299999952316284
+        },
+        {
+          "identity": "ostrich",
+          "style": "stuffed",
+          "firstRenderCpuMs": 300.89999997615814,
+          "readyAtMs": 21859.5
+        }
+      ],
+      "mounts": [
+        {
+          "identity": "horse",
+          "slot": 4,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.4241007226395862,
+            "scale": 0.4241007226395862,
+            "yaw": 0,
+            "offset": [
+              -0.014944521153258561,
+              -0.00359574760993199,
+              -0.032346992673730264
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-174",
+            "y": "-92",
+            "width": "348",
+            "height": "217"
+          },
+          "turn": -2.4683942278205517,
+          "registration": [
+            0.12,
+            -0.055,
+            0.03
+          ]
+        },
+        {
+          "identity": "unicorn",
+          "slot": 17,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9321931201594313,
+            "scale": 0.9321931201594313,
+            "yaw": 0,
+            "offset": [
+              -0.0017336769162831153,
+              -0.00039552918165869366,
+              0.013574520106696464
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-162",
+            "y": "-90",
+            "width": "324",
+            "height": "249"
+          },
+          "mountHeight": "177",
+          "bobAmplitude": "12",
+          "turn": -1.3713968515384827,
+          "registration": [
+            0,
+            -0.125,
+            -0.1
+          ]
+        },
+        {
+          "identity": "rocket",
+          "slot": 5,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.651827024281636,
+            "scale": 0.651827024281636,
+            "yaw": 0,
+            "offset": [
+              0.0031320623578675695,
+              0.07477311720809077,
+              -0.00016905440972500156
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-141",
+            "y": "-29",
+            "width": "282",
+            "height": "107"
+          },
+          "mountHeight": "96",
+          "bobAmplitude": "12",
+          "turn": 3.7897910793590346,
+          "registration": [
+            -0.005200000000000001,
+            -0.12584,
+            0
+          ]
+        },
+        {
+          "identity": "griffin",
+          "slot": 6,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 1.0256343321111012,
+            "scale": 1.0256343321111012,
+            "yaw": 0,
+            "offset": [
+              0.0074154942696476826,
+              -0.004835724683003584,
+              -0.007048074157515294
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-163",
+            "y": "-59",
+            "width": "326",
+            "height": "223"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": 2.268994752564138,
+          "registration": [
+            0,
+            -0.18400000000000002,
+            -0.12880000000000003
+          ]
+        },
+        {
+          "identity": "flamingo",
+          "slot": 20,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.8326182045262448,
+            "scale": 0.8326182045262448,
+            "yaw": 1.5707963267948966,
+            "offset": [
+              0.000354306074829665,
+              0.0534594969048911,
+              -0.0043161699536254095
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-142",
+            "y": "-93",
+            "width": "284",
+            "height": "272"
+          },
+          "mountHeight": "200",
+          "bobAmplitude": "12",
+          "turn": -2.268994752564138,
+          "registration": [
+            0,
+            -0.16,
+            -0.115
+          ]
+        },
+        {
+          "identity": "dragon",
+          "slot": 21,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9998682097149016,
+            "scale": 0.9998682097149016,
+            "yaw": 0,
+            "offset": [
+              0.012327119080685369,
+              0.0005613804053098692,
+              -0.0008896274712282826
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-208",
+            "y": "-135",
+            "width": "416",
+            "height": "306"
+          },
+          "mountHeight": "192",
+          "bobAmplitude": "12",
+          "turn": -2.218994752564138,
+          "registration": [
+            0,
+            -0.063,
+            -0.174
+          ]
+        },
+        {
+          "identity": "moon-loveseat",
+          "slot": 2,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 1.0793113332585031,
+            "scale": 1.0793113332585031,
+            "yaw": 0,
+            "offset": [
+              -0.010747876034079229,
+              0.0014765259341471548,
+              -0.10933153053030986
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-141",
+            "y": "-12",
+            "width": "282",
+            "height": "216"
+          },
+          "mountHeight": "222",
+          "bobAmplitude": "12",
+          "turn": 3.116592653589793,
+          "registration": [
+            -0.0545976,
+            -0.3495496,
+            0.16086440000000002
+          ]
+        },
+        {
+          "identity": "snail",
+          "slot": 3,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9984868921149636,
+            "scale": 0.9984868921149636,
+            "yaw": 0,
+            "offset": [
+              -0.003260383913413525,
+              0.0023622035605082026,
+              0.00006857298087581398
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-168",
+            "y": "-50",
+            "width": "336",
+            "height": "192"
+          },
+          "mountHeight": "150",
+          "bobAmplitude": "12",
+          "turn": 3.166592653589793,
+          "registration": [
+            0,
+            -0.14534,
+            -0.1892
+          ]
+        },
+        {
+          "identity": "brown-horse",
+          "slot": 12,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.912904285392339,
+            "scale": 0.912904285392339,
+            "yaw": 1.5707963267948966,
+            "offset": [
+              0.0011643532085339637,
+              -0.0005885811783917783,
+              0.015946650475536173
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-170",
+            "y": "-70",
+            "width": "340",
+            "height": "243"
+          },
+          "mountHeight": "190",
+          "bobAmplitude": "12",
+          "turn": 0.4737989505128276,
+          "registration": [
+            0,
+            -0.182,
+            -0.1092
+          ]
+        },
+        {
+          "identity": "elephant",
+          "slot": 13,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9044522525933765,
+            "scale": 0.9044522525933765,
+            "yaw": 0,
+            "offset": [
+              -0.0008109483937925483,
+              -0.004811345541569034,
+              -0.0010991602085878155
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-151",
+            "y": "-69",
+            "width": "302",
+            "height": "258"
+          },
+          "mountHeight": "207",
+          "bobAmplitude": "12",
+          "turn": -0.4487989505128276,
+          "registration": [
+            0,
+            -0.2173,
+            -0.0318
+          ]
+        },
+        {
+          "identity": "grizzly",
+          "slot": 16,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.7504421371819011,
+            "scale": 0.7504421371819011,
+            "yaw": 0,
+            "offset": [
+              -0.0039803670525008815,
+              0.0018185888277210127,
+              0.02960656405039308
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-170",
+            "y": "-44",
+            "width": "340",
+            "height": "212"
+          },
+          "mountHeight": "186",
+          "bobAmplitude": "12",
+          "turn": -1.3463968515384828,
+          "registration": [
+            0,
+            -0.22400000000000003,
+            -0.06160000000000001
+          ]
+        },
+        {
+          "identity": "wolf",
+          "slot": 9,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.8378513202861926,
+            "scale": 0.8378513202861926,
+            "yaw": 0,
+            "offset": [
+              -0.004827445768783582,
+              0.013899912279123294,
+              0.0364550617637652
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-171",
+            "y": "-47",
+            "width": "342",
+            "height": "170"
+          },
+          "mountHeight": "143",
+          "bobAmplitude": "12",
+          "turn": 1.3713968515384827,
+          "registration": [
+            0,
+            -0.1456,
+            -0.1144
+          ]
+        },
+        {
+          "identity": "rabbit",
+          "slot": 8,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.7631507316904192,
+            "scale": 0.7631507316904192,
+            "yaw": 0,
+            "offset": [
+              0.00007949847765500606,
+              -0.0027403486407421296,
+              0.07847592853009544
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-180",
+            "y": "-70",
+            "width": "360",
+            "height": "199"
+          },
+          "mountHeight": "146",
+          "bobAmplitude": "12",
+          "turn": 1.3213968515384829,
+          "registration": [
+            0,
+            -0.1,
+            -0.165
+          ]
+        },
+        {
+          "identity": "fox",
+          "slot": 11,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.8736700479645747,
+            "scale": 0.8736700479645747,
+            "yaw": 0,
+            "offset": [
+              0.0008435005598897553,
+              -0.0035929176908126026,
+              0.045926346006005925
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-181",
+            "y": "-59",
+            "width": "362",
+            "height": "187"
+          },
+          "mountHeight": "146",
+          "bobAmplitude": "12",
+          "turn": 0.42379895051282757,
+          "registration": [
+            0,
+            -0.12,
+            -0.175
+          ]
+        },
+        {
+          "identity": "tiger",
+          "slot": 14,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.699759158053789,
+            "scale": 0.699759158053789,
+            "yaw": 0,
+            "offset": [
+              0.0009883200934804831,
+              -0.0024062406008373283,
+              0.05403068982104228
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-181",
+            "y": "-53",
+            "width": "362",
+            "height": "209"
+          },
+          "mountHeight": "174",
+          "bobAmplitude": "12",
+          "turn": -0.4737989505128276,
+          "registration": [
+            0,
+            -0.18239999999999998,
+            -0.10259999999999998
+          ]
+        },
+        {
+          "identity": "stag",
+          "slot": 15,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9127141443004405,
+            "scale": 0.9127141443004405,
+            "yaw": 0,
+            "offset": [
+              -0.0016455921135983672,
+              0.012264063917449275,
+              -0.008525652790731253
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-163",
+            "y": "-122",
+            "width": "326",
+            "height": "287"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": -0.42379895051282757,
+          "registration": [
+            0,
+            -0.0728,
+            -0.13
+          ]
+        },
+        {
+          "identity": "cat",
+          "slot": 18,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 1.0424989553108235,
+            "scale": 1.0424989553108235,
+            "yaw": 0.5049913504336554,
+            "offset": [
+              -0.03071536617463698,
+              0.0016903542346934364,
+              -0.011039002628421356
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-150",
+            "y": "-89",
+            "width": "300",
+            "height": "255"
+          },
+          "mountHeight": "184",
+          "bobAmplitude": "12",
+          "turn": -1.8263882019721382,
+          "registration": [
+            -0.0368,
+            -0.138,
+            -0.023000000000000003
+          ]
+        },
+        {
+          "identity": "ostrich",
+          "slot": 7,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.8958101511265589,
+            "scale": 0.8958101511265589,
+            "yaw": 0,
+            "offset": [
+              -0.001572435193413386,
+              -0.001696429097533425,
+              0.04567990064591543
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-203",
+            "y": "-87",
+            "width": "406",
+            "height": "247"
+          },
+          "mountHeight": "183",
+          "bobAmplitude": "12",
+          "turn": 1.3463968515384828,
+          "registration": [
+            0,
+            -0.13520000000000001,
+            -0.2288
+          ]
+        },
+        {
+          "identity": "polar-bear",
+          "slot": 10,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9994428300174435,
+            "scale": 0.9994428300174435,
+            "yaw": 0,
+            "offset": [
+              0.0032074664965066092,
+              0.000672377538431912,
+              -0.0003284343017298935
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-150",
+            "y": "-71",
+            "width": "300",
+            "height": "256"
+          },
+          "mountHeight": "204",
+          "bobAmplitude": "12",
+          "turn": 0.4487989505128276,
+          "registration": [
+            0.012330240000000001,
+            -0.20800000000000002,
+            0.03847454
+          ]
+        },
+        {
+          "identity": "zebra",
+          "slot": 19,
+          "style": "stuffed",
+          "visible": true,
+          "transform": {
+            "fit": 0.9214749264060766,
+            "scale": 0.9214749264060766,
+            "yaw": 0,
+            "offset": [
+              -0.0006134645867179857,
+              -0.00541734312307951,
+              0.016810697286870596
+            ],
+            "correction": [
+              0,
+              0,
+              0
+            ]
+          },
+          "holder": {
+            "x": "-165",
+            "y": "-70",
+            "width": "330",
+            "height": "234"
+          },
+          "mountHeight": "182",
+          "bobAmplitude": "12",
+          "turn": -2.243994752564138,
+          "registration": [
+            0,
+            -0.1675,
+            -0.1125
+          ]
+        }
+      ]
+    },
+    "meanFrameMs": 133.08360655757247,
+    "frames": 61,
+    "errors": []
+  }
+]

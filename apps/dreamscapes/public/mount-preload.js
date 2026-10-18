@@ -1,6 +1,6 @@
 import {mountVariants,resolveMountVariant} from './experiments/carnival/mount-variants.js';
 // Bump when the GLBs change. CacheStorage survives portal -> Carnival navigation.
-const cacheName='dreamscapes-mounts-4626416a-v1';
+const cacheName='dreamscapes-mounts-jpeg75-20261017-v2';
 const base=new URL('./experiments/carnival/',import.meta.url);
 const pending=new Map(),queue=[];
 let active=0,selected;
