@@ -1,7 +1,7 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 7529,
-    "sha256": "506eb67e926f105e4686a0903f826cfbc77e1bc0aa3bfc3b442635dbc759bcde"
+    "sha256": "ef9bc7597c5e2706e192b61499a578c6394b87f20ea9c61296b10d07bc8a0db4",
+    "bytes": 7584
   },
   "experiments/carnival/navigation.js": {
     "bytes": 9248,
@@ -12,8 +12,8 @@
     "sha256": "ef6086d32d8c87025ee53cc92cc0546413d968dadce02a03cb13560e23dccdb8"
   },
   "experiments/carnival/exit-sign.js": {
-    "bytes": 6503,
-    "sha256": "c72cbec37f14cb18272e9530e9a931e67eb6fad8366ea04b88e0eda487e8e924"
+    "bytes": 6502,
+    "sha256": "6d18db8b89d8ebb95ea62720b84e123896247377462eb69c2d35f447b770bac9"
   },
   "experiments/carnival/exit-sign.css": {
     "bytes": 4322,
@@ -36,8 +36,8 @@
     "bytes": 2056469
   },
   "experiments/carnival/midway.js": {
-    "bytes": 12336,
-    "sha256": "1e89d7c2c9bfd72f63145daa1f99381746f6f91100ef93e3d04b60fecbbc54d2"
+    "bytes": 12332,
+    "sha256": "ae19654d170fb3ce530117369dc3dd6d0aa2e4f8d7b5f8a8c38edcd3af376abc"
   },
   "experiments/carnival/locations.js": {
     "bytes": 2568,
@@ -254,5 +254,17 @@
   "experiments/carnival/mount-pole-depth.js": {
     "bytes": 2145,
     "sha256": "cf4bbc1229c8e03d7912d16a2acd77f9944ea5f2f08f03f83859f0e08fd387df"
+  },
+  "experiments/carnival/midway-arm.js": {
+    "sha256": "831482e5f21f3f3a1be5dbecb28b63b50cc4e3750177ba7a774708376dbff1a0",
+    "bytes": 11356
+  },
+  "experiments/carnival/scene.css": {
+    "bytes": 2838,
+    "sha256": "a36a6f8684d4104958f4e687e6ef0f15435cafd80ad5870a8f75c5e9fadd9573"
+  },
+  "experiments/carnival/midway-arm/right-arm-rigged.glb": {
+    "sha256": "3ae43636ea745793821b57b278cc389859f0200f29876b29e70cd0e1685a2a61",
+    "bytes": 13774016
   }
 }

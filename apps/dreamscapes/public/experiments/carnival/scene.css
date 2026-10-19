@@ -32,8 +32,8 @@ main { position: relative; width: 100%; height: 100%; overflow: hidden; }
 .foreground { z-index: 2; pointer-events: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-aspect-ratio: 3/2) {
-  /* Crop the entire artwork together toward the right-hand attraction. */
-  .composition { left: calc(50% - (150vh - 100vw) * .17); }
+  /* Keep the approved left barrel and EXIT vignette together on entry. */
+  .composition { left: calc(50% + (150vh - 100vw) * .5); }
 }
 @media (prefers-reduced-motion: reduce) {
   .assembly { --angle: 0deg !important; }

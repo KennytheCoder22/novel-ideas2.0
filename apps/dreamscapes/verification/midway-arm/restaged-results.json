@@ -1,0 +1,26 @@
+[
+  {
+    "band": "adults",
+    "layout": "desktop",
+    "fullSequence": true,
+    "exitActivations": 6,
+    "noRepeat": true,
+    "cancelOnLeave": true,
+    "resetOnReturn": true,
+    "reducedMotion": true,
+    "finiteJointPositions": true,
+    "pageErrors": []
+  },
+  {
+    "band": "adults",
+    "layout": "mobile",
+    "fullSequence": true,
+    "exitActivations": 6,
+    "noRepeat": true,
+    "cancelOnLeave": true,
+    "resetOnReturn": true,
+    "reducedMotion": true,
+    "finiteJointPositions": true,
+    "pageErrors": []
+  }
+]
