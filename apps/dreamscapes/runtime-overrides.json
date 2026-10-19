@@ -1,19 +1,19 @@
 {
   "experiments/carnival/index.html": {
-    "sha256": "ef9bc7597c5e2706e192b61499a578c6394b87f20ea9c61296b10d07bc8a0db4",
-    "bytes": 7584
+    "bytes": 7676,
+    "sha256": "0343d2e54f5951f62478e2dc93973359cac880a9654fb3c376a8039b070ba7cb"
   },
   "experiments/carnival/navigation.js": {
-    "bytes": 9248,
-    "sha256": "04791be3cf3d78122ab5ba7beea622933218aab49f12844e3eae41d8ea49accd"
+    "bytes": 10201,
+    "sha256": "f94ffaf696888e9cea41847d67652f836a03d269208f8b2b20010c377cdc3312"
   },
   "experiments/carnival/horse-comparison.js": {
     "bytes": 6061,
     "sha256": "ef6086d32d8c87025ee53cc92cc0546413d968dadce02a03cb13560e23dccdb8"
   },
   "experiments/carnival/exit-sign.js": {
-    "bytes": 6502,
-    "sha256": "6d18db8b89d8ebb95ea62720b84e123896247377462eb69c2d35f447b770bac9"
+    "bytes": 6626,
+    "sha256": "14207b11f352b8e45f6e6e1085e2943909f2412857fd78ae44a0172c7adb7b6a"
   },
   "experiments/carnival/exit-sign.css": {
     "bytes": 4322,
@@ -40,8 +40,8 @@
     "sha256": "ae19654d170fb3ce530117369dc3dd6d0aa2e4f8d7b5f8a8c38edcd3af376abc"
   },
   "experiments/carnival/locations.js": {
-    "bytes": 2568,
-    "sha256": "bb101cdd8d5f1c87c221d320629f87ac855195624e33f66c197b6f4228b01b3d"
+    "bytes": 3241,
+    "sha256": "c44b4d6b73e47841a3d13ed979194faacd0a5d020c6d16aca9fb0c9bfe918267"
   },
   "experiments/carnival/animal-comparison.js": {
     "bytes": 7983,
@@ -270,5 +270,21 @@
   "experiments/carnival/arm-review.html": {
     "sha256": "6649bc9fd330c2517dc33b3fdda18b5919da782f4058038ad9298340c29bc836",
     "bytes": 2772
+  },
+  "experiments/carnival/play-rooms.js": {
+    "bytes": 9844,
+    "sha256": "228d00f8e141bda072fe3d74e0dccb46b0f745863ee55b62430325155dc012ec"
+  },
+  "experiments/carnival/play-rooms.css": {
+    "bytes": 4970,
+    "sha256": "66fea7f7d4ae6c0769337103902fb8d6ebcc45a294025a212659c5e5bd14b2f5"
+  },
+  "experiments/carnival/locations/fun-house.png": {
+    "bytes": 2890869,
+    "sha256": "367cf7243a74bb615eff17b81667ad2a1a6ae9a8e2739090c9f4169467550fa1"
+  },
+  "experiments/carnival/locations/skee-ball.png": {
+    "bytes": 2338363,
+    "sha256": "1b815bd9325e4365c004bb2aabb58bc582a8fe7a44eca9805530c3b8e1f6f37d"
   }
 }

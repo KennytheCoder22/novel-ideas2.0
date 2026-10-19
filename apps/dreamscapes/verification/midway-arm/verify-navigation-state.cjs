@@ -15,6 +15,7 @@ async function clickEdge(p,edge){
   const sample=()=>{if(!watch)return;window.signSamples.push(sign.style.transform);requestAnimationFrame(sample);};sample();
   const source=edge.from==='midway'?document.querySelector('main'):document.querySelector(`[data-scene="${edge.from}"]`);
   const button=source.querySelector(edge.selector);if(!button)throw Error('Missing button '+JSON.stringify(edge));
+  if(button.hidden)source.querySelectorAll('.funhouse-mirror').forEach(mirror=>mirror.click());
   button.click();
  },edge);
  await p.waitForFunction(to=>(document.documentElement.dataset.location||'midway')===to&&!document.documentElement.dataset.travelling,edge.to,{timeout:90000});
@@ -39,8 +40,8 @@ function route(graph,from,to){
   const graph=await p.evaluate(()=>{
    const graph=[{from:'midway',to:'ferris-platform',selector:'.wheel'},{from:'midway',to:'tent-row',selector:'.tent'},{from:'midway',to:'rides-games',selector:'.entrance'}];
    for(const [from,scene] of Object.entries(CarnivalScenes)){
-    for(const e of scene.paths||[])graph.push({from,to:e.to,selector:`.location-path[data-to="${e.to}"]`});
-    for(const s of scene.signs||[]){const to=CarnivalSignDestinations[s.label];if(to&&to!==from&&CarnivalScenes[to])graph.push({from,to,selector:`.location-sign[data-sign="${s.label}"]`});}
+    for(const e of scene.paths||[])graph.push({from,to:e.to,selector:e.ui?`.room-route[data-to="${e.to}"]`:`.location-path[data-to="${e.to}"]`});
+    for(const s of scene.signs||[]){const to=s.to||CarnivalSignDestinations[s.label];if(to&&to!==from&&CarnivalScenes[to])graph.push({from,to,selector:`.location-sign[data-sign="${s.label}"]`});}
    }return graph;
   });
   await p.evaluate(()=>MidwayArmReview.seek(17.1));let current='midway',transitions=0;

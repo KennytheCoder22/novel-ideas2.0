@@ -17,7 +17,7 @@
   document.body.append(live);
   function mountSigns(id, plane) {
     for (const sign of definitions[id].signs || []) {
-      const to = window.CarnivalSignDestinations[sign.label];
+      const to = sign.to || window.CarnivalSignDestinations[sign.label];
       // A local heading is not an exit; an unbuilt destination is not a placeholder.
       if (!to || !definitions[to] || to === id) continue;
       const button = document.createElement('button');
@@ -57,13 +57,20 @@
       const button = document.createElement('button');
       button.className = 'location-path'; button.dataset.to = path.to;
       button.setAttribute('aria-label', 'Walk to ' + definitions[path.to].name);
-      const [left,top,width,height] = path.area;
-      Object.assign(button.style,{left:left+'%',top:top+'%',width:width+'%',height:height+'%'});
+      if(path.ui){
+        button.className='room-route room-route--'+path.ui;
+        button.textContent=path.label;button.hidden=!!path.unlock;
+        view.append(button);
+      }else{
+        const [left,top,width,height] = path.area;
+        Object.assign(button.style,{left:left+'%',top:top+'%',width:width+'%',height:height+'%'});
+        plane.append(button);
+      }
       button.addEventListener('click',()=>travel(path.to,button));
-      plane.append(button);
     }
     mountSigns(id,plane);
     const disposeExit = window.CarnivalExit.mount(plane, id);
+    const disposePlay = window.CarnivalPlay?.mount(view,plane,id) || (()=>{});
     const look = document.createElement('nav'); look.className = 'location-look';
     look.setAttribute('aria-label','Look around '+definition.name);
     let framing = definition.framing;
@@ -86,10 +93,24 @@
       }); look.append(button);
     }
     view.append(look); document.body.append(view);
+    let focusFrame;
+    const revealMirror=event=>{
+      const button=event.target;
+      if(!button.matches('.funhouse-mirror:focus-visible'))return;
+      cancelAnimationFrame(focusFrame);
+      focusFrame=requestAnimationFrame(()=>{
+        if(view.inert)return;
+        view.scrollLeft=0;view.scrollTop=0;
+        const overflow=plane.offsetWidth-innerWidth;
+        if(overflow>0)framing=Math.max(0,Math.min(1,(button.offsetLeft+button.offsetWidth/2-innerWidth/2)/overflow));
+        layout();
+      });
+    };
+    view.addEventListener('focusin',revealMirror);
     const revealExit = () => { framing = definition.framing; layout(); };
     plane.addEventListener('carnival-exit-focus', revealExit);
     addEventListener('resize',layout); layout();
-    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>{removeEventListener('resize',layout);plane.removeEventListener('carnival-exit-focus',revealExit);disposeExit();disposeCoaster();}};
+    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>{removeEventListener('resize',layout);plane.removeEventListener('carnival-exit-focus',revealExit);disposeExit();disposeCoaster();disposePlay();cancelAnimationFrame(focusFrame);view.removeEventListener('focusin',revealMirror);}};
     mounted.set(id,entry);
     return entry;
   }
