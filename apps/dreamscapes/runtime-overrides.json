@@ -256,8 +256,8 @@
     "sha256": "cf4bbc1229c8e03d7912d16a2acd77f9944ea5f2f08f03f83859f0e08fd387df"
   },
   "experiments/carnival/midway-arm.js": {
-    "sha256": "831482e5f21f3f3a1be5dbecb28b63b50cc4e3750177ba7a774708376dbff1a0",
-    "bytes": 11356
+    "sha256": "d2ced4b1db51a2d6f46b05f70e23d5d2f605ce5d421dc3be26b877872ab12db0",
+    "bytes": 16810
   },
   "experiments/carnival/scene.css": {
     "bytes": 2838,
@@ -266,5 +266,9 @@
   "experiments/carnival/midway-arm/right-arm-rigged.glb": {
     "sha256": "3ae43636ea745793821b57b278cc389859f0200f29876b29e70cd0e1685a2a61",
     "bytes": 13774016
+  },
+  "experiments/carnival/arm-review.html": {
+    "sha256": "6649bc9fd330c2517dc33b3fdda18b5919da782f4058038ad9298340c29bc836",
+    "bytes": 2772
   }
 }

@@ -1,0 +1,87 @@
+{
+  "delayRangeMs": [
+    8000,
+    12000
+  ],
+  "searchingUnchanged": true,
+  "layouts": [
+    {
+      "band": "kids",
+      "layout": "desktop",
+      "exitActivations": 8,
+      "cancel": true,
+      "revisit": true,
+      "reducedMotion": true,
+      "errors": []
+    },
+    {
+      "band": "kids",
+      "layout": "mobile",
+      "exitActivations": 8,
+      "cancel": true,
+      "revisit": true,
+      "reducedMotion": true,
+      "errors": []
+    },
+    {
+      "band": "pre-teens",
+      "layout": "desktop",
+      "exitActivations": 8,
+      "cancel": true,
+      "revisit": true,
+      "reducedMotion": true,
+      "errors": []
+    },
+    {
+      "band": "pre-teens",
+      "layout": "mobile",
+      "exitActivations": 8,
+      "cancel": true,
+      "revisit": true,
+      "reducedMotion": true,
+      "errors": []
+    },
+    {
+      "band": "teens",
+      "layout": "desktop",
+      "exitActivations": 8,
+      "cancel": true,
+      "revisit": true,
+      "reducedMotion": true,
+      "errors": []
+    },
+    {
+      "band": "teens",
+      "layout": "mobile",
+      "exitActivations": 8,
+      "cancel": true,
+      "revisit": true,
+      "reducedMotion": true,
+      "errors": []
+    },
+    {
+      "band": "adults",
+      "layout": "desktop",
+      "exitActivations": 8,
+      "cancel": true,
+      "revisit": true,
+      "reducedMotion": true,
+      "errors": []
+    },
+    {
+      "band": "adults",
+      "layout": "mobile",
+      "exitActivations": 8,
+      "cancel": true,
+      "revisit": true,
+      "reducedMotion": true,
+      "errors": []
+    }
+  ],
+  "contactMaxError": 0.000007184814234874922,
+  "maxJointStep": 4.1397568167579415,
+  "maxLengthDelta": 0.000004259491220182099,
+  "barrelOpeningOrigin": true,
+  "emergencePixelsBehindLip": true,
+  "failedLoadExit": true
+}

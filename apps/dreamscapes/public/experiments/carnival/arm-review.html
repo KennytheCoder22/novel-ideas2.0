@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Midway animation — local visual review</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#11151b;color:#f7e9cf;font:13px system-ui}body{display:flex;flex-direction:column}header{padding:9px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:7px;border-bottom:1px solid #54452f}strong{margin-right:8px}button{background:#283139;color:inherit;border:1px solid #78674b;border-radius:4px;padding:7px 10px;cursor:pointer}button:hover{background:#414843}button:focus-visible,input:focus-visible{outline:2px solid #f1c974}button:disabled{opacity:.4}label{display:flex;align-items:center;gap:6px}input{width:180px;accent-color:#e1bb7c}output{min-width:120px}iframe{flex:1;width:100%;min-height:0;border:0}a{color:#e1bb7c;margin-left:auto}@media(max-width:650px){header{gap:4px;padding:6px}strong{width:100%}button{padding:6px}input{width:120px}}
+</style>
+<header><strong>Midway · visual review</strong>
+<button id="play" disabled>Play from start</button><button id="revision" disabled>Play after searching</button>
+<button data-at="7.85" disabled>Idea</button><button data-at="11.5" disabled>Touch</button>
+<button data-at="13.26" disabled>Flick</button><button data-at="13.65" disabled>Fall</button>
+<button data-at="16.1" disabled>Retreat</button>
+<label>Time <input id="time" aria-label="Animation time" type="range" min="0" max="17.1" step=".01" value="0" disabled></label>
+<output id="status" aria-live="off">Loading arm…</output><a href="./index.html" target="_blank">Normal Midway</a>
+</header><iframe title="Revised Midway animation" src="./index.html?arm=review"></iframe>
+<script>
+const frame=document.querySelector('iframe'),slider=document.querySelector('#time'),status=document.querySelector('#status');
+let api,initialized=false;
+function update(){
+ api=frame.contentWindow.MidwayArmReview;
+ if(api?.state().ready){
+  if(!initialized){api.reset();initialized=true;document.querySelectorAll('button,input').forEach(e=>e.disabled=false);}
+  const state=api.state();if(state.active)slider.value=state.elapsed;
+  status.textContent=Number(slider.value).toFixed(2)+' s · '+state.phase;
+ }else if(api?.state().loadFailed)status.textContent='Arm unavailable · EXIT is active';
+ requestAnimationFrame(update);
+}
+document.querySelector('#play').onclick=()=>{slider.value=0;api.playFrom(0);};
+document.querySelector('#revision').onclick=()=>{slider.value=7.2;api.playFrom(7.2);};
+document.querySelectorAll('[data-at]').forEach(b=>b.onclick=()=>{slider.value=b.dataset.at;api.seek(Number(slider.value));});
+slider.oninput=()=>api.seek(Number(slider.value));requestAnimationFrame(update);
+</script></html>
