@@ -6,6 +6,15 @@
   "outputDirectory": "dist",
   "headers": [
     {
+      "source": "/carnival/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/experiments/carnival/(.*)",
       "headers": [
         {
@@ -13,6 +22,43 @@
           "value": "public, max-age=0, must-revalidate"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/carnival",
+      "destination": "/carnival/",
+      "permanent": true
+    },
+    {
+      "source": "/carnival/index.html",
+      "destination": "/carnival/",
+      "permanent": true
+    },
+    {
+      "source": "/experiments/carnival",
+      "destination": "/carnival/",
+      "permanent": true
+    },
+    {
+      "source": "/experiments/carnival/",
+      "destination": "/carnival/",
+      "permanent": true
+    },
+    {
+      "source": "/experiments/carnival/index.html",
+      "destination": "/carnival/",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/carnival/",
+      "destination": "/experiments/carnival/index.html"
+    },
+    {
+      "source": "/carnival/:path*",
+      "destination": "/experiments/carnival/:path*"
     }
   ]
 }
