@@ -219,12 +219,20 @@ if (plane && sign) {
   renderer.render(scene,camera);
  }
  function reset(){cancelAnimationFrame(raf);clearTimeout(delay);raf=delay=0;active=false;done=false;elapsed=0;host.style.visibility='hidden';sign.style.transform='';host.dataset.phase='waiting';}
+ // A knocked-over prop belongs to the scene, beyond the arm's animation visit.
+ // Navigation makes the source inert before it fades, so never stand it up here.
+ function leave(){
+  const knockedOver=elapsed>=timing.fall;
+  reset();
+  if(knockedOver){elapsed=END;done=true;signFall(END);host.dataset.phase='fallen';}
+ }
+
  function tick(now){if(!active)return;if(!visible()){last=now;raf=requestAnimationFrame(tick);return;}elapsed+=Math.min(.1,(now-last)/1000);last=now;pose(elapsed);if(elapsed<END)raf=requestAnimationFrame(tick);else{active=false;done=true;}}
  function begin(){delay=0;if(!visible()||reduced.matches||done||!armReady)return;active=true;last=performance.now();raf=requestAnimationFrame(tick);}
- function visit(){if(!visible()){if(view.inert||view.style.visibility==='hidden')reset();return;}if(armReady&&!delay&&!active&&!done&&!reduced.matches)delay=setTimeout(begin,8000+Math.random()*4000);}
+ function visit(){if(!visible()){if(view.inert||view.style.visibility==='hidden')leave();return;}if(armReady&&!delay&&!active&&!done&&!reduced.matches)delay=setTimeout(begin,8000+Math.random()*4000);}
  new MutationObserver(visit).observe(view,{attributes:true,attributeFilter:['inert','style']});
  document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(delay);delay=0;}else{last=performance.now();visit();}});
- reduced.addEventListener('change',()=>{reset();visit();});
+ reduced.addEventListener('change',()=>{leave();visit();});
  sign.addEventListener('click',()=>{cancelAnimationFrame(raf);clearTimeout(delay);active=false;host.style.visibility='hidden';});
  async function load(){
   try{

@@ -1,0 +1,194 @@
+{
+  "layouts": [
+    {
+      "layout": "desktop",
+      "band": "adults",
+      "scenes": 7,
+      "edges": [
+        {
+          "from": "midway",
+          "to": "ferris-platform",
+          "selector": ".wheel"
+        },
+        {
+          "from": "midway",
+          "to": "tent-row",
+          "selector": ".tent"
+        },
+        {
+          "from": "midway",
+          "to": "rides-games",
+          "selector": ".entrance"
+        },
+        {
+          "from": "midway",
+          "to": "rides-games",
+          "selector": ".location-sign[data-sign=\"RIDES & GAMES\"]"
+        },
+        {
+          "from": "ferris-platform",
+          "to": "midway",
+          "selector": ".location-path[data-to=\"midway\"]"
+        },
+        {
+          "from": "ferris-platform",
+          "to": "rides-games",
+          "selector": ".location-sign[data-sign=\"GAMES\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "midway",
+          "selector": ".location-path[data-to=\"midway\"]"
+        },
+        {
+          "from": "tent-row",
+          "to": "fortune-teller",
+          "selector": ".location-path[data-to=\"fortune-teller\"]"
+        },
+        {
+          "from": "tent-row",
+          "to": "behind-carnival",
+          "selector": ".location-path[data-to=\"behind-carnival\"]"
+        },
+        {
+          "from": "tent-row",
+          "to": "midway",
+          "selector": ".location-path[data-to=\"midway\"]"
+        },
+        {
+          "from": "fortune-teller",
+          "to": "tent-row",
+          "selector": ".location-path[data-to=\"tent-row\"]"
+        },
+        {
+          "from": "fortune-teller",
+          "to": "rides-games",
+          "selector": ".location-sign[data-sign=\"RIDES\"]"
+        },
+        {
+          "from": "fortune-teller",
+          "to": "rides-games",
+          "selector": ".location-sign[data-sign=\"GAMES\"]"
+        },
+        {
+          "from": "behind-carnival",
+          "to": "tent-row",
+          "selector": ".location-path[data-to=\"tent-row\"]"
+        },
+        {
+          "from": "behind-carnival",
+          "to": "forest-edge",
+          "selector": ".location-path[data-to=\"forest-edge\"]"
+        },
+        {
+          "from": "forest-edge",
+          "to": "behind-carnival",
+          "selector": ".location-path[data-to=\"behind-carnival\"]"
+        }
+      ],
+      "transitions": 37,
+      "fallenThroughout": true,
+      "noReplayOnReturn": true,
+      "reducedMotionPreserved": true,
+      "fallenExitKeyboard": true
+    },
+    {
+      "layout": "mobile",
+      "band": "kids",
+      "scenes": 7,
+      "edges": [
+        {
+          "from": "midway",
+          "to": "ferris-platform",
+          "selector": ".wheel"
+        },
+        {
+          "from": "midway",
+          "to": "tent-row",
+          "selector": ".tent"
+        },
+        {
+          "from": "midway",
+          "to": "rides-games",
+          "selector": ".entrance"
+        },
+        {
+          "from": "midway",
+          "to": "rides-games",
+          "selector": ".location-sign[data-sign=\"RIDES & GAMES\"]"
+        },
+        {
+          "from": "ferris-platform",
+          "to": "midway",
+          "selector": ".location-path[data-to=\"midway\"]"
+        },
+        {
+          "from": "ferris-platform",
+          "to": "rides-games",
+          "selector": ".location-sign[data-sign=\"GAMES\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "midway",
+          "selector": ".location-path[data-to=\"midway\"]"
+        },
+        {
+          "from": "tent-row",
+          "to": "fortune-teller",
+          "selector": ".location-path[data-to=\"fortune-teller\"]"
+        },
+        {
+          "from": "tent-row",
+          "to": "behind-carnival",
+          "selector": ".location-path[data-to=\"behind-carnival\"]"
+        },
+        {
+          "from": "tent-row",
+          "to": "midway",
+          "selector": ".location-path[data-to=\"midway\"]"
+        },
+        {
+          "from": "fortune-teller",
+          "to": "tent-row",
+          "selector": ".location-path[data-to=\"tent-row\"]"
+        },
+        {
+          "from": "fortune-teller",
+          "to": "rides-games",
+          "selector": ".location-sign[data-sign=\"RIDES\"]"
+        },
+        {
+          "from": "fortune-teller",
+          "to": "rides-games",
+          "selector": ".location-sign[data-sign=\"GAMES\"]"
+        },
+        {
+          "from": "behind-carnival",
+          "to": "tent-row",
+          "selector": ".location-path[data-to=\"tent-row\"]"
+        },
+        {
+          "from": "behind-carnival",
+          "to": "forest-edge",
+          "selector": ".location-path[data-to=\"forest-edge\"]"
+        },
+        {
+          "from": "forest-edge",
+          "to": "behind-carnival",
+          "selector": ".location-path[data-to=\"behind-carnival\"]"
+        }
+      ],
+      "transitions": 37,
+      "fallenThroughout": true,
+      "noReplayOnReturn": true,
+      "reducedMotionPreserved": true,
+      "fallenExitKeyboard": true
+    }
+  ],
+  "cases": [
+    "pre-contact cancellation remains upright and can replay",
+    "departure during fall settles and preserves sign",
+    "failed destination keeps fallen sign"
+  ],
+  "pageErrors": []
+}

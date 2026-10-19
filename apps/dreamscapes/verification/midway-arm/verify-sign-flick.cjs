@@ -93,12 +93,15 @@ async function seek(p,t){await p.evaluate(t=>MidwayArmReview.seek(t),t);}
     await pg.evaluate(()=>document.querySelector('main').style.opacity='1');
     await pg.waitForTimeout(80);assert.equal(await pg.evaluate(()=>armDelays.length),delays);
    }
+   const knockedOver=await pg.evaluate(()=>MidwayArmReview.rig().signAngle>0);
    await pg.evaluate(()=>CarnivalNavigation.go('Tent Row'));
    assert.equal(await pg.evaluate(()=>MidwayArmReview.state().active),false);
    assert.equal(await pg.locator('.midway-creature').evaluate(e=>e.style.visibility),'hidden');
-   await pg.evaluate(()=>CarnivalNavigation.go('Midway'));
-   assert.equal(await pg.evaluate(()=>MidwayArmReview.state().done),false);
-   assert.equal(await pg.locator('.composition .carnival-exit').evaluate(e=>e.style.transform),'');
+   await pg.locator('[data-scene="tent-row"] .location-path[data-to="midway"]').dispatchEvent('click');
+   await pg.waitForFunction(()=>document.documentElement.dataset.location==='midway'&&!document.documentElement.dataset.travelling);
+   assert.equal(await pg.evaluate(()=>MidwayArmReview.state().done),knockedOver);
+   const returnedSign=await pg.locator('.composition .carnival-exit').evaluate(e=>e.style.transform);
+   if(knockedOver)assert.match(returnedSign,/^rotate\(98\./);else assert.equal(returnedSign,'');
    assert.equal(await pg.locator('.midway-creature canvas').count(),1);
    await pg.emulateMedia({reducedMotion:'reduce'});await pg.evaluate(()=>MidwayArmReview.begin());
    assert.equal(await pg.evaluate(()=>MidwayArmReview.state().active),false);
