@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const NS = 'http://www.w3.org/2000/svg';
-  const DURATION = 9300, SPACING = 31;
+  const WAIT = 20000, DURATION = 9300, SPACING = 31;
   // Wheel contact follows the wooden running deck, below the service guardrail.
   const TRACK = 'M 944 350 C 922 300 873 222 807 180 C 761 147 715 130 665 130 C 596 128 543 149 493 182 C 419 231 376 280 312 319 C 258 350 211 370 174 381';
   function element(name, attributes = {}) {
@@ -100,7 +100,7 @@
         cars.forEach(car => car.setAttribute('opacity', 0));
         delete svg.dataset.nextDelay;
       }
-      function schedule(delay = 50000 + Math.random() * 20000) {
+      function schedule(delay = WAIT) {
         svg.dataset.coasterState = 'waiting';
         svg.dataset.nextDelay = String(Math.round(delay));
         timer = setTimeout(pass, delay);
@@ -122,7 +122,8 @@
         else {
           frame = null; started = null;
           cars.forEach(car => car.setAttribute('opacity', 0));
-          schedule(50000 + Math.random() * 20000 - DURATION);
+          // Wait a full 20 seconds after this pass finishes before starting another.
+          schedule();
         }
       }
       function sync() {
