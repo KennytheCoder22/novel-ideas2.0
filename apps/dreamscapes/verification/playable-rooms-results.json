@@ -1,0 +1,46 @@
+{
+  "layouts": [
+    {
+      "name": "desktop",
+      "band": "adults",
+      "funHouseEntrance": true,
+      "keyboardPanning": true,
+      "threeMirrors": true,
+      "onwardToTentRow": true,
+      "ridesSignToFerris": true,
+      "skeeBallSign": true,
+      "touchOrMouseAim": true,
+      "keyboardRoll": true,
+      "doubleActivationGuard": true,
+      "missScoresZero": true,
+      "leavingDuringRoll": true,
+      "roundPersists": true,
+      "nineBallRound": true,
+      "replay": true,
+      "reducedMotion": true,
+      "exit": true
+    },
+    {
+      "name": "mobile",
+      "band": "kids",
+      "funHouseEntrance": true,
+      "keyboardPanning": true,
+      "threeMirrors": true,
+      "onwardToTentRow": true,
+      "ridesSignToFerris": true,
+      "skeeBallSign": true,
+      "touchOrMouseAim": true,
+      "keyboardRoll": true,
+      "doubleActivationGuard": true,
+      "missScoresZero": true,
+      "leavingDuringRoll": true,
+      "roundPersists": true,
+      "nineBallRound": true,
+      "replay": true,
+      "reducedMotion": true,
+      "exit": true
+    }
+  ],
+  "pageErrors": [],
+  "failedRoomLoadCleanup": true
+}

@@ -1,0 +1,45 @@
+/* Foreground controls belong only to the two playable rooms. */
+.play-room-ui { position:absolute; inset:0; pointer-events:none; color:#f0d6a1; font-family:Georgia,serif; }
+.play-room-title { position:absolute; top:16px; left:50%; transform:translateX(-50%); text-align:center; padding:10px 24px; max-width:calc(100vw - 52px); box-sizing:border-box; background:#20120ee8; border:1px solid #aa773e; border-radius:3px; box-shadow:0 4px 20px #0008; white-space:nowrap; }
+.play-room-title h1 { margin:0; font-size:clamp(20px,2.5vw,30px); font-weight:normal; }
+.play-room-title p { margin:5px 0 0; font-size:13px; }
+.play-room-status { position:absolute; bottom:76px; left:50%; transform:translateX(-50%); max-width:min(620px,88vw); width:max-content; text-align:center; font-size:15px; line-height:1.45; padding:7px 12px; background:#20120ee8; border-radius:3px; }
+.play-room-status:empty { display:none; }
+.funhouse-mirror { position:absolute; padding:0; background:transparent; border:0; cursor:pointer; overflow:hidden; border-radius:22% 22% 3% 3%; touch-action:manipulation; }
+.funhouse-mirror canvas { display:block; width:100%; height:100%; opacity:0; transition:opacity .6s,filter .6s,transform .9s; pointer-events:none; }
+.funhouse-mirror.is-examined canvas { opacity:1; }
+.funhouse-mirror--tall.is-examined canvas { transform:scale(.88,1.3); filter:brightness(1.2) sepia(.15); }
+.funhouse-mirror--wide.is-examined canvas { transform:scale(1.3,.9); filter:brightness(.85) hue-rotate(12deg); }
+.funhouse-mirror--endless.is-examined canvas { transform:scale(1.7); filter:contrast(1.2) brightness(.78); }
+.funhouse-mirror:hover { box-shadow:inset 0 0 20px #f6c06b28; }
+.funhouse-mirror:focus-visible { outline:2px solid #ffe0a0; outline-offset:3px; }
+.room-route { position:absolute; z-index:9; bottom:18px; min-height:44px; padding:10px 16px; background:linear-gradient(135deg,#453021,#20150f); border:1px solid #bd8c4b; border-radius:3px; color:#f5d69a; font:16px Georgia,serif; cursor:pointer; box-shadow:0 2px 10px #0009; }
+.room-route--return { left:18px; }
+.room-route--onward { right:18px; }
+.room-route:focus-visible,.carnival-play-button:focus-visible { outline:3px solid #ffe0a0; outline-offset:3px; }
+.room-route[hidden],.carnival-play-button[hidden] { display:none; }
+.skee-game { pointer-events:auto; position:absolute; top:110px; bottom:100px; left:50%; transform:translateX(-50%); width:min(440px,calc(100vw - 32px)); display:grid; grid-template-rows:auto minmax(0,1fr) auto; justify-items:stretch; }
+.skee-scoreboard { display:flex; justify-content:space-between; padding:7px 16px; background:#24160fee; border:1px solid #9c713b; text-transform:uppercase; letter-spacing:.08em; font-size:15px; }
+.skee-board { display:block; width:100%; height:100%; min-height:0; filter:drop-shadow(0 10px 14px #000b); touch-action:manipulation; }
+.skee-controls { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:8px 16px; padding:9px 14px; background:#25170fee; border:1px solid #9c713b; }
+.skee-controls label { display:grid; grid-template-columns:auto 1fr; gap:8px; align-items:center; font-size:14px; }
+.skee-controls input { min-width:0; width:100%; min-height:30px; accent-color:#d5a75e; }
+.carnival-play-button { min-height:42px; border:1px solid #c79852; border-radius:3px; background:linear-gradient(#805328,#49301c); color:#ffe4ad; font:16px Georgia,serif; cursor:pointer; grid-column:1/-1; }
+.carnival-play-button:disabled { opacity:.6; cursor:default; }
+[data-scene="skee-ball"] .play-room-status { bottom:73px; font-size:13px; padding:4px 9px; }
+@media(max-width:600px) { .play-room-title { top:10px; padding:8px 12px; } .play-room-title p { font-size:11px; } .skee-game { top:91px; bottom:113px; } .room-route { bottom:15px; padding:9px 12px; font-size:14px; } .play-room-status { bottom:72px; font-size:13px; } }
+@media(max-height:620px) and (min-width:601px) { .play-room-title { left:18px; top:18px; transform:none; max-width:250px; white-space:normal; } .skee-game { top:12px; bottom:72px; width:350px; } [data-scene="skee-ball"] .play-room-status { bottom:16px; } }
+@media(prefers-reduced-motion:reduce) { .funhouse-mirror canvas { transition:none; } }
+
+[data-scene="fun-house"] .location-look { bottom:74px; }
+[data-scene="fun-house"] .play-room-status { bottom:130px; }
+[data-scene="skee-ball"] .location-look { display:none; }
+
+.skee-board .is-hit { fill:#f4cf83; stroke:#fff0be; }
+html[data-motion="still"] .funhouse-mirror canvas { transition:none; }
+
+.room-route { bottom:35px; }
+[data-scene="fun-house"] .location-look { bottom:91px; }
+[data-scene="fun-house"] .play-room-status { bottom:147px; }
+@media(max-width:600px) { .skee-game { bottom:139px; } [data-scene="skee-ball"] .play-room-status { bottom:95px; } }
+@media(max-height:620px) and (min-width:601px) { .play-room-title { max-width:180px; } [data-scene="skee-ball"] .play-room-status { left:auto; right:18px; transform:none; max-width:calc(100vw - 210px); } }

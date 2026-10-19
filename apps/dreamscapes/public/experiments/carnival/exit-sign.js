@@ -6,6 +6,8 @@
   const placements = {
     'midway':         {wide:[.105,.89,.22], cropped:[.105,.89,.22]},
     'ferris-platform':{wide:[.332,1.025,.17], cropped:[.65,.915,.18], cropFeet:true},
+    'fun-house': {wide:[.91,.83,.10],cropped:[.91,.83,.10]},
+    'skee-ball': {wide:[.91,.98,.075],cropped:[.91,.98,.075]},
     'tent-row':       {wide:[.13,.92,.20], cropped:[.62,.81,.17],
       // Source-space clearance between the near post and the barrel's left edge.
       // Hiding the frame behind those baked-in props also removes its hit area.

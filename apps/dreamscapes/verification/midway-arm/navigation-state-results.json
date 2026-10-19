@@ -3,7 +3,7 @@
     {
       "layout": "desktop",
       "band": "adults",
-      "scenes": 7,
+      "scenes": 9,
       "edges": [
         {
           "from": "midway",
@@ -39,6 +39,51 @@
           "from": "rides-games",
           "to": "midway",
           "selector": ".location-path[data-to=\"midway\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "fun-house",
+          "selector": ".location-path[data-to=\"fun-house\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "skee-ball",
+          "selector": ".location-path[data-to=\"skee-ball\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "skee-ball",
+          "selector": ".location-sign[data-sign=\"GAMES\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "ferris-platform",
+          "selector": ".location-sign[data-sign=\"RIDES\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "fun-house",
+          "selector": ".location-sign[data-sign=\"FUN HOUSE\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "skee-ball",
+          "selector": ".location-sign[data-sign=\"SKEE BALL\"]"
+        },
+        {
+          "from": "fun-house",
+          "to": "rides-games",
+          "selector": ".room-route[data-to=\"rides-games\"]"
+        },
+        {
+          "from": "fun-house",
+          "to": "tent-row",
+          "selector": ".room-route[data-to=\"tent-row\"]"
+        },
+        {
+          "from": "skee-ball",
+          "to": "rides-games",
+          "selector": ".room-route[data-to=\"rides-games\"]"
         },
         {
           "from": "tent-row",
@@ -86,7 +131,7 @@
           "selector": ".location-path[data-to=\"behind-carnival\"]"
         }
       ],
-      "transitions": 37,
+      "transitions": 58,
       "fallenThroughout": true,
       "noReplayOnReturn": true,
       "reducedMotionPreserved": true,
@@ -95,7 +140,7 @@
     {
       "layout": "mobile",
       "band": "kids",
-      "scenes": 7,
+      "scenes": 9,
       "edges": [
         {
           "from": "midway",
@@ -131,6 +176,51 @@
           "from": "rides-games",
           "to": "midway",
           "selector": ".location-path[data-to=\"midway\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "fun-house",
+          "selector": ".location-path[data-to=\"fun-house\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "skee-ball",
+          "selector": ".location-path[data-to=\"skee-ball\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "skee-ball",
+          "selector": ".location-sign[data-sign=\"GAMES\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "ferris-platform",
+          "selector": ".location-sign[data-sign=\"RIDES\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "fun-house",
+          "selector": ".location-sign[data-sign=\"FUN HOUSE\"]"
+        },
+        {
+          "from": "rides-games",
+          "to": "skee-ball",
+          "selector": ".location-sign[data-sign=\"SKEE BALL\"]"
+        },
+        {
+          "from": "fun-house",
+          "to": "rides-games",
+          "selector": ".room-route[data-to=\"rides-games\"]"
+        },
+        {
+          "from": "fun-house",
+          "to": "tent-row",
+          "selector": ".room-route[data-to=\"tent-row\"]"
+        },
+        {
+          "from": "skee-ball",
+          "to": "rides-games",
+          "selector": ".room-route[data-to=\"rides-games\"]"
         },
         {
           "from": "tent-row",
@@ -178,7 +268,7 @@
           "selector": ".location-path[data-to=\"behind-carnival\"]"
         }
       ],
-      "transitions": 37,
+      "transitions": 58,
       "fallenThroughout": true,
       "noReplayOnReturn": true,
       "reducedMotionPreserved": true,
