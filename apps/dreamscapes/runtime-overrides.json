@@ -256,8 +256,8 @@
     "sha256": "cf4bbc1229c8e03d7912d16a2acd77f9944ea5f2f08f03f83859f0e08fd387df"
   },
   "experiments/carnival/midway-arm.js": {
-    "sha256": "d2ced4b1db51a2d6f46b05f70e23d5d2f605ce5d421dc3be26b877872ab12db0",
-    "bytes": 16810
+    "sha256": "a90a2e6bb258eb9c1ac8e7086733c1301c3eefe3534dae5f9b344a6f6ed303d4",
+    "bytes": 17132
   },
   "experiments/carnival/scene.css": {
     "bytes": 2838,
