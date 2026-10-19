@@ -1,0 +1,31 @@
+{
+  "sourceAndRuntimeBytesIdentical": true,
+  "sha256": "3ae43636ea745793821b57b278cc389859f0200f29876b29e70cd0e1685a2a61",
+  "triangles": 216508,
+  "vertices": 119029,
+  "bones": 22,
+  "fingerChains": 4,
+  "weightsFinite": true,
+  "weightSumMaxError": 1.1920928955078125e-07,
+  "zeroWeightVertices": 0,
+  "windingAgreesWithNormalsFraction": 0.9999722873981561,
+  "fbxMirrorDistances": {
+    "None": {
+      "sampleCount": 298,
+      "max": 0.4107861732955721,
+      "mean": 0.14189501957668482
+    },
+    "0": {
+      "sampleCount": 298,
+      "max": 1.506640458364876e-07,
+      "mean": 4.3837663072571434e-08
+    },
+    "2": {
+      "sampleCount": 298,
+      "max": 0.6699389070457978,
+      "mean": 0.3765152792223753
+    }
+  },
+  "embeddedImages": 3,
+  "animationsAddedToSource": 0
+}

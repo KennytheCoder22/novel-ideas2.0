@@ -4,7 +4,7 @@
   // Each pose is a ground anchor [centre x, feet y, height] in scene fractions.
   // Portrait crops have their own composition; neither side nor scale is shared.
   const placements = {
-    'midway':         {wide:[.105,.89,.22], cropped:[.68,.90,.20]},
+    'midway':         {wide:[.105,.89,.22], cropped:[.105,.89,.22]},
     'ferris-platform':{wide:[.332,1.025,.17], cropped:[.65,.915,.18], cropFeet:true},
     'tent-row':       {wide:[.13,.92,.20], cropped:[.62,.81,.17],
       // Source-space clearance between the near post and the barrel's left edge.
@@ -72,7 +72,7 @@
           signHeight = Math.min(signHeight, Math.max(44, (innerWidth - look.offsetWidth) / 2 - 20) * 1402 / 1122);
         if (!prop.classList.contains('art-unavailable')) prop.style.height = signHeight + 'px';
         const signWidth = prop.offsetWidth, boxHeight = prop.offsetHeight;
-        const framing = scene === 'midway' ? (innerWidth / innerHeight < 1.5 ? .67 : .5)
+        const framing = scene === 'midway' ? (innerWidth / innerHeight < 1.5 ? 0 : .5)
           : window.CarnivalScenes[scene].framing;
         const entryLeft = Math.max(0, width - innerWidth) * framing;
         // Fit the entry camera on resize, never chase its position while panning.

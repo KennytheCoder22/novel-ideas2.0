@@ -1,0 +1,26 @@
+{
+  "Meshy_AI_3D_Alien_Arm_1019000209_texture.fbx": {
+    "bytes": 14528300,
+    "sha256": "c09dfc64950ce466241df684bb15aa12abfe4781d349c36e43a11959020b6fb7"
+  },
+  "Meshy_AI_3D_Alien_Arm_1019000209_texture.png": {
+    "bytes": 5183419,
+    "sha256": "dc7a4e0eb84591e894fa5e8756105ca09d3f0405e259ee02d14709a00b0e6ca9"
+  },
+  "Meshy_AI_3D_Alien_Arm_1019000209_texture_metallic.png": {
+    "bytes": 43121,
+    "sha256": "f7f98a3351fc3583d2af94f855e2317396988bb074b57c18cc19d3b3cc439d12"
+  },
+  "Meshy_AI_3D_Alien_Arm_1019000209_texture_normal.png": {
+    "bytes": 4096593,
+    "sha256": "213a7b41bec71081e32434ae42d3c3437d51191ddec95494fe2e351f552d571d"
+  },
+  "Meshy_AI_3D_Alien_Arm_1019000209_texture_roughness.png": {
+    "bytes": 1030674,
+    "sha256": "6c11c47624fd5e6e4012e1b8e6e7f1f5a7174f0f64a16bdd9f7880516305f8ee"
+  },
+  "3D_Alien_Right_Arm_Rigged.glb": {
+    "bytes": 13774016,
+    "sha256": "3ae43636ea745793821b57b278cc389859f0200f29876b29e70cd0e1685a2a61"
+  }
+}

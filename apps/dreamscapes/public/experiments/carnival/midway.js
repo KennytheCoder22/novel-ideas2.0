@@ -213,7 +213,7 @@
     const sceneWidth = scene.getBoundingClientRect().width;
     const overflow = Math.max(0, sceneWidth - innerWidth);
     // CSS starts right-biased at 67% of the crop range. Pan the whole scene.
-    const delta = {start:0,left:.67,center:.17,right:-.33}[direction] * overflow;
+    const delta = {start:0,left:0,center:-.5,right:-1}[direction] * overflow;
     scene.style.setProperty('--pan', `${delta}px`);
   }
   scene.addEventListener('carnival-exit-focus', () => pan('start'));
