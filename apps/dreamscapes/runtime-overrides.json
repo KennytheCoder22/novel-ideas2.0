@@ -1,7 +1,7 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 7676,
-    "sha256": "0343d2e54f5951f62478e2dc93973359cac880a9654fb3c376a8039b070ba7cb"
+    "bytes": 7774,
+    "sha256": "8ae4a5e7e273936dbd3b40fdfbc8c0c69e5d68a2307fc94aa9dcb21be477ac6a"
   },
   "experiments/carnival/navigation.js": {
     "bytes": 10201,
@@ -40,8 +40,8 @@
     "sha256": "ae19654d170fb3ce530117369dc3dd6d0aa2e4f8d7b5f8a8c38edcd3af376abc"
   },
   "experiments/carnival/locations.js": {
-    "bytes": 3241,
-    "sha256": "c44b4d6b73e47841a3d13ed979194faacd0a5d020c6d16aca9fb0c9bfe918267"
+    "bytes": 3246,
+    "sha256": "6e0bd934e40b616dff71b3bbf88c12181db3c9392d15ed0d7f9c6ee8757832e9"
   },
   "experiments/carnival/animal-comparison.js": {
     "bytes": 7983,
@@ -272,8 +272,8 @@
     "bytes": 2772
   },
   "experiments/carnival/play-rooms.js": {
-    "bytes": 11132,
-    "sha256": "61a0bee46cdcb23cf16340e6cf453d883f3e395469d04b29a1540ddffc26cdd5"
+    "bytes": 2915,
+    "sha256": "92efd9c142b1fd8cd4e03e1871ce895d4f42bd663b1cb9dc3daa6e945604b650"
   },
   "experiments/carnival/play-rooms.css": {
     "bytes": 6626,
@@ -286,5 +286,21 @@
   "experiments/carnival/locations/skee-ball.png": {
     "bytes": 2338363,
     "sha256": "1b815bd9325e4365c004bb2aabb58bc582a8fe7a44eca9805530c3b8e1f6f37d"
+  },
+  "experiments/carnival/skee-ball-art.js": {
+    "bytes": 18547,
+    "sha256": "e4fbc807cf75e856479ca59d2cdc4e04c80139fadf7623122b734b4b2268dd19"
+  },
+  "experiments/carnival/skee-ball-art.css": {
+    "bytes": 2253,
+    "sha256": "3806033027a03cf9f32bf79e7452d5a4767fd79e733d5dba66fa94bfce82203e"
+  },
+  "experiments/carnival/skee-ball/approved-alley.png": {
+    "bytes": 2298003,
+    "sha256": "2d54822360a3329f1542853c2bf0b295f5c78e6a903f35d8497c4ab82b0c555b"
+  },
+  "experiments/carnival/skee-ball/brass-reference.png": {
+    "bytes": 1974201,
+    "sha256": "d20097cbc71ddf6b1a5951f813e08529bcbdb7548629b642026c60dd8f0c3fde"
   }
 }

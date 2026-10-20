@@ -1,0 +1,22 @@
+/* Image and every moving part use the same 1672 x 941 source coordinate system. */
+.skee-art-scene { --skee-picture-height:min(calc(100vw * 941 / 1672),calc(100svh - 160px)); background:#090705; }
+.skee-art-scene .location-plane { width:calc(var(--skee-picture-height) * 1672 / 941)!important; height:var(--skee-picture-height)!important; left:50%!important; top:50%!important; transform:translate(-50%,-50%); }
+.skee-art-scene .play-room-title { display:none; }
+.skee-art-game,.skee-art-overlay,.skee-brass-canvas { position:absolute; inset:0; width:100%; height:100%; }
+.skee-art-overlay,.skee-brass-canvas { pointer-events:none; }
+.skee-art-game { pointer-events:none; }
+.skee-brass-angle,.skee-brass-launch { position:absolute; background:transparent; border:0; pointer-events:auto; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; min-width:44px; min-height:44px; border-radius:8px; }
+.skee-brass-angle { left:26.02%; top:77.58%; width:14.95%; height:19.13%; }
+.skee-brass-launch { left:51.73%; top:83.42%; width:15.55%; height:14.35%; }
+.skee-brass-angle:active,.skee-brass-launch:active { cursor:grabbing; }
+.skee-brass-angle:focus-visible,.skee-brass-launch:focus-visible { outline:2px solid #ffe2a0; outline-offset:2px; }
+.skee-brass-angle[aria-disabled="true"],.skee-brass-launch[aria-disabled="true"] { cursor:default; }
+.skee-art-scene .play-room-status { top:calc(50% + var(--skee-picture-height) / 2 + 8px); bottom:auto; max-width:min(540px,calc(100vw - 36px)); padding:4px 8px; font-size:13px; }
+.skee-art-replay { pointer-events:auto; position:absolute; top:calc(50% + var(--skee-picture-height) / 2 + 40px); bottom:auto; left:50%; transform:translateX(-50%); padding:8px 20px; min-height:44px; }
+@media(max-width:600px) { .skee-art-scene { --skee-picture-height:min(calc(100vw * 941 / 1172),calc(100svh - 160px)); } }
+@media(max-height:550px) { .skee-art-scene .play-room-status { max-width:calc(100vw - 360px); } }
+@media(max-height:550px) and (min-width:601px) {
+ .skee-art-scene { --skee-picture-height:min(calc(100vw * 941 / 1672),calc(100svh - 80px)); }
+ .skee-art-scene .play-room-status { top:auto; bottom:8px; }
+ .skee-art-replay { top:auto; bottom:14px; left:auto; right:18px; transform:none; }
+}

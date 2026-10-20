@@ -1,0 +1,84 @@
+{
+  "layouts": [
+    {
+      "name": "desktop",
+      "sharedDimensionalGeometry": true,
+      "fixedSpindles": true,
+      "pointerAngle": true,
+      "pullRelease": true,
+      "springReturn": true,
+      "rampAndFlight": true,
+      "allTargetScores": [
+        100,
+        100,
+        50,
+        40,
+        30,
+        20,
+        10,
+        0
+      ],
+      "keyboard": true,
+      "cancelWithoutShot": true,
+      "reducedMotion": true,
+      "completeRoundReplay": true,
+      "alignedImage": true,
+      "resizeAndDeparture": true
+    },
+    {
+      "name": "phone",
+      "sharedDimensionalGeometry": true,
+      "fixedSpindles": true,
+      "pointerAngle": true,
+      "pullRelease": true,
+      "springReturn": true,
+      "rampAndFlight": true,
+      "allTargetScores": [
+        100,
+        100,
+        50,
+        40,
+        30,
+        20,
+        10,
+        0
+      ],
+      "keyboard": true,
+      "cancelWithoutShot": true,
+      "reducedMotion": true,
+      "completeRoundReplay": true,
+      "alignedImage": true,
+      "resizeAndDeparture": false
+    },
+    {
+      "name": "landscape",
+      "sharedDimensionalGeometry": true,
+      "fixedSpindles": true,
+      "pointerAngle": true,
+      "pullRelease": true,
+      "springReturn": true,
+      "rampAndFlight": true,
+      "allTargetScores": [
+        100,
+        100,
+        50,
+        40,
+        30,
+        20,
+        10,
+        0
+      ],
+      "keyboard": true,
+      "cancelWithoutShot": true,
+      "reducedMotion": true,
+      "completeRoundReplay": true,
+      "alignedImage": true,
+      "resizeAndDeparture": false
+    }
+  ],
+  "assets": {
+    "approved-alley.png": "2d54822360a3329f1542853c2bf0b295f5c78e6a903f35d8497c4ab82b0c555b",
+    "brass-reference.png": "d20097cbc71ddf6b1a5951f813e08529bcbdb7548629b642026c60dd8f0c3fde"
+  },
+  "pageErrors": []
+}
