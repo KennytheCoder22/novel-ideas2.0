@@ -288,8 +288,8 @@
     "sha256": "1b815bd9325e4365c004bb2aabb58bc582a8fe7a44eca9805530c3b8e1f6f37d"
   },
   "experiments/carnival/skee-ball-art.js": {
-    "bytes": 18547,
-    "sha256": "e4fbc807cf75e856479ca59d2cdc4e04c80139fadf7623122b734b4b2268dd19"
+    "bytes": 18878,
+    "sha256": "ac8ee7d09a8793704c323341ad1f8b59fbce9e1fac6399c4a39759a9a36e80d1"
   },
   "experiments/carnival/skee-ball-art.css": {
     "bytes": 2253,
@@ -302,5 +302,9 @@
   "experiments/carnival/skee-ball/brass-reference.png": {
     "bytes": 1974201,
     "sha256": "d20097cbc71ddf6b1a5951f813e08529bcbdb7548629b642026c60dd8f0c3fde"
+  },
+  "experiments/carnival/skee-ball/separated-cups.png": {
+    "bytes": 2145841,
+    "sha256": "c0a49bf512f9a6f689b7bdf8629741f4794d4bbb33fe9ad9e488c5910a3a8f47"
   }
 }

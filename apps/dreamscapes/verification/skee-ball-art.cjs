@@ -44,7 +44,7 @@ async function settled(p){await p.waitForFunction(()=>!SkeeBallArtReview.state()
   await launcher.focus();await p.keyboard.press('ArrowUp');await p.keyboard.press('ArrowUp');assert((await state(p)).pull>.09);await p.keyboard.press('Escape');assert.equal((await state(p)).pull,0);assert.equal((await state(p)).balls,8);
   await p.emulateMedia({reducedMotion:'reduce'});
   const scores=[];
-  for(const [x,y,expected] of [[709,269,100],[964,269,100],[836,280,50],[835,317,40],[835,351,30],[835,386,20],[750,410,10],[1080,258,0]]){
+  for(const [x,y,expected] of [[709,269,100],[964,269,100],[836,280,50],[835,317,40],[835,357,30],[835,397,20],[750,410,10],[1080,258,0]]){
    const result=await p.evaluate(({x,y})=>{const power=(464-y)/206,pull=Math.sqrt(power),angle=Math.atan((x-835)/(80+270*power))*180/Math.PI;const before=SkeeBallArtReview.state();SkeeBallArtReview.setAngle(angle);SkeeBallArtReview.setPull(pull);SkeeBallArtReview.shoot();return SkeeBallArtReview.state().total-before.total;},{x,y});
    assert.equal(result,expected,`${name} target ${expected}`);scores.push(result);
   }

@@ -6,7 +6,7 @@
  const cups=[
   {x:709,y:269,rx:27,ry:13,points:100}, {x:964,y:269,rx:27,ry:13,points:100},
   {x:836,y:280,rx:29,ry:14,points:50}, {x:835,y:317,rx:35,ry:15,points:40},
-  {x:835,y:351,rx:38,ry:15,points:30}, {x:835,y:386,rx:41,ry:17,points:20},
+  {x:835,y:357,rx:38,ry:13,points:30}, {x:835,y:397,rx:43,ry:9,points:20},
   {x:835,y:378,rx:135,ry:66,points:10}
  ];
  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
@@ -39,6 +39,10 @@
   const instructions=document.createElement('p');instructions.id='skee-brass-help';instructions.textContent='Angle paddle: drag sideways or use arrow keys. Launch paddle: pull toward you and release. Keyboard: hold Space or Enter to draw back, then release to roll. Arrow keys adjust the pull; Enter releases it. Escape cancels.';accessible.append(instructions);
   const svg=node('svg',{class:'skee-art-overlay',viewBox:`0 0 ${W} ${H}`,'aria-hidden':'true'},game);
   const defs=node('defs',{},svg);
+  // Restrict the user-requested cup correction to this small source-image area.
+  const cupClip=node('clipPath',{id:'skee-cup-correction'},defs);
+  node('rect',{x:780,y:331,width:115,height:108},cupClip);
+  node('image',{href:'./skee-ball/separated-cups.png',x:0,y:0,width:W,height:H,'clip-path':'url(#skee-cup-correction)'},svg);
   const backing=node('pattern',{id:'skee-score-texture',patternUnits:'userSpaceOnUse',width:8,height:8},defs);
   node('image',{href:'./skee-ball/approved-alley.png',x:-780,y:-133,width:W,height:H},backing);
   const ballLight=node('radialGradient',{id:'skee-ball-light',cx:'.28',cy:'.23',r:'.75'},defs);
