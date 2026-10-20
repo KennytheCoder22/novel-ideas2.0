@@ -38,23 +38,27 @@ async function visibleClick(p,selector){
   await p.locator('[data-scene="ferris-platform"] .location-path[data-to="midway"]').dispatchEvent('click');await arrived(p,'midway');
   await p.locator('.entrance').click();await arrived(p,'rides-games');
   await visibleClick(p,'[data-scene="rides-games"] .location-sign[data-sign="SKEE BALL"]');await arrived(p,'skee-ball');
-  const cup=await p.locator('.skee-board').evaluate(svg=>{const p=new DOMPoint(151,64).matrixTransform(svg.getScreenCTM());return{x:p.x,y:p.y}});
-  if(name==='mobile')await p.touchscreen.tap(cup.x,cup.y);else await p.mouse.click(cup.x,cup.y);
-  const roll=p.getByRole('button',{name:'Roll ball',exact:true});await roll.focus();await p.keyboard.press('Enter');assert.equal(await roll.isDisabled(),true);await p.keyboard.press('Enter');
+  const aim=p.getByRole('slider',{name:'Throw angle',exact:true}),roll=p.locator('.skee-plunger');
+  assert.equal(await p.locator('.skee-aim').count(),0);
+  const shoot=async(value=0)=>{await aim.fill(String(value));const r=await roll.boundingBox();const x=r.x+r.width/2,y=r.y+20;
+   if(name==='mobile'){const c=await context.newCDPSession(p);await c.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await c.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+80}]});await c.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await c.detach();}
+   else {await p.mouse.move(x,y);await p.mouse.down();await p.mouse.move(x,y+80);await p.mouse.up();}
+  };
+  await shoot(-50);assert.equal(await roll.isDisabled(),true);await roll.dispatchEvent('click');
   await p.waitForFunction(()=>document.querySelector('[aria-label="Score"]').textContent==='Score 100');
+  assert.equal(await aim.inputValue(),'0');assert.equal(await roll.evaluate(e=>e.style.getPropertyValue('--pull')),'0px');
   assert.equal(await p.getByLabel('Balls remaining',{exact:true}).textContent(),'8 balls left');
-  await p.getByRole('slider',{name:'Aim',exact:true}).fill('100');await p.getByRole('slider',{name:'Power',exact:true}).fill('100');
-  await roll.click();await p.waitForFunction(()=>document.querySelector('[aria-label="Balls remaining"]').textContent==='7 balls left');assert.equal(await p.getByLabel('Score',{exact:true}).textContent(),'Score 100');
-  await p.getByRole('slider',{name:'Aim',exact:true}).fill('0');await p.getByRole('slider',{name:'Power',exact:true}).fill('88');await roll.click();
+  await shoot(100);await p.waitForFunction(()=>document.querySelector('[aria-label="Balls remaining"]').textContent==='7 balls left');assert.equal(await p.getByLabel('Score',{exact:true}).textContent(),'Score 100');
+  await shoot(-50);
   await p.locator('[data-scene="skee-ball"] .room-route--return').click();await arrived(p,'rides-games');
   await visibleClick(p,'[data-scene="rides-games"] .location-path[data-to="skee-ball"]');await arrived(p,'skee-ball');
-  assert.equal(await p.getByLabel('Score',{exact:true}).textContent(),'Score 150');assert.equal(await p.getByLabel('Balls remaining',{exact:true}).textContent(),'6 balls left');
-  await p.emulateMedia({reducedMotion:'reduce'});await p.getByRole('slider',{name:'Aim',exact:true}).fill('-50');await p.getByRole('slider',{name:'Power',exact:true}).fill('100');
-  for(let i=0;i<6;i++)await roll.click();assert.equal(await p.getByLabel('Score',{exact:true}).textContent(),'Score 750');assert.equal(await roll.isDisabled(),true);
+  assert.equal(await p.getByLabel('Score',{exact:true}).textContent(),'Score 200');assert.equal(await p.getByLabel('Balls remaining',{exact:true}).textContent(),'6 balls left');
+  await p.emulateMedia({reducedMotion:'reduce'});
+  for(let i=0;i<6;i++)await shoot(-50);assert.equal(await p.getByLabel('Score',{exact:true}).textContent(),'Score 800');assert.equal(await roll.isDisabled(),true);
   await p.screenshot({path:path.join(out,'skee-ball-'+name+'.png')});
   await p.getByRole('button',{name:'Play again',exact:true}).focus();await p.keyboard.press('Enter');assert.equal(await p.getByLabel('Score',{exact:true}).textContent(),'Score 0');assert.equal(await p.getByLabel('Balls remaining',{exact:true}).textContent(),'9 balls left');
   const exit=p.locator('[data-scene="skee-ball"] .carnival-exit');await exit.focus();await p.keyboard.press('Enter');await p.waitForURL(base+'/');
-  report.layouts.push({name,band,funHouseEntrance:true,keyboardPanning:true,threeMirrors:true,onwardToTentRow:true,ridesSignToFerris:true,skeeBallSign:true,touchOrMouseAim:true,keyboardRoll:true,doubleActivationGuard:true,missScoresZero:true,leavingDuringRoll:true,roundPersists:true,nineBallRound:true,replay:true,reducedMotion:true,exit:true});
+  report.layouts.push({name,band,funHouseEntrance:true,keyboardPanning:true,threeMirrors:true,onwardToTentRow:true,ridesSignToFerris:true,skeeBallSign:true,touchOrMousePull:true,resetAfterThrow:true,doubleActivationGuard:true,missScoresZero:true,leavingDuringRoll:true,roundPersists:true,nineBallRound:true,replay:true,reducedMotion:true,exit:true});
   await context.close();console.log('PASS '+name);
  }
  const p=await browser.newPage();await p.route('**/locations/fun-house.png',r=>r.abort());
