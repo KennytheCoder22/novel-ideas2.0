@@ -20,3 +20,5 @@
  .skee-art-scene .play-room-status { top:auto; bottom:8px; }
  .skee-art-replay { top:auto; bottom:14px; left:auto; right:18px; transform:none; }
 }
+
+.skee-clown-canvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }

@@ -39,6 +39,8 @@
   const instructions=document.createElement('p');instructions.id='skee-brass-help';instructions.textContent='Angle paddle: drag sideways or use arrow keys. Launch paddle: pull toward you and release. Keyboard: hold Space or Enter to draw back, then release to roll. Arrow keys adjust the pull; Enter releases it. Escape cancels.';accessible.append(instructions);
   const svg=node('svg',{class:'skee-art-overlay',viewBox:`0 0 ${W} ${H}`,'aria-hidden':'true'},game);
   const defs=node('defs',{},svg);
+  const shelfClip=node('clipPath',{id:'skee-clown-shelf-clip'},defs);node('rect',{x:325,y:264,width:110,height:151},shelfClip);
+  const shelfPatch=node('image',{href:'./skee-ball/empty-clown-shelf.png',x:0,y:0,width:W,height:H,'clip-path':'url(#skee-clown-shelf-clip)',visibility:'hidden'},svg);
   // Restrict the user-requested cup correction to this small source-image area.
   const cupClip=node('clipPath',{id:'skee-cup-correction'},defs);
   node('rect',{x:780,y:331,width:115,height:108},cupClip);
@@ -60,7 +62,8 @@
   const aim=control('Angle','skee-brass-angle',-35,35),launcher=control('Pull and release','skee-brass-launch',0,100);
   const replay=document.createElement('button');replay.className='carnival-play-button skee-art-replay';replay.textContent='Play again';replay.hidden=true;ui.append(replay);
   let balls=9,total=0,pending=null,frame=0,disposed=false,angle=0,pull=0,drag=null,chargeFrame=0,keyStart=null,spring=null;
-  let renderBrass=()=>{},disposeBrass=()=>{};
+  let renderBrass=()=>{},disposeBrass=()=>{},clown=null;
+  import('./skee-ball-clown.js').then(({mountClown})=>{if(disposed)return;return mountClown({game,plane,isActive:()=>!view.inert&&!document.hidden,reduced,onReady:()=>{if(!disposed){shelfPatch.setAttribute('visibility','visible');game.dataset.clownReady='true';}}});}).then(controller=>{if(!controller)return;if(disposed){controller.dispose();return;}clown=controller;if(balls===0)clown.complete();}).catch(error=>{if(!disposed){game.dataset.clownReady='failed';console.error('Skee Ball shelf clown unavailable',error);}});
   const canPlay=()=>!disposed&&!pending&&balls>0&&!view.inert&&!document.hidden;
   function update(){
    score.textContent='Score '+total;remaining.textContent=balls+' ball'+(balls===1?'':'s')+' left';scoreText.textContent=String(total);ballsText.textContent=String(balls);scoreCover.setAttribute('width',Math.max(24,String(total).length*17+10));
@@ -74,7 +77,7 @@
   function setPull(value){spring=null;pull=clamp(value,0,1);update();renderBrass(angle,pull);}
   function releaseCapture(){const old=drag;drag=null;if(old?.element.hasPointerCapture(old.id))old.element.releasePointerCapture(old.id);}
   function cancelPull(animate=false){const from=pull;cancelAnimationFrame(chargeFrame);chargeFrame=0;keyStart=null;releaseCapture();pull=0;spring=animate&&!reduced.matches?{from,start:performance.now()}:null;update();renderBrass(angle,spring?from:0);if(spring&&!frame)frame=requestAnimationFrame(tick);}
-  function finish(){if(!pending)return;const shot=pending;pending=null;balls--;const points=shot.short?0:scoreAt(shot);total+=points;paintBall({x:835,y:684,groundY:690,r:14,phase:'rest'});update();status.textContent=balls?points+' points. '+balls+' ball'+(balls===1?'':'s')+' remaining.':'Round complete — '+total+' points. Play again or return to the carnival.';}
+  function finish(){if(!pending)return;const shot=pending;pending=null;balls--;const points=shot.short?0:scoreAt(shot);total+=points;if(balls===0)clown?.complete();paintBall({x:835,y:684,groundY:690,r:14,phase:'rest'});update();status.textContent=balls?points+' points. '+balls+' ball'+(balls===1?'':'s')+' remaining.':'Round complete — '+total+' points. Play again or return to the carnival.';}
   function tick(now){
    frame=0;if(disposed)return;
    if(view.inert||document.hidden){spring=null;cancelPull();finish();renderBrass(angle,0);return;}
@@ -120,10 +123,10 @@
   });
   launcher.addEventListener('keyup',event=>{if(![' ','Enter'].includes(event.key))return;event.preventDefault();if(keyStart!==null){setPull((performance.now()-keyStart)/1200);shoot();}});
   launcher.addEventListener('blur',()=>{if(keyStart!==null||drag?.element===launcher)cancelPull(true);});
-  replay.addEventListener('click',()=>{balls=9;total=0;angle=0;cancelPull();update();status.textContent='A fresh tray of nine balls.';launcher.focus();});
-  const observer=new MutationObserver(()=>{if(view.inert){cancelPull();angle=0;finish();renderBrass(angle,0);}update();});observer.observe(view,{attributes:true,attributeFilter:['inert']});
-  const onHide=()=>{if(document.hidden){cancelPull();finish();}update();};document.addEventListener('visibilitychange',onHide);
-  const onReduced=()=>{if(reduced.matches){spring=null;finish();renderBrass(angle,pull);}};reduced.addEventListener('change',onReduced);
+  replay.addEventListener('click',()=>{clown?.reset();balls=9;total=0;angle=0;cancelPull();update();status.textContent='A fresh tray of nine balls.';launcher.focus();});
+  const observer=new MutationObserver(()=>{if(view.inert){cancelPull();angle=0;finish();renderBrass(angle,0);}clown?.sync();update();});observer.observe(view,{attributes:true,attributeFilter:['inert']});
+  const onHide=()=>{if(document.hidden){cancelPull();finish();}clown?.sync();update();};document.addEventListener('visibilitychange',onHide);
+  const onReduced=()=>{clown?.sync();if(reduced.matches){spring=null;finish();renderBrass(angle,pull);}};reduced.addEventListener('change',onReduced);
   const resize=new ResizeObserver(()=>renderBrass(angle,pull));resize.observe(plane);
   update();
   // One shared dimensional paddle design, instantiated twice on the panel plane.
@@ -162,8 +165,8 @@
    game.dataset.brassReady='true';renderBrass(angle,pull);
    if(review)review.geometry=()=>({leftBase:left.panel.position.toArray(),rightBase:right.panel.position.toArray(),leftRotation:left.moving.rotation.z,rightRotation:right.moving.rotation.z,sharedGeometry:left.moving.children[0].geometry===right.moving.children[0].geometry,sharedMaterial:left.moving.children[0].material===right.moving.children[0].material,armBounds:(armGeometry.computeBoundingBox(),{min:armGeometry.boundingBox.min.toArray(),max:armGeometry.boundingBox.max.toArray()}),scale:plane.getBoundingClientRect().width/W});
   }).catch(error=>{if(!disposed){game.dataset.brassReady='failed';status.textContent='The brass artwork could not load. Keyboard controls remain available.';console.error('Skee Ball brass controls unavailable',error);}});
-  const review=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearchParams(location.search).has('skee-review')?{state:()=>({balls,total,angle,pull,pending:pending&&{...pending},spring:!!spring,phase:game.dataset.ballPhase}),setAngle,setPull,shoot,endpoint,ballPose,cups,pivots:PIVOTS,scoreAt}:null;
+  const review=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearchParams(location.search).has('skee-review')?{state:()=>({balls,total,angle,pull,pending:pending&&{...pending},spring:!!spring,phase:game.dataset.ballPhase}),setAngle,setPull,shoot,endpoint,ballPose,cups,pivots:PIVOTS,scoreAt,clown:()=>clown?.state(),seekClown:t=>clown?.seek(t)}:null;
   if(review)window.SkeeBallArtReview=review;
-  return ()=>{disposed=true;cancelPull();cancelAnimationFrame(frame);observer.disconnect();resize.disconnect();document.removeEventListener('visibilitychange',onHide);reduced.removeEventListener('change',onReduced);disposeBrass();game.remove();replay.remove();view.classList.remove('skee-art-scene');if(review)delete window.SkeeBallArtReview;};
+  return ()=>{disposed=true;cancelPull();cancelAnimationFrame(frame);observer.disconnect();resize.disconnect();document.removeEventListener('visibilitychange',onHide);reduced.removeEventListener('change',onReduced);disposeBrass();clown?.dispose();game.remove();replay.remove();view.classList.remove('skee-art-scene');if(review)delete window.SkeeBallArtReview;};
  }});
 })();

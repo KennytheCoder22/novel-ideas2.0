@@ -1,0 +1,23 @@
+{
+  "initial": {
+    "phase": "waiting",
+    "time": 0,
+    "requested": false,
+    "playing": false,
+    "bodyVisible": true,
+    "sourceSpherePresent": true,
+    "position": [
+      379,
+      538,
+      40
+    ],
+    "scale": 1
+  },
+  "waitsThroughEight": true,
+  "waitsForNinthResult": true,
+  "hopApproachVapor": true,
+  "replayReset": true,
+  "inactivePauseResume": true,
+  "reducedMotion": true,
+  "pageErrors": []
+}
