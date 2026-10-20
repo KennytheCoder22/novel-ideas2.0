@@ -9,7 +9,7 @@
   const ui=document.createElement('div');ui.className='play-room-ui';view.append(ui);
   const title=document.createElement('header');title.className='play-room-title';
   const heading=document.createElement('h1');heading.textContent=id==='fun-house'?'Hall of Mirrors':'Skee Ball';title.append(heading);
-  const hint=document.createElement('p');hint.textContent=id==='fun-house'?'Touch the glass. See what looks back.':'Nine balls. Aim, choose your power, and roll.';title.append(hint);ui.append(title);
+  const hint=document.createElement('p');hint.textContent=id==='fun-house'?'Touch the glass. See what looks back.':'Set the angle. Pull back and release to roll.';title.append(hint);ui.append(title);
   const status=document.createElement('output');status.className='play-room-status';status.setAttribute('aria-live','polite');ui.append(status);
   const cleanups=[];
   if(id==='fun-house'){
@@ -31,7 +31,7 @@
    const game=document.createElement('section');game.className='skee-game';game.setAttribute('aria-label','Skee Ball game');ui.append(game);
    const scoreboard=document.createElement('div');scoreboard.className='skee-scoreboard';
    const score=document.createElement('output'),remaining=document.createElement('output');score.setAttribute('aria-label','Score');remaining.setAttribute('aria-label','Balls remaining');scoreboard.append(score,remaining);game.append(scoreboard);
-   const board=svgNode('svg',{class:'skee-board',viewBox:'0 0 420 620',role:'img','aria-label':'Skee Ball lane and scoring cups. Tap the lane to aim.'});game.append(board);
+   const board=svgNode('svg',{class:'skee-board',viewBox:'0 0 420 620',role:'img','aria-label':'Skee Ball lane and scoring cups.'});game.append(board);
    const defs=svgNode('defs',{},board);
    const grain=svgNode('filter',{id:'skee-grain',x:'0%',y:'0%',width:'100%',height:'100%'},defs);
    svgNode('feTurbulence',{type:'fractalNoise',baseFrequency:'.06 .6',numOctaves:2,seed:7,result:'noise'},grain);
@@ -50,18 +50,16 @@
    svgNode('path',{d:'M103 586 Q210 560 317 586',fill:'none',stroke:'#d0a767','stroke-width':5},board);
    const cups=[{x:151,y:64,r:18,points:100},{x:269,y:64,r:18,points:100},{x:210,y:100,r:23,points:50},{x:210,y:155,r:27,points:40},{x:210,y:217,r:30,points:30},{x:210,y:283,r:33,points:20},{x:210,y:355,r:35,points:10}];
    for(const cup of cups){cup.rim=svgNode('ellipse',{cx:cup.x,cy:cup.y,rx:cup.r+5,ry:cup.r+2,fill:'#b38246',stroke:'#e8c281','stroke-width':2},board);svgNode('ellipse',{cx:cup.x,cy:cup.y,rx:cup.r,ry:cup.r-3,fill:'#17130f',stroke:'#573e28','stroke-width':3},board);const label=svgNode('text',{x:cup.x,y:cup.y+5,'text-anchor':'middle',fill:'#e5c080','font-size':cup.points===100?12:14,'font-family':'Georgia,serif'},board);label.textContent=cup.points;}
-   const aimMark=svgNode('g',{class:'skee-aim',stroke:'#f6e1af','stroke-width':1.5,fill:'none','pointer-events':'none'},board);
-   svgNode('circle',{r:10},aimMark);svgNode('path',{d:'M-16 0H16M0-16V16'},aimMark);
    const ball=svgNode('circle',{cx:210,cy:570,r:13,fill:'#c4945e',stroke:'#f1ca88','stroke-width':2,class:'skee-ball'},board);
    const controls=document.createElement('div');controls.className='skee-controls';game.append(controls);
-   const range=(text,min,max,value)=>{const label=document.createElement('label');label.textContent=text;const input=document.createElement('input');input.type='range';input.min=min;input.max=max;input.value=value;label.append(input);controls.append(label);return input;};
-   const aim=range('Aim',-100,100,0),power=range('Power',0,100,55);
-   const roll=document.createElement('button');roll.className='carnival-play-button';roll.textContent='Roll ball';controls.append(roll);
+   const angleLabel=document.createElement('label');angleLabel.textContent='Angle';angleLabel.className='skee-angle';
+   const aim=document.createElement('input');aim.type='range';aim.min=-100;aim.max=100;aim.value=0;aim.setAttribute('aria-label','Throw angle');angleLabel.append(aim);controls.append(angleLabel);
+   const roll=document.createElement('button');roll.type='button';roll.className='skee-plunger';roll.setAttribute('aria-label','Pull down and release to throw. Keyboard: hold Space or Enter, then release.');
+   roll.innerHTML='<span class="skee-shaft" aria-hidden="true"></span><span class="skee-grip" aria-hidden="true"></span><span class="skee-pull-label">Pull & release</span>';controls.append(roll);
    const replay=document.createElement('button');replay.className='carnival-play-button';replay.textContent='Play again';replay.hidden=true;controls.append(replay);
-   let balls=9,total=0,pending=null,frame=0,disposed=false;
-   function target(){return {x:210+Number(aim.value)*1.18,y:355-Number(power.value)*2.91};}
-   function aimAt(){const t=target();aimMark.setAttribute('transform',`translate(${t.x} ${t.y})`);}
-   function update(){score.textContent='Score '+total;remaining.textContent=balls+' ball'+(balls===1?'':'s')+' left';roll.disabled=!!pending||!balls;aim.disabled=power.disabled=!!pending||!balls;replay.hidden=balls!==0;}
+   let balls=9,total=0,pending=null,frame=0,disposed=false,pull=0,drag=null,chargeFrame=0,keyStart=0;
+   function target(){return {x:210+Number(aim.value)*1.18,y:355-pull*291};}
+   function update(){score.textContent='Score '+total;remaining.textContent=balls+' ball'+(balls===1?'':'s')+' left';roll.disabled=!!pending||!balls;aim.disabled=!!pending||!balls;replay.hidden=balls!==0;}
    function finish(){if(!pending)return;cancelAnimationFrame(frame);frame=0;const t=pending;pending=null;balls--;const cup=cups.find(c=>Math.hypot(t.x-c.x,t.y-c.y)<=c.r-5);const points=cup?.points||0;total+=points;cups.forEach(c=>c.rim.classList.toggle('is-hit',c===cup));
     ball.setAttribute('cx',210);ball.setAttribute('cy',570);ball.setAttribute('r',13);update();
     status.textContent=balls?points+' points. '+balls+' ball'+(balls===1?'':'s')+' remaining.':'Round complete — '+total+' points. Play again or explore the carnival.';
@@ -71,17 +69,23 @@
     ball.setAttribute('cx',210+(pending.x-210)*ease);ball.setAttribute('cy',570+(pending.y-570)*ease-Math.sin(u*Math.PI)*42);ball.setAttribute('r',13-5*u);
     if(u<1)frame=requestAnimationFrame(tick);else finish();
    }
-   aim.addEventListener('input',aimAt);power.addEventListener('input',aimAt);
-   board.addEventListener('pointerdown',event=>{if(pending||!balls)return;const inverse=board.getScreenCTM()?.inverse();if(!inverse)return;const point=new DOMPoint(event.clientX,event.clientY).matrixTransform(inverse);
-    aim.value=Math.max(-100,Math.min(100,(point.x-210)/1.18));power.value=Math.max(0,Math.min(100,(355-point.y)/2.91));aimAt();
-   });
-   roll.addEventListener('click',()=>{if(pending||!balls||view.inert)return;pending={...target(),start:performance.now()};update();status.textContent='The ball rolls up the lane…';if(reduced.matches)finish();else frame=requestAnimationFrame(tick);});
-   replay.addEventListener('click',()=>{balls=9;total=0;update();status.textContent='A fresh tray of nine balls.';roll.focus();});
-   const observer=new MutationObserver(()=>{if(view.inert)finish();});observer.observe(view,{attributes:true,attributeFilter:['inert']});
-   const onHide=()=>{if(document.hidden)finish();};document.addEventListener('visibilitychange',onHide);
+   function setPull(value){pull=Math.max(0,Math.min(1,value));roll.style.setProperty('--pull',`${pull*42}px`);}
+   function cancelPull(){cancelAnimationFrame(chargeFrame);chargeFrame=0;keyStart=0;const pointer=drag?.id;drag=null;if(pointer!==undefined&&roll.hasPointerCapture(pointer))roll.releasePointerCapture(pointer);setPull(0);}
+   function shoot(){if(pending||!balls||view.inert||pull<.025){cancelPull();return;}const shot=target();cancelPull();aim.value=0;pending={...shot,start:performance.now()};update();status.textContent='The ball rolls up the lane�';if(reduced.matches)finish();else frame=requestAnimationFrame(tick);}
+   roll.addEventListener('pointerdown',event=>{if(event.button!==0||pending||!balls||view.inert||drag||keyStart)return;event.preventDefault();roll.focus();drag={id:event.pointerId,y:event.clientY};roll.setPointerCapture(event.pointerId);setPull(0);});
+   roll.addEventListener('pointermove',event=>{if(drag?.id===event.pointerId)setPull((event.clientY-drag.y)/80);});
+   roll.addEventListener('pointerup',event=>{if(drag?.id!==event.pointerId)return;setPull((event.clientY-drag.y)/80);shoot();});
+   roll.addEventListener('pointercancel',cancelPull);roll.addEventListener('lostpointercapture',()=>{if(drag)cancelPull();});
+   function charge(now){if(!keyStart)return;setPull((now-keyStart)/1200);chargeFrame=requestAnimationFrame(charge);}
+   roll.addEventListener('keydown',event=>{if(event.key==='Escape'){cancelPull();return;}if(![' ','Enter'].includes(event.key))return;event.preventDefault();if(event.repeat||keyStart||drag||pending||!balls||view.inert)return;keyStart=performance.now();chargeFrame=requestAnimationFrame(charge);});
+   roll.addEventListener('keyup',event=>{if(![' ','Enter'].includes(event.key))return;event.preventDefault();if(keyStart){setPull((performance.now()-keyStart)/1200);shoot();}});
+   roll.addEventListener('blur',cancelPull);
+   replay.addEventListener('click',()=>{balls=9;total=0;aim.value=0;cancelPull();update();status.textContent='A fresh tray of nine balls.';roll.focus();});
+   const observer=new MutationObserver(()=>{if(view.inert){cancelPull();aim.value=0;finish();}});observer.observe(view,{attributes:true,attributeFilter:['inert']});
+   const onHide=()=>{if(document.hidden){cancelPull();finish();}};document.addEventListener('visibilitychange',onHide);
    const onReduced=()=>{if(reduced.matches)finish();};reduced.addEventListener('change',onReduced);
-   cleanups.push(()=>{disposed=true;cancelAnimationFrame(frame);observer.disconnect();document.removeEventListener('visibilitychange',onHide);reduced.removeEventListener('change',onReduced);});
-   aimAt();update();
+   cleanups.push(()=>{disposed=true;cancelPull();cancelAnimationFrame(frame);observer.disconnect();document.removeEventListener('visibilitychange',onHide);reduced.removeEventListener('change',onReduced);});
+   update();
   }
   return ()=>{cleanups.forEach(dispose=>dispose());ui.remove();};
  }});

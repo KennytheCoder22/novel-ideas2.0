@@ -43,3 +43,17 @@ html[data-motion="still"] .funhouse-mirror canvas { transition:none; }
 [data-scene="fun-house"] .play-room-status { bottom:147px; }
 @media(max-width:600px) { .skee-game { bottom:139px; } [data-scene="skee-ball"] .play-room-status { bottom:95px; } }
 @media(max-height:620px) and (min-width:601px) { .play-room-title { max-width:180px; } [data-scene="skee-ball"] .play-room-status { left:auto; right:18px; transform:none; max-width:calc(100vw - 210px); } }
+
+/* Unmarked, resettable shot controls. No target preview or persistent power. */
+.skee-controls { min-height:96px; }
+.skee-angle { display:flex!important; flex-direction:column; gap:12px!important; }
+.skee-angle input { appearance:none; height:8px; min-height:8px; border-radius:8px; background:#100b08; border:1px solid #78542c; cursor:ew-resize; }
+.skee-angle input::-webkit-slider-thumb { appearance:none; width:26px; height:36px; border:2px solid #bd965d; border-radius:8px; background:linear-gradient(90deg,#57341c,#b9894d,#57341c); }
+.skee-angle input::-moz-range-thumb { width:24px; height:34px; border:2px solid #bd965d; border-radius:8px; background:linear-gradient(90deg,#57341c,#b9894d,#57341c); }
+.skee-plunger { position:relative; height:96px; border:0; background:transparent; color:#f0d6a1; font:14px Georgia,serif; cursor:grab; touch-action:none; user-select:none; }
+.skee-plunger:active { cursor:grabbing; }
+.skee-shaft { position:absolute; top:8px; left:calc(50% - 5px); width:10px; height:calc(18px + var(--pull,0px)); background:linear-gradient(90deg,#795832,#d3b179,#795832); }
+.skee-grip { position:absolute; top:calc(16px + var(--pull,0px)); left:calc(50% - 29px); width:58px; height:24px; border-radius:10px; border:2px solid #c29a61; background:linear-gradient(#936735,#452b18); box-shadow:0 3px 5px #0009; }
+.skee-pull-label { position:absolute; bottom:0; left:0; width:100%; }
+.skee-plunger:focus-visible,.skee-angle input:focus-visible { outline:2px solid #ffe0a0; outline-offset:4px; }
+.skee-plunger:disabled,.skee-angle input:disabled { opacity:.5; cursor:default; }

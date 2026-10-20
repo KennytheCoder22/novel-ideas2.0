@@ -272,12 +272,12 @@
     "bytes": 2772
   },
   "experiments/carnival/play-rooms.js": {
-    "bytes": 9844,
-    "sha256": "228d00f8e141bda072fe3d74e0dccb46b0f745863ee55b62430325155dc012ec"
+    "bytes": 11132,
+    "sha256": "61a0bee46cdcb23cf16340e6cf453d883f3e395469d04b29a1540ddffc26cdd5"
   },
   "experiments/carnival/play-rooms.css": {
-    "bytes": 4970,
-    "sha256": "66fea7f7d4ae6c0769337103902fb8d6ebcc45a294025a212659c5e5bd14b2f5"
+    "bytes": 6626,
+    "sha256": "7a6a21ffa57f93be5c87e724f424a2b93d48617dfc15d9fb336f771129eb090e"
   },
   "experiments/carnival/locations/fun-house.png": {
     "bytes": 2890869,
