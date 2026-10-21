@@ -1,0 +1,122 @@
+{
+  "results": [
+    {
+      "name": "desktop",
+      "oneModelLoad": true,
+      "oncePerVisit": true,
+      "cancelsOnLeave": true,
+      "noIdleLoop": true,
+      "reducedMotion": true,
+      "grounded": true,
+      "independentCollapseBones": [
+        "Mara_body",
+        "Mara_hips",
+        "Mara_head",
+        "Mara_tail_base",
+        "Mara_scarf",
+        "Mara_tag",
+        "Mara_front_left",
+        "front_left_knee",
+        "Mara_front_right",
+        "front_right_knee",
+        "front_right_paw",
+        "Mara_rear_left",
+        "rear_left_knee",
+        "Mara_rear_right",
+        "rear_right_knee",
+        "rear_right_paw"
+      ],
+      "rest": {
+        "left": 1188.5527840649142,
+        "right": 1519.3862304216727,
+        "top": 757.1324268413518,
+        "bottom": 963.8400558538144
+      },
+      "pageErrors": []
+    },
+    {
+      "name": "phone",
+      "oneModelLoad": true,
+      "oncePerVisit": true,
+      "cancelsOnLeave": true,
+      "noIdleLoop": true,
+      "reducedMotion": true,
+      "grounded": true,
+      "independentCollapseBones": [
+        "Mara_body",
+        "Mara_hips",
+        "Mara_head",
+        "Mara_tail_base",
+        "Mara_scarf",
+        "Mara_tag",
+        "Mara_front_left",
+        "front_left_knee",
+        "Mara_front_right",
+        "front_right_knee",
+        "front_right_paw",
+        "Mara_rear_left",
+        "rear_left_knee",
+        "Mara_rear_right",
+        "rear_right_knee",
+        "rear_right_paw"
+      ],
+      "rest": {
+        "left": 1188.5527840649142,
+        "right": 1519.3862304216727,
+        "top": 757.1324268413518,
+        "bottom": 963.8400558538144
+      },
+      "pageErrors": []
+    },
+    {
+      "name": "landscape",
+      "oneModelLoad": true,
+      "oncePerVisit": true,
+      "cancelsOnLeave": true,
+      "noIdleLoop": true,
+      "reducedMotion": true,
+      "grounded": true,
+      "independentCollapseBones": [
+        "Mara_body",
+        "Mara_hips",
+        "Mara_head",
+        "Mara_tail_base",
+        "Mara_scarf",
+        "Mara_tag",
+        "Mara_front_left",
+        "front_left_knee",
+        "Mara_front_right",
+        "front_right_knee",
+        "front_right_paw",
+        "Mara_rear_left",
+        "rear_left_knee",
+        "Mara_rear_right",
+        "rear_right_knee",
+        "rear_right_paw"
+      ],
+      "rest": {
+        "left": 1188.5527840649142,
+        "right": 1519.3862304216727,
+        "top": 757.1324268413518,
+        "bottom": 963.8400558538144
+      },
+      "pageErrors": []
+    }
+  ],
+  "armAndExit": {
+    "armReady": true,
+    "signFallUnaffected": true,
+    "fallenSignPersistsAcrossNavigation": true,
+    "MaraVisitRestarts": true,
+    "exitUsable": true,
+    "pageErrors": []
+  },
+  "build": {
+    "passed": true,
+    "runtimeFiles": 169,
+    "ornateGLBs": 20,
+    "variantGLBs": 40
+  },
+  "sequenceSeconds": 2.85,
+  "approval": "Pending local visual review; no merge, push or deployment"
+}

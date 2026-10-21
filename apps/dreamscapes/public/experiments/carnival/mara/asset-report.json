@@ -1,0 +1,45 @@
+{
+  "sourceBytes": 27731416,
+  "runtimeBytes": 20533344,
+  "triangles": 9705,
+  "sourceSHA256": "70ac2a005c41af0d0e234fb9875d320a04f0c27b1d9bb25d1a040de24e88d0a4",
+  "runtimeSHA256": "b08e716a01e4dc508a6ef085466037e3b8d62578e990d42b06db0a01a67e637e",
+  "textureOptimization": [
+    {
+      "name": "normal",
+      "size": [
+        2048,
+        2048
+      ],
+      "sourceBytes": 7995207,
+      "runtimeBytes": 7794032,
+      "decodedPixelsIdentical": true
+    },
+    {
+      "name": "texture_0",
+      "size": [
+        2048,
+        2048
+      ],
+      "sourceBytes": 8059779,
+      "runtimeBytes": 5897478,
+      "decodedPixelsIdentical": true
+    },
+    {
+      "name": "texture_0_metallic_roughness",
+      "size": [
+        4096,
+        4096
+      ],
+      "sourceBytes": 11001020,
+      "runtimeBytes": 6166232,
+      "decodedPixelsIdentical": true
+    }
+  ],
+  "meshBuffersByteIdentical": true,
+  "sourceHasSkeleton": false,
+  "sourceAnimationClips": 0,
+  "runtimeBones": 21,
+  "animationMethod": "Procedural quadruped skinning of the supplied mesh; no geometry remodelling",
+  "approval": "Pending local visual review; do not merge or deploy"
+}
