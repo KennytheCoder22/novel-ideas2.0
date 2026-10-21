@@ -4,14 +4,47 @@
     "time": 0,
     "requested": false,
     "playing": false,
+    "previewOnly": false,
     "bodyVisible": true,
-    "sourceSpherePresent": true,
     "position": [
-      379,
-      538,
-      40
+      2.2502660470747706,
+      0.4196218021247897,
+      6.5
     ],
-    "scale": 1
+    "scale": 1,
+    "contacts": [
+      {
+        "side": "Left",
+        "y": 0.4197188958276413,
+        "x": 2.198705337458735,
+        "z": 6.37659248234952
+      },
+      {
+        "side": "Right",
+        "y": 0.4251074335930396,
+        "x": 2.3203854890904014,
+        "z": 6.392972276602955
+      }
+    ],
+    "pomOpacity": 1,
+    "pomVertices": 122,
+    "stride": 0.5075148525110696,
+    "runDuration": 5.054039217024778,
+    "jumpPlan": {
+      "flight": 1.06,
+      "minimumClearance": 0.045610250672772024,
+      "crossings": 22,
+      "gravity": 9.81
+    },
+    "timings": {
+      "launch": 0.55,
+      "land": 1.61,
+      "run": 2.2,
+      "evaporate": 7.254039217024778,
+      "bodyGone": 9.25403921702478,
+      "pomGone": 9.97403921702478,
+      "end": 12.62403921702478
+    }
   },
   "waitsThroughEight": true,
   "waitsForNinthResult": true,

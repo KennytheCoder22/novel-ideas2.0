@@ -21,6 +21,7 @@ async function settled(p){await p.waitForFunction(()=>!SkeeBallArtReview.state()
   p.on('response',r=>{if(r.status()>=400&&!new URL(r.url()).pathname.endsWith('/favicon.ico'))report.pageErrors.push(r.status()+' '+r.url());});
   await p.goto(base+entry+'?scene=skee-ball&skee-review=1');await p.waitForFunction(()=>document.documentElement.dataset.location==='skee-ball'&&!document.documentElement.dataset.travelling,{},{timeout:90000});
   await p.waitForFunction(()=>document.querySelector('.skee-art-game')?.dataset.brassReady==='true');
+  await p.waitForFunction(()=>document.querySelector('.skee-art-game')?.dataset.clownReady==='true',null,{timeout:90000});
   assert.equal(await p.locator('.skee-board,.skee-controls,.skee-aim').count(),0,'No duplicate drawn machine or aim aids');
   const before=await p.evaluate(()=>SkeeBallArtReview.geometry());assert(before.sharedGeometry&&before.sharedMaterial);
   const bounds=before.armBounds;assert(Math.abs((bounds.max[1]-bounds.min[1])/25-.25)<.002);assert(Math.abs((bounds.max[2]-bounds.min[2])/25-.75)<.05);assert(Math.abs((bounds.max[0]+12.5)/25-6)<.05);

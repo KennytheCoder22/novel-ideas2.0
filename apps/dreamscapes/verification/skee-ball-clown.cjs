@@ -15,7 +15,7 @@ const fs=require('fs'),assert=require('assert');const{chromium}=require(process.
  assert.equal(await p.evaluate(()=>SkeeBallArtReview.clown().phase),'waiting');
  await p.waitForFunction(()=>SkeeBallArtReview.state().balls===0);
  await p.waitForTimeout(700);
- assert((await p.evaluate(()=>SkeeBallArtReview.clown().time))>0);for(const[n,t]of[['hop',.9],['approach',4.2],['vapor',6.7],['gone',9.6]]){await p.evaluate(t=>SkeeBallArtReview.seekClown(t),t);
+ assert((await p.evaluate(()=>SkeeBallArtReview.clown().time))>0);const times=await p.evaluate(()=>SkeeBallArtReview.clown().timings);for(const[n,t]of[['hop',.9],['approach',times.evaporate-.1],['vapor',times.pomGone+.2],['gone',times.end]]){await p.evaluate(t=>SkeeBallArtReview.seekClown(t),t);
  await p.screenshot({path:out+'/installed-'+n+'.png'});}await p.getByRole('button',{name:'Play again',exact:true}).click();
  assert.equal(await p.evaluate(()=>SkeeBallArtReview.state().balls),9);
  assert.equal(await p.evaluate(()=>SkeeBallArtReview.clown().phase),'waiting');

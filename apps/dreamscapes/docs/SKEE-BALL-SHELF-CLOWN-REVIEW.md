@@ -1,5 +1,7 @@
 # Skee-Ball shelf clown — local review
 
+Superseded for movement, lighting and physical registration by [the perspective review](SKEE-BALL-CLOWN-PERSPECTIVE.md).
+
 Branch: codex/skee-ball-shelf-clown. Local preview:
 http://127.0.0.1:4204/experiments/carnival/index.html?scene=skee-ball
 
