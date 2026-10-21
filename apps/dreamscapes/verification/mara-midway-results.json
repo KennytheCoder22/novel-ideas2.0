@@ -2,121 +2,228 @@
   "results": [
     {
       "name": "desktop",
+      "state": {
+        "loaded": true,
+        "active": true,
+        "playing": false,
+        "phase": "static-resting-pose",
+        "draws": 2,
+        "mode": "model",
+        "fitted": {
+          "target": {
+            "left": 1187.5673758865248,
+            "right": 1457.695035460993,
+            "top": 778,
+            "bottom": 932
+          },
+          "actual": {
+            "left": 1187.567375814366,
+            "right": 1457.6950355203949,
+            "top": 782.7652195440635,
+            "bottom": 932.0000000122308
+          },
+          "scale": 0.6239818194032982,
+          "position": [
+            2.318680198543938,
+            0.3413457929086239,
+            2.9081805675541688
+          ]
+        },
+        "poseParameters": {
+          "yaw": -1.4,
+          "bodyRoll": -0.65,
+          "bodyPitch": 0.03,
+          "headYaw": 0.52,
+          "headRoll": 0.15,
+          "headPitch": -0.15,
+          "headDrop": 0.06,
+          "headLeft": 0.15
+        },
+        "stats": {
+          "triangles": 9705,
+          "vertices": 19232,
+          "bones": 21,
+          "weightedParts": {
+            "Mara_head": 5280,
+            "Mara_tag": 839,
+            "Mara_scarf": 806,
+            "Mara_front_right": 798,
+            "Mara_neck": 1689,
+            "Mara_front_left": 629,
+            "Mara_chest": 405,
+            "Mara_body": 366,
+            "Mara_rear_right": 638,
+            "front_right_paw": 376,
+            "front_right_knee": 409,
+            "front_left_paw": 332,
+            "front_left_knee": 368,
+            "rear_right_knee": 358,
+            "Mara_rear_left": 350,
+            "Mara_hips": 2266,
+            "rear_left_knee": 345,
+            "rear_left_paw": 238,
+            "rear_right_paw": 178,
+            "Mara_tail_tip": 1718,
+            "Mara_tail_base": 844
+          }
+        }
+      },
       "oneModelLoad": true,
-      "oncePerVisit": true,
-      "cancelsOnLeave": true,
+      "comparison": true,
       "noIdleLoop": true,
       "reducedMotion": true,
-      "grounded": true,
-      "independentCollapseBones": [
-        "Mara_body",
-        "Mara_hips",
-        "Mara_head",
-        "Mara_tail_base",
-        "Mara_scarf",
-        "Mara_tag",
-        "Mara_front_left",
-        "front_left_knee",
-        "Mara_front_right",
-        "front_right_knee",
-        "front_right_paw",
-        "Mara_rear_left",
-        "rear_left_knee",
-        "Mara_rear_right",
-        "rear_right_knee",
-        "rear_right_paw"
-      ],
-      "rest": {
-        "left": 1188.5527840649142,
-        "right": 1519.3862304216727,
-        "top": 757.1324268413518,
-        "bottom": 963.8400558538144
-      },
+      "navigation": true,
       "pageErrors": []
     },
     {
       "name": "phone",
+      "state": {
+        "loaded": true,
+        "active": true,
+        "playing": false,
+        "phase": "static-resting-pose",
+        "draws": 2,
+        "mode": "model",
+        "fitted": {
+          "target": {
+            "left": 1187.5161171053076,
+            "right": 1458.2560586198786,
+            "top": 777.7061611374409,
+            "bottom": 931.7914691943129
+          },
+          "actual": {
+            "left": 1187.5161170317201,
+            "right": 1458.2560586804282,
+            "top": 782.1976736017253,
+            "bottom": 931.7914692067922
+          },
+          "scale": 0.6255850454353008,
+          "position": [
+            2.320632511703922,
+            0.34222282881590227,
+            2.906271513004759
+          ]
+        },
+        "poseParameters": {
+          "yaw": -1.4,
+          "bodyRoll": -0.65,
+          "bodyPitch": 0.03,
+          "headYaw": 0.52,
+          "headRoll": 0.15,
+          "headPitch": -0.15,
+          "headDrop": 0.06,
+          "headLeft": 0.15
+        },
+        "stats": {
+          "triangles": 9705,
+          "vertices": 19232,
+          "bones": 21,
+          "weightedParts": {
+            "Mara_head": 5280,
+            "Mara_tag": 839,
+            "Mara_scarf": 806,
+            "Mara_front_right": 798,
+            "Mara_neck": 1689,
+            "Mara_front_left": 629,
+            "Mara_chest": 405,
+            "Mara_body": 366,
+            "Mara_rear_right": 638,
+            "front_right_paw": 376,
+            "front_right_knee": 409,
+            "front_left_paw": 332,
+            "front_left_knee": 368,
+            "rear_right_knee": 358,
+            "Mara_rear_left": 350,
+            "Mara_hips": 2266,
+            "rear_left_knee": 345,
+            "rear_left_paw": 238,
+            "rear_right_paw": 178,
+            "Mara_tail_tip": 1718,
+            "Mara_tail_base": 844
+          }
+        }
+      },
       "oneModelLoad": true,
-      "oncePerVisit": true,
-      "cancelsOnLeave": true,
+      "comparison": true,
       "noIdleLoop": true,
       "reducedMotion": true,
-      "grounded": true,
-      "independentCollapseBones": [
-        "Mara_body",
-        "Mara_hips",
-        "Mara_head",
-        "Mara_tail_base",
-        "Mara_scarf",
-        "Mara_tag",
-        "Mara_front_left",
-        "front_left_knee",
-        "Mara_front_right",
-        "front_right_knee",
-        "front_right_paw",
-        "Mara_rear_left",
-        "rear_left_knee",
-        "Mara_rear_right",
-        "rear_right_knee",
-        "rear_right_paw"
-      ],
-      "rest": {
-        "left": 1188.5527840649142,
-        "right": 1519.3862304216727,
-        "top": 757.1324268413518,
-        "bottom": 963.8400558538144
-      },
+      "navigation": true,
       "pageErrors": []
     },
     {
       "name": "landscape",
+      "state": {
+        "loaded": true,
+        "active": true,
+        "playing": false,
+        "phase": "static-resting-pose",
+        "draws": 2,
+        "mode": "model",
+        "fitted": {
+          "target": {
+            "left": 1187.5161171053073,
+            "right": 1458.2560586198783,
+            "top": 778.9194312796208,
+            "bottom": 933.6113744075828
+          },
+          "actual": {
+            "left": 1187.5161170316564,
+            "right": 1458.2560586805369,
+            "top": 784.0478134661491,
+            "bottom": 933.6113744200825
+          },
+          "scale": 0.6241670240270969,
+          "position": [
+            2.3153723053115134,
+            0.34144710807069273,
+            2.9196025664439063
+          ]
+        },
+        "poseParameters": {
+          "yaw": -1.4,
+          "bodyRoll": -0.65,
+          "bodyPitch": 0.03,
+          "headYaw": 0.52,
+          "headRoll": 0.15,
+          "headPitch": -0.15,
+          "headDrop": 0.06,
+          "headLeft": 0.15
+        },
+        "stats": {
+          "triangles": 9705,
+          "vertices": 19232,
+          "bones": 21,
+          "weightedParts": {
+            "Mara_head": 5280,
+            "Mara_tag": 839,
+            "Mara_scarf": 806,
+            "Mara_front_right": 798,
+            "Mara_neck": 1689,
+            "Mara_front_left": 629,
+            "Mara_chest": 405,
+            "Mara_body": 366,
+            "Mara_rear_right": 638,
+            "front_right_paw": 376,
+            "front_right_knee": 409,
+            "front_left_paw": 332,
+            "front_left_knee": 368,
+            "rear_right_knee": 358,
+            "Mara_rear_left": 350,
+            "Mara_hips": 2266,
+            "rear_left_knee": 345,
+            "rear_left_paw": 238,
+            "rear_right_paw": 178,
+            "Mara_tail_tip": 1718,
+            "Mara_tail_base": 844
+          }
+        }
+      },
       "oneModelLoad": true,
-      "oncePerVisit": true,
-      "cancelsOnLeave": true,
+      "comparison": true,
       "noIdleLoop": true,
       "reducedMotion": true,
-      "grounded": true,
-      "independentCollapseBones": [
-        "Mara_body",
-        "Mara_hips",
-        "Mara_head",
-        "Mara_tail_base",
-        "Mara_scarf",
-        "Mara_tag",
-        "Mara_front_left",
-        "front_left_knee",
-        "Mara_front_right",
-        "front_right_knee",
-        "front_right_paw",
-        "Mara_rear_left",
-        "rear_left_knee",
-        "Mara_rear_right",
-        "rear_right_knee",
-        "rear_right_paw"
-      ],
-      "rest": {
-        "left": 1188.5527840649142,
-        "right": 1519.3862304216727,
-        "top": 757.1324268413518,
-        "bottom": 963.8400558538144
-      },
+      "navigation": true,
       "pageErrors": []
     }
-  ],
-  "armAndExit": {
-    "armReady": true,
-    "signFallUnaffected": true,
-    "fallenSignPersistsAcrossNavigation": true,
-    "MaraVisitRestarts": true,
-    "exitUsable": true,
-    "pageErrors": []
-  },
-  "build": {
-    "passed": true,
-    "runtimeFiles": 169,
-    "ornateGLBs": 20,
-    "variantGLBs": 40
-  },
-  "sequenceSeconds": 2.85,
-  "approval": "Pending local visual review; no merge, push or deployment"
+  ]
 }

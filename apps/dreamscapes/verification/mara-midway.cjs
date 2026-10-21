@@ -1,25 +1,23 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),path=require('node:path');
 const{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
-const out=process.env.DREAMSCAPES_EVIDENCE_DIR||path.join(__dirname,'mara-evidence');fs.mkdirSync(out,{recursive:true});
+const out=process.env.DREAMSCAPES_EVIDENCE_DIR||path.join(__dirname,'mara-static-evidence');fs.mkdirSync(out,{recursive:true});
 (async()=>{const browser=await chromium.launch({executablePath:process.env.BROWSER_PATH||'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true}),results=[];
 try{for(const[name,viewport]of[['desktop',{width:1536,height:1024}],['phone',{width:390,height:844}],['landscape',{width:844,height:390}]]){
- const context=await browser.newContext({viewport,hasTouch:name!=='desktop'}),p=await context.newPage(),errors=[];let requests=0;
- p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(r.url().endsWith('/mara/mara.glb'))requests++;});
+ const context=await browser.newContext({viewport,hasTouch:name!=='desktop'}),p=await context.newPage(),errors=[];let downloads=0;
+ p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(r.url().endsWith('/mara/mara.glb'))downloads++;});
  await p.goto((process.env.DREAMSCAPES_URL||'http://127.0.0.1:4204')+'/experiments/carnival/index.html?mara-review=1');
- await p.waitForFunction(()=>window.MaraMidway?.state().loaded,null,{timeout:90000});assert.equal((await p.evaluate(()=>MaraMidway.state())).visit,1);
- await p.waitForFunction(()=>MaraMidway.state().phase==='resting',null,{timeout:30000});
- const rest=await p.evaluate(()=>({state:MaraMidway.state(),pose:MaraMidway.diagnostics()}));await p.waitForTimeout(700);assert.equal((await p.evaluate(()=>MaraMidway.state())).draws,rest.state.draws,'No idle render loop');
- assert.equal(rest.state.stats.triangles,9705);assert.equal(rest.state.stats.bones,21);assert(rest.pose.groundMin>-.025&&rest.pose.groundMin<.01,JSON.stringify(rest.pose));assert(rest.pose.projected.left>1100&&rest.pose.projected.right<1550,JSON.stringify(rest.pose.projected));assert.equal(await p.locator('.fox img').evaluate(e=>getComputedStyle(e).visibility),'hidden');
- const phases=[];for(const[n,t]of[['entry',.15],['run',1.3],['buckle',1.95],['collapse',2.35],['settled',2.85]]){await p.evaluate(t=>MaraMidway.seek(t),t);const d=await p.evaluate(()=>MaraMidway.diagnostics());assert(d.groundMin>-.025&&d.groundMin<.01,JSON.stringify({n,d}));phases.push({name:n,time:t,...d});await p.screenshot({path:path.join(out,name+'-'+n+'.png')});}
- const a=phases[1].bones,b=phases.at(-1).bones,changed=b.filter((bone,i)=>bone.q.some((v,j)=>Math.abs(v-a[i].q[j])>.1)).map(b=>b.name);assert(changed.length>9,'Collapse changes independent body parts');
- if(name==='phone'){await p.getByRole('button',{name:'Look right',exact:true}).click();await p.screenshot({path:path.join(out,'phone-rest-look-right.png')});}
- await p.locator('.fox').click();await p.waitForFunction(()=>document.querySelector('.inspection').open);assert.equal(await p.locator('.inspection canvas').count(),1);assert.equal(await p.locator('.inspection.fox-cinema').count(),0,'No sprite/disintegration cinema');await p.screenshot({path:path.join(out,name+'-examine.png')});await p.getByRole('button',{name:'Return to the midway',exact:false}).click();
- // Departure mid-run cancels immediately. Returning begins one new visit without refetching.
- await p.evaluate(()=>MaraMidway.replay());await p.waitForTimeout(150);await p.locator('main .entrance').dispatchEvent('click');await p.waitForFunction(()=>document.documentElement.dataset.location==='rides-games'&&!document.documentElement.dataset.travelling,null,{timeout:90000});
- const held=await p.evaluate(()=>MaraMidway.state());assert.equal(held.active,false);assert.equal(held.playing,false);await p.waitForTimeout(300);assert.equal((await p.evaluate(()=>MaraMidway.state())).draws,held.draws);
- await p.locator('[data-scene="rides-games"] .location-path[data-to="midway"]').dispatchEvent('click');await p.waitForFunction(()=>document.documentElement.dataset.location==='midway'&&!document.documentElement.dataset.travelling);assert.equal((await p.evaluate(()=>MaraMidway.state())).visit,2);assert.equal(requests,1);
- await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>MaraMidway.state().phase==='resting');assert.equal((await p.evaluate(()=>MaraMidway.state())).playing,false);await p.getByRole('button',{name:'Replay Mara',exact:true}).click();assert.equal((await p.evaluate(()=>MaraMidway.state())).time,2.85);
- assert.equal(await p.locator('main .carnival-exit').count(),1);assert.equal(await p.locator('main .carnival-exit').getAttribute('href'),'/');assert.equal(await p.locator('main .wheel').count(),1);
- if(name==='phone')await p.getByRole('button',{name:'Look left',exact:true}).click();await p.locator('main .carnival-exit').focus();await p.keyboard.press('Enter');await p.waitForURL('http://127.0.0.1:4204/');assert.equal(await p.locator('.age-band-button').count(),4);
- assert.deepEqual(errors,[]);results.push({name,oneModelLoad:true,oncePerVisit:true,cancelsOnLeave:true,noIdleLoop:true,reducedMotion:true,grounded:true,independentCollapseBones:changed,rest:rest.pose.projected,phases,pageErrors:errors});await context.close();console.log('PASS Mara '+name);
+ await p.waitForFunction(()=>window.MaraMidway?.state().loaded,null,{timeout:90000});await p.waitForTimeout(400);
+ const state=await p.evaluate(()=>MaraMidway.state());assert.equal(state.phase,'static-resting-pose');assert.equal(state.playing,false);assert.equal(state.stats.triangles,9705);
+ await p.waitForTimeout(600);assert.equal((await p.evaluate(()=>MaraMidway.state())).draws,state.draws,'No idle render loop');
+ for(const edge of ['left','right','bottom'])assert(Math.abs(state.fitted.target[edge]-state.fitted.actual[edge])<1,'Reference '+edge);
+ assert(Math.abs(state.fitted.target.top-state.fitted.actual.top)<20,'Approximate reference height');
+ await p.getByRole('button',{name:'Original 2D fox',exact:true}).click();assert.equal(await p.locator('.mara-canvas').evaluate(e=>e.hidden),true);assert.equal(await p.locator('.fox img').evaluate(e=>getComputedStyle(e).visibility),'visible');
+ await p.getByRole('button',{name:'Overlay reference',exact:true}).click();assert.equal(await p.locator('.fox img').evaluate(e=>e.style.opacity),'.5'.replace('.5','0.5'));assert.equal(await p.locator('.fox').evaluate(e=>e.style.zIndex),'4');
+ await p.getByRole('button',{name:'3D Mara',exact:true}).click();assert.equal(await p.locator('.fox img').evaluate(e=>getComputedStyle(e).visibility),'hidden');
+ if(name==='phone')await p.getByRole('button',{name:'Look right',exact:true}).click();
+ await p.screenshot({path:path.join(out,name+'-static.png')});
+ await p.emulateMedia({reducedMotion:'reduce'});assert.equal((await p.evaluate(()=>MaraMidway.state())).playing,false);
+ await p.locator('main .entrance').dispatchEvent('click');await p.waitForFunction(()=>document.documentElement.dataset.location==='rides-games'&&!document.documentElement.dataset.travelling,null,{timeout:90000});assert.equal((await p.evaluate(()=>MaraMidway.state())).active,false);
+ await p.locator('[data-scene="rides-games"] .location-path[data-to="midway"]').dispatchEvent('click');await p.waitForFunction(()=>document.documentElement.dataset.location==='midway'&&!document.documentElement.dataset.travelling);assert.equal(downloads,1);assert.equal((await p.evaluate(()=>MaraMidway.state())).phase,'static-resting-pose');
+ assert.equal(await p.locator('main .carnival-exit').getAttribute('href'),'/');assert.deepEqual(errors,[]);results.push({name,state,oneModelLoad:true,comparison:true,noIdleLoop:true,reducedMotion:true,navigation:true,pageErrors:errors});await context.close();console.log('PASS static Mara '+name);
 }fs.writeFileSync(path.join(out,'mara-results.json'),JSON.stringify({results},null,2));}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

@@ -1,51 +1,66 @@
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {createMaraRig} from './mara-rig.js';
-const plane=document.querySelector('.composition'),view=plane.closest('main'),fox=plane.querySelector('.fox');
-const reduced=matchMedia('(prefers-reduced-motion: reduce)'),still=document.documentElement.dataset.motion==='still';
+import {createMaraRig,loadMaraSkin} from './mara-rig.js';
+// Endpoint approval only: no arrival, gait, collapse timeline or RAF is active.
+const plane=document.querySelector('.composition'),view=plane.closest('main'),fox=plane.querySelector('.fox'),reference=fox.querySelector('img');
 const local=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearchParams(location.search).has('mara-review');
-const smooth=(a,b,x)=>{const u=T.MathUtils.clamp((x-a)/(b-a),0,1);return u*u*(3-2*u);};
-let sourceScene,rig,renderer,scene,camera,frame=0,time=0,last=0,playing=false,loaded=false,visit=0,draws=0,active=false,inspection=false,disposed=false;
-const end=2.85;let restYaw=.3;
-const canvas=document.createElement('canvas');canvas.className='mara-canvas';canvas.setAttribute('aria-hidden','true');canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3';plane.append(canvas);
+let sourceScene,rig,renderer,scene,camera,loaded=false,disposed=false,active=false,draws=0,mode='model',inspectionCleanup=null;
+const poseParameters={yaw:-1.4,bodyRoll:-.65,bodyPitch:.03,headYaw:.52,headRoll:.15,headPitch:-.15,headDrop:.06,headLeft:.15};
+const canvas=document.createElement('canvas');canvas.className='mara-canvas';canvas.setAttribute('aria-hidden','true');canvas.dataset.review='static-resting-pose';canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3';plane.append(canvas);
 renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true});renderer.outputColorSpace=T.SRGBColorSpace;renderer.setClearColor(0,0);renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
 scene=new T.Scene();camera=new T.PerspectiveCamera(40,1.5,.05,100);camera.position.set(0,3,8);camera.lookAt(0,.9,0);camera.updateMatrixWorld(true);
 scene.add(new T.HemisphereLight(0xabbfd8,0x22150f,.3));const amber=new T.DirectionalLight(0xffb265,1.2);amber.position.set(-3,5,3);amber.castShadow=true;amber.shadow.mapSize.set(1024,1024);Object.assign(amber.shadow.camera,{left:-8,right:8,top:6,bottom:-6,near:.1,far:30});amber.shadow.bias=-.0003;amber.shadow.normalBias=.01;scene.add(amber);const moon=new T.DirectionalLight(0xabc8ee,.45);moon.position.set(1,5,-4);scene.add(moon);
 const floor=new T.Mesh(new T.PlaneGeometry(50,50),new T.ShadowMaterial({opacity:.28}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
 function ground(x,y){const ray=new T.Raycaster();ray.setFromCamera(new T.Vector2(x/1536*2-1,1-y/1024*2),camera);return ray.ray.intersectPlane(new T.Plane(new T.Vector3(0,1,0),0),new T.Vector3());}
-function entryPoint(){const r=plane.getBoundingClientRect();return innerWidth/r.width<.7?ground(-r.left/r.width*1536-160,1160):ground(1715,1100);}
-const start=entryPoint(),finish=ground(1320,940);let heading=Math.atan2(finish.x-start.x,finish.z-start.z);
-// Foreground crates are behind this near-camera route. Their depth-only volumes
-// preserve occlusion if a limb reaches back; they never redraw the artwork.
-const depthMaterial=new T.MeshBasicMaterial({colorWrite:false,depthWrite:true});
-for(const [x,y,w,h]of[[1428,835,1.05,.7],[1518,910,.9,.45]]){const p=ground(x,y);const crate=new T.Mesh(new T.BoxGeometry(w,h,.15),depthMaterial);crate.position.set(p.x,h/2,p.z);crate.renderOrder=-10;scene.add(crate);}
-const aoCanvas=document.createElement('canvas');aoCanvas.width=aoCanvas.height=64;const ctx=aoCanvas.getContext('2d'),gradient=ctx.createRadialGradient(32,32,2,32,32,32);gradient.addColorStop(0,'rgba(12,7,3,.55)');gradient.addColorStop(.5,'rgba(12,7,3,.3)');gradient.addColorStop(1,'rgba(12,7,3,0)');ctx.fillStyle=gradient;ctx.fillRect(0,0,64,64);const aoTexture=new T.CanvasTexture(aoCanvas),ao=new T.Mesh(new T.PlaneGeometry(1.65,.9),new T.MeshBasicMaterial({map:aoTexture,transparent:true,depthWrite:false}));ao.rotation.x=-Math.PI/2;ao.position.y=.005;scene.add(ao);
-let reflection;
-function draw(){if(!loaded||disposed||!active)return;const c=smooth(1.65,2.6,time); // physical ground route, with a short braking distance
- const runDistance=Math.min(time/1.65,1)*start.distanceTo(finish)*.88;
- rig.group.scale.setScalar(.73);rig.group.position.copy(start).lerp(finish,time<1.65?time/1.65*.88:.88+.12*smooth(1.65,2.25,time));rig.group.rotation.y=T.MathUtils.lerp(heading,restYaw,smooth(1.8,2.6,time));
- rig.pose({cycle:runDistance/(.36*.73),collapse:c,settle:Math.max(0,time-2.3)});
- ao.position.x=rig.group.position.x;ao.position.z=rig.group.position.z;ao.scale.set(1+c*.12,1+c*.3,1);ao.material.opacity=.8;
- reflection.visible=true;renderer.render(scene,camera);draws++;fox.disabled=time<end;canvas.dataset.phase=time>=end?'resting':time>=1.65?'collapsing':'running';canvas.dataset.time=time.toFixed(3);if(panel){panel.slider.value=time;panel.label.textContent=canvas.dataset.phase+' · '+time.toFixed(2)+' s';}
-}
-function resize(){if(disposed)return;renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(Math.max(1,Math.round(plane.clientWidth)),Math.max(1,Math.round(plane.clientHeight)),false);draw();}
-function cancel(){cancelAnimationFrame(frame);frame=0;last=0;playing=false;}
-function tick(now){frame=0;if(!active||document.hidden||inspection||disposed){last=0;return;}time=Math.min(end,time+(last?Math.min((now-last)/1000,.06):0));last=now;draw();if(time<end&&playing)frame=requestAnimationFrame(tick);else playing=false;}
-function replay(){if(disposed)return;cancel();start.copy(entryPoint());heading=Math.atan2(finish.x-start.x,finish.z-start.z);time=reduced.matches||still?end:0;playing=time<end;draw();if(playing&&active&&!document.hidden&&!inspection)frame=requestAnimationFrame(tick);}
-function sync(){if(disposed)return;const next=!view.inert&&document.documentElement.dataset.location!=='rides-games'&&(document.documentElement.dataset.location||'midway')==='midway';if(next!==active){active=next;canvas.hidden=!active;if(active&&loaded){visit++;replay();}else cancel();}else if(active&&loaded){if(reduced.matches||still){cancel();time=end;draw();}else if(!document.hidden&&!inspection&&playing&&!frame){last=0;frame=requestAnimationFrame(tick);}else if(document.hidden||inspection){cancelAnimationFrame(frame);frame=0;last=0;}}}
-const observer=new MutationObserver(sync);observer.observe(view,{attributes:true,attributeFilter:['inert']});observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-location']});document.addEventListener('visibilitychange',sync);reduced.addEventListener('change',sync);const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(plane);
-let panel=null,inspectionCleanup=null;
-try{
- const gltf=await new GLTFLoader().loadAsync('./mara/mara.glb');if(disposed)throw new Error('Mara load cancelled');sourceScene=gltf.scene;rig=createMaraRig(sourceScene);scene.add(rig.group);
- const material=rig.mesh.material.clone();material.transparent=true;material.opacity=.085;material.depthWrite=false;material.onBeforeCompile=shader=>{shader.vertexShader='varying float maraReflectionDepth;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nvec4 reflected=modelMatrix*vec4(transformed,1.);maraReflectionDepth=reflected.y;reflected.y=-reflected.y-.012;gl_Position=projectionMatrix*viewMatrix*reflected;');shader.fragmentShader='varying float maraReflectionDepth;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\ndiffuseColor.a*=exp(-maraReflectionDepth*3.)*(.55+.45*sin(gl_FragCoord.y*2.5));');};material.customProgramCacheKey=()=> 'mara-wet-reflection';
- reflection=new T.SkinnedMesh(rig.mesh.geometry,material);rig.group.add(reflection);reflection.bind(rig.mesh.skeleton,rig.mesh.bindMatrix);reflection.frustumCulled=false;reflection.castShadow=false;
- loaded=true;fox.classList.add('mara-model-ready');fox.querySelector('img').style.visibility='hidden';fox.hidden=false;document.querySelector('.ground-tag').hidden=true;fox.setAttribute('aria-label','Examine Mara, the abandoned stuffed fox');fox.addEventListener('click',inspect,true);
- // The arrival and limp resting toy replace the old sprite/disintegration cinema.
- canvas.dataset.ready='true';resize();sync();
-}catch(error){canvas.dataset.ready='failed';console.error('Mara could not load',error);}
-function inspect(event){event?.stopImmediatePropagation();if(!loaded||view.inert||inspection)return;inspection=true;cancelAnimationFrame(frame);frame=0;last=0;const dialog=document.querySelector('.inspection'),art=dialog.querySelector('.inspection-art');art.replaceChildren();const info=document.createElement('p');info.textContent='MARA — an old stuffed fox. Her fabric is worn, her paws stitched, her scarf still covered in tiny gold stars.';info.style.cssText='position:absolute;bottom:22px;left:50%;transform:translateX(-50%);width:min(85vw,550px);text-align:center;color:#edd7af';art.append(info);const canvas2=document.createElement('canvas');canvas2.style.cssText='width:min(90vw,850px);height:min(75vh,650px)';art.prepend(canvas2);const r=new T.WebGLRenderer({canvas:canvas2,alpha:true,antialias:true});r.setPixelRatio(Math.min(devicePixelRatio||1,1.5));const s=new T.Scene();s.add(new T.HemisphereLight(0xffd79b,0x252333,1));const light=new T.DirectionalLight(0xffbf7d,2);light.position.set(-2,4,3);s.add(light);const model=createMaraRig(sourceScene);s.add(model.group);model.group.rotation.y=.25;model.pose({collapse:1,settle:3});const cam=new T.PerspectiveCamera(38,1,.1,30);cam.position.set(0,1.7,3.4);cam.lookAt(0,.45,0);const render=()=>{const b=canvas2.getBoundingClientRect();r.setSize(b.width,b.height,false);cam.aspect=b.width/b.height;cam.updateProjectionMatrix();r.render(s,cam);};dialog.showModal();render();const ro=new ResizeObserver(render);ro.observe(canvas2);const close=()=>{ro.disconnect();model.dispose();r.dispose();r.forceContextLoss();inspectionCleanup=null;dialog.removeEventListener('close',close);inspection=false;sync();fox.focus({preventScroll:true});};inspectionCleanup=close;dialog.addEventListener('close',close);}
-if(local){const section=document.createElement('section');section.className='mara-review-panel';section.style.cssText='position:fixed;left:12px;top:12px;z-index:100;background:#10151ded;color:#ffe4b5;padding:10px;border:1px solid #a78c5d;border-radius:6px;max-width:340px;font:13px system-ui';const button=document.createElement('button');button.textContent='Replay Mara';button.onclick=replay;section.append(button);const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=end;slider.step=.01;slider.value=0;slider.setAttribute('aria-label','Mara sequence timeline');slider.oninput=()=>{cancel();time=+slider.value;draw();};slider.style.cssText='display:block;width:100%';section.append(slider);const label=document.createElement('output');section.append(label);document.body.append(section);panel={slider,label};}
-window.MaraMidway={replay,setRestYaw:local?y=>{restYaw=y;draw();}:undefined,diagnostics(){const box=new T.Box3().setFromObject(rig.mesh,true),p=new T.Vector3();const corners=[];for(let i=0;i<rig.mesh.geometry.attributes.position.count;i++){rig.mesh.getVertexPosition(i,p).applyMatrix4(rig.mesh.matrixWorld).project(camera);corners.push({x:(p.x+1)*768,y:(1-p.y)*512});}return{groundMin:box.min.y,bounds:{min:box.min.toArray(),max:box.max.toArray()},projected:{left:Math.min(...corners.map(p=>p.x)),right:Math.max(...corners.map(p=>p.x)),top:Math.min(...corners.map(p=>p.y)),bottom:Math.max(...corners.map(p=>p.y))},bones:rig.bones.map(b=>({name:b.name,q:b.quaternion.toArray()}))};},seek(t){cancel();time=T.MathUtils.clamp(t,0,end);draw();},state:()=>({loaded,active,playing,time,visit,draws,phase:canvas.dataset.phase,position:rig?.group.position.toArray(),stats:rig?.stats,sourceModel:'mara/mara.glb'}),dispose(){if(disposed)return;disposed=true;cancel();inspectionCleanup?.();observer.disconnect();resizeObserver.disconnect();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();ao.geometry.dispose();ao.material.dispose();aoTexture.dispose();scene.traverse(o=>{if(o.material===depthMaterial)o.geometry.dispose();});depthMaterial.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const value of Object.values(o.material))if(value?.isTexture)value.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
 
-function onPageHide(event){if(!event.persisted)window.MaraMidway?.dispose();}
-addEventListener('pagehide',onPageHide);
+let fitted=null,reflection,panel;
+function targetBounds(){
+ const k=1536/plane.clientWidth,left=fox.offsetLeft*k,top=fox.offsetTop*k,width=fox.offsetWidth*k,height=fox.offsetHeight*k;
+ // Alpha >32 bounds measured from the unchanged 423x236 reference PNG.
+ return{left:left+width*7/423,right:left+width*421/423,top,bottom:top+height};
+}
+function projectedBounds(){
+ const v=new T.Vector3(),out={left:Infinity,right:-Infinity,top:Infinity,bottom:-Infinity};
+ for(let i=0;i<rig.mesh.geometry.attributes.position.count;i++){
+  rig.mesh.getVertexPosition(i,v).applyMatrix4(rig.mesh.matrixWorld).project(camera);
+  const x=(v.x+1)*768,y=(1-v.y)*512;out.left=Math.min(out.left,x);out.right=Math.max(out.right,x);out.top=Math.min(out.top,y);out.bottom=Math.max(out.bottom,y);
+ }
+ return out;
+}
+function fit(){
+ if(!loaded)return;const target=targetBounds(),v=new T.Vector3();
+ rig.group.rotation.set(0,poseParameters.yaw,0);rig.group.scale.setScalar(.45);rig.group.position.copy(ground((target.left+target.right)/2,target.bottom));
+ for(let i=0;i<7;i++){
+  rig.restingPose(poseParameters);let box=projectedBounds();rig.group.scale.multiplyScalar((target.right-target.left)/(box.right-box.left));rig.restingPose(poseParameters);box=projectedBounds();
+  v.set(rig.group.position.x,0,rig.group.position.z).project(camera);
+  const x=(v.x+1)*768+(target.left+target.right-box.left-box.right)/2,y=(1-v.y)*512+target.bottom-box.bottom;
+  const point=ground(x,y);rig.group.position.x=point.x;rig.group.position.z=point.z;
+ }
+ rig.restingPose(poseParameters);fitted={target,actual:projectedBounds(),scale:rig.group.scale.x,position:rig.group.position.toArray()};
+}
+function draw(){if(!loaded||disposed||!active)return;canvas.hidden=mode==='original';reference.style.visibility=mode==='model'?'hidden':'visible';reference.style.opacity=mode==='overlay'?'.5':'1';fox.style.zIndex=mode==='overlay'?'4':'3';if(mode!=='original'){renderer.render(scene,camera);draws++;}canvas.dataset.phase='resting';fox.disabled=false;if(panel)panel.textContent=mode==='original'?'Original 2D fox':mode==='overlay'?'Original reference over 3D Mara':'3D Mara — static endpoint only';}
+function resize(){if(disposed)return;renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(Math.max(1,Math.round(plane.clientWidth)),Math.max(1,Math.round(plane.clientHeight)),false);draw();}
+function sync(){if(disposed)return;active=!view.inert&&(document.documentElement.dataset.location||'midway')==='midway';if(!active)canvas.hidden=true;else draw();}
+const observer=new MutationObserver(sync);observer.observe(view,{attributes:true,attributeFilter:['inert']});observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-location']});const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(plane);
+try{
+ const [gltf]=await Promise.all([new GLTFLoader().loadAsync('./mara/mara.glb'),loadMaraSkin(),reference.decode()]);if(disposed)throw new Error('Mara load cancelled');sourceScene=gltf.scene;rig=createMaraRig(sourceScene);scene.add(rig.group);
+ const material=rig.mesh.material.clone();material.transparent=true;material.opacity=.07;material.depthWrite=false;material.onBeforeCompile=shader=>{shader.vertexShader='varying float maraReflectionDepth;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nvec4 reflected=modelMatrix*vec4(transformed,1.);maraReflectionDepth=reflected.y;reflected.y=-reflected.y-.012;gl_Position=projectionMatrix*viewMatrix*reflected;');shader.fragmentShader='varying float maraReflectionDepth;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\ndiffuseColor.a*=exp(-maraReflectionDepth*3.)*(.55+.45*sin(gl_FragCoord.y*2.5));');};material.customProgramCacheKey=()=> 'mara-static-wet-reflection';
+ reflection=new T.SkinnedMesh(rig.mesh.geometry,material);rig.group.add(reflection);reflection.bind(rig.mesh.skeleton,rig.mesh.bindMatrix);reflection.frustumCulled=false;reflection.castShadow=false;
+ loaded=true;fit();fox.hidden=false;document.querySelector('.ground-tag').hidden=true;fox.setAttribute('aria-label','Examine Mara, the abandoned stuffed fox');fox.addEventListener('click',inspect,true);canvas.dataset.ready='true';resize();sync();
+}catch(error){canvas.dataset.ready='failed';console.error('Mara could not load',error);}
+function inspect(event){
+ event?.stopImmediatePropagation();if(!loaded||view.inert||inspectionCleanup)return;
+ const dialog=document.querySelector('.inspection'),art=dialog.querySelector('.inspection-art');art.replaceChildren();
+ const c=document.createElement('canvas');c.style.cssText='width:min(90vw,850px);height:min(75vh,650px)';art.append(c);
+ const r=new T.WebGLRenderer({canvas:c,alpha:true,antialias:true});r.setPixelRatio(Math.min(devicePixelRatio||1,1.5));const s=new T.Scene();s.add(new T.HemisphereLight(0xffd79b,0x252333,1));const light=new T.DirectionalLight(0xffbf7d,2);light.position.set(-2,4,3);s.add(light);
+ const model=createMaraRig(sourceScene);s.add(model.group);model.group.rotation.y=poseParameters.yaw;model.restingPose(poseParameters);
+ const cam=new T.PerspectiveCamera(38,1,.1,30);cam.position.set(0,1.5,3.6);cam.lookAt(0,.45,0);
+ const render=()=>{const b=c.getBoundingClientRect();r.setSize(b.width,b.height,false);cam.aspect=b.width/b.height;cam.updateProjectionMatrix();r.render(s,cam);};dialog.showModal();render();const ro=new ResizeObserver(render);ro.observe(c);
+ const close=()=>{ro.disconnect();model.dispose();r.dispose();r.forceContextLoss();dialog.removeEventListener('close',close);inspectionCleanup=null;fox.focus({preventScroll:true});};inspectionCleanup=close;dialog.addEventListener('close',close);
+}
+function show(value){mode=value;draw();}
+if(local){const section=document.createElement('section');section.className='mara-review-panel';section.style.cssText='position:fixed;left:12px;top:12px;z-index:100;background:#10151ded;color:#ffe4b5;padding:10px;border:1px solid #a78c5d;border-radius:6px;max-width:360px;font:13px system-ui';
+ for(const [label,value]of[['3D Mara','model'],['Original 2D fox','original'],['Overlay reference','overlay']]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>show(value);b.style.cssText='padding:7px;margin:2px;cursor:pointer';section.append(b);}
+ panel=document.createElement('output');panel.style.display='block';panel.style.paddingTop='6px';section.append(panel);document.body.append(section);draw();}
+window.MaraMidway={show,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing:false,phase:'static-resting-pose',draws,mode,fitted,poseParameters:{...poseParameters},stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;inspectionCleanup?.();observer.disconnect();resizeObserver.disconnect();fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
+function onPageHide(event){if(!event.persisted)window.MaraMidway?.dispose();}addEventListener('pagehide',onPageHide);

@@ -40,6 +40,6 @@
   "sourceHasSkeleton": false,
   "sourceAnimationClips": 0,
   "runtimeBones": 21,
-  "animationMethod": "Procedural quadruped skinning of the supplied mesh; no geometry remodelling",
-  "approval": "Pending local visual review; do not merge or deploy"
+  "animationMethod": "Static endpoint approval study with 21-bone surface-weight rig; playback disabled",
+  "approval": "Static pose candidate pending visual approval; no motion revision, merge or deployment"
 }
