@@ -68,16 +68,16 @@
     "sha256": "ffa70c90fe43815b6b24e250ec0b9a572609f8ff63965a2ce56dd74875a5f879"
   },
   "opening/age-buttons.js": {
-    "bytes": 431,
-    "sha256": "256cea54919a5d1ac4ff0bb148494cebe9c32578aeded2a00ccf7a5523127d29"
+    "bytes": 1144,
+    "sha256": "53097b2df6e79347c574a1221104215cd87f53b6b15b02ef483d9ad3d3eef02c"
   },
   "index.html": {
     "bytes": 1950,
     "sha256": "369f3ef61c017a6c4533ad13d59c3df37f0c0c196ca197b9b7f0f557d5790605"
   },
   "opening/opening.css": {
-    "bytes": 1782,
-    "sha256": "c2f57205e52f124169af00e9b6de88ecf9f2a250f96ce246f7cec2a3b40a6edf"
+    "bytes": 3925,
+    "sha256": "df5040a4e0cc7bda69d46333d4cce4a51dd51d35cd318f0c752a72abd7d2c36e"
   },
   "mount-preload.js": {
     "bytes": 2191,

@@ -21,10 +21,46 @@ body { margin: 0; }
 .carnival-entry:focus-visible { outline: 3px solid #ffe1a0; outline-offset: 3px; box-shadow: 0 0 20px #ffca6870; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
-/* Transparent semantic controls follow the existing painted age buttons. */
-.age-band-button {position:absolute;top:87.1%;height:5.9%;padding:0;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer;touch-action:manipulation;}
-.age-band-button[data-age-band="kids"] {left:23.2%;width:11.8%;}
-.age-band-button[data-age-band="pre-teens"] {left:36.2%;width:12.8%;}
-.age-band-button[data-age-band="teens"] {left:50.4%;width:12.6%;}
-.age-band-button[data-age-band="adults"] {left:64.3%;width:12.5%;}
-.age-band-button:focus-visible {outline:3px solid #ffe1a0;outline-offset:3px;}
+/* Reuse each painted button as a registered crop of the unchanged artwork.
+   Filtering the crop preserves the original lettering, colors and proportions. */
+.age-band-button {
+ position:absolute;top:87.1%;height:5.9%;padding:0;border:0;border-radius:50%;
+ background:transparent;color:inherit;cursor:pointer;touch-action:manipulation;
+ isolation:isolate;transition:box-shadow 220ms ease;
+}
+.age-band-button::before {
+ content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+ background-image:url('./choose-a-dream.png');background-repeat:no-repeat;
+ background-size:var(--crop-width) 1694.915254%;background-position:var(--crop-x) 92.561105%;
+ transition:filter 220ms ease;
+}
+.age-band-button::after {
+ content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;
+ border:1px solid #ffe9a7;opacity:0;
+ box-shadow:inset 0 1px 2px #fff8dacc,inset 0 -2px 3px #20100588,0 0 4px #ffd16bcc;
+ transition:opacity 220ms ease;
+}
+.age-band-button[data-age-band="kids"] {left:23.2%;width:11.8%;--crop-width:847.457627%;--crop-x:26.303855%;--band-glow:15 221 205;}
+.age-band-button[data-age-band="pre-teens"] {left:36.2%;width:12.8%;--crop-width:781.25%;--crop-x:41.513761%;--band-glow:73 151 255;}
+.age-band-button[data-age-band="teens"] {left:50.4%;width:12.6%;--crop-width:793.650794%;--crop-x:57.665904%;--band-glow:205 117 255;}
+.age-band-button[data-age-band="adults"] {left:64.3%;width:12.5%;--crop-width:800%;--crop-x:73.485714%;--band-glow:255 177 61;}
+.age-band-ready .age-band-button[aria-pressed="false"]::before {filter:brightness(.56) saturate(.42);}
+.age-band-ready .age-band-button[aria-pressed="true"] {
+ box-shadow:0 0 5px #ffe6a9,0 0 14px rgb(var(--band-glow) / .88),0 0 28px rgb(var(--band-glow) / .52),0 3px 5px #0009;
+}
+.age-band-ready .age-band-button[aria-pressed="true"]::before {filter:brightness(1.18) saturate(1.18);}
+.age-band-ready .age-band-button[aria-pressed="true"]::after {opacity:1;}
+/* Focus is a separate white dashed ring, including on an unselected button. */
+.age-band-button:focus-visible {outline:2px dashed #fff9e9;outline-offset:5px;}
+@media(hover:hover) {
+ .age-band-ready .age-band-button[aria-pressed="false"]:hover::before {filter:brightness(.72) saturate(.65);}
+}
+.age-band-button.is-illuminating::after {animation:age-band-awaken 420ms ease-out;}
+@keyframes age-band-awaken {
+ 0% {filter:brightness(1);transform:scale(1);}
+ 30% {filter:brightness(1.9);transform:scale(1.025);box-shadow:inset 0 0 7px #fff2bb,0 0 13px #ffe5a3,0 0 24px rgb(var(--band-glow) / .9);}
+ 100% {filter:brightness(1);transform:scale(1);}
+}
+@media(prefers-reduced-motion:reduce) {
+ .age-band-button,.age-band-button::before,.age-band-button::after {transition:none;animation:none;}
+}
