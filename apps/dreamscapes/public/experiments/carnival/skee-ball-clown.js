@@ -2,11 +2,11 @@ import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
 import {createMachineSpace} from './skee-ball-space.js';
 
-export async function mountClown({game,plane,ui,isActive,reduced,onReady}) {
+export async function mountClown({game,plane,ui,isActive,reduced,onReady,onMachineReady,onComplete}) {
  const canvas=document.createElement('canvas');canvas.className='skee-clown-canvas';canvas.setAttribute('aria-hidden','true');game.append(canvas);
  const renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true});renderer.setClearColor(0,0);renderer.outputColorSpace=T.SRGBColorSpace;
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.VSMShadowMap;
- const scene=new T.Scene(),space=createMachineSpace(scene),camera=space.camera;
+ const scene=new T.Scene(),space=createMachineSpace(scene,()=>draw()),camera=space.camera;
  // Low warm ambient, shaded shelf recess, amber key. Original PBR colors/maps are untouched.
  const ambient=new T.HemisphereLight(0xf2bd78,0x301c15,.16);scene.add(ambient);
  const key=new T.DirectionalLight(0xffbd70,1.45);key.position.set(3,5,-1);key.target.position.set(0,.3,4);key.castShadow=true;
@@ -14,7 +14,7 @@ export async function mountClown({game,plane,ui,isActive,reduced,onReady}) {
  const shelfBulb=new T.PointLight(0xff9e43,2.4,5,2);shelfBulb.position.set(3.1,1.9,5.6);scene.add(shelfBulb);
  const fill=new T.DirectionalLight(0xe2b989,.18);fill.position.set(-3,2,-3);scene.add(fill);
  const clamp=T.MathUtils.clamp,lerp=T.MathUtils.lerp,smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
- let time=0,playing=false,requested=false,roundTriggered=false,previewOnly=false,disposed=false,frame=0,last=0;
+ let time=0,playing=false,requested=false,roundTriggered=false,previewOnly=false,notified=false,disposed=false,frame=0,last=0;
  let model,root,mixer,mesh,clip,scale,idleOrigin,runOrigin,idleQuats=[],runQuats=[],clipSamplers=[],feet={Left:[],Right:[]},contacts=[],bodyHeight=.7,runDuration=5;
  let timings={launch:.55,land:1.6,run:2.19,evaporate:7.22,bodyGone:9.22,pomGone:9.94,end:12.6};
  const dissolveClock={value:0},cut={value:-20},pomOpacity={value:1},pomLift={value:0},pomFloor={value:.65};
@@ -41,8 +41,8 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   q.premultiply(new T.Quaternion().setFromUnitVectors(d,new T.Vector3(...direction).normalize()));b.quaternion.copy(b.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));model.updateMatrixWorld(true);
  }
  function seatPose(){for(const side of ['Left','Right']){orient('mixamorig'+side+'UpLeg','mixamorig'+side+'Leg',[0,.5,1]);orient('mixamorig'+side+'Leg','mixamorig'+side+'Foot',[0,-.45,1]);orient('mixamorig'+side+'Foot','mixamorig'+side+'ToeBase',[0,-.08,1]);}}
- const takeoff=()=>space.shelfFoot.clone(),landing=new T.Vector3(0,0,4.4),stop=new T.Vector3(0,0,.35);
- let flight=1.05;const gravity=9.81;let jumpPlan=null;
+ const takeoff=()=>space.shelfFoot.clone(),landing=new T.Vector3(0,0,space.construction.landing),stop=new T.Vector3(0,0,.35);
+ let flight=.58;const gravity=9.81/space.construction.metersPerUnit;let jumpPlan=null;
  function motion(t){
   const start=takeoff(),yawFlight=(Math.atan2(-start.x,landing.z-start.z)+2*Math.PI)%(2*Math.PI);
   if(t<timings.launch)return{position:start,yaw:lerp(Math.PI,yawFlight,smooth(.15,timings.launch,t)),stand:0,phase:'preparing'};
@@ -94,7 +94,7 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   let i=0;for(const w of wisps){const band=bands[(i++)%20];w.vertex=band.length?band[Math.floor(rand()*band.length)]:Math.floor(rand()*n);mesh.getVertexPosition(w.vertex,w.anchor).applyMatrix4(mesh.matrixWorld);const h=clamp(w.anchor.y/bodyHeight,0,1);w.pom=pom.getX(w.vertex)>.5;w.born=w.pom?timings.bodyGone+.55:timings.evaporate+(h*2+.12)/2.42*2+(w.delay-.5)*.38;}
  }
  function draw(){
-  if(disposed||!model)return;const p=pose(time),ev=clamp((time-timings.evaporate)/2,0,1);
+  if(disposed)return;if(!model){renderer.render(scene,camera);return;}const p=pose(time),ev=clamp((time-timings.evaporate)/2,0,1);
   // Leave the recess gradually; brighter machine lighting after landing.
   const lit=smooth(timings.launch,timings.land+.3,time);
   ambient.intensity=lerp(.14,.44,lit);key.intensity=lerp(.48,1.9,lit);
@@ -117,14 +117,16 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   game.dataset.clownPhase=!requested?'waiting':time<timings.land?p.phase:time<timings.run?'landing':time<timings.evaporate?'approach':time<timings.bodyGone?'evaporating':time<timings.pomGone?'pompom':time<timings.end?'vapor':'gone';
   if(reviewControls){reviewControls.slider.value=time;reviewControls.label.textContent=game.dataset.clownPhase+' · '+time.toFixed(2)+' s';}
   renderer.render(scene,camera);
+  if(roundTriggered&&!previewOnly&&!notified&&time>=timings.end){notified=true;onComplete?.();}
  }
  function resize(){if(disposed)return;const r=plane.getBoundingClientRect();renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));renderer.setSize(Math.max(1,Math.round(r.width)),Math.max(1,Math.round(r.height)),false);draw();}
  function tick(now){frame=0;if(disposed||!isActive()){last=0;return;}if(playing){time=Math.min(timings.end,time+(last?Math.min((now-last)/1000,.05):0));last=now;draw();if(time>=timings.end){playing=false;last=0;}}if(playing)frame=requestAnimationFrame(tick);}
  function sync(){if(disposed)return;if(!isActive()){cancelAnimationFrame(frame);frame=0;last=0;return;}if(requested&&reduced.matches){time=timings.end;playing=false;}draw();if(playing&&!frame)frame=requestAnimationFrame(tick);}
- function begin(preview=false){previewOnly=preview;requested=true;playing=true;time=0;last=0;sync();}
+ function begin(preview=false){notified=false;previewOnly=preview;requested=true;playing=true;time=0;last=0;sync();}
  function complete(){if(roundTriggered||disposed)return;roundTriggered=true;begin(false);}
- function reset(){requested=false;roundTriggered=false;previewOnly=false;playing=false;time=0;last=0;cancelAnimationFrame(frame);frame=0;draw();}
+ function reset(){notified=false;requested=false;roundTriggered=false;previewOnly=false;playing=false;time=0;last=0;cancelAnimationFrame(frame);frame=0;draw();}
  let reviewControls=null,pomVertices=0,stride=.5;
+ space.floorShadow.visible=false;space.shelfShadow.visible=false;resize();onMachineReady?.(space.construction);
  try{
   const response=await fetch(new URL('./skee-ball/clown-running.glb',import.meta.url));if(!response.ok)throw new Error('Clown GLB unavailable');const data=await response.arrayBuffer();while(game.dataset.phase==='rolling')await new Promise(resolve=>setTimeout(resolve,80));const g=await new GLTFLoader().parseAsync(data,new URL('./skee-ball/',import.meta.url).href);model=new T.Group();root=g.scene;const extra=root.getObjectByName('Icosphere');if(extra)extra.visible=false;
   mesh=root.getObjectByName('output_unwrapped');mixer=new T.AnimationMixer(root);clip=g.animations[0];clipSamplers=clip.tracks.map(track=>{const binding=T.PropertyBinding.create(root,track.name);binding.bind();return{binding,interpolant:track.createInterpolant()};});model.add(root);scene.add(model);sampleClip(.11);model.updateMatrixWorld(true);mesh.skeleton.update();
@@ -165,8 +167,8 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
  if(local&&ui){
   const panel=document.createElement('section');panel.className='skee-clown-review';panel.setAttribute('aria-label','Clown sequence review');
   function button(text,fn){const b=document.createElement('button');b.textContent=text;b.onclick=fn;panel.append(b);return b;}
-  button('Replay clown',()=>{playing=false;roundTriggered=false;begin(true);});button('Reset shelf',reset);button('Pause / resume',()=>{playing=!playing;last=0;sync();});
-  const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=timings.end;slider.step=.01;slider.setAttribute('aria-label','Clown sequence timeline');slider.oninput=()=>{requested=true;previewOnly=true;playing=false;time=+slider.value;draw();};panel.append(slider);
+  button('Replay clown',()=>{playing=false;begin(game.dataset.roundPhase!=='clown');});button('Reset shelf',()=>{if(game.dataset.roundPhase!=='clown')reset();});button('Pause / resume',()=>{playing=!playing;last=0;sync();});
+  const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=timings.end;slider.step=.01;slider.setAttribute('aria-label','Clown sequence timeline');slider.oninput=()=>{requested=true;previewOnly=game.dataset.roundPhase!=='clown';playing=false;time=+slider.value;draw();};panel.append(slider);
   const debugLabel=document.createElement('label'),debug=document.createElement('input');debug.type='checkbox';debug.onchange=()=>{space.setDebug(debug.checked);draw();};debugLabel.append(debug,document.createTextNode(' Show invisible proxy outlines'));panel.append(debugLabel);
   const label=document.createElement('output');panel.append(label);reviewControls={panel,slider,label};ui.append(panel);draw();
  }
