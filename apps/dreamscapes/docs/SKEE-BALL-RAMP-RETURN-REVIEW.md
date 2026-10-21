@@ -1,7 +1,7 @@
 # Skee-Ball ramp, collection well and nine-ball round review
 
 Local review branch: `codex/skee-ball-ramp-return`, based on main `96a4c48`.
-Pending visual approval. Do not merge or deploy this work yet.
+Approved by the user on October 21, 2026, with authorization to merge all of today's work into main.
 
 Preview: http://127.0.0.1:4204/experiments/carnival/index.html?scene=skee-ball&clown-review=1
 The local review panel replays/scrubs the clown without consuming game balls. The ordinary game still triggers it only after the ninth result. During a real completion sequence, review replay/scrubbing preserves its completion callback; Reset shelf is ignored until it finishes.
@@ -28,4 +28,4 @@ After the ninth result, score and zero balls persist; ball and its shadow are ab
 - skee-ball-round.cjs: real-time full nine-ball rounds in all three layouts; ninth scores, nine balls prepared/used, one clown trigger, no tenth ball after the entire sequence plus a delay, repeated launch attempts, final score preservation, absent ball and shadow, completed-scene departure/return, explicit replay reset and a subsequent reduced-motion round.
 - Build checks all 164 runtime hashes, 20 Ornate carousel GLBs and 40 variants. Original approved alley SHA-256 remains 2d54822360a3329f1542853c2bf0b295f5c78e6a903f35d8497c4ab82b0c555b.
 
-Screenshots and detailed results are in the local artifact folder `ramp-return-review`. Visual approval of the construction and animation remains the user's next step.
+Screenshots and detailed results are in the local artifact folder `ramp-return-review`. The user approved the review and requested merging this work together with the landing-page age-band glow.
