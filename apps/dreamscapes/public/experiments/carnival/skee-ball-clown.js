@@ -8,7 +8,7 @@ export async function mountClown({game,plane,ui,isActive,reduced,onReady}) {
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.VSMShadowMap;
  const scene=new T.Scene(),space=createMachineSpace(scene),camera=space.camera;
  // Low warm ambient, shaded shelf recess, amber key. Original PBR colors/maps are untouched.
- scene.add(new T.HemisphereLight(0xf2bd78,0x301c15,.38));
+ const ambient=new T.HemisphereLight(0xf2bd78,0x301c15,.16);scene.add(ambient);
  const key=new T.DirectionalLight(0xffbd70,1.45);key.position.set(3,5,-1);key.target.position.set(0,.3,4);key.castShadow=true;
  key.shadow.mapSize.set(1024,1024);key.shadow.blurSamples=8;Object.assign(key.shadow.camera,{left:-4,right:4,top:5,bottom:-4,near:.1,far:18});key.shadow.bias=-.00015;key.shadow.normalBias=.006;key.shadow.radius=4;scene.add(key,key.target);
  const shelfBulb=new T.PointLight(0xff9e43,2.4,5,2);shelfBulb.position.set(3.1,1.9,5.6);scene.add(shelfBulb);
@@ -17,7 +17,7 @@ export async function mountClown({game,plane,ui,isActive,reduced,onReady}) {
  let time=0,playing=false,requested=false,roundTriggered=false,previewOnly=false,disposed=false,frame=0,last=0;
  let model,root,mixer,mesh,clip,scale,idleOrigin,runOrigin,idleQuats=[],runQuats=[],clipSamplers=[],feet={Left:[],Right:[]},contacts=[],bodyHeight=.7,runDuration=5;
  let timings={launch:.55,land:1.6,run:2.19,evaporate:7.22,bodyGone:9.22,pomGone:9.94,end:12.6};
- const cut={value:-20},pomOpacity={value:1},pomLift={value:0},pomFloor={value:.65};
+ const dissolveClock={value:0},cut={value:-20},pomOpacity={value:1},pomLift={value:0},pomFloor={value:.65};
  const fadeNoise=`float vnHash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);} float vnNoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(vnHash(i),vnHash(i+vec3(1,0,0)),f.x),mix(vnHash(i+vec3(0,1,0)),vnHash(i+vec3(1,1,0)),f.x),f.y),mix(mix(vnHash(i+vec3(0,0,1)),vnHash(i+vec3(1,0,1)),f.x),mix(vnHash(i+vec3(0,1,1)),vnHash(i+vec3(1,1,1)),f.x),f.y),f.z);}`;
 const MAX=680,positions=new Float32Array(MAX*3),sizes=new Float32Array(MAX*2),turns=new Float32Array(MAX),alphas=new Float32Array(MAX),seeds=new Float32Array(MAX);
 const vaporGeometry=new T.InstancedBufferGeometry();vaporGeometry.index=new T.BufferAttribute(new Uint16Array([0,1,2,0,2,3]),1);vaporGeometry.setAttribute('position',new T.BufferAttribute(new Float32Array([-.5,-.5,0,.5,-.5,0,.5,.5,0,-.5,.5,0]),3));vaporGeometry.setAttribute('uv',new T.BufferAttribute(new Float32Array([0,0,1,0,1,1,0,1]),2));vaporGeometry.setAttribute('center',new T.InstancedBufferAttribute(positions,3));vaporGeometry.setAttribute('extent',new T.InstancedBufferAttribute(sizes,2));vaporGeometry.setAttribute('turn',new T.InstancedBufferAttribute(turns,1));vaporGeometry.setAttribute('opacity',new T.InstancedBufferAttribute(alphas,1));vaporGeometry.setAttribute('seed',new T.InstancedBufferAttribute(seeds,1));vaporGeometry.instanceCount=MAX;
@@ -70,7 +70,7 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   }
  }
  function pose(t){
-  const p=motion(t),runTime=t>=timings.run?Math.min(t,timings.evaporate)-timings.run:0;
+  const p=motion(t),runTime=t>=timings.run?Math.min(t,timings.evaporate)-timings.run + (t>timings.evaporate?.4*(1-Math.exp(-(t-timings.evaporate)/.4)):0):0;
   sampleClip(t<timings.run?.11:runTime);if(t<timings.run)for(const [bone,q] of runQuats)bone.quaternion.copy(q);
   let seated=1-p.stand;if(t>=timings.launch&&t<timings.land)seated=Math.min(1,seated+1.0*Math.sin(Math.PI*(t-timings.launch)/flight));if(t>=timings.land&&t<timings.run)seated=.18*Math.sin((t-timings.land)/(timings.run-timings.land)*Math.PI);
   for(const [bone,q] of idleQuats){if(seated>=1)bone.quaternion.copy(q);else if(seated>0)bone.quaternion.slerp(q,seated);}
@@ -88,13 +88,18 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   g.setAttribute('clownPom',new T.BufferAttribute(mask,1));return mask.reduce((a,b)=>a+b,0);
  }
  function bakeWisps(){
-  pose(timings.evaporate);const bounds=new T.Box3().setFromObject(mesh,true);bodyHeight=bounds.max.y;pomFloor.value=bodyHeight*.932;
+  pose(timings.evaporate+.5);const bounds=new T.Box3().setFromObject(mesh,true);bodyHeight=bounds.max.y;pomFloor.value=bodyHeight*.932;
   const v=new T.Vector3(),n=mesh.geometry.attributes.position.count,bands=Array.from({length:20},()=>[]),pom=mesh.geometry.attributes.clownPom;
   for(let i=0;i<n;i++){mesh.getVertexPosition(i,v).applyMatrix4(mesh.matrixWorld);bands[Math.floor(clamp(v.y/bodyHeight,0,.999)*20)].push(i);}
-  let i=0;for(const w of wisps){const band=bands[(i++)%20];w.vertex=band.length?band[Math.floor(rand()*band.length)]:Math.floor(rand()*n);mesh.getVertexPosition(w.vertex,w.anchor).applyMatrix4(mesh.matrixWorld);const h=clamp(w.anchor.y/bodyHeight,0,1);w.pom=pom.getX(w.vertex)>.5;w.born=w.pom?timings.bodyGone+.55:timings.evaporate+(h*2+.12)/2.42*2+w.delay*.04;}
+  let i=0;for(const w of wisps){const band=bands[(i++)%20];w.vertex=band.length?band[Math.floor(rand()*band.length)]:Math.floor(rand()*n);mesh.getVertexPosition(w.vertex,w.anchor).applyMatrix4(mesh.matrixWorld);const h=clamp(w.anchor.y/bodyHeight,0,1);w.pom=pom.getX(w.vertex)>.5;w.born=w.pom?timings.bodyGone+.55:timings.evaporate+(h*2+.12)/2.42*2+(w.delay-.5)*.38;}
  }
  function draw(){
   if(disposed||!model)return;const p=pose(time),ev=clamp((time-timings.evaporate)/2,0,1);
+  // Leave the recess gradually; brighter machine lighting after landing.
+  const lit=smooth(timings.launch,timings.land+.3,time);
+  ambient.intensity=lerp(.14,.44,lit);key.intensity=lerp(.48,1.9,lit);
+  shelfBulb.intensity=lerp(.35,2.4,lit);fill.intensity=lerp(.06,.23,lit);
+  dissolveClock.value=Math.max(0,time-timings.evaporate);
   cut.value=time<timings.evaporate?-20:lerp(-bodyHeight*.06,bodyHeight*1.15,ev);
   pomOpacity.value=1-smooth(timings.bodyGone+.32,timings.pomGone,time);pomLift.value=.065*smooth(timings.bodyGone,timings.pomGone,time);
   model.visible=time<timings.pomGone;mesh.castShadow=time<timings.evaporate;
@@ -104,7 +109,7 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   for(const proxy of space.proxies)proxy.castShadow=time<timings.launch&&(proxy.name==='shelf canopy'||proxy.name==='shelf back');
   space.floorShadow.material.opacity=.4*(1-ev);vaporMaterial.uniforms.clock.value=time;
   let active=0;const unit=bodyHeight/2;
-  for(let i=0;i<MAX;i++){const w=wisps[i],age=time-w.born,life=timings.end-.25+w.size*.2,a=age<0||time>life?0:smooth(0,.16,age)*(1-smooth(timings.pomGone+.2+w.size*.3,life,time)),hold=Math.max(0,time-timings.bodyGone),curl=hold*hold*.11*unit;
+  for(let i=0;i<MAX;i++){const w=wisps[i],age=time-w.born,life=timings.end-.25+w.size*.2,a=age<0||time>life?0:smooth(0,.16,age)*(1-smooth(timings.pomGone+.2+w.size*.3,life,time)),hold=Math.max(0,age),curl=(hold*.07+hold*hold*.055)*unit;
    positions[i*3]=w.anchor.x+Math.sin(w.twist+hold*2.1)*curl;positions[i*3+1]=w.anchor.y+(hold*(.22+w.size*.16)+hold*hold*.12)*unit;positions[i*3+2]=w.anchor.z+Math.cos(w.twist+hold*1.8)*curl*.8;
    const grow=.6+hold*.7;sizes[i*2]=(.11+w.size*.13)*grow*unit;sizes[i*2+1]=(.22+w.size*.22)*grow*unit;turns[i]=Math.sin(w.twist+hold)*.55;alphas[i]=a*(.14+w.size*.09);seeds[i]=w.seed;if(a>0)active++;
   }
@@ -145,16 +150,16 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
    jumpPlan={flight,minimumClearance:margin,crossings,gravity};if(margin>=.045)break;flight+=.01;
   }
   if(!jumpPlan.crossings||jumpPlan.minimumClearance<.045)throw new Error('Clown jump does not clear the protective fence '+JSON.stringify(jumpPlan));
-  stride=clamp(travel,.3,.7);runDuration=(landing.z-stop.z)/(stride/clip.duration);
+  stride=clamp(travel,.3,.7);stop.z+=stride;runDuration=(landing.z-stop.z)/(stride/clip.duration);
   timings.evaporate=timings.run+runDuration;timings.bodyGone=timings.evaporate+2;timings.pomGone=timings.bodyGone+.72;timings.end=timings.pomGone+2.65;
   pose(0);pomVertices=tagPom();mesh.castShadow=true;mesh.receiveShadow=true;mesh.material=mesh.material.clone();mesh.material.transparent=true;
   mesh.material.onBeforeCompile=shader=>{
-   shader.uniforms.vaporCut=cut;shader.uniforms.pomOpacity=pomOpacity;shader.uniforms.pomLift=pomLift;shader.uniforms.pomFloor=pomFloor;
+   shader.uniforms.dissolveClock=dissolveClock;shader.uniforms.vaporCut=cut;shader.uniforms.pomOpacity=pomOpacity;shader.uniforms.pomLift=pomLift;shader.uniforms.pomFloor=pomFloor;
    shader.vertexShader='attribute float clownPom; varying float vClownPom; varying vec3 vaporWorld; uniform float pomLift;\n'+shader.vertexShader;
    shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nvClownPom=clownPom;vec4 clownWorld=modelMatrix*vec4(transformed,1.);clownWorld.y+=clownPom*pomLift;vaporWorld=clownWorld.xyz;gl_Position=projectionMatrix*viewMatrix*clownWorld;');
-   shader.fragmentShader='varying float vClownPom; varying vec3 vaporWorld; uniform float vaporCut; uniform float pomOpacity; uniform float pomFloor; uniform float pomLift;\n'+fadeNoise+'\n'+shader.fragmentShader;
-   shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\nfloat boundary=vaporWorld.y+(vnNoise(vaporWorld*18.)-.5)*.045;float bodyAlpha=smoothstep(vaporCut-.035,vaporCut+.035,boundary);diffuseColor.a*=mix(bodyAlpha,pomOpacity,step(.2,vClownPom)*step(pomFloor,vaporWorld.y-pomLift*vClownPom)*step(diffuseColor.r*.4,diffuseColor.g)*step(diffuseColor.b*1.7,diffuseColor.g));if(diffuseColor.a<.01)discard;');
-  };mesh.material.customProgramCacheKey=()=> 'skee-clown-proxy-v3';bakeWisps();time=0;resize();onReady();
+   shader.fragmentShader='varying float vClownPom; varying vec3 vaporWorld; uniform float vaporCut; uniform float dissolveClock; uniform float pomOpacity; uniform float pomFloor; uniform float pomLift;\n'+fadeNoise+'\n'+shader.fragmentShader;
+   shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\nfloat boundary=vaporWorld.y+(vnNoise(vaporWorld*12.+vec3(0.,dissolveClock*.45,0.))-.5)*.19+(vnNoise(vaporWorld*29.)-.5)*.065;float bodyAlpha=smoothstep(vaporCut-.10,vaporCut+.10,boundary);diffuseColor.a*=mix(bodyAlpha,pomOpacity,step(.2,vClownPom)*step(pomFloor,vaporWorld.y-pomLift*vClownPom)*step(diffuseColor.r*.4,diffuseColor.g)*step(diffuseColor.b*1.7,diffuseColor.g));if(diffuseColor.a<.01)discard;');
+  };mesh.material.customProgramCacheKey=()=> 'skee-clown-soft-v4';bakeWisps();time=0;resize();onReady();
  }catch(error){space.dispose();renderer.dispose();canvas.remove();throw error;}
  const local=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearchParams(location.search).has('clown-review');
  if(local&&ui){
