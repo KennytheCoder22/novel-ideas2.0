@@ -1,0 +1,406 @@
+{
+  "date": "2026-10-21",
+  "rounds": [
+    {
+      "name": "desktop",
+      "exactlyNine": true,
+      "ninthScores": true,
+      "noTenthAfterSequence": true,
+      "singleClown": true,
+      "controlsLocked": true,
+      "explicitReplayOnly": true,
+      "reducedMotion": true,
+      "finalScore": 180,
+      "construction": {
+        "rampLengthMeters": 0.15240000001499993,
+        "toe": 3.2,
+        "crest": 3.65,
+        "rise": 0.1,
+        "wellEnd": 6,
+        "wellFloor": -0.18,
+        "landing": 2.5
+      }
+    },
+    {
+      "name": "phone",
+      "exactlyNine": true,
+      "ninthScores": true,
+      "noTenthAfterSequence": true,
+      "singleClown": true,
+      "controlsLocked": true,
+      "explicitReplayOnly": true,
+      "reducedMotion": true,
+      "finalScore": 180,
+      "construction": {
+        "rampLengthMeters": 0.15240000001499993,
+        "toe": 3.2,
+        "crest": 3.65,
+        "rise": 0.1,
+        "wellEnd": 6,
+        "wellFloor": -0.18,
+        "landing": 2.5
+      }
+    },
+    {
+      "name": "landscape",
+      "exactlyNine": true,
+      "ninthScores": true,
+      "noTenthAfterSequence": true,
+      "singleClown": true,
+      "controlsLocked": true,
+      "explicitReplayOnly": true,
+      "reducedMotion": true,
+      "finalScore": 180,
+      "construction": {
+        "rampLengthMeters": 0.15240000001499993,
+        "toe": 3.2,
+        "crest": 3.65,
+        "rise": 0.1,
+        "wellEnd": 6,
+        "wellFloor": -0.18,
+        "landing": 2.5
+      }
+    }
+  ],
+  "controlsAndScoring": {
+    "layouts": [
+      {
+        "name": "desktop",
+        "sharedDimensionalGeometry": true,
+        "fixedSpindles": true,
+        "pointerAngle": true,
+        "pullRelease": true,
+        "springReturn": true,
+        "rampAndFlight": true,
+        "allTargetScores": [
+          100,
+          100,
+          50,
+          40,
+          30,
+          20,
+          10,
+          0
+        ],
+        "keyboard": true,
+        "cancelWithoutShot": true,
+        "reducedMotion": true,
+        "completeRoundReplay": true,
+        "alignedImage": true,
+        "resizeAndDeparture": true
+      },
+      {
+        "name": "phone",
+        "sharedDimensionalGeometry": true,
+        "fixedSpindles": true,
+        "pointerAngle": true,
+        "pullRelease": true,
+        "springReturn": true,
+        "rampAndFlight": true,
+        "allTargetScores": [
+          100,
+          100,
+          50,
+          40,
+          30,
+          20,
+          10,
+          0
+        ],
+        "keyboard": true,
+        "cancelWithoutShot": true,
+        "reducedMotion": true,
+        "completeRoundReplay": true,
+        "alignedImage": true,
+        "resizeAndDeparture": false
+      },
+      {
+        "name": "landscape",
+        "sharedDimensionalGeometry": true,
+        "fixedSpindles": true,
+        "pointerAngle": true,
+        "pullRelease": true,
+        "springReturn": true,
+        "rampAndFlight": true,
+        "allTargetScores": [
+          100,
+          100,
+          50,
+          40,
+          30,
+          20,
+          10,
+          0
+        ],
+        "keyboard": true,
+        "cancelWithoutShot": true,
+        "reducedMotion": true,
+        "completeRoundReplay": true,
+        "alignedImage": true,
+        "resizeAndDeparture": false
+      }
+    ],
+    "assets": {
+      "approved-alley.png": "2d54822360a3329f1542853c2bf0b295f5c78e6a903f35d8497c4ab82b0c555b",
+      "brass-reference.png": "d20097cbc71ddf6b1a5951f813e08529bcbdb7548629b642026c60dd8f0c3fde"
+    },
+    "pageErrors": []
+  },
+  "perspective": {
+    "results": [
+      {
+        "name": "desktop",
+        "calibration": {
+          "corners": [
+            {
+              "world": [
+                -1,
+                0,
+                0
+              ],
+              "image": {
+                "x": 1207.9999999999998,
+                "y": 714.0000000000001
+              }
+            },
+            {
+              "world": [
+                1,
+                0,
+                0
+              ],
+              "image": {
+                "x": 462.00000000000006,
+                "y": 714.0000000000001
+              }
+            },
+            {
+              "world": [
+                -1,
+                0,
+                6
+              ],
+              "image": {
+                "x": 1044.5,
+                "y": 497.46112600536213
+              }
+            },
+            {
+              "world": [
+                1,
+                0,
+                6
+              ],
+              "image": {
+                "x": 625.5,
+                "y": 497.46112600536213
+              }
+            }
+          ],
+          "focal": 2856.68937147821,
+          "height": 1.3193340880396152,
+          "distance": 7.572382415856419,
+          "vanishY": 220
+        },
+        "minimumFenceClearance": 0.1106570790046999,
+        "groundedLanding": true,
+        "centeredRun": true,
+        "perspectiveGrowth": 1.1659031813318566,
+        "constantModelScale": true,
+        "delayedPom": true,
+        "reviewControls": true,
+        "pageErrors": []
+      },
+      {
+        "name": "phone",
+        "calibration": {
+          "corners": [
+            {
+              "world": [
+                -1,
+                0,
+                0
+              ],
+              "image": {
+                "x": 1207.9999999999998,
+                "y": 714.0000000000001
+              }
+            },
+            {
+              "world": [
+                1,
+                0,
+                0
+              ],
+              "image": {
+                "x": 462.00000000000006,
+                "y": 714.0000000000001
+              }
+            },
+            {
+              "world": [
+                -1,
+                0,
+                6
+              ],
+              "image": {
+                "x": 1044.5,
+                "y": 497.46112600536213
+              }
+            },
+            {
+              "world": [
+                1,
+                0,
+                6
+              ],
+              "image": {
+                "x": 625.5,
+                "y": 497.46112600536213
+              }
+            }
+          ],
+          "focal": 2856.68937147821,
+          "height": 1.3193340880396152,
+          "distance": 7.572382415856419,
+          "vanishY": 220
+        },
+        "minimumFenceClearance": 0.1106570790046999,
+        "groundedLanding": true,
+        "centeredRun": true,
+        "perspectiveGrowth": 1.1659031813318566,
+        "constantModelScale": true,
+        "delayedPom": true,
+        "reviewControls": true,
+        "pageErrors": []
+      },
+      {
+        "name": "landscape",
+        "calibration": {
+          "corners": [
+            {
+              "world": [
+                -1,
+                0,
+                0
+              ],
+              "image": {
+                "x": 1207.9999999999998,
+                "y": 714.0000000000001
+              }
+            },
+            {
+              "world": [
+                1,
+                0,
+                0
+              ],
+              "image": {
+                "x": 462.00000000000006,
+                "y": 714.0000000000001
+              }
+            },
+            {
+              "world": [
+                -1,
+                0,
+                6
+              ],
+              "image": {
+                "x": 1044.5,
+                "y": 497.46112600536213
+              }
+            },
+            {
+              "world": [
+                1,
+                0,
+                6
+              ],
+              "image": {
+                "x": 625.5,
+                "y": 497.46112600536213
+              }
+            }
+          ],
+          "focal": 2856.68937147821,
+          "height": 1.3193340880396152,
+          "distance": 7.572382415856419,
+          "vanishY": 220
+        },
+        "minimumFenceClearance": 0.1106570790046999,
+        "groundedLanding": true,
+        "centeredRun": true,
+        "perspectiveGrowth": 1.1659031813318566,
+        "constantModelScale": true,
+        "delayedPom": true,
+        "reviewControls": true,
+        "pageErrors": []
+      }
+    ],
+    "approvedArtworkUnchanged": true
+  },
+  "installedClown": {
+    "initial": {
+      "phase": "waiting",
+      "time": 0,
+      "requested": false,
+      "playing": false,
+      "previewOnly": false,
+      "bodyVisible": true,
+      "position": [
+        2.2502660470747706,
+        0.4196218021247897,
+        6.5
+      ],
+      "scale": 1,
+      "contacts": [
+        {
+          "side": "Left",
+          "y": 0.4197188958276413,
+          "x": 2.198705337458735,
+          "z": 6.37659248234952
+        },
+        {
+          "side": "Right",
+          "y": 0.4251074335930396,
+          "x": 2.3203854890904014,
+          "z": 6.392972276602955
+        }
+      ],
+      "pomOpacity": 1,
+      "pomVertices": 122,
+      "stride": 0.5075148525110809,
+      "runDuration": 2.049675147849269,
+      "jumpPlan": {
+        "flight": 0.58,
+        "minimumClearance": 0.1106570790046999,
+        "crossings": 22,
+        "gravity": 28.96653543021983
+      },
+      "timings": {
+        "launch": 0.55,
+        "land": 1.13,
+        "run": 1.7199999999999998,
+        "evaporate": 3.7696751478492687,
+        "bodyGone": 5.769675147849268,
+        "pomGone": 6.489675147849268,
+        "end": 9.139675147849267
+      }
+    },
+    "waitsThroughEight": true,
+    "waitsForNinthResult": true,
+    "hopApproachVapor": true,
+    "replayReset": true,
+    "inactivePauseResume": true,
+    "reducedMotion": true,
+    "pageErrors": []
+  },
+  "build": {
+    "runtimeHashes": 164,
+    "ornateGLBs": 20,
+    "variantGLBs": 40,
+    "passed": true
+  },
+  "approval": "Pending user visual review; local only"
+}

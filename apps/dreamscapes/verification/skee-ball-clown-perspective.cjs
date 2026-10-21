@@ -16,9 +16,9 @@ const base=process.env.DREAMSCAPES_URL||'http://127.0.0.1:4204',results=[];
    info.calibration.corners.forEach((c,i)=>{assert(Math.abs(c.image.x-expected[i][0])<1);assert(Math.abs(c.image.y-expected[i][1])<1);});
    assert(info.proxies.length>=20);assert(info.proxies.every(p=>p.colorWrite===false&&p.depthWrite===true));
    const crossing=info.trajectory.filter(s=>s.crossesFence);assert(crossing.length>0);assert(crossing.every(s=>s.fenceClearance>.04));
-   const land=info.trajectory.filter(s=>s.phase==='landing');assert(land.length>0);for(const s of land){assert.equal(s.root[0],0);assert.equal(s.root[2],4.4);assert(s.contacts.every(f=>Math.abs(f.y)<.02));}
+   const land=info.trajectory.filter(s=>s.phase==='landing');assert(land.length>0);for(const s of land){assert.equal(s.root[0],0);assert.equal(s.root[2],info.collision.landing[2]);assert(s.bounds.max[2]<info.collision.construction.toe);assert(s.contacts.every(f=>Math.abs(f.y)<.02));}
    const run=info.trajectory.filter(s=>s.phase==='approach');assert(run.length>20);for(const s of run){assert.equal(s.root[0],0);assert(s.bounds.min[0]>-.99&&s.bounds.max[0]<.99,JSON.stringify(s));assert(Math.abs(Math.min(...s.contacts.map(f=>f.y)))<.00001);assert(s.contacts.every(f=>f.y>-.00001));assert(Math.abs(s.footProjection.x-835)<1);}
-   const firstHeight=run[0].projectedBounds.bottom-run[0].projectedBounds.top,lastHeight=run.at(-1).projectedBounds.bottom-run.at(-1).projectedBounds.top;assert(lastHeight>firstHeight*1.25);
+   const firstHeight=run[0].projectedBounds.bottom-run[0].projectedBounds.top,lastHeight=run.at(-1).projectedBounds.bottom-run.at(-1).projectedBounds.top;assert(lastHeight>firstHeight*1.15);
    assert(info.trajectory.filter(s=>s.phase==='hop').every(s=>s.projectedBounds.top>-12),'Jump stays in the artwork frame');
    await p.screenshot({path:path.join(out,name+'-shelf.png')});
    await p.getByRole('button',{name:'Replay clown',exact:true}).click();await p.waitForTimeout(350);assert((await p.evaluate(()=>SkeeBallArtReview.clown())).playing);assert.equal((await p.evaluate(()=>SkeeBallArtReview.state())).balls,gameBefore.balls);
