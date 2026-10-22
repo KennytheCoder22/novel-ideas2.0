@@ -40,6 +40,6 @@
   "sourceHasSkeleton": false,
   "sourceAnimationClips": 0,
   "runtimeBones": 21,
-  "animationMethod": "3.2-second crossing, six-step 1.8-second left walking turn with planted-paw IK, 0.12-second stance settle, then 0.35-second collapse into the approved pose",
+  "animationMethod": "3.2-second crossing; 3.2-second tangent-aligned curved walk with front-leading/rear-following planted-paw IK; 0.5-second noticed pause; 0.35-second collapse into approved endpoint",
   "approval": "Resting pose approved; revised scurry/collapse pending local visual review; do not merge or deploy"
 }

@@ -6,7 +6,7 @@ const plane=document.querySelector('.composition'),view=plane.closest('main'),fo
 const local=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearchParams(location.search).has('mara-review');
 let sourceScene,rig,renderer,scene,camera,loaded=false,disposed=false,active=false,draws=0,mode='model',inspectionCleanup=null;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),still=document.documentElement.dataset.motion==='still';
-const runEnd=3.2,stepEnd=5,turnEnd=5.12,end=5.47;let time=end,playing=false,frame=0,last=0,visit=0,restBones=[],route=null,slider;
+const runEnd=3.2,stepEnd=6.4,turnEnd=6.9,end=7.25;let time=end,playing=false,frame=0,last=0,visit=0,restBones=[],route=null,slider;
 const ease=x=>{x=T.MathUtils.clamp(x,0,1);return x*x*(3-2*x);};
 const poseParameters={yaw:-1.4,bodyRoll:1.5,bodyPitch:.03,headYaw:.3,headRoll:.38,headPitch:-.15,headDrop:-.29,headLeft:.15,tailDrop:-.16,bellyForward:.4,pawLift:.18};
 const canvas=document.createElement('canvas');canvas.className='mara-canvas';canvas.setAttribute('aria-hidden','true');canvas.dataset.review='scurry-collapse';canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3';plane.append(canvas);
@@ -56,46 +56,61 @@ function prepareRoute(){
  const box=projectedBounds(),height=box.bottom-box.top;
  route={startX,finishX,groundY:visibleBottom+height*.28,height};
  const finishPoint=new T.Vector3(...fitted.position);finishPoint.y=0;finishPoint.project(camera);route.finishGroundY=(1-finishPoint.y)*512;
+ // Keep the approaching lane physically in front of the resting spot even when
+ // a shallow landscape viewport crops the bottom of the artwork.
+ route.groundY=Math.max(route.groundY,route.finishGroundY+75);
  rig.group.position.copy(ground(finishX,route.groundY));rig.group.rotation.set(0,Math.PI/2,0);rig.pose({cycle:3.2*1.35});
+ const start=ground(finishX,route.groundY),finishGround=new T.Vector3(...fitted.position);finishGround.y=0;
+ const facing=new T.Vector3(Math.sin(poseParameters.yaw),0,Math.cos(poseParameters.yaw)),handle=start.distanceTo(finishGround)*.65;
+ route.curve=new T.CubicBezierCurve3(start,start.clone().add(new T.Vector3(handle,0,0)),finishGround.clone().addScaledVector(facing,-handle),finishGround);
+ route.length=route.curve.getLength();route.beats=32;
+ const crossingSpeed=ground(route.startX,route.groundY).distanceTo(start)/runEnd;
+ route.entryRate=Math.min(2,crossingSpeed*(stepEnd-runEnd)/route.length);
  let feet=rig.legs.map(l=>l.paw.getWorldPosition(new T.Vector3())),headings=feet.map(()=>Math.PI/2);route.steps=[];
- for(let beat=0;beat<6;beat++){
-  const progress=beat>=4?1:(beat+1.5)/6,yaw=T.MathUtils.lerp(Math.PI/2,poseParameters.yaw+Math.PI*2,ease(progress));
-  const origin=ground(finishX,T.MathUtils.lerp(route.groundY,route.finishGroundY,ease(progress))),q=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),yaw);
-  const next=feet.map(v=>v.clone()),nextHeadings=[...headings],swing=beat%2===0?[1,2]:[0,3];
-  for(const i of swing){const l=rig.legs[i];next[i].set(l.x,0,l.z).multiplyScalar(fitted.scale).applyQuaternion(q).add(origin);next[i].y=.035;nextHeadings[i]=yaw;}
-  route.steps.push({from:feet,to:next,fromHeadings:headings,toHeadings:nextHeadings,swing});feet=next;headings=nextHeadings;
+ // Each forepaw leads its corresponding hind paw along the centerline.
+ const order=[1,3,0,2];
+ for(let beat=0;beat<route.beats;beat++){
+  const index=order[beat%4],l=rig.legs[index],lead=l.front?2.1:2.7,progress=beat>=route.beats-4?1:walkProgress((beat+lead)/route.beats),sample=pathStation(progress*route.length+l.z*fitted.scale);
+  const next=feet.map(v=>v.clone()),nextHeadings=[...headings];
+  next[index].copy(sample.point).addScaledVector(new T.Vector3(sample.tangent.z,0,-sample.tangent.x),l.x*fitted.scale);next[index].y=.035;nextHeadings[index]=sample.yaw;
+  route.steps.push({from:feet,to:next,fromHeadings:headings,toHeadings:nextHeadings,swing:[index]});feet=next;headings=nextHeadings;
  }
 }
+function walkProgress(u){u=T.MathUtils.clamp(u,0,1);return(-2*u*u*u+3*u*u)+(u*u*u-2*u*u+u)*route.entryRate;}
+function pathStation(distance){
+ const u=T.MathUtils.clamp(distance/route.length,0,1),point=route.curve.getPointAt(u),tangent=route.curve.getTangentAt(u).normalize();
+ if(distance<0)point.addScaledVector(tangent,distance);else if(distance>route.length)point.addScaledVector(tangent,distance-route.length);
+ let yaw=Math.atan2(tangent.x,tangent.z);if(yaw<Math.PI/2-.001)yaw+=Math.PI*2;
+ return{point,tangent,yaw};
+}
 function turnFeet(progress){
- const t=T.MathUtils.clamp(progress,0,1)*6,index=Math.min(5,Math.floor(t)),phase=t-index,step=route.steps[index],u=ease(phase);
+ const t=T.MathUtils.clamp(progress,0,1)*route.beats,index=Math.min(route.beats-1,Math.floor(t)),phase=t-index,step=route.steps[index],u=ease(phase);
  const targets=step.from.map((p,i)=>p.clone().lerp(step.to[i],u)),headings=step.fromHeadings.map((h,i)=>T.MathUtils.lerp(h,step.toHeadings[i],u));
  for(const i of step.swing)targets[i].y+=Math.sin(phase*Math.PI)*.045;
  rig.placeFeet(targets,headings);
  route.feet={targets:targets.map(v=>v.toArray()),actual:rig.legs.map(l=>l.paw.getWorldPosition(new T.Vector3()).toArray()),swing:progress>=1?[]:step.swing,phase,headings};
 }
+
 function animatePose(){
  if(time>=end){rig.group.scale.setScalar(fitted.scale);rig.group.position.fromArray(fitted.position);rig.group.rotation.y=poseParameters.yaw;rig.restingPose(poseParameters);return;}
  if(!route)prepareRoute();
- const stepProgress=T.MathUtils.clamp((time-runEnd)/(stepEnd-runEnd),0,1),turn=ease(stepProgress),c=ease((time-turnEnd)/(end-turnEnd)),u=Math.min(time/runEnd,1),x=T.MathUtils.lerp(route.startX,route.finishX,u);
- const restingGround=new T.Vector3(...fitted.position);restingGround.y=0;restingGround.project(camera);
- const y=T.MathUtils.lerp(route.groundY,(1-restingGround.y)*512,turn);
- rig.group.scale.setScalar(fitted.scale);rig.group.position.copy(ground(x,y));
- // Explicit positive yaw is a left pivot from the right-facing run. Do not
- // let shortest-path quaternion interpolation choose a clockwise turn.
- const leftFacingYaw=poseParameters.yaw+Math.PI*2;
- rig.group.rotation.set(0,T.MathUtils.lerp(Math.PI/2,leftFacingYaw,turn),0);
- // Match stride rate to the slower translation; use a small pivot step, then
- // hold the completed left turn while support gives way.
- const gaitRate=3.2*1.35/runEnd;
- const cycle=Math.min(time,runEnd)*gaitRate;rig.pose({cycle});
- if(time>=runEnd)turnFeet(stepProgress);
+ const stepProgress=T.MathUtils.clamp((time-runEnd)/(stepEnd-runEnd),0,1),progress=walkProgress(stepProgress),c=ease((time-turnEnd)/(end-turnEnd));
+ rig.group.scale.setScalar(fitted.scale);
+ if(time<runEnd){rig.group.position.copy(ground(T.MathUtils.lerp(route.startX,route.finishX,time/runEnd),route.groundY));rig.group.rotation.set(0,Math.PI/2,0);}
+ else{const sample=pathStation(progress*route.length);rig.group.position.copy(sample.point);rig.group.rotation.set(0,sample.yaw,0);route.heading=sample.tangent.toArray();}
+ const gaitRate=3.2*1.35/runEnd,cycle=Math.min(time,runEnd)*gaitRate;rig.pose({cycle});
+ if(time>=runEnd){
+  const fore=pathStation(progress*route.length+.16),rear=pathStation(progress*route.length-.16);
+  rig.group.position.y-=.04;rig.group.updateMatrixWorld(true);
+  rig.followCurve(T.MathUtils.clamp(fore.yaw-rig.group.rotation.y,-.3,.3),T.MathUtils.clamp(rear.yaw-rig.group.rotation.y,-.3,.3));turnFeet(stepProgress);
+ }
  if(c>0){for(let i=0;i<rig.bones.length;i++){const b=rig.bones[i];b.position.lerp(restBones[i].p,c);b.quaternion.slerp(restBones[i].q,c);}
   rig.group.updateMatrixWorld(true);rig.mesh.skeleton.update();let low=Infinity;const v=new T.Vector3();
   for(let i=0;i<rig.mesh.geometry.attributes.position.count;i++){rig.mesh.getVertexPosition(i,v);low=Math.min(low,v.y);}
   rig.group.position.y=-low*rig.group.scale.y;rig.group.updateMatrixWorld(true);rig.mesh.skeleton.update();
  }
 }
-function draw(){if(!loaded||disposed||!active)return;animatePose();canvas.hidden=mode==='original';reference.style.visibility=mode==='model'?'hidden':'visible';reference.style.opacity=mode==='overlay'?'.5':'1';fox.style.zIndex=mode==='overlay'?'4':'3';if(mode!=='original'){renderer.render(scene,camera);draws++;}canvas.dataset.phase=time>=end?'resting':time>=turnEnd?'collapsing':time>=stepEnd?'feet-set':time>=runEnd?'walking-left':'running';fox.disabled=time<end;if(panel)panel.textContent=mode==='original'?'Original 2D fox':mode==='overlay'?'Original reference over 3D Mara':canvas.dataset.phase+' - '+time.toFixed(2)+' s';if(slider)slider.value=time;}
+function draw(){if(!loaded||disposed||!active)return;animatePose();canvas.hidden=mode==='original';reference.style.visibility=mode==='model'?'hidden':'visible';reference.style.opacity=mode==='overlay'?'.5':'1';fox.style.zIndex=mode==='overlay'?'4':'3';if(mode!=='original'){renderer.render(scene,camera);draws++;}canvas.dataset.phase=time>=end?'resting':time>=turnEnd?'collapsing':time>=stepEnd?'noticed-pause':time>=runEnd?'walking-left':'running';fox.disabled=time<end;if(panel)panel.textContent=mode==='original'?'Original 2D fox':mode==='overlay'?'Original reference over 3D Mara':canvas.dataset.phase+' - '+time.toFixed(2)+' s';if(slider)slider.value=time;}
 function cancel(){cancelAnimationFrame(frame);frame=0;last=0;playing=false;}
 function tick(now){frame=0;if(!active||document.hidden||disposed)return;time=Math.min(end,time+(last?Math.min((now-last)/1000,.06):0));last=now;draw();if(playing&&time<end)frame=requestAnimationFrame(tick);else playing=false;}
 function replay(){if(!loaded||disposed)return;cancel();mode='model';route=null;time=reduced.matches||still?end:0;playing=time<end;draw();if(playing&&active&&!document.hidden)frame=requestAnimationFrame(tick);}
@@ -125,5 +140,5 @@ if(local){const section=document.createElement('section');section.className='mar
  for(const [label,value]of[['3D Mara','model'],['Original 2D fox','original'],['Overlay reference','overlay']]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>show(value);b.style.cssText='padding:7px;margin:2px;cursor:pointer';section.append(b);}
  const replayButton=document.createElement('button');replayButton.textContent='Replay Mara';replayButton.onclick=replay;replayButton.style.cssText='padding:7px;margin:2px;cursor:pointer';section.prepend(replayButton);slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=end;slider.step=.01;slider.value=end;slider.setAttribute('aria-label','Mara sequence timeline');slider.style.cssText='display:block;width:100%';slider.oninput=()=>seek(+slider.value);section.append(slider);
  panel=document.createElement('output');panel.style.display='block';panel.style.paddingTop='6px';section.append(panel);document.body.append(section);draw();}
-window.MaraMidway={show,replay,seek:local?seek:undefined,diagnostics:local?()=>({projected:projectedBounds(),route,yaw:rig.group.rotation.y,heading:[Math.sin(rig.group.rotation.y),0,Math.cos(rig.group.rotation.y)],groundMin:rig.lowest().p[1]*rig.group.scale.y+rig.group.position.y,bones:rig.bones.map(b=>({p:b.position.toArray(),q:b.quaternion.toArray()}))}):undefined,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing,time,end,runEnd,stepEnd,turnEnd,visit,phase:canvas.dataset.phase,draws,mode,fitted,poseParameters:{...poseParameters},stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;cancel();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);inspectionCleanup?.();observer.disconnect();resizeObserver.disconnect();fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
+window.MaraMidway={show,replay,seek:local?seek:undefined,diagnostics:local?()=>({projected:projectedBounds(),route,position:rig.group.position.toArray(),yaw:rig.group.rotation.y,heading:[Math.sin(rig.group.rotation.y),0,Math.cos(rig.group.rotation.y)],groundMin:rig.lowest().p[1]*rig.group.scale.y+rig.group.position.y,bones:rig.bones.map(b=>({p:b.position.toArray(),q:b.quaternion.toArray()}))}):undefined,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing,time,end,runEnd,stepEnd,turnEnd,visit,phase:canvas.dataset.phase,draws,mode,fitted,poseParameters:{...poseParameters},stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;cancel();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);inspectionCleanup?.();observer.disconnect();resizeObserver.disconnect();fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
 function onPageHide(event){if(!event.persisted)window.MaraMidway?.dispose();}addEventListener('pagehide',onPageHide);

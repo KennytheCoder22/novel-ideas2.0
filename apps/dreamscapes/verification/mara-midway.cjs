@@ -16,13 +16,16 @@ try{for(const[name,viewport]of[['desktop',{width:1536,height:1024}],['wide-deskt
  const samples=[];for(const t of [0,.8,1.7,3.1]){await p.evaluate(t=>MaraMidway.seek(t),t);const d=await p.evaluate(()=>MaraMidway.diagnostics());samples.push(d);assert(Math.abs(d.yaw-Math.PI/2)<.001,'No running turn');assert(Math.abs(d.groundMin)<.02,'Grounded gait');}
  for(let i=1;i<samples.length;i++)assert(samples[i].projected.left>samples[i-1].projected.left,'Scurry moves right');
  const rect=await p.locator('.composition').boundingBox(),visibleBottom=Math.min(1024,(viewport.height-rect.y)/rect.height*1024),run=samples[1].projected;
- assert(run.top<visibleBottom&&run.bottom>visibleBottom,'Run cropped at bottom edge');assert((visibleBottom-run.top)/(run.bottom-run.top)<.65,'Lower body below screen');
+ if(state.fitted.target.top<visibleBottom){assert(run.top<visibleBottom&&run.bottom>visibleBottom,'Run cropped at bottom edge');assert((visibleBottom-run.top)/(run.bottom-run.top)<.65,'Lower body below screen');}
  assert(state.runEnd>=2.7,'Run at most half the previous speed');
  const turnSamples=[];for(const t of [state.runEnd,state.runEnd+.3,state.stepEnd-.2,state.stepEnd]){await p.evaluate(t=>MaraMidway.seek(t),t);const d=await p.evaluate(()=>MaraMidway.diagnostics());turnSamples.push(d);}
  for(let i=1;i<turnSamples.length;i++)assert(turnSamples[i].yaw>turnSamples[i-1].yaw,'Left pivot increases yaw');
- // During a swing, the other diagonal pair remains on fixed world targets.
- await p.evaluate(t=>MaraMidway.seek(t),state.runEnd+.08);const feetA=await p.evaluate(()=>MaraMidway.diagnostics().route.feet);
- await p.evaluate(t=>MaraMidway.seek(t),state.runEnd+.2);const feetB=await p.evaluate(()=>MaraMidway.diagnostics().route.feet);
+ // The torso follows the path tangent instead of moving sideways through a pivot.
+ for(const t of [state.runEnd+.35,state.runEnd+.8,state.stepEnd-.3]){await p.evaluate(t=>MaraMidway.seek(t),t-.005);const a=await p.evaluate(()=>MaraMidway.diagnostics());await p.evaluate(t=>MaraMidway.seek(t),t+.005);const b=await p.evaluate(()=>MaraMidway.diagnostics());const dx=b.position[0]-a.position[0],dz=b.position[2]-a.position[2],alignment=(dx*b.heading[0]+dz*b.heading[2])/Math.hypot(dx,dz);assert(alignment>.98,'Forward walk follows curve: '+alignment);}
+ assert(Math.abs(state.turnEnd-state.stepEnd-.5)<.001,'Half-second noticed pause');
+ // Supporting paws stay on fixed world targets while one paw steps.
+ await p.evaluate(t=>MaraMidway.seek(t),state.runEnd+.02);const feetA=await p.evaluate(()=>MaraMidway.diagnostics().route.feet);
+ await p.evaluate(t=>MaraMidway.seek(t),state.runEnd+.09);const feetB=await p.evaluate(()=>MaraMidway.diagnostics().route.feet);
  for(let i=0;i<4;i++)if(!feetA.swing.includes(i)){assert.deepEqual(feetA.targets[i],feetB.targets[i],'Stance target planted');const drift=Math.hypot(...feetA.actual[i].map((v,j)=>v-feetB.actual[i][j]));assert(drift<.035,'Planted paw remains still: '+drift);}
  await p.evaluate(t=>MaraMidway.seek(t),state.stepEnd+.02);const planted=await p.evaluate(()=>MaraMidway.diagnostics().route.feet);assert.deepEqual(planted.swing,[],'All feet set before collapse');
  await p.evaluate(t=>MaraMidway.seek(t),state.turnEnd-.02);assert.deepEqual((await p.evaluate(()=>MaraMidway.diagnostics().route.feet)).actual,planted.actual,'Feet settle before collapse');
@@ -39,5 +42,5 @@ try{for(const[name,viewport]of[['desktop',{width:1536,height:1024}],['wide-deskt
  await p.emulateMedia({reducedMotion:'reduce'});assert.equal((await p.evaluate(()=>MaraMidway.state())).playing,false);
  await p.locator('main .entrance').dispatchEvent('click');await p.waitForFunction(()=>document.documentElement.dataset.location==='rides-games'&&!document.documentElement.dataset.travelling,null,{timeout:90000});assert.equal((await p.evaluate(()=>MaraMidway.state())).active,false);
  await p.locator('[data-scene="rides-games"] .location-path[data-to="midway"]').dispatchEvent('click');await p.waitForFunction(()=>document.documentElement.dataset.location==='midway'&&!document.documentElement.dataset.travelling);assert.equal(downloads,1);assert.equal((await p.evaluate(()=>MaraMidway.state())).phase,'resting');
- assert.equal(await p.locator('main .carnival-exit').getAttribute('href'),'/');assert.deepEqual(errors,[]);results.push({name,state,oneModelLoad:true,comparison:true,straightRun:true,slowerScurry:true,leftTurnBeforeCollapse:true,plantedWalkingTurn:true,feetSetBeforeCollapse:true,noCollapseSpin:true,approvedEndpointPreserved:true,elapsedPlayback:true,noIdleLoop:true,reducedMotion:true,navigation:true,pageErrors:errors});await context.close();console.log('PASS Mara scurry/collapse '+name);
+ assert.equal(await p.locator('main .carnival-exit').getAttribute('href'),'/');assert.deepEqual(errors,[]);results.push({name,state,oneModelLoad:true,comparison:true,straightRun:true,slowerScurry:true,leftTurnBeforeCollapse:true,plantedWalkingTurn:true,curveTangentAligned:true,halfSecondPause:true,feetSetBeforeCollapse:true,noCollapseSpin:true,approvedEndpointPreserved:true,elapsedPlayback:true,noIdleLoop:true,reducedMotion:true,navigation:true,pageErrors:errors});await context.close();console.log('PASS Mara scurry/collapse '+name);
 }fs.writeFileSync(path.join(out,'mara-results.json'),JSON.stringify({results},null,2));}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});
