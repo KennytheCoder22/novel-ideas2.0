@@ -8,8 +8,8 @@
     "sha256": "f94ffaf696888e9cea41847d67652f836a03d269208f8b2b20010c377cdc3312"
   },
   "experiments/carnival/horse-comparison.js": {
-    "bytes": 6061,
-    "sha256": "ef6086d32d8c87025ee53cc92cc0546413d968dadce02a03cb13560e23dccdb8"
+    "bytes": 6073,
+    "sha256": "6b709301755107b27f55bdde8d66446c20227e98675be8df5e1c558866fc394e"
   },
   "experiments/carnival/exit-sign.js": {
     "bytes": 6626,
@@ -44,8 +44,8 @@
     "sha256": "6e0bd934e40b616dff71b3bbf88c12181db3c9392d15ed0d7f9c6ee8757832e9"
   },
   "experiments/carnival/animal-comparison.js": {
-    "bytes": 7983,
-    "sha256": "a0d7f3dc847b408f11f6e012fb96039b7dcda0b8e309a433fb9245b2747bfc83"
+    "bytes": 7785,
+    "sha256": "869100fd12d491aa6871bd4dac8e9f4f04de74a31e22ff3d15b2a60d686a12b5"
   },
   "experiments/carnival/carousel-variants.js": {
     "bytes": 9894,
@@ -288,8 +288,8 @@
     "sha256": "1b815bd9325e4365c004bb2aabb58bc582a8fe7a44eca9805530c3b8e1f6f37d"
   },
   "experiments/carnival/skee-ball-art.js": {
-    "bytes": 22390,
-    "sha256": "c7a70505936c1ec97a7e406f4cfc934fef3907ac8b0d72139c7ee7d6ad4c2a7e"
+    "bytes": 22418,
+    "sha256": "c940ec5be4337b11f29836e532749a103319888a33af32a9d2d786703f041a5b"
   },
   "experiments/carnival/skee-ball-art.css": {
     "bytes": 3318,
@@ -308,8 +308,8 @@
     "sha256": "c0a49bf512f9a6f689b7bdf8629741f4794d4bbb33fe9ad9e488c5910a3a8f47"
   },
   "experiments/carnival/skee-ball-clown.js": {
-    "bytes": 25988,
-    "sha256": "a6ca42817b223dd00e856bfe02cc8a785c0cbfcf4987d7e555d400b26356f7af"
+    "bytes": 26044,
+    "sha256": "94e26d15f3bc45bad2c7ac5ff9af7fb5ff949563b3d00dafba9770c19c6a7ddf"
   },
   "experiments/carnival/skee-ball/clown-running.glb": {
     "bytes": 13052352,
@@ -346,5 +346,9 @@
   "experiments/carnival/mara/mara-skin.bin": {
     "bytes": 461580,
     "sha256": "b32c4cc570b425ea30a4106237240605c7cd87a24ee2d7ce2b89f2b5a7056240"
+  },
+  "experiments/carnival/shared-mount-renderer.js": {
+    "bytes": 1414,
+    "sha256": "cee5d13277643e6ed243d89b65e9ce836c428b0b093e3b50927a4a8685b2594a"
   }
 }

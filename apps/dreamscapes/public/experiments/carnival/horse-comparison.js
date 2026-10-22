@@ -1,5 +1,6 @@
 import {coverMountDepth,limitMountPoleBottom} from './mount-pole-depth.js';
 import {registerVariantMount} from './carousel-variants.js';
+import {sharedMountRenderer} from './shared-mount-renderer.js';
 import {cropCanvas} from './crop-canvas.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
 // Local-only 3D mount; the carousel clock supplies orbit and depth.
@@ -27,7 +28,7 @@ async function mount(){
  const canvas=document.createElementNS('http://www.w3.org/1999/xhtml','canvas');
  canvas.style.cssText='width:400px;height:300px;display:block;background:transparent';
  holder.append(canvas);anchor.append(holder);
- const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,preserveDrawingBuffer:true});
+ const renderer=sharedMountRenderer(THREE,canvas);
  renderer.setSize(800,600,false);
  renderer.setClearColor(0x000000,0);
  renderer.outputColorSpace=THREE.SRGBColorSpace;

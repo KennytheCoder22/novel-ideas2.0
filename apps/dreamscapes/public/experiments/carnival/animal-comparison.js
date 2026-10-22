@@ -37,7 +37,7 @@ async function mount(svg,spec){
  const holder=document.createElementNS(NS,'foreignObject');
  for(const [k,v]of Object.entries({x:-250,y:-200,width:500,height:500,class:'carousel-animal-3d-comparison','data-animal':spec.name}))holder.setAttribute(k,v);
  holder.style.pointerEvents='none';holder.style.visibility='hidden';const canvas=document.createElementNS('http://www.w3.org/1999/xhtml','canvas');canvas.style.cssText='width:500px;height:500px;display:block';holder.append(canvas);anchor.append(holder);
- const renderer=(spec.name==='unicorn'||spec.name==='rocket'||spec.name==='griffin'||spec.name==='flamingo'||spec.name==='dragon')?sharedMountRenderer(T,canvas):new T.WebGLRenderer({canvas,alpha:true,antialias:true,preserveDrawingBuffer:true});renderer.setSize(1000,1000,false);renderer.setClearColor(0,0);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;
+ const renderer=sharedMountRenderer(T,canvas);renderer.setSize(1000,1000,false);renderer.setClearColor(0,0);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;
  // This is a carousel shaft segment, separate from the unmodified imported asset.
  // The GLB and shaft share a depth buffer throughout the animal's vertical extent.
  const top=rig.pole.y+rig.pole.height*rig.pole.scaleY/2,bottom=rig.pole.y-rig.pole.height*rig.pole.scaleY/2;

@@ -1,5 +1,5 @@
-// Five independent cropped mount canvases share one offscreen WebGL context.
-// This keeps the 20-mount scene within the browser's 16-context limit.
+// All twenty cropped mount canvases share one offscreen WebGL context.
+// Room renderers and inspections can coexist without evicting older mount canvases.
 let shared=null,users=0;
 export function sharedMountRenderer(T,canvas) {
  if(!shared) {

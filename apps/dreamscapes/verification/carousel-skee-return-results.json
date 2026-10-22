@@ -1,0 +1,2723 @@
+{
+  "results": [
+    {
+      "band": "teens",
+      "style": "plain",
+      "trip": 0,
+      "before": {
+        "poolSize": 1,
+        "activeContexts": 3,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 24549,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 43727,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 11772,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 44588,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40340,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 96085,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 68907,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 55658,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59291,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47094,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 49913,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 43480,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 38763,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 44338,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 28728,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 33272,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 54244,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 53331,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 93864,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 56383,
+            "style": "plain",
+            "visible": true
+          }
+        ]
+      },
+      "after": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 23733,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 42891,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 11458,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 43702,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40375,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 95520,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 68186,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 56280,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59617,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47497,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 49106,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 43129,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 38564,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 44427,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 29732,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 34207,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 53529,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 52807,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 93796,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 56229,
+            "style": "plain",
+            "visible": true
+          }
+        ]
+      }
+    },
+    {
+      "band": "teens",
+      "style": "plain",
+      "trip": 1,
+      "before": {
+        "poolSize": 1,
+        "activeContexts": 3,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 24549,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 43727,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 11772,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 44588,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40340,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 96085,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 68907,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 55658,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59291,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47094,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 49913,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 43480,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 38763,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 44338,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 28728,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 33272,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 54244,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 53331,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 93864,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 56383,
+            "style": "plain",
+            "visible": true
+          }
+        ]
+      },
+      "after": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 21334,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 39803,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 10597,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40805,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40403,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 93519,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 65310,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 58270,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 60353,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 48447,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 51220,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 41655,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 37608,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 44647,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 33057,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 37696,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 50511,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 50931,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 93371,
+            "style": "plain",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 55623,
+            "style": "plain",
+            "visible": true
+          }
+        ]
+      }
+    },
+    {
+      "band": "adults",
+      "style": "ornate",
+      "trip": 0,
+      "before": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 70343,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64169,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 33791,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 71530,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 27391,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 54590,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 77678,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 58767,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 42780,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 82784,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 76980,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 32957,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 37045,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 32961,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 61375,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 56401,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 81572,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47563,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64343,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 28052,
+            "style": "ornate",
+            "visible": true
+          }
+        ]
+      },
+      "after": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 70648,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 65094,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 33970,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 71309,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 27445,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 56096,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 78867,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 57994,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 41386,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 82579,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 77801,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 33948,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 37924,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 32151,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 60865,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 56600,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 82443,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 48916,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 62786,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 28764,
+            "style": "ornate",
+            "visible": true
+          }
+        ]
+      }
+    },
+    {
+      "band": "adults",
+      "style": "ornate",
+      "trip": 1,
+      "before": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 70343,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64169,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 33791,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 71530,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 27391,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 54590,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 77678,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 58767,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 42780,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 82784,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 76980,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 32957,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 37045,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 32961,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 61375,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 56401,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 81572,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47563,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64343,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 28052,
+            "style": "ornate",
+            "visible": true
+          }
+        ]
+      },
+      "after": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 71279,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 67737,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 34380,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 70438,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 28833,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 61903,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 82385,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 55242,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 36878,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 81456,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 80182,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 37011,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40528,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 28927,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59121,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 55402,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 85060,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 53007,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 57566,
+            "style": "ornate",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 31343,
+            "style": "ornate",
+            "visible": true
+          }
+        ]
+      }
+    },
+    {
+      "band": "kids",
+      "style": "stuffed",
+      "trip": 0,
+      "before": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 48786,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 70305,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 20210,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59507,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 45139,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 110020,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 72510,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 44301,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 53722,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59810,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64320,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47902,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 39934,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40241,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 33193,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 42079,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 65900,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 65527,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 77846,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 68725,
+            "style": "stuffed",
+            "visible": true
+          }
+        ]
+      },
+      "after": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47942,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 69792,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 19657,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 58477,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 45692,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 111390,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 72135,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 45132,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 54848,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 58769,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 63897,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47744,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 39761,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 41132,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 32952,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40708,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 65004,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 65497,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 78717,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 68876,
+            "style": "stuffed",
+            "visible": true
+          }
+        ]
+      }
+    },
+    {
+      "band": "kids",
+      "style": "stuffed",
+      "trip": 1,
+      "before": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 48786,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 70305,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 20210,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59507,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 45139,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 110020,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 72510,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 44301,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 53722,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59810,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64320,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47902,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 39934,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40241,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 33193,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 42079,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 65900,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 65527,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 77846,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 68725,
+            "style": "stuffed",
+            "visible": true
+          }
+        ]
+      },
+      "after": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 44881,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 67586,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 17597,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 53721,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47272,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 115329,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 70210,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 49542,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59160,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 55667,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 62175,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47039,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 39428,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 44269,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 31077,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 36024,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 61533,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 65366,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 81932,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 69100,
+            "style": "stuffed",
+            "visible": true
+          }
+        ]
+      }
+    },
+    {
+      "band": "pre-teens",
+      "style": "stuffed",
+      "trip": 0,
+      "before": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40100,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64100,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 15078,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 46614,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 48470,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 117546,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 67574,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 55089,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64101,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 51239,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59344,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 46357,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 39176,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47013,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 29155,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 35082,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 57198,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64370,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 84682,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 68639,
+            "style": "stuffed",
+            "visible": true
+          }
+        ]
+      },
+      "after": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 39042,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 63365,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 14626,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 45338,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 48636,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 117672,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 67074,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 55960,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64992,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 51674,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 58628,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 46234,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 39242,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47371,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 29267,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 36044,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 56176,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64057,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 85089,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 68480,
+            "style": "stuffed",
+            "visible": true
+          }
+        ]
+      }
+    },
+    {
+      "band": "pre-teens",
+      "style": "stuffed",
+      "trip": 1,
+      "before": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 40100,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64100,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 15078,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 46614,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 48470,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 117546,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 67574,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 55089,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64101,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 51239,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59344,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 46357,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 39176,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 47013,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 29155,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 35082,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 57198,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64370,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 84682,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 68639,
+            "style": "stuffed",
+            "visible": true
+          }
+        ]
+      },
+      "after": {
+        "poolSize": 1,
+        "activeContexts": 5,
+        "mounts": [
+          {
+            "name": "horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 33046,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "unicorn",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59774,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rocket",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 12542,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "griffin",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 41089,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "flamingo",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 49039,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "dragon",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 117610,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "moon-loveseat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 64387,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "snail",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 59892,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "brown-horse",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 69351,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "elephant",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 56948,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "grizzly",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 54642,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "wolf",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 45633,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "rabbit",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 39456,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "fox",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 48617,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "tiger",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 31939,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "stag",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 38076,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "cat",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 51425,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "ostrich",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 62025,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "polar-bear",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 86773,
+            "style": "stuffed",
+            "visible": true
+          },
+          {
+            "name": "zebra",
+            "contextLost": false,
+            "canvas2d": true,
+            "pixels": 67478,
+            "style": "stuffed",
+            "visible": true
+          }
+        ]
+      }
+    }
+  ],
+  "logs": [
+    "Failed to load resource: the server responded with a status of 404 (File not found)",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently"
+  ]
+}
