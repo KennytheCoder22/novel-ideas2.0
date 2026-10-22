@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/**/*.ts": {
-      "excludeFiles": ".vercel/**"
+      "excludeFiles": "{.vercel/**,.vercel/**/.*,.vercel/**/.*/**}"
     }
   },
   "redirects": [

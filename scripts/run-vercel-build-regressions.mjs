@@ -51,5 +51,19 @@ try {
 
 // Build metadata/output must never recursively enter traced API bundles.
 const config = JSON.parse(readFileSync(resolve(root, "vercel.json"), "utf8"));
-assert.equal(config.functions["api/**/*.ts"].excludeFiles, ".vercel/**");
+const traceRequire = createRequire(require.resolve("@vercel/nft"));
+const { isMatch } = traceRequire("picomatch");
+const excluded = config.functions["api/**/*.ts"].excludeFiles;
+// NFT uses picomatch without dot:true. A plain .vercel/** misses .routes.json
+// and files beneath nested hidden directories, even inside generated output.
+for (const path of [
+  ".vercel/project.json",
+  ".vercel/build-output/static/_expo/.routes.json",
+  ".vercel/build-output/functions/api/library-config-diagnostics.func/.vercel/project.json",
+]) assert.ok(isMatch(path, excluded), `Generated build file not excluded: ${path}`);
+for (const path of [
+  "api/library-config-diagnostics.ts",
+  "lib/librarySharing/storage.ts",
+  "scripts/human-review/lib/human-review-core.mjs",
+]) assert.ok(!isMatch(path, excluded), `Runtime source accidentally excluded: ${path}`);
 console.log("Vercel build regressions passed: API typecheck, malformed draft forms, generated-output exclusion.");
