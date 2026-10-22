@@ -2,7 +2,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),path=require('n
 const{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const out=process.env.DREAMSCAPES_EVIDENCE_DIR||path.join(__dirname,'mara-static-evidence');fs.mkdirSync(out,{recursive:true});
 (async()=>{const browser=await chromium.launch({executablePath:process.env.BROWSER_PATH||'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true}),results=[];
-try{for(const[name,viewport]of[['desktop',{width:1536,height:1024}],['phone',{width:390,height:844}],['landscape',{width:844,height:390}]]){
+try{for(const[name,viewport]of[['desktop',{width:1536,height:1024}],['wide-desktop',{width:1920,height:919}],['phone',{width:390,height:844}],['landscape',{width:844,height:390}]]){
  const context=await browser.newContext({viewport,hasTouch:name!=='desktop'}),p=await context.newPage(),errors=[];let downloads=0;
  p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(r.url().endsWith('/mara/mara.glb'))downloads++;});
  await p.goto((process.env.DREAMSCAPES_URL||'http://127.0.0.1:4204')+'/experiments/carnival/index.html?mara-review=1');
@@ -10,7 +10,7 @@ try{for(const[name,viewport]of[['desktop',{width:1536,height:1024}],['phone',{wi
  const state=await p.evaluate(()=>MaraMidway.state());assert.equal(state.phase,'static-resting-pose');assert.equal(state.playing,false);assert.equal(state.stats.triangles,9705);
  await p.waitForTimeout(600);assert.equal((await p.evaluate(()=>MaraMidway.state())).draws,state.draws,'No idle render loop');
  for(const edge of ['left','right','bottom'])assert(Math.abs(state.fitted.target[edge]-state.fitted.actual[edge])<1,'Reference '+edge);
- assert(state.poseParameters.bodyRoll>1,'Belly faces viewer');
+ assert(state.poseParameters.bodyRoll>1,'Belly faces viewer');assert(Math.abs(state.fitted.actual.top-state.fitted.target.top)<2,'Ear height aligns with reduced reference');
  const reference=await p.locator('.fox').evaluate(e=>e.offsetWidth*1536/document.querySelector('.composition').clientWidth*414/423);assert(Math.abs((state.fitted.actual.right-state.fitted.actual.left)/reference-.9)<.001,'Ten percent smaller reference width');
  await p.getByRole('button',{name:'Original 2D fox',exact:true}).click();assert.equal(await p.locator('.mara-canvas').evaluate(e=>e.hidden),true);assert.equal(await p.locator('.fox img').evaluate(e=>getComputedStyle(e).visibility),'visible');
  await p.getByRole('button',{name:'Overlay reference',exact:true}).click();assert.equal(await p.locator('.fox img').evaluate(e=>e.style.opacity),'.5'.replace('.5','0.5'));assert.equal(await p.locator('.fox').evaluate(e=>e.style.zIndex),'4');

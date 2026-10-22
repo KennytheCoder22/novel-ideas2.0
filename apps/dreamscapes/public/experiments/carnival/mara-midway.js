@@ -5,7 +5,7 @@ import {createMaraRig,loadMaraSkin} from './mara-rig.js';
 const plane=document.querySelector('.composition'),view=plane.closest('main'),fox=plane.querySelector('.fox'),reference=fox.querySelector('img');
 const local=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearchParams(location.search).has('mara-review');
 let sourceScene,rig,renderer,scene,camera,loaded=false,disposed=false,active=false,draws=0,mode='model',inspectionCleanup=null;
-const poseParameters={yaw:-1.4,bodyRoll:1.5,bodyPitch:.03,headYaw:.52,headRoll:.15,headPitch:-.15,headDrop:.18,headLeft:.15,tailDrop:-.16,bellyForward:.4,pawLift:.18};
+const poseParameters={yaw:-1.4,bodyRoll:1.5,bodyPitch:.03,headYaw:.3,headRoll:.38,headPitch:-.15,headDrop:-.29,headLeft:.15,tailDrop:-.16,bellyForward:.4,pawLift:.18};
 const canvas=document.createElement('canvas');canvas.className='mara-canvas';canvas.setAttribute('aria-hidden','true');canvas.dataset.review='static-resting-pose';canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3';plane.append(canvas);
 renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true});renderer.outputColorSpace=T.SRGBColorSpace;renderer.setClearColor(0,0);renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
 scene=new T.Scene();camera=new T.PerspectiveCamera(40,1.5,.05,100);camera.position.set(0,3,8);camera.lookAt(0,.9,0);camera.updateMatrixWorld(true);

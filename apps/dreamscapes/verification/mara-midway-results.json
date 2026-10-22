@@ -17,26 +17,104 @@
             "bottom": 932
           },
           "actual": {
-            "left": 1201.073758863663,
-            "right": 1444.1886524834977,
-            "top": 827.8745101733681,
-            "bottom": 932.0000000004368
+            "left": 1201.0737588640739,
+            "right": 1444.1886524831411,
+            "top": 793.2452459326905,
+            "bottom": 932.0000000003432
           },
-          "scale": 0.4679617929413345,
+          "scale": 0.4656564305301069,
           "position": [
-            2.2926221807123266,
-            0.20705161297920938,
-            2.9292459189709987
+            2.2944186577734027,
+            0.206031595933061,
+            2.9299498220314826
           ]
         },
         "poseParameters": {
           "yaw": -1.4,
           "bodyRoll": 1.5,
           "bodyPitch": 0.03,
-          "headYaw": 0.52,
-          "headRoll": 0.15,
+          "headYaw": 0.3,
+          "headRoll": 0.38,
           "headPitch": -0.15,
-          "headDrop": 0.18,
+          "headDrop": -0.29,
+          "headLeft": 0.15,
+          "tailDrop": -0.16,
+          "bellyForward": 0.4,
+          "pawLift": 0.18
+        },
+        "stats": {
+          "triangles": 9705,
+          "vertices": 19232,
+          "bones": 21,
+          "weightedParts": {
+            "Mara_head": 5280,
+            "Mara_tag": 839,
+            "Mara_scarf": 806,
+            "Mara_front_right": 798,
+            "Mara_neck": 1689,
+            "Mara_front_left": 629,
+            "Mara_chest": 405,
+            "Mara_body": 366,
+            "Mara_rear_right": 638,
+            "front_right_paw": 376,
+            "front_right_knee": 409,
+            "front_left_paw": 332,
+            "front_left_knee": 368,
+            "rear_right_knee": 358,
+            "Mara_rear_left": 350,
+            "Mara_hips": 2266,
+            "rear_left_knee": 345,
+            "rear_left_paw": 238,
+            "rear_right_paw": 178,
+            "Mara_tail_tip": 1718,
+            "Mara_tail_base": 844
+          }
+        }
+      },
+      "oneModelLoad": true,
+      "comparison": true,
+      "noIdleLoop": true,
+      "reducedMotion": true,
+      "navigation": true,
+      "pageErrors": []
+    },
+    {
+      "name": "wide-desktop",
+      "state": {
+        "loaded": true,
+        "active": true,
+        "playing": false,
+        "phase": "static-resting-pose",
+        "draws": 2,
+        "mode": "model",
+        "fitted": {
+          "target": {
+            "left": 1200.5261465721042,
+            "right": 1444.3457210401893,
+            "top": 793.84,
+            "bottom": 932.8000000000001
+          },
+          "actual": {
+            "left": 1200.5261465709011,
+            "right": 1444.3457210410843,
+            "top": 793.6301135589104,
+            "bottom": 932.800000000354
+          },
+          "scale": 0.4665633569335525,
+          "position": [
+            2.2916523555026647,
+            0.20643286923682064,
+            2.935428004088717
+          ]
+        },
+        "poseParameters": {
+          "yaw": -1.4,
+          "bodyRoll": 1.5,
+          "bodyPitch": 0.03,
+          "headYaw": 0.3,
+          "headRoll": 0.38,
+          "headPitch": -0.15,
+          "headDrop": -0.29,
           "headLeft": 0.15,
           "tailDrop": -0.16,
           "bellyForward": 0.4,
@@ -95,26 +173,26 @@
             "bottom": 931.7914691943129
           },
           "actual": {
-            "left": 1201.05311417942,
-            "right": 1444.7190615453997,
-            "top": 827.4371089222624,
-            "bottom": 931.7914691947582
+            "left": 1201.053114179839,
+            "right": 1444.719061545038,
+            "top": 792.7236863357373,
+            "bottom": 931.7914691946651
           },
-          "scale": 0.46914602514849224,
+          "scale": 0.46683488008661395,
           "position": [
-            2.2944811507940956,
-            0.20757558137221177,
-            2.9273823192960693
+            2.2962821607693895,
+            0.20655300576858582,
+            2.9280879463950527
           ]
         },
         "poseParameters": {
           "yaw": -1.4,
           "bodyRoll": 1.5,
           "bodyPitch": 0.03,
-          "headYaw": 0.52,
-          "headRoll": 0.15,
+          "headYaw": 0.3,
+          "headRoll": 0.38,
           "headPitch": -0.15,
-          "headDrop": 0.18,
+          "headDrop": -0.29,
           "headLeft": 0.15,
           "tailDrop": -0.16,
           "bellyForward": 0.4,
@@ -173,26 +251,26 @@
             "bottom": 933.6113744075828
           },
           "actual": {
-            "left": 1201.05311417942,
-            "right": 1444.7190615454042,
-            "top": 829.2244204892643,
-            "bottom": 933.6113744080319
+            "left": 1201.0531141798372,
+            "right": 1444.71906154504,
+            "top": 794.5320382706514,
+            "bottom": 933.6113744079355
           },
-          "scale": 0.4680724771725277,
+          "scale": 0.46576659119391794,
           "position": [
-            2.289230684104293,
-            0.2071005856708814,
-            2.940792040637585
+            2.2910274276422298,
+            0.2060803369701994,
+            2.9414964235083296
           ]
         },
         "poseParameters": {
           "yaw": -1.4,
           "bodyRoll": 1.5,
           "bodyPitch": 0.03,
-          "headYaw": 0.52,
-          "headRoll": 0.15,
+          "headYaw": 0.3,
+          "headRoll": 0.38,
           "headPitch": -0.15,
-          "headDrop": 0.18,
+          "headDrop": -0.29,
           "headLeft": 0.15,
           "tailDrop": -0.16,
           "bellyForward": 0.4,

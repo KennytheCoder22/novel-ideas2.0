@@ -19,3 +19,7 @@ verification/mara-midway.cjs now checks the static controller on desktop, portra
 ## October 22 local revision
 
 Synced the home deployment fixes through main 78326d3 before branching to codex/mara-belly-forward. Mara now uses 90% of the previous reference-width fit, centered on the same resting location and ground baseline. Uniform model scaling preserves proportions. The torso rolls toward the viewer; paws come forward and tuck higher, the tail no longer forces the torso upright, and the head stays low. This makes a flatter, belly-forward resting candidate. The reference image and original comparison remain unchanged. Playback is still disabled. Local visual approval is required before merging or deploying this revision.
+
+### Head alignment correction
+
+The first belly-forward pose flattened the head too far below the reference. The new head placement raises the ear silhouette to the reduced reference's top, with a separate head roll/yaw closer to the original tilt. The 90% reference width, shared center and bottom remain unchanged. Checks now include the user's wide 1920x919 browser viewport and verify the upper silhouette as well as the existing width/bottom checks. This is closer positional alignment, not an identical silhouette: source face/scarf geometry still differs from the illustration.
