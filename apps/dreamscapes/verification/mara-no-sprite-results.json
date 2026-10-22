@@ -1,0 +1,32 @@
+{
+  "results": [
+    {
+      "name": "delayed",
+      "noSpriteInHtml": true,
+      "noSpriteRequests": true,
+      "noLegacyCinema": true,
+      "pageErrors": []
+    },
+    {
+      "name": "phone-delayed",
+      "noSpriteInHtml": true,
+      "noSpriteRequests": true,
+      "noLegacyCinema": true,
+      "pageErrors": []
+    },
+    {
+      "name": "failed-model",
+      "noSpriteInHtml": true,
+      "noSpriteRequests": true,
+      "noLegacyCinema": true,
+      "pageErrors": []
+    },
+    {
+      "name": "no-js",
+      "noSpriteInHtml": true,
+      "noSpriteRequests": true,
+      "noLegacyCinema": true,
+      "pageErrors": []
+    }
+  ]
+}

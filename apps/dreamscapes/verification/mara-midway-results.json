@@ -13,7 +13,7 @@
         "turnEnd": 6.9,
         "visit": 1,
         "phase": "resting",
-        "draws": 433,
+        "draws": 413,
         "mode": "model",
         "fitted": {
           "target": {
@@ -109,7 +109,7 @@
         "turnEnd": 6.9,
         "visit": 1,
         "phase": "resting",
-        "draws": 436,
+        "draws": 435,
         "mode": "model",
         "fitted": {
           "target": {
@@ -205,7 +205,7 @@
         "turnEnd": 6.9,
         "visit": 1,
         "phase": "resting",
-        "draws": 433,
+        "draws": 428,
         "mode": "model",
         "fitted": {
           "target": {
@@ -301,7 +301,7 @@
         "turnEnd": 6.9,
         "visit": 1,
         "phase": "resting",
-        "draws": 433,
+        "draws": 436,
         "mode": "model",
         "fitted": {
           "target": {

@@ -73,9 +73,9 @@
   const woman = document.querySelector('.woman');
   const groundTag = document.querySelector('.ground-tag');
   const remainsKey = 'carnival-mara-remains';
-  try { foxGone = sessionStorage.getItem(remainsKey) === '1'; } catch (_) {}
-  document.querySelector('.fox').hidden = foxGone;
-  groundTag.hidden = !foxGone;
+  // The 3D Mara controller owns this empty hit area; old sprite session state no longer applies.
+  document.querySelector('.fox').hidden = false;
+  groundTag.hidden = true;
   let approachProgress = 0;
   let approachFrame = 0;
   let approaching = false;
