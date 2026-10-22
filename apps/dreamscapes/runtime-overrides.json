@@ -288,8 +288,8 @@
     "sha256": "1b815bd9325e4365c004bb2aabb58bc582a8fe7a44eca9805530c3b8e1f6f37d"
   },
   "experiments/carnival/skee-ball-art.js": {
-    "bytes": 22418,
-    "sha256": "c940ec5be4337b11f29836e532749a103319888a33af32a9d2d786703f041a5b"
+    "bytes": 23247,
+    "sha256": "f00b7c8c0c1a311e3a3c0f88cfe957c37a54e75775def89ef02812996f3cbc7c"
   },
   "experiments/carnival/skee-ball-art.css": {
     "bytes": 3318,
@@ -320,8 +320,8 @@
     "sha256": "394faecc4fd3d030a2a3ad926c0632d7aa3371ce168f7afdc1a91f004149496e"
   },
   "experiments/carnival/skee-ball-space.js": {
-    "bytes": 9349,
-    "sha256": "2dfd2ae40abfffea9c9c8b40610394da00ecd11fe1c76414b2d948380f2d4e47"
+    "bytes": 9964,
+    "sha256": "c226a6429365dc5269c0abbeecbf1fa71fd776510c3104f49fcc62da13b242ba"
   },
   "experiments/carnival/mara-midway.js": {
     "bytes": 18831,

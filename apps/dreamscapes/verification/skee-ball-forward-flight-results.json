@@ -1,0 +1,68 @@
+[
+  {
+    "name": "desktop",
+    "scores": [
+      100,
+      100,
+      50,
+      40,
+      30,
+      20,
+      10,
+      0,
+      0
+    ],
+    "forwardDepth": true,
+    "perspectiveSize": true,
+    "reachesEveryCup": true,
+    "normalSpeedKeyboard": true,
+    "exactlyNine": true,
+    "noTenth": true,
+    "cleanReplay": true,
+    "errors": []
+  },
+  {
+    "name": "phone",
+    "scores": [
+      100,
+      100,
+      50,
+      40,
+      30,
+      20,
+      10,
+      0,
+      0
+    ],
+    "forwardDepth": true,
+    "perspectiveSize": true,
+    "reachesEveryCup": true,
+    "normalSpeedKeyboard": true,
+    "exactlyNine": true,
+    "noTenth": true,
+    "cleanReplay": true,
+    "errors": []
+  },
+  {
+    "name": "landscape",
+    "scores": [
+      100,
+      100,
+      50,
+      40,
+      30,
+      20,
+      10,
+      0,
+      0
+    ],
+    "forwardDepth": true,
+    "perspectiveSize": true,
+    "reachesEveryCup": true,
+    "normalSpeedKeyboard": true,
+    "exactlyNine": true,
+    "noTenth": true,
+    "cleanReplay": true,
+    "errors": []
+  }
+]

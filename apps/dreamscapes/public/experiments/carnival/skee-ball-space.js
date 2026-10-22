@@ -47,6 +47,14 @@ export function createMachineSpace(scene,onChange=()=>{}) {
  for(const side of [-1,1])bar('launch side rail cap',new T.Vector3(side*1.02,construction.rise-.025,construction.toe),new T.Vector3(side*1.02,construction.rise-.025,construction.crest),.025);
  const scoring=geometry([new T.Vector3(-1,construction.scoringBase,6),new T.Vector3(1,construction.scoringBase,6),atZ(1015,194,9),atZ(656,194,9)]);
  proxy('scoring board',scoring);
+ // Share the calibrated camera and scoring plane with the ball flight. Depth
+ // continues across the return well instead of being faked with a screen arc.
+ const scoringPlane=new T.Plane().setFromCoplanarPoints(new T.Vector3(-1,construction.scoringBase,6),new T.Vector3(1,construction.scoringBase,6),atZ(1015,194,9));
+ construction.ballSpace={
+  project:(x,y,z)=>project(new T.Vector3(x,y,z)),
+  atDepth:(x,y,z)=>atZ(x,y,z).toArray(),
+  target:(x,y)=>{const ray=new T.Raycaster();ray.setFromCamera(new T.Vector2(x/W*2-1,1-y/H*2),camera);return ray.ray.intersectPlane(scoringPlane,new T.Vector3()).toArray();}
+ };
  // The flat alley, short S-profile launch, recessed return well and scoring deck are separate solids.
  const constructionMeshes=[],woodTexture=new T.TextureLoader().load('./skee-ball/approved-alley.png',onChange);woodTexture.colorSpace=T.SRGBColorSpace;
  const woodMaterial=new T.MeshBasicMaterial({map:woodTexture,vertexColors:true,side:T.DoubleSide});
