@@ -324,12 +324,12 @@
     "sha256": "2dfd2ae40abfffea9c9c8b40610394da00ecd11fe1c76414b2d948380f2d4e47"
   },
   "experiments/carnival/mara-midway.js": {
-    "bytes": 15310,
-    "sha256": "80be3b3766f20995cd74f399b18d87cf111efb9aa53d02f5df20036a993f0aec"
+    "bytes": 17062,
+    "sha256": "d4188b8950f169adde61bc59247753cd7713e971679d7c7780accaddde5a4359"
   },
   "experiments/carnival/mara-rig.js": {
-    "bytes": 11685,
-    "sha256": "f67005985869c08ffa4e50b9f161870b858d720dad98d06aeb1d61a91cb8ab76"
+    "bytes": 12098,
+    "sha256": "b8c3912a4423623b72ca0a6495330aa04c709260b692fc06f35fe098eff57829"
   },
   "experiments/carnival/mara-review.html": {
     "bytes": 2826,
@@ -340,8 +340,8 @@
     "sha256": "b08e716a01e4dc508a6ef085466037e3b8d62578e990d42b06db0a01a67e637e"
   },
   "experiments/carnival/mara/asset-report.json": {
-    "bytes": 1337,
-    "sha256": "3126b7813ed85a440dbb4a89a83708d9308b41633f82d03c96afb10e5f96d87f"
+    "bytes": 1328,
+    "sha256": "22d604debb9d90f7a44b95431cf668dbd98973687d8fe785ba9513eeb9d9954f"
   },
   "experiments/carnival/mara/mara-skin.bin": {
     "bytes": 461580,

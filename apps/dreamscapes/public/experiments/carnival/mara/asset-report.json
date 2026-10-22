@@ -40,6 +40,6 @@
   "sourceHasSkeleton": false,
   "sourceAnimationClips": 0,
   "runtimeBones": 21,
-  "animationMethod": "3.2-second straight scurry, separate 0.65-second left pivot, then 0.35-second collapse with fixed heading into the approved resting pose; 21-bone surface-weight rig",
+  "animationMethod": "3.2-second crossing, six-step 1.8-second left walking turn with planted-paw IK, 0.12-second stance settle, then 0.35-second collapse into the approved pose",
   "approval": "Resting pose approved; revised scurry/collapse pending local visual review; do not merge or deploy"
 }

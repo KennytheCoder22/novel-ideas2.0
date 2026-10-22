@@ -94,5 +94,10 @@ export function createMaraRig(source){
   for(let i=0;i<pos.count;i++){mesh.getVertexPosition(i,v);minY=Math.min(minY,v.y);}
   group.position.y=-minY*group.scale.y;group.updateMatrixWorld(true);mesh.skeleton.update();
  }
- return{group,mesh,bones,named,legs,pose,restingPose,regionBounds(){const out={};for(let i=0;i<pos.count;i++){const bone=bones[indices[i*4]].name;mesh.getVertexPosition(i,v);const r=out[bone]||(out[bone]={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]});for(let j=0;j<3;j++){r.min[j]=Math.min(r.min[j],v.getComponent(j));r.max[j]=Math.max(r.max[j],v.getComponent(j));}}return out;},lowest(){let low=Infinity,info;for(let i=0;i<pos.count;i++){mesh.getVertexPosition(i,v);if(v.y<low){low=v.y;info={p:v.toArray(),source:[pos.getX(i),pos.getY(i),pos.getZ(i)],bone:bones[indices[i*4]].name};}}return info;},stats:{triangles:9705,vertices:pos.count,bones:bones.length,weightedParts:counts},dispose(){geometry.dispose();mesh.material.dispose();}};
+ function placeFeet(targets,headings){
+  // Targets stay in world space while the torso pivots over the planted paws.
+  legs.forEach((l,i)=>{solve(l,targets[i]);const q=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),headings[i]);l.paw.quaternion.copy(l.paw.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));group.updateMatrixWorld(true);});
+  mesh.skeleton.update();
+ }
+ return{group,mesh,bones,named,legs,pose,restingPose,placeFeet,regionBounds(){const out={};for(let i=0;i<pos.count;i++){const bone=bones[indices[i*4]].name;mesh.getVertexPosition(i,v);const r=out[bone]||(out[bone]={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]});for(let j=0;j<3;j++){r.min[j]=Math.min(r.min[j],v.getComponent(j));r.max[j]=Math.max(r.max[j],v.getComponent(j));}}return out;},lowest(){let low=Infinity,info;for(let i=0;i<pos.count;i++){mesh.getVertexPosition(i,v);if(v.y<low){low=v.y;info={p:v.toArray(),source:[pos.getX(i),pos.getY(i),pos.getZ(i)],bone:bones[indices[i*4]].name};}}return info;},stats:{triangles:9705,vertices:pos.count,bones:bones.length,weightedParts:counts},dispose(){geometry.dispose();mesh.material.dispose();}};
 }
