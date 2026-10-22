@@ -6,12 +6,21 @@ try{for(const[name,viewport]of[['desktop',{width:1536,height:1024}],['wide-deskt
  const context=await browser.newContext({viewport,hasTouch:name!=='desktop'}),p=await context.newPage(),errors=[];let downloads=0;
  p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(r.url().endsWith('/mara/mara.glb'))downloads++;});
  await p.goto((process.env.DREAMSCAPES_URL||'http://127.0.0.1:4204')+'/experiments/carnival/index.html?mara-review=1');
- await p.waitForFunction(()=>window.MaraMidway?.state().loaded,null,{timeout:90000});await p.waitForTimeout(400);
- const state=await p.evaluate(()=>MaraMidway.state());assert.equal(state.phase,'static-resting-pose');assert.equal(state.playing,false);assert.equal(state.stats.triangles,9705);
+ await p.waitForFunction(()=>window.MaraMidway?.state().loaded,null,{timeout:90000});await p.waitForFunction(()=>MaraMidway.state().phase==='resting'&&!MaraMidway.state().playing,null,{timeout:15000});
+ const state=await p.evaluate(()=>MaraMidway.state());assert.equal(state.phase,'resting');assert.equal(state.playing,false);assert.equal(state.stats.triangles,9705);
  await p.waitForTimeout(600);assert.equal((await p.evaluate(()=>MaraMidway.state())).draws,state.draws,'No idle render loop');
  for(const edge of ['left','right','bottom'])assert(Math.abs(state.fitted.target[edge]-state.fitted.actual[edge])<1,'Reference '+edge);
  assert(state.poseParameters.bodyRoll>1,'Belly faces viewer');assert(Math.abs(state.fitted.actual.top-state.fitted.target.top)<2,'Ear height aligns with reduced reference');
  const reference=await p.locator('.fox').evaluate(e=>e.offsetWidth*1536/document.querySelector('.composition').clientWidth*414/423);assert(Math.abs((state.fitted.actual.right-state.fitted.actual.left)/reference-.9)<.001,'Ten percent smaller reference width');
+ const endpoint=await p.evaluate(()=>MaraMidway.diagnostics());
+ const samples=[];for(const t of [0,.3,.7,1.2]){await p.evaluate(t=>MaraMidway.seek(t),t);const d=await p.evaluate(()=>MaraMidway.diagnostics());samples.push(d);assert(Math.abs(d.yaw-Math.PI/2)<.001,'No running turn');assert(Math.abs(d.groundMin)<.02,'Grounded gait');}
+ for(let i=1;i<samples.length;i++)assert(samples[i].projected.left>samples[i-1].projected.left,'Scurry moves right');
+ const rect=await p.locator('.composition').boundingBox(),visibleBottom=Math.min(1024,(viewport.height-rect.y)/rect.height*1024),run=samples[1].projected;
+ assert(run.top<visibleBottom&&run.bottom>visibleBottom,'Run cropped at bottom edge');assert((visibleBottom-run.top)/(run.bottom-run.top)<.65,'Lower body below screen');
+ await p.evaluate(()=>MaraMidway.seek(1.52));const falling=await p.evaluate(()=>MaraMidway.diagnostics());assert(Math.abs(falling.groundMin)<.02,'Grounded collapse');
+ await p.evaluate(()=>MaraMidway.seek(MaraMidway.state().end));assert.deepEqual((await p.evaluate(()=>MaraMidway.diagnostics())).bones,endpoint.bones,'Approved endpoint unchanged');
+ await p.getByRole('button',{name:'Replay Mara',exact:true}).click();await p.waitForFunction(()=>MaraMidway.state().time>.15&&MaraMidway.state().playing);await p.waitForFunction(()=>!MaraMidway.state().playing&&MaraMidway.state().phase==='resting',null,{timeout:15000});
+ const settled=await p.evaluate(()=>MaraMidway.state().draws);await p.waitForTimeout(400);assert.equal(await p.evaluate(()=>MaraMidway.state().draws),settled,'No idle animation');
  await p.getByRole('button',{name:'Original 2D fox',exact:true}).click();assert.equal(await p.locator('.mara-canvas').evaluate(e=>e.hidden),true);assert.equal(await p.locator('.fox img').evaluate(e=>getComputedStyle(e).visibility),'visible');
  await p.getByRole('button',{name:'Overlay reference',exact:true}).click();assert.equal(await p.locator('.fox img').evaluate(e=>e.style.opacity),'.5'.replace('.5','0.5'));assert.equal(await p.locator('.fox').evaluate(e=>e.style.zIndex),'4');
  await p.getByRole('button',{name:'3D Mara',exact:true}).click();assert.equal(await p.locator('.fox img').evaluate(e=>getComputedStyle(e).visibility),'hidden');
@@ -19,6 +28,6 @@ try{for(const[name,viewport]of[['desktop',{width:1536,height:1024}],['wide-deskt
  await p.screenshot({path:path.join(out,name+'-static.png')});
  await p.emulateMedia({reducedMotion:'reduce'});assert.equal((await p.evaluate(()=>MaraMidway.state())).playing,false);
  await p.locator('main .entrance').dispatchEvent('click');await p.waitForFunction(()=>document.documentElement.dataset.location==='rides-games'&&!document.documentElement.dataset.travelling,null,{timeout:90000});assert.equal((await p.evaluate(()=>MaraMidway.state())).active,false);
- await p.locator('[data-scene="rides-games"] .location-path[data-to="midway"]').dispatchEvent('click');await p.waitForFunction(()=>document.documentElement.dataset.location==='midway'&&!document.documentElement.dataset.travelling);assert.equal(downloads,1);assert.equal((await p.evaluate(()=>MaraMidway.state())).phase,'static-resting-pose');
- assert.equal(await p.locator('main .carnival-exit').getAttribute('href'),'/');assert.deepEqual(errors,[]);results.push({name,state,oneModelLoad:true,comparison:true,noIdleLoop:true,reducedMotion:true,navigation:true,pageErrors:errors});await context.close();console.log('PASS static Mara '+name);
+ await p.locator('[data-scene="rides-games"] .location-path[data-to="midway"]').dispatchEvent('click');await p.waitForFunction(()=>document.documentElement.dataset.location==='midway'&&!document.documentElement.dataset.travelling);assert.equal(downloads,1);assert.equal((await p.evaluate(()=>MaraMidway.state())).phase,'resting');
+ assert.equal(await p.locator('main .carnival-exit').getAttribute('href'),'/');assert.deepEqual(errors,[]);results.push({name,state,oneModelLoad:true,comparison:true,straightRun:true,approvedEndpointPreserved:true,elapsedPlayback:true,noIdleLoop:true,reducedMotion:true,navigation:true,pageErrors:errors});await context.close();console.log('PASS Mara scurry/collapse '+name);
 }fs.writeFileSync(path.join(out,'mara-results.json'),JSON.stringify({results},null,2));}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

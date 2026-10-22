@@ -1,25 +1,14 @@
-# Mara: static resting-pose review
+# Mara: scurry and collapse review
 
-Branch: codex/mara-midway-3d. Local only; no merge or deployment authorized.
-
+Local review branch: codex/mara-scurry-collapse. Do not merge or deploy before visual approval.
 Preview: http://127.0.0.1:4204/experiments/carnival/index.html?mara-review=1
 
-The current controller shows only a static endpoint. There is no entrance, gait, circling, collapse timeline, or idle render loop. Use 3D Mara, Original 2D fox, and Overlay reference to compare. On portrait, Look right reveals the established resting location.
+The endpoint approved on October 22 is unchanged. Its fitted scale, placement, head tilt and belly-forward pose are calculated before the motion, and the last frame calls that same resting-pose function. The reference buttons show the resting endpoint; Replay Mara starts the full sequence and the keyboard-accessible timeline scrubs it.
 
-The unchanged fox.png sets the target footprint. The fitter uses its nontransparent bounds and the existing fox button position, fits uniform model scale to the reference width, and grounds the model at the reference bottom edge. Its head, torso, paws, scarf, and tail are posed separately. This remains a pose candidate: the source model has different facial details and scarf proportions, and the deformed silhouette is not identical to the 2D reference. Bounds alone do not establish an exact pose match.
+Mara starts around 30% of the visible viewport width and scurries directly right for 1.35 seconds. Heading is fixed throughout the run, with small gait motion and no circling or braking turn. The viewport's bottom crop sets the path so the head and upper torso show while the lower body is below the frame. The 0.35-second collapse freezes the gait, blends the independent bones and root orientation into the approved limp pose, and ends all animation. The final short settling movement takes the near-camera route into the established resting location. There are no particles or disintegration effects.
 
-The supplied Meshy GLB has 9,705 triangles, 19,232 render vertices, no skeleton, and no animation clips. Runtime skinning adds 21 bones to cloned geometry. tools/rig-mara.py builds normalized surface-distance weights, welding duplicate positions for consistent weights across UV seams. mara-skin.bin contains only indices and weights. The source file, runtime GLB, original reference, and textures are unchanged in this revision. The runtime GLB remains 20,533,344 bytes with lossless WebP textures verified against source decoded pixels.
+The same textured GLB and 21-bone surface-distance weights remain throughout. The source is an unrigged Meshy mesh (9,705 triangles, 19,232 render vertices); the runtime adds procedural bones and skinning, with no texture repainting or remeshing. The original supplied GLB is untouched. Lossless WebP runtime GLB: 20,533,344 bytes. mara-skin.bin: 461,580 bytes. Historical texture preservation details are in mara/asset-report.json; tools/rig-mara.py reproduces the surface weights.
 
-Warm key light, moon fill, contact shadow, and a faint reflection remain. The canvas does not intercept pointer input; the existing EXIT remains above it. The original image is retained for comparison and loading failure. Scene departure hides the canvas; returning shows the same static endpoint. Reduced motion also shows this endpoint.
+Warm key light, moon fill, contact shadow and reflection remain. The canvas does not intercept pointer input and EXIT stays above it. Leaving cancels animation and hides the canvas; returning starts one new visit. Hidden-page playback pauses. Reduced motion goes straight to the approved endpoint, including Replay. No idle render loop remains after settling. Inspection is available once Mara is resting.
 
-The first draft motion is superseded. Only after the user approves the endpoint should the run be rebuilt: start around 30% screen width, move directly right, keep the head and upper third above the bottom edge, then lose support abruptly into the approved pose. No circling or changing direction. Do not treat the historical animation results as current verification.
-
-verification/mara-midway.cjs now checks the static controller on desktop, portrait, landscape, and reduced motion. It checks reference comparison, fitted placement, no idle rendering, scene departure/return, one model download, and preserved EXIT. Visual resemblance remains subject to user review.
-
-## October 22 local revision
-
-Synced the home deployment fixes through main 78326d3 before branching to codex/mara-belly-forward. Mara now uses 90% of the previous reference-width fit, centered on the same resting location and ground baseline. Uniform model scaling preserves proportions. The torso rolls toward the viewer; paws come forward and tuck higher, the tail no longer forces the torso upright, and the head stays low. This makes a flatter, belly-forward resting candidate. The reference image and original comparison remain unchanged. Playback is still disabled. Local visual approval is required before merging or deploying this revision.
-
-### Head alignment correction
-
-The first belly-forward pose flattened the head too far below the reference. The new head placement raises the ear silhouette to the reduced reference's top, with a separate head roll/yaw closer to the original tilt. The 90% reference width, shared center and bottom remain unchanged. Checks now include the user's wide 1920x919 browser viewport and verify the upper silhouette as well as the existing width/bottom checks. This is closer positional alignment, not an identical silhouette: source face/scarf geometry still differs from the illustration.
+Verification checks desktop, wide desktop (1920x919), portrait and landscape; actual elapsed replay, fixed running heading and increasing x, bottom-edge cropping, grounded gait/collapse, exact endpoint bones, no idle animation, comparison controls, reduced motion, navigation and one model download. The build validates runtime asset hashes. Motion appearance still requires visual approval.

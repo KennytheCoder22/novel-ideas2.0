@@ -1,12 +1,15 @@
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
 import {createMaraRig,loadMaraSkin} from './mara-rig.js';
-// Endpoint approval only: no arrival, gait, collapse timeline or RAF is active.
+// The approved endpoint is fitted first; motion always finishes in that exact pose.
 const plane=document.querySelector('.composition'),view=plane.closest('main'),fox=plane.querySelector('.fox'),reference=fox.querySelector('img');
 const local=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearchParams(location.search).has('mara-review');
 let sourceScene,rig,renderer,scene,camera,loaded=false,disposed=false,active=false,draws=0,mode='model',inspectionCleanup=null;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)'),still=document.documentElement.dataset.motion==='still';
+const end=1.7,runEnd=1.35;let time=end,playing=false,frame=0,last=0,visit=0,restBones=[],route=null,slider;
+const ease=x=>{x=T.MathUtils.clamp(x,0,1);return x*x*(3-2*x);};
 const poseParameters={yaw:-1.4,bodyRoll:1.5,bodyPitch:.03,headYaw:.3,headRoll:.38,headPitch:-.15,headDrop:-.29,headLeft:.15,tailDrop:-.16,bellyForward:.4,pawLift:.18};
-const canvas=document.createElement('canvas');canvas.className='mara-canvas';canvas.setAttribute('aria-hidden','true');canvas.dataset.review='static-resting-pose';canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3';plane.append(canvas);
+const canvas=document.createElement('canvas');canvas.className='mara-canvas';canvas.setAttribute('aria-hidden','true');canvas.dataset.review='scurry-collapse';canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3';plane.append(canvas);
 renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true});renderer.outputColorSpace=T.SRGBColorSpace;renderer.setClearColor(0,0);renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
 scene=new T.Scene();camera=new T.PerspectiveCamera(40,1.5,.05,100);camera.position.set(0,3,8);camera.lookAt(0,.9,0);camera.updateMatrixWorld(true);
 scene.add(new T.HemisphereLight(0xabbfd8,0x22150f,.3));const amber=new T.DirectionalLight(0xffb265,1.2);amber.position.set(-3,5,3);amber.castShadow=true;amber.shadow.mapSize.set(1024,1024);Object.assign(amber.shadow.camera,{left:-8,right:8,top:6,bottom:-6,near:.1,far:30});amber.shadow.bias=-.0003;amber.shadow.normalBias=.01;scene.add(amber);const moon=new T.DirectionalLight(0xabc8ee,.45);moon.position.set(1,5,-4);scene.add(moon);
@@ -40,19 +43,53 @@ function fit(){
   const point=ground(x,y);rig.group.position.x=point.x;rig.group.position.z=point.z;
  }
  rig.restingPose(poseParameters);fitted={target,actual:projectedBounds(),scale:rig.group.scale.x,position:rig.group.position.toArray()};
+ restBones=rig.bones.map(b=>({p:b.position.clone(),q:b.quaternion.clone()}));route=null;
 }
-function draw(){if(!loaded||disposed||!active)return;canvas.hidden=mode==='original';reference.style.visibility=mode==='model'?'hidden':'visible';reference.style.opacity=mode==='overlay'?'.5':'1';fox.style.zIndex=mode==='overlay'?'4':'3';if(mode!=='original'){renderer.render(scene,camera);draws++;}canvas.dataset.phase='resting';fox.disabled=false;if(panel)panel.textContent=mode==='original'?'Original 2D fox':mode==='overlay'?'Original reference over 3D Mara':'3D Mara — static endpoint only';}
-function resize(){if(disposed)return;renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(Math.max(1,Math.round(plane.clientWidth)),Math.max(1,Math.round(plane.clientHeight)),false);draw();}
-function sync(){if(disposed)return;active=!view.inert&&(document.documentElement.dataset.location||'midway')==='midway';if(!active)canvas.hidden=true;else draw();}
+function prepareRoute(){
+ const rect=plane.getBoundingClientRect(),visibleBottom=Math.min(1024,(innerHeight-rect.top)/rect.height*1024);
+ const visibleLeft=Math.max(0,-rect.left/rect.width*1536),visibleWidth=Math.min(innerWidth,rect.right)-Math.max(0,rect.left);
+ const startX=visibleLeft+visibleWidth/rect.width*1536*.3;
+ const finish=new T.Vector3(...fitted.position);finish.y=0;finish.project(camera);
+ const finishX=(finish.x+1)*768;
+ // Fit the upright gait's upper third into the current viewport, including cover cropping.
+ rig.group.scale.setScalar(fitted.scale);rig.group.rotation.y=Math.PI/2;rig.group.position.copy(ground(startX,visibleBottom));rig.pose({cycle:0});
+ const box=projectedBounds(),height=box.bottom-box.top;
+ route={startX,finishX,groundY:visibleBottom+height*.28,height};
+}
+function animatePose(){
+ if(time>=end){rig.group.scale.setScalar(fitted.scale);rig.group.position.fromArray(fitted.position);rig.group.rotation.y=poseParameters.yaw;rig.restingPose(poseParameters);return;}
+ if(!route)prepareRoute();
+ const c=ease((time-runEnd)/(end-runEnd)),u=Math.min(time/runEnd,1),x=T.MathUtils.lerp(route.startX,route.finishX,u);
+ const restingGround=new T.Vector3(...fitted.position);restingGround.y=0;restingGround.project(camera);
+ const y=T.MathUtils.lerp(route.groundY,(1-restingGround.y)*512,c);
+ rig.group.scale.setScalar(fitted.scale);rig.group.position.copy(ground(x,y));
+ const runQ=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),Math.PI/2),restQ=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),poseParameters.yaw);
+ rig.group.quaternion.copy(runQ).slerp(restQ,c);
+ // Freeze the gait at the instant support gives way; no circling or braking turn.
+ const cycle=Math.min(time,runEnd)*3.2;rig.pose({cycle});
+ if(c>0){for(let i=0;i<rig.bones.length;i++){const b=rig.bones[i];b.position.lerp(restBones[i].p,c);b.quaternion.slerp(restBones[i].q,c);}
+  rig.group.updateMatrixWorld(true);rig.mesh.skeleton.update();let low=Infinity;const v=new T.Vector3();
+  for(let i=0;i<rig.mesh.geometry.attributes.position.count;i++){rig.mesh.getVertexPosition(i,v);low=Math.min(low,v.y);}
+  rig.group.position.y=-low*rig.group.scale.y;rig.group.updateMatrixWorld(true);rig.mesh.skeleton.update();
+ }
+}
+function draw(){if(!loaded||disposed||!active)return;animatePose();canvas.hidden=mode==='original';reference.style.visibility=mode==='model'?'hidden':'visible';reference.style.opacity=mode==='overlay'?'.5':'1';fox.style.zIndex=mode==='overlay'?'4':'3';if(mode!=='original'){renderer.render(scene,camera);draws++;}canvas.dataset.phase=time>=end?'resting':time>=runEnd?'collapsing':'running';fox.disabled=time<end;if(panel)panel.textContent=mode==='original'?'Original 2D fox':mode==='overlay'?'Original reference over 3D Mara':canvas.dataset.phase+' - '+time.toFixed(2)+' s';if(slider)slider.value=time;}
+function cancel(){cancelAnimationFrame(frame);frame=0;last=0;playing=false;}
+function tick(now){frame=0;if(!active||document.hidden||disposed)return;time=Math.min(end,time+(last?Math.min((now-last)/1000,.06):0));last=now;draw();if(playing&&time<end)frame=requestAnimationFrame(tick);else playing=false;}
+function replay(){if(!loaded||disposed)return;cancel();mode='model';route=null;time=reduced.matches||still?end:0;playing=time<end;draw();if(playing&&active&&!document.hidden)frame=requestAnimationFrame(tick);}
+function seek(t){cancel();time=T.MathUtils.clamp(t,0,end);mode='model';draw();}
+function resize(){if(disposed)return;renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(Math.max(1,Math.round(plane.clientWidth)),Math.max(1,Math.round(plane.clientHeight)),false);route=null;draw();}
+function sync(){if(disposed)return;const next=!view.inert&&(document.documentElement.dataset.location||'midway')==='midway';if(next!==active){active=next;if(!active){cancel();canvas.hidden=true;}else if(loaded){visit++;replay();}}else if(active&&loaded){if(reduced.matches||still){cancel();time=end;draw();}else if(document.hidden){cancelAnimationFrame(frame);frame=0;last=0;}else if(playing&&!frame){last=0;frame=requestAnimationFrame(tick);}}}
+document.addEventListener('visibilitychange',sync);reduced.addEventListener('change',sync);
 const observer=new MutationObserver(sync);observer.observe(view,{attributes:true,attributeFilter:['inert']});observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-location']});const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(plane);
 try{
  const [gltf]=await Promise.all([new GLTFLoader().loadAsync('./mara/mara.glb'),loadMaraSkin(),reference.decode()]);if(disposed)throw new Error('Mara load cancelled');sourceScene=gltf.scene;rig=createMaraRig(sourceScene);scene.add(rig.group);
  const material=rig.mesh.material.clone();material.transparent=true;material.opacity=.07;material.depthWrite=false;material.onBeforeCompile=shader=>{shader.vertexShader='varying float maraReflectionDepth;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nvec4 reflected=modelMatrix*vec4(transformed,1.);maraReflectionDepth=reflected.y;reflected.y=-reflected.y-.012;gl_Position=projectionMatrix*viewMatrix*reflected;');shader.fragmentShader='varying float maraReflectionDepth;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\ndiffuseColor.a*=exp(-maraReflectionDepth*3.)*(.55+.45*sin(gl_FragCoord.y*2.5));');};material.customProgramCacheKey=()=> 'mara-static-wet-reflection';
  reflection=new T.SkinnedMesh(rig.mesh.geometry,material);rig.group.add(reflection);reflection.bind(rig.mesh.skeleton,rig.mesh.bindMatrix);reflection.frustumCulled=false;reflection.castShadow=false;
- loaded=true;fit();fox.hidden=false;document.querySelector('.ground-tag').hidden=true;fox.setAttribute('aria-label','Examine Mara, the abandoned stuffed fox');fox.addEventListener('click',inspect,true);canvas.dataset.ready='true';resize();sync();
+ active=false;loaded=true;fit();fox.hidden=false;document.querySelector('.ground-tag').hidden=true;fox.setAttribute('aria-label','Examine Mara, the abandoned stuffed fox');fox.addEventListener('click',inspect,true);canvas.dataset.ready='true';resize();active=false;sync();
 }catch(error){canvas.dataset.ready='failed';console.error('Mara could not load',error);}
 function inspect(event){
- event?.stopImmediatePropagation();if(!loaded||view.inert||inspectionCleanup)return;
+ event?.stopImmediatePropagation();if(!loaded||view.inert||inspectionCleanup||time<end)return;
  const dialog=document.querySelector('.inspection'),art=dialog.querySelector('.inspection-art');art.replaceChildren();
  const c=document.createElement('canvas');c.style.cssText='width:min(90vw,850px);height:min(75vh,650px)';art.append(c);
  const r=new T.WebGLRenderer({canvas:c,alpha:true,antialias:true});r.setPixelRatio(Math.min(devicePixelRatio||1,1.5));const s=new T.Scene();s.add(new T.HemisphereLight(0xffd79b,0x252333,1));const light=new T.DirectionalLight(0xffbf7d,2);light.position.set(-2,4,3);s.add(light);
@@ -61,9 +98,10 @@ function inspect(event){
  const render=()=>{const b=c.getBoundingClientRect();r.setSize(b.width,b.height,false);cam.aspect=b.width/b.height;cam.updateProjectionMatrix();r.render(s,cam);};dialog.showModal();render();const ro=new ResizeObserver(render);ro.observe(c);
  const close=()=>{ro.disconnect();model.dispose();r.dispose();r.forceContextLoss();dialog.removeEventListener('close',close);inspectionCleanup=null;fox.focus({preventScroll:true});};inspectionCleanup=close;dialog.addEventListener('close',close);
 }
-function show(value){mode=value;draw();}
+function show(value){cancel();time=end;mode=value;draw();}
 if(local){const section=document.createElement('section');section.className='mara-review-panel';section.style.cssText='position:fixed;left:12px;top:12px;z-index:100;background:#10151ded;color:#ffe4b5;padding:10px;border:1px solid #a78c5d;border-radius:6px;max-width:360px;font:13px system-ui';
  for(const [label,value]of[['3D Mara','model'],['Original 2D fox','original'],['Overlay reference','overlay']]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>show(value);b.style.cssText='padding:7px;margin:2px;cursor:pointer';section.append(b);}
+ const replayButton=document.createElement('button');replayButton.textContent='Replay Mara';replayButton.onclick=replay;replayButton.style.cssText='padding:7px;margin:2px;cursor:pointer';section.prepend(replayButton);slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=end;slider.step=.01;slider.value=end;slider.setAttribute('aria-label','Mara sequence timeline');slider.style.cssText='display:block;width:100%';slider.oninput=()=>seek(+slider.value);section.append(slider);
  panel=document.createElement('output');panel.style.display='block';panel.style.paddingTop='6px';section.append(panel);document.body.append(section);draw();}
-window.MaraMidway={show,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing:false,phase:'static-resting-pose',draws,mode,fitted,poseParameters:{...poseParameters},stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;inspectionCleanup?.();observer.disconnect();resizeObserver.disconnect();fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
+window.MaraMidway={show,replay,seek:local?seek:undefined,diagnostics:local?()=>({projected:projectedBounds(),route,yaw:rig.group.rotation.y,groundMin:rig.lowest().p[1]*rig.group.scale.y+rig.group.position.y,bones:rig.bones.map(b=>({p:b.position.toArray(),q:b.quaternion.toArray()}))}):undefined,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing,time,end,visit,phase:canvas.dataset.phase,draws,mode,fitted,poseParameters:{...poseParameters},stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;cancel();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);inspectionCleanup?.();observer.disconnect();resizeObserver.disconnect();fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
 function onPageHide(event){if(!event.persisted)window.MaraMidway?.dispose();}addEventListener('pagehide',onPageHide);

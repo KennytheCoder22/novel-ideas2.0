@@ -57,7 +57,7 @@ export function createMaraRig(source){
   const c=smooth(0,1,collapse),running=1-smooth(0,.35,collapse);
   body.position.y+=Math.sin(cycle*Math.PI*4)*.014*running;
   chest.rotation.x=Math.sin(cycle*Math.PI*2)*.025*running;
-  head.rotation.z=Math.sin(cycle*Math.PI*2+.6)*.035*running;
+  head.rotation.z=Math.sin(cycle*Math.PI*2+.6)*.035*running;head.rotation.x=-.18*running;
   tail.rotation.y=Math.sin(cycle*Math.PI*2-.8)*.13*running;tail.rotation.z=Math.sin(cycle*Math.PI*2-1)*.12*running;tip.rotation.y=Math.sin(cycle*Math.PI*2-1.4)*.1*running;
   scarf.rotation.x=Math.sin(cycle*Math.PI*2-.7)*.12*running;tag.rotation.z=Math.sin(cycle*Math.PI*2+.6)*.13*running;
   group.updateMatrixWorld(true);
