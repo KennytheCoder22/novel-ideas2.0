@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const profileId = String(snapshot.profileId || "").trim();
       const reviewerId = String(payload.draftOwnerId || "").trim();
       const updatedAt = String(draft.updatedAt || "").trim();
-      const itemReviews = draft?.form?.itemReviews;
+      const itemReviews = isObject(draft.form) ? draft.form.itemReviews : undefined;
       const recommendationItems = snapshot.recommendationItems;
       if (
         snapshot.schemaVersion !== "human_review_snapshot_v1"
