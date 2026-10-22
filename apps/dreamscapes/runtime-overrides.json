@@ -324,12 +324,12 @@
     "sha256": "2dfd2ae40abfffea9c9c8b40610394da00ecd11fe1c76414b2d948380f2d4e47"
   },
   "experiments/carnival/mara-midway.js": {
-    "bytes": 18424,
-    "sha256": "2b2bc2a703144c22856b924bf3326d1d33355496b2f0fac7699f29bb2094f6be"
+    "bytes": 18552,
+    "sha256": "4d9e9afa474e9f0bea045d5d1d577c969ed7c3f62edd74a231d70bec46ffdcb1"
   },
   "experiments/carnival/mara-rig.js": {
-    "bytes": 12256,
-    "sha256": "afbf97438e4c4fd777adea5e58cbffd2ed2c60124c6bb5f9b644ea687f194f1c"
+    "bytes": 14395,
+    "sha256": "821e8ad23cb7ff0c7140c1b592636e40c0a13d4156f7a1d30ff8c091ec8f5b09"
   },
   "experiments/carnival/mara-review.html": {
     "bytes": 2826,

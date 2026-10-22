@@ -13,3 +13,9 @@ The same textured runtime GLB and 21-bone surface-distance skinning remain throu
 The near-camera approach stays physically in front of the resting spot even when shallow landscape viewports crop the lower artwork. Existing scene framing and mobile pan controls are preserved. Warm lighting, contact shadow, reflection, EXIT layering and pointer behavior remain. Departure cancels playback; returning starts one new visit. Hidden-page playback pauses. Reduced motion shows the endpoint directly. Inspection becomes available after resting.
 
 Verification covers desktop, wide desktop, portrait and landscape: elapsed playback, forward tangent alignment through the loop, planted supporting paws, 0.5-second still pause, no collapse yaw spin, exact final endpoint bones, one model download, no idle loop, comparison controls, reduced motion and navigation. Build validates runtime hashes. Visual motion approval is still required.
+
+## Turn deformation correction
+
+The surface-distance rig had assigned some flank/torso vertices to upper-leg bones. During the curved walk those vertices followed the stepping legs, opening flat gray facets on the body. A soft torso envelope now blends those influences to the chest and hips during walking. The envelope excludes the low legs, paws, head and scarf, fades in at arrival, and fades out during collapse. The original influence arrays are restored exactly at rest, preserving the approved endpoint. Walking leg IK also computes each joint aim from its bind axis so a second IK pass does not accumulate axial twist. No geometry, texture, route, timing or reference asset was changed.
+
+Close-up turn frames were reviewed at 3.6, 4.0, 4.4, 4.8, 5.2, 5.6 and 6.0 seconds. Verification additionally checks that strong torso-envelope vertices have no leg influence during the turn and that all original skin indices/weights return exactly at the endpoint.

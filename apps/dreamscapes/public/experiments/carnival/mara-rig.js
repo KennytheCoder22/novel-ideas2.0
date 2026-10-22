@@ -48,9 +48,29 @@ export function createMaraRig(source){
  }
  if(surfaceSkin){if(surfaceSkin.vertices!==pos.count)throw new Error('Mara surface weight count mismatch');for(let i=0;i<surfaceSkin.indices.length;i++){indices[i]=surfaceSkin.indices[i];weights[i]=surfaceSkin.weights[i];}for(const key of Object.keys(counts))delete counts[key];for(let i=0;i<pos.count;i++){const name=bones[indices[i*4]].name;counts[name]=(counts[name]||0)+1;}}
  geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(indices,4));geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(weights,4));
+ // The automatic surface weights assigned some flank vertices to upper legs.
+ // Stabilize the torso during walking, then restore the approved rest weights.
+ const baseIndices=geometry.attributes.skinIndex.array.slice(),baseWeights=geometry.attributes.skinWeight.array.slice(),torso=[];
+ for(let i=0;i<pos.count;i++){
+  const y=pos.getY(i),z=pos.getZ(i),mask=smooth(-.42,-.30,y)*smooth(-.34,-.20,z)*(1-smooth(.18,.33,z));
+  if(mask>.001)torso.push({i,mask,front:smooth(-.3,.25,z)});
+ }
+ let supportAmount=0;
+ function turnSupport(amount){
+  amount=T.MathUtils.clamp(amount,0,1);if(amount===supportAmount)return;supportAmount=amount;
+  const ix=geometry.attributes.skinIndex.array,ww=geometry.attributes.skinWeight.array;
+  for(const {i,mask,front}of torso){const offset=i*4,a=mask*amount;
+   if(a===0){for(let j=0;j<4;j++){ix[offset+j]=baseIndices[offset+j];ww[offset+j]=baseWeights[offset+j];}continue;}
+   const values=new Map();for(let j=0;j<4;j++){const id=baseIndices[offset+j];values.set(id,(values.get(id)||0)+baseWeights[offset+j]*(1-a));}
+   values.set(1,(values.get(1)||0)+a*(1-front));values.set(2,(values.get(2)||0)+a*front);
+   const top=[...values].sort((a,b)=>b[1]-a[1]).slice(0,4),sum=top.reduce((s,v)=>s+v[1],0);
+   for(let j=0;j<4;j++){ix[offset+j]=top[j]?.[0]||0;ww[offset+j]=(top[j]?.[1]||0)/sum;}
+  }
+  geometry.attributes.skinIndex.needsUpdate=true;geometry.attributes.skinWeight.needsUpdate=true;
+ }
  const mesh=new T.SkinnedMesh(geometry,original.material.clone());mesh.name='Mara original textured mesh';mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;group.add(mesh);group.updateMatrixWorld(true);mesh.bind(new T.Skeleton(bones));
  function aim(b,child,target){const from=child.getWorldPosition(new T.Vector3()).sub(b.getWorldPosition(new T.Vector3())).normalize(),to=target.clone().sub(b.getWorldPosition(new T.Vector3())).normalize();const q=new T.Quaternion().setFromUnitVectors(from,to).multiply(b.getWorldQuaternion(new T.Quaternion()));b.quaternion.copy(b.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));group.updateMatrixWorld(true);}
- function solve(l,target){const start=l.upper.getWorldPosition(new T.Vector3()),scale=group.getWorldScale(new T.Vector3()).x,L1=l.L1*scale,L2=l.L2*scale,delta=target.clone().sub(start),d=T.MathUtils.clamp(delta.length(),Math.abs(L1-L2)+.0001,L1+L2-.0001),dir=delta.normalize(),pole=new T.Vector3(0,0,l.front?-1:1).transformDirection(group.matrixWorld);pole.addScaledVector(dir,-pole.dot(dir)).normalize();const along=(L1*L1-L2*L2+d*d)/(2*d),bend=start.clone().addScaledVector(dir,along).addScaledVector(pole,Math.sqrt(Math.max(0,L1*L1-along*along)));aim(l.upper,l.knee,bend);aim(l.knee,l.paw,start.clone().addScaledVector(dir,d));}
+ function solve(l,target,stable=false){const start=l.upper.getWorldPosition(new T.Vector3()),scale=group.getWorldScale(new T.Vector3()).x,L1=l.L1*scale,L2=l.L2*scale,delta=target.clone().sub(start),d=T.MathUtils.clamp(delta.length(),Math.abs(L1-L2)+.0001,L1+L2-.0001),dir=delta.normalize(),pole=new T.Vector3(0,0,l.front?-1:1).transformDirection(group.matrixWorld);pole.addScaledVector(dir,-pole.dot(dir)).normalize();const along=(L1*L1-L2*L2+d*d)/(2*d),bend=start.clone().addScaledVector(dir,along).addScaledVector(pole,Math.sqrt(Math.max(0,L1*L1-along*along)));const setAim=stable?(b,child,point)=>{const to=b.parent.worldToLocal(point.clone()).sub(b.position).normalize();b.quaternion.setFromUnitVectors(child.position.clone().normalize(),to);group.updateMatrixWorld(true);}:aim;setAim(l.upper,l.knee,bend);setAim(l.knee,l.paw,start.clone().addScaledVector(dir,d));}
  const v=new T.Vector3(),folds=[[-1.05,.2,.22],[-.6,-.28,-.28],[.8,.3,.45],[.35,-.42,-.52]];
  function pose({cycle=0,collapse=0,settle=0}={}){
   for(const b of bones){b.quaternion.identity();b.position.copy(rest.get(b));if(b.parent.isBone)b.position.sub(rest.get(b.parent));}
@@ -96,8 +116,8 @@ export function createMaraRig(source){
  }
  function placeFeet(targets,headings){
   // Targets stay in world space while the torso pivots over the planted paws.
-  legs.forEach((l,i)=>{solve(l,targets[i]);const q=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),headings[i]);l.paw.quaternion.copy(l.paw.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));group.updateMatrixWorld(true);});
+  legs.forEach((l,i)=>{solve(l,targets[i],true);const q=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),headings[i]);l.paw.quaternion.copy(l.paw.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));group.updateMatrixWorld(true);});
   mesh.skeleton.update();
  }
- return{group,mesh,bones,named,legs,pose,restingPose,placeFeet,followCurve(front,rear){chest.rotation.y+=front*.6;neck.rotation.y+=front*.25;hips.rotation.y+=rear*.6;group.updateMatrixWorld(true);mesh.skeleton.update();},regionBounds(){const out={};for(let i=0;i<pos.count;i++){const bone=bones[indices[i*4]].name;mesh.getVertexPosition(i,v);const r=out[bone]||(out[bone]={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]});for(let j=0;j<3;j++){r.min[j]=Math.min(r.min[j],v.getComponent(j));r.max[j]=Math.max(r.max[j],v.getComponent(j));}}return out;},lowest(){let low=Infinity,info;for(let i=0;i<pos.count;i++){mesh.getVertexPosition(i,v);if(v.y<low){low=v.y;info={p:v.toArray(),source:[pos.getX(i),pos.getY(i),pos.getZ(i)],bone:bones[indices[i*4]].name};}}return info;},stats:{triangles:9705,vertices:pos.count,bones:bones.length,weightedParts:counts},dispose(){geometry.dispose();mesh.material.dispose();}};
+ return{group,mesh,bones,named,legs,pose,restingPose,placeFeet,turnSupport,supportState:()=>{const ix=geometry.attributes.skinIndex.array,ww=geometry.attributes.skinWeight.array;let torsoLegWeight=0;for(const {i,mask}of torso)if(mask>.999){let sum=0;for(let j=0;j<4;j++)if(ix[i*4+j]>=9)sum+=ww[i*4+j];torsoLegWeight=Math.max(torsoLegWeight,sum);}return{amount:supportAmount,vertices:torso.length,torsoLegWeight,restored:supportAmount===0&&ix.every((v,i)=>v===baseIndices[i])&&ww.every((v,i)=>v===baseWeights[i])};},followCurve(front,rear){chest.rotation.y+=front*.6;neck.rotation.y+=front*.25;hips.rotation.y+=rear*.6;group.updateMatrixWorld(true);mesh.skeleton.update();},regionBounds(){const out={};for(let i=0;i<pos.count;i++){const bone=bones[indices[i*4]].name;mesh.getVertexPosition(i,v);const r=out[bone]||(out[bone]={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]});for(let j=0;j<3;j++){r.min[j]=Math.min(r.min[j],v.getComponent(j));r.max[j]=Math.max(r.max[j],v.getComponent(j));}}return out;},lowest(){let low=Infinity,info;for(let i=0;i<pos.count;i++){mesh.getVertexPosition(i,v);if(v.y<low){low=v.y;info={p:v.toArray(),source:[pos.getX(i),pos.getY(i),pos.getZ(i)],bone:bones[indices[i*4]].name};}}return info;},stats:{triangles:9705,vertices:pos.count,bones:bones.length,weightedParts:counts},dispose(){geometry.dispose();mesh.material.dispose();}};
 }
