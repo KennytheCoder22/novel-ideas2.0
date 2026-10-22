@@ -10,7 +10,8 @@ try{for(const[name,viewport]of[['desktop',{width:1536,height:1024}],['phone',{wi
  const state=await p.evaluate(()=>MaraMidway.state());assert.equal(state.phase,'static-resting-pose');assert.equal(state.playing,false);assert.equal(state.stats.triangles,9705);
  await p.waitForTimeout(600);assert.equal((await p.evaluate(()=>MaraMidway.state())).draws,state.draws,'No idle render loop');
  for(const edge of ['left','right','bottom'])assert(Math.abs(state.fitted.target[edge]-state.fitted.actual[edge])<1,'Reference '+edge);
- assert(Math.abs(state.fitted.target.top-state.fitted.actual.top)<20,'Approximate reference height');
+ assert(state.poseParameters.bodyRoll>1,'Belly faces viewer');
+ const reference=await p.locator('.fox').evaluate(e=>e.offsetWidth*1536/document.querySelector('.composition').clientWidth*414/423);assert(Math.abs((state.fitted.actual.right-state.fitted.actual.left)/reference-.9)<.001,'Ten percent smaller reference width');
  await p.getByRole('button',{name:'Original 2D fox',exact:true}).click();assert.equal(await p.locator('.mara-canvas').evaluate(e=>e.hidden),true);assert.equal(await p.locator('.fox img').evaluate(e=>getComputedStyle(e).visibility),'visible');
  await p.getByRole('button',{name:'Overlay reference',exact:true}).click();assert.equal(await p.locator('.fox img').evaluate(e=>e.style.opacity),'.5'.replace('.5','0.5'));assert.equal(await p.locator('.fox').evaluate(e=>e.style.zIndex),'4');
  await p.getByRole('button',{name:'3D Mara',exact:true}).click();assert.equal(await p.locator('.fox img').evaluate(e=>getComputedStyle(e).visibility),'hidden');

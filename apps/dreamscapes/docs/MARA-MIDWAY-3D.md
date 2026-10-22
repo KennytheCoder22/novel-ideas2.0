@@ -15,3 +15,7 @@ Warm key light, moon fill, contact shadow, and a faint reflection remain. The ca
 The first draft motion is superseded. Only after the user approves the endpoint should the run be rebuilt: start around 30% screen width, move directly right, keep the head and upper third above the bottom edge, then lose support abruptly into the approved pose. No circling or changing direction. Do not treat the historical animation results as current verification.
 
 verification/mara-midway.cjs now checks the static controller on desktop, portrait, landscape, and reduced motion. It checks reference comparison, fitted placement, no idle rendering, scene departure/return, one model download, and preserved EXIT. Visual resemblance remains subject to user review.
+
+## October 22 local revision
+
+Synced the home deployment fixes through main 78326d3 before branching to codex/mara-belly-forward. Mara now uses 90% of the previous reference-width fit, centered on the same resting location and ground baseline. Uniform model scaling preserves proportions. The torso rolls toward the viewer; paws come forward and tuck higher, the tail no longer forces the torso upright, and the head stays low. This makes a flatter, belly-forward resting candidate. The reference image and original comparison remain unchanged. Playback is still disabled. Local visual approval is required before merging or deploying this revision.

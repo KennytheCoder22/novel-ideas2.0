@@ -75,7 +75,7 @@ export function createMaraRig(source){
  }
  // Static endpoint study. This does not revise or play the entrance animation.
  function restingPose(options={}){
-  const parameters={bodyRoll:-.9,bodyPitch:.03,headYaw:0,headRoll:.08,headPitch:0,headDrop:.14,headLeft:.15,...options};
+  const parameters={bodyRoll:-.9,bodyPitch:.03,headYaw:0,headRoll:.08,headPitch:0,headDrop:.14,headLeft:.15,tailDrop:.25,bellyForward:0,pawLift:0,...options};
   for(const b of bones){b.quaternion.identity();b.position.copy(rest.get(b));if(b.parent.isBone)b.position.sub(rest.get(b.parent));}
   body.rotation.set(parameters.bodyPitch,0,parameters.bodyRoll);
   hips.rotation.set(-.04,.08,-.06);hips.position.y-=.12;chest.rotation.set(.02,.03,.02);
@@ -86,10 +86,10 @@ export function createMaraRig(source){
   const down=new T.Vector3(-parameters.headLeft*group.getWorldScale(new T.Vector3()).x,-parameters.headDrop*group.getWorldScale(new T.Vector3()).y,0).applyQuaternion(head.parent.getWorldQuaternion(new T.Quaternion()).invert()).divide(head.parent.getWorldScale(new T.Vector3()));head.position.add(down);group.updateMatrixWorld(true);
   worldRotation(scarf,[-1.05,-.2,-.2]);worldRotation(tag,[-.6,.1,-.2]);
   const tailQ=new T.Quaternion().setFromEuler(new T.Euler(0,Math.PI,-.5,'ZYX'));tail.quaternion.copy(tail.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(tailQ));
-  const tailDown=new T.Vector3(0,-.25*group.getWorldScale(new T.Vector3()).y,0).applyQuaternion(tail.parent.getWorldQuaternion(new T.Quaternion()).invert()).divide(tail.parent.getWorldScale(new T.Vector3()));tail.position.add(tailDown);group.updateMatrixWorld(true);tip.quaternion.identity();
+  const tailDown=new T.Vector3(0,-parameters.tailDrop*group.getWorldScale(new T.Vector3()).y,0).applyQuaternion(tail.parent.getWorldQuaternion(new T.Quaternion()).invert()).divide(tail.parent.getWorldScale(new T.Vector3()));tail.position.add(tailDown);group.updateMatrixWorld(true);tip.quaternion.identity();
   group.updateMatrixWorld(true);
   const targets=[[-.12,-.47,.48],[.28,-.39,.36],[-.29,-.37,-.35],[.29,-.39,-.18]];
-  legs.forEach((l,i)=>{solve(l,group.localToWorld(new T.Vector3(...targets[i])));l.paw.rotation.x=i<2?-.12:.1;});
+  legs.forEach((l,i)=>{targets[i][0]+=parameters.bellyForward;targets[i][1]+=parameters.pawLift;solve(l,group.localToWorld(new T.Vector3(...targets[i])));l.paw.rotation.x=i<2?-.12:.1;});
   group.updateMatrixWorld(true);mesh.skeleton.update();let minY=Infinity;
   for(let i=0;i<pos.count;i++){mesh.getVertexPosition(i,v);minY=Math.min(minY,v.y);}
   group.position.y=-minY*group.scale.y;group.updateMatrixWorld(true);mesh.skeleton.update();
