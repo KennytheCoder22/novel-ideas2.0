@@ -1,0 +1,65 @@
+[
+  {
+    "name": "desktop",
+    "fixedCamera": true,
+    "fixedScale": true,
+    "sameScene": true,
+    "framing": {
+      "left": 419.88825345396833,
+      "right": 1021.3179658748628,
+      "top": 116.9532501558121,
+      "bottom": 729.0112593235633
+    },
+    "exactRestoredPose": true,
+    "earlyPutDown": true,
+    "reducedMotion": true,
+    "perf": {
+      "median": 16.69999999999891,
+      "p95": 16.799999999999272,
+      "frames": 109
+    },
+    "errors": []
+  },
+  {
+    "name": "phone",
+    "fixedCamera": true,
+    "fixedScale": true,
+    "sameScene": true,
+    "framing": {
+      "left": 50.87108028586022,
+      "right": 339.77310409945085,
+      "top": 244.18899870923966,
+      "bottom": 549.1255508902004
+    },
+    "exactRestoredPose": true,
+    "earlyPutDown": true,
+    "reducedMotion": true,
+    "perf": {
+      "median": 16.69999999999891,
+      "p95": 16.899999999999636,
+      "frames": 109
+    },
+    "errors": []
+  },
+  {
+    "name": "landscape",
+    "fixedCamera": true,
+    "fixedScale": true,
+    "sameScene": true,
+    "framing": {
+      "left": 287.90914465753536,
+      "right": 556.696310717291,
+      "top": 50.677320230655965,
+      "bottom": 315.9037713442034
+    },
+    "exactRestoredPose": true,
+    "earlyPutDown": true,
+    "reducedMotion": true,
+    "perf": {
+      "median": 16.699999999999818,
+      "p95": 16.800000000000182,
+      "frames": 110
+    },
+    "errors": []
+  }
+]

@@ -324,12 +324,12 @@
     "sha256": "c226a6429365dc5269c0abbeecbf1fa71fd776510c3104f49fcc62da13b242ba"
   },
   "experiments/carnival/mara-midway.js": {
-    "bytes": 18831,
-    "sha256": "03984c1761ce074d8244c9d1f990f1b154d67ff7d84ce917f76bea111071e488"
+    "bytes": 23096,
+    "sha256": "54161c812684e152146885323de165b716ae21cf922f146a9ec47fa258065ea1"
   },
   "experiments/carnival/mara-rig.js": {
-    "bytes": 14395,
-    "sha256": "821e8ad23cb7ff0c7140c1b592636e40c0a13d4156f7a1d30ff8c091ec8f5b09"
+    "bytes": 15392,
+    "sha256": "03b8d0a7e15188d6c08a2e64f5aee6ae4cddf0b038f18d320d4183f917e13673"
   },
   "experiments/carnival/mara-review.html": {
     "bytes": 2826,
@@ -354,5 +354,9 @@
   "experiments/carnival/skee-ball/clown-closeup.png": {
     "bytes": 2540415,
     "sha256": "68a9e37e0001c25485cd122bcd4419d0e97a06d31b23f78d94c5e04ca40467ad"
+  },
+  "experiments/carnival/midway.css": {
+    "bytes": 5916,
+    "sha256": "82f9c2f3c342b0440b26aad582e91527fdcdb85728f293dee59774ac25882d46"
   }
 }

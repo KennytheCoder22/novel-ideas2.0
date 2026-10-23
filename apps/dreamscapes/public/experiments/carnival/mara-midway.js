@@ -7,7 +7,7 @@ const local=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearch
 // Reference artwork is created only in the explicit local comparison preview.
 const reference=local?new Image():null;
 if(reference){reference.alt='';reference.draggable=false;reference.style.visibility='hidden';reference.src='./fox.png';fox.append(reference);}
-let sourceScene,rig,renderer,scene,camera,loaded=false,disposed=false,active=false,draws=0,mode='model',inspectionCleanup=null;
+let sourceScene,rig,renderer,scene,camera,loaded=false,disposed=false,active=false,draws=0,mode='model';
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),still=document.documentElement.dataset.motion==='still';
 const runEnd=3.2,stepEnd=6.4,turnEnd=6.9,end=7.25;let time=end,playing=false,frame=0,last=0,visit=0,restBones=[],route=null,slider;
 const ease=x=>{x=T.MathUtils.clamp(x,0,1);return x*x*(3-2*x);};
@@ -95,6 +95,7 @@ function turnFeet(progress){
 }
 
 function animatePose(){
+ if(pickup){posePickup();return;}
  if(time>=end){rig.turnSupport(0);rig.group.scale.setScalar(fitted.scale);rig.group.position.fromArray(fitted.position);rig.group.rotation.y=poseParameters.yaw;rig.restingPose(poseParameters);return;}
  if(!route)prepareRoute();
  const stepProgress=T.MathUtils.clamp((time-runEnd)/(stepEnd-runEnd),0,1),progress=walkProgress(stepProgress),c=ease((time-turnEnd)/(end-turnEnd));
@@ -114,35 +115,71 @@ function animatePose(){
   rig.group.position.y=-low*rig.group.scale.y;rig.group.updateMatrixWorld(true);rig.mesh.skeleton.update();
  }
 }
-function draw(){if(!loaded||disposed||!active)return;animatePose();canvas.hidden=mode==='original';if(reference){reference.style.visibility=mode==='model'?'hidden':'visible';reference.style.opacity=mode==='overlay'?'.5':'1';}fox.style.zIndex=mode==='overlay'?'4':'3';if(mode!=='original'){renderer.render(scene,camera);draws++;}canvas.dataset.phase=time>=end?'resting':time>=turnEnd?'collapsing':time>=stepEnd?'noticed-pause':time>=runEnd?'walking-left':'running';fox.disabled=time<end;if(panel)panel.textContent=mode==='original'?'Original 2D fox':mode==='overlay'?'Original reference over 3D Mara':canvas.dataset.phase+' - '+time.toFixed(2)+' s';if(slider)slider.value=time;}
+function draw(){if(!loaded||disposed||!active)return;animatePose();canvas.hidden=mode==='original';if(reference){reference.style.visibility=mode==='model'?'hidden':'visible';reference.style.opacity=mode==='overlay'?'.5':'1';}fox.style.zIndex=mode==='overlay'?'4':'3';if(reflection)reflection.visible=!pickup;if(mode!=='original'){renderer.render(scene,camera);draws++;}canvas.dataset.phase=pickup?pickup.phase:time>=end?'resting':time>=turnEnd?'collapsing':time>=stepEnd?'noticed-pause':time>=runEnd?'walking-left':'running';fox.disabled=!!pickup||time<end;if(panel)panel.textContent=mode==='original'?'Original 2D fox':mode==='overlay'?'Original reference over 3D Mara':canvas.dataset.phase+' - '+time.toFixed(2)+' s';if(slider)slider.value=time;}
 function cancel(){cancelAnimationFrame(frame);frame=0;last=0;playing=false;}
-function tick(now){frame=0;if(!active||document.hidden||disposed)return;time=Math.min(end,time+(last?Math.min((now-last)/1000,.06):0));last=now;draw();if(playing&&time<end)frame=requestAnimationFrame(tick);else playing=false;}
-function replay(){if(!loaded||disposed)return;cancel();mode='model';route=null;time=reduced.matches||still?end:0;playing=time<end;draw();if(playing&&active&&!document.hidden)frame=requestAnimationFrame(tick);}
-function seek(t){cancel();time=T.MathUtils.clamp(t,0,end);mode='model';draw();}
-function resize(){if(disposed)return;renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(Math.max(1,Math.round(plane.clientWidth)),Math.max(1,Math.round(plane.clientHeight)),false);route=null;draw();}
-function sync(){if(disposed)return;const next=!view.inert&&(document.documentElement.dataset.location||'midway')==='midway';if(next!==active){active=next;if(!active){cancel();canvas.hidden=true;}else if(loaded){visit++;replay();}}else if(active&&loaded){if(reduced.matches||still){cancel();time=end;draw();}else if(document.hidden){cancelAnimationFrame(frame);frame=0;last=0;}else if(playing&&!frame){last=0;frame=requestAnimationFrame(tick);}}}
+function tick(now){frame=0;if(!active||document.hidden||disposed)return;const dt=last?T.MathUtils.clamp((now-last)/1000,0,.06):0;last=now;if(pickup)pickup.elapsed+=dt;else time=Math.min(end,time+dt);draw();if(pickup||playing&&time<end)frame=requestAnimationFrame(tick);else playing=false;}
+function replay(){if(!loaded||disposed)return;resetPickup();cancel();mode='model';route=null;time=reduced.matches||still?end:0;playing=time<end;draw();if(playing&&active&&!document.hidden)frame=requestAnimationFrame(tick);}
+function seek(t){resetPickup();cancel();time=T.MathUtils.clamp(t,0,end);mode='model';draw();}
+function resize(){if(disposed)return;renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(Math.max(1,Math.round(plane.clientWidth)),Math.max(1,Math.round(plane.clientHeight)),false);route=null;if(pickup)pickup.target=null;draw();}
+function sync(){if(disposed)return;const next=!view.inert&&(document.documentElement.dataset.location||'midway')==='midway';if(next!==active){active=next;if(!active){resetPickup();cancel();canvas.hidden=true;}else if(loaded){visit++;replay();}}else if(active&&loaded){if(reduced.matches||still){if(pickup){pickup.elapsed=2;draw();}else{cancel();time=end;draw();}}else if(document.hidden){cancelAnimationFrame(frame);frame=0;last=0;}else if((playing||pickup)&&!frame){last=0;frame=requestAnimationFrame(tick);}}}
+const pickupControls=document.createElement('section');pickupControls.className='mara-pickup-controls';pickupControls.hidden=true;pickupControls.setAttribute('aria-label','Holding Mara');
+const putDown=document.createElement('button');putDown.textContent='Put Mara down';pickupControls.append(putDown);document.body.append(pickupControls);
+let pickup=null;const pickupDuration=1.65;
+
 document.addEventListener('visibilitychange',sync);reduced.addEventListener('change',sync);
-const observer=new MutationObserver(sync);observer.observe(view,{attributes:true,attributeFilter:['inert']});observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-location']});const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(plane);
+const observer=new MutationObserver(sync);observer.observe(view,{attributes:true,attributeFilter:['inert']});observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-location']});const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(plane);window.addEventListener('resize',resize);
 try{
  const [gltf]=await Promise.all([new GLTFLoader().loadAsync('./mara/mara.glb'),loadMaraSkin(),...(reference?[reference.decode()]:[])]);if(disposed)throw new Error('Mara load cancelled');sourceScene=gltf.scene;rig=createMaraRig(sourceScene);scene.add(rig.group);
  const material=rig.mesh.material.clone();material.transparent=true;material.opacity=.07;material.depthWrite=false;material.onBeforeCompile=shader=>{shader.vertexShader='varying float maraReflectionDepth;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nvec4 reflected=modelMatrix*vec4(transformed,1.);maraReflectionDepth=reflected.y;reflected.y=-reflected.y-.012;gl_Position=projectionMatrix*viewMatrix*reflected;');shader.fragmentShader='varying float maraReflectionDepth;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\ndiffuseColor.a*=exp(-maraReflectionDepth*3.)*(.55+.45*sin(gl_FragCoord.y*2.5));');};material.customProgramCacheKey=()=> 'mara-static-wet-reflection';
  reflection=new T.SkinnedMesh(rig.mesh.geometry,material);rig.group.add(reflection);reflection.bind(rig.mesh.skeleton,rig.mesh.bindMatrix);reflection.frustumCulled=false;reflection.castShadow=false;
  active=false;loaded=true;fit();fox.hidden=false;document.querySelector('.ground-tag').hidden=true;fox.setAttribute('aria-label','Examine Mara, the abandoned stuffed fox');fox.addEventListener('click',inspect,true);canvas.dataset.ready='true';resize();active=false;sync();
 }catch(error){canvas.dataset.ready='failed';console.error('Mara could not load',error);}
-function inspect(event){
- event?.stopImmediatePropagation();if(!loaded||view.inert||inspectionCleanup||time<end)return;
- const dialog=document.querySelector('.inspection'),art=dialog.querySelector('.inspection-art');art.replaceChildren();
- const c=document.createElement('canvas');c.style.cssText='width:min(90vw,850px);height:min(75vh,650px)';art.append(c);
- const r=new T.WebGLRenderer({canvas:c,alpha:true,antialias:true});r.setPixelRatio(Math.min(devicePixelRatio||1,1.5));const s=new T.Scene();s.add(new T.HemisphereLight(0xffd79b,0x252333,1));const light=new T.DirectionalLight(0xffbf7d,2);light.position.set(-2,4,3);s.add(light);
- const model=createMaraRig(sourceScene);s.add(model.group);model.group.rotation.y=poseParameters.yaw;model.restingPose(poseParameters);
- const cam=new T.PerspectiveCamera(38,1,.1,30);cam.position.set(0,1.5,3.6);cam.lookAt(0,.45,0);
- const render=()=>{const b=c.getBoundingClientRect();r.setSize(b.width,b.height,false);cam.aspect=b.width/b.height;cam.updateProjectionMatrix();r.render(s,cam);};dialog.showModal();render();const ro=new ResizeObserver(render);ro.observe(c);
- const close=()=>{ro.disconnect();model.dispose();r.dispose();r.forceContextLoss();dialog.removeEventListener('close',close);inspectionCleanup=null;fox.focus({preventScroll:true});};inspectionCleanup=close;dialog.addEventListener('close',close);
+function resetPickup(){pickup=null;pickupControls.hidden=true;if(reflection)reflection.visible=true;canvas.dataset.inspection='none';}
+function pickupTarget(){
+ const savedPosition=rig.group.position.clone(),savedRotation=rig.group.quaternion.clone();
+ rig.group.position.set(0,0,0);rig.group.rotation.set(0,.18,0);rig.heldPose();
+ const box=new T.Box3().setFromObject(rig.mesh,true),size=box.getSize(new T.Vector3()),offset=box.getCenter(new T.Vector3()),r=plane.getBoundingClientRect(),tan=Math.tan(T.MathUtils.degToRad(camera.fov/2));
+ const depth=Math.max(size.y*r.height/(2*tan*innerHeight*.68),size.x*r.height/(2*tan*innerWidth*.74),camera.near+size.z*1.5);
+ const ray=new T.Raycaster();ray.setFromCamera(new T.Vector2((innerWidth/2-r.left)/r.width*2-1,1-(innerHeight*.47-r.top)/r.height*2),camera);
+ const forward=camera.getWorldDirection(new T.Vector3());const target=ray.ray.at(depth/ray.ray.direction.dot(forward),new T.Vector3()).sub(offset);
+ rig.group.position.copy(target);
+ // Refine the framing in the visible viewport, including mobile cover crops.
+ const right=new T.Vector3(1,0,0).applyQuaternion(camera.quaternion),up=new T.Vector3(0,1,0).applyQuaternion(camera.quaternion);
+ for(let i=0;i<6;i++){
+  rig.group.rotation.set(0,Math.atan2(camera.position.x-rig.group.position.x,camera.position.z-rig.group.position.z),0);rig.heldPose();
+  const b=projectedBounds(),w=(b.right-b.left)/1536*r.width,h=(b.bottom-b.top)/1024*r.height,ratio=Math.max(w/(innerWidth*.74),h/(innerHeight*.68));
+  const d=-camera.worldToLocal(rig.group.position.clone()).z;
+  rig.group.position.addScaledVector(forward,d*(ratio-1));rig.group.updateMatrixWorld(true);rig.mesh.skeleton.update();
+  const aligned=projectedBounds(),x=r.left+(aligned.left+aligned.right)/2/1536*r.width,y=r.top+(aligned.top+aligned.bottom)/2/1024*r.height,k=2*tan*(-camera.worldToLocal(rig.group.position.clone()).z)/r.height;
+  rig.group.position.addScaledVector(right,(innerWidth/2-x)*k).addScaledVector(up,(y-innerHeight*.47)*k);
+ }
+ pickup.heldYaw=rig.group.rotation.y;target.copy(rig.group.position);rig.group.position.copy(savedPosition);rig.group.quaternion.copy(savedRotation);return target;
 }
-function show(value){cancel();time=end;mode=local?value:'model';draw();}
+function posePickup(){
+ const state=pickup,elapsed=state.elapsed,u=reduced.matches||still?1:ease(elapsed/pickupDuration),amount=state.phase==='lowering'?(state.lowerFrom??1)*(1-u):u;state.amount=amount;
+ if(state.phase==='lifting'&&u>=1)state.phase='held';
+ const sway=state.phase==='held'&&!reduced.matches&&!still?Math.sin((elapsed-pickupDuration)*.85)*.003:0;
+ rig.group.scale.setScalar(fitted.scale);const target=state.target?new T.Vector3(...state.target):pickupTarget();state.target=target.toArray();
+ rig.group.rotation.set(0,poseParameters.yaw,0);rig.group.quaternion.slerp(new T.Quaternion().setFromEuler(new T.Euler(0,state.heldYaw,0)),amount);rig.group.position.fromArray(fitted.position).lerp(target,amount);rig.group.position.y+=Math.sin(Math.PI*amount)*fitted.scale*.12;
+ const right=new T.Vector3(1,0,0).applyQuaternion(camera.quaternion);rig.group.position.addScaledVector(right,sway*fitted.scale);rig.group.rotation.z+=sway;
+ const lag=reduced.matches||still?0:.07*Math.sin(elapsed*7)*Math.exp(-elapsed*2.4)+sway*2;
+ rig.heldPose(lag);
+ const loosen=ease((amount-.08)/.62);for(let i=0;i<rig.bones.length;i++){const bone=rig.bones[i];bone.position.lerpVectors(restBones[i].p,bone.position,loosen);bone.quaternion.copy(restBones[i].q.clone().slerp(bone.quaternion,loosen));}
+ rig.group.updateMatrixWorld(true);rig.mesh.skeleton.update();canvas.dataset.inspection=state.phase;
+ if(state.phase==='lowering'&&u>=1){resetPickup();animatePose();fox.focus({preventScroll:true});}
+}
+function inspect(event){
+ event?.stopImmediatePropagation();if(!loaded||view.inert||pickup||time<end)return;
+ cancel();mode='model';pickup={phase:'lifting',elapsed:0,target:null};pickupControls.hidden=false;draw();last=0;if(!frame)frame=requestAnimationFrame(tick);putDown.focus({preventScroll:true});
+}
+function lowerPickup(){if(!pickup||pickup.phase==='lowering')return;pickup.lowerFrom=pickup.amount;pickup.phase='lowering';pickup.elapsed=0;draw();last=0;if(!frame)frame=requestAnimationFrame(tick);}
+putDown.addEventListener('click',lowerPickup);
+function pickupKeys(event){if(pickup&&event.key==='Escape'){event.preventDefault();lowerPickup();}}document.addEventListener('keydown',pickupKeys);
+function show(value){resetPickup();cancel();time=end;mode=local?value:'model';draw();}
 if(local){const section=document.createElement('section');section.className='mara-review-panel';section.style.cssText='position:fixed;left:12px;top:12px;z-index:100;background:#10151ded;color:#ffe4b5;padding:10px;border:1px solid #a78c5d;border-radius:6px;max-width:360px;font:13px system-ui';
  for(const [label,value]of[['3D Mara','model'],['Original 2D fox','original'],['Overlay reference','overlay']]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>show(value);b.style.cssText='padding:7px;margin:2px;cursor:pointer';section.append(b);}
+ const pickupButton=document.createElement('button');pickupButton.textContent='Preview pickup';pickupButton.onclick=()=>{seek(end);inspect();};pickupButton.style.cssText='padding:7px;margin:2px;cursor:pointer';section.append(pickupButton);
  const replayButton=document.createElement('button');replayButton.textContent='Replay Mara';replayButton.onclick=replay;replayButton.style.cssText='padding:7px;margin:2px;cursor:pointer';section.prepend(replayButton);slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=end;slider.step=.01;slider.value=end;slider.setAttribute('aria-label','Mara sequence timeline');slider.style.cssText='display:block;width:100%';slider.oninput=()=>seek(+slider.value);section.append(slider);
  panel=document.createElement('output');panel.style.display='block';panel.style.paddingTop='6px';section.append(panel);document.body.append(section);draw();}
-window.MaraMidway={show,replay,seek:local?seek:undefined,diagnostics:local?()=>({projected:projectedBounds(),route,position:rig.group.position.toArray(),yaw:rig.group.rotation.y,heading:[Math.sin(rig.group.rotation.y),0,Math.cos(rig.group.rotation.y)],support:rig.supportState(),groundMin:rig.lowest().p[1]*rig.group.scale.y+rig.group.position.y,bones:rig.bones.map(b=>({p:b.position.toArray(),q:b.quaternion.toArray()}))}):undefined,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing,time,end,runEnd,stepEnd,turnEnd,visit,phase:canvas.dataset.phase,draws,mode,fitted,poseParameters:{...poseParameters},stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;cancel();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);inspectionCleanup?.();observer.disconnect();resizeObserver.disconnect();fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
+window.MaraMidway={show,replay,seek:local?seek:undefined,diagnostics:local?()=>({projected:projectedBounds(),route,position:rig.group.position.toArray(),yaw:rig.group.rotation.y,heading:[Math.sin(rig.group.rotation.y),0,Math.cos(rig.group.rotation.y)],support:rig.supportState(),groundMin:rig.lowest().p[1]*rig.group.scale.y+rig.group.position.y,bones:rig.bones.map(b=>({p:b.position.toArray(),q:b.quaternion.toArray()}))}):undefined,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing,time,end,runEnd,stepEnd,turnEnd,visit,phase:canvas.dataset.phase,draws,mode,fitted,poseParameters:{...poseParameters},pickup:pickup&&{...pickup},camera:{position:camera.position.toArray(),quaternion:camera.quaternion.toArray(),fov:camera.fov,zoom:camera.zoom},scale:rig?.group.scale.x,stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;cancel();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);resetPickup();pickupControls.remove();document.removeEventListener('keydown',pickupKeys);observer.disconnect();resizeObserver.disconnect();window.removeEventListener('resize',resize);fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
 function onPageHide(event){if(!event.persisted)window.MaraMidway?.dispose();}addEventListener('pagehide',onPageHide);

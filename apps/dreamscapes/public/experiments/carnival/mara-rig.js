@@ -114,10 +114,24 @@ export function createMaraRig(source){
   for(let i=0;i<pos.count;i++){mesh.getVertexPosition(i,v);minY=Math.min(minY,v.y);}
   group.position.y=-minY*group.scale.y;group.updateMatrixWorld(true);mesh.skeleton.update();
  }
+ // A suspended plush has no gait or planted feet: each chain hangs with gravity.
+ function heldPose(swing=0){
+  for(const b of bones){b.quaternion.identity();b.position.copy(rest.get(b));if(b.parent.isBone)b.position.sub(rest.get(b.parent));}
+  body.rotation.set(.08,0,-.08);hips.rotation.x=-.08;hips.position.y-=.035;chest.rotation.x=.04;head.rotation.x=.12;
+  group.updateMatrixWorld(true);
+  for(const l of legs){
+   const outward=l.x<0?-.12:.12,lag=swing*(l.front?1:.75);
+   aim(l.upper,l.knee,l.upper.getWorldPosition(new T.Vector3()).add(new T.Vector3(outward,-1,lag)));
+   aim(l.knee,l.paw,l.knee.getWorldPosition(new T.Vector3()).add(new T.Vector3(outward*.5,-1,.07+lag*.6)));l.paw.rotation.x=.1;
+  }
+  aim(tail,tip,tail.getWorldPosition(new T.Vector3()).add(new T.Vector3(-.2,-1,-.12+swing)));
+  tip.rotation.set(.05,0,.06);scarf.rotation.set(.025+swing*.3,0,-.04);tag.rotation.set(.02,0,-.06+swing*.45);
+  group.updateMatrixWorld(true);mesh.skeleton.update();
+ }
  function placeFeet(targets,headings){
   // Targets stay in world space while the torso pivots over the planted paws.
   legs.forEach((l,i)=>{solve(l,targets[i],true);const q=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),headings[i]);l.paw.quaternion.copy(l.paw.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));group.updateMatrixWorld(true);});
   mesh.skeleton.update();
  }
- return{group,mesh,bones,named,legs,pose,restingPose,placeFeet,turnSupport,supportState:()=>{const ix=geometry.attributes.skinIndex.array,ww=geometry.attributes.skinWeight.array;let torsoLegWeight=0;for(const {i,mask}of torso)if(mask>.999){let sum=0;for(let j=0;j<4;j++)if(ix[i*4+j]>=9)sum+=ww[i*4+j];torsoLegWeight=Math.max(torsoLegWeight,sum);}return{amount:supportAmount,vertices:torso.length,torsoLegWeight,restored:supportAmount===0&&ix.every((v,i)=>v===baseIndices[i])&&ww.every((v,i)=>v===baseWeights[i])};},followCurve(front,rear){chest.rotation.y+=front*.6;neck.rotation.y+=front*.25;hips.rotation.y+=rear*.6;group.updateMatrixWorld(true);mesh.skeleton.update();},regionBounds(){const out={};for(let i=0;i<pos.count;i++){const bone=bones[indices[i*4]].name;mesh.getVertexPosition(i,v);const r=out[bone]||(out[bone]={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]});for(let j=0;j<3;j++){r.min[j]=Math.min(r.min[j],v.getComponent(j));r.max[j]=Math.max(r.max[j],v.getComponent(j));}}return out;},lowest(){let low=Infinity,info;for(let i=0;i<pos.count;i++){mesh.getVertexPosition(i,v);if(v.y<low){low=v.y;info={p:v.toArray(),source:[pos.getX(i),pos.getY(i),pos.getZ(i)],bone:bones[indices[i*4]].name};}}return info;},stats:{triangles:9705,vertices:pos.count,bones:bones.length,weightedParts:counts},dispose(){geometry.dispose();mesh.material.dispose();}};
+ return{group,mesh,bones,named,legs,pose,restingPose,heldPose,placeFeet,turnSupport,supportState:()=>{const ix=geometry.attributes.skinIndex.array,ww=geometry.attributes.skinWeight.array;let torsoLegWeight=0;for(const {i,mask}of torso)if(mask>.999){let sum=0;for(let j=0;j<4;j++)if(ix[i*4+j]>=9)sum+=ww[i*4+j];torsoLegWeight=Math.max(torsoLegWeight,sum);}return{amount:supportAmount,vertices:torso.length,torsoLegWeight,restored:supportAmount===0&&ix.every((v,i)=>v===baseIndices[i])&&ww.every((v,i)=>v===baseWeights[i])};},followCurve(front,rear){chest.rotation.y+=front*.6;neck.rotation.y+=front*.25;hips.rotation.y+=rear*.6;group.updateMatrixWorld(true);mesh.skeleton.update();},regionBounds(){const out={};for(let i=0;i<pos.count;i++){const bone=bones[indices[i*4]].name;mesh.getVertexPosition(i,v);const r=out[bone]||(out[bone]={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]});for(let j=0;j<3;j++){r.min[j]=Math.min(r.min[j],v.getComponent(j));r.max[j]=Math.max(r.max[j],v.getComponent(j));}}return out;},lowest(){let low=Infinity,info;for(let i=0;i<pos.count;i++){mesh.getVertexPosition(i,v);if(v.y<low){low=v.y;info={p:v.toArray(),source:[pos.getX(i),pos.getY(i),pos.getZ(i)],bone:bones[indices[i*4]].name};}}return info;},stats:{triangles:9705,vertices:pos.count,bones:bones.length,weightedParts:counts},dispose(){geometry.dispose();mesh.material.dispose();}};
 }

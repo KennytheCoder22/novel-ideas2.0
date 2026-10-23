@@ -1,0 +1,12 @@
+{
+  "baseline": "7aaff1b",
+  "exactMatch": true,
+  "checkpoints": [
+    0,
+    1.6,
+    3.2,
+    5,
+    6.6,
+    7.25
+  ]
+}
