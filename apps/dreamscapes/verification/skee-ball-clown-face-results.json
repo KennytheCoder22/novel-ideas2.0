@@ -1,0 +1,38 @@
+[
+  {
+    "name": "desktop",
+    "gapMilliseconds": 1038.5,
+    "faceMilliseconds": 1010.8000000119209,
+    "oneScare": true,
+    "fullViewport": true,
+    "navigationCleanup": true,
+    "reducedMotion": true,
+    "exactlyNine": true,
+    "playAgain": true,
+    "errors": []
+  },
+  {
+    "name": "phone",
+    "gapMilliseconds": 1028.5,
+    "faceMilliseconds": 1004.8999999910593,
+    "oneScare": true,
+    "fullViewport": true,
+    "navigationCleanup": true,
+    "reducedMotion": true,
+    "exactlyNine": true,
+    "playAgain": true,
+    "errors": []
+  },
+  {
+    "name": "landscape",
+    "gapMilliseconds": 1027.3999999910593,
+    "faceMilliseconds": 1005.6000000089407,
+    "oneScare": true,
+    "fullViewport": true,
+    "navigationCleanup": true,
+    "reducedMotion": true,
+    "exactlyNine": true,
+    "playAgain": true,
+    "errors": []
+  }
+]

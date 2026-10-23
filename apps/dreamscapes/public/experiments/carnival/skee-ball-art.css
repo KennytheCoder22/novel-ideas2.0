@@ -32,3 +32,8 @@
 .skee-clown-canvas { z-index:2; }
 .skee-ball-motion { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:3; }
 .skee-brass-angle,.skee-brass-launch { z-index:4; }
+
+/* A held close-up after the vapor; no additional WebGL context or flashing. */
+.skee-clown-scare { position:fixed; inset:0; width:100vw; height:100dvh; z-index:10000; pointer-events:none; object-fit:cover; background:#160c08; }
+.skee-clown-scare[hidden] { display:none; }
+@media(max-height:550px) { .skee-clown-review { top:8px; bottom:auto; right:8px; max-width:250px; max-height:calc(100svh - 80px); overflow:auto; } }
