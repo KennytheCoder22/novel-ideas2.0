@@ -1,6 +1,6 @@
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {createMaraRig,loadMaraSkin} from './mara-rig.js?v=20261023-pickup-1';
+import {createMaraRig,loadMaraSkin} from './mara-rig.js?v=20261023-pickup-upright-3';
 // The approved endpoint is fitted first; motion always finishes in that exact pose.
 const plane=document.querySelector('.composition'),view=plane.closest('main'),fox=plane.querySelector('.fox');
 const local=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearchParams(location.search).has('mara-review');
@@ -139,7 +139,7 @@ function pickupTarget(){
  const savedPosition=rig.group.position.clone(),savedRotation=rig.group.quaternion.clone();
  rig.group.position.set(0,0,0);rig.group.rotation.set(0,.18,0);rig.heldPose();
  const box=new T.Box3().setFromObject(rig.mesh,true),size=box.getSize(new T.Vector3()),offset=box.getCenter(new T.Vector3()),r=plane.getBoundingClientRect(),tan=Math.tan(T.MathUtils.degToRad(camera.fov/2));
- const depth=Math.max(size.y*r.height/(2*tan*innerHeight*.68),size.x*r.height/(2*tan*innerWidth*.74),camera.near+size.z*1.5);
+ const depth=Math.max(size.y*r.height/(2*tan*innerHeight*.8),size.x*r.height/(2*tan*innerWidth*.86),camera.near+size.z*1.5);
  const ray=new T.Raycaster();ray.setFromCamera(new T.Vector2((innerWidth/2-r.left)/r.width*2-1,1-(innerHeight*.47-r.top)/r.height*2),camera);
  const forward=camera.getWorldDirection(new T.Vector3());const target=ray.ray.at(depth/ray.ray.direction.dot(forward),new T.Vector3()).sub(offset);
  rig.group.position.copy(target);
@@ -147,7 +147,7 @@ function pickupTarget(){
  const right=new T.Vector3(1,0,0).applyQuaternion(camera.quaternion),up=new T.Vector3(0,1,0).applyQuaternion(camera.quaternion);
  for(let i=0;i<6;i++){
   rig.group.rotation.set(0,Math.atan2(camera.position.x-rig.group.position.x,camera.position.z-rig.group.position.z),0);rig.heldPose();
-  const b=projectedBounds(),w=(b.right-b.left)/1536*r.width,h=(b.bottom-b.top)/1024*r.height,ratio=Math.max(w/(innerWidth*.74),h/(innerHeight*.68));
+  const b=projectedBounds(),w=(b.right-b.left)/1536*r.width,h=(b.bottom-b.top)/1024*r.height,ratio=Math.max(w/(innerWidth*.86),h/(innerHeight*.8));
   const d=-camera.worldToLocal(rig.group.position.clone()).z;
   rig.group.position.addScaledVector(forward,d*(ratio-1));rig.group.updateMatrixWorld(true);rig.mesh.skeleton.update();
   const aligned=projectedBounds(),x=r.left+(aligned.left+aligned.right)/2/1536*r.width,y=r.top+(aligned.top+aligned.bottom)/2/1024*r.height,k=2*tan*(-camera.worldToLocal(rig.group.position.clone()).z)/r.height;
@@ -163,8 +163,8 @@ function posePickup(){
  rig.group.rotation.set(0,poseParameters.yaw,0);rig.group.quaternion.slerp(new T.Quaternion().setFromEuler(new T.Euler(0,state.heldYaw,0)),amount);rig.group.position.fromArray(fitted.position).lerp(target,amount);rig.group.position.y+=Math.sin(Math.PI*amount)*fitted.scale*.12;
  const right=new T.Vector3(1,0,0).applyQuaternion(camera.quaternion);rig.group.position.addScaledVector(right,sway*fitted.scale);rig.group.rotation.z+=sway;
  const lag=reduced.matches||still?0:.07*Math.sin(elapsed*7)*Math.exp(-elapsed*2.4)+sway*2;
- rig.heldPose(lag);
- const loosen=ease((amount-.08)/.62);for(let i=0;i<rig.bones.length;i++){const bone=rig.bones[i];bone.position.lerpVectors(restBones[i].p,bone.position,loosen);bone.quaternion.copy(restBones[i].q.clone().slerp(bone.quaternion,loosen));}
+ const loosen=ease((amount-.08)/.62);rig.heldPose(lag,loosen);
+ for(let i=0;i<rig.bones.length;i++){const bone=rig.bones[i];bone.position.lerpVectors(restBones[i].p,bone.position,loosen);bone.quaternion.copy(restBones[i].q.clone().slerp(bone.quaternion,loosen));}
  rig.group.updateMatrixWorld(true);rig.mesh.skeleton.update();canvas.dataset.inspection=state.phase;
  if(state.phase==='lowering'&&u>=1){resetPickup();animatePose();fox.focus({preventScroll:true});}
 }
@@ -181,7 +181,7 @@ if(local){const section=document.createElement('section');section.className='mar
  const pickupButton=document.createElement('button');pickupButton.textContent='Preview pickup';pickupButton.onclick=()=>{seek(end);inspect();};pickupButton.style.cssText='padding:7px;margin:2px;cursor:pointer';section.append(pickupButton);
  const replayButton=document.createElement('button');replayButton.textContent='Replay Mara';replayButton.onclick=replay;replayButton.style.cssText='padding:7px;margin:2px;cursor:pointer';section.prepend(replayButton);slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=end;slider.step=.01;slider.value=end;slider.setAttribute('aria-label','Mara sequence timeline');slider.style.cssText='display:block;width:100%';slider.oninput=()=>seek(+slider.value);section.append(slider);
  panel=document.createElement('output');panel.style.display='block';panel.style.paddingTop='6px';section.append(panel);document.body.append(section);draw();}
-window.MaraMidway={show,replay,seek:local?seek:undefined,diagnostics:local?()=>({projected:projectedBounds(),route,position:rig.group.position.toArray(),yaw:rig.group.rotation.y,heading:[Math.sin(rig.group.rotation.y),0,Math.cos(rig.group.rotation.y)],support:rig.supportState(),groundMin:rig.lowest().p[1]*rig.group.scale.y+rig.group.position.y,bones:rig.bones.map(b=>({p:b.position.toArray(),q:b.quaternion.toArray()}))}):undefined,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing,time,end,runEnd,stepEnd,turnEnd,visit,phase:canvas.dataset.phase,draws,mode,fitted,poseParameters:{...poseParameters},pickup:pickup&&{...pickup},camera:{position:camera.position.toArray(),quaternion:camera.quaternion.toArray(),fov:camera.fov,zoom:camera.zoom},scale:rig?.group.scale.x,stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;cancel();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);resetPickup();pickupControls.remove();document.removeEventListener('keydown',pickupKeys);observer.disconnect();resizeObserver.disconnect();window.removeEventListener('resize',resize);fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
+window.MaraMidway={show,replay,seek:local?seek:undefined,diagnostics:local?()=>({projected:projectedBounds(),route,position:rig.group.position.toArray(),yaw:rig.group.rotation.y,heading:[Math.sin(rig.group.rotation.y),0,Math.cos(rig.group.rotation.y)],support:rig.supportState(),joints:Object.fromEntries(Object.entries(rig.named).map(([name,b])=>[name,b.getWorldPosition(new T.Vector3()).toArray()])),groundMin:rig.lowest().p[1]*rig.group.scale.y+rig.group.position.y,bones:rig.bones.map(b=>({p:b.position.toArray(),q:b.quaternion.toArray()}))}):undefined,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing,time,end,runEnd,stepEnd,turnEnd,visit,phase:canvas.dataset.phase,draws,mode,fitted,poseParameters:{...poseParameters},pickup:pickup&&{...pickup},camera:{position:camera.position.toArray(),quaternion:camera.quaternion.toArray(),fov:camera.fov,zoom:camera.zoom},scale:rig?.group.scale.x,stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;cancel();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);resetPickup();pickupControls.remove();document.removeEventListener('keydown',pickupKeys);observer.disconnect();resizeObserver.disconnect();window.removeEventListener('resize',resize);fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
 // Explicit local preview: wait for the Midway to be active, then show the lift.
 if(local&&loaded&&new URLSearchParams(location.search).get('pickup-review')==='autoplay'){const preview=()=>{if(disposed)return;if(!active||document.hidden){setTimeout(preview,100);return;}seek(end);inspect();};setTimeout(preview,400);}
 function onPageHide(event){if(!event.persisted)window.MaraMidway?.dispose();}addEventListener('pagehide',onPageHide);

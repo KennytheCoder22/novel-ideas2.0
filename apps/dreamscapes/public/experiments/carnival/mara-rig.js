@@ -115,17 +115,24 @@ export function createMaraRig(source){
   group.position.y=-minY*group.scale.y;group.updateMatrixWorld(true);mesh.skeleton.update();
  }
  // A suspended plush has no gait or planted feet: each chain hangs with gravity.
- function heldPose(swing=0){
+ function heldPose(swing=0,support=1){
+  turnSupport(support);
   for(const b of bones){b.quaternion.identity();b.position.copy(rest.get(b));if(b.parent.isBone)b.position.sub(rest.get(b.parent));}
-  body.rotation.set(.08,0,-.08);hips.rotation.x=-.08;hips.position.y-=.035;chest.rotation.x=.04;head.rotation.x=.12;
+  // Raise the torso's long axis: chest above belly, hips below, without scaling.
+  body.rotation.set(-Math.PI/2+.04,0,-.035);hips.rotation.x=-.045;chest.rotation.x=.025;
   group.updateMatrixWorld(true);
+  function faceForward(bone,euler){const q=group.getWorldQuaternion(new T.Quaternion()).multiply(new T.Quaternion().setFromEuler(new T.Euler(...euler)));bone.quaternion.copy(bone.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(q));group.updateMatrixWorld(true);}
+  faceForward(neck,[.015,.3,-.035]);faceForward(head,[.035,.35,-.11]);
   for(const l of legs){
-   const outward=l.x<0?-.12:.12,lag=swing*(l.front?1:.75);
+   const outward=l.x<0?-.10:.10,lag=swing*(l.front?1:.75);
    aim(l.upper,l.knee,l.upper.getWorldPosition(new T.Vector3()).add(new T.Vector3(outward,-1,lag)));
-   aim(l.knee,l.paw,l.knee.getWorldPosition(new T.Vector3()).add(new T.Vector3(outward*.5,-1,.07+lag*.6)));l.paw.rotation.x=.1;
+   aim(l.knee,l.paw,l.knee.getWorldPosition(new T.Vector3()).add(new T.Vector3(outward*.5,-1,.045+lag*.6)));l.paw.rotation.x=.06;
   }
-  aim(tail,tip,tail.getWorldPosition(new T.Vector3()).add(new T.Vector3(-.2,-1,-.12+swing)));
-  tip.rotation.set(.05,0,.06);scarf.rotation.set(.025+swing*.3,0,-.04);tag.rotation.set(.02,0,-.06+swing*.45);
+  aim(tail,tip,tail.getWorldPosition(new T.Vector3()).add(new T.Vector3(.04,-1,-.1+swing)));
+  tip.rotation.set(.025,0,.025);
+  const neckPoint=neck.getWorldPosition(new T.Vector3()),scale=group.getWorldScale(new T.Vector3()).x,right=new T.Vector3(1,0,0).applyQuaternion(group.getWorldQuaternion(new T.Quaternion())),forward=new T.Vector3(0,0,1).applyQuaternion(group.getWorldQuaternion(new T.Quaternion()));
+  for(const [bone,x,down,z]of [[scarf,.2,.055,.14],[tag,.14,.145,.27]]){const point=neckPoint.clone().addScaledVector(right,x*scale).addScaledVector(forward,z*scale);point.y-=down*scale;bone.position.copy(bone.parent.worldToLocal(point));}
+  faceForward(scarf,[.025+swing*.3,0,-.04]);faceForward(tag,[.02,0,-.06+swing*.45]);
   group.updateMatrixWorld(true);mesh.skeleton.update();
  }
  function placeFeet(targets,headings){
