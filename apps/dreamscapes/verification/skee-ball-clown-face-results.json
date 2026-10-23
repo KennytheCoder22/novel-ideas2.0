@@ -1,8 +1,8 @@
 [
   {
     "name": "desktop",
-    "gapMilliseconds": 1038.5,
-    "faceMilliseconds": 1010.8000000119209,
+    "pomFadeToScareMilliseconds": 1015.2000000029802,
+    "faceMilliseconds": 1017.5,
     "oneScare": true,
     "fullViewport": true,
     "navigationCleanup": true,
@@ -13,8 +13,8 @@
   },
   {
     "name": "phone",
-    "gapMilliseconds": 1028.5,
-    "faceMilliseconds": 1004.8999999910593,
+    "pomFadeToScareMilliseconds": 1015.7999999970198,
+    "faceMilliseconds": 1017,
     "oneScare": true,
     "fullViewport": true,
     "navigationCleanup": true,
@@ -25,8 +25,8 @@
   },
   {
     "name": "landscape",
-    "gapMilliseconds": 1027.3999999910593,
-    "faceMilliseconds": 1005.6000000089407,
+    "pomFadeToScareMilliseconds": 1016.2000000029802,
+    "faceMilliseconds": 1016.9000000059605,
     "oneScare": true,
     "fullViewport": true,
     "navigationCleanup": true,

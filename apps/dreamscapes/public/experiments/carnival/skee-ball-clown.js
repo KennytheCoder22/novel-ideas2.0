@@ -16,10 +16,9 @@ export async function mountClown({game,plane,ui,isActive,reduced,onReady,onMachi
  const clamp=T.MathUtils.clamp,lerp=T.MathUtils.lerp,smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
  let time=0,playing=false,requested=false,roundTriggered=false,previewOnly=false,notified=false,disposed=false,frame=0,last=0;
  let model,root,mixer,mesh,clip,scale,idleOrigin,runOrigin,idleQuats=[],runQuats=[],clipSamplers=[],feet={Left:[],Right:[]},contacts=[],bodyHeight=.7,runDuration=5;
- let timings={launch:.55,land:1.6,run:2.19,evaporate:7.22,bodyGone:9.22,pomGone:9.94,vaporFadeEnd:12.6,vaporGone:12.55,scareStart:13.55,end:14.55};
- const faceCanvas=document.createElement('canvas');faceCanvas.className='skee-clown-scare';faceCanvas.hidden=true;faceCanvas.setAttribute('aria-hidden','true');document.body.append(faceCanvas);
- const faceContext=faceCanvas.getContext('2d'),faceCamera=new T.PerspectiveCamera(35,1,.001,20);let faceReady=false,headVertices=[];
- function hideFace(){faceCanvas.hidden=true;game.dataset.clownScare='false';}
+ let timings={launch:.55,land:1.6,run:2.19,evaporate:7.22,bodyGone:9.22,pomFadeStart:9.54,pomGone:9.94,vaporFadeEnd:12.6,vaporGone:12.55,scareStart:10.54,end:11.54};
+ const faceImage=document.createElement('img');faceImage.className='skee-clown-scare';faceImage.hidden=true;faceImage.alt='';faceImage.setAttribute('aria-hidden','true');faceImage.src=new URL('./skee-ball/clown-closeup.png',import.meta.url).href;document.body.append(faceImage);
+ function hideFace(){faceImage.hidden=true;game.dataset.clownScare='false';}
  const dissolveClock={value:0},cut={value:-20},pomOpacity={value:1},pomLift={value:0},pomFloor={value:.65};
  const fadeNoise=`float vnHash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);} float vnNoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(vnHash(i),vnHash(i+vec3(1,0,0)),f.x),mix(vnHash(i+vec3(0,1,0)),vnHash(i+vec3(1,1,0)),f.x),f.y),mix(mix(vnHash(i+vec3(0,0,1)),vnHash(i+vec3(1,0,1)),f.x),mix(vnHash(i+vec3(0,1,1)),vnHash(i+vec3(1,1,1)),f.x),f.y),f.z);}`;
 const MAX=680,positions=new Float32Array(MAX*3),sizes=new Float32Array(MAX*2),turns=new Float32Array(MAX),alphas=new Float32Array(MAX),seeds=new Float32Array(MAX);
@@ -104,7 +103,7 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   shelfBulb.intensity=lerp(.35,2.4,lit);fill.intensity=lerp(.06,.23,lit);
   dissolveClock.value=Math.max(0,time-timings.evaporate);
   cut.value=time<timings.evaporate?-20:lerp(-bodyHeight*.06,bodyHeight*1.15,ev);
-  pomOpacity.value=1-smooth(timings.bodyGone+.32,timings.pomGone,time);pomLift.value=.065*smooth(timings.bodyGone,timings.pomGone,time);
+  pomOpacity.value=1-smooth(timings.pomFadeStart,timings.pomGone,time);pomLift.value=.065*smooth(timings.bodyGone,timings.pomGone,time);
   model.visible=time<timings.pomGone;mesh.castShadow=time<timings.evaporate;
   shelfAO.visible=time<timings.launch;shelfAO.material.opacity=.6;
   for(let i=0;i<footShadows.length;i++){const shadow=footShadows[i],f=contacts[i];shadow.position.set(f.x,.004,f.z);shadow.visible=time>=timings.land&&time<timings.bodyGone;shadow.material.opacity=clamp(1-f.y/.1,0,1)*.4*(1-ev);}
@@ -116,52 +115,31 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
    positions[i*3]=w.anchor.x+Math.sin(w.twist+hold*2.1)*curl;positions[i*3+1]=w.anchor.y+(hold*(.22+w.size*.16)+hold*hold*.12)*unit;positions[i*3+2]=w.anchor.z+Math.cos(w.twist+hold*1.8)*curl*.8;
    const grow=.6+hold*.7;sizes[i*2]=(.11+w.size*.13)*grow*unit;sizes[i*2+1]=(.22+w.size*.22)*grow*unit;turns[i]=Math.sin(w.twist+hold)*.55;alphas[i]=a*(.14+w.size*.09);seeds[i]=w.seed;if(a>0)active++;
   }
-  for(const k of ['center','extent','turn','opacity','seed'])vaporGeometry.attributes[k].needsUpdate=true;vapor.visible=active>0;
-  game.dataset.clownPhase=!requested?'waiting':time<timings.land?p.phase:time<timings.run?'landing':time<timings.evaporate?'approach':time<timings.bodyGone?'evaporating':time<timings.pomGone?'pompom':time<timings.vaporGone?'vapor':time<timings.scareStart?'scare-wait':time<timings.end?'face':'gone';
+  for(const k of ['center','extent','turn','opacity','seed'])vaporGeometry.attributes[k].needsUpdate=true;vapor.visible=active>0&&time<timings.scareStart;
+  game.dataset.clownPhase=!requested?'waiting':time>=timings.end?'gone':time>=timings.scareStart?'face':time<timings.land?p.phase:time<timings.run?'landing':time<timings.evaporate?'approach':time<timings.bodyGone?'evaporating':time<timings.pomFadeStart?'pompom':time<timings.pomGone?'pompom-fade':'vapor';
   if(reviewControls){reviewControls.slider.value=time;reviewControls.label.textContent=game.dataset.clownPhase+' · '+time.toFixed(2)+' s';}
   const scare=requested&&isActive()&&!reduced.matches&&time>=timings.scareStart&&time<timings.end;
-  if(scare){if(!faceReady)captureFace();faceCanvas.hidden=false;game.dataset.clownScare='true';}else hideFace();
+  if(scare){faceImage.hidden=false;game.dataset.clownScare='true';}else hideFace();
   renderer.render(scene,camera);
   if(roundTriggered&&!previewOnly&&!notified&&time>=timings.end){notified=true;onComplete?.();}
  }
- // The face is rendered from the approved rig and textures, with the same GL
- // context. A 2D snapshot holds the close-up still for its full one-second beat.
- function captureFace(){
-  pose(timings.run);model.updateMatrixWorld(true);mesh.skeleton.update();
-  const bounds=new T.Box3(),v=new T.Vector3();for(const i of headVertices){mesh.getVertexPosition(i,v).applyMatrix4(mesh.matrixWorld);bounds.expandByPoint(v);}
-  const center=bounds.getCenter(new T.Vector3()),size=bounds.getSize(new T.Vector3());
-  // Frame the eyes, nose and grin rather than the tall hat above the face.
-  center.y=bounds.min.y+size.y*.48;
-  const width=Math.max(1,innerWidth),height=Math.max(1,innerHeight),ratio=Math.min(devicePixelRatio||1,1.75);
-  faceCamera.aspect=width/height;const faceHeight=size.y*.55,faceWidth=size.x*.9;
-  const span=faceCamera.aspect<1?faceHeight*1.35:Math.min(faceHeight,faceWidth/faceCamera.aspect);
-  const distance=span/(2*Math.tan(T.MathUtils.degToRad(faceCamera.fov/2)));
-  faceCamera.position.set(center.x,center.y,bounds.min.z-distance*.7);faceCamera.lookAt(center);faceCamera.updateProjectionMatrix();faceCamera.updateMatrixWorld(true);
-  const visibility=scene.children.map(o=>[o,o.visible]),saved={cut:cut.value,pom:pomOpacity.value,lift:pomLift.value,clock:dissolveClock.value};
-  for(const o of scene.children)if(o!==model&&!o.isLight)o.visible=false;
-  model.visible=true;cut.value=-20;pomOpacity.value=1;pomLift.value=0;dissolveClock.value=0;
-  renderer.setSize(Math.round(width),Math.round(height),false);renderer.setClearColor(0x160c08,1);renderer.render(scene,faceCamera);
-  faceCanvas.width=Math.round(width*ratio);faceCanvas.height=Math.round(height*ratio);faceContext.drawImage(canvas,0,0,faceCanvas.width,faceCanvas.height);
-  for(const [o,visible] of visibility)o.visible=visible;
-  cut.value=saved.cut;pomOpacity.value=saved.pom;pomLift.value=saved.lift;dissolveClock.value=saved.clock;pose(time);
-  renderer.setClearColor(0,0);const r=plane.getBoundingClientRect();renderer.setSize(Math.max(1,Math.round(r.width)),Math.max(1,Math.round(r.height)),false);faceReady=true;
- }
- function resize(){if(disposed)return;faceReady=false;const r=plane.getBoundingClientRect();renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));renderer.setSize(Math.max(1,Math.round(r.width)),Math.max(1,Math.round(r.height)),false);draw();}
- function tick(now){frame=0;if(disposed||!isActive()){last=0;return;}if(playing){const next=Math.min(timings.end,time+(last?clamp((now-last)/1000,0,.05):0)),boundary=[timings.vaporGone,timings.scareStart,timings.end].find(t=>time<t&&next>=t);time=boundary??next;last=now;draw();if(boundary)last=performance.now();if(time>=timings.end){playing=false;last=0;}}if(playing)frame=requestAnimationFrame(tick);}
+ function resize(){if(disposed)return;const r=plane.getBoundingClientRect();renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));renderer.setSize(Math.max(1,Math.round(r.width)),Math.max(1,Math.round(r.height)),false);draw();}
+ function tick(now){frame=0;if(disposed||!isActive()){last=0;return;}if(playing){const next=Math.min(timings.end,time+(last?clamp((now-last)/1000,0,.05):0)),boundary=[timings.pomFadeStart,timings.scareStart,timings.end].find(t=>time<t&&next>=t);time=boundary??next;last=now;draw();if(boundary)last=performance.now();if(time>=timings.end){playing=false;last=0;}}if(playing)frame=requestAnimationFrame(tick);}
  function sync(){if(disposed)return;if(!isActive()){hideFace();cancelAnimationFrame(frame);frame=0;last=0;return;}if(requested&&reduced.matches){time=timings.end;playing=false;}draw();if(playing&&!frame)frame=requestAnimationFrame(tick);}
- function begin(preview=false){faceReady=false;notified=false;previewOnly=preview;requested=true;playing=true;time=0;last=0;sync();}
+ function begin(preview=false){notified=false;previewOnly=preview;requested=true;playing=true;time=0;last=0;sync();}
  function complete(){if(roundTriggered||disposed)return;roundTriggered=true;begin(false);}
- function reset(){hideFace();faceReady=false;notified=false;requested=false;roundTriggered=false;previewOnly=false;playing=false;time=0;last=0;cancelAnimationFrame(frame);frame=0;draw();}
+ function reset(){hideFace();notified=false;requested=false;roundTriggered=false;previewOnly=false;playing=false;time=0;last=0;cancelAnimationFrame(frame);frame=0;draw();}
  let reviewControls=null,pomVertices=0,stride=.5;
  space.floorShadow.visible=false;space.shelfShadow.visible=false;resize();onMachineReady?.(space.construction);
  try{
+  await faceImage.decode();
   const response=await fetch(new URL('./skee-ball/clown-running.glb',import.meta.url));if(!response.ok)throw new Error('Clown GLB unavailable');const data=await response.arrayBuffer();while(game.dataset.phase==='rolling')await new Promise(resolve=>setTimeout(resolve,80));const g=await new GLTFLoader().parseAsync(data,new URL('./skee-ball/',import.meta.url).href);model=new T.Group();root=g.scene;const extra=root.getObjectByName('Icosphere');if(extra)extra.visible=false;
   mesh=root.getObjectByName('output_unwrapped');mixer=new T.AnimationMixer(root);clip=g.animations[0];clipSamplers=clip.tracks.map(track=>{const binding=T.PropertyBinding.create(root,track.name);binding.bind();return{binding,interpolant:track.createInterpolant()};});model.add(root);scene.add(model);sampleClip(.11);model.updateMatrixWorld(true);mesh.skeleton.update();
   const runBox=new T.Box3().setFromObject(mesh,true);runOrigin=new T.Vector3((runBox.max.x+runBox.min.x)/2,runBox.min.y,(runBox.max.z+runBox.min.z)/2);
   model.traverse(o=>{if(o.isBone)runQuats.push([o,o.quaternion.clone()]);});seatPose();mesh.skeleton.update();model.traverse(o=>{if(o.isBone)idleQuats.push([o,o.quaternion.clone()]);});const seatBox=new T.Box3().setFromObject(mesh,true);idleOrigin=new T.Vector3((seatBox.max.x+seatBox.min.x)/2,seatBox.min.y,(seatBox.max.z+seatBox.min.z)/2);
   const targetHeight=space.atZ(379,270,6.5).y-space.shelfFoot.y;scale=targetHeight/(seatBox.max.y-seatBox.min.y);root.scale.multiplyScalar(scale);
   const weights=mesh.geometry.attributes.skinWeight,indices=mesh.geometry.attributes.skinIndex;
-  for(let i=0;i<weights.count;i++){let headWeight=0;for(let j=0;j<4;j++)if((mesh.skeleton.bones[indices.array[i*4+j]]?.name||'').includes('Head'))headWeight+=weights.array[i*4+j];if(headWeight>.45)headVertices.push(i);for(const side of ['Left','Right']){let w=0;for(let j=0;j<4;j++){const name=mesh.skeleton.bones[indices.array[i*4+j]]?.name||'';if(name.includes(side)&&(name.includes('Foot')||name.includes('Toe')))w+=weights.array[i*4+j];}if(w>.45)feet[side].push(i);}}
+  for(let i=0;i<weights.count;i++){for(const side of ['Left','Right']){let w=0;for(let j=0;j<4;j++){const name=mesh.skeleton.bones[indices.array[i*4+j]]?.name||'';if(name.includes(side)&&(name.includes('Foot')||name.includes('Toe')))w+=weights.array[i*4+j];}if(w>.45)feet[side].push(i);}}
   // Measure a full cycle's planted-foot travel after normalizing the toy to the shelf.
   root.position.copy(runOrigin).multiplyScalar(-scale);model.rotation.y=Math.PI;let travel=0,previous=null;
   for(let i=0;i<=60;i++){if(i%10===0)await new Promise(resolve=>setTimeout(resolve,0));sampleClip(clip.duration*i/60);model.updateMatrixWorld(true);mesh.skeleton.update();const f=sampleFeet(),current=f[0].y<f[1].y?f[0]:f[1];if(previous&&previous.side===current.side)travel+=Math.max(0,current.z-previous.z);previous=current;}
@@ -180,7 +158,7 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   }
   if(!jumpPlan.crossings||jumpPlan.minimumClearance<.045)throw new Error('Clown jump does not clear the protective fence '+JSON.stringify(jumpPlan));
   stride=clamp(travel,.3,.7);stop.z+=stride;runDuration=(landing.z-stop.z)/(stride/clip.duration);
-  timings.evaporate=timings.run+runDuration;timings.bodyGone=timings.evaporate+2;timings.pomGone=timings.bodyGone+.72;timings.vaporFadeEnd=timings.pomGone+2.65;timings.vaporGone=timings.vaporFadeEnd-.25+Math.max(...wisps.map(w=>w.size))*.2;timings.scareStart=timings.vaporGone+1;timings.end=timings.scareStart+1;
+  timings.evaporate=timings.run+runDuration;timings.bodyGone=timings.evaporate+2;timings.pomFadeStart=timings.bodyGone+.32;timings.pomGone=timings.bodyGone+.72;timings.vaporFadeEnd=timings.pomGone+2.65;timings.vaporGone=timings.vaporFadeEnd-.25+Math.max(...wisps.map(w=>w.size))*.2;timings.scareStart=timings.pomFadeStart+1;timings.end=timings.scareStart+1;
   pose(0);pomVertices=tagPom();mesh.castShadow=true;mesh.receiveShadow=true;mesh.material=mesh.material.clone();mesh.material.transparent=true;
   mesh.material.onBeforeCompile=shader=>{
    shader.uniforms.dissolveClock=dissolveClock;shader.uniforms.vaporCut=cut;shader.uniforms.pomOpacity=pomOpacity;shader.uniforms.pomLift=pomLift;shader.uniforms.pomFloor=pomFloor;
@@ -189,12 +167,12 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
    shader.fragmentShader='varying float vClownPom; varying vec3 vaporWorld; uniform float vaporCut; uniform float dissolveClock; uniform float pomOpacity; uniform float pomFloor; uniform float pomLift;\n'+fadeNoise+'\n'+shader.fragmentShader;
    shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\nfloat boundary=vaporWorld.y+(vnNoise(vaporWorld*12.+vec3(0.,dissolveClock*.45,0.))-.5)*.19+(vnNoise(vaporWorld*29.)-.5)*.065;float bodyAlpha=smoothstep(vaporCut-.10,vaporCut+.10,boundary);diffuseColor.a*=mix(bodyAlpha,pomOpacity,step(.2,vClownPom)*step(pomFloor,vaporWorld.y-pomLift*vClownPom)*step(diffuseColor.r*.4,diffuseColor.g)*step(diffuseColor.b*1.7,diffuseColor.g));if(diffuseColor.a<.01)discard;');
   };mesh.material.customProgramCacheKey=()=> 'skee-clown-soft-v4';bakeWisps();time=0;resize();onReady();
- }catch(error){space.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();faceCanvas.remove();throw error;}
+ }catch(error){space.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();faceImage.remove();throw error;}
  const local=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearchParams(location.search).has('clown-review');
  if(local&&ui){
   const panel=document.createElement('section');panel.className='skee-clown-review';panel.setAttribute('aria-label','Clown sequence review');
   function button(text,fn){const b=document.createElement('button');b.textContent=text;b.onclick=fn;panel.append(b);return b;}
-  button('Replay ending',()=>{notified=false;faceReady=false;previewOnly=game.dataset.roundPhase!=='clown';requested=true;playing=true;time=timings.vaporGone-.5;last=0;sync();});
+  button('Replay ending',()=>{notified=false;previewOnly=game.dataset.roundPhase!=='clown';requested=true;playing=true;time=timings.pomFadeStart-.5;last=0;sync();});
   button('Replay clown',()=>{playing=false;begin(game.dataset.roundPhase!=='clown');});button('Reset shelf',()=>{if(game.dataset.roundPhase!=='clown')reset();});button('Pause / resume',()=>{playing=!playing;last=0;sync();});
   const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=timings.end;slider.step=.01;slider.setAttribute('aria-label','Clown sequence timeline');slider.oninput=()=>{requested=true;previewOnly=game.dataset.roundPhase!=='clown';playing=false;time=+slider.value;draw();};panel.append(slider);
   const debugLabel=document.createElement('label'),debug=document.createElement('input');debug.type='checkbox';debug.onchange=()=>{space.setDebug(debug.checked);draw();};debugLabel.append(debug,document.createTextNode(' Show invisible proxy outlines'));panel.append(debugLabel);
@@ -206,9 +184,9 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   const projectedBounds={left:Math.min(...corners.map(p=>p.x)),right:Math.max(...corners.map(p=>p.x)),top:Math.min(...corners.map(p=>p.y)),bottom:Math.max(...corners.map(p=>p.y))};
   const result={time:t,phase:p.phase,projectedBounds,root:p.position.toArray(),bounds:{min:b.min.toArray(),max:b.max.toArray()},contacts:contacts.map(f=>({...f})),crossesFence:crosses,fenceClearance:crosses?b.min.y-space.fenceHeight(clamp(b.max.z,0,6)):null,footProjection:space.project(new T.Vector3(p.position.x,p.position.y,p.position.z))};pose(original);return result;}
  return{complete,reset,sync,
-  state:()=>({phase:game.dataset.clownPhase,time,requested,playing,previewOnly,bodyVisible:model.visible,faceVisible:!faceCanvas.hidden,vaporVisible:vapor.visible,position:model.position.toArray(),scale:model.scale.x,contacts:contacts.map(f=>({...f})),pomOpacity:pomOpacity.value,pomVertices,stride,runDuration,jumpPlan,timings:{...timings}}),
+  state:()=>({phase:game.dataset.clownPhase,time,requested,playing,previewOnly,bodyVisible:model.visible,faceVisible:!faceImage.hidden,vaporVisible:vapor.visible,position:model.position.toArray(),scale:model.scale.x,contacts:contacts.map(f=>({...f})),pomOpacity:pomOpacity.value,pomVertices,stride,runDuration,jumpPlan,timings:{...timings}}),
   inspect:()=>({calibration:space.calibration,collision:space.collision,proxies:space.proxies.map(p=>({name:p.name,colorWrite:p.material.colorWrite,depthWrite:p.material.depthWrite,vertices:p.geometry.attributes.position.count})),trajectory:Array.from({length:121},(_,i)=>diagnostics(timings.evaporate*i/120))}),
   seek:t=>{requested=true;playing=false;time=clamp(t,0,timings.end);draw();},
-  dispose(){disposed=true;faceCanvas.remove();cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('resize',resize);reviewControls?.panel.remove();mixer.stopAllAction();for(const s of clipSamplers)s.binding.unbind();const gs=new Set(),ms=new Set(),ts=new Set();scene.traverse(o=>{if(o.geometry)gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){ms.add(m);for(const v of Object.values(m))if(v?.isTexture)ts.add(v);}});for(const g of gs)g.dispose();for(const m of ms)m.dispose();for(const t of ts)t.dispose();contactMaterial.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();}
+  dispose(){disposed=true;faceImage.remove();cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('resize',resize);reviewControls?.panel.remove();mixer.stopAllAction();for(const s of clipSamplers)s.binding.unbind();const gs=new Set(),ms=new Set(),ts=new Set();scene.traverse(o=>{if(o.geometry)gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){ms.add(m);for(const v of Object.values(m))if(v?.isTexture)ts.add(v);}});for(const g of gs)g.dispose();for(const m of ms)m.dispose();for(const t of ts)t.dispose();contactMaterial.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();}
  };
 }

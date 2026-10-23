@@ -292,8 +292,8 @@
     "sha256": "f00b7c8c0c1a311e3a3c0f88cfe957c37a54e75775def89ef02812996f3cbc7c"
   },
   "experiments/carnival/skee-ball-art.css": {
-    "bytes": 3741,
-    "sha256": "12e1cdf551896b7dc7fc5856ba7e636fb06465bfec3e20f2cfbff884871f7f3b"
+    "bytes": 3777,
+    "sha256": "08563c7cb079b9ed45a4b470c3267c981d4a7436f5170721083b49b364f1f40c"
   },
   "experiments/carnival/skee-ball/approved-alley.png": {
     "bytes": 2298003,
@@ -308,8 +308,8 @@
     "sha256": "c0a49bf512f9a6f689b7bdf8629741f4794d4bbb33fe9ad9e488c5910a3a8f47"
   },
   "experiments/carnival/skee-ball-clown.js": {
-    "bytes": 29843,
-    "sha256": "fdfa41c2fc084ee21f6fe89ee6bb3ca370c53e103ec2ea352facc5c8c55d8c23"
+    "bytes": 27516,
+    "sha256": "f969174cebe5d2deddaf887e7c40b50db6e592f23d77642db388e465d1004332"
   },
   "experiments/carnival/skee-ball/clown-running.glb": {
     "bytes": 13052352,
@@ -350,5 +350,9 @@
   "experiments/carnival/shared-mount-renderer.js": {
     "bytes": 1414,
     "sha256": "cee5d13277643e6ed243d89b65e9ce836c428b0b093e3b50927a4a8685b2594a"
+  },
+  "experiments/carnival/skee-ball/clown-closeup.png": {
+    "bytes": 2540415,
+    "sha256": "68a9e37e0001c25485cd122bcd4419d0e97a06d31b23f78d94c5e04ca40467ad"
   }
 }
