@@ -1,7 +1,7 @@
 # Mara — same-scene 3D pickup review
 
 Branch: codex/mara-3d-pickup, based on main 7aaff1b. No merge or deployment.
-Preview: http://127.0.0.1:4204/experiments/carnival/index.html?mara-review=1&pickup-review=1
+Preview: http://127.0.0.1:4204/experiments/carnival/index.html?mara-review=1&pickup-review=autoplay&review=fresh-pickup
 Use Preview pickup to go straight to the lift, or Replay Mara and click/tap her after she collapses. Put Mara down or Escape lowers her back to her approved resting pose.
 
 The actual existing rig moves from the fitted resting transform to a camera-facing held position in 1.65 seconds. Its scale, the existing PerspectiveCamera, composition transform/filter, background and renderer stay unchanged. Apparent growth comes from world-space travel toward the same camera. Visible-viewport fitting accounts for the mobile cover crop and recomputes on resize. There is no dialog, replacement model, inspection screen, visible hand or pickup prop.
@@ -11,3 +11,5 @@ A suspended-pose helper resets the gait and aims each leg chain and the tail tow
 The existing fox-cinema.js disintegration code and all model/texture/skin binaries are unchanged. The new flow holds indefinitely for inspection; it does not invoke or revise disintegration.
 
 Verification: desktop 1440x900, portrait touch 390x844, landscape touch 844x390. Actual mouse click/touch starts the lift; camera/scale/background stay constant throughout sampled frames. Held bounds remain inside the viewport, centered, with room around the ears/paws and no open inspection dialog. Put-down restores the exact positions, projected bounds and all bone quaternions; early put-down and reduced motion also pass. Median held frame intervals measured 16.7ms in these browser layouts, with no script errors. A baseline comparison against approved main samples the run, walking left turn, pause, collapse and resting endpoint at six times, matching every bone, root position and projected bound exactly.
+
+Preview refresh: versioned entry-module, rig and stylesheet URLs bypass the previous cached inspection code. The explicit autoplay review link starts the lift once the Midway is active. A stale-module regression intercepts the old bare URLs with failures and verifies that the fresh link requests both versioned modules, reaches held state automatically and never opens the old inspection dialog.

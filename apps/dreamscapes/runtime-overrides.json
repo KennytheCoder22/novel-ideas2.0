@@ -1,7 +1,7 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 7752,
-    "sha256": "ee89ecddeb7b3cf353763e8db977c2c20ddf55897cb7ecbe76661a5403f0bc79"
+    "bytes": 7774,
+    "sha256": "e57461ab39d3cfd01efad41f8304cc3b970f2ccb937f3145e40ee856fa1664f5"
   },
   "experiments/carnival/navigation.js": {
     "bytes": 10201,
@@ -324,8 +324,8 @@
     "sha256": "c226a6429365dc5269c0abbeecbf1fa71fd776510c3104f49fcc62da13b242ba"
   },
   "experiments/carnival/mara-midway.js": {
-    "bytes": 23096,
-    "sha256": "54161c812684e152146885323de165b716ae21cf922f146a9ec47fa258065ea1"
+    "bytes": 23436,
+    "sha256": "0742ee17ee82093c771295ca48539334c1875a4e3faf193bef91bc93065b39ed"
   },
   "experiments/carnival/mara-rig.js": {
     "bytes": 15392,
