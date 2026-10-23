@@ -1,7 +1,7 @@
 import {coverMountDepth,limitMountPoleBottom} from './mount-pole-depth.js';
 import {registerVariantMount} from './carousel-variants.js';
 import {cropCanvas} from './crop-canvas.js';
-import {sharedMountRenderer} from './shared-mount-renderer.js';
+import {sharedMountRenderer,createMountHolder} from './shared-mount-renderer.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
 import * as T from './vendor/three.module.js';
 import {mountRigs} from './mount-rigs.js';
@@ -34,10 +34,10 @@ async function mount(svg,spec){
  registration.add(model);turn.add(registration);carouselFrame.add(turn);scene.add(carouselFrame);
  const span=.7324974536895752*1.5;
  const camera=new T.OrthographicCamera(-span*5/6,span*5/6,span*2/3,-span,.01,20);camera.position.set(0,.12,3);camera.lookAt(0,0,0);
- const holder=document.createElementNS(NS,'foreignObject');
+ const holder=createMountHolder();
  for(const [k,v]of Object.entries({x:-250,y:-200,width:500,height:500,class:'carousel-animal-3d-comparison','data-animal':spec.name}))holder.setAttribute(k,v);
- holder.style.pointerEvents='none';holder.style.visibility='hidden';const canvas=document.createElementNS('http://www.w3.org/1999/xhtml','canvas');canvas.style.cssText='width:500px;height:500px;display:block';holder.append(canvas);anchor.append(holder);
- const renderer=sharedMountRenderer(T,canvas);renderer.setSize(1000,1000,false);renderer.setClearColor(0,0);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;
+ holder.style.pointerEvents='none';holder.style.visibility='hidden';const canvas=document.createElementNS('http://www.w3.org/1999/xhtml','canvas');canvas.style.cssText='width:500px;height:500px;display:block';if(holder.localName==='foreignObject')holder.append(canvas);anchor.append(holder);
+ const renderer=sharedMountRenderer(T,canvas,holder);renderer.setSize(1000,1000,false);renderer.setClearColor(0,0);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;
  // This is a carousel shaft segment, separate from the unmodified imported asset.
  // The GLB and shaft share a depth buffer throughout the animal's vertical extent.
  const top=rig.pole.y+rig.pole.height*rig.pole.scaleY/2,bottom=rig.pole.y-rig.pole.height*rig.pole.scaleY/2;
