@@ -1,6 +1,6 @@
 import {coverMountDepth,limitMountPoleBottom} from './mount-pole-depth.js';
 import {registerVariantMount} from './carousel-variants.js';
-import {sharedMountRenderer} from './shared-mount-renderer.js';
+import {sharedMountRenderer,createMountHolder} from './shared-mount-renderer.js';
 import {cropCanvas} from './crop-canvas.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
 // Local-only 3D mount; the carousel clock supplies orbit and depth.
@@ -22,13 +22,13 @@ async function mount(){
  svg.querySelector('#carousel-stationary-shell-mask').append(collarRemoval);
  // Slot depth fading must not make the solid horse transparent.
  slot.style.opacity='1';
- const holder=document.createElementNS(NS,'foreignObject');
+ const holder=createMountHolder();
  for(const [k,v] of Object.entries({x:-200,y:-150,width:400,height:300,class:'carousel-horse-3d-comparison'}))holder.setAttribute(k,v);
  holder.style.pointerEvents='none';holder.style.visibility='hidden';
  const canvas=document.createElementNS('http://www.w3.org/1999/xhtml','canvas');
  canvas.style.cssText='width:400px;height:300px;display:block;background:transparent';
- holder.append(canvas);anchor.append(holder);
- const renderer=sharedMountRenderer(THREE,canvas);
+ if(holder.localName==='foreignObject')holder.append(canvas);anchor.append(holder);
+ const renderer=sharedMountRenderer(THREE,canvas,holder);
  renderer.setSize(800,600,false);
  renderer.setClearColor(0x000000,0);
  renderer.outputColorSpace=THREE.SRGBColorSpace;

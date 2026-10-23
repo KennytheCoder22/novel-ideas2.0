@@ -8,8 +8,8 @@
     "sha256": "f94ffaf696888e9cea41847d67652f836a03d269208f8b2b20010c377cdc3312"
   },
   "experiments/carnival/horse-comparison.js": {
-    "bytes": 6073,
-    "sha256": "6b709301755107b27f55bdde8d66446c20227e98675be8df5e1c558866fc394e"
+    "bytes": 6111,
+    "sha256": "acd460dc7f9b9ac94d49a41a78ba400aee0507d10ca2262da508b2ea0a4386d3"
   },
   "experiments/carnival/exit-sign.js": {
     "bytes": 6626,
@@ -44,8 +44,8 @@
     "sha256": "6e0bd934e40b616dff71b3bbf88c12181db3c9392d15ed0d7f9c6ee8757832e9"
   },
   "experiments/carnival/animal-comparison.js": {
-    "bytes": 7785,
-    "sha256": "869100fd12d491aa6871bd4dac8e9f4f04de74a31e22ff3d15b2a60d686a12b5"
+    "bytes": 7823,
+    "sha256": "2f81aab47c2df1e7a275e3bc34976a5d8609a70f90fa24d1e59333bdec7b6f78"
   },
   "experiments/carnival/carousel-variants.js": {
     "bytes": 9894,
@@ -348,7 +348,7 @@
     "sha256": "b32c4cc570b425ea30a4106237240605c7cd87a24ee2d7ce2b89f2b5a7056240"
   },
   "experiments/carnival/shared-mount-renderer.js": {
-    "bytes": 1414,
-    "sha256": "cee5d13277643e6ed243d89b65e9ce836c428b0b093e3b50927a4a8685b2594a"
+    "bytes": 2235,
+    "sha256": "29199c48dffd69f7682c1b8c2491d048d87f12dc0fb2181df7d685e64a107e39"
   }
 }
