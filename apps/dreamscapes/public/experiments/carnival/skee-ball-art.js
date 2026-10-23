@@ -27,10 +27,24 @@
   if(u<.65){
    const t=(u-.49)/.16,p=rampPoint(t);return{x:835+lateral*mix(.14,.22,t),y:p.y-8,groundY:p.y,r:mix(11,10,t),phase:'ramp'};
   }
-  const t=clamp((u-.65)/.25,0,1),crest=rampPoint(1).y,groundY=mix(crest,shot.y,t),lift=Math.sin(Math.PI*t)*(60+shot.power*42)+8*(1-t);
-  if(u>=.9){const p=clamp((u-.9)/.1,0,1),points=scoreAt(shot);if(points>0)return{x:shot.x,y:shot.y+p*12,groundY:shot.y,r:8*(1-p),opacity:1-p,phase:'landing'};
-   const wellY=machineGeometry?.projected.wellFloor.y||558,y=mix(shot.y,wellY,p);return{x:mix(shot.x,835,p),y,groundY:wellY,r:8,opacity:y>crest-7?0:1,phase:'collection'};}
-  return{x:835+lateral*mix(.22,1,t),y:groundY-lift,groundY,r:mix(10,8,t)+Math.sin(Math.PI*t)*1.8,phase:'airborne'};
+  const t=clamp((u-.65)/.25,0,1),crest=rampPoint(1).y,space=machineGeometry?.ballSpace;
+  let flight;
+  if(space){
+   const start=space.atDepth(835+lateral*.22,crest-8,machineGeometry.crest),end=space.target(shot.x,shot.y);
+   // Constant forward velocity and downward acceleration in the same world as
+   // the ramp and scoring board. Perspective supplies the shrinking ball and
+   // the moving floor shadow; the ball never reverses back toward the ramp.
+   const arc=.12+shot.power*.1,x=mix(start[0],end[0],t),z=mix(start[2],end[2],t),y=mix(start[1],end[1],t)+4*arc*t*(1-t);
+   const p=space.project(x,y,z),floor=space.project(x,machineGeometry.wellFloor,z),edge=space.project(x+.038,y,z);
+   flight={x:p.x,y:p.y,groundY:floor.y,r:Math.abs(edge.x-p.x),phase:'airborne',world:[x,y,z]};
+  }else{
+   // The game remains playable if the optional 3D character cannot load.
+   const groundY=mix(crest,shot.y,t),lift=4*t*(1-t)*(12+shot.power*8)+8*(1-t);
+   flight={x:835+lateral*mix(.22,1,t),y:groundY-lift,groundY,r:mix(10,8,t),phase:'airborne'};
+  }
+  if(u>=.9){const p=clamp((u-.9)/.1,0,1),points=scoreAt(shot);if(points>0)return{x:shot.x,y:shot.y+p*12,groundY:shot.y,r:flight.r*(1-p),opacity:1-p,phase:'landing'};
+   const wellY=machineGeometry?.projected.wellFloor.y||558,y=mix(shot.y,wellY,p);return{x:mix(shot.x,835,p),y,groundY:wellY,r:flight.r,opacity:y>crest-7?0:1,phase:'collection'};}
+  return flight;
  }
  window.CarnivalSkeeBall=Object.freeze({mount(view,plane,ui,status){
   view.classList.add('skee-art-scene');

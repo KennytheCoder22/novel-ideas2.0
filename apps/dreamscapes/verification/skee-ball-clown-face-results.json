@@ -1,0 +1,38 @@
+[
+  {
+    "name": "desktop",
+    "pomFadeToScareMilliseconds": 1013.2999999970198,
+    "faceMilliseconds": 1015.8999999910593,
+    "oneScare": true,
+    "fullViewport": true,
+    "navigationCleanup": true,
+    "reducedMotion": true,
+    "exactlyNine": true,
+    "playAgain": true,
+    "errors": []
+  },
+  {
+    "name": "phone",
+    "pomFadeToScareMilliseconds": 1015.9000000059605,
+    "faceMilliseconds": 1017.4000000059605,
+    "oneScare": true,
+    "fullViewport": true,
+    "navigationCleanup": true,
+    "reducedMotion": true,
+    "exactlyNine": true,
+    "playAgain": true,
+    "errors": []
+  },
+  {
+    "name": "landscape",
+    "pomFadeToScareMilliseconds": 1016,
+    "faceMilliseconds": 1016.9000000059605,
+    "oneScare": true,
+    "fullViewport": true,
+    "navigationCleanup": true,
+    "reducedMotion": true,
+    "exactlyNine": true,
+    "playAgain": true,
+    "errors": []
+  }
+]
