@@ -34,6 +34,6 @@
 .skee-brass-angle,.skee-brass-launch { z-index:4; }
 
 /* Approved photo close-up; preserve its pixels and crop responsively around the face. */
-.skee-clown-scare { position:fixed; inset:0; width:100vw; height:100dvh; z-index:10000; pointer-events:none; object-fit:cover; object-position:50% 100%; background:#080808; }
+.skee-clown-scare { position:fixed; inset:0; width:100vw; height:100dvh; z-index:10000; pointer-events:none; object-fit:cover; object-position:center; background:#080808; }
 .skee-clown-scare[hidden] { display:none; }
 @media(max-height:550px) { .skee-clown-review { top:8px; bottom:auto; right:8px; max-width:250px; max-height:calc(100svh - 80px); overflow:auto; } }

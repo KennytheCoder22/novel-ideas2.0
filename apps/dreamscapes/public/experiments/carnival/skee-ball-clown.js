@@ -123,7 +123,13 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   renderer.render(scene,camera);
   if(roundTriggered&&!previewOnly&&!notified&&time>=timings.end){notified=true;onComplete?.();}
  }
- function resize(){if(disposed)return;const r=plane.getBoundingClientRect();renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));renderer.setSize(Math.max(1,Math.round(r.width)),Math.max(1,Math.round(r.height)),false);draw();}
+ function centerFace(){
+  if(!faceImage.naturalWidth)return;
+  const scale=Math.max(innerWidth/faceImage.naturalWidth,innerHeight/faceImage.naturalHeight);
+  // Center the face itself, excluding the tall hat and surrounding black margin.
+  faceImage.style.objectPosition=`${innerWidth/2-690*scale}px ${innerHeight/2-770*scale}px`;
+ }
+ function resize(){if(disposed)return;centerFace();const r=plane.getBoundingClientRect();renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));renderer.setSize(Math.max(1,Math.round(r.width)),Math.max(1,Math.round(r.height)),false);draw();}
  function tick(now){frame=0;if(disposed||!isActive()){last=0;return;}if(playing){const next=Math.min(timings.end,time+(last?clamp((now-last)/1000,0,.05):0)),boundary=[timings.pomFadeStart,timings.scareStart,timings.end].find(t=>time<t&&next>=t);time=boundary??next;last=now;draw();if(boundary)last=performance.now();if(time>=timings.end){playing=false;last=0;}}if(playing)frame=requestAnimationFrame(tick);}
  function sync(){if(disposed)return;if(!isActive()){hideFace();cancelAnimationFrame(frame);frame=0;last=0;return;}if(requested&&reduced.matches){time=timings.end;playing=false;}draw();if(playing&&!frame)frame=requestAnimationFrame(tick);}
  function begin(preview=false){notified=false;previewOnly=preview;requested=true;playing=true;time=0;last=0;sync();}
