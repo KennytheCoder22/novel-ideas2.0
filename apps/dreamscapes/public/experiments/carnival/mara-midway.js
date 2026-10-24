@@ -1,3 +1,4 @@
+import {createMaraSand} from './mara-sand.js?v=3';
 import * as T from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
 import {createMaraRig,loadMaraSkin} from './mara-rig.js?v=20261023-pickup-upright-3';
@@ -117,14 +118,14 @@ function animatePose(){
 }
 function draw(){if(!loaded||disposed||!active)return;animatePose();canvas.hidden=mode==='original';if(reference){reference.style.visibility=mode==='model'?'hidden':'visible';reference.style.opacity=mode==='overlay'?'.5':'1';}fox.style.zIndex=mode==='overlay'?'4':'3';if(reflection)reflection.visible=!pickup;if(mode!=='original'){renderer.render(scene,camera);draws++;}canvas.dataset.phase=pickup?pickup.phase:time>=end?'resting':time>=turnEnd?'collapsing':time>=stepEnd?'noticed-pause':time>=runEnd?'walking-left':'running';fox.disabled=!!pickup||time<end;if(panel)panel.textContent=mode==='original'?'Original 2D fox':mode==='overlay'?'Original reference over 3D Mara':canvas.dataset.phase+' - '+time.toFixed(2)+' s';if(slider)slider.value=time;}
 function cancel(){cancelAnimationFrame(frame);frame=0;last=0;playing=false;}
-function tick(now){frame=0;if(!active||document.hidden||disposed)return;const dt=last?T.MathUtils.clamp((now-last)/1000,0,.06):0;last=now;if(pickup)pickup.elapsed+=dt;else time=Math.min(end,time+dt);draw();if(pickup||playing&&time<end)frame=requestAnimationFrame(tick);else playing=false;}
+function tick(now){frame=0;if(!active||document.hidden||disposed)return;const dt=last?T.MathUtils.clamp((now-last)/1000,0,.06):0;last=now;if(pickup)pickup.elapsed+=dt;else time=Math.min(end,time+dt);draw();if(pickup&&pickup.phase!=='remains'||playing&&time<end)frame=requestAnimationFrame(tick);else playing=false;}
 function replay(){if(!loaded||disposed)return;resetPickup();cancel();mode='model';route=null;time=reduced.matches||still?end:0;playing=time<end;draw();if(playing&&active&&!document.hidden)frame=requestAnimationFrame(tick);}
 function seek(t){resetPickup();cancel();time=T.MathUtils.clamp(t,0,end);mode='model';draw();}
 function resize(){if(disposed)return;renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(Math.max(1,Math.round(plane.clientWidth)),Math.max(1,Math.round(plane.clientHeight)),false);route=null;if(pickup)pickup.target=null;draw();}
-function sync(){if(disposed)return;const next=!view.inert&&(document.documentElement.dataset.location||'midway')==='midway';if(next!==active){active=next;if(!active){resetPickup();cancel();canvas.hidden=true;}else if(loaded){visit++;replay();}}else if(active&&loaded){if(reduced.matches||still){if(pickup){pickup.elapsed=2;draw();}else{cancel();time=end;draw();}}else if(document.hidden){cancelAnimationFrame(frame);frame=0;last=0;}else if((playing||pickup)&&!frame){last=0;frame=requestAnimationFrame(tick);}}}
+function sync(){if(disposed)return;const next=!view.inert&&(document.documentElement.dataset.location||'midway')==='midway';if(next!==active){active=next;if(!active){cancel();canvas.hidden=true;}else if(loaded){visit++;if(sand){draw();if(pickup.phase!=='remains'){last=0;frame=requestAnimationFrame(tick);}}else replay();}}else if(active&&loaded){if(reduced.matches||still){if(pickup){pickup.elapsed=pickupDuration+6;draw();}else{cancel();time=end;draw();}}else if(document.hidden){cancelAnimationFrame(frame);frame=0;last=0;}else if((playing||pickup&&pickup.phase!=='remains')&&!frame){last=0;frame=requestAnimationFrame(tick);}}}
 const pickupControls=document.createElement('section');pickupControls.className='mara-pickup-controls';pickupControls.hidden=true;pickupControls.setAttribute('aria-label','Holding Mara');
 const putDown=document.createElement('button');putDown.textContent='Put Mara down';pickupControls.append(putDown);document.body.append(pickupControls);
-let pickup=null;const pickupDuration=1.65;
+let sand=null;let pickup=null;const pickupDuration=1.65;
 
 document.addEventListener('visibilitychange',sync);reduced.addEventListener('change',sync);
 const observer=new MutationObserver(sync);observer.observe(view,{attributes:true,attributeFilter:['inert']});observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-location']});const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(plane);window.addEventListener('resize',resize);
@@ -134,7 +135,7 @@ try{
  reflection=new T.SkinnedMesh(rig.mesh.geometry,material);rig.group.add(reflection);reflection.bind(rig.mesh.skeleton,rig.mesh.bindMatrix);reflection.frustumCulled=false;reflection.castShadow=false;
  active=false;loaded=true;fit();fox.hidden=false;document.querySelector('.ground-tag').hidden=true;fox.setAttribute('aria-label','Examine Mara, the abandoned stuffed fox');fox.addEventListener('click',inspect,true);canvas.dataset.ready='true';resize();active=false;sync();
 }catch(error){canvas.dataset.ready='failed';console.error('Mara could not load',error);}
-function resetPickup(){pickup=null;pickupControls.hidden=true;if(reflection)reflection.visible=true;canvas.dataset.inspection='none';}
+function resetPickup(){sand?.dispose();sand=null;pickup=null;pickupControls.hidden=true;if(reflection)reflection.visible=true;canvas.dataset.inspection='none';}
 function pickupTarget(){
  const savedPosition=rig.group.position.clone(),savedRotation=rig.group.quaternion.clone();
  rig.group.position.set(0,0,0);rig.group.rotation.set(0,.18,0);rig.heldPose();
@@ -156,8 +157,9 @@ function pickupTarget(){
  pickup.heldYaw=rig.group.rotation.y;target.copy(rig.group.position);rig.group.position.copy(savedPosition);rig.group.quaternion.copy(savedRotation);return target;
 }
 function posePickup(){
+ if(sand){const done=sand.update(reduced.matches||still?6:pickup.elapsed-pickupDuration);pickup.phase=done?'remains':'dissolving';canvas.dataset.inspection=pickup.phase;return;}
  const state=pickup,elapsed=state.elapsed,u=reduced.matches||still?1:ease(elapsed/pickupDuration),amount=state.phase==='lowering'?(state.lowerFrom??1)*(1-u):u;state.amount=amount;
- if(state.phase==='lifting'&&u>=1)state.phase='held';
+
  const sway=state.phase==='held'&&!reduced.matches&&!still?Math.sin((elapsed-pickupDuration)*.85)*.003:0;
  rig.group.scale.setScalar(fitted.scale);const target=state.target?new T.Vector3(...state.target):pickupTarget();state.target=target.toArray();
  rig.group.rotation.set(0,poseParameters.yaw,0);rig.group.quaternion.slerp(new T.Quaternion().setFromEuler(new T.Euler(0,state.heldYaw,0)),amount);rig.group.position.fromArray(fitted.position).lerp(target,amount);rig.group.position.y+=Math.sin(Math.PI*amount)*fitted.scale*.12;
@@ -166,13 +168,17 @@ function posePickup(){
  const loosen=ease((amount-.08)/.62);rig.heldPose(lag,loosen);
  for(let i=0;i<rig.bones.length;i++){const bone=rig.bones[i];bone.position.lerpVectors(restBones[i].p,bone.position,loosen);bone.quaternion.copy(restBones[i].q.clone().slerp(bone.quaternion,loosen));}
  rig.group.updateMatrixWorld(true);rig.mesh.skeleton.update();canvas.dataset.inspection=state.phase;
+ if(state.phase==='lifting'&&u>=1){
+  const r=plane.getBoundingClientRect(),landing=ground((innerWidth*(innerWidth<600?.75:.52)-r.left)/r.width*1536,(innerHeight*.84-r.top)/r.height*1024);
+  sand=createMaraSand(rig,scene,landing);pickupControls.hidden=true;state.phase='dissolving';sand.update(reduced.matches||still?6:Math.max(0,state.elapsed-pickupDuration));
+ }
  if(state.phase==='lowering'&&u>=1){resetPickup();animatePose();fox.focus({preventScroll:true});}
 }
 function inspect(event){
  event?.stopImmediatePropagation();if(!loaded||view.inert||pickup||time<end)return;
  cancel();mode='model';pickup={phase:'lifting',elapsed:0,target:null};pickupControls.hidden=false;draw();last=0;if(!frame)frame=requestAnimationFrame(tick);putDown.focus({preventScroll:true});
 }
-function lowerPickup(){if(!pickup||pickup.phase==='lowering')return;pickup.lowerFrom=pickup.amount;pickup.phase='lowering';pickup.elapsed=0;draw();last=0;if(!frame)frame=requestAnimationFrame(tick);}
+function lowerPickup(){if(!pickup||sand||pickup.phase==='lowering')return;pickup.lowerFrom=pickup.amount;pickup.phase='lowering';pickup.elapsed=0;draw();last=0;if(!frame)frame=requestAnimationFrame(tick);}
 putDown.addEventListener('click',lowerPickup);
 function pickupKeys(event){if(pickup&&event.key==='Escape'){event.preventDefault();lowerPickup();}}document.addEventListener('keydown',pickupKeys);
 function show(value){resetPickup();cancel();time=end;mode=local?value:'model';draw();}
@@ -181,7 +187,7 @@ if(local){const section=document.createElement('section');section.className='mar
  const pickupButton=document.createElement('button');pickupButton.textContent='Preview pickup';pickupButton.onclick=()=>{seek(end);inspect();};pickupButton.style.cssText='padding:7px;margin:2px;cursor:pointer';section.append(pickupButton);
  const replayButton=document.createElement('button');replayButton.textContent='Replay Mara';replayButton.onclick=replay;replayButton.style.cssText='padding:7px;margin:2px;cursor:pointer';section.prepend(replayButton);slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=end;slider.step=.01;slider.value=end;slider.setAttribute('aria-label','Mara sequence timeline');slider.style.cssText='display:block;width:100%';slider.oninput=()=>seek(+slider.value);section.append(slider);
  panel=document.createElement('output');panel.style.display='block';panel.style.paddingTop='6px';section.append(panel);document.body.append(section);draw();}
-window.MaraMidway={show,replay,seek:local?seek:undefined,diagnostics:local?()=>({projected:projectedBounds(),route,position:rig.group.position.toArray(),yaw:rig.group.rotation.y,heading:[Math.sin(rig.group.rotation.y),0,Math.cos(rig.group.rotation.y)],support:rig.supportState(),joints:Object.fromEntries(Object.entries(rig.named).map(([name,b])=>[name,b.getWorldPosition(new T.Vector3()).toArray()])),groundMin:rig.lowest().p[1]*rig.group.scale.y+rig.group.position.y,bones:rig.bones.map(b=>({p:b.position.toArray(),q:b.quaternion.toArray()}))}):undefined,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing,time,end,runEnd,stepEnd,turnEnd,visit,phase:canvas.dataset.phase,draws,mode,fitted,poseParameters:{...poseParameters},pickup:pickup&&{...pickup},camera:{position:camera.position.toArray(),quaternion:camera.quaternion.toArray(),fov:camera.fov,zoom:camera.zoom},scale:rig?.group.scale.x,stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;cancel();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);resetPickup();pickupControls.remove();document.removeEventListener('keydown',pickupKeys);observer.disconnect();resizeObserver.disconnect();window.removeEventListener('resize',resize);fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
+window.MaraMidway={show,replay,dustFrame:local?seconds=>{if(!sand){seek(end);inspect();pickup.elapsed=pickupDuration;draw();}cancel();pickup.elapsed=pickupDuration+Math.max(0,seconds);draw();}:undefined,seek:local?seek:undefined,diagnostics:local?()=>({projected:projectedBounds(),route,position:rig.group.position.toArray(),yaw:rig.group.rotation.y,heading:[Math.sin(rig.group.rotation.y),0,Math.cos(rig.group.rotation.y)],support:rig.supportState(),joints:Object.fromEntries(Object.entries(rig.named).map(([name,b])=>[name,b.getWorldPosition(new T.Vector3()).toArray()])),groundMin:rig.lowest().p[1]*rig.group.scale.y+rig.group.position.y,bones:rig.bones.map(b=>({p:b.position.toArray(),q:b.quaternion.toArray()}))}):undefined,regions:()=>({bounds:rig?.regionBounds(),lowest:rig?.lowest()}),configure:local?parameters=>{Object.assign(poseParameters,parameters);fit();draw();}:undefined,state:()=>({loaded,active,playing,time,end,runEnd,stepEnd,turnEnd,visit,phase:canvas.dataset.phase,draws,mode,fitted,poseParameters:{...poseParameters},pickup:pickup&&{...pickup},sand:sand?.stats,camera:{position:camera.position.toArray(),quaternion:camera.quaternion.toArray(),fov:camera.fov,zoom:camera.zoom},scale:rig?.group.scale.x,stats:rig?.stats}),dispose(){if(disposed)return;disposed=true;cancel();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);resetPickup();pickupControls.remove();document.removeEventListener('keydown',pickupKeys);observer.disconnect();resizeObserver.disconnect();window.removeEventListener('resize',resize);fox.removeEventListener('click',inspect,true);rig?.dispose();reflection?.material.dispose();floor.geometry.dispose();floor.material.dispose();sourceScene?.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const v of Object.values(o.material))if(v?.isTexture)v.dispose();o.material.dispose();}});renderer.dispose();renderer.forceContextLoss();canvas.remove();document.querySelector('.mara-review-panel')?.remove();removeEventListener('pagehide',onPageHide);}};
 // Explicit local preview: wait for the Midway to be active, then show the lift.
 if(local&&loaded&&new URLSearchParams(location.search).get('pickup-review')==='autoplay'){const preview=()=>{if(disposed)return;if(!active||document.hidden){setTimeout(preview,100);return;}seek(end);inspect();};setTimeout(preview,400);}
 function onPageHide(event){if(!event.persisted)window.MaraMidway?.dispose();}addEventListener('pagehide',onPageHide);
