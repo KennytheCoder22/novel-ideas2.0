@@ -130,3 +130,6 @@ function syncAgeBand(){
  changeStyle(requested).catch(console.error);
 }
 document.addEventListener('dreamscapes-age-band',()=>{requested=getAgeBand().style;if(!busy&&requested===selected)return;for(const e of entries.values())e.holder.style.visibility='hidden';syncAgeBand();});
+
+// References for the ride camera; callers clone transform nodes, never assets.
+export function carouselRideEntries(){return [...entries.values()].filter(e=>e.current&&e.style===requested&&e.holder.style.visibility!=='hidden');}

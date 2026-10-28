@@ -1,5 +1,5 @@
 import {coverMountDepth,limitMountPoleBottom} from './mount-pole-depth.js';
-import {registerVariantMount} from './carousel-variants.js';
+import {registerVariantMount} from './carousel-variants.js?v=20261028-ride';
 import {cropCanvas} from './crop-canvas.js';
 import {sharedMountRenderer,createMountHolder} from './shared-mount-renderer.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
@@ -64,7 +64,7 @@ async function mount(svg,spec){
  const opacityChildren=[...slot.children].filter(child=>child!==anchor).map(child=>({child,shaft:child.matches('.carousel-pole-shaft')}));
  const assembly=svg.querySelector('.carousel-assembly');
  function render(){if(!svg.isConnected){renderer.dispose();return;}const yaw=Number(assembly.dataset.yaw||0);
- if(holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden){carouselFrame.rotation.y=-yaw;for(const {child,shaft} of opacityChildren){const opacity=shaft?'1':slot.getAttribute('opacity');if(child.style.opacity!==opacity)child.style.opacity=opacity;}renderer.render(scene,camera);previous=yaw;}
+ if(svg.dataset.riding!=='true'&&holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden){carouselFrame.rotation.y=-yaw;for(const {child,shaft} of opacityChildren){const opacity=shaft?'1':slot.getAttribute('opacity');if(child.style.opacity!==opacity)child.style.opacity=opacity;}renderer.render(scene,camera);previous=yaw;}
  requestAnimationFrame(render);}
  render();holder.dataset.ready='true';
  registerVariantMount({identity:spec.name,slotNumber:spec.slotIndex+1,model,registration,mountPoint,turn,carouselFrame,scene,camera,renderer,holder,slot,invalidate:()=>{previous=null;}});

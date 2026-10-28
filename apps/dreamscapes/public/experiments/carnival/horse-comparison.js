@@ -1,5 +1,5 @@
 import {coverMountDepth,limitMountPoleBottom} from './mount-pole-depth.js';
-import {registerVariantMount} from './carousel-variants.js';
+import {registerVariantMount} from './carousel-variants.js?v=20261028-ride';
 import {sharedMountRenderer,createMountHolder} from './shared-mount-renderer.js';
 import {cropCanvas} from './crop-canvas.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
@@ -70,7 +70,7 @@ async function mount(){
  function render(){
   if(!svg.isConnected){renderer.dispose();mounted=false;return;}
   const yaw=Number(assembly.dataset.yaw||0);
-  if(holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden){
+  if(svg.dataset.riding!=='true'&&holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden){
    // SVG positive depth maps to +Z; Three Y rotation therefore reverses SVG yaw.
    carouselFrame.rotation.y=-yaw;
    const pose=window.CarnivalCarousel.pose(slotIndex,Number(svg.dataset.phase||0));
