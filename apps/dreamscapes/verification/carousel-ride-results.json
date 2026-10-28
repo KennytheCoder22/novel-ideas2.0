@@ -1,0 +1,138 @@
+[
+  {
+    "band": "kids",
+    "style": "stuffed",
+    "choices": [
+      {
+        "mount": "dragon",
+        "response": "bell"
+      },
+      {
+        "mount": "rocket",
+        "response": "light"
+      },
+      {
+        "mount": "horse",
+        "response": "watch"
+      },
+      {
+        "mount": "unicorn",
+        "response": "bell"
+      }
+    ],
+    "sameArrangement": true,
+    "twoRevolutions": true,
+    "onMountCamera": true,
+    "positiveOnly": true,
+    "duplicateGuard": true,
+    "replayBudget": 0.5,
+    "reducedMotion": true,
+    "escape": true,
+    "noAdditionalGLBDownloads": true,
+    "noAdditionalWebGLContext": true,
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "band": "pre-teens",
+    "style": "stuffed",
+    "choices": [
+      {
+        "mount": "dragon",
+        "response": "bell"
+      },
+      {
+        "mount": "rocket",
+        "response": "light"
+      },
+      {
+        "mount": "horse",
+        "response": "watch"
+      },
+      {
+        "mount": "unicorn",
+        "response": "bell"
+      }
+    ],
+    "sameArrangement": true,
+    "twoRevolutions": true,
+    "onMountCamera": true,
+    "positiveOnly": true,
+    "duplicateGuard": true,
+    "replayBudget": 0.5,
+    "reducedMotion": true,
+    "escape": true,
+    "noAdditionalGLBDownloads": true,
+    "noAdditionalWebGLContext": true,
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "band": "teens",
+    "style": "plain",
+    "choices": [
+      {
+        "mount": "dragon",
+        "response": "bell"
+      },
+      {
+        "mount": "rocket",
+        "response": "light"
+      },
+      {
+        "mount": "horse",
+        "response": "watch"
+      },
+      {
+        "mount": "unicorn",
+        "response": "bell"
+      }
+    ],
+    "sameArrangement": true,
+    "twoRevolutions": true,
+    "onMountCamera": true,
+    "positiveOnly": true,
+    "duplicateGuard": true,
+    "replayBudget": 0.5,
+    "reducedMotion": true,
+    "escape": true,
+    "noAdditionalGLBDownloads": true,
+    "noAdditionalWebGLContext": true,
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "band": "adults",
+    "style": "ornate",
+    "choices": [
+      {
+        "mount": "dragon",
+        "response": "bell"
+      },
+      {
+        "mount": "rocket",
+        "response": "light"
+      },
+      {
+        "mount": "horse",
+        "response": "watch"
+      },
+      {
+        "mount": "unicorn",
+        "response": "bell"
+      }
+    ],
+    "sameArrangement": true,
+    "twoRevolutions": true,
+    "onMountCamera": true,
+    "positiveOnly": true,
+    "duplicateGuard": true,
+    "replayBudget": 0.5,
+    "reducedMotion": true,
+    "escape": true,
+    "noAdditionalGLBDownloads": true,
+    "noAdditionalWebGLContext": true,
+    "errors": [],
+    "warnings": []
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "normalDurationMilliseconds": 37549,
+  "last": {
+    "rideId": "455f2890-79ef-44f7-98a6-8cbf18ad53fa",
+    "ageBand": "adults",
+    "selected": "rocket",
+    "answer": "light",
+    "reason": "completed",
+    "revolutions": 2
+  },
+  "twoRevolutions": true,
+  "existingPosterLogPreserved": true,
+  "skeeBallScores": true,
+  "carouselAfterSkeeBall": 20,
+  "ageChangeCleanup": true,
+  "errors": []
+}

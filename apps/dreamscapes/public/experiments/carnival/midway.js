@@ -101,6 +101,7 @@
   // Bounded, session-only raw observations; no production API or taste inference.
   const observations = [];
   function record(type, target, extra = {}) {
+    if(window.DreamscapesSession){window.DreamscapesSession.recordObservation(type,target,extra);return;}
     observations.push({type, target, at:Date.now(), ...extra});
     if (observations.length > 200) observations.shift();
     try { sessionStorage.setItem('carnival-experiment-observations', JSON.stringify(observations)); } catch (_) { /* Storage may be unavailable. */ }
