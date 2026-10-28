@@ -1,0 +1,1090 @@
+[
+  {
+    "band": "kids",
+    "mobile": false,
+    "mount": "dragon",
+    "mode": "normal",
+    "eye": [
+      -0.11999999999999988,
+      0.47,
+      -0.3000000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": false,
+    "mount": "dragon",
+    "mode": "dream",
+    "eye": [
+      -0.1200000000000001,
+      0.46999999999999986,
+      -0.29999999999999954
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": false,
+    "mount": "rocket",
+    "mode": "normal",
+    "eye": [
+      0.24000000000000007,
+      0.27,
+      -0.10999999999999988
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": false,
+    "mount": "rocket",
+    "mode": "dream",
+    "eye": [
+      0.24,
+      0.2699999999999999,
+      -0.10999999999999943
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": false,
+    "mount": "horse",
+    "mode": "normal",
+    "eye": [
+      0.24999999999999994,
+      0.3599999999999999,
+      -0.10999999999999988
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": false,
+    "mount": "horse",
+    "mode": "dream",
+    "eye": [
+      0.24999999999999975,
+      0.36,
+      -0.10999999999999943
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": false,
+    "mount": "unicorn",
+    "mode": "normal",
+    "eye": [
+      -0.10999999999999988,
+      0.3800000000000001,
+      -0.2500000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": false,
+    "mount": "unicorn",
+    "mode": "dream",
+    "eye": [
+      -0.10999999999999988,
+      0.3800000000000001,
+      -0.2500000000000002
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": true,
+    "mount": "dragon",
+    "mode": "normal",
+    "eye": [
+      -0.11999999999999988,
+      0.47,
+      -0.30000000000000027
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": true,
+    "mount": "dragon",
+    "mode": "dream",
+    "eye": [
+      -0.11999999999999988,
+      0.47,
+      -0.29999999999999993
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": true,
+    "mount": "rocket",
+    "mode": "normal",
+    "eye": [
+      0.24000000000000016,
+      0.26999999999999985,
+      -0.1100000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": true,
+    "mount": "rocket",
+    "mode": "dream",
+    "eye": [
+      0.23999999999999966,
+      0.27,
+      -0.1100000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": true,
+    "mount": "horse",
+    "mode": "normal",
+    "eye": [
+      0.25,
+      0.35999999999999993,
+      -0.10999999999999943
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": true,
+    "mount": "horse",
+    "mode": "dream",
+    "eye": [
+      0.25000000000000067,
+      0.36000000000000004,
+      -0.10999999999999988
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": true,
+    "mount": "unicorn",
+    "mode": "normal",
+    "eye": [
+      -0.1100000000000001,
+      0.3800000000000001,
+      -0.2499999999999999
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "kids",
+    "mobile": true,
+    "mount": "unicorn",
+    "mode": "dream",
+    "eye": [
+      -0.11000000000000054,
+      0.38,
+      -0.2500000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": false,
+    "mount": "dragon",
+    "mode": "normal",
+    "eye": [
+      -0.11999999999999944,
+      0.46999999999999986,
+      -0.2999999999999998
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": false,
+    "mount": "dragon",
+    "mode": "dream",
+    "eye": [
+      -0.11999999999999988,
+      0.4700000000000001,
+      -0.3000000000000003
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": false,
+    "mount": "rocket",
+    "mode": "normal",
+    "eye": [
+      0.24000000000000019,
+      0.26999999999999996,
+      -0.1100000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": false,
+    "mount": "rocket",
+    "mode": "dream",
+    "eye": [
+      0.24000000000000016,
+      0.2699999999999999,
+      -0.10999999999999988
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": false,
+    "mount": "horse",
+    "mode": "normal",
+    "eye": [
+      0.2500000000000002,
+      0.36,
+      -0.10999999999999943
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": false,
+    "mount": "horse",
+    "mode": "dream",
+    "eye": [
+      0.2500000000000003,
+      0.3600000000000001,
+      -0.10999999999999988
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": false,
+    "mount": "unicorn",
+    "mode": "normal",
+    "eye": [
+      -0.1100000000000001,
+      0.38,
+      -0.2500000000000002
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": false,
+    "mount": "unicorn",
+    "mode": "dream",
+    "eye": [
+      -0.1100000000000001,
+      0.3800000000000002,
+      -0.24999999999999978
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": true,
+    "mount": "dragon",
+    "mode": "normal",
+    "eye": [
+      -0.12000000000000033,
+      0.46999999999999986,
+      -0.30000000000000043
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": true,
+    "mount": "dragon",
+    "mode": "dream",
+    "eye": [
+      -0.12000000000000033,
+      0.46999999999999986,
+      -0.29999999999999966
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": true,
+    "mount": "rocket",
+    "mode": "normal",
+    "eye": [
+      0.24000000000000027,
+      0.2700000000000001,
+      -0.10999999999999988
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": true,
+    "mount": "rocket",
+    "mode": "dream",
+    "eye": [
+      0.2400000000000004,
+      0.2699999999999999,
+      -0.10999999999999988
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": true,
+    "mount": "horse",
+    "mode": "normal",
+    "eye": [
+      0.2500000000000002,
+      0.36000000000000004,
+      -0.11000000000000032
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": true,
+    "mount": "horse",
+    "mode": "dream",
+    "eye": [
+      0.25000000000000044,
+      0.35999999999999993,
+      -0.10999999999999988
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": true,
+    "mount": "unicorn",
+    "mode": "normal",
+    "eye": [
+      -0.10999999999999988,
+      0.38,
+      -0.24999999999999978
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "pre-teens",
+    "mobile": true,
+    "mount": "unicorn",
+    "mode": "dream",
+    "eye": [
+      -0.10999999999999988,
+      0.38,
+      -0.24999999999999967
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": false,
+    "mount": "dragon",
+    "mode": "normal",
+    "eye": [
+      -0.1200000000000001,
+      0.47,
+      -0.30000000000000016
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": false,
+    "mount": "dragon",
+    "mode": "dream",
+    "eye": [
+      -0.11999999999999966,
+      0.46999999999999986,
+      -0.2999999999999996
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": false,
+    "mount": "rocket",
+    "mode": "normal",
+    "eye": [
+      0.23999999999999982,
+      0.2699999999999999,
+      -0.1100000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": false,
+    "mount": "rocket",
+    "mode": "dream",
+    "eye": [
+      0.24000000000000032,
+      0.2700000000000001,
+      -0.10999999999999965
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": false,
+    "mount": "horse",
+    "mode": "normal",
+    "eye": [
+      0.24999999999999994,
+      0.3600000000000001,
+      -0.10999999999999943
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": false,
+    "mount": "horse",
+    "mode": "dream",
+    "eye": [
+      0.2500000000000001,
+      0.3600000000000001,
+      -0.10999999999999988
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": false,
+    "mount": "unicorn",
+    "mode": "normal",
+    "eye": [
+      -0.1100000000000001,
+      0.38,
+      -0.2500000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": false,
+    "mount": "unicorn",
+    "mode": "dream",
+    "eye": [
+      -0.10999999999999988,
+      0.3799999999999999,
+      -0.2500000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": true,
+    "mount": "dragon",
+    "mode": "normal",
+    "eye": [
+      -0.12000000000000055,
+      0.4700000000000001,
+      -0.2999999999999998
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": true,
+    "mount": "dragon",
+    "mode": "dream",
+    "eye": [
+      -0.12000000000000033,
+      0.4700000000000001,
+      -0.3000000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": true,
+    "mount": "rocket",
+    "mode": "normal",
+    "eye": [
+      0.23999999999999982,
+      0.26999999999999996,
+      -0.1100000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": true,
+    "mount": "rocket",
+    "mode": "dream",
+    "eye": [
+      0.2400000000000002,
+      0.26999999999999996,
+      -0.1100000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": true,
+    "mount": "horse",
+    "mode": "normal",
+    "eye": [
+      0.2500000000000001,
+      0.36000000000000004,
+      -0.10999999999999943
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": true,
+    "mount": "horse",
+    "mode": "dream",
+    "eye": [
+      0.2500000000000001,
+      0.35999999999999993,
+      -0.11000000000000032
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": true,
+    "mount": "unicorn",
+    "mode": "normal",
+    "eye": [
+      -0.11000000000000032,
+      0.38,
+      -0.2500000000000002
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "teens",
+    "mobile": true,
+    "mount": "unicorn",
+    "mode": "dream",
+    "eye": [
+      -0.1100000000000001,
+      0.3799999999999999,
+      -0.25
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": false,
+    "mount": "dragon",
+    "mode": "normal",
+    "eye": [
+      -0.11999999999999922,
+      0.47,
+      -0.2999999999999998
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": false,
+    "mount": "dragon",
+    "mode": "dream",
+    "eye": [
+      -0.12000000000000033,
+      0.46999999999999986,
+      -0.2999999999999997
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": false,
+    "mount": "rocket",
+    "mode": "normal",
+    "eye": [
+      0.24,
+      0.27,
+      -0.10999999999999988
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": false,
+    "mount": "rocket",
+    "mode": "dream",
+    "eye": [
+      0.24,
+      0.26999999999999996,
+      -0.11000000000000032
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": false,
+    "mount": "horse",
+    "mode": "normal",
+    "eye": [
+      0.25000000000000006,
+      0.36,
+      -0.11000000000000076
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": false,
+    "mount": "horse",
+    "mode": "dream",
+    "eye": [
+      0.2499999999999999,
+      0.36,
+      -0.11000000000000032
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": false,
+    "mount": "unicorn",
+    "mode": "normal",
+    "eye": [
+      -0.10999999999999988,
+      0.3800000000000001,
+      -0.24999999999999994
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": false,
+    "mount": "unicorn",
+    "mode": "dream",
+    "eye": [
+      -0.1100000000000001,
+      0.38,
+      -0.24999999999999992
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": true,
+    "mount": "dragon",
+    "mode": "normal",
+    "eye": [
+      -0.1200000000000001,
+      0.46999999999999986,
+      -0.2999999999999999
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": true,
+    "mount": "dragon",
+    "mode": "dream",
+    "eye": [
+      -0.11999999999999966,
+      0.47,
+      -0.3000000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": true,
+    "mount": "rocket",
+    "mode": "normal",
+    "eye": [
+      0.23999999999999966,
+      0.2700000000000002,
+      -0.1100000000000001
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": true,
+    "mount": "rocket",
+    "mode": "dream",
+    "eye": [
+      0.24,
+      0.2700000000000001,
+      -0.11000000000000032
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": true,
+    "mount": "horse",
+    "mode": "normal",
+    "eye": [
+      0.24999999999999964,
+      0.36000000000000004,
+      -0.10999999999999943
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": true,
+    "mount": "horse",
+    "mode": "dream",
+    "eye": [
+      0.25000000000000044,
+      0.35999999999999993,
+      -0.11000000000000032
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": true,
+    "mount": "unicorn",
+    "mode": "normal",
+    "eye": [
+      -0.1100000000000001,
+      0.38,
+      -0.24999999999999978
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  },
+  {
+    "band": "adults",
+    "mobile": true,
+    "mount": "unicorn",
+    "mode": "dream",
+    "eye": [
+      -0.11000000000000032,
+      0.3800000000000002,
+      -0.2499999999999999
+    ],
+    "normalRadius": 2.5930409860610966,
+    "normalRoof": 1.5630721735954285,
+    "peak": 0.85,
+    "seatAttached": true,
+    "sourceUntouched": true,
+    "restored": true
+  }
+]

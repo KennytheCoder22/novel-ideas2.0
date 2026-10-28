@@ -1,7 +1,7 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 7913,
-    "sha256": "113cb97527f8f91ec51a4b736cf350aa3a2bc78be71ad4d103c9c9b314e4ff47"
+    "bytes": 7917,
+    "sha256": "bc456d50d2ce25c81367a52847c6a802f761d6fc93b0a714504b400b93ebedac"
   },
   "experiments/carnival/navigation.js": {
     "bytes": 10201,
@@ -368,15 +368,19 @@
     "sha256": "867229ae7db0a785d3d187626ac5ba363818dbf415132d041a76814bd03e8d06"
   },
   "experiments/carnival/carousel-ride.js": {
-    "bytes": 17712,
-    "sha256": "d166ff4e668b8e639dc10e55f78cc5ca2057ea9df622133e5a9c2a69f4805b68"
+    "bytes": 21904,
+    "sha256": "9604ce54ef51f8bcda37874f81f5e62fa5b542fedafa650a8e2c5517ae13a737"
   },
   "experiments/carnival/carousel-ride.css": {
-    "bytes": 2991,
-    "sha256": "1026d34435d84d4aeb889706cee9270219899092259a82a94879f05c02370390"
+    "bytes": 3315,
+    "sha256": "cf6a03085a6cf1973aa8282ee1363bbd503ff414eeca13c3ff7b63a4c486f91a"
   },
   "experiments/carnival/carousel-evidence.js": {
     "bytes": 1777,
     "sha256": "a4bad2eedcb797f114f247c62e016e5858f82a4128bf28c6a429766d2b2b0061"
+  },
+  "experiments/carnival/carousel-dream.js": {
+    "bytes": 1132,
+    "sha256": "b662fe7420de1cb93ca43e1fe0781e7b60356bdd70a3fe1e65a36acc0525e097"
   }
 }

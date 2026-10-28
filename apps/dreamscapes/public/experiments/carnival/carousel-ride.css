@@ -21,3 +21,5 @@
 @media(max-width:600px) { .carousel-ride-panel { inset:auto 10px 16px; padding:12px; max-height:78svh; overflow:auto; }.carousel-ride-mount { flex-basis:38%; max-width:46%; padding:8px!important; }.carousel-ride-mount canvas { height:92px; }.carousel-ride-choices { gap:8px; }.carousel-ride-caption { left:5%; right:5%; }.carousel-board-label { bottom:65px; } }
 @media(max-height:550px) { .carousel-ride-panel { bottom:10px; padding:9px; }.carousel-ride-mount canvas { height:70px; }.carousel-ride-panel p { margin:6px; }.carousel-ride-panel h1 { font-size:22px; } }
 @media(prefers-reduced-motion:reduce) { .carousel-ride * { scroll-behavior:auto!important; } }
+
+.carousel-ride-review{position:absolute;top:70px;left:14px;max-width:260px;padding:8px;color:#ffdda1;background:#181718ed;border:1px solid #c4974d;border-radius:5px;font:14px Georgia;z-index:5}.carousel-ride-review label,.carousel-ride-review small{display:block;margin-top:8px}.carousel-ride-review select{max-width:100%}

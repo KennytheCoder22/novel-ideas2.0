@@ -3,10 +3,20 @@ import {getAgeBand} from '../../age-band.js';
 import {carouselRideEntries} from './carousel-variants.js?v=20261028-ride';
 import {sharedMountRenderer} from './shared-mount-renderer.js';
 import {recordChoice,recordObservation,handoff} from './carousel-evidence.js';
+import {dreamDefaults,dreamConfig,dreamAmount} from './carousel-dream.js?v=20261028-perspective';
 
 const local=['127.0.0.1','localhost'].includes(location.hostname)&&new URLSearchParams(location.search).has('carousel-ride-review');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),still=new URLSearchParams(location.search).get('motion')==='still';
 const DURATION=36,BOARD=1.8,DISMOUNT=1.5,TAU=Math.PI*2;
+// Positions are in the prepared registration frame (after variant normalization).
+// The socket is the pommel, not the rider's eyes. Horse/rocket noses use -X;
+// dragon/unicorn noses use +Z. Offsets leave the centered shaft beside the view.
+const riderProfiles={
+ horse:{forward:[-1,0,0],back:.25,eye:.36,side:.11,pitch:-.22},
+ rocket:{forward:[-1,0,0],back:.24,eye:.27,side:.11,pitch:-.28},
+ unicorn:{forward:[0,0,1],back:.25,eye:.38,side:.11,pitch:-.20},
+ dragon:{forward:[0,0,1],back:.30,eye:.47,side:.12,pitch:-.20}
+};
 const catalog=[
  {id:'dragon',name:'The Dragon',line:'A watchful companion with folded wings.',signals:{genreFamily:['fantasy'],themes:['mythology','adventure']}},
  {id:'rocket',name:'The Rocket',line:'A polished nose pointed beyond the lights.',signals:{genreFamily:['science fiction'],themes:['space exploration']}},
@@ -38,8 +48,14 @@ async function open(svg,trigger){
  const description=element('p','','The carousel turns toward you. Its saddles are waiting…',panel);description.setAttribute('role','status');
  const choices=element('div','carousel-ride-choices','',panel),caption=element('p','carousel-ride-caption','',shell);caption.setAttribute('role','status');caption.setAttribute('aria-live','polite');
  document.body.append(shell);
- const s=current={id:crypto.randomUUID(),band,svg,trigger,source,shell,canvas,exit,skip,panel,heading,description,choices,caption,phase:'loading',elapsed:0,boardTime:0,exitTime:0,selected:null,answer:null,prompted:false,entries:[],world:null,startPhase:Number(svg.dataset.phase||0),reduced:reduced.matches||still,reason:null};
+ const s=current={id:crypto.randomUUID(),band,svg,trigger,source,shell,canvas,exit,skip,panel,heading,description,choices,caption,phase:'loading',elapsed:0,boardTime:0,exitTime:0,selected:null,answer:null,prompted:false,entries:[],world:null,startPhase:Number(svg.dataset.phase||0),reduced:reduced.matches||still,reason:null,dreamEnabled:new URLSearchParams(location.search).get('perspective')!=='normal',dream:{...dreamDefaults}};
  source.inert=true;heading.focus();
+ if(local){
+  const review=element('details','carousel-ride-review','',shell);element('summary','','Perspective review',review);
+  const label=element('label','','Preview ',review),mode=element('select','','',label);mode.setAttribute('aria-label','Perspective preview');for(const [value,text]of [['normal','A — Normal'],['dream','B — Dream']]){const option=element('option','',text,mode);option.value=value;}mode.value=s.dreamEnabled?'dream':'normal';mode.onchange=()=>{if(s.phase==='choosing'||s.phase==='loading')s.dreamEnabled=mode.value==='dream';};
+  const intensityLabel=element('label','',' Dream intensity ',review),input=element('input','','',intensityLabel);input.type='range';input.min=0;input.max=1.25;input.step=.05;input.value=s.dream.intensity;input.setAttribute('aria-label','Dream intensity');input.oninput=()=>{if(s.phase==='choosing')s.dream.intensity=Number(input.value);};
+  element('small','','Choose before boarding. Both modes use the same seat camera.',review);s.reviewInputs=[mode,input];
+ }
  try{
   let attempts=0;while(current===s&&attempts++<900){const diag=window.carouselVariantDiagnostics?.();s.entries=carouselRideEntries();if(diag?.selected===band.style&&!diag.busy&&s.entries.length===20)break;await new Promise(r=>setTimeout(r,80));}
   if(current!==s)return;if(s.entries.length!==20)throw Error('Carousel mounts are not ready');await structure.decode();if(current!==s)return;
@@ -49,46 +65,67 @@ async function open(svg,trigger){
 }
 function makeWorld(s){
  const scene=new T.Scene(),renderer=sharedMountRenderer(T,s.canvas);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;
- const camera=new T.PerspectiveCamera(62,innerWidth/innerHeight,.04,100),orbit=new T.Group();scene.add(orbit);
+ // The orthographic crop explicitly preserves world units per source SVG pixel.
+ const reference=s.entries[0],unit=(reference.camera.right-reference.camera.left)/Number(reference.holder.getAttribute('width'));
+ const deckRadius=708*unit,rings=[593,450,307].map(r=>r*unit);
+ const mountHeight=e=>e.slot.dataset.mountHeight?Number(e.slot.dataset.mountHeight)*unit:-new T.Box3().setFromObject(e.registration.clone(true)).min.y+20*unit;
+ const roofHeight=Math.max(324*unit,...s.entries.map(e=>mountHeight(e)+(riderProfiles[e.identity]?.eye||.45)+.30));
+ const camera=new T.PerspectiveCamera(64,innerWidth/innerHeight,.015,100),orbit=new T.Group();scene.add(orbit);
  scene.add(new T.HemisphereLight(0xfff2de,0x514958,1.5));const key=new T.DirectionalLight(0xffecd3,2);key.position.set(-2,3,4);scene.add(key);
  const geometries=[],materials=[],textures=[],mounts=[];
  function geometry(g){geometries.push(g);return g;}function material(m){materials.push(m);return m;}
  function mesh(g,m,parent=scene){const o=new T.Mesh(g,m);parent.add(o);return o;}
  function sourceTexture(x,y,w,h){const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(structure,x,y,w,h,0,0,w,h);const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;textures.push(t);return t;}
  const outside=s.source.querySelector('.location-background'),outsideCanvas=document.createElement('canvas');outsideCanvas.width=outside.naturalWidth;outsideCanvas.height=outside.naturalHeight;outsideCanvas.getContext('2d').drawImage(outside,0,0);const sky=new T.CanvasTexture(outsideCanvas);sky.colorSpace=T.SRGBColorSpace;sky.repeat.x=-1;sky.offset.x=1;textures.push(sky);
- const skyMesh=mesh(geometry(new T.SphereGeometry(45,48,24)),material(new T.MeshBasicMaterial({map:sky,side:T.BackSide})));skyMesh.rotation.y=-Math.PI/2;
+ const skyMesh=mesh(geometry(new T.SphereGeometry(10,48,24)),material(new T.MeshBasicMaterial({map:sky,side:T.BackSide})));skyMesh.rotation.y=-Math.PI/2;
+ const roof=new T.Group();scene.add(roof);
  const wood=sourceTexture(1020,834,240,22);wood.wrapS=wood.wrapT=T.RepeatWrapping;wood.repeat.set(4,4);
- mesh(geometry(new T.CylinderGeometry(7.05,7.05,.14,64)),material(new T.MeshStandardMaterial({map:wood,roughness:.8}))).position.y=-.12;
- mesh(geometry(new T.CylinderGeometry(6.75,6.75,.08,64)),material(new T.MeshStandardMaterial({color:0x24272d,roughness:.9}))).position.y=3.22;
+ const deck=mesh(geometry(new T.CylinderGeometry(deckRadius,deckRadius,.06,64)),material(new T.MeshStandardMaterial({map:wood,roughness:.8})));deck.position.y=-.03;
+ mesh(geometry(new T.CylinderGeometry(675*unit,675*unit,.035,64)),material(new T.MeshStandardMaterial({color:0x24272d,roughness:.9})),roof).position.y=roofHeight;
  const trim=sourceTexture(90,285,1350,155);trim.wrapS=T.RepeatWrapping;trim.repeat.x=2;
- mesh(geometry(new T.CylinderGeometry(6.8,6.8,.5,64,1,true)),material(new T.MeshBasicMaterial({map:trim,side:T.DoubleSide}))).position.y=3.07;
+ mesh(geometry(new T.CylinderGeometry(680*unit,680*unit,135*unit,64,1,true)),material(new T.MeshBasicMaterial({map:trim,side:T.DoubleSide})),roof).position.y=roofHeight-55*unit;
  const portrait=sourceTexture(708,511,120,319);portrait.wrapS=T.RepeatWrapping;portrait.repeat.x=8;
- mesh(geometry(new T.CylinderGeometry(1,1,2.65,8,1,true)),material(new T.MeshBasicMaterial({map:portrait,side:T.DoubleSide}))).position.y=1.325;
- const brass=material(new T.MeshStandardMaterial({color:0xb48747,metalness:.7,roughness:.4})),shaft=geometry(new T.CylinderGeometry(.022,.022,3.12,12)),beam=geometry(new T.BoxGeometry(5.7,.035,.035));
- for(let i=0;i<12;i++){const a=i*TAU/12,b=mesh(beam,brass);b.position.set(Math.cos(a)*3.55,3.16,Math.sin(a)*3.55);b.rotation.y=-a;}
- const bulbGeometry=geometry(new T.SphereGeometry(.045,8,6)),bulbMaterial=material(new T.MeshBasicMaterial({color:0xffd397})),bulbs=new T.InstancedMesh(bulbGeometry,bulbMaterial,48),matrix=new T.Matrix4();scene.add(bulbs);for(let i=0;i<48;i++){const a=i*TAU/48;matrix.makeTranslation(Math.cos(a)*6.65,2.88,Math.sin(a)*6.65);bulbs.setMatrixAt(i,matrix);}
+ const column=mesh(geometry(new T.CylinderGeometry(100*unit,100*unit,roofHeight-.1,8,1,true)),material(new T.MeshBasicMaterial({map:portrait,side:T.DoubleSide})));column.position.y=(roofHeight-.1)/2;
+ const brass=material(new T.MeshStandardMaterial({color:0xb48747,metalness:.7,roughness:.4})),shaft=geometry(new T.CylinderGeometry(4*unit,4*unit,roofHeight,16)),beam=geometry(new T.BoxGeometry(570*unit,.025,.025));
+ for(let i=0;i<12;i++){const a=i*TAU/12,b=mesh(beam,brass,roof);b.position.set(Math.cos(a)*355*unit,roofHeight-.04,Math.sin(a)*355*unit);b.rotation.y=-a;}
+ const bulbGeometry=geometry(new T.SphereGeometry(4*unit,8,6)),bulbMaterial=material(new T.MeshBasicMaterial({color:0xffd397})),bulbs=new T.InstancedMesh(bulbGeometry,bulbMaterial,48),matrix=new T.Matrix4();roof.add(bulbs);for(let i=0;i<48;i++){const a=i*TAU/48;matrix.makeTranslation(Math.cos(a)*665*unit,roofHeight-95*unit,Math.sin(a)*665*unit);bulbs.setMatrixAt(i,matrix);}
  for(const e of s.entries){
-  const index=e.slotNumber-1,row=Math.floor(index/3),ring=index%3,angle=TAU*row/7+[0,.025,-.025][ring],radius=[5.93,4.5,3.07][ring]+(index===1?.715:0),base=new T.Group();base.position.set(radius*Math.cos(angle),0,radius*Math.sin(angle));base.rotation.y=e.turn.rotation.y;orbit.add(base);
-  const anchor=new T.Group(),copy=e.registration.clone(true);anchor.add(copy);base.add(anchor);const bounds=new T.Box3().setFromObject(copy),bob=Number(e.slot.dataset.bobAmplitude||12)*1.098745/300;
-  const mount={entry:e,index,angle,radius,base,anchor,bob,height:-bounds.min.y+bob+.075,copy};mounts.push(mount);
-  const pole=mesh(shaft,brass,base);pole.position.y=1.52;
+  const index=e.slotNumber-1,row=Math.floor(index/3),ring=index%3,angle=TAU*row/7+[0,.025,-.025][ring],radius=rings[ring]+(index===1?71.5*unit:0),base=new T.Group();base.position.set(radius*Math.cos(angle),0,radius*Math.sin(angle));base.rotation.y=e.turn.rotation.y;orbit.add(base);
+  const anchor=new T.Group(),copy=e.registration.clone(true);anchor.add(copy);base.add(anchor);const bob=Number(e.slot.dataset.bobAmplitude||12)*unit;
+  const mount={entry:e,index,angle,radius,base,anchor,bob,height:mountHeight(e),copy};mounts.push(mount);
+  const pole=mesh(shaft,brass,base);pole.position.y=roofHeight/2;mount.pole=pole;mount.home=base.position.clone();
  }
  // Low-intensity, static glimmers are enough for the functional prototype.
- const glimmers=new T.Group();scene.add(glimmers);const starG=geometry(new T.SphereGeometry(.04,8,6)),starM=material(new T.MeshBasicMaterial({color:s.selected.id==='rocket'?0xb6d9ff:0xffdc8f}));for(let i=0;i<24;i++){const a=i*2.39996,p=mesh(starG,starM,glimmers);p.position.set(Math.cos(a)*(12+i*.25),3+(i%7)*.6,Math.sin(a)*(12+i*.25));}glimmers.visible=false;
- const selected=mounts.find(m=>m.entry.identity===s.selected.id),exterior=new T.Vector3(11,3.4,12),exteriorLook=new T.Vector3(0,1.2,0);
- function seat(){orbit.updateMatrixWorld(true);const point=selected.anchor.getWorldPosition(new T.Vector3()),angle=selected.angle-orbit.rotation.y,heading=new T.Vector3(Math.sin(angle),0,-Math.cos(angle));point.y+=.60;point.addScaledVector(heading,-.14).addScaledVector(new T.Vector3(-heading.z,0,heading.x),.28);return{point,look:point.clone().addScaledVector(heading,8).add(new T.Vector3(0,-.33,0))};}
+ const glimmers=new T.Group();scene.add(glimmers);const starG=geometry(new T.SphereGeometry(4*unit,8,6)),starM=material(new T.MeshBasicMaterial({color:s.selected.id==='rocket'?0xb6d9ff:0xffdc8f}));for(let i=0;i<24;i++){const a=i*2.39996,p=mesh(starG,starM,glimmers);p.position.set(Math.cos(a)*(12+i*.25)*100*unit,(3+(i%7)*.6)*100*unit,Math.sin(a)*(12+i*.25)*100*unit);}glimmers.visible=false;
+ const selected=mounts.find(m=>m.entry.identity===s.selected.id),exterior=new T.Vector3(4,1.8,4.4),exteriorLook=new T.Vector3(0,.7,0);
+ function seat(){
+  orbit.updateMatrixWorld(true);const profile=riderProfiles[s.selected.id],forward=new T.Vector3(...profile.forward),side=new T.Vector3(-forward.z,0,forward.x);
+  const eye=forward.clone().multiplyScalar(-profile.back).addScaledVector(side,profile.side);eye.y=profile.eye;
+  const point=selected.anchor.localToWorld(eye.clone()),look=selected.anchor.localToWorld(eye.clone().addScaledVector(forward,3).add(new T.Vector3(0,profile.pitch*3,0)));
+  return{point,look};
+ }
+ let distortion=0;
+ function distort(amount){
+  distortion=amount;const stretch=1+(s.dream.spaceScale-1)*amount,rise=roofHeight*s.dream.canopyRise*amount;
+  deck.scale.set(stretch,1,stretch);roof.scale.set(stretch,1,stretch);roof.position.y=rise;
+  column.scale.y=1+rise/(roofHeight-.1);column.position.y=(roofHeight-.1+rise)/2;
+  for(const m of mounts){m.base.position.copy(m.home);if(m!==selected)m.base.position.sub(selected.home).multiplyScalar(stretch).add(selected.home);m.pole.scale.y=(roofHeight+rise)/roofHeight;m.pole.position.y=(roofHeight+rise)/2;}
+  skyMesh.scale.setScalar(1+amount*.55);skyMesh.position.y=s.dream.environmentDisplacement*amount;
+  camera.fov=64+s.dream.fovChange*amount;camera.updateProjectionMatrix();
+ }
  function paint(){
   const p=progress(s.elapsed),phase=s.startPhase+(s.reduced?0:2*p);orbit.rotation.y=phase*TAU;s.svg.carouselRideClock?.setPhase(phase);
   for(const m of mounts){const lift=window.CarnivalCarousel.pose(m.index,phase).lift/28;m.anchor.position.y=m.height+(s.reduced?0:lift*m.bob);}
+  distort(s.reduced||!s.dreamEnabled?0:dreamAmount(s.elapsed,s.dream)*(s.phase==='dismounting'?1-smooth(s.exitTime/DISMOUNT):1));
   const rider=seat();let blend=1;if(s.phase==='boarding')blend=s.reduced?1:smooth(s.boardTime/BOARD);else if(s.phase==='dismounting')blend=s.reduced?0:1-smooth(s.exitTime/DISMOUNT);
   camera.position.copy(exterior).lerp(rider.point,blend);camera.lookAt(exteriorLook.clone().lerp(rider.look,blend));camera.updateMatrixWorld(true);s.canvas.style.opacity=String(blend);
   glimmers.visible=s.phase!=='dismounting'&&(s.answer||p>.51);glimmers.rotation.y=s.reduced?0:Math.sin(s.elapsed*.12)*.025;
   renderer.render(scene,camera);
  }
  function resize(){renderer.setSize(Math.round(innerWidth*Math.min(devicePixelRatio||1,1.4)),Math.round(innerHeight*Math.min(devicePixelRatio||1,1.4)),false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();paint();}
- resize();return{scene,renderer,camera,orbit,mounts,selected,paint,resize,dispose(){renderer.dispose();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();scene.clear();}};
+ resize();return{scene,renderer,camera,orbit,mounts,selected,paint,resize,metrics:()=>({unit,deckRadius,roofHeight,profile:riderProfiles[s.selected.id],localEye:selected.anchor.worldToLocal(camera.position.clone()).toArray(),localForward:camera.getWorldDirection(new T.Vector3()).transformDirection(selected.anchor.matrixWorld.clone().invert()).toArray(),fov:camera.fov,distortion,dreamEnabled:s.dreamEnabled,dream:s.dream,spaceScale:deck.scale.x,roofRise:roof.position.y}),dispose(){distort(0);renderer.dispose();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();scene.clear();}};
 }
-function selectMount(choice){const s=current;if(!s||s.phase!=='choosing'||getAgeBand().id!==s.band.id)return;s.selected=choice;s.phase='boarding';s.panel.hidden=true;s.skip.hidden=false;s.svg.dataset.riding='true';s.svg.carouselRideClock?.setPhase(s.startPhase);try{s.world=makeWorld(s);}catch(error){console.error('Carousel ride unavailable',error);leave('render-error',true);return;}observeChoice('mount',choice);announce('The saddle settles beneath you. The lights begin to turn.');s.skip.focus();previous=0;schedule();}
+function selectMount(choice){const s=current;if(!s||s.phase!=='choosing'||getAgeBand().id!==s.band.id)return;s.selected=choice;s.phase='boarding';s.reviewInputs?.forEach(e=>e.disabled=true);s.panel.hidden=true;s.skip.hidden=false;s.svg.dataset.riding='true';s.svg.carouselRideClock?.setPhase(s.startPhase);try{s.world=makeWorld(s);}catch(error){console.error('Carousel ride unavailable',error);leave('render-error',true);return;}observeChoice('mount',choice);announce('The saddle settles beneath you. The lights begin to turn.');s.skip.focus();previous=0;schedule();}
 function prompt(){const s=current;if(!s||s.prompted)return;s.prompted=true;s.heading.textContent='A light slips between the poles…';s.description.textContent=s.band.id==='kids'?'A tiny bell answers it. Where will you look?':'A little bell sounds from an empty saddle. Where will you look?';s.choices.replaceChildren();for(const answer of responses){const b=button(answer.label,s.choices,()=>answerStory(answer));b.dataset.response=answer.id;}s.panel.hidden=false;s.heading.focus({preventScroll:true});s.world?.paint();}
 function answerStory(answer){const s=current;if(!s||s.phase!=='riding'||s.answer||!s.prompted)return;s.answer=answer;observeChoice('story',answer);s.panel.hidden=true;s.skip.focus({preventScroll:true});announce(answer.text);s.world.paint();}
 function startRiding(){const s=current;s.phase='riding';s.elapsed=0;announce(s.reduced?'The ride holds still around you. The lamps seem to breathe.':'The familiar midway drifts past. A small bell rings beneath the canopy.');if(s.reduced){s.skip.textContent='Let the lights change';s.skip.onclick=()=>{if(!current)return;if(!s.prompted){s.elapsed=DURATION/2;prompt();s.world.paint();s.skip.textContent='Return to the midway';}else leave('completed');};}}
@@ -101,4 +138,4 @@ document.addEventListener('keydown',keydown);document.addEventListener('visibili
 window.addEventListener('resize',()=>current?.world?.resize());document.addEventListener('dreamscapes-age-band',()=>{if(current)leave('age-band-changed',true);});reduced.addEventListener('change',()=>{if(current)leave('motion-preference-changed',true);});window.addEventListener('pagehide',()=>{if(current)leave('pagehide',true);});
 function attach(){for(const svg of document.querySelectorAll('.carousel-dressing')){if(svg.dataset.rideReady)continue;svg.dataset.rideReady='true';const plane=svg.parentElement,source=svg.closest('.location-view'),target=element('button','carousel-board','',plane);target.type='button';target.setAttribute('aria-label','Approach and ride the carousel');target.onclick=()=>open(svg,target);const label=element('button','carousel-board-label','Ride the carousel',source);label.type='button';label.onclick=()=>open(svg,label);}}
 const observer=new MutationObserver(attach);observer.observe(document.body,{childList:true,subtree:true});attach();
-window.EnchantedCarousel=Object.freeze({state:()=>current?{phase:current.phase,selected:current.selected?.id||null,answer:current.answer?.id||null,ageBand:current.band.id,style:current.band.style,reduced:current.reduced,elapsed:current.elapsed,revolutions:current.reduced?0:2*progress(current.elapsed),mounts:current.world?.mounts.map(m=>({identity:m.entry.identity,style:m.entry.style,slot:m.entry.slotNumber}))||[],camera:current.world?.camera.position.toArray(),eyeDistance:current.world?current.world.camera.position.distanceTo(current.world.selected.anchor.getWorldPosition(new T.Vector3())):null,orbitRadians:current.world?.orbit.rotation.y,sharedContextLost:current.world?.renderer.getContext().isContextLost()||false}:null,last:()=>lastResult,evidence:()=>handoff(getAgeBand().id),advance:local?seconds=>{if(!current)return;if(current.phase==='boarding')update(BOARD);if(current?.phase==='riding')update(seconds);else if(current?.phase==='dismounting')update(DISMOUNT);}:undefined,progress});
+window.EnchantedCarousel=Object.freeze({state:()=>current?{phase:current.phase,selected:current.selected?.id||null,answer:current.answer?.id||null,ageBand:current.band.id,style:current.band.style,reduced:current.reduced,elapsed:current.elapsed,revolutions:current.reduced?0:2*progress(current.elapsed),mounts:current.world?.mounts.map(m=>({identity:m.entry.identity,style:m.entry.style,slot:m.entry.slotNumber}))||[],camera:current.world?.camera.position.toArray(),eyeDistance:current.world?current.world.camera.position.distanceTo(current.world.selected.anchor.getWorldPosition(new T.Vector3())):null,geometry:current.world?.metrics(),orbitRadians:current.world?.orbit.rotation.y,sharedContextLost:current.world?.renderer.getContext().isContextLost()||false}:null,last:()=>lastResult,evidence:()=>handoff(getAgeBand().id),advance:local?seconds=>{if(!current)return;if(current.phase==='boarding')update(BOARD);if(current?.phase==='riding')update(seconds);else if(current?.phase==='dismounting')update(DISMOUNT);}:undefined,configure:local?settings=>{if(!current||!['loading','choosing'].includes(current.phase))return false;current.dream=dreamConfig({...current.dream,...settings});return true;}:undefined,progress});
