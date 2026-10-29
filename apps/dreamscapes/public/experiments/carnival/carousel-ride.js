@@ -1,7 +1,7 @@
 import * as T from './vendor/three.module.js';
 import {getAgeBand} from '../../age-band.js';
 import {carouselRideEntries} from './carousel-variants.js?v=20261028-ride';
-import {installMountHardware,mechanicalSnapshot} from './carousel-mechanics.js?v=20261029-attachments';
+import {installMountHardware,mechanicalSnapshot,perforatedPlate} from './carousel-mechanics.js?v=20261029-moving-poles';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
 import {sharedMountRenderer} from './shared-mount-renderer.js';
 import {recordChoice,recordObservation,handoff} from './carousel-evidence.js';
@@ -73,6 +73,8 @@ function mechanicalControls(s){
  const tools=element('details','carousel-mechanical-review','',s.shell);element('summary','','Mechanical inspection controls',tools);
  const viewLabel=element('label','','View ',tools),view=element('select','','',viewLabel);view.setAttribute('aria-label','Inspection viewpoint');for(const value of ['exterior','rider']){const option=element('option','',value,view);option.value=value;}view.value=s.reviewView;view.onchange=()=>{s.reviewView=view.value;s.world.paint();};
  const play=button(s.paused?'Run carousel':'Pause carousel',tools,()=>{s.paused=!s.paused;if(!s.paused&&s.elapsed>=DURATION)s.elapsed=0;play.textContent=s.paused?'Run carousel':'Pause carousel';});play.disabled=s.reduced;s.reviewPlayButton=play;
+ function atExtreme(high){const m=s.world.selected,row=Math.floor(m.index/3),ring=m.index%3,polarity=(row%2===0?1:-1)*(ring===1?-1:1),phase=(high?1:-1)===polarity?0:1/24;let lo=0,hi=18;for(let j=0;j<40;j++){const t=(lo+hi)/2;if(2*progress(t)<phase)lo=t;else hi=t;}s.elapsed=(lo+hi)/2;s.paused=true;play.textContent='Run carousel';s.world.paint();}
+ button('Highest position',tools,()=>atExtreme(true));button('Lowest position',tools,()=>atExtreme(false));
  button('Replay from start',tools,()=>{s.elapsed=0;s.paused=s.reduced;play.textContent=s.paused?'Run carousel':'Pause carousel';s.world.paint();});
  const timeLabel=element('label','','Pause at time ',tools),time=element('input','','',timeLabel);time.type='range';time.min=0;time.max=36;time.step=.025;time.value=0;time.setAttribute('aria-label','Inspection time');time.oninput=()=>{s.paused=true;s.elapsed=Number(time.value);play.textContent='Run carousel';s.world.paint();};
  const angleLabel=element('label','','Walk around exterior ',tools),angle=element('input','','',angleLabel);angle.type='range';angle.min=0;angle.max=6.2831853;angle.step=.02;angle.value=s.reviewAngle;angle.setAttribute('aria-label','Exterior inspection angle');angle.oninput=()=>{s.reviewAngle=Number(angle.value);s.world.paint();};
@@ -83,6 +85,7 @@ function makeWorld(s){
  // The orthographic crop explicitly preserves world units per source SVG pixel.
  const reference=s.entries[0],unit=(reference.camera.right-reference.camera.left)/Number(reference.holder.getAttribute('width'));
  const deckRadius=708*unit,rings=[593,450,307].map(r=>r*unit);
+ const slots=s.entries.map(entry=>{const index=entry.slotNumber-1,row=Math.floor(index/3),ring=index%3,angle=TAU*row/7+[0,.025,-.025][ring],radius=rings[ring]+(index===1?71.5*unit:0);return{entry,index,angle,radius,home:new T.Vector3(radius*Math.cos(angle),0,radius*Math.sin(angle))};});
  const mountHeight=e=>e.slot.dataset.mountHeight?Number(e.slot.dataset.mountHeight)*unit:-new T.Box3().setFromObject(e.registration.clone(true)).min.y+20*unit;
  const roofHeight=Math.max(324*unit,...s.entries.map(e=>mountHeight(e)+(riderProfiles[e.identity]?.eye||.45)+.30));
  const camera=new T.PerspectiveCamera(64,innerWidth/innerHeight,.015,100),orbit=new T.Group();scene.add(orbit);
@@ -95,25 +98,25 @@ function makeWorld(s){
  const skyMesh=mesh(geometry(new T.SphereGeometry(10,48,24)),material(new T.MeshBasicMaterial({map:sky,side:T.BackSide})));skyMesh.rotation.y=-Math.PI/2;
  const roof=new T.Group();orbit.add(roof);const roofUnder=roofHeight-.0175;
  const wood=sourceTexture(1020,834,240,22);wood.wrapS=wood.wrapT=T.RepeatWrapping;wood.repeat.set(4,4);
- const deck=mesh(geometry(new T.CylinderGeometry(deckRadius,deckRadius,.06,64)),material(new T.MeshStandardMaterial({map:wood,roughness:.8})));deck.position.y=-.03;orbit.add(deck);
+ const deck=mesh(geometry(perforatedPlate(T,{radius:deckRadius,depth:.06,slots,holeRadius:4*unit*1.35})),material(new T.MeshStandardMaterial({map:wood,roughness:.8})));deck.position.y=-.03;orbit.add(deck);
  // Reuse the existing SVG ceiling colors and extracted stars, so its contact
  // plane is visible from below rather than reading as an unlit black void.
  const ceilingCanvas=document.createElement('canvas');ceilingCanvas.width=ceilingCanvas.height=1024;const cc=ceilingCanvas.getContext('2d'),gradient=cc.createRadialGradient(512,512,0,512,512,512);gradient.addColorStop(0,'#191d25');gradient.addColorStop(1,'#24272d');cc.fillStyle=gradient;cc.fillRect(0,0,1024,1024);
  const starCanvas=document.createElement('canvas');starCanvas.width=55;starCanvas.height=60;const sc=starCanvas.getContext('2d');sc.drawImage(structure,746,432,55,60,0,0,55,60);const pixels=sc.getImageData(0,0,55,60);for(let i=0;i<pixels.data.length;i+=4){const [r,g,b]=pixels.data.subarray(i,i+3);pixels.data[i+3]=Math.round(255*Math.max(0,Math.min(1,(r-g*1.25)/30))*Math.max(0,Math.min(1,(g-b*1.3)/30)));}sc.putImageData(pixels,0,0);
  for(let i=0;i<36;i++){const angle=(i%12+.5)*TAU/12,r=(300+Math.floor(i/12)*140)*512/675;cc.drawImage(starCanvas,512+r*Math.cos(angle)-14,512+r*Math.sin(angle)-10,28,20);}
  const ceilingTexture=new T.CanvasTexture(ceilingCanvas);ceilingTexture.colorSpace=T.SRGBColorSpace;textures.push(ceilingTexture);
- mesh(geometry(new T.CylinderGeometry(675*unit,675*unit,.035,64)),material(new T.MeshBasicMaterial({map:ceilingTexture,toneMapped:false})),roof).position.y=roofHeight;
+ const ceiling=mesh(geometry(perforatedPlate(T,{radius:675*unit,depth:.035,slots,holeRadius:4*unit*1.35})),material(new T.MeshBasicMaterial({map:ceilingTexture,toneMapped:false})),roof);ceiling.position.y=roofHeight;
  const trim=sourceTexture(90,285,1350,155);trim.wrapS=T.RepeatWrapping;trim.repeat.x=2;
  mesh(geometry(new T.CylinderGeometry(680*unit,680*unit,135*unit,64,1,true)),material(new T.MeshBasicMaterial({map:trim,side:T.DoubleSide})),roof).position.y=roofHeight-55*unit;
  const portrait=sourceTexture(708,511,120,319);portrait.wrapS=T.RepeatWrapping;portrait.repeat.x=8;
  const column=mesh(geometry(new T.CylinderGeometry(100*unit,100*unit,roofUnder,8,1,true)),material(new T.MeshBasicMaterial({map:portrait,side:T.DoubleSide})));column.position.y=roofUnder/2;orbit.add(column);
- const brass=material(new T.MeshStandardMaterial({color:0xb48747,metalness:.7,roughness:.4})),shaftMaterial=material(carouselPoleMaterial(T,roofUnder,unit*300)),beam=geometry(new T.BoxGeometry(570*unit,.025,.025));
+ const brass=material(new T.MeshStandardMaterial({color:0xb48747,metalness:.7,roughness:.4})),shaftMaterial=material(carouselPoleMaterial(T,roofUnder+24*unit+.16,unit*300)),beam=geometry(new T.BoxGeometry(570*unit,.025,.025));
  textures.push(shaftMaterial.map);
  for(let i=0;i<12;i++){const a=i*TAU/12,b=mesh(beam,brass,roof);b.position.set(Math.cos(a)*355*unit,roofUnder-.0125,Math.sin(a)*355*unit);b.rotation.y=-a;}
  const bulbGeometry=geometry(new T.SphereGeometry(4*unit,8,6)),bulbMaterial=material(new T.MeshBasicMaterial({color:0xffd397})),bulbs=new T.InstancedMesh(bulbGeometry,bulbMaterial,48),matrix=new T.Matrix4();roof.add(bulbs);for(let i=0;i<48;i++){const a=i*TAU/48;matrix.makeTranslation(Math.cos(a)*665*unit,roofHeight-95*unit,Math.sin(a)*665*unit);bulbs.setMatrixAt(i,matrix);}
- for(const e of s.entries){
-  const index=e.slotNumber-1,row=Math.floor(index/3),ring=index%3,angle=TAU*row/7+[0,.025,-.025][ring],radius=rings[ring]+(index===1?71.5*unit:0),base=new T.Group();base.position.set(radius*Math.cos(angle),0,radius*Math.sin(angle));base.rotation.y=e.turn.rotation.y;orbit.add(base);
-  const anchor=new T.Group(),copy=e.registration.clone(true);anchor.add(copy);base.add(anchor);const bob=Number(e.slot.dataset.bobAmplitude||12)*unit;
+ for(const {entry:e,index,angle,radius,home} of slots){
+  const base=new T.Group();base.position.copy(home);base.rotation.y=e.turn.rotation.y;orbit.add(base);
+  const anchor=new T.Group();anchor.name='carousel-moving-assembly-'+e.identity;const copy=e.registration.clone(true);anchor.add(copy);base.add(anchor);const bob=Number(e.slot.dataset.bobAmplitude||12)*unit;
   const mount={entry:e,index,angle,radius,base,anchor,bob,height:mountHeight(e),copy};mounts.push(mount);
   installMountHardware(T,{mount,roofUnder,radius:4*unit,geometry,mesh,shaftMaterial,hardwareMaterial:brass});
  }
@@ -149,7 +152,7 @@ function makeWorld(s){
   renderer.render(scene,camera);
  }
  function resize(){renderer.setSize(Math.round(innerWidth*Math.min(devicePixelRatio||1,1.4)),Math.round(innerHeight*Math.min(devicePixelRatio||1,1.4)),false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();paint();}
- resize();return{scene,renderer,camera,orbit,mounts,selected,paint,resize,mechanics:()=>mechanicalSnapshot(T,{orbit,deck,roof,mounts,roofUnder,distortion}),metrics:()=>({unit,deckRadius,roofHeight,profile:riderProfiles[s.selected.id],localEye:selected.anchor.worldToLocal(camera.position.clone()).toArray(),localForward:camera.getWorldDirection(new T.Vector3()).transformDirection(selected.anchor.matrixWorld.clone().invert()).toArray(),fov:camera.fov,distortion,dreamEnabled:s.dreamEnabled,dream:s.dream,spaceScale:deck.scale.x,roofRise:roof.position.y}),dispose(){distort(0);renderer.dispose();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();scene.clear();}};
+ resize();return{scene,renderer,camera,orbit,mounts,selected,paint,resize,mechanics:()=>mechanicalSnapshot(T,{orbit,deck,roof,ceiling,mounts,roofUnder,distortion}),metrics:()=>({unit,deckRadius,roofHeight,profile:riderProfiles[s.selected.id],localEye:selected.anchor.worldToLocal(camera.position.clone()).toArray(),localForward:camera.getWorldDirection(new T.Vector3()).transformDirection(selected.anchor.matrixWorld.clone().invert()).toArray(),fov:camera.fov,distortion,dreamEnabled:s.dreamEnabled,dream:s.dream,spaceScale:deck.scale.x,roofRise:roof.position.y}),dispose(){distort(0);renderer.dispose();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();scene.clear();}};
 }
 function selectMount(choice){const s=current;if(!s||s.phase!=='choosing'||getAgeBand().id!==s.band.id)return;s.selected=choice;s.phase='boarding';s.reviewInputs?.forEach(e=>e.disabled=true);s.panel.hidden=true;s.skip.hidden=false;s.svg.dataset.riding='true';s.svg.carouselRideClock?.setPhase(s.startPhase);try{s.world=makeWorld(s);}catch(error){console.error('Carousel ride unavailable',error);leave('render-error',true);return;}observeChoice('mount',choice);announce('The saddle settles beneath you. The lights begin to turn.');s.skip.focus();previous=0;schedule();}
 function prompt(){const s=current;if(!s||s.prompted)return;s.prompted=true;s.heading.textContent='A light slips between the poles…';s.description.textContent=s.band.id==='kids'?'A tiny bell answers it. Where will you look?':'A little bell sounds from an empty saddle. Where will you look?';s.choices.replaceChildren();for(const answer of responses){const b=button(answer.label,s.choices,()=>answerStory(answer));b.dataset.response=answer.id;}s.panel.hidden=false;s.heading.focus({preventScroll:true});s.world?.paint();}
