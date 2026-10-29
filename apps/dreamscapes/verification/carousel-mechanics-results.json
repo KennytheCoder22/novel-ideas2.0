@@ -1,0 +1,930 @@
+[
+  {
+    "band": "kids",
+    "mounts": {
+      "horse": {
+        "min": 0.45429537296295164,
+        "max": 0.5421950674057007,
+        "clearance": 0.029299898147582992,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.12104206812178364,
+          0
+        ]
+      },
+      "unicorn": {
+        "min": 0.6043103992938996,
+        "max": 0.6922100937366487,
+        "clearance": 0.055458402633667137,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.005160764623537151,
+          -1.3877787807814457e-17
+        ]
+      },
+      "rocket": {
+        "min": 0.3076489305496216,
+        "max": 0.39554862499237065,
+        "clearance": 0.05301948717594149,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.07145492063297322,
+          -1.3552527156068805e-20
+        ]
+      },
+      "griffin": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.06192829530484023,
+        "method": "registered-axis-surface",
+        "surface": [
+          4.336808689942018e-19,
+          -0.0583657228663742,
+          0
+        ]
+      },
+      "flamingo": {
+        "min": 0.6885476064682007,
+        "max": 0.7764473009109497,
+        "clearance": 0.15918381052941577,
+        "method": "registered-axis-surface",
+        "surface": [
+          -2.710505431213761e-20,
+          0.007993880108804446,
+          2.7755575615628914e-17
+        ]
+      },
+      "dragon": {
+        "min": 0.6592477083206177,
+        "max": 0.7471474027633668,
+        "clearance": 0.06820296507939427,
+        "method": "registered-axis-surface",
+        "surface": [
+          -2.6020852139652106e-18,
+          0.0806992256867439,
+          2.7755575615628914e-17
+        ]
+      },
+      "moon-loveseat": {
+        "min": 0.769122326374054,
+        "max": 0.857022020816803,
+        "clearance": 0.05591992486038205,
+        "method": "socket-bracket",
+        "surface": [
+          0.07062926094052883,
+          -0.1295233137128351,
+          0.025907505882958773
+        ]
+      },
+      "snail": {
+        "min": 0.5054232430458069,
+        "max": 0.5933229374885559,
+        "clearance": 0.06132297098524442,
+        "method": "registered-axis-surface",
+        "surface": [
+          -2.168404344971009e-19,
+          0.00010848394173687548,
+          0
+        ]
+      },
+      "brown-horse": {
+        "min": 0.651922733783722,
+        "max": 0.739822428226471,
+        "clearance": 0.055243523597717226,
+        "method": "registered-axis-surface",
+        "surface": [
+          -2.168404344971009e-19,
+          -0.0007479279203330691,
+          2.7755575615628914e-17
+        ]
+      },
+      "elephant": {
+        "min": 0.7141850173473359,
+        "max": 0.8020847117900849,
+        "clearance": 0.05378854532241828,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.10759301441860374,
+          6.938893903907228e-18
+        ]
+      },
+      "grizzly": {
+        "min": 0.6372727847099304,
+        "max": 0.7251724791526795,
+        "clearance": 0.05767836427688594,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.08411075229258613,
+          -6.938893903907228e-18
+        ]
+      },
+      "wolf": {
+        "min": 0.4797858321666718,
+        "max": 0.5676855266094208,
+        "clearance": 0.056310856962204,
+        "method": "registered-axis-surface",
+        "surface": [
+          4.336808689942018e-19,
+          0.022250995383667455,
+          0
+        ]
+      },
+      "rabbit": {
+        "min": 0.4907732939720154,
+        "max": 0.5786729884147644,
+        "clearance": 0.057099786996841484,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.02220295125980297,
+          0
+        ]
+      },
+      "fox": {
+        "min": 0.4907732939720154,
+        "max": 0.5786729884147644,
+        "clearance": 0.055840768814086894,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.011016443878171522,
+          0
+        ]
+      },
+      "tiger": {
+        "min": 0.5933229374885559,
+        "max": 0.681222631931305,
+        "clearance": 0.058242246007919274,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.005569562231728997,
+          0
+        ]
+      },
+      "stag": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.10427850026383301,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.03746980342511884,
+          0
+        ]
+      },
+      "cat": {
+        "min": 0.6299478101730347,
+        "max": 0.7178475046157837,
+        "clearance": 0.08019234934210784,
+        "method": "registered-axis-surface",
+        "surface": [
+          -6.938893903907228e-18,
+          -0.004906536320680915,
+          -6.938893903907228e-18
+        ]
+      },
+      "ostrich": {
+        "min": 0.6262853229045868,
+        "max": 0.7141850173473359,
+        "clearance": 0.061675582933425954,
+        "method": "registered-axis-surface",
+        "surface": [
+          1.0842021724855044e-19,
+          0.004213260085421,
+          0
+        ]
+      },
+      "polar-bear": {
+        "min": 0.7031975555419923,
+        "max": 0.7910972499847413,
+        "clearance": 0.08956368340193516,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.031410018252594624,
+          6.938893903907228e-18
+        ]
+      },
+      "zebra": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.05359432816505438,
+        "method": "registered-axis-surface",
+        "surface": [
+          5.421010862427522e-20,
+          -0.025883816289096,
+          1.3877787807814457e-17
+        ]
+      }
+    },
+    "samples": 73,
+    "commonRotor": true,
+    "allEndpointsConnected": true,
+    "sourceUnchanged": true,
+    "normalRotation": true,
+    "dreamRestored": true,
+    "errors": []
+  },
+  {
+    "band": "pre-teens",
+    "mounts": {
+      "horse": {
+        "min": 0.45429537296295164,
+        "max": 0.5421950674057007,
+        "clearance": 0.029299898147582992,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.12104206812178364,
+          0
+        ]
+      },
+      "unicorn": {
+        "min": 0.6043103992938996,
+        "max": 0.6922100937366487,
+        "clearance": 0.055458402633667137,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.005160764623537151,
+          -1.3877787807814457e-17
+        ]
+      },
+      "rocket": {
+        "min": 0.3076489305496216,
+        "max": 0.39554862499237065,
+        "clearance": 0.05301948717594149,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.07145492063297322,
+          -1.3552527156068805e-20
+        ]
+      },
+      "griffin": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.06192829530484023,
+        "method": "registered-axis-surface",
+        "surface": [
+          4.336808689942018e-19,
+          -0.0583657228663742,
+          0
+        ]
+      },
+      "flamingo": {
+        "min": 0.6885476064682007,
+        "max": 0.7764473009109497,
+        "clearance": 0.15918381052941577,
+        "method": "registered-axis-surface",
+        "surface": [
+          -2.710505431213761e-20,
+          0.007993880108804446,
+          2.7755575615628914e-17
+        ]
+      },
+      "dragon": {
+        "min": 0.6592477083206177,
+        "max": 0.7471474027633668,
+        "clearance": 0.06820296507939427,
+        "method": "registered-axis-surface",
+        "surface": [
+          -2.6020852139652106e-18,
+          0.0806992256867439,
+          2.7755575615628914e-17
+        ]
+      },
+      "moon-loveseat": {
+        "min": 0.769122326374054,
+        "max": 0.857022020816803,
+        "clearance": 0.05591992486038205,
+        "method": "socket-bracket",
+        "surface": [
+          0.07062926094052883,
+          -0.1295233137128351,
+          0.025907505882958773
+        ]
+      },
+      "snail": {
+        "min": 0.5054232430458069,
+        "max": 0.5933229374885559,
+        "clearance": 0.06132297098524442,
+        "method": "registered-axis-surface",
+        "surface": [
+          -2.168404344971009e-19,
+          0.00010848394173687548,
+          0
+        ]
+      },
+      "brown-horse": {
+        "min": 0.651922733783722,
+        "max": 0.739822428226471,
+        "clearance": 0.055243523597717226,
+        "method": "registered-axis-surface",
+        "surface": [
+          -2.168404344971009e-19,
+          -0.0007479279203330691,
+          2.7755575615628914e-17
+        ]
+      },
+      "elephant": {
+        "min": 0.7141850173473359,
+        "max": 0.8020847117900849,
+        "clearance": 0.05378854532241828,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.10759301441860374,
+          6.938893903907228e-18
+        ]
+      },
+      "grizzly": {
+        "min": 0.6372727847099304,
+        "max": 0.7251724791526795,
+        "clearance": 0.05767836427688594,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.08411075229258613,
+          -6.938893903907228e-18
+        ]
+      },
+      "wolf": {
+        "min": 0.4797858321666718,
+        "max": 0.5676855266094208,
+        "clearance": 0.056310856962204,
+        "method": "registered-axis-surface",
+        "surface": [
+          4.336808689942018e-19,
+          0.022250995383667455,
+          0
+        ]
+      },
+      "rabbit": {
+        "min": 0.4907732939720154,
+        "max": 0.5786729884147644,
+        "clearance": 0.057099786996841484,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.02220295125980297,
+          0
+        ]
+      },
+      "fox": {
+        "min": 0.4907732939720154,
+        "max": 0.5786729884147644,
+        "clearance": 0.055840768814086894,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.011016443878171522,
+          0
+        ]
+      },
+      "tiger": {
+        "min": 0.5933229374885559,
+        "max": 0.681222631931305,
+        "clearance": 0.058242246007919274,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.005569562231728997,
+          0
+        ]
+      },
+      "stag": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.10427850026383301,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.03746980342511884,
+          0
+        ]
+      },
+      "cat": {
+        "min": 0.6299478101730347,
+        "max": 0.7178475046157837,
+        "clearance": 0.08019234934210784,
+        "method": "registered-axis-surface",
+        "surface": [
+          -6.938893903907228e-18,
+          -0.004906536320680915,
+          -6.938893903907228e-18
+        ]
+      },
+      "ostrich": {
+        "min": 0.6262853229045868,
+        "max": 0.7141850173473359,
+        "clearance": 0.061675582933425954,
+        "method": "registered-axis-surface",
+        "surface": [
+          1.0842021724855044e-19,
+          0.004213260085421,
+          0
+        ]
+      },
+      "polar-bear": {
+        "min": 0.7031975555419923,
+        "max": 0.7910972499847413,
+        "clearance": 0.08956368340193516,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.031410018252594624,
+          6.938893903907228e-18
+        ]
+      },
+      "zebra": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.05359432816505438,
+        "method": "registered-axis-surface",
+        "surface": [
+          5.421010862427522e-20,
+          -0.025883816289096,
+          1.3877787807814457e-17
+        ]
+      }
+    },
+    "samples": 73,
+    "commonRotor": true,
+    "allEndpointsConnected": true,
+    "sourceUnchanged": true,
+    "normalRotation": true,
+    "dreamRestored": true,
+    "errors": []
+  },
+  {
+    "band": "teens",
+    "mounts": {
+      "horse": {
+        "min": 0.45429537296295175,
+        "max": 0.5421950674057008,
+        "clearance": 0.029299898147582992,
+        "method": "registered-axis-surface",
+        "surface": [
+          1.3877787807814457e-17,
+          0.13820158304823665,
+          0
+        ]
+      },
+      "unicorn": {
+        "min": 0.6043103992938996,
+        "max": 0.6922100937366487,
+        "clearance": 0.055458402633667137,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.18377068213644865,
+          1.3877787807814457e-17
+        ]
+      },
+      "rocket": {
+        "min": 0.3076489305496216,
+        "max": 0.39554862499237065,
+        "clearance": 0.05301948717594149,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.060160296979301586,
+          0
+        ]
+      },
+      "griffin": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.053971302270889254,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.004214952543664469,
+          0
+        ]
+      },
+      "flamingo": {
+        "min": 0.6885476064682007,
+        "max": 0.7764473009109497,
+        "clearance": 0.05295862913131694,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.024184445959709117,
+          0
+        ]
+      },
+      "dragon": {
+        "min": 0.6592477083206177,
+        "max": 0.7471474027633668,
+        "clearance": 0.0619675512313842,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.008487340138239749,
+          0
+        ]
+      },
+      "moon-loveseat": {
+        "min": 0.769122326374054,
+        "max": 0.857022020816803,
+        "clearance": 0.055919924860382,
+        "method": "socket-bracket",
+        "surface": [
+          0.09555330627919442,
+          -0.021878830892329504,
+          0.045320330286877195
+        ]
+      },
+      "snail": {
+        "min": 0.5054232430458069,
+        "max": 0.5933229374885559,
+        "clearance": 0.05824345568180084,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.0026114242046491043,
+          -2.7755575615628914e-17
+        ]
+      },
+      "brown-horse": {
+        "min": 0.651922733783722,
+        "max": 0.739822428226471,
+        "clearance": 0.05524352359771728,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.08188603250450219,
+          0
+        ]
+      },
+      "elephant": {
+        "min": 0.7141850173473359,
+        "max": 0.8020847117900849,
+        "clearance": 0.12669834088308463,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.05185164966269826,
+          0
+        ]
+      },
+      "grizzly": {
+        "min": 0.6372727847099304,
+        "max": 0.7251724791526795,
+        "clearance": 0.05767836427688605,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.07470423098002504,
+          0
+        ]
+      },
+      "wolf": {
+        "min": 0.4797858321666718,
+        "max": 0.5676855266094208,
+        "clearance": 0.056310856962204,
+        "method": "registered-axis-surface",
+        "surface": [
+          -5.421010862427522e-20,
+          0.02212510954491878,
+          1.3877787807814457e-17
+        ]
+      },
+      "rabbit": {
+        "min": 0.4907732939720154,
+        "max": 0.5786729884147644,
+        "clearance": 0.05709978699684154,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.021283475032892407,
+          0
+        ]
+      },
+      "fox": {
+        "min": 0.4907732939720154,
+        "max": 0.5786729884147644,
+        "clearance": 0.055840768814086894,
+        "method": "registered-axis-surface",
+        "surface": [
+          1.0842021724855044e-19,
+          0.03361068346727017,
+          0
+        ]
+      },
+      "tiger": {
+        "min": 0.5933229374885559,
+        "max": 0.681222631931305,
+        "clearance": 0.05824224600791933,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.052672759153214316,
+          0
+        ]
+      },
+      "stag": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.0957248908870304,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.0015961228620487156,
+          2.7755575615628914e-17
+        ]
+      },
+      "cat": {
+        "min": 0.6299478101730347,
+        "max": 0.7178475046157837,
+        "clearance": 0.05639352632585937,
+        "method": "registered-axis-surface",
+        "surface": [
+          6.938893903907228e-18,
+          -0.005047379371149907,
+          0
+        ]
+      },
+      "ostrich": {
+        "min": 0.6262853229045868,
+        "max": 0.7141850173473359,
+        "clearance": 0.061675582933425954,
+        "method": "registered-axis-surface",
+        "surface": [
+          1.0842021724855044e-19,
+          -0.011171227345906573,
+          -2.7755575615628914e-17
+        ]
+      },
+      "polar-bear": {
+        "min": 0.7031975555419923,
+        "max": 0.7910972499847413,
+        "clearance": 0.055646752834320135,
+        "method": "registered-axis-surface",
+        "surface": [
+          -3.469446951953614e-18,
+          0.03125029109010716,
+          3.469446951953614e-18
+        ]
+      },
+      "zebra": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.07732192465197679,
+        "method": "registered-axis-surface",
+        "surface": [
+          -1.0842021724855044e-19,
+          0.09195154671234734,
+          0
+        ]
+      }
+    },
+    "samples": 73,
+    "commonRotor": true,
+    "allEndpointsConnected": true,
+    "sourceUnchanged": true,
+    "normalRotation": true,
+    "dreamRestored": true,
+    "errors": []
+  },
+  {
+    "band": "adults",
+    "mounts": {
+      "horse": {
+        "min": 0.45429537296295164,
+        "max": 0.5421950674057007,
+        "clearance": 0.029299898147582992,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.18052278225570512,
+          0
+        ]
+      },
+      "unicorn": {
+        "min": 0.6043103992938996,
+        "max": 0.6922100937366487,
+        "clearance": 0.05545840263366708,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.22431701987668662,
+          0
+        ]
+      },
+      "rocket": {
+        "min": 0.3076489305496216,
+        "max": 0.39554862499237065,
+        "clearance": 0.05301948717594149,
+        "method": "socket-bracket",
+        "surface": [
+          0.027808041083812716,
+          0.014803885135650618,
+          0.01472638912498951
+        ]
+      },
+      "griffin": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.053971302270889254,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.010492719430941738,
+          0
+        ]
+      },
+      "flamingo": {
+        "min": 0.6885476064682007,
+        "max": 0.7764473009109497,
+        "clearance": 0.0529586291313171,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.0015448240457936746,
+          0
+        ]
+      },
+      "dragon": {
+        "min": 0.6592477083206177,
+        "max": 0.7471474027633668,
+        "clearance": 0.06196755123138431,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.0027569888962229033,
+          -2.7755575615628914e-17
+        ]
+      },
+      "moon-loveseat": {
+        "min": 0.769122326374054,
+        "max": 0.857022020816803,
+        "clearance": 0.05591992486038205,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.004505535746322842,
+          0
+        ]
+      },
+      "snail": {
+        "min": 0.5054232430458069,
+        "max": 0.5933229374885559,
+        "clearance": 0.05824345568180084,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.000006804076054772734,
+          2.7755575615628914e-17
+        ]
+      },
+      "brown-horse": {
+        "min": 0.651922733783722,
+        "max": 0.739822428226471,
+        "clearance": 0.05524352359771734,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.09597440007596869,
+          1.3877787807814457e-17
+        ]
+      },
+      "elephant": {
+        "min": 0.7141850173473359,
+        "max": 0.8020847117900849,
+        "clearance": 0.053788545322418224,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.020950673751047144,
+          0
+        ]
+      },
+      "grizzly": {
+        "min": 0.6372727847099304,
+        "max": 0.7251724791526795,
+        "clearance": 0.05767836427688594,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.014078835700528813,
+          0
+        ]
+      },
+      "wolf": {
+        "min": 0.4797858321666718,
+        "max": 0.5676855266094208,
+        "clearance": 0.056310856962204,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.0014098970569111635,
+          1.3877787807814457e-17
+        ]
+      },
+      "rabbit": {
+        "min": 0.4907732939720154,
+        "max": 0.5786729884147644,
+        "clearance": 0.057099786996841484,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.01448652350015342,
+          0
+        ]
+      },
+      "fox": {
+        "min": 0.4907732939720154,
+        "max": 0.5786729884147644,
+        "clearance": 0.05584076881408695,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.005750230143568513,
+          0
+        ]
+      },
+      "tiger": {
+        "min": 0.5933229374885559,
+        "max": 0.681222631931305,
+        "clearance": 0.05824224600791933,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.03808364232172615,
+          -1.3877787807814457e-17
+        ]
+      },
+      "stag": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.054967426967620914,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.021539028786381788,
+          0
+        ]
+      },
+      "cat": {
+        "min": 0.6299478101730347,
+        "max": 0.7178475046157837,
+        "clearance": 0.05428764176368711,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.01525378321201279,
+          0
+        ]
+      },
+      "ostrich": {
+        "min": 0.6262853229045868,
+        "max": 0.7141850173473359,
+        "clearance": 0.061675582933425954,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          -0.00801768125743052,
+          2.7755575615628914e-17
+        ]
+      },
+      "polar-bear": {
+        "min": 0.7031975555419923,
+        "max": 0.7910972499847413,
+        "clearance": 0.05564675283432008,
+        "method": "registered-axis-surface",
+        "surface": [
+          -1.734723475976807e-18,
+          0.21030882328673056,
+          -6.938893903907228e-18
+        ]
+      },
+      "zebra": {
+        "min": 0.622622835636139,
+        "max": 0.710522530078888,
+        "clearance": 0.05359432816505438,
+        "method": "registered-axis-surface",
+        "surface": [
+          0,
+          0.0074713600342604936,
+          0
+        ]
+      }
+    },
+    "samples": 73,
+    "commonRotor": true,
+    "allEndpointsConnected": true,
+    "sourceUnchanged": true,
+    "normalRotation": true,
+    "dreamRestored": true,
+    "errors": []
+  }
+]
