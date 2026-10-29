@@ -23,3 +23,5 @@
 @media(prefers-reduced-motion:reduce) { .carousel-ride * { scroll-behavior:auto!important; } }
 
 .carousel-ride-review{position:absolute;top:70px;left:14px;max-width:260px;padding:8px;color:#ffdda1;background:#181718ed;border:1px solid #c4974d;border-radius:5px;font:14px Georgia;z-index:5}.carousel-ride-review label,.carousel-ride-review small{display:block;margin-top:8px}.carousel-ride-review select{max-width:100%}
+
+.carousel-mechanical-review{position:absolute;left:14px;top:110px;max-width:260px;padding:8px;background:#17191aef;border:1px solid #bc965b;border-radius:5px;font:14px Georgia;z-index:6}.carousel-mechanical-review label{display:block;margin:8px 0}.carousel-mechanical-review button{padding:8px;font-size:14px;margin:4px}.carousel-mechanical-review input{display:block;width:220px}
