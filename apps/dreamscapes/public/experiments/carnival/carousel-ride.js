@@ -46,9 +46,10 @@ async function open(svg,trigger){
  const canvas=element('canvas','carousel-ride-canvas','',shell);canvas.setAttribute('aria-hidden','true');element('div','carousel-ride-shade','',shell);
  const exit=button('Leave the carousel',shell,()=>leave('early-exit'));exit.className='carousel-ride-exit';
  const skip=button('Skip the ride',shell,()=>leave('skipped'));skip.className='carousel-ride-skip';skip.hidden=true;
- const panel=element('div','carousel-ride-panel','',shell),heading=element('h1','','The Enchanted Carousel',panel);heading.tabIndex=-1;
+ const messages=element('div','carousel-ride-messages','',shell);
+ const panel=element('div','carousel-ride-panel','',messages),heading=element('h1','','The Enchanted Carousel',panel);heading.tabIndex=-1;
  const description=element('p','','The carousel turns toward you. Its saddles are waiting…',panel);description.setAttribute('role','status');
- const choices=element('div','carousel-ride-choices','',panel),caption=element('p','carousel-ride-caption','',shell);caption.setAttribute('role','status');caption.setAttribute('aria-live','polite');
+ const choices=element('div','carousel-ride-choices','',panel),caption=element('p','carousel-ride-caption','',messages);caption.setAttribute('role','status');caption.setAttribute('aria-live','polite');
  document.body.append(shell);
  const s=current={id:crypto.randomUUID(),band,svg,trigger,source,shell,canvas,exit,skip,panel,heading,description,choices,caption,phase:'loading',elapsed:0,boardTime:0,exitTime:0,selected:null,answer:null,prompted:false,entries:[],world:null,startPhase:Number(svg.dataset.phase||0),reduced:reduced.matches||still,reason:null,dreamEnabled:new URLSearchParams(location.search).get('perspective')!=='normal',dream:{...dreamDefaults}};
  const reviewMode=local&&new URLSearchParams(location.search).get('mechanics-review');
