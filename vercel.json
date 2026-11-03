@@ -111,7 +111,8 @@
   "git": {
     "deploymentEnabled": {
       "codex/3d-normal-production": false,
-      "codex/dreamscapes-independent": false
+      "codex/dreamscapes-independent": false,
+      "codex/dreamscapes-autonomous-playtesting": false
     }
   }
 }

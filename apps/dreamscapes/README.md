@@ -11,15 +11,19 @@ Independent application/workstream based on NovelIdeas main at 5782023c. It does
 - `checkpoint/` contains historical handoffs, source asset recovery, transforms, occupancy and verification evidence. Historical launch paths there are superseded by the commands below. Canonical runtime is `public/`, with no dependency on `.tmp` or a prior worktree.
 
 ## Run locally
-Node.js 20+ and Python 3.9+; no npm packages, secrets or paid services required.
+Node.js 20+; manual preview and builds need no npm packages, secrets or paid services. Browser tests use the separate Playwright development dependency described below.
 From repository root:
 ```
 node apps/dreamscapes/build.mjs
-python -m http.server 4200 --bind 127.0.0.1 --directory apps/dreamscapes/dist
+node apps/dreamscapes/tools/playtest-server.mjs
 ```
-Open http://127.0.0.1:4200/ for the Dreamscapes opening scene. Creepy Carnival enters the Midway; the direct /experiments/carnival/index.html link and ?scene=rides-games Carousel link remain available.
+Open http://127.0.0.1:4217/ for the Dreamscapes opening scene. This loopback-only preview serves canonical `public/` files and applies the hosting route aliases, so the opening portal works. Set `PORT` to choose another port. Creepy Carnival enters the Midway; direct historical links redirect to `/carnival/` and preserve scene query parameters.
 The opening scene uses the supplied Enchanted Dreamscapes Portal Selection image with only Creepy Carnival linked. Source details, artwork provenance and verification are documented in docs/OPENING-SCENE.md.
 The build verifies original checkpoint hashes before copying assets. Update the manifest deliberately only when an approved runtime change is intended.
+
+## Autonomous playtesting
+
+See [docs/AUTONOMOUS-PLAYTESTING.md](docs/AUTONOMOUS-PLAYTESTING.md) for installation, full and targeted runs, before/after comparisons, and the required visual-review process. The maintained entry point is `npm run test:playtest` from this application directory. It starts and stops its own route-aware server and uses isolated browser profiles; it never deploys or calls the recommendation engine.
 
 ## Isolated deployment
 Use only the dedicated Vercel project `dreamscapes-novelideas`, team `kennythecoder22s-projects`, root `apps/dreamscapes`. Build: `node build.mjs`; output: `dist`; framework: Other. No production NovelIdeas environment variables or database are needed. The separate project has no Git connection initially: deploy explicitly from this branch to avoid accidentally serving main through Dreamscapes.

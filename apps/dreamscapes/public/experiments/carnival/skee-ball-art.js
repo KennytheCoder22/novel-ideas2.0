@@ -1,6 +1,7 @@
-/* Approved artwork with a dimensional launch/return insert and nine-ball lifecycle. */
+/* Approved artwork with a dimensional launch/return insert and three-ball lifecycle. */
 (() => {
  'use strict';
+ const BALLS_PER_GAME=3;
  const W=1672,H=941,NS='http://www.w3.org/2000/svg';
  let machineGeometry=null;
  const PIVOTS={angle:{x:557,y:774},launch:{x:904,y:827}};
@@ -80,7 +81,7 @@
   const aim=control('Angle','skee-brass-angle',-35,35),launcher=control('Pull and release','skee-brass-launch',0,100);
   const replay=document.createElement('button');replay.className='carnival-play-button skee-art-replay';replay.textContent='Play again';replay.hidden=true;ui.append(replay);
   let roundId=1,roundPhase='ready',ballAvailable=true,ballPresent=true,ballsPrepared=1,shotsLaunched=0,clownStarts=0;
-  let balls=9,total=0,pending=null,frame=0,disposed=false,angle=0,pull=0,drag=null,chargeFrame=0,keyStart=null,spring=null;
+  let balls=BALLS_PER_GAME,total=0,pending=null,frame=0,disposed=false,angle=0,pull=0,drag=null,chargeFrame=0,keyStart=null,spring=null;
   let renderBrass=()=>{},disposeBrass=()=>{},clown=null;
   import('./skee-ball-clown.js').then(({mountClown})=>{if(disposed)return;return mountClown({game,plane,ui,onMachineReady:g=>{machineGeometry=g;game.dataset.machineReady='true';},onComplete:completeRound,isActive:()=>!view.inert&&!document.hidden,reduced,onReady:()=>{if(!disposed){shelfPatch.setAttribute('visibility','visible');game.dataset.clownReady='true';}}});}).then(controller=>{if(!controller)return;if(disposed){controller.dispose();return;}clown=controller;if(roundPhase==='clown')startClown();}).catch(error=>{if(!disposed){game.dataset.clownReady='failed';if(roundPhase==='clown')completeRound();console.error('Skee Ball shelf clown unavailable',error);}});
   const canPlay=()=>!disposed&&roundPhase==='ready'&&ballAvailable&&!pending&&balls>0&&!view.inert&&!document.hidden;
@@ -149,7 +150,7 @@
   });
   launcher.addEventListener('keyup',event=>{if(![' ','Enter'].includes(event.key))return;event.preventDefault();if(keyStart!==null){setPull((performance.now()-keyStart)/1200);shoot();}});
   launcher.addEventListener('blur',()=>{if(keyStart!==null||drag?.element===launcher)cancelPull(true);});
-  replay.addEventListener('click',()=>{if(roundPhase!=='complete')return;roundId++;clown?.reset();balls=9;total=0;angle=0;roundPhase='ready';ballAvailable=false;ballsPrepared=0;shotsLaunched=0;clownStarts=0;cancelPull();prepareBall();update();status.textContent='A fresh tray of nine balls.';launcher.focus();});
+  replay.addEventListener('click',()=>{if(roundPhase!=='complete')return;roundId++;clown?.reset();balls=BALLS_PER_GAME;total=0;angle=0;roundPhase='ready';ballAvailable=false;ballsPrepared=0;shotsLaunched=0;clownStarts=0;cancelPull();prepareBall();update();status.textContent='A fresh tray of three balls.';launcher.focus();});
   const observer=new MutationObserver(()=>{if(view.inert){cancelPull();angle=0;finish();renderBrass(angle,0);}clown?.sync();update();});observer.observe(view,{attributes:true,attributeFilter:['inert']});
   const onHide=()=>{if(document.hidden){cancelPull();finish();}clown?.sync();update();};document.addEventListener('visibilitychange',onHide);
   const onReduced=()=>{clown?.sync();if(reduced.matches){spring=null;finish();renderBrass(angle,pull);}};reduced.addEventListener('change',onReduced);

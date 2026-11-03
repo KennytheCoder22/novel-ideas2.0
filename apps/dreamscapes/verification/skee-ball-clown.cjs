@@ -1,5 +1,5 @@
 const fs=require('fs'),assert=require('assert');const{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
- const out=process.env.DREAMSCAPES_EVIDENCE_DIR||__dirname+'/clown-evidence';fs.mkdirSync(out,{recursive:true});(async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
+ const out=process.env.DREAMSCAPES_EVIDENCE_DIR||__dirname+'/clown-evidence';fs.mkdirSync(out,{recursive:true});(async()=>{const browser=await chromium.launch({executablePath:process.env.BROWSER_EXE||undefined,headless:true});
  const p=await browser.newPage({viewport:{width:1536,height:1024}}),errors=[];p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('404'))errors.push(m.text())});
  await p.goto((process.env.DREAMSCAPES_URL||'http://127.0.0.1:4204')+'/experiments/carnival/index.html?scene=skee-ball&skee-review=1');
  await p.waitForFunction(()=>document.querySelector('.skee-art-game')?.dataset.clownReady==='true',null,{timeout:90000});
@@ -7,7 +7,7 @@ const fs=require('fs'),assert=require('assert');const{chromium}=require(process.
  await p.screenshot({path:out+'/shelf-installed.png'});
  const start=await p.evaluate(()=>SkeeBallArtReview.clown());
  await p.waitForTimeout(700);
- assert.deepEqual(await p.evaluate(()=>SkeeBallArtReview.clown()),start,'idle is motionless');for(let i=0;i<8;i++){await p.evaluate(()=>{SkeeBallArtReview.setPull(.6);SkeeBallArtReview.shoot();});
+ assert.deepEqual(await p.evaluate(()=>SkeeBallArtReview.clown()),start,'idle is motionless');for(let i=0;i<2;i++){await p.evaluate(()=>{SkeeBallArtReview.setPull(.6);SkeeBallArtReview.shoot();});
  await p.waitForFunction(()=>!SkeeBallArtReview.state().pending);
  assert.equal(await p.evaluate(()=>SkeeBallArtReview.clown().phase),'waiting');}assert.equal(await p.evaluate(()=>SkeeBallArtReview.state().balls),1);
  await p.evaluate(()=>{SkeeBallArtReview.setPull(.6);SkeeBallArtReview.shoot();});
@@ -17,10 +17,10 @@ const fs=require('fs'),assert=require('assert');const{chromium}=require(process.
  await p.waitForTimeout(700);
  assert((await p.evaluate(()=>SkeeBallArtReview.clown().time))>0);const times=await p.evaluate(()=>SkeeBallArtReview.clown().timings);for(const[n,t]of[['hop',.9],['approach',times.evaporate-.1],['vapor',times.pomGone+.2],['gone',times.end]]){await p.evaluate(t=>SkeeBallArtReview.seekClown(t),t);
  await p.screenshot({path:out+'/installed-'+n+'.png'});}await p.getByRole('button',{name:'Play again',exact:true}).click();
- assert.equal(await p.evaluate(()=>SkeeBallArtReview.state().balls),9);
+ assert.equal(await p.evaluate(()=>SkeeBallArtReview.state().balls),3);
  assert.equal(await p.evaluate(()=>SkeeBallArtReview.clown().phase),'waiting');
  await p.emulateMedia({reducedMotion:'reduce'});
- await p.evaluate(()=>{for(let i=0;i<8;i++){SkeeBallArtReview.setPull(.6);SkeeBallArtReview.shoot();}});
+ await p.evaluate(()=>{for(let i=0;i<2;i++){SkeeBallArtReview.setPull(.6);SkeeBallArtReview.shoot();}});
  assert.equal(await p.evaluate(()=>SkeeBallArtReview.clown().phase),'waiting');
  await p.emulateMedia({reducedMotion:'no-preference'});
  await p.evaluate(()=>{SkeeBallArtReview.setPull(.6);SkeeBallArtReview.shoot();});

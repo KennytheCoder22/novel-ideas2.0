@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "dev": "node tools/playtest-server.mjs",
+    "test:playtest": "node tools/playtest.cjs",
+    "test:server": "node --test tools/playtest-server.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }
