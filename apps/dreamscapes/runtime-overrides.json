@@ -1,7 +1,7 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 7772,
-    "sha256": "0193e9de9987b39a96c91f4fae654f5291d6723b2c7a54bb33daba1d073c1a67"
+    "bytes": 7814,
+    "sha256": "81bf9aa5637e4d04e4bae12bc5a35dfd3e7aacf70b04f868cfe5a07a0414b630"
   },
   "experiments/carnival/navigation.js": {
     "bytes": 10201,
@@ -288,12 +288,12 @@
     "sha256": "1b815bd9325e4365c004bb2aabb58bc582a8fe7a44eca9805530c3b8e1f6f37d"
   },
   "experiments/carnival/skee-ball-art.js": {
-    "bytes": 23247,
-    "sha256": "f00b7c8c0c1a311e3a3c0f88cfe957c37a54e75775def89ef02812996f3cbc7c"
+    "bytes": 23300,
+    "sha256": "7c5f8a489f5ceb76416854acee272ce312425573b961c3fd030f114488aaec4b"
   },
   "experiments/carnival/skee-ball-art.css": {
-    "bytes": 3775,
-    "sha256": "e34cdf5f5d89b3219056b76b24fe0f8f660617e52796128f444fa1d6938a6da7"
+    "bytes": 4034,
+    "sha256": "1355b592185ba7b7921bbca7dd684ab5cd2216d3e1e167481c0e29022536c603"
   },
   "experiments/carnival/skee-ball/approved-alley.png": {
     "bytes": 2298003,
@@ -308,8 +308,8 @@
     "sha256": "c0a49bf512f9a6f689b7bdf8629741f4794d4bbb33fe9ad9e488c5910a3a8f47"
   },
   "experiments/carnival/skee-ball-clown.js": {
-    "bytes": 27869,
-    "sha256": "6da90bb6f0d78cbfadc7a02c60fa1633e62310221d22f16db088bda99e5c442a"
+    "bytes": 28225,
+    "sha256": "75c053f33f8c09535e950cbdf5aba285eb50802570528e7b2c83ea3128141374"
   },
   "experiments/carnival/skee-ball/clown-running.glb": {
     "bytes": 13052352,
@@ -324,8 +324,8 @@
     "sha256": "c226a6429365dc5269c0abbeecbf1fa71fd776510c3104f49fcc62da13b242ba"
   },
   "experiments/carnival/mara-midway.js": {
-    "bytes": 24500,
-    "sha256": "e00315b680cea6d1379ae00302fe193adb5483f5acd944adac76c2339a2df9f0"
+    "bytes": 26017,
+    "sha256": "581894512c011dcc5653aec5310df1cedd7b369280c707969f687541ce6ae213"
   },
   "experiments/carnival/mara-rig.js": {
     "bytes": 16368,
@@ -360,7 +360,7 @@
     "sha256": "82f9c2f3c342b0440b26aad582e91527fdcdb85728f293dee59774ac25882d46"
   },
   "experiments/carnival/mara-sand.js": {
-    "bytes": 8229,
-    "sha256": "3e301d77a971c3d6f6b7373825e5b164546440112f138ddb3d3c42f32b2c6f82"
+    "bytes": 12368,
+    "sha256": "63bc1f0ce2035e243f0c6845a28070ec0d1aa97f285c1198d1107a7d7b3d1bb0"
   }
 }

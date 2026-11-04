@@ -33,7 +33,9 @@
 .skee-ball-motion { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:3; }
 .skee-brass-angle,.skee-brass-launch { z-index:4; }
 
-/* Approved photo close-up; preserve its pixels and crop responsively around the face. */
-.skee-clown-scare { position:fixed; inset:0; width:100vw; height:100dvh; z-index:10000; pointer-events:none; object-fit:cover; object-position:center; background:#080808; }
-.skee-clown-scare[hidden] { display:none; }
+/* Original close-up, graded into the midway's low light without changing artwork. */
+.skee-clown-ending { position:fixed; inset:0; z-index:10000; overflow:hidden; pointer-events:none; background:#08090b; }
+.skee-clown-ending::after { content:""; position:absolute; inset:0; background:radial-gradient(ellipse at 50% 48%,transparent 24%,rgba(6,10,17,.16) 60%,rgba(3,6,12,.65) 100%); }
+.skee-clown-scare { position:absolute; max-width:none; filter:brightness(.64) saturate(.58) contrast(1.12); }
+.skee-clown-ending[hidden],.skee-clown-scare[hidden] { display:none; }
 @media(max-height:550px) { .skee-clown-review { top:8px; bottom:auto; right:8px; max-width:250px; max-height:calc(100svh - 80px); overflow:auto; } }

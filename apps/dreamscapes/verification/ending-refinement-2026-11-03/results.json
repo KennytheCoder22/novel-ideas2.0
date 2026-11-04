@@ -1,0 +1,208 @@
+{
+  "baseline": "7c9a27a9bb45fe6fc5c908cc3df7a8a06376c307",
+  "recordingMethod": "Live playback and checkpoint screenshots.",
+  "results": [
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "mara": {
+        "builds": 1,
+        "maxHandoffMilliseconds": 34,
+        "maxFrameMilliseconds": 483.09999999999854,
+        "checkpoints": [
+          "before-pickup",
+          "lift",
+          "center",
+          "crumble-start",
+          "midpoint",
+          "disappearance"
+        ],
+        "framesMeasured": 358,
+        "framesOver100Milliseconds": 1
+      },
+      "clown": {
+        "face": {
+          "x": 719.998042371253,
+          "y": 449.9965050922368,
+          "filter": "brightness(0.64) saturate(0.58) contrast(1.12)",
+          "source": "clown-closeup.png"
+        },
+        "timings": {
+          "launch": 0.55,
+          "land": 1.13,
+          "run": 1.7199999999999998,
+          "evaporate": 3.769675147849328,
+          "bodyGone": 5.769675147849328,
+          "pomFadeStart": 6.089675147849328,
+          "pomGone": 6.4896751478493275,
+          "vaporFadeEnd": 9.139675147849328,
+          "vaporGone": 9.088639386668063,
+          "scareStart": 7.089675147849328,
+          "end": 8.089675147849327
+        },
+        "exactlyThree": true,
+        "replay": true,
+        "reducedMotion": true
+      },
+      "errors": [],
+      "passed": true,
+      "layering": true
+    },
+    {
+      "name": "phone",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "mara": {
+        "builds": 2,
+        "maxHandoffMilliseconds": 16.900000000001455,
+        "maxFrameMilliseconds": 283.60000000000036,
+        "checkpoints": [
+          "before-pickup",
+          "lift",
+          "center",
+          "crumble-start",
+          "midpoint",
+          "disappearance"
+        ],
+        "framesMeasured": 429,
+        "framesOver100Milliseconds": 2
+      },
+      "clown": {
+        "face": {
+          "x": 195.00683368562648,
+          "y": 422.00606504611847,
+          "filter": "brightness(0.64) saturate(0.58) contrast(1.12)",
+          "source": "clown-closeup.png"
+        },
+        "timings": {
+          "launch": 0.55,
+          "land": 1.13,
+          "run": 1.7199999999999998,
+          "evaporate": 3.769675147849328,
+          "bodyGone": 5.769675147849328,
+          "pomFadeStart": 6.089675147849328,
+          "pomGone": 6.4896751478493275,
+          "vaporFadeEnd": 9.139675147849328,
+          "vaporGone": 9.088639386668063,
+          "scareStart": 7.089675147849328,
+          "end": 8.089675147849327
+        },
+        "exactlyThree": true,
+        "replay": true,
+        "reducedMotion": true
+      },
+      "errors": [],
+      "passed": true,
+      "layering": true
+    },
+    {
+      "name": "landscape",
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "mara": {
+        "builds": 1,
+        "maxHandoffMilliseconds": 16.799999999999272,
+        "maxFrameMilliseconds": 383.6999999999989,
+        "checkpoints": [
+          "before-pickup",
+          "lift",
+          "center",
+          "crumble-start",
+          "midpoint",
+          "disappearance"
+        ],
+        "framesMeasured": 423,
+        "framesOver100Milliseconds": 1
+      },
+      "clown": {
+        "face": {
+          "x": 422.00443168716373,
+          "y": 195.00148923904692,
+          "filter": "brightness(0.64) saturate(0.58) contrast(1.12)",
+          "source": "clown-closeup.png"
+        },
+        "timings": {
+          "launch": 0.55,
+          "land": 1.13,
+          "run": 1.7199999999999998,
+          "evaporate": 3.769675147849328,
+          "bodyGone": 5.769675147849328,
+          "pomFadeStart": 6.089675147849328,
+          "pomGone": 6.4896751478493275,
+          "vaporFadeEnd": 9.139675147849328,
+          "vaporGone": 9.088639386668063,
+          "scareStart": 7.089675147849328,
+          "end": 8.089675147849327
+        },
+        "exactlyThree": true,
+        "replay": true,
+        "reducedMotion": true
+      },
+      "errors": [],
+      "passed": true,
+      "layering": true
+    }
+  ],
+  "sourceHashes": {
+    "index.html": "81bf9aa5637e4d04e4bae12bc5a35dfd3e7aacf70b04f868cfe5a07a0414b630",
+    "mara-midway.js": "581894512c011dcc5653aec5310df1cedd7b369280c707969f687541ce6ae213",
+    "mara-sand.js": "63bc1f0ce2035e243f0c6845a28070ec0d1aa97f285c1198d1107a7d7b3d1bb0",
+    "skee-ball-art.css": "1355b592185ba7b7921bbca7dd684ab5cd2216d3e1e167481c0e29022536c603",
+    "skee-ball-clown.js": "75c053f33f8c09535e950cbdf5aba285eb50802570528e7b2c83ea3128141374"
+  },
+  "recordings": {
+    "maraReview": {
+      "method": "Frame-stepped engine render",
+      "fps": 30,
+      "seconds": 8.5
+    },
+    "clownEndingReview": {
+      "method": "Frame-stepped engine render",
+      "fps": 30,
+      "seconds": 8.7
+    },
+    "maraLive": {
+      "method": "Real-time browser recording",
+      "seconds": 11.16
+    },
+    "threeBallSkeeLive": {
+      "method": "Real-time browser recording",
+      "seconds": 16.84
+    }
+  },
+  "baselineProfile": {
+    "geometryBuildMilliseconds": 2692.9,
+    "handoffFrameGapMilliseconds": 3782.8
+  },
+  "ordinaryGameplay": [
+    {
+      "name": "mara-desktop",
+      "passed": true
+    },
+    {
+      "name": "skee-desktop",
+      "passed": true
+    },
+    {
+      "name": "mara-mobile",
+      "passed": true
+    },
+    {
+      "name": "skee-mobile",
+      "passed": true
+    }
+  ],
+  "clownLifecycleDesktop": {
+    "passed": true,
+    "navigationCleanup": true,
+    "cueTiming": true,
+    "replay": true
+  }
+}

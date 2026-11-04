@@ -17,8 +17,9 @@ export async function mountClown({game,plane,ui,isActive,reduced,onReady,onMachi
  let time=0,playing=false,requested=false,roundTriggered=false,previewOnly=false,notified=false,disposed=false,frame=0,last=0;
  let model,root,mixer,mesh,clip,scale,idleOrigin,runOrigin,idleQuats=[],runQuats=[],clipSamplers=[],feet={Left:[],Right:[]},contacts=[],bodyHeight=.7,runDuration=5;
  let timings={launch:.55,land:1.6,run:2.19,evaporate:7.22,bodyGone:9.22,pomFadeStart:9.54,pomGone:9.94,vaporFadeEnd:12.6,vaporGone:12.55,scareStart:10.54,end:11.54};
- const faceImage=document.createElement('img');faceImage.className='skee-clown-scare';faceImage.hidden=true;faceImage.alt='';faceImage.setAttribute('aria-hidden','true');faceImage.src=new URL('./skee-ball/clown-closeup.png',import.meta.url).href;document.body.append(faceImage);
- function hideFace(){faceImage.hidden=true;game.dataset.clownScare='false';}
+ const faceFrame=document.createElement('div');faceFrame.className='skee-clown-ending';faceFrame.hidden=true;faceFrame.setAttribute('aria-hidden','true');
+ const faceImage=document.createElement('img');faceImage.className='skee-clown-scare';faceImage.hidden=true;faceImage.alt='';faceImage.src=new URL('./skee-ball/clown-closeup.png',import.meta.url).href;faceFrame.append(faceImage);document.body.append(faceFrame);
+ function hideFace(){faceFrame.hidden=true;faceImage.hidden=true;game.dataset.clownScare='false';}
  const dissolveClock={value:0},cut={value:-20},pomOpacity={value:1},pomLift={value:0},pomFloor={value:.65};
  const fadeNoise=`float vnHash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);} float vnNoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(vnHash(i),vnHash(i+vec3(1,0,0)),f.x),mix(vnHash(i+vec3(0,1,0)),vnHash(i+vec3(1,1,0)),f.x),f.y),mix(mix(vnHash(i+vec3(0,0,1)),vnHash(i+vec3(1,0,1)),f.x),mix(vnHash(i+vec3(0,1,1)),vnHash(i+vec3(1,1,1)),f.x),f.y),f.z);}`;
 const MAX=680,positions=new Float32Array(MAX*3),sizes=new Float32Array(MAX*2),turns=new Float32Array(MAX),alphas=new Float32Array(MAX),seeds=new Float32Array(MAX);
@@ -119,15 +120,16 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   game.dataset.clownPhase=!requested?'waiting':time>=timings.end?'gone':time>=timings.scareStart?'face':time<timings.land?p.phase:time<timings.run?'landing':time<timings.evaporate?'approach':time<timings.bodyGone?'evaporating':time<timings.pomFadeStart?'pompom':time<timings.pomGone?'pompom-fade':'vapor';
   if(reviewControls){reviewControls.slider.value=time;reviewControls.label.textContent=game.dataset.clownPhase+' · '+time.toFixed(2)+' s';}
   const scare=requested&&isActive()&&!reduced.matches&&time>=timings.scareStart&&time<timings.end;
-  if(scare){faceImage.hidden=false;game.dataset.clownScare='true';}else hideFace();
+  if(scare){faceFrame.hidden=false;faceImage.hidden=false;game.dataset.clownScare='true';}else hideFace();
   renderer.render(scene,camera);
   if(roundTriggered&&!previewOnly&&!notified&&time>=timings.end){notified=true;onComplete?.();}
  }
  function centerFace(){
   if(!faceImage.naturalWidth)return;
-  const scale=Math.max(innerWidth/faceImage.naturalWidth,innerHeight/faceImage.naturalHeight);
-  // Center the face itself, excluding the tall hat and surrounding black margin.
-  faceImage.style.objectPosition=`${innerWidth/2-690*scale}px ${innerHeight/2-770*scale}px`;
+  const scale=1.08*Math.max(innerWidth/faceImage.naturalWidth,innerHeight/faceImage.naturalHeight);
+  // Frame the face rather than the hat/image bounds. Explicit image coordinates
+  // keep the same facial anchor across portrait and landscape cover crops.
+  Object.assign(faceImage.style,{width:faceImage.naturalWidth*scale+'px',height:faceImage.naturalHeight*scale+'px',left:innerWidth/2-680*scale+'px',top:innerHeight/2-775*scale+'px'});
  }
  function resize(){if(disposed)return;centerFace();const r=plane.getBoundingClientRect();renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));renderer.setSize(Math.max(1,Math.round(r.width)),Math.max(1,Math.round(r.height)),false);draw();}
  function tick(now){frame=0;if(disposed||!isActive()){last=0;return;}if(playing){const next=Math.min(timings.end,time+(last?clamp((now-last)/1000,0,.05):0)),boundary=[timings.pomFadeStart,timings.scareStart,timings.end].find(t=>time<t&&next>=t);time=boundary??next;last=now;draw();if(boundary)last=performance.now();if(time>=timings.end){playing=false;last=0;}}if(playing)frame=requestAnimationFrame(tick);}
@@ -193,6 +195,6 @@ const wisps=Array.from({length:MAX},()=>({vertex:0,seed:rand(),delay:rand(),size
   state:()=>({phase:game.dataset.clownPhase,time,requested,playing,previewOnly,bodyVisible:model.visible,faceVisible:!faceImage.hidden,vaporVisible:vapor.visible,position:model.position.toArray(),scale:model.scale.x,contacts:contacts.map(f=>({...f})),pomOpacity:pomOpacity.value,pomVertices,stride,runDuration,jumpPlan,timings:{...timings}}),
   inspect:()=>({calibration:space.calibration,collision:space.collision,proxies:space.proxies.map(p=>({name:p.name,colorWrite:p.material.colorWrite,depthWrite:p.material.depthWrite,vertices:p.geometry.attributes.position.count})),trajectory:Array.from({length:121},(_,i)=>diagnostics(timings.evaporate*i/120))}),
   seek:t=>{requested=true;playing=false;time=clamp(t,0,timings.end);draw();},
-  dispose(){disposed=true;faceImage.remove();cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('resize',resize);reviewControls?.panel.remove();mixer.stopAllAction();for(const s of clipSamplers)s.binding.unbind();const gs=new Set(),ms=new Set(),ts=new Set();scene.traverse(o=>{if(o.geometry)gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){ms.add(m);for(const v of Object.values(m))if(v?.isTexture)ts.add(v);}});for(const g of gs)g.dispose();for(const m of ms)m.dispose();for(const t of ts)t.dispose();contactMaterial.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();}
+  dispose(){disposed=true;faceFrame.remove();cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('resize',resize);reviewControls?.panel.remove();mixer.stopAllAction();for(const s of clipSamplers)s.binding.unbind();const gs=new Set(),ms=new Set(),ts=new Set();scene.traverse(o=>{if(o.geometry)gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material])if(m){ms.add(m);for(const v of Object.values(m))if(v?.isTexture)ts.add(v);}});for(const g of gs)g.dispose();for(const m of ms)m.dispose();for(const t of ts)t.dispose();contactMaterial.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();}
  };
 }

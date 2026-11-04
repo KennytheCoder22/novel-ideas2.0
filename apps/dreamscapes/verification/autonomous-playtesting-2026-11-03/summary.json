@@ -1,0 +1,429 @@
+{
+  "baselineRevision": "03f1b914715afa0fb5d3955e822d51f71f865675",
+  "candidateRuntimeHashes": {
+    "index.html": "eaedf9239ce76c6f5142756ab1eca36907ea00ceeaf02a4f571ad569a2ddf53b",
+    "mara-midway.js": "2bf162a8bf81fd91b6d0586e4895cafa3e746aec3b6bf9f4ac9b4601a0f2d9f2",
+    "mara-sand.js": "b86317c2971384c065c655bffb19f4c81b578869b234446394e482063eb27638",
+    "skee-ball-art.js": "7c5f8a489f5ceb76416854acee272ce312425573b961c3fd030f114488aaec4b"
+  },
+  "candidateCasesPassed": 22,
+  "baselineNineBallPassed": true,
+  "candidateCases": [
+    {
+      "name": "explore-adults-desktop",
+      "run": "wide",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 2
+      }
+    },
+    {
+      "name": "explore-adults-mobile",
+      "run": "integration",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 2
+      }
+    },
+    {
+      "name": "explore-teens-desktop",
+      "run": "wide",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 3
+      }
+    },
+    {
+      "name": "explore-teens-mobile",
+      "run": "wide",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 1
+      }
+    },
+    {
+      "name": "explore-kids-desktop",
+      "run": "wide",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 2
+      }
+    },
+    {
+      "name": "explore-kids-mobile",
+      "run": "wide",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 2
+      }
+    },
+    {
+      "name": "explore-pre-teens-desktop",
+      "run": "wide",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 1
+      }
+    },
+    {
+      "name": "explore-pre-teens-mobile",
+      "run": "wide",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 0
+      }
+    },
+    {
+      "name": "carousel-ornate-desktop",
+      "run": "carousel",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 2
+      }
+    },
+    {
+      "name": "carousel-ornate-mobile",
+      "run": "carousel",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 1
+      }
+    },
+    {
+      "name": "carousel-plain-desktop",
+      "run": "carousel",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 1
+      }
+    },
+    {
+      "name": "carousel-plain-mobile",
+      "run": "carousel",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 1
+      }
+    },
+    {
+      "name": "carousel-stuffed-desktop",
+      "run": "carousel",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 1
+      }
+    },
+    {
+      "name": "carousel-stuffed-mobile",
+      "run": "carousel",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 1
+      }
+    },
+    {
+      "name": "mara-desktop",
+      "run": "gameplay",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 2
+      }
+    },
+    {
+      "name": "mara-center-desktop",
+      "run": "gameplay",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 1
+      }
+    },
+    {
+      "name": "mara-early-desktop",
+      "run": "gameplay",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 0
+      }
+    },
+    {
+      "name": "skee-desktop",
+      "run": "gameplay",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 2
+      }
+    },
+    {
+      "name": "mara-mobile",
+      "run": "gameplay",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 0
+      }
+    },
+    {
+      "name": "mara-center-mobile",
+      "run": "gameplay",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 1
+      }
+    },
+    {
+      "name": "mara-early-mobile",
+      "run": "gameplay",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 0
+      }
+    },
+    {
+      "name": "skee-mobile",
+      "run": "gameplay",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "diagnostics": {
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "httpErrors": 0,
+        "unexpectedRequestFailures": 0,
+        "navigationCancellations": 3
+      }
+    }
+  ],
+  "visualReview": {
+    "method": "Actual screenshot/contact-sheet inspection by the reviewing agent, separate from automated assertions.",
+    "inspectedContactSheets": [
+      "carousel-ornate-desktop.jpg",
+      "carousel-ornate-mobile.jpg",
+      "carousel-plain-desktop.jpg",
+      "carousel-plain-mobile.jpg",
+      "carousel-stuffed-desktop.jpg",
+      "carousel-stuffed-mobile.jpg",
+      "mara-before-after.jpg",
+      "mara-desktop-crumble.jpg",
+      "mara-desktop-lift.jpg",
+      "mara-mobile-crumble.jpg",
+      "mara-mobile-lift.jpg",
+      "skee-before-after.jpg",
+      "skee-three-ball-desktop.jpg",
+      "skee-three-ball-mobile.jpg"
+    ],
+    "decision": "Center-start crumbling retained; early breakup is a local comparison only.",
+    "limitations": [
+      "Phone viewport/touch emulation, not physical-device certification.",
+      "Carousel sampled over two revolutions using accelerated RAF timestamps, not continuous full-speed performance certification.",
+      "Occluded mount geometry cannot be certified from screenshots alone.",
+      "Live screenshot sampling is not exact time-matched image comparison."
+    ],
+    "recordingFrameInspection": {
+      "clips": [
+        "mara-desktop.webm",
+        "mara-mobile.webm",
+        "skee-desktop.webm",
+        "skee-mobile.webm"
+      ],
+      "method": "Actual PNG frames extracted from the short recordings and inspected as contact sheets; original live checkpoint screenshots also inspected, including the one-second clown face.",
+      "localDirectory": "playtest-artifacts/review-clips/"
+    }
+  },
+  "publicationAudit": {
+    "credentialsOrContactDetailsFound": false,
+    "screenshotsWithExifOrComments": 0,
+    "machinePathsRemovedFromLegacyBrowserLaunchers": 4,
+    "rawRunDiagnostics": "Excluded; only portable diagnostic counts are published."
+  }
+}
