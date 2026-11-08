@@ -86,5 +86,49 @@
         }
       }
     ]
+  },
+  {
+    "name": "kids-desktop",
+    "mount": "elephant",
+    "clips": [
+      {
+        "variant": "baseline",
+        "url": "/review/artifacts/baseline/kids-desktop/page@bf8d43f814969967efdf34b6f1673633.webm",
+        "alignment": {
+          "samples": 665,
+          "maxSeatError": 1.0547118733938987e-15
+        }
+      },
+      {
+        "variant": "final",
+        "url": "/review/artifacts/final/kids-desktop/page@338d8538d05609af92c06c69690cd97e.webm",
+        "alignment": {
+          "samples": 852,
+          "maxSeatError": 1.0547118733938987e-15
+        }
+      }
+    ]
+  },
+  {
+    "name": "kids-phone",
+    "mount": "snail",
+    "clips": [
+      {
+        "variant": "baseline",
+        "url": "/review/artifacts/baseline/kids-phone/page@50287a317cdef07cb704aaa293b6988b.webm",
+        "alignment": {
+          "samples": 858,
+          "maxSeatError": 6.106226635438361e-16
+        }
+      },
+      {
+        "variant": "final",
+        "url": "/review/artifacts/final/kids-phone/page@3fdd79ded5ecaa47d205f72ed8eee550.webm",
+        "alignment": {
+          "samples": 1837,
+          "maxSeatError": 7.216449660063518e-16
+        }
+      }
+    ]
   }
 ]

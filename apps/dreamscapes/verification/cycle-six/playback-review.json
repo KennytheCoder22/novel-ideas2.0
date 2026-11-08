@@ -68,3 +68,148 @@
       "review-adults-phone-70.jpg"
     ]
   },
+  {
+    "name": "teens-desktop",
+    "ordinarySpeed": true,
+    "complete": true,
+    "players": [
+      {
+        "duration": 86.8,
+        "currentTime": 86.8,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 2170,
+          "dropped": 5
+        }
+      },
+      {
+        "duration": 81.72,
+        "currentTime": 81.72,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 2043,
+          "dropped": 8
+        }
+      }
+    ],
+    "screenshots": [
+      "review-teens-desktop-10.jpg",
+      "review-teens-desktop-25.jpg",
+      "review-teens-desktop-40.jpg",
+      "review-teens-desktop-55.jpg",
+      "review-teens-desktop-70.jpg"
+    ]
+  },
+  {
+    "name": "teens-phone",
+    "ordinarySpeed": true,
+    "complete": true,
+    "players": [
+      {
+        "duration": 146.84,
+        "currentTime": 146.84,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 3671,
+          "dropped": 42
+        }
+      },
+      {
+        "duration": 106.2,
+        "currentTime": 106.2,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 2655,
+          "dropped": 41
+        }
+      }
+    ],
+    "screenshots": [
+      "review-teens-phone-10.jpg",
+      "review-teens-phone-25.jpg",
+      "review-teens-phone-40.jpg",
+      "review-teens-phone-55.jpg",
+      "review-teens-phone-70.jpg",
+      "review-teens-phone-85.jpg",
+      "review-teens-phone-100.jpg"
+    ]
+  },
+  {
+    "name": "kids-desktop",
+    "ordinarySpeed": true,
+    "complete": true,
+    "players": [
+      {
+        "duration": 132.24,
+        "currentTime": 132.24,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 3306,
+          "dropped": 19
+        }
+      },
+      {
+        "duration": 148.12,
+        "currentTime": 148.12,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 3703,
+          "dropped": 26
+        }
+      }
+    ],
+    "screenshots": [
+      "review-kids-desktop-10.jpg",
+      "review-kids-desktop-25.jpg",
+      "review-kids-desktop-40.jpg",
+      "review-kids-desktop-55.jpg",
+      "review-kids-desktop-70.jpg",
+      "review-kids-desktop-85.jpg",
+      "review-kids-desktop-100.jpg",
+      "review-kids-desktop-115.jpg",
+      "review-kids-desktop-130.jpg"
+    ]
+  },
+  {
+    "name": "kids-phone",
+    "ordinarySpeed": true,
+    "complete": true,
+    "players": [
+      {
+        "duration": 127.08,
+        "currentTime": 127.08,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 3177,
+          "dropped": 1
+        }
+      },
+      {
+        "duration": 107.24,
+        "currentTime": 107.24,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 2681,
+          "dropped": 2
+        }
+      }
+    ],
+    "screenshots": [
+      "review-kids-phone-10.jpg",
+      "review-kids-phone-25.jpg",
+      "review-kids-phone-40.jpg",
+      "review-kids-phone-55.jpg",
+      "review-kids-phone-70.jpg",
+      "review-kids-phone-85.jpg",
+      "review-kids-phone-100.jpg"
+    ]
+  }
+]
