@@ -1,0 +1,62 @@
+[
+  {
+    "name": "desktop",
+    "band": "adults",
+    "passed": true,
+    "frames": {
+      "visible": 2991,
+      "incomplete": 0,
+      "smallPanel": 0
+    },
+    "checks": [
+      "Delayed portraits keep selector hidden until the full wheel is ready",
+      "No play/grid panel at any visible frame",
+      "Interrupted ride remains centered in the wheel and survives reload",
+      "Saved mount resumes without another observation",
+      "Browsing does not abandon or record a choice",
+      "Different thumbnail switches directly, preserves evidence and does not complete abandoned ride",
+      "Completion and repeated selection remain correct"
+    ],
+    "errors": []
+  },
+  {
+    "name": "phone",
+    "band": "adults",
+    "passed": true,
+    "frames": {
+      "visible": 4850,
+      "incomplete": 0,
+      "smallPanel": 0
+    },
+    "checks": [
+      "Delayed portraits keep selector hidden until the full wheel is ready",
+      "No play/grid panel at any visible frame",
+      "Interrupted ride remains centered in the wheel and survives reload",
+      "Saved mount resumes without another observation",
+      "Browsing does not abandon or record a choice",
+      "Different thumbnail switches directly, preserves evidence and does not complete abandoned ride",
+      "Completion and repeated selection remain correct"
+    ],
+    "errors": []
+  },
+  {
+    "name": "kids-phone",
+    "band": "kids",
+    "passed": true,
+    "frames": {
+      "visible": 4622,
+      "incomplete": 0,
+      "smallPanel": 0
+    },
+    "checks": [
+      "Delayed portraits keep selector hidden until the full wheel is ready",
+      "No play/grid panel at any visible frame",
+      "Interrupted ride remains centered in the wheel and survives reload",
+      "Saved mount resumes without another observation",
+      "Browsing does not abandon or record a choice",
+      "Different thumbnail switches directly, preserves evidence and does not complete abandoned ride",
+      "Completion and repeated selection remain correct"
+    ],
+    "errors": []
+  }
+]

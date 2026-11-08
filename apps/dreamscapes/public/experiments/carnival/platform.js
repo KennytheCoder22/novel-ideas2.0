@@ -6,7 +6,7 @@
   visibility();
   const ns = 'http://www.w3.org/2000/svg';
   window.CarnivalPlatform = Object.freeze({
-    mount(plane) {
+    mount(plane, {animate=true}={}) {
       const svg = document.createElementNS(ns, 'svg');
       svg.setAttribute('viewBox', '0 0 1672 941');
       svg.setAttribute('aria-hidden', 'true');
@@ -34,7 +34,7 @@
       window.CarnivalSupportStructure.mount(rearSupport, {
         pivot:[1230,-70], feet:[975,1470], floor:620, thickness:1.25, legContours,
       });
-      const rotor = node('g', {class:'platform-rotor'}, wheel);
+      const rotor = node('g', {class:'platform-rotor',transform:'rotate(0 1230 -70)'}, wheel);
       // Frame source hub is (280,280); retain its scale and remove rounding drift.
       const frameScale = 1110 / 550;
       art('./wheel-frame.png',1230-280*frameScale,-70-280*frameScale,1110,535*frameScale,rotor);
@@ -141,7 +141,7 @@
       token.setAttribute('class','platform-dropped-token');
       plane.append(svg);
       const urls = ['./wheel-frame.png','./support.png','./gondola-01.png','./platform/waiting-passenger.png','./platform/attendant.png','./platform/boarding-gondola.png','./platform/loose-ticket.png','./platform/dropped-token.png'];
-      return Promise.all(urls.map(src=>{const img=new Image();img.src=src;return img.decode();})).then(startWheel);
+      return Promise.all(urls.map(src=>{const img=new Image();img.src=src;return img.decode();})).then(()=>{if(animate)startWheel();});
     }
   });
 })();

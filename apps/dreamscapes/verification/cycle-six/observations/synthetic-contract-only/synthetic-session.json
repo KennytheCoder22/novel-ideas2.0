@@ -1,0 +1,243 @@
+{
+  "warning": "SYNTHETIC CONTRACT FIXTURE — not player evidence or a shipped narrative choice",
+  "snapshot": {
+    "schemaVersion": 1,
+    "sessionId": "session-012d66d6-73cd-4ee3-a472-f9bd3d213247",
+    "ageBand": "teens",
+    "currentScene": "fixture",
+    "carousel": null,
+    "events": [
+      {
+        "eventId": "event-5d27c979-42a2-4da7-94b7-eb57a2328bf2",
+        "schemaVersion": 1,
+        "sessionId": "session-012d66d6-73cd-4ee3-a472-f9bd3d213247",
+        "sceneId": "fixture",
+        "visitId": "visit-5ff88f96-9107-4d1b-9de7-c2daf095aedc",
+        "interactionId": "scene-entry",
+        "category": "exploration",
+        "action": "entered",
+        "alternatives": [],
+        "selectedAlternative": null,
+        "presentationOrder": [],
+        "timestamp": 1794169067124,
+        "ageBand": "teens",
+        "preferenceAttributes": [],
+        "preferenceSupported": false,
+        "decisionId": null,
+        "presentationId": null,
+        "origin": "test_fixture",
+        "occurrenceId": "visit-5ff88f96-9107-4d1b-9de7-c2daf095aedc",
+        "details": {
+          "to": "fixture"
+        }
+      },
+      {
+        "eventId": "event-605080c3-b60c-4d76-9bc3-575908a62c71",
+        "schemaVersion": 1,
+        "sessionId": "session-012d66d6-73cd-4ee3-a472-f9bd3d213247",
+        "sceneId": "fixture",
+        "visitId": "visit-5ff88f96-9107-4d1b-9de7-c2daf095aedc",
+        "interactionId": "fixture-navigation",
+        "category": "exploration",
+        "action": "visited",
+        "alternatives": [],
+        "selectedAlternative": null,
+        "presentationOrder": [],
+        "timestamp": 1794169067125,
+        "ageBand": "teens",
+        "preferenceAttributes": [],
+        "preferenceSupported": false,
+        "decisionId": null,
+        "presentationId": null,
+        "origin": "test_fixture",
+        "occurrenceId": "occurrence-9a9e1966-74a1-4412-8cc1-5529b8bec484",
+        "details": {}
+      },
+      {
+        "eventId": "event-47f567e6-a52a-431f-862c-b8c413fab2c7",
+        "schemaVersion": 1,
+        "sessionId": "session-012d66d6-73cd-4ee3-a472-f9bd3d213247",
+        "sceneId": "fixture",
+        "visitId": "visit-5ff88f96-9107-4d1b-9de7-c2daf095aedc",
+        "interactionId": "fixture-game",
+        "category": "gameplay",
+        "action": "scored",
+        "alternatives": [],
+        "selectedAlternative": null,
+        "presentationOrder": [],
+        "timestamp": 1794169067125,
+        "ageBand": "teens",
+        "preferenceAttributes": [],
+        "preferenceSupported": false,
+        "decisionId": null,
+        "presentationId": null,
+        "origin": "test_fixture",
+        "occurrenceId": "occurrence-5d57d4e0-4075-45e6-871f-9bed17f19bf8",
+        "details": {
+          "points": 20
+        }
+      },
+      {
+        "eventId": "event-3cf7c460-f651-41e9-8af7-84bdc912dda7",
+        "schemaVersion": 1,
+        "sessionId": "session-012d66d6-73cd-4ee3-a472-f9bd3d213247",
+        "sceneId": "fixture",
+        "visitId": "visit-5ff88f96-9107-4d1b-9de7-c2daf095aedc",
+        "interactionId": "fixture-story-choice",
+        "category": "preference",
+        "action": "selected",
+        "alternatives": [
+          {
+            "id": "fantasy",
+            "label": "Fantasy story (synthetic test fixture)"
+          },
+          {
+            "id": "science-fiction",
+            "label": "Science-fiction story (synthetic test fixture)"
+          }
+        ],
+        "selectedAlternative": "fantasy",
+        "presentationOrder": [
+          "science-fiction",
+          "fantasy"
+        ],
+        "timestamp": 1794169067126,
+        "ageBand": "teens",
+        "preferenceAttributes": [
+          {
+            "dimension": "genres",
+            "value": "fantasy",
+            "rationale": "The test label explicitly describes fantasy."
+          }
+        ],
+        "preferenceSupported": true,
+        "decisionId": "decision-04f26dab-b303-4871-8fc5-3bccf617712a",
+        "presentationId": "decision-04f26dab-b303-4871-8fc5-3bccf617712a",
+        "origin": "test_fixture",
+        "occurrenceId": "decision-04f26dab-b303-4871-8fc5-3bccf617712a",
+        "details": {}
+      },
+      {
+        "eventId": "event-77f133f2-5803-4e68-b38d-485a824e645e",
+        "schemaVersion": 1,
+        "sessionId": "session-012d66d6-73cd-4ee3-a472-f9bd3d213247",
+        "sceneId": "midway",
+        "visitId": "visit-55f8ffef-cbbb-4b44-85ab-de86676cdfc1",
+        "interactionId": "scene-entry",
+        "category": "exploration",
+        "action": "entered",
+        "alternatives": [],
+        "selectedAlternative": null,
+        "presentationOrder": [],
+        "timestamp": 1794169067279,
+        "ageBand": "teens",
+        "preferenceAttributes": [],
+        "preferenceSupported": false,
+        "decisionId": null,
+        "presentationId": null,
+        "origin": "test_fixture",
+        "occurrenceId": "visit-55f8ffef-cbbb-4b44-85ab-de86676cdfc1",
+        "details": {
+          "from": "fixture",
+          "to": "midway"
+        }
+      },
+      {
+        "eventId": "event-c5bd3ffd-e0b1-42ad-8f33-47b376853e7a",
+        "schemaVersion": 1,
+        "sessionId": "session-012d66d6-73cd-4ee3-a472-f9bd3d213247",
+        "sceneId": "fixture",
+        "visitId": "visit-f9eedfef-24f3-4a90-9c27-0d4992fba023",
+        "interactionId": "scene-entry",
+        "category": "exploration",
+        "action": "entered",
+        "alternatives": [],
+        "selectedAlternative": null,
+        "presentationOrder": [],
+        "timestamp": 1794169067279,
+        "ageBand": "teens",
+        "preferenceAttributes": [],
+        "preferenceSupported": false,
+        "decisionId": null,
+        "presentationId": null,
+        "origin": "test_fixture",
+        "occurrenceId": "visit-f9eedfef-24f3-4a90-9c27-0d4992fba023",
+        "details": {
+          "from": "midway",
+          "to": "fixture"
+        }
+      },
+      {
+        "eventId": "event-3e63c826-2def-422d-8b49-5e0f0613a670",
+        "schemaVersion": 1,
+        "sessionId": "session-012d66d6-73cd-4ee3-a472-f9bd3d213247",
+        "sceneId": "fixture",
+        "visitId": "visit-f9eedfef-24f3-4a90-9c27-0d4992fba023",
+        "interactionId": "fixture-story-choice",
+        "category": "preference",
+        "action": "selected",
+        "alternatives": [
+          {
+            "id": "fantasy",
+            "label": "Fantasy story (synthetic test fixture)"
+          },
+          {
+            "id": "science-fiction",
+            "label": "Science-fiction story (synthetic test fixture)"
+          }
+        ],
+        "selectedAlternative": "science-fiction",
+        "presentationOrder": [
+          "fantasy",
+          "science-fiction"
+        ],
+        "timestamp": 1794169067280,
+        "ageBand": "teens",
+        "preferenceAttributes": [
+          {
+            "dimension": "genres",
+            "value": "science-fiction",
+            "rationale": "The test label explicitly describes science fiction."
+          }
+        ],
+        "preferenceSupported": true,
+        "decisionId": "decision-f5bccbd3-59f5-42a9-bb27-f93ab93d5e2a",
+        "presentationId": "decision-f5bccbd3-59f5-42a9-bb27-f93ab93d5e2a",
+        "origin": "test_fixture",
+        "occurrenceId": "decision-f5bccbd3-59f5-42a9-bb27-f93ab93d5e2a",
+        "details": {}
+      }
+    ],
+    "counts": {
+      "total": 7,
+      "preference": 0,
+      "explicitPreference": 0,
+      "tentativePreference": 0,
+      "exploration": 4,
+      "gameplay": 1,
+      "testFixtures": 7
+    },
+    "diagnostics": {
+      "duplicates": 2,
+      "discarded": 0,
+      "storageFailures": 0,
+      "reasons": {
+        "duplicate_occurrence": 2
+      }
+    },
+    "persistence": "session-storage"
+  },
+  "duplicate": {
+    "accepted": false,
+    "reason": "duplicate_occurrence"
+  },
+  "live": {
+    "total": 1,
+    "preference": 0,
+    "explicitPreference": 0,
+    "tentativePreference": 0,
+    "exploration": 1,
+    "gameplay": 0,
+    "testFixtures": 0
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "baselineCommit": "ae5ccf07",
+  "measurement": "real requestAnimationFrame deltas during full ordinary-speed rides; unrecorded timing separate from recording runs",
+  "coverage": "4 age bands x 2 viewports, three approved styles, full first/second turns, dream opacity stages, pre-ride external and post-return external",
+  "proposals": [
+    "Skip external SVG only behind fully opaque ride; keep clock and synchronous restore",
+    "Retain shared WebGL buffer allocation with unchanged viewport pixel dimensions, subject to exact image parity"
+  ],
+  "deploymentProject": "dreamscapes-novelideas",
+  "deploymentTeam": "kennythecoder22s-projects",
+  "physicalDeviceTesting": false
+}

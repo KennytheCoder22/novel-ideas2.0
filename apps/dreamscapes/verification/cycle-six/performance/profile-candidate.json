@@ -1,0 +1,270 @@
+{
+  "passed": true,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "durationMs": 12030.399999856949,
+  "profiledFPS": 26.516159064020577,
+  "gpu": {
+    "supported": true,
+    "disjoint": 0,
+    "summary": {
+      "samples": 319,
+      "medianMs": 26.097394,
+      "p95Ms": 29.756963,
+      "meanMs": 26.03844463636363
+    }
+  },
+  "mainThreadRegions": [
+    {
+      "name": "RunTask",
+      "count": 2669,
+      "totalWallMs": 4469.163999999999,
+      "maxWallMs": 259.593
+    },
+    {
+      "name": "FireAnimationFrame",
+      "count": 7893,
+      "totalWallMs": 2155.12899999999,
+      "maxWallMs": 252.584
+    },
+    {
+      "name": "FunctionCall",
+      "count": 7893,
+      "totalWallMs": 1960.8210000000204,
+      "maxWallMs": 252.543
+    },
+    {
+      "name": "UpdateLayoutTree",
+      "count": 323,
+      "totalWallMs": 793.6980000000002,
+      "maxWallMs": 7.885
+    },
+    {
+      "name": "Layerize",
+      "count": 323,
+      "totalWallMs": 607.309,
+      "maxWallMs": 17.818
+    },
+    {
+      "name": "Commit",
+      "count": 323,
+      "totalWallMs": 274.18100000000015,
+      "maxWallMs": 5.749
+    },
+    {
+      "name": "PrePaint",
+      "count": 458,
+      "totalWallMs": 141.48100000000008,
+      "maxWallMs": 2.98
+    },
+    {
+      "name": "Decode Image",
+      "count": 1,
+      "totalWallMs": 71.932,
+      "maxWallMs": 71.932
+    },
+    {
+      "name": "Paint",
+      "count": 395,
+      "totalWallMs": 62.45000000000001,
+      "maxWallMs": 1.912
+    },
+    {
+      "name": "UpdateLayer",
+      "count": 11305,
+      "totalWallMs": 36.60300000000091,
+      "maxWallMs": 0.337
+    },
+    {
+      "name": "Layout",
+      "count": 134,
+      "totalWallMs": 24.597000000000005,
+      "maxWallMs": 5.708
+    },
+    {
+      "name": "MinorGC",
+      "count": 1,
+      "totalWallMs": 13.14,
+      "maxWallMs": 13.14
+    },
+    {
+      "name": "V8.GC_SCAVENGER",
+      "count": 1,
+      "totalWallMs": 12.794,
+      "maxWallMs": 12.794
+    },
+    {
+      "name": "V8.GC_SCAVENGER_SCAVENGE",
+      "count": 1,
+      "totalWallMs": 12.698,
+      "maxWallMs": 12.698
+    },
+    {
+      "name": "HitTest",
+      "count": 147,
+      "totalWallMs": 8.992,
+      "maxWallMs": 0.566
+    },
+    {
+      "name": "V8.GC_SCAVENGER_SCAVENGE_PARALLEL_PHASE",
+      "count": 1,
+      "totalWallMs": 6.184,
+      "maxWallMs": 6.184
+    },
+    {
+      "name": "V8.GC_SCAVENGER_SCAVENGE_PARALLEL",
+      "count": 1,
+      "totalWallMs": 5.876,
+      "maxWallMs": 5.876
+    },
+    {
+      "name": "V8.GC_SCAVENGER_SCAVENGE_WEAK_GLOBAL_HANDLES_PROCESS",
+      "count": 1,
+      "totalWallMs": 4.388,
+      "maxWallMs": 4.388
+    },
+    {
+      "name": "V8.GC_SCAVENGER_TRACED_HANDLES_RESET_PARALLEL",
+      "count": 1,
+      "totalWallMs": 2.835,
+      "maxWallMs": 2.835
+    },
+    {
+      "name": "V8.GC_SCAVENGER_SCAVENGE_FINALIZE",
+      "count": 1,
+      "totalWallMs": 0.823,
+      "maxWallMs": 0.823
+    },
+    {
+      "name": "V8.GC_HEAP_EXTERNAL_EPILOGUE",
+      "count": 1,
+      "totalWallMs": 0.779,
+      "maxWallMs": 0.779
+    },
+    {
+      "name": "V8.GC_SCAVENGER_SCAVENGE_WEAK_GLOBAL_HANDLES_IDENTIFY",
+      "count": 1,
+      "totalWallMs": 0.328,
+      "maxWallMs": 0.328
+    }
+  ],
+  "topCpuSamples": [
+    {
+      "function": "(program)",
+      "url": "",
+      "line": 0,
+      "samples": 8822
+    },
+    {
+      "function": "(idle)",
+      "url": "",
+      "line": 0,
+      "samples": 3391
+    },
+    {
+      "function": "getParameters",
+      "url": "http://127.0.0.1:62619/carnival/vendor/three.module.js",
+      "line": 20598,
+      "samples": 36
+    },
+    {
+      "function": "needsUpdate",
+      "url": "http://127.0.0.1:62619/carnival/vendor/three.module.js",
+      "line": 15223,
+      "samples": 29
+    },
+    {
+      "function": "texSubImage2D",
+      "url": "",
+      "line": 0,
+      "samples": 29
+    },
+    {
+      "function": "requestAnimationFrame",
+      "url": "",
+      "line": 0,
+      "samples": 24
+    },
+    {
+      "function": "getProgram",
+      "url": "http://127.0.0.1:62619/carnival/vendor/three.module.js",
+      "line": 29985,
+      "samples": 21
+    },
+    {
+      "function": "drawImage",
+      "url": "",
+      "line": 0,
+      "samples": 17
+    },
+    {
+      "function": "getProgramInfoLog",
+      "url": "",
+      "line": 0,
+      "samples": 17
+    },
+    {
+      "function": "WebGLRenderer.renderBufferDirect",
+      "url": "http://127.0.0.1:62619/carnival/vendor/three.module.js",
+      "line": 29173,
+      "samples": 17
+    },
+    {
+      "function": "setProgram",
+      "url": "http://127.0.0.1:62619/carnival/vendor/three.module.js",
+      "line": 30131,
+      "samples": 16
+    },
+    {
+      "function": "renderNow",
+      "url": "http://127.0.0.1:62619/carnival/animal-comparison.js?v=20261016-variants",
+      "line": 66,
+      "samples": 14
+    },
+    {
+      "function": "setup",
+      "url": "http://127.0.0.1:62619/carnival/vendor/three.module.js",
+      "line": 15073,
+      "samples": 14
+    },
+    {
+      "function": "drawElements",
+      "url": "",
+      "line": 0,
+      "samples": 13
+    },
+    {
+      "function": "matchMedia",
+      "url": "",
+      "line": 0,
+      "samples": 12
+    },
+    {
+      "function": "getProgramCacheKey",
+      "url": "http://127.0.0.1:62619/carnival/vendor/three.module.js",
+      "line": 20925,
+      "samples": 12
+    },
+    {
+      "function": "reduced",
+      "url": "http://127.0.0.1:62619/carnival/carousel-onboard.js?v=20261104-onboard-1",
+      "line": 15,
+      "samples": 9
+    },
+    {
+      "function": "updateMatrixWorld",
+      "url": "http://127.0.0.1:62619/carnival/vendor/three.module.js",
+      "line": 7720,
+      "samples": 8
+    }
+  ],
+  "errors": [],
+  "limits": [
+    "Profiler and GPU queries add overhead; FPS is not substituted for the uninstrumented A/B measurements.",
+    "Timeline regions nest and overlap; totals across names must not be added.",
+    "GPU timer measures this WebGL render region, not the whole compositor or all work on the GPU.",
+    "Same integrated GPU is shared with other applications; no physical-phone profiling."
+  ]
+}

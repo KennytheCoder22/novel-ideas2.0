@@ -1,0 +1,26 @@
+{
+  "zora.png": {
+    "bytes": 2289828,
+    "sha256": "c56801350ade128763392755cd1683129e220fe6322dd4ebd2253930909ef321"
+  },
+  "ball.png": {
+    "bytes": 1410859,
+    "sha256": "83e1ff983f74e48eabd14514ad138423eb21d5d40d2de6c755251d4116d1d708"
+  },
+  "living.css": {
+    "bytes": 5567,
+    "sha256": "b930b4499d7ad93dee804dbafa5a42a2e4fcaf31af62e3c9480b944de4ec5f3c"
+  },
+  "living.js": {
+    "bytes": 6181,
+    "sha256": "edfaa6e3edb83d1bed0100c93812cc0dd2d580c66640cabe4237d313022a16e2"
+  },
+  "zora-contract.mjs": {
+    "bytes": 2589,
+    "sha256": "c5e52e87ef52892321a0dc8e84e24473809c7a69cbdcd8a0fb63ca6ff957e56a"
+  },
+  "zora-prototype.js": {
+    "bytes": 1296,
+    "sha256": "a7479c9f7fb440b844f3efa2a7d195a998139b3673be9c288e9d56cc89872072"
+  }
+}

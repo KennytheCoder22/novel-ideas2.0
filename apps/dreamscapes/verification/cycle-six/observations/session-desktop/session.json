@@ -1,0 +1,526 @@
+{
+  "schemaVersion": 1,
+  "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+  "ageBand": "teens",
+  "currentScene": "tent-row",
+  "carousel": null,
+  "events": [
+    {
+      "eventId": "event-470ec2d1-4a9e-48fb-bd75-76c7cacaeb28",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "opening",
+      "visitId": "visit-51d9052a-5034-4c6b-ab51-bb73fabe7b25",
+      "interactionId": "scene-entry",
+      "category": "exploration",
+      "action": "entered",
+      "alternatives": [],
+      "selectedAlternative": null,
+      "presentationOrder": [],
+      "timestamp": 1794168986312,
+      "ageBand": "adults",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "visit-51d9052a-5034-4c6b-ab51-bb73fabe7b25",
+      "details": {
+        "to": "opening"
+      }
+    },
+    {
+      "eventId": "event-3bb5fbe3-e1ac-4ffd-a244-6ceec4cd905e",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "opening",
+      "visitId": "visit-51d9052a-5034-4c6b-ab51-bb73fabe7b25",
+      "interactionId": "age-band",
+      "category": "exploration",
+      "action": "configured",
+      "alternatives": [
+        {
+          "id": "kids",
+          "label": "Kids"
+        },
+        {
+          "id": "pre-teens",
+          "label": "Pre-Teens"
+        },
+        {
+          "id": "teens",
+          "label": "Teens"
+        },
+        {
+          "id": "adults",
+          "label": "Adults"
+        }
+      ],
+      "selectedAlternative": "teens",
+      "presentationOrder": [
+        "kids",
+        "pre-teens",
+        "teens",
+        "adults"
+      ],
+      "timestamp": 1794168986798,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "activation-16ac51a1-0cf8-43f7-bf03-8074a7d6d50d",
+      "details": {}
+    },
+    {
+      "eventId": "event-41ece6f2-6a18-47e4-927c-f0d3bccff60b",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "opening",
+      "visitId": "visit-51d9052a-5034-4c6b-ab51-bb73fabe7b25",
+      "interactionId": "opening-portal",
+      "category": "exploration",
+      "action": "portal-requested",
+      "alternatives": [
+        {
+          "id": "carnival",
+          "label": "Creepy Carnival"
+        }
+      ],
+      "selectedAlternative": "carnival",
+      "presentationOrder": [
+        "carnival"
+      ],
+      "timestamp": 1794168987555,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "activation-0dddf75a-16aa-4ebf-b784-a633ca58f123",
+      "details": {}
+    },
+    {
+      "eventId": "event-3168358b-921f-4b5c-888e-04909548c32f",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "midway",
+      "visitId": "visit-91b93a69-82c0-4d3a-95e1-daf4c531f0e5",
+      "interactionId": "scene-entry",
+      "category": "exploration",
+      "action": "entered",
+      "alternatives": [],
+      "selectedAlternative": null,
+      "presentationOrder": [],
+      "timestamp": 1794168987831,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "visit-91b93a69-82c0-4d3a-95e1-daf4c531f0e5",
+      "details": {
+        "from": "opening",
+        "to": "midway"
+      }
+    },
+    {
+      "eventId": "event-2f444559-3f0f-457e-a683-0fa0e71a96dd",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "fun-house",
+      "visitId": "visit-a5cb43de-7cd9-426d-a067-f566e441dedf",
+      "interactionId": "scene-entry",
+      "category": "exploration",
+      "action": "entered",
+      "alternatives": [],
+      "selectedAlternative": null,
+      "presentationOrder": [],
+      "timestamp": 1794168992797,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "visit-a5cb43de-7cd9-426d-a067-f566e441dedf",
+      "details": {
+        "from": "midway",
+        "to": "fun-house"
+      }
+    },
+    {
+      "eventId": "event-0d919ea2-ef51-480f-b317-4a4b2f956aa3",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "midway",
+      "visitId": "visit-91b93a69-82c0-4d3a-95e1-daf4c531f0e5",
+      "interactionId": "geographic-route",
+      "category": "exploration",
+      "action": "preview-arrived",
+      "alternatives": [
+        {
+          "id": "tent-row",
+          "label": "Tent Row"
+        },
+        {
+          "id": "rides-games",
+          "label": "Rides & Games"
+        },
+        {
+          "id": "ferris-platform",
+          "label": "Ferris-Wheel Platform"
+        }
+      ],
+      "selectedAlternative": null,
+      "presentationOrder": [
+        "tent-row",
+        "rides-games",
+        "ferris-platform"
+      ],
+      "timestamp": 1794168992799,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "travel-visit-a5cb43de-7cd9-426d-a067-f566e441dedf",
+      "details": {
+        "from": "midway",
+        "to": "fun-house",
+        "kind": "path"
+      }
+    },
+    {
+      "eventId": "event-89346dc2-ddba-4c61-968b-23f9f8797a37",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "fun-house",
+      "visitId": "visit-a5cb43de-7cd9-426d-a067-f566e441dedf",
+      "interactionId": "mirror",
+      "category": "exploration",
+      "action": "examined",
+      "alternatives": [
+        {
+          "id": "tall",
+          "label": "tall mirror"
+        },
+        {
+          "id": "wide",
+          "label": "wide mirror"
+        },
+        {
+          "id": "endless",
+          "label": "endless mirror"
+        }
+      ],
+      "selectedAlternative": "tall",
+      "presentationOrder": [
+        "tall",
+        "wide",
+        "endless"
+      ],
+      "timestamp": 1794168993215,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "occurrence-7ceda35c-ead1-4657-9978-fd1421e2b774",
+      "details": {
+        "examined": true
+      }
+    },
+    {
+      "eventId": "event-0deb7a42-90a2-46b6-8a20-0ebee8890f52",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "fun-house",
+      "visitId": "visit-a5cb43de-7cd9-426d-a067-f566e441dedf",
+      "interactionId": "mirror",
+      "category": "exploration",
+      "action": "examined",
+      "alternatives": [
+        {
+          "id": "tall",
+          "label": "tall mirror"
+        },
+        {
+          "id": "wide",
+          "label": "wide mirror"
+        },
+        {
+          "id": "endless",
+          "label": "endless mirror"
+        }
+      ],
+      "selectedAlternative": "wide",
+      "presentationOrder": [
+        "tall",
+        "wide",
+        "endless"
+      ],
+      "timestamp": 1794168993724,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "occurrence-7be66372-b249-49c5-a167-7a8649c0f673",
+      "details": {
+        "examined": true
+      }
+    },
+    {
+      "eventId": "event-2bf4ce98-4a1d-4600-8982-dcb80af6ca76",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "fun-house",
+      "visitId": "visit-a5cb43de-7cd9-426d-a067-f566e441dedf",
+      "interactionId": "mirror",
+      "category": "exploration",
+      "action": "examined",
+      "alternatives": [
+        {
+          "id": "tall",
+          "label": "tall mirror"
+        },
+        {
+          "id": "wide",
+          "label": "wide mirror"
+        },
+        {
+          "id": "endless",
+          "label": "endless mirror"
+        }
+      ],
+      "selectedAlternative": "endless",
+      "presentationOrder": [
+        "tall",
+        "wide",
+        "endless"
+      ],
+      "timestamp": 1794168993776,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "occurrence-800fba81-4a89-4753-9646-b85350354589",
+      "details": {
+        "examined": true
+      }
+    },
+    {
+      "eventId": "event-339d037a-c837-4977-8768-f8d8ecafe782",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "fun-house",
+      "visitId": "visit-a5cb43de-7cd9-426d-a067-f566e441dedf",
+      "interactionId": "mirror",
+      "category": "exploration",
+      "action": "examined",
+      "alternatives": [
+        {
+          "id": "tall",
+          "label": "tall mirror"
+        },
+        {
+          "id": "wide",
+          "label": "wide mirror"
+        },
+        {
+          "id": "endless",
+          "label": "endless mirror"
+        }
+      ],
+      "selectedAlternative": "tall",
+      "presentationOrder": [
+        "tall",
+        "wide",
+        "endless"
+      ],
+      "timestamp": 1794168999350,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "occurrence-f6813dcb-2088-48c1-8cb5-c21732bd748f",
+      "details": {
+        "examined": true
+      }
+    },
+    {
+      "eventId": "event-4ba6258e-965d-412d-aac6-a3aa5344c0f0",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "fun-house",
+      "visitId": "visit-a5cb43de-7cd9-426d-a067-f566e441dedf",
+      "interactionId": "mirror",
+      "category": "exploration",
+      "action": "examined",
+      "alternatives": [
+        {
+          "id": "tall",
+          "label": "tall mirror"
+        },
+        {
+          "id": "wide",
+          "label": "wide mirror"
+        },
+        {
+          "id": "endless",
+          "label": "endless mirror"
+        }
+      ],
+      "selectedAlternative": "wide",
+      "presentationOrder": [
+        "tall",
+        "wide",
+        "endless"
+      ],
+      "timestamp": 1794168999772,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "occurrence-144983fd-d20f-40e5-afe6-31de9b7236fa",
+      "details": {
+        "examined": true
+      }
+    },
+    {
+      "eventId": "event-8fd65f7c-77c3-4e75-bac4-2c0d487b65ef",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "fun-house",
+      "visitId": "visit-a5cb43de-7cd9-426d-a067-f566e441dedf",
+      "interactionId": "mirror",
+      "category": "exploration",
+      "action": "examined",
+      "alternatives": [
+        {
+          "id": "tall",
+          "label": "tall mirror"
+        },
+        {
+          "id": "wide",
+          "label": "wide mirror"
+        },
+        {
+          "id": "endless",
+          "label": "endless mirror"
+        }
+      ],
+      "selectedAlternative": "endless",
+      "presentationOrder": [
+        "tall",
+        "wide",
+        "endless"
+      ],
+      "timestamp": 1794169000435,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "occurrence-9040cca7-3b98-43be-bf29-506f494e245f",
+      "details": {
+        "examined": true
+      }
+    },
+    {
+      "eventId": "event-b307468b-cd5d-4352-9d0a-df1f0dcf3c7b",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "tent-row",
+      "visitId": "visit-50ef24ec-9aa3-4b0f-9380-cc854f048d08",
+      "interactionId": "scene-entry",
+      "category": "exploration",
+      "action": "entered",
+      "alternatives": [],
+      "selectedAlternative": null,
+      "presentationOrder": [],
+      "timestamp": 1794169006339,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "visit-50ef24ec-9aa3-4b0f-9380-cc854f048d08",
+      "details": {
+        "from": "fun-house",
+        "to": "tent-row"
+      }
+    },
+    {
+      "eventId": "event-ab1a289e-1a38-46b2-862f-5f3adc556066",
+      "schemaVersion": 1,
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "sceneId": "fun-house",
+      "visitId": "visit-a5cb43de-7cd9-426d-a067-f566e441dedf",
+      "interactionId": "geographic-route",
+      "category": "exploration",
+      "action": "travelled",
+      "alternatives": [
+        {
+          "id": "rides-games",
+          "label": "Rides & Games"
+        },
+        {
+          "id": "tent-row",
+          "label": "Tent Row"
+        }
+      ],
+      "selectedAlternative": "tent-row",
+      "presentationOrder": [
+        "rides-games",
+        "tent-row"
+      ],
+      "timestamp": 1794169006340,
+      "ageBand": "teens",
+      "preferenceAttributes": [],
+      "preferenceSupported": false,
+      "decisionId": null,
+      "presentationId": null,
+      "origin": "player",
+      "occurrenceId": "travel-visit-50ef24ec-9aa3-4b0f-9380-cc854f048d08",
+      "details": {
+        "from": "fun-house",
+        "to": "tent-row",
+        "kind": "path"
+      }
+    }
+  ],
+  "counts": {
+    "total": 14,
+    "preference": 0,
+    "explicitPreference": 0,
+    "tentativePreference": 0,
+    "exploration": 14,
+    "gameplay": 0,
+    "testFixtures": 0
+  },
+  "diagnostics": {
+    "duplicates": 2,
+    "discarded": 0,
+    "storageFailures": 0,
+    "reasons": {
+      "duplicate_occurrence": 2
+    }
+  },
+  "persistence": "session-storage"
+}

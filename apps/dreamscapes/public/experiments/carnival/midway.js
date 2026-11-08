@@ -42,6 +42,7 @@
     lastBalloonFace = choices[Math.floor(Math.random() * choices.length)];
     balloonFace.setAttribute('viewBox', balloonFaces[lastBalloonFace]);
     balloonHovered = true;
+    window.DreamscapesObservations?.record({sceneId:'midway',interactionId:'balloon',category:'exploration',action:'hovered',occurrenceId:'balloon-'+window.DreamscapesObservations.visitId('midway')});
     balloonPointer = {x:event.clientX, y:event.clientY};
     balloonSurface.classList.add('has-face');
     balloonHoverFrame = requestAnimationFrame(checkBalloonHover);
@@ -101,7 +102,7 @@
   // Bounded, session-only raw observations; no production API or taste inference.
   const observations = [];
   function record(type, target, extra = {}) {
-    if(window.DreamscapesSession){window.DreamscapesSession.recordObservation(type,target,extra);return;}
+    if(type==='object_inspected'||type==='return_to_midway')window.DreamscapesObservations?.record({sceneId:'midway',interactionId:target==='fox'?'mara':target,category:'exploration',action:type==='object_inspected'?'inspected':'inspection-closed',details:Number.isFinite(extra.visibleInspectionMs)?{visibleInspectionMs:extra.visibleInspectionMs}:{}});
     observations.push({type, target, at:Date.now(), ...extra});
     if (observations.length > 200) observations.shift();
     try { sessionStorage.setItem('carnival-experiment-observations', JSON.stringify(observations)); } catch (_) { /* Storage may be unavailable. */ }
@@ -175,6 +176,7 @@
     scene.style.transform = 'translate(' + (x-scene.offsetLeft) + 'px,' + (y-scene.offsetTop) + 'px) scale(' + scale + ')';
   }
   function approach(target) {
+    window.DreamscapesObservations?.record({sceneId:'midway',interactionId:'distant-figure',category:'exploration',action:target===1?'approach-started':'retreat-started'});
     cancelAnimationFrame(approachFrame);
     if (!approachBase) {
       const rect=scene.getBoundingClientRect();

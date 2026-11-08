@@ -1,1 +1,6 @@
 public/** -text
+
+research/cycle-zora/** -text
+tools/fixtures/approved-carousel/** -text
+verification/cycle-six/baseline/** -text
+verification/cycle-six/candidate/** -text

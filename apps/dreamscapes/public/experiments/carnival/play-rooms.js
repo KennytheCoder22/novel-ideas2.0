@@ -24,6 +24,7 @@
     art.decode().then(paint).catch(()=>{});
     button.addEventListener('click',()=>{
      seen.add(kind);button.classList.toggle('is-examined');button.setAttribute('aria-pressed',String(button.classList.contains('is-examined')));status.textContent=message;
+     window.DreamscapesObservations?.record({sceneId:id,interactionId:'mirror',category:'exploration',action:'examined',alternatives:mirrors.map(([id])=>({id,label:id+' mirror'})),selectedAlternative:kind,details:{examined:button.classList.contains('is-examined')}});
      if(seen.size===3){const onward=view.querySelector('.room-route--onward');onward.hidden=false;status.textContent='Beyond the last reflection, a passage opens toward Tent Row.';}
     });plane.append(button);
    });

@@ -1,0 +1,13 @@
+{
+  "originalPublicFiles": 209,
+  "changed": [
+    "public/experiments/carnival/animal-comparison.js",
+    "public/experiments/carnival/carousel-onboard.js",
+    "public/experiments/carnival/carousel.js",
+    "public/experiments/carnival/horse-comparison.js",
+    "public/experiments/carnival/index.html",
+    "public/experiments/carnival/shared-mount-renderer.js"
+  ],
+  "unchanged": 203,
+  "allArtworkModelsBackgroundsAndObservationSourcesUnchanged": true
+}

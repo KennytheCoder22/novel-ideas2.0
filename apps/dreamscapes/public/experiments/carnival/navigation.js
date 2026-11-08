@@ -94,23 +94,28 @@
     }
     view.append(look); document.body.append(view);
     let focusFrame;
-    const revealMirror=event=>{
+    const revealControl=event=>{
       const button=event.target;
-      if(!button.matches('.funhouse-mirror:focus-visible'))return;
+      if(!button.matches('.funhouse-mirror:focus-visible, .location-path:focus-visible, .location-sign:focus-visible'))return;
       cancelAnimationFrame(focusFrame);
       focusFrame=requestAnimationFrame(()=>{
         if(view.inert)return;
         view.scrollLeft=0;view.scrollTop=0;
         const overflow=plane.offsetWidth-innerWidth;
-        if(overflow>0)framing=Math.max(0,Math.min(1,(button.offsetLeft+button.offsetWidth/2-innerWidth/2)/overflow));
+        if(overflow>0){
+          // Signs use a translated centre anchor; paths and mirrors use a corner.
+          // Measure after undoing native focus scrolling, then pan the camera.
+          const rect=button.getBoundingClientRect(),camera=plane.getBoundingClientRect();
+          framing=Math.max(0,Math.min(1,(rect.left+rect.width/2-camera.left-innerWidth/2)/overflow));
+        }
         layout();
       });
     };
-    view.addEventListener('focusin',revealMirror);
+    view.addEventListener('focusin',revealControl);
     const revealExit = () => { framing = definition.framing; layout(); };
     plane.addEventListener('carnival-exit-focus', revealExit);
     addEventListener('resize',layout); layout();
-    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>{removeEventListener('resize',layout);plane.removeEventListener('carnival-exit-focus',revealExit);disposeExit();disposeCoaster();disposePlay();cancelAnimationFrame(focusFrame);view.removeEventListener('focusin',revealMirror);}};
+    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>{removeEventListener('resize',layout);plane.removeEventListener('carnival-exit-focus',revealExit);disposeExit();disposeCoaster();disposePlay();cancelAnimationFrame(focusFrame);view.removeEventListener('focusin',revealControl);}};
     mounted.set(id,entry);
     return entry;
   }
@@ -120,6 +125,12 @@
     busy = true;
     const sourceId = current;
     const source = mounted.get(sourceId).view;
+    const offered = new Map();
+    for(const control of source.querySelectorAll('[data-to],[data-destination],.wheel')){
+      if(control.hidden)continue;
+      const to=control.dataset.to||definitions[sourceId].destinations?.[control.dataset.destination||(control.matches('.wheel')?'Ferris-Wheel Platform':'')];
+      if(definitions[to]&&to!==sourceId)offered.set(to,{id:to,label:definitions[to].name});
+    }
     const animations = [];
     let target;
     try {
@@ -157,6 +168,9 @@
       source.style.visibility = 'hidden';
       target.view.style.opacity = ''; target.view.inert = false;
       current = id;
+      const observations=window.DreamscapesObservations;
+      observations?.enterScene(id);
+      observations?.record({sceneId:sourceId,interactionId:'geographic-route',category:'exploration',action:trigger?'travelled':'preview-arrived',alternatives:[...offered.values()],selectedAlternative:offered.has(id)?id:null,occurrenceId:'travel-'+observations.visitId(id),details:{from:sourceId,to:id,kind}});
       if (returning || history.at(-1)?.id === id) history.pop();
       else history.push({id:sourceId,trigger});
       document.documentElement.dataset.location = id;
@@ -189,4 +203,5 @@
   // Normal navigation follows only the declared geographic paths.
   const preview = new URLSearchParams(location.search).get('scene');
   if (preview && preview !== 'midway' && definitions[preview]) travel(preview,null);
+  else window.DreamscapesObservations?.enterScene('midway');
 })();

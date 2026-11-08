@@ -1,0 +1,70 @@
+[
+  {
+    "name": "adults-desktop",
+    "ordinarySpeed": true,
+    "complete": true,
+    "players": [
+      {
+        "duration": 92.36,
+        "currentTime": 92.36,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 2309,
+          "dropped": 9
+        }
+      },
+      {
+        "duration": 91.92,
+        "currentTime": 91.92,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 2298,
+          "dropped": 12
+        }
+      }
+    ],
+    "screenshots": [
+      "review-adults-desktop-10.jpg",
+      "review-adults-desktop-25.jpg",
+      "review-adults-desktop-40.jpg",
+      "review-adults-desktop-55.jpg",
+      "review-adults-desktop-70.jpg",
+      "review-adults-desktop-85.jpg"
+    ]
+  },
+  {
+    "name": "adults-phone",
+    "ordinarySpeed": true,
+    "complete": true,
+    "players": [
+      {
+        "duration": 82.16,
+        "currentTime": 82.16,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 2054,
+          "dropped": 8
+        }
+      },
+      {
+        "duration": 76,
+        "currentTime": 76,
+        "ended": true,
+        "rate": 1,
+        "quality": {
+          "total": 1900,
+          "dropped": 9
+        }
+      }
+    ],
+    "screenshots": [
+      "review-adults-phone-10.jpg",
+      "review-adults-phone-25.jpg",
+      "review-adults-phone-40.jpg",
+      "review-adults-phone-55.jpg",
+      "review-adults-phone-70.jpg"
+    ]
+  },

@@ -4,6 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "dev": "node tools/playtest-server.mjs",
+    "test:playtest": "node tools/playtest.cjs",
+    "test:server": "node --test tools/playtest-server.test.mjs",
+    "test:usability": "node tools/cycle-one.cjs",
+    "review:cycle-one": "node tools/cycle-one-report.cjs && node tools/cycle-one-review.mjs",
+    "test:observations": "node --test tools/observations.test.mjs",
+    "test:observations:browser": "node tools/observation-browser.cjs",
+    "review:cycle-two": "node tools/cycle-two-report.cjs && node tools/cycle-two-review.mjs",
+    "test:carousel-choice": "node --test tools/carousel-choice.test.mjs tools/observations.test.mjs",
+    "test:carousel-choice:browser": "node tools/onboard-browser.cjs",
+    "review:cycle-three": "node tools/cycle-three-report.cjs && node tools/cycle-three-review.mjs",
+    "test:carousel-choice:visual": "node tools/onboard-browser.cjs --case=sampled",
+    "test:onboard": "node tools/onboard-browser.cjs",
+    "review:first-person": "node tools/first-person-report.cjs && node tools/first-person-review.mjs",
+    "test:onboard:lifecycle": "node tools/onboard-lifecycle.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

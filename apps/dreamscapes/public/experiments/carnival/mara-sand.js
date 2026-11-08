@@ -1,6 +1,6 @@
 import * as T from './vendor/three.module.js';
 // A snapshot of the actual skinned surface: original UVs and tag, no replacement artwork.
-export function createMaraSand(rig,scene,landing){
+export function createMaraSand(rig,scene,landing,{carryTo=new T.Matrix4(),liftStart=1.65,liftDuration=1.65,rate=1}={}){
  const source=rig.mesh,g=source.geometry,p=g.attributes.position,uv=g.attributes.uv,ix=g.index;
  const positions=new Float32Array(p.count*3),normals=new Float32Array(p.count*3),v=new T.Vector3(),n=new T.Vector3(),skinned=new T.Vector3();
  for(let i=0;i<p.count;i++){
@@ -21,9 +21,45 @@ export function createMaraSand(rig,scene,landing){
  float noise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);}
  float grain(vec3 p){return .68*noise(p*23.)+.23*noise(p*61.)+.09*noise(p*153.);}
  float release(vec3 p){return .12+2.4*grain(p);}`;
- bodyMaterial.onBeforeCompile=s=>{s.uniforms.sandTime=clock;s.vertexShader='varying vec3 sandPosition;\n'+s.vertexShader;s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nsandPosition=position;');s.fragmentShader='uniform float sandTime;varying vec3 sandPosition;\n'+erosion+'\n'+s.fragmentShader;s.fragmentShader=s.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\nif(release(sandPosition)<sandTime)discard;');};
- bodyMaterial.customProgramCacheKey=()=> 'mara-dust-erosion-v3';
- const shell=new T.Mesh(geometry(body),bodyMaterial);scene.add(shell);
+ // Actual textured surface triangles detach, tumble and fall. The material stays
+ // opaque: disappearance comes from moving/shrinking fragments, never an alpha fade.
+ const carryUniforms={carryTo:{value:carryTo},liftStart:{value:liftStart},liftDuration:{value:liftDuration},crumbleRate:{value:rate}};
+ const carryShader=`uniform mat4 carryTo;uniform float liftStart;uniform float liftDuration;uniform float crumbleRate;
+ float liftEase(float t){t=clamp(t,0.,1.);return t*t*(3.-2.*t);}
+ vec3 carried(vec3 p,float seconds){float from=liftEase(liftStart/liftDuration);float amount=(liftEase((liftStart+seconds/crumbleRate)/liftDuration)-from)/max(.0001,1.-from);return mix(p,(carryTo*vec4(p,1.)).xyz,clamp(amount,0.,1.));}`;
+ // Subdivide long fur strips before release so they crumble into small pieces,
+ // rather than exposing the source mesh as large triangular confetti.
+ const chunks={position:[],normal:[],uv:[]};
+ const extent=new T.Box3().setFromBufferAttribute(new T.BufferAttribute(positions,3)).getSize(new T.Vector3());
+ const limit=extent.y/90;
+ const vertex=id=>({p:new T.Vector3().fromArray(positions,id*3),n:new T.Vector3().fromArray(normals,id*3),uv:new T.Vector2().fromBufferAttribute(uv,id)});
+ const midpoint=(a,b)=>({p:a.p.clone().add(b.p).multiplyScalar(.5),n:a.n.clone().add(b.n).normalize(),uv:a.uv.clone().add(b.uv).multiplyScalar(.5)});
+ function fragment(a,b,c,depth=0){
+  const edges=[a.p.distanceToSquared(b.p),b.p.distanceToSquared(c.p),c.p.distanceToSquared(a.p)],longest=Math.max(...edges);
+  if(depth<7&&longest>limit*limit){const edge=edges.indexOf(longest);if(edge===0){const m=midpoint(a,b);fragment(a,m,c,depth+1);fragment(m,b,c,depth+1);}else if(edge===1){const m=midpoint(b,c);fragment(a,b,m,depth+1);fragment(a,m,c,depth+1);}else{const m=midpoint(c,a);fragment(a,b,m,depth+1);fragment(m,b,c,depth+1);}return;}
+  for(const v of[a,b,c]){chunks.position.push(...v.p);chunks.normal.push(...v.n);chunks.uv.push(...v.uv);}
+ }
+ for(let i=0;i<body.length;i+=3)fragment(vertex(body[i]),vertex(body[i+1]),vertex(body[i+2]));
+ const bodyGeometry=new T.BufferGeometry();for(const [name,data]of Object.entries(chunks))bodyGeometry.setAttribute(name,new T.Float32BufferAttribute(data,name==='uv'?2:3));
+ const fragmentVertices=chunks.position.length/3,centers=new Float32Array(fragmentVertices*3),jitter=new Float32Array(fragmentVertices*3);
+ for(let i=0;i<fragmentVertices;i+=3){a.fromBufferAttribute(bodyGeometry.attributes.position,i);b.fromBufferAttribute(bodyGeometry.attributes.position,i+1);c.fromBufferAttribute(bodyGeometry.attributes.position,i+2);const center=a.add(b).add(c).multiplyScalar(1/3);for(let k=0;k<3;k++){center.toArray(centers,(i+k)*3);jitter.set([Math.sin(i*1.71),Math.cos(i*2.31),Math.sin(i*.83)],(i+k)*3);}}
+ bodyGeometry.setAttribute('fragmentCenter',new T.BufferAttribute(centers,3));bodyGeometry.setAttribute('fragmentJitter',new T.BufferAttribute(jitter,3));
+ bodyMaterial.side=T.DoubleSide;
+ bodyMaterial.onBeforeCompile=s=>{
+  Object.assign(s.uniforms,{sandTime:clock,...carryUniforms});
+  s.vertexShader=`uniform float sandTime;attribute vec3 fragmentCenter;attribute vec3 fragmentJitter;varying float fragmentHeight;varying float fragmentAge;${erosion}${carryShader}\n`+s.vertexShader;
+  s.vertexShader=s.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+   float releaseTime=.05+1.7*max(0.,grain(fragmentCenter)-.2);float age=max(0.,sandTime-releaseTime);fragmentAge=age;
+   vec3 center=carried(fragmentCenter,min(sandTime,releaseTime));vec3 relative=transformed-fragmentCenter;
+   vec3 axis=normalize(fragmentJitter+vec3(.01,.02,.03));float turn=age*5.;
+   relative=relative*cos(turn)+cross(axis,relative)*sin(turn)+axis*dot(axis,relative)*(1.-cos(turn));
+   transformed=center+relative*(1.-smoothstep(.35,.75,age));
+   transformed.xz+=fragmentJitter.xz*age*.13;transformed.y-=.85*age*age;fragmentHeight=transformed.y;`);
+  s.fragmentShader='varying float fragmentHeight;varying float fragmentAge;\n'+s.fragmentShader;
+  s.fragmentShader=s.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\nif(fragmentHeight<.006||fragmentAge>=.75)discard;');
+ };
+ bodyMaterial.customProgramCacheKey=()=> 'mara-physical-fragments-v4';
+ const shell=new T.Mesh(bodyGeometry,bodyMaterial);shell.frustumCulled=false;scene.add(shell);
  const tagGeometry=geometry(tag),tagBox=new T.Box3();for(const i of tag)tagBox.expandByPoint(new T.Vector3().fromArray(positions,i*3));const start=tagBox.getCenter(new T.Vector3());tagGeometry.translate(-start.x,-start.y,-start.z);
  const tagMaterial=source.material.clone();tagMaterial.side=T.DoubleSide;const label=new T.Mesh(tagGeometry,tagMaterial);label.position.copy(start);scene.add(label);
  // Sample surface area, rather than vertex density, so the grains cover the entire fox evenly.
@@ -32,14 +68,14 @@ export function createMaraSand(rig,scene,landing){
  const image=source.material.map?.image,texture=document.createElement('canvas');texture.width=image?.width||1;texture.height=image?.height||1;const ctx=texture.getContext('2d',{willReadFrequently:true});if(image)ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,texture.width,texture.height).data;
  for(let i=0;i<count;i++){const pick=random()*area;let lo=0,hi=triangles.length-1;while(lo<hi){const m=(lo+hi)>>1;if(triangles[m].area<pick)lo=m+1;else hi=m;}const ids=triangles[lo].ids,r=Math.sqrt(random()),s=random(),w=[1-r,r*(1-s),r*s];v.set(0,0,0);let u=0,t=0;ids.forEach((id,k)=>{v.addScaledVector(a.fromArray(positions,id*3),w[k]);u+=uv.getX(id)*w[k];t+=uv.getY(id)*w[k];});v.toArray(points,i*3);const x=Math.min(texture.width-1,Math.max(0,Math.floor(u*texture.width))),y=Math.min(texture.height-1,Math.max(0,Math.floor((source.material.map?.flipY?1-t:t)*texture.height))),n=(y*texture.width+x)*4;new T.Color(pixels[n]/255,pixels[n+1]/255,pixels[n+2]/255).convertSRGBToLinear().multiplyScalar(.72).toArray(colors,i*3);randoms.set([random(),random(),random()],i*3);}
  const grainsGeometry=new T.BufferGeometry();grainsGeometry.setAttribute('position',new T.BufferAttribute(points,3));grainsGeometry.setAttribute('color',new T.BufferAttribute(colors,3));grainsGeometry.setAttribute('jitter',new T.BufferAttribute(randoms,3));
- const grainsMaterial=new T.ShaderMaterial({uniforms:{sandTime:clock,settleShift:{value:new T.Vector3(landing.x-start.x,0,landing.z-start.z)}},transparent:true,depthWrite:false,vertexColors:true,
- vertexShader:`uniform float sandTime;uniform vec3 settleShift;attribute vec3 jitter;varying float alpha;varying vec3 tint;varying float soft;varying float seed;${erosion}
+ const grainsMaterial=new T.ShaderMaterial({uniforms:{sandTime:clock,...carryUniforms,settleShift:{value:new T.Vector3(landing.x-start.x,0,landing.z-start.z)}},transparent:true,depthWrite:false,vertexColors:true,
+ vertexShader:`uniform float sandTime;uniform vec3 settleShift;attribute vec3 jitter;varying float alpha;varying vec3 tint;varying float soft;varying float seed;${erosion}${carryShader}
  void main(){
-  float age=sandTime-release(position);float t=max(0.,age);vec3 p=position;
+  float released=release(position);float age=sandTime-released;float t=max(0.,age);vec3 origin=carried(position,min(sandTime,released));vec3 p=origin;
   soft=step(.77,jitter.z);seed=jitter.x*19.;
   // Small eddies open into soft dust wisps; gravity takes over after a suspended beat.
   float falling=max(0.,t-.18),acceleration=mix(.75,.48,soft);
-  float duration=sqrt(max(.01,position.y)/acceleration);
+  float duration=sqrt(max(.01,origin.y)/acceleration);
   float travel=clamp(falling/duration,0.,1.);
   float spread=(1.-exp(-t*2.))*mix(.11,.18,soft)*(1.-.45*travel);
   p.x+=spread*(sin(position.y*17.+t*2.1)+.5*sin(position.z*13.+t*3.7)+.18*sin(seed));
@@ -65,6 +101,7 @@ export function createMaraSand(rig,scene,landing){
  a.fromArray(positions,tag[0]*3);b.fromArray(positions,tag[1]*3);c.fromArray(positions,tag[2]*3);
  const paperNormal=b.sub(a).cross(c.sub(a)).normalize();
  const finishRotation=new T.Quaternion().setFromUnitVectors(paperNormal,new T.Vector3(0,1,0));const rotated=tagGeometry.attributes.position;let minimum=Infinity;for(const i of tag){v.fromBufferAttribute(rotated,i).applyQuaternion(finishRotation);minimum=Math.min(minimum,v.y);}landing=landing.clone();landing.y=.012-minimum;
- function update(seconds){clock.value=Math.max(0,seconds);shell.visible=seconds<2.52;const u=T.MathUtils.clamp((seconds-.7)/4.5,0,1),fall=u*u*(3-2*u),flutter=Math.sin(Math.PI*u);label.position.lerpVectors(start,landing,fall);label.position.x+=Math.sin(u*Math.PI*5)*flutter*.13;label.position.z+=Math.sin(u*Math.PI*3)*flutter*.07;label.quaternion.identity().slerp(finishRotation,fall);label.rotateY(Math.sin(u*Math.PI*6)*flutter*.6);label.rotateZ(Math.sin(u*Math.PI*5)*flutter*.38);return seconds>=5.6;}
- return{update,stats:{tagTriangles:tag.length/3,bodyTriangles:body.length/3,grains:count},dispose(){for(const o of[shell,label,grains]){scene.remove(o);o.geometry.dispose();o.material.dispose();}rig.group.visible=true;}};
+ const stats={tagTriangles:tag.length/3,bodyTriangles:body.length/3,fragments:fragmentVertices/3,grains:count,bodyVisible:true,tagGrounded:false,physicalFragments:true};
+ function update(seconds){clock.value=Math.max(0,seconds);shell.visible=seconds<2.2;grains.visible=seconds<5.6;const u=T.MathUtils.clamp((seconds-.7)/4.5,0,1),fall=u*u*(3-2*u),flutter=Math.sin(Math.PI*u);label.position.lerpVectors(start,landing,fall);label.position.x+=Math.sin(u*Math.PI*5)*flutter*.13;label.position.z+=Math.sin(u*Math.PI*3)*flutter*.07;label.quaternion.identity().slerp(finishRotation,fall);label.rotateY(Math.sin(u*Math.PI*6)*flutter*.6);label.rotateZ(Math.sin(u*Math.PI*5)*flutter*.38);stats.bodyVisible=shell.visible;stats.tagGrounded=u===1;return seconds>=5.6;}
+ return{update,stats,setVisible(visible){for(const o of[shell,label,grains])o.visible=visible;},dispose(){for(const o of[shell,label,grains]){scene.remove(o);o.geometry.dispose();o.material.dispose();}rig.group.visible=true;}};
 }

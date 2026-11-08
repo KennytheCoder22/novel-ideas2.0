@@ -38,6 +38,11 @@
 .skee-board .is-hit { fill:#f4cf83; stroke:#fff0be; }
 html[data-motion="still"] .funhouse-mirror canvas { transition:none; }
 
+/* Keep both geographic choices independently reachable on narrow phones. */
+@media(max-width:600px) {
+  .room-route { max-width:calc(50vw - 24px); white-space:normal; }
+}
+
 .room-route { bottom:35px; }
 [data-scene="fun-house"] .location-look { bottom:91px; }
 [data-scene="fun-house"] .play-room-status { bottom:147px; }

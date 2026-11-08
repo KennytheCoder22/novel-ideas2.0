@@ -1,15 +1,15 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 7929,
-    "sha256": "0ef2e2dce2481e691d2b9d1f2c55da462a130de31ace27977ac7588a4a391531"
+    "bytes": 8819,
+    "sha256": "335fd11904f64db0b857f5de0a632b1433231bad45a6a3cbfa622dab76b05e17"
   },
   "experiments/carnival/navigation.js": {
-    "bytes": 10201,
-    "sha256": "f94ffaf696888e9cea41847d67652f836a03d269208f8b2b20010c377cdc3312"
+    "bytes": 11421,
+    "sha256": "e94743e23968874a5613b66abf6feffaca73d96df10284910c994fb24a14cea4"
   },
   "experiments/carnival/horse-comparison.js": {
-    "bytes": 6156,
-    "sha256": "976f43675769f116803674dc49954e58b83275a7c9be6d9aa3d8d26fb9c048d6"
+    "bytes": 6296,
+    "sha256": "a923d17390f2b206c49148720027e45f6e8400741a7254dc0758b78a6aa65929"
   },
   "experiments/carnival/exit-sign.js": {
     "bytes": 6626,
@@ -36,20 +36,20 @@
     "bytes": 2056469
   },
   "experiments/carnival/midway.js": {
-    "bytes": 12454,
-    "sha256": "3fc4e35ad56abcd403f8d234f20a1694a374f0295f6a59ccffbd0f86bc59b260"
+    "bytes": 13077,
+    "sha256": "09a941e2e36e231bcc46719e3b95286eda0c8b6734e07cf534bf3fda8c824680"
   },
   "experiments/carnival/locations.js": {
     "bytes": 3246,
     "sha256": "6e0bd934e40b616dff71b3bbf88c12181db3c9392d15ed0d7f9c6ee8757832e9"
   },
   "experiments/carnival/animal-comparison.js": {
-    "bytes": 7868,
-    "sha256": "77ae852d8f1460fc759611d6147430b2d49594c249039a23b36ca10edaf9fa6c"
+    "bytes": 8012,
+    "sha256": "add0f13f1b0664f58c23cab96a80cb2c5b65204828019bd45a37494dbf26a173"
   },
   "experiments/carnival/carousel-variants.js": {
-    "bytes": 10124,
-    "sha256": "abcf94d5291f552ef8e3f80a466f69d6d2ba062dec05688ea25025b493bc0063"
+    "bytes": 9894,
+    "sha256": "7b9b0b3bbb5f44ef0cc11acf54bc98f6be03140c8c42852ae26082179c9da64c"
   },
   "experiments/carnival/mount-variants.js": {
     "bytes": 1712,
@@ -72,8 +72,8 @@
     "sha256": "53097b2df6e79347c574a1221104215cd87f53b6b15b02ef483d9ad3d3eef02c"
   },
   "index.html": {
-    "bytes": 1950,
-    "sha256": "369f3ef61c017a6c4533ad13d59c3df37f0c0c196ca197b9b7f0f557d5790605"
+    "bytes": 2107,
+    "sha256": "9e2137960988a14d6b0ab70a4330a99cd45ba32af570f6f29e160e12150d3ade"
   },
   "opening/opening.css": {
     "bytes": 3925,
@@ -272,12 +272,12 @@
     "bytes": 2772
   },
   "experiments/carnival/play-rooms.js": {
-    "bytes": 2915,
-    "sha256": "92efd9c142b1fd8cd4e03e1871ce895d4f42bd663b1cb9dc3daa6e945604b650"
+    "bytes": 3184,
+    "sha256": "9478b5e02b8f34f3d6dc3eb721ceec78b330d62b30642281fa30bca9bbf43033"
   },
   "experiments/carnival/play-rooms.css": {
-    "bytes": 6626,
-    "sha256": "7a6a21ffa57f93be5c87e724f424a2b93d48617dfc15d9fb336f771129eb090e"
+    "bytes": 6804,
+    "sha256": "f3dbb7fde125d90b8dbb4f34afc3b65453094154751b44fc2228fc1c6c69c523"
   },
   "experiments/carnival/locations/fun-house.png": {
     "bytes": 2890869,
@@ -288,12 +288,12 @@
     "sha256": "1b815bd9325e4365c004bb2aabb58bc582a8fe7a44eca9805530c3b8e1f6f37d"
   },
   "experiments/carnival/skee-ball-art.js": {
-    "bytes": 23247,
-    "sha256": "f00b7c8c0c1a311e3a3c0f88cfe957c37a54e75775def89ef02812996f3cbc7c"
+    "bytes": 24108,
+    "sha256": "3bad4fb428d635e010d1f67e29f8e723553a29854c798b7c4bdf620ff1404abf"
   },
   "experiments/carnival/skee-ball-art.css": {
-    "bytes": 3775,
-    "sha256": "e34cdf5f5d89b3219056b76b24fe0f8f660617e52796128f444fa1d6938a6da7"
+    "bytes": 4034,
+    "sha256": "1355b592185ba7b7921bbca7dd684ab5cd2216d3e1e167481c0e29022536c603"
   },
   "experiments/carnival/skee-ball/approved-alley.png": {
     "bytes": 2298003,
@@ -308,8 +308,8 @@
     "sha256": "c0a49bf512f9a6f689b7bdf8629741f4794d4bbb33fe9ad9e488c5910a3a8f47"
   },
   "experiments/carnival/skee-ball-clown.js": {
-    "bytes": 27869,
-    "sha256": "6da90bb6f0d78cbfadc7a02c60fa1633e62310221d22f16db088bda99e5c442a"
+    "bytes": 28225,
+    "sha256": "75c053f33f8c09535e950cbdf5aba285eb50802570528e7b2c83ea3128141374"
   },
   "experiments/carnival/skee-ball/clown-running.glb": {
     "bytes": 13052352,
@@ -324,8 +324,8 @@
     "sha256": "c226a6429365dc5269c0abbeecbf1fa71fd776510c3104f49fcc62da13b242ba"
   },
   "experiments/carnival/mara-midway.js": {
-    "bytes": 24500,
-    "sha256": "e00315b680cea6d1379ae00302fe193adb5483f5acd944adac76c2339a2df9f0"
+    "bytes": 26219,
+    "sha256": "2b9d330f4e4d69f3e06000b7f2f1ede3266008ca9d4dff32d04f420d93837b42"
   },
   "experiments/carnival/mara-rig.js": {
     "bytes": 16368,
@@ -348,8 +348,8 @@
     "sha256": "b32c4cc570b425ea30a4106237240605c7cd87a24ee2d7ce2b89f2b5a7056240"
   },
   "experiments/carnival/shared-mount-renderer.js": {
-    "bytes": 2235,
-    "sha256": "29199c48dffd69f7682c1b8c2491d048d87f12dc0fb2181df7d685e64a107e39"
+    "bytes": 3201,
+    "sha256": "a568409a85dcc633afbd7893fbd0cefd681de49cf3616d925302ff54aef53dae"
   },
   "experiments/carnival/skee-ball/clown-closeup.png": {
     "bytes": 2540415,
@@ -360,31 +360,135 @@
     "sha256": "82f9c2f3c342b0440b26aad582e91527fdcdb85728f293dee59774ac25882d46"
   },
   "experiments/carnival/mara-sand.js": {
-    "bytes": 8229,
-    "sha256": "3e301d77a971c3d6f6b7373825e5b164546440112f138ddb3d3c42f32b2c6f82"
+    "bytes": 12368,
+    "sha256": "63bc1f0ce2035e243f0c6845a28070ec0d1aa97f285c1198d1107a7d7b3d1bb0"
+  },
+  "experiments/carnival/navigation.css": {
+    "bytes": 2087,
+    "sha256": "427fc6d86ffbabb9780678b9d50ea8751387724d877e90b71e8d0a26962c5198"
+  },
+  "observations.js": {
+    "bytes": 25788,
+    "sha256": "81e4ea87397943f8f2f6438318c96b28fa791c56683025db364b90ea581c5f6f"
+  },
+  "observation-inspector.js": {
+    "bytes": 4315,
+    "sha256": "acc855eeb61879f05bdf7a3c14ffdd5053ccf95cc65222dc38a478e7adab937e"
+  },
+  "carousel-choice-catalog.js": {
+    "bytes": 2374,
+    "sha256": "1c7a7ba584347cec66e011c7dbd1d03410dcd184ef4233e6c3b1a68981976278"
   },
   "experiments/carnival/carousel.js": {
-    "bytes": 24969,
-    "sha256": "867229ae7db0a785d3d187626ac5ba363818dbf415132d041a76814bd03e8d06"
+    "bytes": 25150,
+    "sha256": "21836f35a0eda7d956a5a39e9f78a2052de2b1d7a7792e492111bf1f00cb0b8d"
   },
-  "experiments/carnival/carousel-ride.js": {
-    "bytes": 27504,
-    "sha256": "b4bb6467089e45417afdafd391740a6dc97b40273f86f020648611ba5e322101"
+  "experiments/carnival/carousel-choice.js": {
+    "bytes": 12028,
+    "sha256": "8940dc966ff43345f3143ac7e3aa51f09e96413beeb9dd749069fdfd07a1f3f3"
   },
-  "experiments/carnival/carousel-ride.css": {
-    "bytes": 4525,
-    "sha256": "31842d78bda9ef6f0e1242e781d5eed2af60984e3013e1c9a52b0f34e44ca7d4"
+  "experiments/carnival/carousel-choice.css": {
+    "bytes": 4343,
+    "sha256": "828e82ee1ce829a3607d124deb42cdcc9b7f1eec27237951dc52dde9c69034b1"
   },
-  "experiments/carnival/carousel-evidence.js": {
-    "bytes": 1777,
-    "sha256": "a4bad2eedcb797f114f247c62e016e5858f82a4128bf28c6a429766d2b2b0061"
+  "experiments/carnival/carousel-onboard.js": {
+    "bytes": 14776,
+    "sha256": "ef365c3f07cec0968752dbe2c128ac780b5664202af277c513da5c5ff63a6713"
+  },
+  "experiments/carnival/carousel-onboard.css": {
+    "bytes": 1172,
+    "sha256": "0097da2c0d2b17b208b6081704374ab6a9f95f7ee4bab3ce853e29fd163fcb86"
+  },
+  "experiments/carnival/carousel-environment.js": {
+    "bytes": 10042,
+    "sha256": "39b735c4937b8ea3792539d88535c660f3df91724e7647df8285f72949b74358"
+  },
+  "experiments/carnival/platform.js": {
+    "bytes": 10378,
+    "sha256": "e5455da15fa7e155ab48a770bb7baa5954d42f9e7966970dd82acd33ec606e3a"
   },
   "experiments/carnival/carousel-dream.js": {
-    "bytes": 1132,
-    "sha256": "b662fe7420de1cb93ca43e1fe0781e7b60356bdd70a3fe1e65a36acc0525e097"
+    "bytes": 7047,
+    "sha256": "a78255d887ab85c7224592c1f71c219ea81f7503f1488649b65fc46de6570f2f"
   },
-  "experiments/carnival/carousel-mechanics.js": {
-    "bytes": 5547,
-    "sha256": "d3ea53201b213c3ae92a26829318ae702192624b297162fbd8bd10d5b9b040e7"
+  "experiments/carnival/dream-worlds/manifest.json": {
+    "bytes": 6407,
+    "sha256": "268cd3d928934eb20e0cc00659d2a60a8e997b525270ec2cdc4a2f3e5bf59388"
+  },
+  "experiments/carnival/dream-worlds/Moonlit (Griffin) Citadel Among Misty Peaks.png": {
+    "bytes": 2993573,
+    "sha256": "44632cb6a8a9b14fd0447f648d10bbda35995feb2c071bbd2a765272bb115bd4"
+  },
+  "experiments/carnival/dream-worlds/Moonlit Creepy Garden Path(Snail).png": {
+    "bytes": 2782306,
+    "sha256": "e78f4460c7a6bcb7282fcc2438348e550698b102521541b452212061ecbf0b3c"
+  },
+  "experiments/carnival/dream-worlds/Moonlit Valley and Cliffside Fortress(White Horse).png": {
+    "bytes": 2960771,
+    "sha256": "29dd52f11a850ba5fbd163544e9f3eff80dff8684ef313da69cf2d6f1c6148f7"
+  },
+  "experiments/carnival/dream-worlds/Neon Alien World Panorama (Rocket).png": {
+    "bytes": 3119253,
+    "sha256": "9e29cb22ed079c9c3f6be572f86bd3c24d47e33b8e82eeace407af2081653130"
+  },
+  "experiments/carnival/dream-worlds/Twilight Safari Under the Milky Way(Ostrich-Zebra).png": {
+    "bytes": 3206550,
+    "sha256": "fd1b57489cdf8793265805262e2892b294703e4a44d64b7223d784e1e331df47"
+  },
+  "experiments/carnival/dream-worlds/Vintage Lunar Crater Panorama(Moon Chair).png": {
+    "bytes": 2537235,
+    "sha256": "9a7a3a796c4f7994a7251c4e9a869332c3bf99002c26cd974924b131f9788327"
+  },
+  "experiments/carnival/carousel-sky.js": {
+    "bytes": 1248,
+    "sha256": "c4de2720366de84ae61e1ea7c9f734154f502059319909d7ca14a6ff17407201"
+  },
+  "experiments/carnival/dream-worlds/Twilight Over the Red Rock Valley(Brown Horse).png": {
+    "bytes": 3215537,
+    "sha256": "978b99a582effc6a92d61a234a8d1eb59cc7a3b46236fee0a029a1ecdd5ff358"
+  },
+  "experiments/carnival/dream-worlds/Aurora Over the Frozen Arctic (Polar Bear).png": {
+    "bytes": 2952692,
+    "sha256": "d0128ad831c2c1a6ae87e9b9d1754054e480a718d953b27b2b9541415a80ab9f"
+  },
+  "experiments/carnival/dream-worlds/Retro Cat\u2019s-Eye Living Room(Cat).png": {
+    "bytes": 2961675,
+    "sha256": "22606b74531fca672b834dfdf225da2d6a71f5f24b4e740bd75ee58037499485"
+  },
+  "experiments/carnival/dream-worlds/Sunset Jungle Temple with Wildlife(Tiger).png": {
+    "bytes": 3476033,
+    "sha256": "3ebb28f90e4c703cb61765eb16dca5b5ba00f65d984487d5b21101520a873dbb"
+  },
+  "experiments/carnival/dream-worlds/Endless Flamingo Mirror Lagoon.png": {
+    "bytes": 3689545,
+    "sha256": "983b7753297121662af58b34c63de28eac68371829dc47ecbf6768f4106f8e30"
+  },
+  "experiments/carnival/carousel-thumbnails.js": {
+    "bytes": 2124,
+    "sha256": "e7c28e9ff2b58f9a51676cb4e2af829d53516c9e4ea8be0dce60b2f3f94241ae"
+  },
+  "experiments/carnival/dream-worlds/(Dragon).png": {
+    "bytes": 3484828,
+    "sha256": "ca0701b708cdcf2af8a17619b49472236d9b47ff38a7d69009652376e92d51eb"
+  },
+  "experiments/carnival/dream-worlds/(unicorn).png": {
+    "bytes": 3709491,
+    "sha256": "25e465a97737aa7e80ece3b0086a581a1a2fee3cfd0616f9d5987eeb15512075"
+  },
+  "experiments/carnival/dream-worlds/Cinematic Enchanted Woodland Warren(Rabbit).png": {
+    "bytes": 3079282,
+    "sha256": "34f55a3f59d7235dafc12da03d44fa19633714ef802c4e465dad6ff1737e037b"
+  },
+  "experiments/carnival/dream-worlds/Golden-Hour Countryside Path(Fox).png": {
+    "bytes": 3443150,
+    "sha256": "f91b06172bc45c51c2881bbe40c49e7fe7a1c71fba41ddb9bd7f790fb1226468"
+  },
+  "experiments/carnival/dream-worlds/Moonlit Alpine Valley with Howling Wolf(Grizzly,Wolf).png": {
+    "bytes": 3180855,
+    "sha256": "4cb0467df50199f03d88254fe2aedced2b62d0052a3c605bb94ed6113d58123d"
+  },
+  "experiments/carnival/dream-worlds/Sunlit Wildflower Valley beneath Ancient Oaks(Stag).png": {
+    "bytes": 3444984,
+    "sha256": "9197fee4f89d903df860c95a5458af57ea6473373373bdcb0c00159cce38eda5"
   }
 }

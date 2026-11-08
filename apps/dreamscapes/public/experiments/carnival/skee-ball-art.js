@@ -1,6 +1,7 @@
-/* Approved artwork with a dimensional launch/return insert and nine-ball lifecycle. */
+/* Approved artwork with a dimensional launch/return insert and three-ball lifecycle. */
 (() => {
  'use strict';
+ const BALLS_PER_GAME=3;
  const W=1672,H=941,NS='http://www.w3.org/2000/svg';
  let machineGeometry=null;
  const PIVOTS={angle:{x:557,y:774},launch:{x:904,y:827}};
@@ -79,8 +80,11 @@
   function control(name,className,min,max){const e=document.createElement('div');e.className=className;e.tabIndex=0;e.setAttribute('role','slider');e.setAttribute('aria-label',name);e.setAttribute('aria-valuemin',min);e.setAttribute('aria-valuemax',max);e.setAttribute('aria-describedby',instructions.id);e.title=name+' — drag, or use the keyboard';game.append(e);return e;}
   const aim=control('Angle','skee-brass-angle',-35,35),launcher=control('Pull and release','skee-brass-launch',0,100);
   const replay=document.createElement('button');replay.className='carnival-play-button skee-art-replay';replay.textContent='Play again';replay.hidden=true;ui.append(replay);
+  const newObservationRound=()=>'round-'+(window.DreamscapesObservationCore?.newId()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
+  let observationRound=newObservationRound();
+  const observe=(action,suffix,details={})=>window.DreamscapesObservations?.record({sceneId:'skee-ball',interactionId:'skee-ball-round',category:'gameplay',action,occurrenceId:observationRound+':'+suffix,details:{round:roundId,...details}});
   let roundId=1,roundPhase='ready',ballAvailable=true,ballPresent=true,ballsPrepared=1,shotsLaunched=0,clownStarts=0;
-  let balls=9,total=0,pending=null,frame=0,disposed=false,angle=0,pull=0,drag=null,chargeFrame=0,keyStart=null,spring=null;
+  let balls=BALLS_PER_GAME,total=0,pending=null,frame=0,disposed=false,angle=0,pull=0,drag=null,chargeFrame=0,keyStart=null,spring=null;
   let renderBrass=()=>{},disposeBrass=()=>{},clown=null;
   import('./skee-ball-clown.js').then(({mountClown})=>{if(disposed)return;return mountClown({game,plane,ui,onMachineReady:g=>{machineGeometry=g;game.dataset.machineReady='true';},onComplete:completeRound,isActive:()=>!view.inert&&!document.hidden,reduced,onReady:()=>{if(!disposed){shelfPatch.setAttribute('visibility','visible');game.dataset.clownReady='true';}}});}).then(controller=>{if(!controller)return;if(disposed){controller.dispose();return;}clown=controller;if(roundPhase==='clown')startClown();}).catch(error=>{if(!disposed){game.dataset.clownReady='failed';if(roundPhase==='clown')completeRound();console.error('Skee Ball shelf clown unavailable',error);}});
   const canPlay=()=>!disposed&&roundPhase==='ready'&&ballAvailable&&!pending&&balls>0&&!view.inert&&!document.hidden;
@@ -98,10 +102,11 @@
   function cancelPull(animate=false){const from=pull;cancelAnimationFrame(chargeFrame);chargeFrame=0;keyStart=null;releaseCapture();pull=0;spring=animate&&!reduced.matches?{from,start:performance.now()}:null;update();renderBrass(angle,spring?from:0);if(spring&&!frame)frame=requestAnimationFrame(tick);}
   function ballVisibility(value){ballPresent=value;ball.setAttribute('opacity',value?1:0);shadow.setAttribute('opacity',value ? .38 : 0);game.dataset.ballPresent=String(value);}
   function prepareBall(){if(disposed||balls<=0||roundPhase!=='ready')return false;ballAvailable=true;ballsPrepared++;paintBall({x:835,y:684,groundY:690,r:14,phase:'rest'});ballVisibility(true);return true;}
-  function completeRound(){if(disposed||roundPhase!=='clown'||balls!==0)return;roundPhase='complete';update();status.textContent='Final score — '+total+' points. Play again or return to the carnival.';}
-  function startClown(){if(clownStarts||disposed||roundPhase!=='clown')return;if(clown){clownStarts++;clown.complete();}else if(game.dataset.clownReady==='failed')completeRound();}
+  function completeRound(){if(disposed||roundPhase!=='clown'||balls!==0)return;roundPhase='complete';observe('round-completed','complete',{total});update();status.textContent='Final score — '+total+' points. Play again or return to the carnival.';}
+  function startClown(){if(clownStarts||disposed||roundPhase!=='clown')return;if(clown){clownStarts++;observe('clown-started','clown');clown.complete();}else if(game.dataset.clownReady==='failed')completeRound();}
   function finish(){if(!pending)return;const shot=pending;pending=null;if(shot.roundId!==roundId||roundPhase!=='rolling')return;
    balls=Math.max(0,balls-1);const points=shot.short?0:scoreAt(shot);total+=points;ballAvailable=false;
+   observe('shot-scored','scored-'+shotsLaunched,{shot:shotsLaunched,points,total});
    if(balls>0){roundPhase='ready';prepareBall();status.textContent=points+' points. '+balls+' balls remaining.';}
    else{roundPhase='clown';ballVisibility(false);game.dataset.ballPhase='none';cancelPull();status.textContent='Round complete — '+total+' points.';startClown();}update();}
   function tick(now){
@@ -113,7 +118,7 @@
   }
   function shoot(){
    if(!canPlay()||pull<.025){cancelPull(true);return;}
-   const shot=endpoint(angle,pull);ballAvailable=false;roundPhase='rolling';shotsLaunched++;const from=pull,shotAngle=angle;cancelPull(false);angle=0;pending={...shot,roundId,angle:shotAngle,start:performance.now()};spring=reduced.matches?null:{from,start:performance.now()};update();renderBrass(angle,spring?from:0);status.textContent='The ball rolls up the alley…';
+   const shot=endpoint(angle,pull);ballAvailable=false;roundPhase='rolling';shotsLaunched++;const from=pull,shotAngle=angle;if(shotsLaunched===1)observe('round-started','start');observe('ball-launched','launch-'+shotsLaunched,{shot:shotsLaunched});cancelPull(false);angle=0;pending={...shot,roundId,angle:shotAngle,start:performance.now()};spring=reduced.matches?null:{from,start:performance.now()};update();renderBrass(angle,spring?from:0);status.textContent='The ball rolls up the alley…';
    if(reduced.matches){finish();renderBrass(angle,0);}else if(!frame)frame=requestAnimationFrame(tick);
   }
   function point(event){const r=plane.getBoundingClientRect();return{x:(event.clientX-r.left)*W/r.width,y:(event.clientY-r.top)*H/r.height};}
@@ -149,7 +154,7 @@
   });
   launcher.addEventListener('keyup',event=>{if(![' ','Enter'].includes(event.key))return;event.preventDefault();if(keyStart!==null){setPull((performance.now()-keyStart)/1200);shoot();}});
   launcher.addEventListener('blur',()=>{if(keyStart!==null||drag?.element===launcher)cancelPull(true);});
-  replay.addEventListener('click',()=>{if(roundPhase!=='complete')return;roundId++;clown?.reset();balls=9;total=0;angle=0;roundPhase='ready';ballAvailable=false;ballsPrepared=0;shotsLaunched=0;clownStarts=0;cancelPull();prepareBall();update();status.textContent='A fresh tray of nine balls.';launcher.focus();});
+  replay.addEventListener('click',()=>{if(roundPhase!=='complete')return;observe('replayed','replay',{total});roundId++;observationRound=newObservationRound();clown?.reset();balls=BALLS_PER_GAME;total=0;angle=0;roundPhase='ready';ballAvailable=false;ballsPrepared=0;shotsLaunched=0;clownStarts=0;cancelPull();prepareBall();update();status.textContent='A fresh tray of three balls.';launcher.focus();});
   const observer=new MutationObserver(()=>{if(view.inert){cancelPull();angle=0;finish();renderBrass(angle,0);}clown?.sync();update();});observer.observe(view,{attributes:true,attributeFilter:['inert']});
   const onHide=()=>{if(document.hidden){cancelPull();finish();}clown?.sync();update();};document.addEventListener('visibilitychange',onHide);
   const onReduced=()=>{clown?.sync();if(reduced.matches){spring=null;finish();renderBrass(angle,pull);}};reduced.addEventListener('change',onReduced);

@@ -1,0 +1,23 @@
+{
+  "id": "prj_uDp3rgzYWVvnP82Lv8dD2HFVTQNv",
+  "name": "dreamscapes-novelideas",
+  "accountId": "team_qwZFQgAcD4WFkLZmhTMjxnbX",
+  "rootDirectory": "apps/dreamscapes",
+  "framework": null,
+  "link": null,
+  "productionDeployment": {
+    "id": "dpl_dZYmC2hNpanViK5wMS2u9tXDMaEV",
+    "url": "dreamscapes-novelideas-jqqyse4na-kennythecoder22s-projects.vercel.app",
+    "alias": [
+      "dreamscapes-novelideas-kennythecoder22s-projects.vercel.app"
+    ],
+    "gitSource": null,
+    "meta": {
+      "githubCommitSha": "7ff4e652ac46e2d630226601e6edd29789f410b4",
+      "githubCommitRef": "main",
+      "githubRepo": "novel-ideas2.0",
+      "githubOrg": "KennytheCoder22",
+      "actor": "codex"
+    }
+  }
+}
