@@ -18,4 +18,14 @@ if(readdirSync(assets).filter(f=>f.endsWith('.glb')).length!==20)throw Error('Ex
 rmSync(path.join(root,'dist'),{recursive:true,force:true});
 mkdirSync(path.join(root,'dist'),{recursive:true});
 cpSync(path.join(root,'public'),path.join(root,'dist'),{recursive:true});
+// Publish the reviewed, query-flagged encounter without flattening its assets
+// or enabling it in ordinary gameplay. Verify it just like public runtime files.
+const prototype=JSON.parse(readFileSync(path.join(root,'prototype-overrides.json')));
+mkdirSync(path.join(root,'dist/cycle-zora'),{recursive:true});
+for(const [name,meta] of Object.entries(prototype)){
+ if(path.basename(name)!==name)throw Error('Invalid prototype filename');
+ const source=path.join(root,'research/cycle-zora',name),bytes=readFileSync(source);
+ if(createHash('sha256').update(bytes).digest('hex')!==meta.sha256)throw Error('Reviewed prototype changed: '+name);
+ cpSync(source,path.join(root,'dist/cycle-zora',name));
+}
 console.log('Built Dreamscapes: verified '+Object.keys(runtime).length+' runtime files (checkpoint + reviewed UI overrides), 20 Ornate GLBs and '+variantCount+' variant GLBs.');

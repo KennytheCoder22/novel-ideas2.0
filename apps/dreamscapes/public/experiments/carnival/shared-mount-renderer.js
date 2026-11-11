@@ -17,7 +17,7 @@ export function sharedMountRenderer(T,canvas,holder=null) {
  }
  users++;
  const display=canvas.getContext('2d',{alpha:true});
- let disposed=false;
+ let disposed=false,clearColor=0,clearAlpha=0;
  return {
   domElement:canvas,
   get outputColorSpace(){return shared.outputColorSpace;},
@@ -28,14 +28,24 @@ export function sharedMountRenderer(T,canvas,holder=null) {
    canvas.width=Math.floor(width);canvas.height=Math.floor(height);
    if(updateStyle){canvas.style.width=width+'px';canvas.style.height=height+'px';}
   },
-  setClearColor(...args){shared.setClearColor(...args);},
+  setClearColor(color,alpha=1){clearColor=color;clearAlpha=alpha;},
   getContext(){return shared.getContext();},
   render(scene,camera) {
    if(disposed)return;
-   shared.setSize(canvas.width,canvas.height,false);
+   shared.setClearColor(clearColor,clearAlpha);
+   // Keep an allocation large enough for every client, but render each client
+   // at its original pixel dimensions. The opaque ride uses its exact buffer;
+   // during return, retain the common allocation for both views. Avoid reallocating the shared GPU
+   // drawing buffer for every differently sized mount canvas.
+   const width=canvas.width,height=canvas.height;
+   const retain=holder!==null||!document.documentElement.hasAttribute('data-carousel-onboard');
+   const bufferWidth=retain?Math.max(shared.domElement.width,width):width,bufferHeight=retain?Math.max(shared.domElement.height,height):height;
+   if(shared.domElement.width!==bufferWidth||shared.domElement.height!==bufferHeight)shared.setSize(bufferWidth,bufferHeight,false);
+   shared.setViewport(0,0,width,height);
+   shared.setScissor(0,0,width,height);shared.setScissorTest(true);
    shared.render(scene,camera);
    display.clearRect(0,0,canvas.width,canvas.height);
-   display.drawImage(shared.domElement,0,0);
+   display.drawImage(shared.domElement,0,shared.domElement.height-height,width,height,0,0,width,height);
    // Lossless alpha frame, same cropped buffer and SVG rectangle; no new
    // camera/registration transform and no asynchronous stale-style callback.
    if(holder?.localName==='image')holder.setAttribute('href',canvas.toDataURL('image/png'));

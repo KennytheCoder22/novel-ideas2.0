@@ -1,0 +1,128 @@
+[
+  {
+    "band": "adults",
+    "variant": "baseline",
+    "time": 0,
+    "mounts": 20,
+    "exactPixelComparison": false
+  },
+  {
+    "band": "adults",
+    "variant": "baseline",
+    "time": 4500,
+    "mounts": 20,
+    "exactPixelComparison": false
+  },
+  {
+    "band": "adults",
+    "variant": "baseline",
+    "time": 9000,
+    "mounts": 20,
+    "exactPixelComparison": false
+  },
+  {
+    "band": "adults",
+    "variant": "candidate",
+    "time": 0,
+    "mounts": 20,
+    "exactPixelComparison": true
+  },
+  {
+    "band": "adults",
+    "variant": "candidate",
+    "time": 4500,
+    "mounts": 20,
+    "exactPixelComparison": true
+  },
+  {
+    "band": "adults",
+    "variant": "candidate",
+    "time": 9000,
+    "mounts": 20,
+    "exactPixelComparison": true
+  },
+  {
+    "band": "teens",
+    "variant": "baseline",
+    "time": 0,
+    "mounts": 20,
+    "exactPixelComparison": false
+  },
+  {
+    "band": "teens",
+    "variant": "baseline",
+    "time": 4500,
+    "mounts": 20,
+    "exactPixelComparison": false
+  },
+  {
+    "band": "teens",
+    "variant": "baseline",
+    "time": 9000,
+    "mounts": 20,
+    "exactPixelComparison": false
+  },
+  {
+    "band": "teens",
+    "variant": "candidate",
+    "time": 0,
+    "mounts": 20,
+    "exactPixelComparison": true
+  },
+  {
+    "band": "teens",
+    "variant": "candidate",
+    "time": 4500,
+    "mounts": 20,
+    "exactPixelComparison": true
+  },
+  {
+    "band": "teens",
+    "variant": "candidate",
+    "time": 9000,
+    "mounts": 20,
+    "exactPixelComparison": true
+  },
+  {
+    "band": "kids",
+    "variant": "baseline",
+    "time": 0,
+    "mounts": 20,
+    "exactPixelComparison": false
+  },
+  {
+    "band": "kids",
+    "variant": "baseline",
+    "time": 4500,
+    "mounts": 20,
+    "exactPixelComparison": false
+  },
+  {
+    "band": "kids",
+    "variant": "baseline",
+    "time": 9000,
+    "mounts": 20,
+    "exactPixelComparison": false
+  },
+  {
+    "band": "kids",
+    "variant": "candidate",
+    "time": 0,
+    "mounts": 20,
+    "exactPixelComparison": true
+  },
+  {
+    "band": "kids",
+    "variant": "candidate",
+    "time": 4500,
+    "mounts": 20,
+    "exactPixelComparison": true
+  },
+  {
+    "band": "kids",
+    "variant": "candidate",
+    "time": 9000,
+    "mounts": 20,
+    "exactPixelComparison": true
+  }
+]

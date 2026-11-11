@@ -1,0 +1,12 @@
+import test,{before,after} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import http from 'node:http';
+import {startCycleFiveServer} from './cycle-five-server.mjs';
+let host;before(async()=>host=await startCycleFiveServer());after(async()=>host.close());
+test('ordinary Carnival HTML is byte-identical and never loads the prototype',async()=>{const response=await fetch(host.url+'/carnival/?scene=fortune-teller'),actual=await response.text(),expected=await readFile(new URL('../public/experiments/carnival/index.html',import.meta.url),'utf8');assert.equal(actual,expected);assert(!actual.includes('zora-prototype'));});
+test('only the explicit research flag injects the local prototype',async()=>{const html=await fetch(host.url+'/carnival/?scene=fortune-teller&cycle-five=zora').then(r=>r.text());assert.equal(html.match(/src="\/cycle-five\/zora-prototype.js"/g).length,1);assert(html.includes('zora-prototype.css'));});
+test('module content types support the isolated catalog import',async()=>{const r=await fetch(host.url+'/cycle-five/zora-contract.mjs');assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/javascript/);assert((await r.text()).includes('productionInfluence:false'));});
+test('non-loopback Host headers are rejected',async()=>{const status=await new Promise((resolve,reject)=>http.get(host.url+'/',{headers:{Host:'example.invalid'}},r=>{r.resume();resolve(r.statusCode);}).on('error',reject));assert.equal(status,403);});
+test('research server does not accept writes or expose parent directories',async()=>{assert.equal((await fetch(host.url+'/',{method:'POST'})).status,405);const r=await fetch(host.url+'/cycle-five/%2e%2e%2f%2e%2e%2fpackage.json');assert([403,404].includes(r.status));});
+test('local recording range requests return the exact requested bytes',async()=>{const path='../playtest-artifacts/cycle-five/adults-desktop.webm',r=await fetch(host.url+'/review/artifacts/adults-desktop.webm',{headers:{Range:'bytes=0-255'}});assert.equal(r.status,206);assert.deepEqual(Buffer.from(await r.arrayBuffer()),(await readFile(new URL(path,import.meta.url))).subarray(0,256));});

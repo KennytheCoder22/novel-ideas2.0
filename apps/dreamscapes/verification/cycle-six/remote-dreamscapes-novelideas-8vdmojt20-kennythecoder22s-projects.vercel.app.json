@@ -1,0 +1,33 @@
+{
+  "base": "https://dreamscapes-novelideas-8vdmojt20-kennythecoder22s-projects.vercel.app",
+  "passed": true,
+  "hashes": [
+    "carousel.js",
+    "carousel-onboard.js",
+    "horse-comparison.js",
+    "animal-comparison.js",
+    "shared-mount-renderer.js",
+    "index.html"
+  ],
+  "cases": [
+    {
+      "band": "adults",
+      "mobile": false,
+      "passed": true,
+      "mounts": 20,
+      "pausedRidePreserved": true,
+      "zora": true,
+      "errors": []
+    },
+    {
+      "band": "kids",
+      "mobile": true,
+      "passed": true,
+      "mounts": 20,
+      "pausedRidePreserved": true,
+      "zora": true,
+      "errors": []
+    }
+  ],
+  "date": "2026-11-11T18:51:54.978Z"
+}

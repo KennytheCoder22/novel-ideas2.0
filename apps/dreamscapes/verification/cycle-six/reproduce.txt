@@ -1,0 +1,42 @@
+Cycle Six reproduction (2026-11-08)
+
+Baseline: ae5ccf0732b7e030f3f082dc23c120ecf0d444c3.
+Cycle Five experiment: tools/cycle-five-performance.cjs and
+verification/cycle-five/performance-results.json. Its route-injected early
+return skipped external SVG work whenever a ride was active. The 12-second
+desktop sample improved from 26.0 to 32.2 FPS, but did not validate boarding,
+translucency, return, all age bands or styles. Cycle Six narrows that rule to
+the fully opaque seated view and refreshes all exterior assemblies before
+any translucent return frame. The earlier results were treated as a hypothesis.
+
+From apps/dreamscapes, set PLAYWRIGHT_MODULE to an installed Playwright module
+and BROWSER_EXE to the tested Chromium/Edge executable. No account is required.
+
+Unrecorded matrices (run sequentially, on an otherwise idle machine):
+node tools/cycle-six-performance.cjs --variant=baseline --trial=fresh
+node tools/cycle-six-performance.cjs --variant=final --trial=fresh
+Use another unique trial suffix for independent repetitions; successful saved
+rows are deliberately resumed rather than overwritten. Baseline routes the five
+archived original rendering files, while keeping identical art and other code.
+
+Diagnostic/parity/build/regression sequence:
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/cycle-six-postmeasure.ps1
+Do not launch its fixed-port servers if 4262/4263 already host this review.
+The individual node commands can instead be run from that script.
+
+Ordinary-speed capture (separate from benchmark measurements):
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/cycle-six-recordings.ps1
+python tools/cycle-six-report.py
+node tools/cycle-six-review.cjs
+
+Local review: http://127.0.0.1:4263/review/
+Game: http://127.0.0.1:4263/carnival/?scene=rides-games
+Optional reviewed Zora: /carnival/?scene=fortune-teller&cycle-zora=zora
+The review server reads dist; run node build.mjs before launching it.
+Native .webm files live under ignored playtest-artifacts/cycle-six; recordings.json
+links them through the local review server. Timing JSON is measured without video.
+
+All phone measurements emulate a 390x844 viewport on the same Windows computer,
+with touch enabled. No physical phone, Safari or battery/thermal testing occurred.
+Recorded movies encode at approximately 25 FPS and must not be used as live FPS
+measurements. Playback review runs at 1x through each complete native movie.

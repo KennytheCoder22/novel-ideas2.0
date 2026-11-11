@@ -1,0 +1,5652 @@
+[
+  {
+    "name": "kids-desktop",
+    "variant": "final",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "band": "kids",
+    "style": "stuffed",
+    "recorded": true,
+    "passed": true,
+    "alignment": {
+      "samples": 852,
+      "maxSeatError": 1.0547118733938987e-15
+    },
+    "stats": {
+      "outside": {
+        "frames": 272,
+        "durationMs": 31133.400000000023,
+        "fps": 8.736597994436837,
+        "p50Ms": 99.89999999999418,
+        "p95Ms": 216.6999999999971,
+        "p99Ms": 349.1000000000058,
+        "over33ms": 256,
+        "over50ms": 238
+      },
+      "boarding": {
+        "frames": 2,
+        "durationMs": 5533.199999999997,
+        "fps": 0.36145449287934667,
+        "p50Ms": 5516.600000000006,
+        "p95Ms": 5516.600000000006,
+        "p99Ms": 5516.600000000006,
+        "over33ms": 1,
+        "over50ms": 1
+      },
+      "first-carnival": {
+        "frames": 117,
+        "durationMs": 5282.5,
+        "fps": 22.148603880738285,
+        "p50Ms": 33.40000000000873,
+        "p95Ms": 66.89999999999418,
+        "p99Ms": 400.1999999999971,
+        "over33ms": 64,
+        "over50ms": 12
+      },
+      "first-transition": {
+        "frames": 114,
+        "durationMs": 4551.199999999997,
+        "fps": 25.04833889963088,
+        "p50Ms": 33.10000000000582,
+        "p95Ms": 95.69999999999709,
+        "p99Ms": 135.10000000000582,
+        "over33ms": 50,
+        "over50ms": 23
+      },
+      "first-dream": {
+        "frames": 164,
+        "durationMs": 5466.5,
+        "fps": 30.00091466203238,
+        "p50Ms": 33.29999999998836,
+        "p95Ms": 52.19999999999709,
+        "p99Ms": 98.20000000001164,
+        "over33ms": 72,
+        "over50ms": 16
+      },
+      "second-carnival": {
+        "frames": 225,
+        "durationMs": 7969.400000000009,
+        "fps": 28.232991191306716,
+        "p50Ms": 33.30000000001746,
+        "p95Ms": 50.10000000000582,
+        "p99Ms": 115.89999999999418,
+        "over33ms": 112,
+        "over50ms": 13
+      },
+      "second-transition": {
+        "frames": 111,
+        "durationMs": 4514,
+        "fps": 24.59016393442623,
+        "p50Ms": 33.40000000000873,
+        "p95Ms": 66.80000000001746,
+        "p99Ms": 116.70000000001164,
+        "over33ms": 61,
+        "over50ms": 17
+      },
+      "second-dream": {
+        "frames": 121,
+        "durationMs": 5499.899999999994,
+        "fps": 22.000400007272884,
+        "p50Ms": 33.39999999999418,
+        "p95Ms": 66.39999999999418,
+        "p99Ms": 283.3000000000029,
+        "over33ms": 63,
+        "over50ms": 21
+      },
+      "dismounting": {
+        "frames": 44,
+        "durationMs": 2933.2999999999884,
+        "fps": 15.00017045648252,
+        "p50Ms": 33.60000000000582,
+        "p95Ms": 266.29999999998836,
+        "p99Ms": 383.5,
+        "over33ms": 31,
+        "over50ms": 11
+      }
+    },
+    "canvas": [
+      [
+        1280,
+        800
+      ]
+    ],
+    "samples": [
+      {
+        "dt": 83.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.79999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.70000000001164,
+        "stage": "outside"
+      },
+      {
+        "dt": 49.79999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 84.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 166,
+        "stage": "outside"
+      },
+      {
+        "dt": 84.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 165.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.90000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.29999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 67.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 150.1999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.59999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 134.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 99,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.79999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 100,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.59999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 32.90000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 733.3999999999942,
+        "stage": "outside"
+      },
+      {
+        "dt": 49.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.90000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 84.09999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.3000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.59999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 84.90000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 98.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.59999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 84,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 115.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.90000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 150.09999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 82.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.8000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 16.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 50.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 183.70000000001164,
+        "stage": "outside"
+      },
+      {
+        "dt": 67.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 150.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.59999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 33,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.70000000001164,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.79999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 150,
+        "stage": "outside"
+      },
+      {
+        "dt": 150.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 49.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 50.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 49.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.59999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 167,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 150,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 16.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 233,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 50,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 150,
+        "stage": "outside"
+      },
+      {
+        "dt": 84.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 82.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.3000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.90000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 67.09999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 49.70000000001164,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 82.79999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 100,
+        "stage": "outside"
+      },
+      {
+        "dt": 100,
+        "stage": "outside"
+      },
+      {
+        "dt": 150,
+        "stage": "outside"
+      },
+      {
+        "dt": 200.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.8000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.8000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.6999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 50,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.79999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.3000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 67.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 82.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 49.90000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.29999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 49.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 98.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 199.8000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 100,
+        "stage": "outside"
+      },
+      {
+        "dt": 183.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 67.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 165.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 184.1999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 15.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.6999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.90000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.09999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 117.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 82.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.6999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 50,
+        "stage": "outside"
+      },
+      {
+        "dt": 250.09999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 16.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.6999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 67,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.1999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 117.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 66,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.59999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.20000000001164,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.79999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 149,
+        "stage": "outside"
+      },
+      {
+        "dt": 150,
+        "stage": "outside"
+      },
+      {
+        "dt": 150.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.09999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 200.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 16.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 50.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.59999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.70000000001164,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.09999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 67.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.6999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 216.6999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 183.3000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 100,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.79999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 16.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 67.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 249.6999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.59999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.90000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.29999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.90000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 84.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 98.5,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.29999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 233.1999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 183.3000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 117.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 148.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 183.20000000001164,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 133,
+        "stage": "outside"
+      },
+      {
+        "dt": 50.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 66.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 117.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 200.3000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 49.80000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 150.1999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 200.09999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 67,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.70000000001164,
+        "stage": "outside"
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 267.20000000001164,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.29999999998836,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 53.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 213.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 50.19999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 234,
+        "stage": "outside"
+      },
+      {
+        "dt": 149.1999999999971,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 150,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 100,
+        "stage": "outside"
+      },
+      {
+        "dt": 99.69999999999709,
+        "stage": "outside"
+      },
+      {
+        "dt": 183.3000000000029,
+        "stage": "outside"
+      },
+      {
+        "dt": 116.59999999999127,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.40000000000873,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 166.60000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.89999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 100.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 349.1000000000058,
+        "stage": "outside"
+      },
+      {
+        "dt": 133.39999999999418,
+        "stage": "outside"
+      },
+      {
+        "dt": 83.30000000000291,
+        "stage": "outside"
+      },
+      {
+        "dt": 16.59999999999127,
+        "stage": "boarding"
+      },
+      {
+        "dt": 5516.600000000006,
+        "stage": "boarding"
+      },
+      {
+        "dt": 16.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 400.1999999999971,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 117,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 51.40000000000873,
+        "stage": "first-carnival",
+        "seatError": 5.967448757360216e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 14.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 67,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.90000000000873,
+        "stage": "first-carnival",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 50,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.80000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50,
+        "stage": "first-carnival",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 17.60000000000582,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 15.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.5,
+        "stage": "first-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 16.70000000001164,
+        "stage": "first-carnival",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 50.09999999999127,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.60000000000582,
+        "stage": "first-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 32.90000000000873,
+        "stage": "first-carnival",
+        "seatError": 5.967448757360216e-16
+      },
+      {
+        "dt": 366.59999999999127,
+        "stage": "first-transition",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 17.5,
+        "stage": "first-transition",
+        "seatError": 4.440892098500626e-16
+      },
+      {
+        "dt": 32.80000000000291,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 66.30000000000291,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 83.5,
+        "stage": "first-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 83.09999999999127,
+        "stage": "first-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 22.20000000001164,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 95.69999999999709,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 15.39999999999418,
+        "stage": "first-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 50.90000000000873,
+        "stage": "first-transition",
+        "seatError": 4.440892098500626e-16
+      },
+      {
+        "dt": 49.19999999999709,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 18.19999999999709,
+        "stage": "first-transition",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 15.10000000000582,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 20.09999999999127,
+        "stage": "first-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 46.69999999999709,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 135.10000000000582,
+        "stage": "first-transition",
+        "seatError": 5.967448757360216e-16
+      },
+      {
+        "dt": 15.19999999999709,
+        "stage": "first-transition",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 16.5,
+        "stage": "first-transition",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 16.60000000000582,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.5,
+        "stage": "first-transition",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 16.59999999999127,
+        "stage": "first-transition",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 17,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 17.5,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 15.400000000008731,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "first-transition",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 18.09999999999127,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 15.10000000000582,
+        "stage": "first-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 17.30000000000291,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.89999999999418,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 31.69999999999709,
+        "stage": "first-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "first-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 83.19999999999709,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 66.80000000000291,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 66.69999999999709,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 50.5,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.90000000000873,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49.89999999999418,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 100,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 67,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 66.19999999999709,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.80000000000291,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50,
+        "stage": "first-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 21.10000000000582,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 46.19999999999709,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.19999999999709,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.89999999999418,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 30.5,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.70000000001164,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 34.09999999999127,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.60000000000582,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 52.19999999999709,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.19999999999709,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 15.5,
+        "stage": "first-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.89999999999418,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.59999999999127,
+        "stage": "first-dream",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 16.5,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 17.60000000000582,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.30000000000291,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 50,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.09999999999127,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 17.80000000000291,
+        "stage": "first-dream",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.89999999999418,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 31.70000000001164,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 35.29999999998836,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 98.20000000001164,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 49.79999999998836,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 17.20000000001164,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.79999999998836,
+        "stage": "first-dream",
+        "seatError": 7.355227538141662e-16
+      },
+      {
+        "dt": 17.5,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.10000000000582,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.60000000000582,
+        "stage": "first-dream",
+        "seatError": 5.967448757360216e-16
+      },
+      {
+        "dt": 50.09999999999127,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.59999999999127,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 18.30000000000291,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.10000000000582,
+        "stage": "first-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 16.09999999999127,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 17.40000000000873,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.5,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.59999999999127,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.60000000000582,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 35.09999999999127,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 31.30000000000291,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 65.69999999999709,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "first-dream",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 16.69999999999709,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 66.5,
+        "stage": "first-dream",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 20.5,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 63.19999999999709,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 39.30000000000291,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 30.40000000000873,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 34.79999999998836,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.70000000001164,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 31.39999999999418,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 31.69999999999709,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 18.40000000000873,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 14.69999999999709,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.09999999999127,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 16.60000000000582,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 16.60000000000582,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.69999999999709,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 51.19999999999709,
+        "stage": "first-dream",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 32.19999999999709,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 34.19999999999709,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.40000000000873,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.89999999999418,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.90000000000873,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.39999999999418,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.5,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.70000000001164,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.89999999999418,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.39999999999418,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.80000000000291,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 51.40000000000873,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 35,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 32.09999999999127,
+        "stage": "first-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 30.90000000000873,
+        "stage": "first-dream",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 18.10000000000582,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 48.60000000000582,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 70.19999999999709,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 13.599999999991269,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-dream",
+        "seatError": 7.355227538141662e-16
+      },
+      {
+        "dt": 16.09999999999127,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 16.90000000000873,
+        "stage": "first-dream",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 50.5,
+        "stage": "first-dream",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 16.59999999999127,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.90000000000873,
+        "stage": "first-dream",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 32.30000000000291,
+        "stage": "first-dream",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "first-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 16.39999999999418,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 34.30000000000291,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 35.5,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 31.09999999999127,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 34.60000000000582,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.39999999999418,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.80000000000291,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.19999999999709,
+        "stage": "first-dream",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 17.40000000000873,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.80000000000291,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.79999999998836,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.70000000001164,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 34.09999999999127,
+        "stage": "first-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 32.80000000000291,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.09999999999127,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 37.5,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 29.30000000000291,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 19.5,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 30.5,
+        "stage": "first-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 34.5,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 82.69999999999709,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 116.39999999999418,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 34.89999999999418,
+        "stage": "first-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 16.20000000001164,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 15.89999999999418,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.69999999999709,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.60000000000582,
+        "stage": "first-dream",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 48.5,
+        "stage": "first-dream",
+        "seatError": 5.967448757360216e-16
+      },
+      {
+        "dt": 17.09999999999127,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.30000000000291,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 50.19999999999709,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.09999999999127,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 50.60000000000582,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 31.69999999999709,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.89999999999418,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.90000000000873,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-dream",
+        "seatError": 5.967448757360216e-16
+      },
+      {
+        "dt": 51.10000000000582,
+        "stage": "first-dream",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.79999999998836,
+        "stage": "first-dream",
+        "seatError": 5.967448757360216e-16
+      },
+      {
+        "dt": 32.30000000000291,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49.40000000000873,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 18.10000000000582,
+        "stage": "first-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.29999999998836,
+        "stage": "first-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 64.20000000001164,
+        "stage": "first-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 33.59999999999127,
+        "stage": "first-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 17.5,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.80000000000291,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.69999999999709,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 20.19999999999709,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 29.5,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.80000000000291,
+        "stage": "first-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 17.60000000000582,
+        "stage": "first-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.59999999999127,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 18.10000000000582,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 30.80000000000291,
+        "stage": "first-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 17.30000000000291,
+        "stage": "first-transition",
+        "seatError": 1.0547118733938987e-15
+      },
+      {
+        "dt": 99.5,
+        "stage": "first-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "first-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 16.5,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 84.20000000001164,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16,
+        "stage": "first-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 19.5,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.79999999998836,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 30.70000000001164,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.59999999999127,
+        "stage": "first-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 83.5,
+        "stage": "first-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 17.5,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 15.60000000000582,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 35.80000000000291,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 15.299999999988358,
+        "stage": "first-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 15.400000000008731,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 17.40000000000873,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 15.89999999999418,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.5,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 17.80000000000291,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.39999999999418,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 51.69999999999709,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 31.10000000000582,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 86.59999999999127,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.70000000001164,
+        "stage": "first-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 12.39999999999418,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.60000000000582,
+        "stage": "first-transition",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 16.59999999999127,
+        "stage": "first-transition",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 49.90000000000873,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 36.19999999999709,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 30.89999999999418,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.90000000000873,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.59999999999127,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.79999999998836,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.70000000001164,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 66.69999999999709,
+        "stage": "first-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 16.59999999999127,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 50.69999999999709,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.80000000000291,
+        "stage": "first-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.80000000000291,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 133.8000000000029,
+        "stage": "first-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 15.39999999999418,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 51.10000000000582,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 15.39999999999418,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "first-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 266.6999999999971,
+        "stage": "first-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 16.39999999999418,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 66.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.30000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 35,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.30000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 21.60000000000582,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 45.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 35.5,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 35.30000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 29.30000000000291,
+        "stage": "first-carnival",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 32.5,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 635,
+        "stage": "first-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 31.60000000000582,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.60000000000582,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.80000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.80000000000291,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.09999999999127,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.30000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.70000000001164,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 34.80000000000291,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 48.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.59999999999127,
+        "stage": "first-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 32.60000000000582,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.90000000000873,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 48.29999999998836,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "first-carnival",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "first-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.59999999999127,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.5,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 31.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.80000000000291,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.5,
+        "stage": "first-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "first-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 17.10000000000582,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.5,
+        "stage": "first-carnival",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.80000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.80000000000291,
+        "stage": "first-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 36.30000000000291,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 47.09999999999127,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.39999999999418,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49.5,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "first-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49.60000000000582,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.60000000000582,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.29999999998836,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.20000000001164,
+        "stage": "first-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.89999999999418,
+        "stage": "first-carnival",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33,
+        "stage": "first-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "first-carnival",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 50.09999999999127,
+        "stage": "first-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 150.1999999999971,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 66.80000000000291,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.69999999999709,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 17.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.80000000000291,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.69999999999709,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 48.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 49.80000000000291,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.5,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 116.5,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 16.69999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.40000000000873,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 99.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 17,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.70000000001164,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 17.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 15.900000000008731,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.09999999999127,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 49.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 50,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.80000000000291,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 50.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.70000000001164,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 31.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 98.80000000000291,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.90000000000873,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.69999999999709,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 16.90000000000873,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.09999999999127,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49.40000000000873,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 49.90000000000873,
+        "stage": "second-carnival",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 18.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 48.5,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 50,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.59999999999127,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.90000000000873,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 15.80000000000291,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.69999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.40000000000873,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 31.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.90000000000873,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 48.69999999999709,
+        "stage": "second-carnival",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 18.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 17.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 32.59999999999127,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 18.70000000001164,
+        "stage": "second-carnival",
+        "seatError": 5.967448757360216e-16
+      },
+      {
+        "dt": 14.599999999991269,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.69999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 50.80000000000291,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 34.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 34.19999999999709,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 31.89999999999418,
+        "stage": "second-transition",
+        "seatError": 4.996003610813204e-16
+      },
+      {
+        "dt": 34.80000000000291,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 30.30000000000291,
+        "stage": "second-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 35.39999999999418,
+        "stage": "second-transition",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 35.39999999999418,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 29.30000000000291,
+        "stage": "second-transition",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 40.10000000000582,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 27.59999999999127,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 35.80000000000291,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.89999999999418,
+        "stage": "second-transition",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 28.30000000000291,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 36.69999999999709,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 31.90000000000873,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 31.59999999999127,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.10000000000582,
+        "stage": "second-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 32.19999999999709,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.09999999999127,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 34.30000000000291,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.40000000000873,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 83.20000000001164,
+        "stage": "second-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 34.59999999999127,
+        "stage": "second-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 32.90000000000873,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.29999999998836,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 17.5,
+        "stage": "second-transition",
+        "seatError": 4.440892098500626e-16
+      },
+      {
+        "dt": 16,
+        "stage": "second-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 416.40000000000873,
+        "stage": "second-transition",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 66.80000000000291,
+        "stage": "second-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 16.79999999998836,
+        "stage": "second-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-transition",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.70000000001164,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 39.30000000000291,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 60.60000000000582,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.09999999999127,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.30000000000291,
+        "stage": "second-transition",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 66.80000000000291,
+        "stage": "second-transition",
+        "seatError": 4.996003610813204e-16
+      },
+      {
+        "dt": 16.30000000000291,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 83.09999999999127,
+        "stage": "second-transition",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.69999999999709,
+        "stage": "second-transition",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "second-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.40000000000873,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.5,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 950.0999999999913,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 85.90000000000873,
+        "stage": "second-dream",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 30.89999999999418,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.69999999999709,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 65.60000000000582,
+        "stage": "second-dream",
+        "seatError": 5.967448757360216e-16
+      },
+      {
+        "dt": 34.39999999999418,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 31.90000000000873,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 17.29999999998836,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.10000000000582,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 17.5,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.80000000000291,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 15.5,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 37,
+        "stage": "second-dream",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 29.39999999999418,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.30000000000291,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 66.89999999999418,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.19999999999709,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 18.19999999999709,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 15.200000000011642,
+        "stage": "second-dream",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 50.79999999998836,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.5,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.80000000000291,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49.90000000000873,
+        "stage": "second-dream",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 34.5,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.29999999998836,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 50.40000000000873,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 66.39999999999418,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 283.3000000000029,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 16.89999999999418,
+        "stage": "second-dream",
+        "seatError": 7.355227538141662e-16
+      },
+      {
+        "dt": 16.5,
+        "stage": "second-dream",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 66.70000000001164,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 17.29999999998836,
+        "stage": "second-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 16.10000000000582,
+        "stage": "second-dream",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 50.20000000001164,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.29999999998836,
+        "stage": "second-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.89999999999418,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-dream",
+        "seatError": 5.551115123125783e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-dream",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 51.70000000001164,
+        "stage": "second-dream",
+        "seatError": 5.967448757360216e-16
+      },
+      {
+        "dt": 32,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 52.79999999998836,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.40000000002328,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 14.5,
+        "stage": "second-dream",
+        "seatError": 7.355227538141662e-16
+      },
+      {
+        "dt": 50.09999999997672,
+        "stage": "second-dream",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 34.30000000001746,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49.10000000000582,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.19999999998254,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.60000000000582,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.60000000000582,
+        "stage": "second-dream",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 49.89999999999418,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-dream",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.30000000001746,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 52.10000000000582,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 30.199999999982538,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 37.30000000001746,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 62.5,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-dream",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-dream",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.39999999999418,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 36,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 35.29999999998836,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 28,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.79999999998836,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 32.60000000000582,
+        "stage": "second-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 33.89999999999418,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.79999999998836,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.39999999999418,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 50.20000000001164,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.89999999999418,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 49.70000000001164,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 20.199999999982538,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 30.20000000001164,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.5,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-dream",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.70000000001164,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.59999999997672,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.30000000001746,
+        "stage": "second-dream",
+        "seatError": 1.0547118733938987e-15
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.5,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.69999999998254,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.30000000001746,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.29999999998836,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 52.89999999999418,
+        "stage": "second-dream",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 16.70000000001164,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 18.10000000000582,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 112.19999999998254,
+        "stage": "second-dream",
+        "seatError": 2.914335439641036e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-dream",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 16.79999999998836,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 50.79999999998836,
+        "stage": "second-dream",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.5,
+        "stage": "second-dream",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 50,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.20000000001164,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.19999999998254,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.39999999999418,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 66.70000000001164,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.80000000001746,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 50.20000000001164,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-transition",
+        "seatError": 1.5265566588595902e-16
+      },
+      {
+        "dt": 33.89999999999418,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 35.69999999998254,
+        "stage": "second-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 30.5,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 66.80000000001746,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16.79999999998836,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 66.60000000000582,
+        "stage": "second-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 16.60000000000582,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.79999999998836,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.80000000001746,
+        "stage": "second-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.699999999982538,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 66.60000000000582,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 17,
+        "stage": "second-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 67.39999999999418,
+        "stage": "second-transition",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 32.5,
+        "stage": "second-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 17.20000000001164,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 66.20000000001164,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.09999999997672,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 49.70000000001164,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.89999999999418,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 31.89999999999418,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-transition",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 34.19999999998254,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.20000000001164,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 116.70000000001164,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 16.599999999976717,
+        "stage": "second-transition",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.79999999998836,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 17.20000000001164,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 16,
+        "stage": "second-transition",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 17.29999999998836,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.39999999999418,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-transition",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 50,
+        "stage": "second-transition",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.90000000002328,
+        "stage": "second-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.89999999999418,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49,
+        "stage": "second-transition",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50,
+        "stage": "second-transition",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50,
+        "stage": "second-transition",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 50.29999999998836,
+        "stage": "second-transition",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 115.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-carnival",
+        "seatError": 3.3306690738754696e-16
+      },
+      {
+        "dt": 18.300000000017462,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 49.19999999998254,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.5,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 18.800000000017462,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 30.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 35.5,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 31.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 32,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.59999999997672,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 34.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 34.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 30.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.40000000002328,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 32.5,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.70000000001164,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.09999999997672,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 35.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 31.400000000023283,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.09999999997672,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.40000000002328,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.19999999998254,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 50.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 49.69999999998254,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 18.300000000017462,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 48.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 18.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 32.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 49.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 17.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 34.20000000001164,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 6.106226635438361e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 48.20000000001164,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 33.19999999998254,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.69999999998254,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.40000000002328,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 49.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 3.885780586188048e-16
+      },
+      {
+        "dt": 33.30000000001746,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 32.79999999998836,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.40000000002328,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 35.29999999998836,
+        "stage": "second-carnival",
+        "seatError": 2.7755575615628914e-16
+      },
+      {
+        "dt": 31.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.70000000001164,
+        "stage": "second-carnival",
+        "seatError": 7.216449660063518e-16
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "second-carnival",
+        "seatError": 2.220446049250313e-16
+      },
+      {
+        "dt": 50.39999999999418,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33,
+        "stage": "second-carnival",
+        "seatError": 4.440892098500626e-16
+      },
+      {
+        "dt": 33.5,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "second-carnival",
+        "seatError": 1.6653345369377348e-16
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.5,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 49.90000000002328,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.69999999998254,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 49.89999999999418,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.70000000001164,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 32.89999999999418,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.19999999998254,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 34.20000000001164,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 49.10000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.39999999999418,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.5,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 49.89999999999418,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.20000000001164,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.29999999998836,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 34.20000000001164,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 32.39999999999418,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 51.60000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 31.79999999998836,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.60000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.10000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 50.10000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 33.19999999998254,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 34.20000000001164,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 50.69999999998254,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 98.60000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 83.20000000001164,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 383.5,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 49.79999999998836,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 117.10000000000582,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 183.5,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 266.29999999998836,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 300.30000000001746,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 166.19999999998254,
+        "stage": "dismounting"
+      },
+      {
+        "dt": 250,
+        "stage": "outside"
+      },
+      {
+        "dt": 183.40000000002328,
+        "stage": "outside"
+      },
+      {
+        "dt": 516.5999999999767,
+        "stage": "outside"
+      },
+      {
+        "dt": 35.10000000000582,
+        "stage": "outside"
+      },
+      {
+        "dt": 114.80000000001746,
+        "stage": "outside"
+      }
+    ],
+    "errors": [],
+    "video": "C:\\Users\\KenBR\\OneDrive\\Desktop\\NovelIdeas_2.0_v2 (1)\\.worktrees\\dreamscapes-independent\\apps\\dreamscapes\\playtest-artifacts\\cycle-six\\final\\kids-desktop\\page@338d8538d05609af92c06c69690cd97e.webm"
+  }
+]

@@ -1,5 +1,5 @@
 import {coverMountDepth,limitMountPoleBottom} from './mount-pole-depth.js';
-import {registerVariantMount} from './carousel-variants.js?v=20261028-ride';
+import {registerVariantMount} from './carousel-variants.js';
 import {sharedMountRenderer,createMountHolder} from './shared-mount-renderer.js';
 import {cropCanvas} from './crop-canvas.js';
 import {carouselPoleMaterial} from './carousel-pole-material.js';
@@ -67,18 +67,19 @@ async function mount(){
  holder.dataset.ready='true';
  let previous=-1;
  const opacityChildren=[...slot.children].filter(child=>child!==anchor).map(child=>({child,shaft:child.matches('.carousel-pole-shaft')}));
- function render(){
+ function renderNow(){
   if(!svg.isConnected){renderer.dispose();mounted=false;return;}
   const yaw=Number(assembly.dataset.yaw||0);
-  if(svg.dataset.riding!=='true'&&holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden){
+  if(holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden&&!document.documentElement.hasAttribute('data-carousel-onboard')){
    // SVG positive depth maps to +Z; Three Y rotation therefore reverses SVG yaw.
    carouselFrame.rotation.y=-yaw;
    const pose=window.CarnivalCarousel.pose(slotIndex,Number(svg.dataset.phase||0));
    for(const {child,shaft} of opacityChildren){const opacity=shaft?'1':slot.getAttribute('opacity');if(child.style.opacity!==opacity)child.style.opacity=opacity;}
    renderer.render(scene,camera);holder.dataset.yaw=String(carouselFrame.rotation.y+turn.rotation.y);previous=yaw;
   }
-  requestAnimationFrame(render);
  }
+ function render(){renderNow();if(svg.isConnected)requestAnimationFrame(render);}
+ document.addEventListener('carousel-external-refresh',renderNow);
  render();
  registerVariantMount({identity:'horse',slotNumber:slotIndex+1,model,registration,mountPoint,turn,carouselFrame,scene,camera,renderer,holder,slot,invalidate:()=>{previous=-1;}});
  window.carouselHorseComparison={slot:slotIndex+1,sourceBounds:box.toArray?.()||{min:box.min.toArray(),max:box.max.toArray()},renderer,model,turn,carouselFrame,camera,mountPoint,registration,pole};

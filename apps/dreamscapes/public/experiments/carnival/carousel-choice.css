@@ -1,0 +1,27 @@
+/* A fixed brass instrument with one clipped window onto a shared drum. */
+.carousel-choice{position:absolute;left:12px;bottom:78px;width:292px;max-width:calc(100vw - 24px);box-sizing:border-box;z-index:15;padding:7px;border:2px solid #3c2a14;border-radius:18px 18px 16px 16px/12px 12px 13px 13px;background:radial-gradient(ellipse at 13% 72%,#30443852,transparent 35%),radial-gradient(ellipse at 86% 22%,#293c3155,transparent 31%),radial-gradient(ellipse at 53% 100%,#160e0780,transparent 54%),repeating-linear-gradient(4deg,#f0c87b06 0 1px,#0000 1px 5px),linear-gradient(100deg,#17130d,#504029 8%,#30271a 20%,#211b12 53%,#4b3b23 91%,#17120c);box-shadow:inset 0 1px 1px #dabd7e99,inset 0 -3px 3px #080704,0 3px 6px #000b;color:#d4aa56;isolation:isolate}
+.carousel-choice::before{content:"";position:absolute;inset:3px;border:1px solid #9c773d99;border-radius:13px 13px 12px 12px/8px;box-shadow:inset 0 0 0 1px #0c0a06;pointer-events:none;z-index:3}
+.carousel-choice[hidden],.carousel-choice [hidden]{display:none!important}
+.carousel-choice-row{display:grid;grid-template-columns:32px minmax(0,1fr) 32px;gap:4px;align-items:center}
+.carousel-wheel-window{position:relative;height:70px;box-sizing:border-box;border:2px solid #100e09;border-radius:9px;overflow:hidden;perspective:650px;background:#19160f;box-shadow:0 1px 0 #b6904e77,inset 0 2px 6px #000;isolation:isolate}
+.carousel-wheel-window::after{content:"";position:absolute;inset:0;z-index:2;border-radius:7px;box-shadow:inset 0 3px 5px #000b,inset 0 -2px 3px #0009;background:linear-gradient(90deg,#050403dd,#09070433 12%,#e5bb5b09 43%,#fff4ce0a 52%,#09070422 87%,#050403dd);pointer-events:none}
+.carousel-choice-options{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;transform:translateZ(-150px) rotateY(0deg)}
+.carousel-choice button{color:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.carousel-choice-options button{position:absolute;left:-30px;top:-34px;width:60px;height:68px;box-sizing:border-box;margin:0;padding:1px 0;border:0;background:linear-gradient(90deg,#0b0b08,#242219 30%,#302b1c 50%,#14140d 90%,#080905);transform:rotateY(calc(var(--slot)*30deg)) translateZ(150px);backface-visibility:hidden;display:grid;place-items:center;outline-offset:-4px}
+.carousel-choice-options button:not([data-mount-id]){visibility:hidden}
+.carousel-choice-row[data-turning=true] .carousel-choice-options button{visibility:visible}
+.carousel-choice img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;transform:scale(1.15);filter:drop-shadow(0 1px 1px #0009) brightness(1.08)}
+.carousel-choice svg{display:block;width:25px;height:26px;fill:currentColor;pointer-events:none;filter:drop-shadow(0 1px 1px #000)}
+.carousel-choice-row>button{position:relative;display:grid;place-items:center;width:32px;height:50px;min-height:44px;padding:0;border:0;background:transparent}
+.carousel-choice-row>button::before{content:"";position:absolute;inset:0 -6px}
+.carousel-choice-row>button:hover{color:#ffe0a0}
+.carousel-choice button:focus-visible{outline:2px solid #efd492}
+.carousel-choice button:disabled{cursor:default}
+.carousel-wheel-rivet{position:absolute;width:8px;height:8px;box-sizing:border-box;border:1px solid #9c7434;border-radius:50%;background:radial-gradient(circle at 30% 25%,#b9944f,#5d411d 60%,#21180c);box-shadow:0 1px 1px #000;pointer-events:none;z-index:4}
+.carousel-wheel-rivet::after{content:"";position:absolute;left:3px;top:1px;width:1px;height:4px;background:#21170b;transform:rotate(38deg)}
+.carousel-wheel-rivet.tl{top:5px;left:10px}.carousel-wheel-rivet.tr{top:5px;right:10px}.carousel-wheel-rivet.bl{bottom:5px;left:10px}.carousel-wheel-rivet.br{bottom:5px;right:10px}
+.carousel-choice-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.carousel-choice-marker{pointer-events:none;filter:drop-shadow(0 0 3px #f3cb6b75)}
+@media(max-height:500px){.carousel-choice{bottom:70px}}
+@media(max-width:330px){.carousel-choice{left:8px;max-width:calc(100vw - 16px)}}
+.carousel-choice-options button::after{content:"";position:absolute;inset:0;border-right:1px solid #b18b4580;border-radius:0 22% 22% 0/0 50% 50% 0;box-shadow:1px 0 1px #030302;pointer-events:none}

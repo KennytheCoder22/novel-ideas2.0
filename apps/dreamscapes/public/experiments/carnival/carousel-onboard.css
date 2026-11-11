@@ -1,0 +1,9 @@
+.carousel-onboard{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;color:#f3dbaf;overflow:hidden;box-sizing:border-box}
+.carousel-onboard::backdrop{background:transparent}
+.carousel-onboard canvas{display:block;width:100%;height:100%}
+.carousel-onboard-hud{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:20px;right:20px;display:flex;align-items:center;justify-content:space-between;gap:15px;font:14px/1.35 Georgia,serif;text-shadow:0 2px 5px #000}
+.carousel-onboard-hud div{padding:8px 12px;background:#1b1913d9;border:1px solid #b88b4d80;border-radius:3px}
+.carousel-onboard-hud strong,.carousel-onboard-hud span{display:block}.carousel-onboard-hud span{font-size:12px;margin-top:3px}
+.carousel-onboard button{min-height:44px;padding:8px 12px;border:1px solid #b88b4d;background:#262117ed;color:#f3dbaf;border-radius:3px;font:13px Georgia,serif;cursor:pointer}
+.carousel-onboard button:focus-visible{outline:2px solid #ffe0a0;outline-offset:3px}
+@media(max-width:600px){.carousel-onboard-hud{left:10px;right:10px;bottom:max(12px,env(safe-area-inset-bottom));gap:8px}}

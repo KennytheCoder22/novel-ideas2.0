@@ -18,3 +18,4 @@ html[data-travelling] .look-controls, html[data-travelling] .midway-retreat { vi
 .location-sign { position:absolute; z-index:5; transform:translate(-50%,-50%); border:0; padding:0; background:transparent; outline:none; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 @media (pointer:coarse) { .location-sign { min-width:44px; min-height:44px; } }
 .debug-paths .location-sign { outline:1px dashed #9fbfd7; background:#9fbfd714; }
+.location-sign:focus-visible { outline:2px solid #ffe0a0; outline-offset:3px; }

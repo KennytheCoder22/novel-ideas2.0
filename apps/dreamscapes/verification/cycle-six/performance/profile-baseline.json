@@ -1,0 +1,270 @@
+{
+  "passed": true,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "durationMs": 12015.100000143051,
+  "profiledFPS": 22.138808665498665,
+  "gpu": {
+    "supported": true,
+    "disjoint": 0,
+    "summary": {
+      "samples": 266,
+      "medianMs": 26.894725,
+      "p95Ms": 29.738047,
+      "meanMs": 27.029786924812022
+    }
+  },
+  "mainThreadRegions": [
+    {
+      "name": "RunTask",
+      "count": 2285,
+      "totalWallMs": 7930.174000000018,
+      "maxWallMs": 195.182
+    },
+    {
+      "name": "Paint",
+      "count": 643,
+      "totalWallMs": 2932.5310000000027,
+      "maxWallMs": 12.427
+    },
+    {
+      "name": "FireAnimationFrame",
+      "count": 6448,
+      "totalWallMs": 2658.8559999999857,
+      "maxWallMs": 183.303
+    },
+    {
+      "name": "FunctionCall",
+      "count": 7026,
+      "totalWallMs": 2505.211999999995,
+      "maxWallMs": 183.255
+    },
+    {
+      "name": "UpdateLayoutTree",
+      "count": 268,
+      "totalWallMs": 1264.0850000000014,
+      "maxWallMs": 13.615
+    },
+    {
+      "name": "Layerize",
+      "count": 269,
+      "totalWallMs": 1012.9930000000007,
+      "maxWallMs": 8.926
+    },
+    {
+      "name": "PrePaint",
+      "count": 537,
+      "totalWallMs": 462.84099999999984,
+      "maxWallMs": 12.244
+    },
+    {
+      "name": "Layout",
+      "count": 270,
+      "totalWallMs": 296.2999999999999,
+      "maxWallMs": 10.667
+    },
+    {
+      "name": "Commit",
+      "count": 269,
+      "totalWallMs": 275.4780000000001,
+      "maxWallMs": 5.607
+    },
+    {
+      "name": "UpdateLayer",
+      "count": 8659,
+      "totalWallMs": 65.53200000000187,
+      "maxWallMs": 0.376
+    },
+    {
+      "name": "Decode Image",
+      "count": 1,
+      "totalWallMs": 30.335,
+      "maxWallMs": 30.335
+    },
+    {
+      "name": "HitTest",
+      "count": 280,
+      "totalWallMs": 12.906999999999996,
+      "maxWallMs": 0.28
+    },
+    {
+      "name": "MinorGC",
+      "count": 1,
+      "totalWallMs": 8.997,
+      "maxWallMs": 8.997
+    },
+    {
+      "name": "V8.GC_SCAVENGER",
+      "count": 1,
+      "totalWallMs": 8.859,
+      "maxWallMs": 8.859
+    },
+    {
+      "name": "V8.GC_SCAVENGER_SCAVENGE",
+      "count": 1,
+      "totalWallMs": 8.815,
+      "maxWallMs": 8.815
+    },
+    {
+      "name": "V8.GC_SCAVENGER_SCAVENGE_PARALLEL_PHASE",
+      "count": 1,
+      "totalWallMs": 6.408,
+      "maxWallMs": 6.408
+    },
+    {
+      "name": "TimerFire",
+      "count": 2,
+      "totalWallMs": 2.0220000000000002,
+      "maxWallMs": 1.23
+    },
+    {
+      "name": "EventDispatch",
+      "count": 2,
+      "totalWallMs": 1.349,
+      "maxWallMs": 1.341
+    },
+    {
+      "name": "V8.GC_SCAVENGER_SCAVENGE_WEAK_GLOBAL_HANDLES_PROCESS",
+      "count": 1,
+      "totalWallMs": 1.028,
+      "maxWallMs": 1.028
+    },
+    {
+      "name": "V8.GC_SCAVENGER_TRACED_HANDLES_RESET_PARALLEL",
+      "count": 1,
+      "totalWallMs": 0.965,
+      "maxWallMs": 0.965
+    },
+    {
+      "name": "V8.GC_SCAVENGER_SCAVENGE_PARALLEL",
+      "count": 2,
+      "totalWallMs": 0.89,
+      "maxWallMs": 0.791
+    },
+    {
+      "name": "V8.GC_HEAP_EXTERNAL_EPILOGUE",
+      "count": 1,
+      "totalWallMs": 0.729,
+      "maxWallMs": 0.729
+    }
+  ],
+  "topCpuSamples": [
+    {
+      "function": "(program)",
+      "url": "",
+      "line": 0,
+      "samples": 8571
+    },
+    {
+      "function": "(idle)",
+      "url": "",
+      "line": 0,
+      "samples": 2090
+    },
+    {
+      "function": "setAttribute",
+      "url": "",
+      "line": 0,
+      "samples": 194
+    },
+    {
+      "function": "getProgramInfoLog",
+      "url": "",
+      "line": 0,
+      "samples": 57
+    },
+    {
+      "function": "paint",
+      "url": "http://127.0.0.1:62481/carnival/carousel.js?v=constant-mount-scale",
+      "line": 277,
+      "samples": 54
+    },
+    {
+      "function": "attr",
+      "url": "http://127.0.0.1:62481/carnival/carousel.js?v=constant-mount-scale",
+      "line": 7,
+      "samples": 48
+    },
+    {
+      "function": "setAttribute",
+      "url": "",
+      "line": 0,
+      "samples": 43
+    },
+    {
+      "function": "getParameters",
+      "url": "http://127.0.0.1:62481/carnival/vendor/three.module.js",
+      "line": 20598,
+      "samples": 30
+    },
+    {
+      "function": "drawImage",
+      "url": "",
+      "line": 0,
+      "samples": 26
+    },
+    {
+      "function": "needsUpdate",
+      "url": "http://127.0.0.1:62481/carnival/vendor/three.module.js",
+      "line": 15223,
+      "samples": 24
+    },
+    {
+      "function": "texSubImage2D",
+      "url": "",
+      "line": 0,
+      "samples": 23
+    },
+    {
+      "function": "insertBefore",
+      "url": "",
+      "line": 0,
+      "samples": 22
+    },
+    {
+      "function": "",
+      "url": "http://127.0.0.1:62481/carnival/carousel.js?v=constant-mount-scale",
+      "line": 308,
+      "samples": 18
+    },
+    {
+      "function": "tick",
+      "url": "http://127.0.0.1:62481/carnival/carousel.js?v=constant-mount-scale",
+      "line": 326,
+      "samples": 17
+    },
+    {
+      "function": "WebGLRenderer.setSize",
+      "url": "http://127.0.0.1:62481/carnival/vendor/three.module.js",
+      "line": 28817,
+      "samples": 15
+    },
+    {
+      "function": "setAttribute",
+      "url": "",
+      "line": 0,
+      "samples": 13
+    },
+    {
+      "function": "tick",
+      "url": "http://127.0.0.1:62481/carnival/carousel-onboard.js?v=20261104-onboard-1",
+      "line": 103,
+      "samples": 13
+    },
+    {
+      "function": "attr",
+      "url": "http://127.0.0.1:62481/carnival/carousel.js?v=constant-mount-scale",
+      "line": 7,
+      "samples": 13
+    }
+  ],
+  "errors": [],
+  "limits": [
+    "Profiler and GPU queries add overhead; FPS is not substituted for the uninstrumented A/B measurements.",
+    "Timeline regions nest and overlap; totals across names must not be added.",
+    "GPU timer measures this WebGL render region, not the whole compositor or all work on the GPU.",
+    "Same integrated GPU is shared with other applications; no physical-phone profiling."
+  ]
+}

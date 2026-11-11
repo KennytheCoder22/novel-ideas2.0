@@ -18,7 +18,7 @@
     }
   }
   const NS = 'http://www.w3.org/2000/svg';
-  const PERIOD = 72000;
+  const PERIOD = 18000;
   const ROWS = 7;
   const RINGS = [
     {name:'outer',radius:593,stagger:0},
@@ -271,12 +271,17 @@
         collar:slot.querySelector('.carousel-crank-collar'),
         shafts:[...slot.querySelectorAll('.carousel-pole-shaft')]
       }]));
-      let elapsed=0,last=null,frame=null,ridePhase=null;
+      let elapsed=0,last=null,frame=null;
       const reduced=matchMedia('(prefers-reduced-motion: reduce)');
       const still=new URLSearchParams(location.search).get('motion')==='still';
       function paint() {
-        const phase=ridePhase===null?(elapsed%PERIOD)/PERIOD:((ridePhase%1)+1)%1;
+        const phase=(elapsed%PERIOD)/PERIOD;
         svg.dataset.phase=String(phase);
+        svg.dataset.elapsed=String(elapsed); // Read-only ride progress; the original clock and pose stay authoritative.
+        // Keep the ride's authoritative clock live while its opaque dialog
+        // covers the external SVG. Restore synchronously before any reveal.
+        const rideDialog=document.querySelector('.carousel-onboard');
+        if(document.documentElement.hasAttribute('data-carousel-onboard')&&rideDialog?.open&&rideDialog.style.opacity==='1')return;
         const yaw=-phase*2*Math.PI;
         assembly.dataset.yaw=String(yaw);
         attr(floor,'transform',`rotate(${-phase*360})`);
@@ -321,17 +326,13 @@
         reconcile(rear,ordered.filter(v=>v.depth<0).map(v=>v.slot));
         reconcile(front,ordered.filter(v=>v.depth>=0).map(v=>v.slot));
       }
-      function active(){return ridePhase===null&&svg.isConnected&&!document.hidden&&!plane.parentElement.inert&&!reduced.matches&&!still;}
+      function active(){return svg.isConnected&&!document.hidden&&!plane.parentElement.inert&&!reduced.matches&&!still;}
       function tick(now){frame=null;if(!active()){last=null;return;}if(last!==null)elapsed+=now-last;last=now;paint();frame=requestAnimationFrame(tick);}
       function sync(){if(frame!==null)cancelAnimationFrame(frame);frame=null;last=null;if(active())frame=requestAnimationFrame(tick);}
       const observer=new MutationObserver(sync);
       observer.observe(plane.parentElement,{attributes:true,attributeFilter:['inert']});
       document.addEventListener('visibilitychange',sync); reduced.addEventListener('change',sync);
-      svg.carouselRideClock={
-        phase:()=>((elapsed/PERIOD)%1+1)%1,
-        setPhase(value){if(frame!==null)cancelAnimationFrame(frame);frame=null;last=null;ridePhase=value;paint();},
-        release(){if(ridePhase!==null)elapsed=ridePhase*PERIOD;ridePhase=null;paint();sync();}
-      };
+      document.addEventListener('carousel-external-refresh',paint);
       paint();
 return Promise.all([img.decode()]).then(()=>{prepareCeiling();paint();sync();}).catch(error=>{observer.disconnect();document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);svg.remove();throw error;});
     }

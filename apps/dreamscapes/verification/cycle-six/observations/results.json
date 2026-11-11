@@ -1,0 +1,158 @@
+[
+  {
+    "name": "session-desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "passed": true,
+    "details": {
+      "sessionId": "session-fb064ab2-6553-4955-913d-08af8a1335eb",
+      "counts": {
+        "total": 14,
+        "preference": 0,
+        "explicitPreference": 0,
+        "tentativePreference": 0,
+        "exploration": 14,
+        "gameplay": 0,
+        "testFixtures": 0
+      },
+      "diagnostics": {
+        "duplicates": 2,
+        "discarded": 0,
+        "storageFailures": 0,
+        "reasons": {
+          "duplicate_occurrence": 2
+        }
+      }
+    },
+    "errors": []
+  },
+  {
+    "name": "session-phone",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "passed": true,
+    "details": {
+      "sessionId": "session-2ef243ab-9335-4c56-bbf9-f857191ce6ff",
+      "counts": {
+        "total": 14,
+        "preference": 0,
+        "explicitPreference": 0,
+        "tentativePreference": 0,
+        "exploration": 14,
+        "gameplay": 0,
+        "testFixtures": 0
+      },
+      "diagnostics": {
+        "duplicates": 2,
+        "discarded": 0,
+        "storageFailures": 0,
+        "reasons": {
+          "duplicate_occurrence": 2
+        }
+      }
+    },
+    "errors": []
+  },
+  {
+    "name": "age-bands-and-storage",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "passed": true,
+    "details": {
+      "ageBands": 4,
+      "corruptionRecovered": true,
+      "legacyOnce": true,
+      "nonLoopbackInspectorAbsent": true
+    },
+    "errors": []
+  },
+  {
+    "name": "inspector-copy-export",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "passed": true,
+    "details": {
+      "clipboardPayloadValidated": true,
+      "denialFallbackValidated": true
+    },
+    "errors": []
+  },
+  {
+    "name": "midway-additional-actions",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "passed": true,
+    "details": {
+      "counts": {
+        "total": 8,
+        "preference": 0,
+        "explicitPreference": 0,
+        "tentativePreference": 0,
+        "exploration": 8,
+        "gameplay": 0,
+        "testFixtures": 0
+      },
+      "diagnostics": {
+        "duplicates": 1,
+        "discarded": 0,
+        "storageFailures": 0,
+        "reasons": {
+          "duplicate_occurrence": 1
+        }
+      }
+    },
+    "errors": []
+  },
+  {
+    "name": "storage-and-crypto-resilience",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "passed": true,
+    "details": {
+      "memoryOnly": true,
+      "cryptoOptional": true,
+      "ageContext": "kids",
+      "counts": {
+        "total": 2,
+        "preference": 0,
+        "explicitPreference": 0,
+        "tentativePreference": 0,
+        "exploration": 2,
+        "gameplay": 0,
+        "testFixtures": 0
+      }
+    },
+    "errors": []
+  },
+  {
+    "name": "synthetic-contract-only",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "passed": true,
+    "details": {
+      "fixtureDecisions": 2,
+      "playerPreferences": 0,
+      "reloadDeduped": true,
+      "allCategories": [
+        "exploration",
+        "gameplay",
+        "preference"
+      ]
+    },
+    "errors": []
+  }
+]

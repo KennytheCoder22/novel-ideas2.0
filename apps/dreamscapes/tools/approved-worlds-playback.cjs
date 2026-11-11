@@ -1,0 +1,11 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');const proof=path.resolve(__dirname,'../verification/approved-worlds'),base=process.env.DREAMSCAPES_REVIEW_URL||'http://127.0.0.1:4246/';
+(async()=>{const clips=JSON.parse(fs.readFileSync(path.join(proof,'clips.json'))),browser=await chromium.launch({executablePath:process.env.BROWSER_EXE}),results=[];
+ try{await Promise.all(['desktop','phone'].map(async device=>{
+  const list=clips.filter(c=>c.device===device),context=await browser.newContext({viewport:list[0].viewport}),p=await context.newPage();
+  for(const clip of list){await p.goto(base+'ride-'+clip.name+'.html');const v=p.locator('video');await v.evaluate(v=>{v.muted=true;v.playbackRate=1;});await p.waitForFunction(()=>Number.isFinite(document.querySelector('video').duration));const duration=await v.evaluate(v=>v.duration);assert(duration>=41.6);const began=Date.now(),samples=[];await v.evaluate(v=>v.play());
+   for(const at of [13,31]){await p.waitForFunction(t=>document.querySelector('video').currentTime>=t,at);const d=await v.evaluate(v=>({time:v.currentTime,rate:v.playbackRate,visible:v.checkVisibility(),rect:v.getBoundingClientRect().toJSON(),quality:{total:v.getVideoPlaybackQuality().totalVideoFrames,dropped:v.getVideoPlaybackQuality().droppedVideoFrames}}));assert(d.visible);assert.equal(d.rate,1);assert(d.rect.top>=0&&d.rect.bottom<=clip.viewport.height+1);samples.push(d);await p.screenshot({path:path.join(proof,'native-'+clip.name+'-'+at+'.jpg'),type:'jpeg',quality:88});}
+   await p.waitForFunction(()=>document.querySelector('video').ended);const wallTimeMs=Date.now()-began;assert(wallTimeMs>(duration-5)*1000);results.push({name:clip.name,passed:true,durationSeconds:duration,wallTimeMs,playbackRate:1,source:clip.file,samples,method:'Visible continuous playback to natural end, no seeking or speed change.'});fs.writeFileSync(path.join(proof,'playback.json'),JSON.stringify(results,null,2));console.log('PASS complete visible playback '+clip.name);
+  }await context.close();
+ }));}finally{await browser.close();}assert.equal(results.length,6);
+})().catch(e=>{console.error(e);process.exitCode=1});

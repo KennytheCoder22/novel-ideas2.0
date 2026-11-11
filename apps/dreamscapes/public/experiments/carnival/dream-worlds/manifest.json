@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "sourceDirectory": "C:\\Users\\KenBR\\OneDrive\\Desktop\\Dreamscapes\\Rides&Games\\Backgrounds",
+  "artworkPolicy": "Byte-identical approved originals; no retouching, seam blending, cropping or resampling.",
+  "assets": [
+    {
+      "id": "lunar",
+      "file": "Vintage Lunar Crater Panorama(Moon Chair).png",
+      "mountIds": [
+        "moon-loveseat"
+      ],
+      "width": 2170,
+      "height": 725,
+      "bytes": 2537235,
+      "sha256": "9a7a3a796c4f7994a7251c4e9a869332c3bf99002c26cd974924b131f9788327",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "garden",
+      "file": "Moonlit Creepy Garden Path(Snail).png",
+      "mountIds": [
+        "snail"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 2782306,
+      "sha256": "e78f4460c7a6bcb7282fcc2438348e550698b102521541b452212061ecbf0b3c",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "fortress",
+      "file": "Moonlit Valley and Cliffside Fortress(White Horse).png",
+      "mountIds": [
+        "horse"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 2960771,
+      "sha256": "29dd52f11a850ba5fbd163544e9f3eff80dff8684ef313da69cf2d6f1c6148f7",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "alien",
+      "file": "Neon Alien World Panorama (Rocket).png",
+      "mountIds": [
+        "rocket"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 3119253,
+      "sha256": "9e29cb22ed079c9c3f6be572f86bd3c24d47e33b8e82eeace407af2081653130",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "citadel",
+      "file": "Moonlit (Griffin) Citadel Among Misty Peaks.png",
+      "mountIds": [
+        "griffin"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 2993573,
+      "sha256": "44632cb6a8a9b14fd0447f648d10bbda35995feb2c071bbd2a765272bb115bd4",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "savannah",
+      "file": "Twilight Safari Under the Milky Way(Ostrich-Zebra).png",
+      "mountIds": [
+        "ostrich",
+        "zebra",
+        "elephant"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 3206550,
+      "sha256": "fd1b57489cdf8793265805262e2892b294703e4a44d64b7223d784e1e331df47",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "red-rock",
+      "file": "Twilight Over the Red Rock Valley(Brown Horse).png",
+      "mountIds": [
+        "brown-horse"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 3215537,
+      "sha256": "978b99a582effc6a92d61a234a8d1eb59cc7a3b46236fee0a029a1ecdd5ff358",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "arctic",
+      "file": "Aurora Over the Frozen Arctic (Polar Bear).png",
+      "mountIds": [
+        "polar-bear"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 2952692,
+      "sha256": "d0128ad831c2c1a6ae87e9b9d1754054e480a718d953b27b2b9541415a80ab9f",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "living-room",
+      "file": "Retro Cat’s-Eye Living Room(Cat).png",
+      "mountIds": [
+        "cat"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 2961675,
+      "sha256": "22606b74531fca672b834dfdf225da2d6a71f5f24b4e740bd75ee58037499485",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "jungle-temple",
+      "file": "Sunset Jungle Temple with Wildlife(Tiger).png",
+      "mountIds": [
+        "tiger"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 3476033,
+      "sha256": "3ebb28f90e4c703cb61765eb16dca5b5ba00f65d984487d5b21101520a873dbb",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "lagoon",
+      "file": "Endless Flamingo Mirror Lagoon.png",
+      "mountIds": [
+        "flamingo"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 3689545,
+      "sha256": "983b7753297121662af58b34c63de28eac68371829dc47ecbf6768f4106f8e30",
+      "status": "approved-enabled"
+    },
+    {
+      "id": "castle-aerial",
+      "file": "(Dragon).png",
+      "mountIds": [
+        "dragon"
+      ],
+      "width": 1916,
+      "height": 821,
+      "bytes": 3484828,
+      "sha256": "ca0701b708cdcf2af8a17619b49472236d9b47ff38a7d69009652376e92d51eb",
+      "status": "approved-enabled",
+      "sourceSubdirectory": "Last Backgrounds"
+    },
+    {
+      "id": "castle-ground",
+      "file": "(unicorn).png",
+      "mountIds": [
+        "unicorn"
+      ],
+      "width": 1916,
+      "height": 821,
+      "bytes": 3709491,
+      "sha256": "25e465a97737aa7e80ece3b0086a581a1a2fee3cfd0616f9d5987eeb15512075",
+      "status": "approved-enabled",
+      "sourceSubdirectory": "Last Backgrounds"
+    },
+    {
+      "id": "warren",
+      "file": "Cinematic Enchanted Woodland Warren(Rabbit).png",
+      "mountIds": [
+        "rabbit"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 3079282,
+      "sha256": "34f55a3f59d7235dafc12da03d44fa19633714ef802c4e465dad6ff1737e037b",
+      "status": "approved-enabled",
+      "sourceSubdirectory": "Last Backgrounds"
+    },
+    {
+      "id": "countryside",
+      "file": "Golden-Hour Countryside Path(Fox).png",
+      "mountIds": [
+        "fox"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 3443150,
+      "sha256": "f91b06172bc45c51c2881bbe40c49e7fe7a1c71fba41ddb9bd7f790fb1226468",
+      "status": "approved-enabled",
+      "sourceSubdirectory": "Last Backgrounds"
+    },
+    {
+      "id": "wilderness",
+      "file": "Moonlit Alpine Valley with Howling Wolf(Grizzly,Wolf).png",
+      "mountIds": [
+        "grizzly",
+        "wolf"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 3180855,
+      "sha256": "4cb0467df50199f03d88254fe2aedced2b62d0052a3c605bb94ed6113d58123d",
+      "status": "approved-enabled",
+      "sourceSubdirectory": "Last Backgrounds"
+    },
+    {
+      "id": "wildflower-valley",
+      "file": "Sunlit Wildflower Valley beneath Ancient Oaks(Stag).png",
+      "mountIds": [
+        "stag"
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 3444984,
+      "sha256": "9197fee4f89d903df860c95a5458af57ea6473373373bdcb0c00159cce38eda5",
+      "status": "approved-enabled",
+      "sourceSubdirectory": "Last Backgrounds"
+    }
+  ]
+}

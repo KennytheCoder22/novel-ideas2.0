@@ -1,0 +1,134 @@
+[
+  {
+    "name": "adults-desktop",
+    "mount": "dragon",
+    "clips": [
+      {
+        "variant": "baseline",
+        "url": "/review/artifacts/baseline/adults-desktop/page@6434f5ddcd738dbe5727edafb1bf10e7.webm",
+        "alignment": {
+          "samples": 636,
+          "maxSeatError": 6.106226635438361e-16
+        }
+      },
+      {
+        "variant": "final",
+        "url": "/review/artifacts/final/adults-desktop/page@c4d433f63eac8fd69049cc6294c1cff5.webm",
+        "alignment": {
+          "samples": 879,
+          "maxSeatError": 6.106226635438361e-16
+        }
+      }
+    ]
+  },
+  {
+    "name": "adults-phone",
+    "mount": "horse",
+    "clips": [
+      {
+        "variant": "baseline",
+        "url": "/review/artifacts/baseline/adults-phone/page@6d4eb2ef3083d330b6f63e4bb3dbf6c3.webm",
+        "alignment": {
+          "samples": 922,
+          "maxSeatError": 1.0547118733938987e-15
+        }
+      },
+      {
+        "variant": "final",
+        "url": "/review/artifacts/final/adults-phone/page@3a2bd3bcd4c8c2f88ab4a0986deba754.webm",
+        "alignment": {
+          "samples": 2121,
+          "maxSeatError": 1.1657341758564144e-15
+        }
+      }
+    ]
+  },
+  {
+    "name": "teens-desktop",
+    "mount": "rocket",
+    "clips": [
+      {
+        "variant": "baseline",
+        "url": "/review/artifacts/baseline/teens-desktop/page@ccb3e4f8bf563a5ac3cb4c64b9a772bf.webm",
+        "alignment": {
+          "samples": 569,
+          "maxSeatError": 6.106226635438361e-16
+        }
+      },
+      {
+        "variant": "final",
+        "url": "/review/artifacts/final/teens-desktop/page@4696b4aa61d2d9edee06c67a1c67d396.webm",
+        "alignment": {
+          "samples": 1069,
+          "maxSeatError": 8.326672684688674e-16
+        }
+      }
+    ]
+  },
+  {
+    "name": "teens-phone",
+    "mount": "griffin",
+    "clips": [
+      {
+        "variant": "baseline",
+        "url": "/review/artifacts/baseline/teens-phone/page@5bf9ff84bda1a28e78a01641b3c1f87b.webm",
+        "alignment": {
+          "samples": 871,
+          "maxSeatError": 6.106226635438361e-16
+        }
+      },
+      {
+        "variant": "final",
+        "url": "/review/artifacts/final/teens-phone/page@9f685617779aae99c120ed92d7659435.webm",
+        "alignment": {
+          "samples": 2119,
+          "maxSeatError": 8.326672684688674e-16
+        }
+      }
+    ]
+  },
+  {
+    "name": "kids-desktop",
+    "mount": "elephant",
+    "clips": [
+      {
+        "variant": "baseline",
+        "url": "/review/artifacts/baseline/kids-desktop/page@bf8d43f814969967efdf34b6f1673633.webm",
+        "alignment": {
+          "samples": 665,
+          "maxSeatError": 1.0547118733938987e-15
+        }
+      },
+      {
+        "variant": "final",
+        "url": "/review/artifacts/final/kids-desktop/page@338d8538d05609af92c06c69690cd97e.webm",
+        "alignment": {
+          "samples": 852,
+          "maxSeatError": 1.0547118733938987e-15
+        }
+      }
+    ]
+  },
+  {
+    "name": "kids-phone",
+    "mount": "snail",
+    "clips": [
+      {
+        "variant": "baseline",
+        "url": "/review/artifacts/baseline/kids-phone/page@50287a317cdef07cb704aaa293b6988b.webm",
+        "alignment": {
+          "samples": 858,
+          "maxSeatError": 6.106226635438361e-16
+        }
+      },
+      {
+        "variant": "final",
+        "url": "/review/artifacts/final/kids-phone/page@3fdd79ded5ecaa47d205f72ed8eee550.webm",
+        "alignment": {
+          "samples": 1837,
+          "maxSeatError": 7.216449660063518e-16
+        }
+      }
+    ]
+  }
+]

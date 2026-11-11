@@ -1,0 +1,40 @@
+.z5-entry{position:absolute;left:47%;top:60%;width:6%;min-width:44px;height:8%;min-height:44px;z-index:30;background:none;border:0;cursor:pointer;transform:rotate(-18deg);filter:drop-shadow(0 3px 2px #110801)}
+.z5-entry img{width:100%;height:100%;object-fit:contain}.z5-entry:hover,.z5-entry:focus-visible{filter:drop-shadow(0 0 5px #edca86)}
+.z5-room{position:fixed;inset:0;margin:0;padding:0;width:100vw;height:100dvh;max-width:none;max-height:none;border:0;background:#160e12;overflow:hidden;color:#dec394}
+.z5-room::backdrop{background:#130d10}.z5-room-art{position:absolute;inset:0;background:url('/experiments/carnival/locations/fortune-teller.png') center 60% / auto 145% no-repeat;filter:brightness(.56);transition:filter 1.6s}
+.z5-surface{position:absolute;left:-10%;right:-10%;bottom:-25%;height:69%;background:radial-gradient(ellipse at 50% 0,#872b35,#3b0e1b 63%,#170b12);border-radius:50% 50% 0 0;box-shadow:0 -8px 35px #1c0609}
+.z5-room button{position:absolute;border:0;cursor:pointer;background:none;color:#e2c59c;padding:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.z5-room button:focus-visible{outline:2px solid #efd5a1;outline-offset:8px}.z5-room button:hover:not(:disabled){filter:drop-shadow(0 0 7px #d49e5955)}
+.z5-room button:disabled{cursor:default}.z5-room button[hidden]{display:none}
+.z5-room img{width:100%;height:100%;object-fit:contain;pointer-events:none}.z5-close{right:20px;top:20px;width:48px;height:48px;font:36px Georgia;z-index:20;border-radius:50%;background:#1c1116b0!important}
+.z5-ticket{left:calc(32% - 65px);top:55%;width:130px;height:164px;transform:rotate(-16deg);filter:drop-shadow(8px 14px 8px #100607);transition:transform 1.1s,top 1.1s,left 1.1s}
+.z5-marks{position:absolute;inset:43% 0 auto;color:#40140a;text-shadow:0 0 6px #ffeeb4;font:bold 17px Georgia;opacity:0;transition:opacity 1.6s;background:#e1b779}
+.z5-room[data-picked=true] .z5-ticket{top:38%;transform:rotate(9deg) scale(1.15)}
+.z5-room[data-lit=true] .z5-ticket{top:30%;transform:rotate(0) scale(1.15);filter:drop-shadow(0 0 25px #eab85e80)}
+.z5-room[data-lit=true] .z5-marks{opacity:1}
+.z5-lamp{left:calc(32% - 38px);top:10%;width:76px;height:100px;filter:drop-shadow(0 0 30px #ffc97099)}
+.z5-lamp i{position:absolute;inset:0 10% 15%;border:5px solid #846037;border-radius:35% 35% 12% 12%;background:radial-gradient(ellipse,#fff2a9,#d78a26 40%,#4f250d);box-shadow:0 0 40px #efb55266}
+.z5-lamp span{position:absolute;width:100%;height:5px;background:#ac8046;bottom:8%}
+.z5-door{left:calc(69% - 75px);top:36%;width:150px;height:205px;perspective:600px;filter:drop-shadow(10px 13px 10px #100508)}
+.z5-door>img{position:absolute;inset:0;transform-origin:left center;transition:transform 1.8s;backface-visibility:hidden}
+.z5-view{position:absolute;inset:3% 6%;background:url('/experiments/carnival/dream-worlds/Moonlit%20(Griffin)%20Citadel%20Among%20Misty%20Peaks.png') 53% center / auto 100%;border:3px solid #b4955e;box-shadow:inset 0 0 20px #080e1b;opacity:0;transition:opacity .8s}
+.z5-room[data-door=true] .z5-door>img{transform:rotateY(-108deg)}
+.z5-room[data-door=true] .z5-view{opacity:1}
+.z5-threshold{left:calc(69% - 50px);top:43%;width:100px;height:135px;z-index:3}.z5-threshold span{display:block;position:absolute;bottom:0;left:20%;right:20%;height:3px;background:#dfc57b;box-shadow:0 0 12px #e3cfa5}
+.z5-second{left:calc(32% - 58px);top:70%;width:116px;height:145px;transform:rotate(14deg);animation:z5-slip 1.2s ease-out both;filter:drop-shadow(6px 8px 6px #180a0a)}
+.z5-second span{position:absolute;top:44%;left:5%;width:90%;background:#e1b779;color:#501d13;font:bold 15px Georgia}
+.z5-echo{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.6s}.z5-echo img{position:absolute;width:95px;height:120px;left:45%;top:57%;transform:rotate(-9deg)}.z5-echo img:nth-child(2){width:65px;height:83px;left:48%;top:46%;transform:rotate(15deg)}.z5-echo img:nth-child(3){width:40px;height:52px;left:50%;top:38%;transform:rotate(-18deg)}
+.z5-room[data-chosen=hidden-message] .z5-echo{opacity:1}.z5-room[data-chosen=hidden-message] .z5-room-art{filter:brightness(.85)}
+.z5-room[data-chosen=impossible-door] .z5-door{left:5%;top:5%;width:90%;height:90%;transition:all 2.4s ease-in-out;z-index:5}.z5-room[data-chosen=impossible-door] .z5-door>img{opacity:0;transition:opacity .7s}.z5-room[data-chosen=impossible-door] .z5-view{background-size:cover;box-shadow:inset 0 0 100px #080b1b;border-width:8px}
+.z5-room[data-chosen=impossible-door] .z5-ticket{left:45%;top:53%;transform:scale(.55) rotate(-12deg);z-index:6}
+.z5-status{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}.z5-inspect{position:fixed;right:10px;bottom:60px;z-index:99}
+@keyframes z5-slip{from{transform:translateY(-55px) rotate(14deg);opacity:0}to{transform:translateY(0) rotate(14deg);opacity:1}}
+@media(max-width:600px){.z5-ticket{left:calc(28% - 48px);width:96px;height:125px}.z5-door{left:calc(73% - 54px);width:108px;height:155px;top:38%}.z5-threshold{left:calc(73% - 40px);width:80px;height:110px;top:42%}.z5-lamp{left:calc(28% - 32px);width:64px;height:88px;top:14%}.z5-second{left:calc(28% - 44px);width:88px;height:113px}.z5-marks,.z5-second span{font-size:12px}.z5-room-art{background-size:auto 110%}.z5-echo img{left:45%;width:70px;height:90px}.z5-entry{left:47%;width:5%}}
+@media(prefers-reduced-motion:reduce){.z5-room *{animation:none!important;transition:none!important}}
+
+.z5-surface{background:repeating-linear-gradient(87deg,#ffffff04 0 1px,transparent 1px 4px),repeating-linear-gradient(2deg,#00000008 0 1px,transparent 1px 3px),radial-gradient(ellipse at 40% 10%,#6d2530,#390e1a 65%,#170b12)}
+.z5-room[data-picked=true] .z5-ticket{background:radial-gradient(ellipse at 40% 30%,#e1c18c,#ae7b44);border:7px double #a67844;border-radius:6px;box-shadow:inset 0 0 18px #6b402c66}
+.z5-room[data-picked=true] .z5-ticket>img{opacity:0}
+.z5-room[data-chosen=hidden-message] .z5-echo img{animation:z5-trail 1.3s ease-out both}.z5-room[data-chosen=hidden-message] .z5-echo img:nth-child(2){animation-delay:.5s}.z5-room[data-chosen=hidden-message] .z5-echo img:nth-child(3){animation-delay:1s}
+@keyframes z5-trail{from{opacity:0;translate:0 35px}to{opacity:1;translate:0 0}}
+@media(prefers-reduced-motion:reduce){.z5-room *{animation:none!important;transition:none!important}}

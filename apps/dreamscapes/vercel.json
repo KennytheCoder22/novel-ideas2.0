@@ -4,6 +4,15 @@
   "buildCommand": "node build.mjs",
   "installCommand": "echo No dependencies required",
   "outputDirectory": "dist",
+  "git": {
+    "deploymentEnabled": {
+      "codex/dreamscapes-autonomous-playtesting": false,
+      "codex/dreamscapes-autonomous-cycle-one": false,
+      "codex/dreamscapes-observation-foundation": false,
+      "codex/dreamscapes-interactive-carousel": false,
+      "codex/dreamscapes-first-person-ride": false
+    }
+  },
   "headers": [
     {
       "source": "/carnival/(.*)",
