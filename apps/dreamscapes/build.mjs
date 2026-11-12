@@ -29,3 +29,17 @@ for(const [name,meta] of Object.entries(prototype)){
  cpSync(source,path.join(root,'dist/cycle-zora',name));
 }
 console.log('Built Dreamscapes: verified '+Object.keys(runtime).length+' runtime files (checkpoint + reviewed UI overrides), 20 Ornate GLBs and '+variantCount+' variant GLBs.');
+
+// Load the reviewed gameplay experiment only through its explicit preview flag.
+for (const name of ['carnival/index.html','experiments/carnival/index.html']) {
+ const file=path.join(root,'dist',name);
+ try {
+  const html=readFileSync(file,'utf8');
+  writeFileSync(file,html.replace('</body>',`<script type="module">
+if(new URLSearchParams(location.search).get('cycle-seven')==='echo'){
+ const style=document.createElement('link');style.rel='stylesheet';style.href='/cycle-seven/echo.css';document.head.append(style);
+ import('/cycle-seven/echo.js');
+}
+</script></body>`));
+ } catch(error) { if(error.code!=='ENOENT')throw error; }
+}
