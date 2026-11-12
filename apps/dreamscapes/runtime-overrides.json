@@ -492,12 +492,12 @@
     "sha256": "9197fee4f89d903df860c95a5458af57ea6473373373bdcb0c00159cce38eda5"
   },
   "cycle-seven/echo.js": {
-    "bytes": 12198,
-    "sha256": "610b87273211216877508cc65040fe422120232db915f7b3a429c47b5a270b9e"
+    "bytes": 9188,
+    "sha256": "60f96598e9c877050be8ac05aee3f135931a16a0a6b95fc7abf5e89806d9571e"
   },
   "cycle-seven/echo.css": {
-    "bytes": 3656,
-    "sha256": "1b862299c74567acf99d1f5e09a574a9e9074c534bfeac2ab368e0421ef8e83d"
+    "bytes": 3629,
+    "sha256": "699468cb27becaf30218c2a275d7477495675b2993fe7f4100e85967809cd789"
   },
   "cycle-seven/chest-state.mjs": {
     "bytes": 1038,
@@ -510,5 +510,17 @@
   "cycle-seven/chest-bare.png": {
     "bytes": 2652815,
     "sha256": "5537d5eeb7321117a358658e0e3d19092c89a4ce73ac3a6c92b0fa1a09b265ab"
+  },
+  "cycle-seven/trunk-geometry.mjs": {
+    "bytes": 2128,
+    "sha256": "ea65163fdcff0973cd407951c478ae912321a9c5a28271b81cbadeee1f9c37ab"
+  },
+  "cycle-seven/trunk-renderer.mjs": {
+    "bytes": 4980,
+    "sha256": "1438336fcf7b1457e272f92d261f27f70347b38437b8a39b0e7c25c7026fc5c5"
+  },
+  "cycle-seven/trunk-reference.png": {
+    "bytes": 2539952,
+    "sha256": "4af68f0bebfce9f747c3de55a15e3c260d0df9c0bef81992dd49d81a3d7c8a0c"
   }
 }

@@ -1,7 +1,8 @@
-import {initial,turn,solved,clamp,propPose,readBand} from './chest-state.mjs';
+import {createTrunk} from './trunk-renderer.mjs';
+import {initial,turn,solved,clamp,readBand} from './chest-state.mjs';
 const art='/experiments/carnival/locations/fortune-teller.png',base='/cycle-seven/';
 const band=()=>window.DreamscapesObservations?.snapshot().ageBand||'adults';
-let age=band(),saved=readBand(sessionStorage,age),wheels=initial(saved.round),phase='idle',plane,svg,lock,opened=false,run=null,prepared;
+let age=band(),saved=readBand(sessionStorage,age),wheels=initial(saved.round),phase='idle',plane,trunk,lock,opened=false,run=null,prepared;
 const quiet=matchMedia('(prefers-reduced-motion: reduce)');
 const tour=['rides-games','skee-ball','rides-games','ferris-platform','midway','tent-row','behind-carnival','forest-edge','behind-carnival','tent-row','fortune-teller'];
 const button=(text,label,fn)=>{const b=document.createElement('button');b.textContent=text;b.setAttribute('aria-label',label);b.onclick=fn;return b;};
@@ -20,42 +21,20 @@ const light=document.createElement('div');light.className='chest-light';light.hi
 function persist(){try{sessionStorage.setItem('dreamscapes.chest.v1.'+age,JSON.stringify(saved));}catch{}}
 function say(text){status.textContent=text;status.hidden=!text;}
 function render(){controls.forEach((b,i)=>{b.style.setProperty('--angle',wheels[i]*90+'deg');b.disabled=phase!=='puzzle';b.dataset.lit=String(wheels.slice(0,i+1).every(v=>v===0));b.setAttribute('aria-label',`Turn brass window ${i+1}, facing ${['right','down','left','up'][wheels[i]]}; also turns window ${(i+1)%3+1}`);});}
-function imageClip(id,points){return `<clipPath id="${id}"><polygon points="${points}"/></clipPath>`;}
 function mount(){
  if(document.documentElement.dataset.location!=='fortune-teller'||document.documentElement.dataset.travelling)return;
  const target=document.querySelector('[data-scene="fortune-teller"] .location-plane');if(!target||target===plane)return;plane=target;
- svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 1672 941');svg.classList.add('chest-art');svg.setAttribute('aria-hidden','true');
- svg.innerHTML=`<defs>
- ${imageClip('chest-patch','1054,650 1139,651 1140,615 1165,611 1160,560 1180,520 1220,490 1258,526 1282,600 1284,842 1053,842')}
- ${imageClip('chest-body','1060,678 1175,700 1279,685 1275,819 1174,841 1060,801')}
- ${imageClip('chest-lid','1062,657 1167,649 1278,670 1176,699 1060,678')}
- ${imageClip('chest-book','1141,615 1237,620 1269,632 1267,667 1158,662 1140,653')}
- ${imageClip('chest-plant','1170,614 1162,594 1173,579 1157,567 1174,559 1173,541 1186,548 1181,528 1198,536 1204,518 1220,524 1232,494 1244,512 1254,516 1259,535 1251,550 1271,554 1263,569 1276,579 1263,590 1257,611 1233,623 1190,621')}
- <clipPath id="chest-rear-space"><rect width="1672" height="810"/></clipPath><linearGradient id="chest-inner" x2="0" y2="1"><stop stop-color="#42250c"/><stop offset="1" stop-color="#110d0a"/></linearGradient>
- <radialGradient id="chest-warm"><stop stop-color="#ffe0a0" stop-opacity=".8"/><stop offset="1" stop-color="#f9aa45" stop-opacity="0"/></radialGradient></defs>
- <image class="chest-settled" href="${base}chest-bare.png" width="1672" height="941" clip-path="url(#chest-patch)" visibility="hidden"/><g class="chest-replacement" visibility="hidden"><image href="${base}chest-clean-plate.png" width="1672" height="941" clip-path="url(#chest-patch)"/>
- <g clip-path="url(#chest-rear-space)"><g class="chest-book"><image href="${art}" width="1672" height="941" clip-path="url(#chest-book)"/></g>
- <g class="chest-plant"><image href="${art}" width="1672" height="941" clip-path="url(#chest-plant)"/></g></g>
- <polygon points="1062,657 1167,649 1278,670 1175,699 1061,678" fill="url(#chest-inner)" stroke="#624426" stroke-width="2"/>
- <ellipse class="chest-glow" cx="1171" cy="672" rx="153" ry="94" fill="url(#chest-warm)" opacity="0"/>
- <g class="chest-lid"><polygon points="1062,657 1167,649 1278,670 1176,699 1060,678" fill="#53331b" stroke="#987344" stroke-width="3"/><image href="${base}chest-bare.png" width="1672" height="941" clip-path="url(#chest-lid)"/></g>
- <image href="${art}" width="1672" height="941" clip-path="url(#chest-body)"/>
- </g>`;plane.append(svg);
+ trunk=createTrunk(plane);
  lock=button('','Examine the padlock on the wooden chest',openPuzzle);lock.className='chest-lock';lock.innerHTML='<svg viewBox="0 0 44 56" aria-hidden="true"><defs><linearGradient id="lock-brass"><stop stop-color="#b98a45"/><stop offset=".5" stop-color="#6b4825"/><stop offset="1" stop-color="#d2a357"/></linearGradient></defs><path class="chest-shackle" d="M11 27V15C11 2 33 2 33 15V27" fill="none" stroke="#372618" stroke-width="7"/><path class="chest-shackle" d="M11 27V15C11 2 33 2 33 15V27" fill="none" stroke="#c19b60" stroke-width="4"/><rect x="4" y="24" width="36" height="29" rx="5" fill="url(#lock-brass)" stroke="#352315" stroke-width="2"/><circle cx="22" cy="36" r="4" fill="#251a10"/><path d="M20 38L19 45H25L24 38" fill="#251a10"/></svg>';plane.append(lock);pose(0);
- lock.addEventListener('focus',()=>{if(!run)frameChest();});
+ lock.addEventListener('focus',()=>{if(!run){frameChest();requestAnimationFrame(frameChest);}});
 }
-function frameChest(){if(!plane)return;const overflow=plane.offsetWidth-innerWidth;if(overflow>0)plane.style.left=-Math.max(0,Math.min(overflow,plane.offsetWidth*.70-innerWidth*.58))+'px';}
-function pose(p){if(!svg)return;const group=svg.querySelector('.chest-replacement');group.setAttribute('visibility',p>0?'visible':'hidden');svg.querySelector('.chest-settled').setAttribute('visibility',p===0&&saved.fallen?'visible':'hidden');
- // Rear hinge follows the painted lid's sloping back edge. Front edge lifts toward it.
- svg.querySelector('.chest-lid').setAttribute('transform',`translate(1062 657) matrix(${1-p*.006} ${p*.216} ${p*.1} ${1-p*3.6} 0 0) translate(-1062 -657)`);
- for(const kind of ['book','plant']){const g=svg.querySelector('.chest-'+kind),v=propPose(p,kind);g.setAttribute('visibility',saved.fallen||v.hidden?'hidden':'visible');g.setAttribute('transform',`translate(${v.x} ${v.y}) rotate(${v.angle} 1200 638)`);}
- svg.querySelector('.chest-glow').setAttribute('opacity',String(p*.32));
-}
-function atChest(dx=0,dy=0){const r=plane.getBoundingClientRect();return {x:r.left+r.width*(.70+dx),y:r.top+r.height*(.70+dy)};}
+function frameChest(){if(!plane)return;plane.parentElement.scrollLeft=0;const overflow=plane.offsetWidth-innerWidth;if(overflow>0)plane.style.left=-Math.max(0,Math.min(overflow,plane.offsetWidth*.70-innerWidth*.58))+'px';}
+function pose(p){trunk?.pose(p);}
+function atChest(dx=0,dy=0){const r=plane.getBoundingClientRect();return {x:r.left+r.width*(.70+dx),y:r.top+r.height*(.733+dy)};}
 function place(point){light.style.left=point.x+'px';light.style.top=point.y+'px';}
 async function animate(ms,fn,token,interruptible=true){const start=performance.now();return new Promise(resolve=>{function tick(now){if(token!==run||interruptible&&token.skip){resolve(false);return;}const t=clamp((now-start)/ms);fn(t);if(t===1)resolve(true);else requestAnimationFrame(tick);}requestAnimationFrame(tick);});}
 async function openPuzzle(){if(phase!=='idle'||run)return;phase='preparing';frameChest();say('The brass lock catches the lamplight…');try{await prepare();if(phase!=='preparing')return;wheels=initial(saved.round);phase='puzzle';render();say('');panel.classList.remove('chest-solved');panel.showModal();controls[0].focus();}catch{phase='idle';say('The chest could not load. Try the lock again.');prepared=null;}}
-function prepare(){return prepared||=Promise.all([...['chest-clean-plate.png','chest-bare.png'].map(name=>new Promise((resolve,reject)=>{const img=new Image();img.onload=resolve;img.onerror=reject;img.src=base+name;})),window.CarnivalNavigation.prepareTour(tour)]);}
+function prepare(){return prepared||=Promise.all([trunk.ready,...['chest-clean-plate.png','chest-bare.png'].map(name=>new Promise((resolve,reject)=>{const img=new Image();img.onload=resolve;img.onerror=reject;img.src=base+name;})),window.CarnivalNavigation.prepareTour(tour)]);}
 async function sequence(){if(phase!=='puzzle'||run)return;const token=run={skip:false,age};phase='unlocking';render();panel.classList.add('chest-solved');reset.disabled=close.disabled=true;document.documentElement.dataset.chestTour='true';skip.hidden=!saved.completed;if(!skip.hidden)skip.focus();else status.focus();say('The lock yields. Something stirs inside.');lock.classList.add('unlocked');
  try{
  await animate(600,()=>{},token);panel.close();
@@ -73,7 +52,7 @@ async function sequence(){if(phase!=='puzzle'||run)return;const token=run={skip:
  phase='returning';skip.hidden=true;if(document.documentElement.dataset.location!=='fortune-teller')await window.CarnivalNavigation.tourTo('fortune-teller');frameChest();pose(1);light.hidden=false;
  const target=atChest(),start={x:parseFloat(light.style.left)||target.x,y:parseFloat(light.style.top)||target.y-80};
  await animate(quiet.matches?500:1500,t=>place({x:start.x+(target.x-start.x)*t,y:start.y+(target.y-start.y)*t}),token,false);light.hidden=true;
- await animate(quiet.matches?600:1800,t=>pose(1-t),token,false);opened=false;lock.classList.remove('unlocked');panel.close();reset.disabled=close.disabled=false;
+ await animate(quiet.matches?600:1800,t=>pose(1-t*t*(3-2*t)),token,false);opened=false;lock.classList.remove('unlocked');panel.close();reset.disabled=close.disabled=false;
  saved.completed=true;saved.round++;persist();delete document.documentElement.dataset.chestTour;run=null;phase='idle';pose(0);say('The borrowed light rests inside. The lock is ready whenever you are.');lock.focus({preventScroll:true});setTimeout(()=>{if(!run)say('');},4500);
  if(age!==band()){age=band();saved=readBand(sessionStorage,age);wheels=initial(saved.round);pose(0);}
  }
