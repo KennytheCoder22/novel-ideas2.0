@@ -1,0 +1,205 @@
+{
+  "base": "http://127.0.0.1:52685",
+  "results": [
+    {
+      "band": "adults",
+      "mobile": false,
+      "passed": true,
+      "zora": {
+        "picked": true,
+        "lit": true,
+        "door": true,
+        "chosen": "hidden-message"
+      },
+      "puzzle": {
+        "version": 1,
+        "rotors": [
+          0,
+          0,
+          0
+        ],
+        "outcome": "woods",
+        "round": 0,
+        "moves": 3,
+        "greeted": true
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "band": "adults",
+      "mobile": true,
+      "passed": true,
+      "zora": {
+        "picked": true,
+        "lit": true,
+        "door": true,
+        "chosen": "impossible-door"
+      },
+      "puzzle": {
+        "version": 1,
+        "rotors": [
+          0,
+          0,
+          0
+        ],
+        "outcome": "home",
+        "round": 0,
+        "moves": 3,
+        "greeted": true
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "band": "teens",
+      "mobile": false,
+      "passed": true,
+      "zora": {
+        "picked": true,
+        "lit": true,
+        "door": true,
+        "chosen": "hidden-message"
+      },
+      "puzzle": {
+        "version": 1,
+        "rotors": [
+          0,
+          0,
+          0
+        ],
+        "outcome": "woods",
+        "round": 0,
+        "moves": 3,
+        "greeted": true
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "band": "teens",
+      "mobile": true,
+      "passed": true,
+      "zora": {
+        "picked": true,
+        "lit": true,
+        "door": true,
+        "chosen": "impossible-door"
+      },
+      "puzzle": {
+        "version": 1,
+        "rotors": [
+          0,
+          0,
+          0
+        ],
+        "outcome": "home",
+        "round": 0,
+        "moves": 3,
+        "greeted": true
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "band": "pre-teens",
+      "mobile": false,
+      "passed": true,
+      "zora": {
+        "picked": true,
+        "lit": true,
+        "door": true,
+        "chosen": "hidden-message"
+      },
+      "puzzle": {
+        "version": 1,
+        "rotors": [
+          0,
+          0,
+          0
+        ],
+        "outcome": "woods",
+        "round": 0,
+        "moves": 3,
+        "greeted": true
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "band": "pre-teens",
+      "mobile": true,
+      "passed": true,
+      "zora": {
+        "picked": true,
+        "lit": true,
+        "door": true,
+        "chosen": "impossible-door"
+      },
+      "puzzle": {
+        "version": 1,
+        "rotors": [
+          0,
+          0,
+          0
+        ],
+        "outcome": "home",
+        "round": 0,
+        "moves": 3,
+        "greeted": true
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "band": "kids",
+      "mobile": false,
+      "passed": true,
+      "zora": {
+        "picked": true,
+        "lit": true,
+        "door": true,
+        "chosen": "hidden-message"
+      },
+      "puzzle": {
+        "version": 1,
+        "rotors": [
+          0,
+          0,
+          0
+        ],
+        "outcome": "woods",
+        "round": 0,
+        "moves": 3,
+        "greeted": true
+      },
+      "errors": [],
+      "failed": []
+    },
+    {
+      "band": "kids",
+      "mobile": true,
+      "passed": true,
+      "zora": {
+        "picked": true,
+        "lit": true,
+        "door": true,
+        "chosen": "impossible-door"
+      },
+      "puzzle": {
+        "version": 1,
+        "rotors": [
+          0,
+          0,
+          0
+        ],
+        "outcome": "home",
+        "round": 0,
+        "moves": 3,
+        "greeted": true
+      },
+      "errors": [],
+      "failed": []
+    }
+  ]
+}

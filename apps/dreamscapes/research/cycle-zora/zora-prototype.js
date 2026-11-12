@@ -1,5 +1,5 @@
 import {version,stateFrom,available,interpret} from './zora-contract.mjs';
-if(new URLSearchParams(location.search).get('cycle-zora')==='zora'){
+{
  const core=window.DreamscapesObservationCore,normal=window.DreamscapesObservations,key='dreamscapes.cycle-zora.zora.v1';let storage;
  try{sessionStorage.getItem(key);storage={getItem:()=>sessionStorage.getItem(key),setItem:(_,v)=>sessionStorage.setItem(key,v)};}catch{}
  const store=core.createStore({storage,ageBand:()=>normal.snapshot().ageBand,origin:window.__cycleFiveSynthetic?'test_fixture':'player'});

@@ -1,7 +1,7 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 8819,
-    "sha256": "335fd11904f64db0b857f5de0a632b1433231bad45a6a3cbfa622dab76b05e17"
+    "bytes": 8668,
+    "sha256": "92f78b42e755264f9e4c53cf664069496bbbb8fe419447c15912fab1031fcee0"
   },
   "experiments/carnival/navigation.js": {
     "bytes": 11421,
@@ -40,8 +40,8 @@
     "sha256": "09a941e2e36e231bcc46719e3b95286eda0c8b6734e07cf534bf3fda8c824680"
   },
   "experiments/carnival/locations.js": {
-    "bytes": 3246,
-    "sha256": "6e0bd934e40b616dff71b3bbf88c12181db3c9392d15ed0d7f9c6ee8757832e9"
+    "bytes": 3359,
+    "sha256": "b41b8d1c021eefeec30b90d7755e04e48c45bc63f1f681786d63d4355bbed0dc"
   },
   "experiments/carnival/animal-comparison.js": {
     "bytes": 8012,
@@ -490,5 +490,9 @@
   "experiments/carnival/dream-worlds/Sunlit Wildflower Valley beneath Ancient Oaks(Stag).png": {
     "bytes": 3444984,
     "sha256": "9197fee4f89d903df860c95a5458af57ea6473373373bdcb0c00159cce38eda5"
+  },
+  "cycle-seven/echo.js": {
+    "bytes": 9257,
+    "sha256": "d2708093917a68719a2571d38e31680e405d1318b165577b78a0cf21b33c4dfd"
   }
 }

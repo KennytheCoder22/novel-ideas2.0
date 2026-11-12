@@ -1,4 +1,4 @@
-import {readFileSync,rmSync,cpSync,mkdirSync,readdirSync,statSync,writeFileSync} from 'node:fs';
+import {readFileSync,rmSync,cpSync,mkdirSync,readdirSync,statSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
@@ -18,8 +18,7 @@ if(readdirSync(assets).filter(f=>f.endsWith('.glb')).length!==20)throw Error('Ex
 rmSync(path.join(root,'dist'),{recursive:true,force:true});
 mkdirSync(path.join(root,'dist'),{recursive:true});
 cpSync(path.join(root,'public'),path.join(root,'dist'),{recursive:true});
-// Publish the reviewed, query-flagged encounter without flattening its assets
-// or enabling it in ordinary gameplay. Verify it just like public runtime files.
+// Publish the approved encounter assets, verified like public runtime files.
 const prototype=JSON.parse(readFileSync(path.join(root,'prototype-overrides.json')));
 mkdirSync(path.join(root,'dist/cycle-zora'),{recursive:true});
 for(const [name,meta] of Object.entries(prototype)){
@@ -29,17 +28,3 @@ for(const [name,meta] of Object.entries(prototype)){
  cpSync(source,path.join(root,'dist/cycle-zora',name));
 }
 console.log('Built Dreamscapes: verified '+Object.keys(runtime).length+' runtime files (checkpoint + reviewed UI overrides), 20 Ornate GLBs and '+variantCount+' variant GLBs.');
-
-// Load the reviewed gameplay experiment only through its explicit preview flag.
-for (const name of ['carnival/index.html','experiments/carnival/index.html']) {
- const file=path.join(root,'dist',name);
- try {
-  const html=readFileSync(file,'utf8');
-  writeFileSync(file,html.replace('</body>',`<script type="module">
-if(new URLSearchParams(location.search).get('cycle-seven')==='echo'){
- const style=document.createElement('link');style.rel='stylesheet';style.href='/cycle-seven/echo.css';document.head.append(style);
- import('/cycle-seven/echo.js');
-}
-</script></body>`));
- } catch(error) { if(error.code!=='ENOENT')throw error; }
-}

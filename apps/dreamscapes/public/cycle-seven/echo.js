@@ -1,5 +1,5 @@
-const params=new URLSearchParams(location.search);
-if(params.get('cycle-seven')==='echo'){
+// Approved Borrowed Light gameplay is available on every Carnival visit.
+{
  const band=()=>window.DreamscapesObservations?.snapshot().ageBand||'adults';
  const key=()=>`dreamscapes.cycle-seven.echo.${band()}`;
  const fresh=()=>({version:1,rotors:[1,3,2],outcome:null,round:0,moves:0,greeted:false});
