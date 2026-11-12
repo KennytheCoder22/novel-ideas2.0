@@ -4,8 +4,8 @@
     "sha256": "92f78b42e755264f9e4c53cf664069496bbbb8fe419447c15912fab1031fcee0"
   },
   "experiments/carnival/navigation.js": {
-    "bytes": 11421,
-    "sha256": "e94743e23968874a5613b66abf6feffaca73d96df10284910c994fb24a14cea4"
+    "bytes": 11779,
+    "sha256": "8a52a15009ede42e3b87be6f6c4421c99790eb745d1bc6b1135088935397ed7a"
   },
   "experiments/carnival/horse-comparison.js": {
     "bytes": 6296,
@@ -492,7 +492,23 @@
     "sha256": "9197fee4f89d903df860c95a5458af57ea6473373373bdcb0c00159cce38eda5"
   },
   "cycle-seven/echo.js": {
-    "bytes": 9257,
-    "sha256": "d2708093917a68719a2571d38e31680e405d1318b165577b78a0cf21b33c4dfd"
+    "bytes": 12198,
+    "sha256": "610b87273211216877508cc65040fe422120232db915f7b3a429c47b5a270b9e"
+  },
+  "cycle-seven/echo.css": {
+    "bytes": 3656,
+    "sha256": "1b862299c74567acf99d1f5e09a574a9e9074c534bfeac2ab368e0421ef8e83d"
+  },
+  "cycle-seven/chest-state.mjs": {
+    "bytes": 1038,
+    "sha256": "5c613d956a2385802733e126148377f5afd89557cab4e92b6760740f7e1ab708"
+  },
+  "cycle-seven/chest-clean-plate.png": {
+    "bytes": 2666685,
+    "sha256": "386d95da059b0b639a428bdac349b8949c83c58a1ef2161419c1bcc1d24ba66e"
+  },
+  "cycle-seven/chest-bare.png": {
+    "bytes": 2652815,
+    "sha256": "5537d5eeb7321117a358658e0e3d19092c89a4ce73ac3a6c92b0fa1a09b265ab"
   }
 }

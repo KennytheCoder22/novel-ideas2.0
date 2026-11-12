@@ -1,0 +1,6 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {initial,turn,solved,propPose,readBand} from '../public/cycle-seven/chest-state.mjs';
+test('both starting arrangements are solvable with linked neighbours',()=>{for(const round of [0,1]){const queue=[initial(round)],seen=new Set();let found=false;while(queue.length){const state=queue.shift(),key=state.join();if(seen.has(key))continue;seen.add(key);if(solved(state)){found=true;break;}for(let i=0;i<3;i++)queue.push(turn(state,i));}assert(found);}});
+test('book and plant separate and descend behind the chest without fading',()=>{const a=propPose(.65,'book'),b=propPose(.65,'plant');assert.notEqual(a.angle,b.angle);assert.notEqual(a.y,b.y);for(const k of ['book','plant']){assert(propPose(1,k).hidden);assert(propPose(1,k).y>100);assert.equal(propPose(0,k).hidden,false);}});
+test('age-band completion and fallen props are isolated; corrupt storage is safe',()=>{const storage={getItem:key=>key.endsWith('adults')?JSON.stringify({round:2,completed:true,fallen:true}):null};assert.equal(readBand(storage,'adults').fallen,true);assert.equal(readBand(storage,'kids').fallen,false);assert.equal(readBand({getItem:()=>'{bad'},'kids').completed,false);});

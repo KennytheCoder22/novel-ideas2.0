@@ -144,7 +144,7 @@
       const y = rect ? rect.top + rect.height*.72 : innerHeight*.56;
       const quiet = motion.matches || still;
       const dissolve = kind === 'sign';
-      const duration = dissolve ? 700 : quiet ? 350 : 2400;
+      const duration = dissolve ? 700 : quiet ? 350 : kind === 'tour' ? 1900 : 2400;
       source.style.transformOrigin = `${x}px ${y}px`;
       const push = quiet ? 'none' : `translate(${(innerWidth*.5-x)*.22}px,${(innerHeight*.52-y)*.16}px) scale(${returning?1.16:1.42})`;
       target.view.style.opacity = '0'; target.view.style.visibility = 'visible';
@@ -194,6 +194,9 @@
     }
   }
   window.CarnivalNavigation = Object.freeze({
+    // Borrowed Light preloads established scenes before releasing the lock.
+    prepareTour(ids) { return Promise.all([...new Set(ids)].map(id=>mount(id).ready)); },
+    tourTo(id) { return document.documentElement.dataset.chestTour ? (id===current ? Promise.resolve(true) : travel(id,null,false,'tour')) : Promise.resolve(false); },
     go(destination, trigger) {
       const id = definitions[current].destinations?.[destination];
       return id ? travel(id,trigger) : Promise.resolve(false);
