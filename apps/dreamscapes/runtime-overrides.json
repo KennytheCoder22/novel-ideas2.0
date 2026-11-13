@@ -1,7 +1,7 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 8668,
-    "sha256": "92f78b42e755264f9e4c53cf664069496bbbb8fe419447c15912fab1031fcee0"
+    "bytes": 8784,
+    "sha256": "7e5633638f20ba5ea8d8ec13c2b57ee1bf15b4d767ab9f1a43d67bb7f24925dc"
   },
   "experiments/carnival/navigation.js": {
     "bytes": 11779,
@@ -492,8 +492,8 @@
     "sha256": "9197fee4f89d903df860c95a5458af57ea6473373373bdcb0c00159cce38eda5"
   },
   "cycle-seven/echo.js": {
-    "bytes": 9188,
-    "sha256": "60f96598e9c877050be8ac05aee3f135931a16a0a6b95fc7abf5e89806d9571e"
+    "bytes": 9358,
+    "sha256": "47dbd2df23bf4a78ea52c6c49cb05388c69abbf3b00c0aa19063149b55f568fc"
   },
   "cycle-seven/echo.css": {
     "bytes": 3629,
@@ -522,5 +522,17 @@
   "cycle-seven/trunk-reference.png": {
     "bytes": 2539952,
     "sha256": "4af68f0bebfce9f747c3de55a15e3c260d0df9c0bef81992dd49d81a3d7c8a0c"
+  },
+  "cycle-eight/memory.mjs": {
+    "bytes": 2096,
+    "sha256": "b7c90ffa4cdbaddef35f88d1b05be9537b565e0f62b40d61e3493ec5ec6f0676"
+  },
+  "cycle-eight/afterimages.js": {
+    "bytes": 9327,
+    "sha256": "3ae9dd8c3bfb74b8c1afacc3739d39da8dbcb2590269e27272192ab6e6f0dd41"
+  },
+  "cycle-eight/afterimages.css": {
+    "bytes": 3234,
+    "sha256": "af5902d352378124706819883104a18f1cbff2ed6e1156fb7fda9a3e83c8a1fa"
   }
 }

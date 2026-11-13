@@ -53,7 +53,7 @@ async function sequence(){if(phase!=='puzzle'||run)return;const token=run={skip:
  const target=atChest(),start={x:parseFloat(light.style.left)||target.x,y:parseFloat(light.style.top)||target.y-80};
  await animate(quiet.matches?500:1500,t=>place({x:start.x+(target.x-start.x)*t,y:start.y+(target.y-start.y)*t}),token,false);light.hidden=true;
  await animate(quiet.matches?600:1800,t=>pose(1-t*t*(3-2*t)),token,false);opened=false;lock.classList.remove('unlocked');panel.close();reset.disabled=close.disabled=false;
- saved.completed=true;saved.round++;persist();delete document.documentElement.dataset.chestTour;run=null;phase='idle';pose(0);say('The borrowed light rests inside. The lock is ready whenever you are.');lock.focus({preventScroll:true});setTimeout(()=>{if(!run)say('');},4500);
+ saved.completed=true;saved.round++;persist();document.dispatchEvent(new CustomEvent('dreamscapes-borrowed-light-returned',{detail:{age:token.age}}));delete document.documentElement.dataset.chestTour;run=null;phase='idle';pose(0);say('The borrowed light rests inside. The lock is ready whenever you are.');lock.focus({preventScroll:true});setTimeout(()=>{if(!run)say('');},4500);
  if(age!==band()){age=band();saved=readBand(sessionStorage,age);wheels=initial(saved.round);pose(0);}
  }
 }
