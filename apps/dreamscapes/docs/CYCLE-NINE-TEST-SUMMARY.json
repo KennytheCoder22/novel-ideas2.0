@@ -1,0 +1,290 @@
+{
+  "unitTests": {
+    "passed": 77,
+    "failed": 0
+  },
+  "story": [
+    {
+      "band": "kids",
+      "mobile": false,
+      "endings": 7,
+      "passed": true
+    },
+    {
+      "band": "kids",
+      "mobile": true,
+      "endings": 7,
+      "passed": true
+    },
+    {
+      "band": "pre-teens",
+      "mobile": false,
+      "endings": 7,
+      "passed": true
+    },
+    {
+      "band": "pre-teens",
+      "mobile": true,
+      "endings": 7,
+      "passed": true
+    },
+    {
+      "band": "teens",
+      "mobile": false,
+      "endings": 7,
+      "passed": true
+    },
+    {
+      "band": "teens",
+      "mobile": true,
+      "endings": 7,
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": false,
+      "endings": 7,
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": true,
+      "endings": 7,
+      "passed": true
+    }
+  ],
+  "afterimages": [
+    {
+      "band": "kids",
+      "mobile": false,
+      "order": [
+        "midway",
+        "forest-edge"
+      ],
+      "passed": true
+    },
+    {
+      "band": "kids",
+      "mobile": true,
+      "order": [
+        "forest-edge",
+        "midway"
+      ],
+      "passed": true
+    },
+    {
+      "band": "pre-teens",
+      "mobile": false,
+      "order": [
+        "midway",
+        "forest-edge"
+      ],
+      "passed": true
+    },
+    {
+      "band": "pre-teens",
+      "mobile": true,
+      "order": [
+        "forest-edge",
+        "midway"
+      ],
+      "passed": true
+    },
+    {
+      "band": "teens",
+      "mobile": false,
+      "order": [
+        "midway",
+        "forest-edge"
+      ],
+      "passed": true
+    },
+    {
+      "band": "teens",
+      "mobile": true,
+      "order": [
+        "forest-edge",
+        "midway"
+      ],
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": false,
+      "order": [
+        "midway",
+        "forest-edge"
+      ],
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": true,
+      "order": [
+        "forest-edge",
+        "midway"
+      ],
+      "passed": true
+    }
+  ],
+  "chest": [
+    {
+      "band": "adults",
+      "mobile": false,
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": true,
+      "passed": true
+    },
+    {
+      "band": "teens",
+      "mobile": false,
+      "passed": true
+    },
+    {
+      "band": "teens",
+      "mobile": true,
+      "passed": true
+    },
+    {
+      "band": "pre-teens",
+      "mobile": false,
+      "passed": true
+    },
+    {
+      "band": "pre-teens",
+      "mobile": true,
+      "passed": true
+    },
+    {
+      "band": "kids",
+      "mobile": false,
+      "passed": true
+    },
+    {
+      "band": "kids",
+      "mobile": true,
+      "passed": true
+    }
+  ],
+  "edgeLifecycle": "PASS no-match, skip, clearing, denied storage and age isolation",
+  "rideSmoke": "PASS prototype-dragon",
+  "hostedStory": [
+    {
+      "band": "kids",
+      "mobile": false,
+      "endings": 7,
+      "passed": true
+    },
+    {
+      "band": "kids",
+      "mobile": true,
+      "endings": 7,
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": false,
+      "endings": 7,
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": true,
+      "endings": 7,
+      "passed": true
+    }
+  ],
+  "preservation": [
+    {
+      "name": "mara-desktop",
+      "passed": true
+    },
+    {
+      "name": "mara-center-desktop",
+      "passed": true
+    },
+    {
+      "name": "mara-early-desktop",
+      "passed": true
+    },
+    {
+      "name": "skee-desktop",
+      "passed": true
+    },
+    {
+      "name": "mara-mobile",
+      "passed": true
+    },
+    {
+      "name": "mara-center-mobile",
+      "passed": true
+    },
+    {
+      "name": "mara-early-mobile",
+      "passed": true
+    },
+    {
+      "name": "skee-mobile",
+      "passed": true
+    },
+    {
+      "name": "explore-adults-desktop",
+      "passed": true
+    },
+    {
+      "name": "explore-adults-mobile",
+      "passed": true
+    },
+    {
+      "name": "explore-teens-desktop",
+      "passed": true
+    },
+    {
+      "name": "explore-teens-mobile",
+      "passed": true
+    },
+    {
+      "name": "explore-kids-desktop",
+      "passed": true
+    },
+    {
+      "name": "explore-kids-mobile",
+      "passed": true
+    },
+    {
+      "name": "explore-pre-teens-desktop",
+      "passed": true
+    },
+    {
+      "name": "explore-pre-teens-mobile",
+      "passed": true
+    },
+    {
+      "name": "carousel-ornate-desktop",
+      "passed": true
+    },
+    {
+      "name": "carousel-ornate-mobile",
+      "passed": true
+    },
+    {
+      "name": "carousel-plain-desktop",
+      "passed": true
+    },
+    {
+      "name": "carousel-plain-mobile",
+      "passed": true
+    },
+    {
+      "name": "carousel-stuffed-desktop",
+      "passed": true
+    },
+    {
+      "name": "carousel-stuffed-mobile",
+      "passed": true
+    }
+  ]
+}

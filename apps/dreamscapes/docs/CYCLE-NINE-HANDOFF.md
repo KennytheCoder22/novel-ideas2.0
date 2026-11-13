@@ -1,3 +1,5 @@
+> Verification has now been performed. See CYCLE-NINE-RESULTS.md and CYCLE-NINE-TEST-SUMMARY.json for the delivery status; the development checkpoint below is historical.
+
 # Cycle Nine implementation checkpoint — The Person Between Reflections
 
 Branch: codex/dreamscapes-cycle-nine, based on Cycle Eight 72931a8885191765deb45424146f452b7f6603da. Cycle Eight remains provisionally complete for development, not human-approved. Do not merge or promote either cycle without approval.
