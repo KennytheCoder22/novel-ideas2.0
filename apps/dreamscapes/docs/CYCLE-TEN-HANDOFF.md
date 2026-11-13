@@ -1,3 +1,5 @@
+> Sol verification has now been performed. Read CYCLE-TEN-RESULTS.md and CYCLE-TEN-TEST-SUMMARY.json for delivery status. The implementation-only checkpoint below is historical.
+
 # Cycle Ten — investigation and implementation checkpoint
 
 Branch codex/dreamscapes-cycle-ten, based on b6e004e071bb16affb9044d1d704926dbcdd7721. Development checkpoint only. No tests, build or browser verification run in this Astra phase. No production changes. No live integration claim.
