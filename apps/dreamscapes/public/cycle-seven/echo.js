@@ -1,8 +1,9 @@
 import {createTrunk} from './trunk-renderer.mjs';
 import {initial,turn,solved,clamp,readBand} from './chest-state.mjs';
 const art='/experiments/carnival/locations/fortune-teller.png',base='/cycle-seven/';
+const safeStorage={getItem:key=>{try{return sessionStorage.getItem(key);}catch{return null;}}};
 const band=()=>window.DreamscapesObservations?.snapshot().ageBand||'adults';
-let age=band(),saved=readBand(sessionStorage,age),wheels=initial(saved.round),phase='idle',plane,trunk,lock,opened=false,run=null,prepared;
+let age=band(),saved=readBand(safeStorage,age),wheels=initial(saved.round),phase='idle',plane,trunk,lock,opened=false,run=null,prepared;
 const quiet=matchMedia('(prefers-reduced-motion: reduce)');
 const tour=['rides-games','skee-ball','rides-games','ferris-platform','midway','tent-row','behind-carnival','forest-edge','behind-carnival','tent-row','fortune-teller'];
 const button=(text,label,fn)=>{const b=document.createElement('button');b.textContent=text;b.setAttribute('aria-label',label);b.onclick=fn;return b;};
@@ -54,11 +55,11 @@ async function sequence(){if(phase!=='puzzle'||run)return;const token=run={skip:
  await animate(quiet.matches?500:1500,t=>place({x:start.x+(target.x-start.x)*t,y:start.y+(target.y-start.y)*t}),token,false);light.hidden=true;
  await animate(quiet.matches?600:1800,t=>pose(1-t*t*(3-2*t)),token,false);opened=false;lock.classList.remove('unlocked');panel.close();reset.disabled=close.disabled=false;
  saved.completed=true;saved.round++;persist();document.dispatchEvent(new CustomEvent('dreamscapes-borrowed-light-returned',{detail:{age:token.age}}));delete document.documentElement.dataset.chestTour;run=null;phase='idle';pose(0);say('The borrowed light rests inside. The lock is ready whenever you are.');lock.focus({preventScroll:true});setTimeout(()=>{if(!run)say('');},4500);
- if(age!==band()){age=band();saved=readBand(sessionStorage,age);wheels=initial(saved.round);pose(0);}
+ if(age!==band()){age=band();saved=readBand(safeStorage,age);wheels=initial(saved.round);pose(0);}
  }
 }
 new MutationObserver(()=>{mount();if(!run&&phase==='puzzle'&&document.documentElement.dataset.location!=='fortune-teller'){panel.close();phase='idle';}}).observe(document.documentElement,{attributes:true,attributeFilter:['data-location','data-travelling']});
-document.addEventListener('dreamscapes-age-band',()=>{if(run){run.skip=true;return;}panel.close();phase='idle';age=band();saved=readBand(sessionStorage,age);wheels=initial(saved.round);pose(0);render();});
+document.addEventListener('dreamscapes-age-band',()=>{if(run){run.skip=true;return;}panel.close();phase='idle';age=band();saved=readBand(safeStorage,age);wheels=initial(saved.round);pose(0);render();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&run&&saved.completed){e.preventDefault();run.skip=true;}});
 document.addEventListener('click',e=>{if(run&&e.target.closest('main,.location-view')){e.preventDefault();e.stopImmediatePropagation();}},true);
 document.addEventListener('keydown',e=>{if(run&&e.key==='Tab'){e.preventDefault();(skip.hidden?status:skip).focus();}},true);

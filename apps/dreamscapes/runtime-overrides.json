@@ -492,8 +492,8 @@
     "sha256": "9197fee4f89d903df860c95a5458af57ea6473373373bdcb0c00159cce38eda5"
   },
   "cycle-seven/echo.js": {
-    "bytes": 9358,
-    "sha256": "47dbd2df23bf4a78ea52c6c49cb05388c69abbf3b00c0aa19063149b55f568fc"
+    "bytes": 9379,
+    "sha256": "5147b78060936fe173867865b37a97259dc9dd5757b4f7bab6ded427e2954ccb"
   },
   "cycle-seven/echo.css": {
     "bytes": 3629,
@@ -552,7 +552,7 @@
     "sha256": "dd8ab6eb12f0c86df61e89396569899df6ec01d3e05de62fe396f041cdb9892e"
   },
   "cycle-ten/reading.js": {
-    "bytes": 7132,
-    "sha256": "d7ad1ebc7c2ee116b9d95764dd9e2cbb47696691896330704619b6b65094f955"
+    "bytes": 7915,
+    "sha256": "db4a91b14f4b489d5a0fa4bbacc5389b5474da6424485bb60fcc0dc212c20379"
   }
 }
