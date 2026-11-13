@@ -11,7 +11,7 @@ const renderRate=s=>s.length<2?null:1000*(s.at(-1).frames-s[0].frames)/(s.at(-1)
 const motion=p=>p.evaluate(()=>DreamscapesCarouselRide.diagnostics());
 async function choose(p,id,touch){for(let i=0;i<20;i++){const target=p.locator(`[data-mount-id="${id}"]`);if(await target.count()){return;}await p.getByRole('button',{name:'Next mounts',exact:true}).click();await p.waitForFunction(()=>!document.querySelector('.carousel-choice-row')?.dataset.turning);}throw Error('Mount unavailable '+id);}
 (async()=>{
- const host=await import('./playtest-server.mjs').then(m=>m.startPlaytestServer());
+ const host=await import('./playtest-server.mjs').then(m=>m.startPlaytestServer({root:path.join(app,'dist')}));
  const browser=await chromium.launch(process.env.BROWSER_EXE?{executablePath:process.env.BROWSER_EXE}:{});
  async function run(label,band,viewport,accelerated,ids){
   if(only&&!label.includes(only))return;const dir=path.join(out,label);fs.mkdirSync(dir,{recursive:true});

@@ -29,6 +29,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    await travel('tent-row');
    if(first==='midway')await travel('midway');else{await travel('behind-carnival');await travel('forest-edge');}
    await inspect(first);await p.screenshot({path:path.join(out,`${band}-${mobile}-first.png`)});await back();
+   await p.screenshot({path:path.join(out,`${band}-${mobile}-environment.png`)});
    await inspect(first);await back();assert.equal(await p.evaluate(()=>DreamscapesCycleEight.snapshot().order.length),1);
    if(first==='midway'){await travel('tent-row');await travel('behind-carnival');await travel('forest-edge');}else{await travel('behind-carnival');await travel('tent-row');await travel('midway');}
    await inspect(second);await back();

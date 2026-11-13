@@ -1,0 +1,461 @@
+{
+  "unitTests": {
+    "passed": 71,
+    "failed": 0
+  },
+  "preservation": [
+    {
+      "name": "mara-desktop",
+      "passed": true,
+      "reusedUnchangedScene": true
+    },
+    {
+      "name": "mara-center-desktop",
+      "passed": true,
+      "reusedUnchangedScene": true
+    },
+    {
+      "name": "mara-early-desktop",
+      "passed": true,
+      "reusedUnchangedScene": true
+    },
+    {
+      "name": "skee-desktop",
+      "passed": true,
+      "reusedUnchangedScene": true
+    },
+    {
+      "name": "mara-mobile",
+      "passed": true,
+      "reusedUnchangedScene": true
+    },
+    {
+      "name": "mara-center-mobile",
+      "passed": true,
+      "reusedUnchangedScene": true
+    },
+    {
+      "name": "mara-early-mobile",
+      "passed": true,
+      "reusedUnchangedScene": true
+    },
+    {
+      "name": "skee-mobile",
+      "passed": true,
+      "reusedUnchangedScene": true
+    },
+    {
+      "name": "explore-adults-desktop",
+      "passed": true,
+      "reusedUnchangedScene": true
+    },
+    {
+      "name": "explore-teens-desktop",
+      "passed": true,
+      "reusedUnchangedScene": true
+    },
+    {
+      "name": "explore-adults-mobile",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "explore-teens-mobile",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "explore-kids-desktop",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "explore-kids-mobile",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "explore-pre-teens-desktop",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "explore-pre-teens-mobile",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "carousel-ornate-desktop",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "carousel-ornate-mobile",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "carousel-plain-desktop",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "carousel-plain-mobile",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "carousel-stuffed-desktop",
+      "passed": true,
+      "reusedUnchangedScene": false
+    },
+    {
+      "name": "carousel-stuffed-mobile",
+      "passed": true,
+      "reusedUnchangedScene": false
+    }
+  ],
+  "afterimages": [
+    {
+      "band": "kids",
+      "mobile": false,
+      "order": [
+        "midway",
+        "forest-edge"
+      ],
+      "passed": true
+    },
+    {
+      "band": "kids",
+      "mobile": true,
+      "order": [
+        "forest-edge",
+        "midway"
+      ],
+      "passed": true
+    },
+    {
+      "band": "pre-teens",
+      "mobile": false,
+      "order": [
+        "midway",
+        "forest-edge"
+      ],
+      "passed": true
+    },
+    {
+      "band": "pre-teens",
+      "mobile": true,
+      "order": [
+        "forest-edge",
+        "midway"
+      ],
+      "passed": true
+    },
+    {
+      "band": "teens",
+      "mobile": false,
+      "order": [
+        "midway",
+        "forest-edge"
+      ],
+      "passed": true
+    },
+    {
+      "band": "teens",
+      "mobile": true,
+      "order": [
+        "forest-edge",
+        "midway"
+      ],
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": false,
+      "order": [
+        "midway",
+        "forest-edge"
+      ],
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": true,
+      "order": [
+        "forest-edge",
+        "midway"
+      ],
+      "passed": true
+    }
+  ],
+  "chest": [
+    {
+      "band": "adults",
+      "mobile": false,
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": true,
+      "passed": true
+    },
+    {
+      "band": "teens",
+      "mobile": false,
+      "passed": true
+    },
+    {
+      "band": "teens",
+      "mobile": true,
+      "passed": true
+    },
+    {
+      "band": "pre-teens",
+      "mobile": false,
+      "passed": true
+    },
+    {
+      "band": "pre-teens",
+      "mobile": true,
+      "passed": true
+    },
+    {
+      "band": "kids",
+      "mobile": false,
+      "passed": true
+    },
+    {
+      "band": "kids",
+      "mobile": true,
+      "passed": true
+    }
+  ],
+  "rideSmoke": [
+    {
+      "name": "prototype-dragon",
+      "band": "adults",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "accelerated": false,
+      "passed": true,
+      "captureEpochMs": 1794594187279,
+      "rides": [
+        {
+          "id": "dragon",
+          "smoke": true,
+          "samples": [
+            {
+              "active": true,
+              "rideId": "ride-58ecbe3c-5010-44d3-b87a-8cbb461ba140",
+              "status": "first",
+              "elapsed": 4799.4,
+              "frames": 274,
+              "dream": {
+                "enabled": true,
+                "asset": "castle-aerial",
+                "opacity": 0,
+                "seamBearing": 10.69754833761738,
+                "seamViewGap": 0.40382242218602027,
+                "halfHFov": 0.7255271199410016,
+                "seamSafety": 0,
+                "projection": "fixed-cylinder",
+                "radius": 13.9,
+                "height": 24.94888044780888,
+                "spanDegrees": 240,
+                "sourceAspect": 2.3337393422655297,
+                "textureId": "5dd43909-db55-47f1-a9cd-c6d852643839",
+                "textureVersion": 1,
+                "horizon": 0.32,
+                "error": null
+              },
+              "cameraInSeat": [
+                -0.06999999999999962,
+                0.668639575958252,
+                -0.5000000000000002
+              ],
+              "camera": [
+                1.092876989599935,
+                1.4036949797492708,
+                -0.6858168216943525
+              ],
+              "eye": [
+                1.092876989599935,
+                1.4036949797492708,
+                -0.6858168216943528
+              ],
+              "eyeLocal": [
+                -0.07,
+                0.668639575958252,
+                -0.5
+              ],
+              "phase": 0.0044999999999999485,
+              "seat": "dragon",
+              "style": "ornate",
+              "blend": 1
+            },
+            {
+              "active": true,
+              "rideId": "ride-58ecbe3c-5010-44d3-b87a-8cbb461ba140",
+              "status": "first",
+              "elapsed": 8915.6,
+              "frames": 520,
+              "dream": {
+                "enabled": true,
+                "asset": "castle-aerial",
+                "opacity": 0.9897220522287408,
+                "seamBearing": 10.69754833761738,
+                "seamViewGap": 1.0251053290542202,
+                "halfHFov": 0.7255271199410016,
+                "seamSafety": 1,
+                "projection": "fixed-cylinder",
+                "radius": 13.9,
+                "height": 24.94888044780888,
+                "spanDegrees": 240,
+                "sourceAspect": 2.3337393422655297,
+                "textureId": "5dd43909-db55-47f1-a9cd-c6d852643839",
+                "textureVersion": 1,
+                "horizon": 0.32,
+                "error": null
+              },
+              "cameraInSeat": [
+                -0.07000000000000006,
+                0.6686395759582521,
+                -0.4999999999999997
+              ],
+              "camera": [
+                -0.5328680571508584,
+                1.3480972639758386,
+                -1.175859902491902
+              ],
+              "eye": [
+                -0.5328680571508582,
+                1.3480972639758386,
+                -1.175859902491902
+              ],
+              "eyeLocal": [
+                -0.07,
+                0.668639575958252,
+                -0.5
+              ],
+              "phase": 0.2331777777777777,
+              "seat": "dragon",
+              "style": "ornate",
+              "blend": 1
+            }
+          ],
+          "renderFPS": 59.763859870754565
+        }
+      ],
+      "baseline": null,
+      "alphaBefore": [
+        {
+          "id": "horse",
+          "alpha": 0
+        },
+        {
+          "id": "unicorn",
+          "alpha": 0
+        },
+        {
+          "id": "rocket",
+          "alpha": 0
+        },
+        {
+          "id": "griffin",
+          "alpha": 0
+        },
+        {
+          "id": "flamingo",
+          "alpha": 0
+        },
+        {
+          "id": "dragon",
+          "alpha": 0
+        },
+        {
+          "id": "moon-loveseat",
+          "alpha": 0
+        },
+        {
+          "id": "snail",
+          "alpha": 0
+        },
+        {
+          "id": "brown-horse",
+          "alpha": 0
+        },
+        {
+          "id": "elephant",
+          "alpha": 0
+        },
+        {
+          "id": "grizzly",
+          "alpha": 0
+        },
+        {
+          "id": "wolf",
+          "alpha": 0
+        },
+        {
+          "id": "rabbit",
+          "alpha": 0
+        },
+        {
+          "id": "fox",
+          "alpha": 0
+        },
+        {
+          "id": "tiger",
+          "alpha": 0
+        },
+        {
+          "id": "stag",
+          "alpha": 0
+        },
+        {
+          "id": "cat",
+          "alpha": 0
+        },
+        {
+          "id": "ostrich",
+          "alpha": 0
+        },
+        {
+          "id": "polar-bear",
+          "alpha": 0
+        },
+        {
+          "id": "zebra",
+          "alpha": 0
+        }
+      ],
+      "videos": [
+        "page@071fd09472256357e905b89202bbf76b.webm"
+      ]
+    }
+  ],
+  "edgeLifecycle": "PASS denied storage, open-dialog band switch, late previous-band completion, repeat and Escape",
+  "hostedAfterimages": [
+    {
+      "band": "kids",
+      "mobile": false,
+      "order": [
+        "midway",
+        "forest-edge"
+      ],
+      "passed": true
+    },
+    {
+      "band": "kids",
+      "mobile": true,
+      "order": [
+        "forest-edge",
+        "midway"
+      ],
+      "passed": true
+    }
+  ]
+}
