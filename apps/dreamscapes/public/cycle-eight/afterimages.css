@@ -15,4 +15,4 @@ html[data-travelling] .afterimage-sparks i,html[data-hidden=true] .afterimage-sp
 .afterimage-watermarks{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scaleY(.65);white-space:nowrap;font:20px/1 Georgia,serif;letter-spacing:4px;color:#ffe9b3;text-shadow:0 0 7px #f5ce80;pointer-events:none}.afterimage-source[data-afterimage=fortune-teller] .afterimage-watermarks{font-size:16px;letter-spacing:2px;transform:translate(-50%,-50%)}.afterimage-source[data-home=shelter] .afterimage-watermarks{color:#fff3d3}.afterimage-source[data-home=wander] .afterimage-watermarks{color:#d4e8ff;text-shadow:0 0 8px #a9d2ff}
 
 /* Keep the existing Rides camera controls above both bottom route buttons. */
-@media(max-width:600px){[data-scene="rides-games"] .location-look{bottom:104px}}
+@media(max-width:600px){.location-view .location-look{bottom:16px;z-index:20}.location-view .room-route{bottom:74px}[data-scene="rides-games"] .carousel-choice{bottom:140px}}
