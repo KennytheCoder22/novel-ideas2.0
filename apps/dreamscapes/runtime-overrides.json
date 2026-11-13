@@ -528,11 +528,11 @@
     "sha256": "b7c90ffa4cdbaddef35f88d1b05be9537b565e0f62b40d61e3493ec5ec6f0676"
   },
   "cycle-eight/afterimages.js": {
-    "bytes": 9327,
-    "sha256": "3ae9dd8c3bfb74b8c1afacc3739d39da8dbcb2590269e27272192ab6e6f0dd41"
+    "bytes": 10065,
+    "sha256": "844b1fa0924c15b65201ed7f372f623baf737bfd8825b1737151f308e45c55e5"
   },
   "cycle-eight/afterimages.css": {
-    "bytes": 3234,
-    "sha256": "af5902d352378124706819883104a18f1cbff2ed6e1156fb7fda9a3e83c8a1fa"
+    "bytes": 3861,
+    "sha256": "607aafae5a7c4083d0cd658ec15e9eb9adba3dbdab6d9cabb0badafbf61c40ef"
   }
 }

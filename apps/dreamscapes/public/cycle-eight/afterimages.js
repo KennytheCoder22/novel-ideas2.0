@@ -2,7 +2,8 @@ import {getAgeBand} from '/age-band.js';
 import {BANDS,SOURCES,read,key,change,pattern,answer} from './memory.mjs';
 const root=document.documentElement;
 // Storage may be disabled, including when merely accessing sessionStorage.
-const storage={getItem:k=>{try{return sessionStorage.getItem(k);}catch{return null;}},setItem:(k,v)=>{try{sessionStorage.setItem(k,v);}catch{}}};
+const fallback=new Map();
+const storage={getItem:k=>{if(fallback.has(k))return fallback.get(k);try{return sessionStorage.getItem(k);}catch{return null;}},setItem:(k,v)=>{fallback.set(k,v);try{sessionStorage.setItem(k,v);}catch{}}};
 let age=getAgeBand().id,state=read(storage,age),entry=[],origin=null,dialogScene=null;
 const mounted=new Map(),names={'midway':'Midway puddle','forest-edge':'Forest’s Edge'},glyph={circle:'○',star:'✦'};
 const dialog=document.createElement('dialog');dialog.className='afterimage-dialog';dialog.setAttribute('aria-label','Reflections of the borrowed light');document.body.append(dialog);
@@ -23,7 +24,7 @@ function awaken(){
 function control(text,fn,label=text){const b=document.createElement('button');b.type='button';b.textContent=text;b.setAttribute('aria-label',label);b.onclick=fn;return b;}
 function paragraph(text){const p=document.createElement('p');p.textContent=text;dialog.append(p);return p;}
 function show(){if(!dialog.open)dialog.showModal();dialog.querySelector('button')?.focus();}
-function close(){dialog.close();entry=[];dialogScene=null;if(origin?.isConnected&&available())origin.focus({preventScroll:true});}
+function close(){dialog.close();entry=[];dialogScene=null;if(origin?.isConnected&&available()&&!origin.disabled)origin.focus({preventScroll:true});}
 function footer(){dialog.append(control('Step back',close));}
 function symbols(source){return pattern(source,age).map(x=>glyph[x]).join('  ');}
 function openSource(source,button){
@@ -67,7 +68,7 @@ function mount(id){
  if(!plane||mounted.get(id)?.plane===plane)return;
  const button=control('',()=>id==='fortune-teller'?openZora(button):openSource(id,button),id==='fortune-teller'?'Examine the light over Zora’s empty stool':'Examine the borrowed reflection at '+names[id]);
  button.className='afterimage-source';button.dataset.afterimage=id;
- const art=document.createElement('span');art.className='afterimage-sparks';art.setAttribute('aria-hidden','true');art.innerHTML='<i></i><i></i><i></i>';button.append(art);
+ const art=document.createElement('span');art.className='afterimage-sparks';art.setAttribute('aria-hidden','true');art.innerHTML='<i></i><i></i><i></i>';const marks=document.createElement('span');marks.className='afterimage-watermarks';marks.setAttribute('aria-hidden','true');button.append(marks);button.append(art);
  const positions={midway:[54,82],'forest-edge':[57,84],'fortune-teller':[42,71]};const [x,y]=positions[id];button.style.left=x+'%';button.style.top=y+'%';plane.append(button);
  // Share the existing scene camera; reveal a keyboard-focused addition on narrow screens.
  button.addEventListener('focus',()=>{if(!button.matches(':focus-visible'))return;const overflow=plane.offsetWidth-innerWidth;if(overflow>0){plane.parentElement.scrollLeft=0;if(id==='midway')plane.style.setProperty('--pan',Math.max(-overflow/2,Math.min(overflow/2,plane.offsetWidth*(.5-x/100)))+'px');else plane.style.left=-Math.max(0,Math.min(overflow,plane.offsetWidth*x/100-innerWidth/2))+'px';}});
@@ -78,12 +79,18 @@ function render(){
   mount(id);const item=mounted.get(id);if(!item)continue;
   item.button.hidden=!state.awakened||(id==='fortune-teller'&&state.order.length===0);
   item.button.disabled=!available()||id!==active();
+  const visiblePattern=id==='fortune-teller'?answer(state,age):pattern(id,age);
+  item.button.querySelector('.afterimage-watermarks').textContent=visiblePattern.map(x=>glyph[x]).join(' ');
   item.button.dataset.home=state.home||'';item.button.dataset.known=String(state.order.includes(id));item.button.dataset.joined=String(state.joined);
  }
  root.dataset.afterimageHome=state.home||'';
 }
 new MutationObserver(()=>{if(dialog.open&&(!available()||active()!==dialogScene)){close();}render();}).observe(root,{attributes:true,attributeFilter:['data-location','data-travelling','data-chest-tour']});
-document.addEventListener('dreamscapes-borrowed-light-returned',event=>{if(event.detail?.age===age)save('awaken');});
+document.addEventListener('dreamscapes-borrowed-light-returned',event=>{
+ const completedBand=event.detail?.age;if(!BANDS.includes(completedBand))return;
+ if(completedBand===age)save('awaken');
+ else storage.setItem(key(completedBand),JSON.stringify(change(read(storage,completedBand),'awaken',null,completedBand)));
+});
 document.addEventListener('dreamscapes-age-band',()=>{close();age=getAgeBand().id;state=read(storage,age);awaken();render();});
 dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
 // Read-only diagnostics. Mutations go through actual interactions, not debug controls.

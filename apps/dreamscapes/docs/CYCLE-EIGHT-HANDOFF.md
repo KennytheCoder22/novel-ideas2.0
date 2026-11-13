@@ -54,3 +54,7 @@ Pass conditions: all applicable automated checks pass; all eight new browser jou
 ## Preview and remaining delivery
 
 No public preview has been created for Cycle Eight yet. After local tests pass, follow dedicated project deployment instructions (read applicable Vercel skill): ONLY `dreamscapes-novelideas`, project `prj_uDp3rgzYWVvnP82Lv8dD2HFVTQNv`, team `team_qwZFQgAcD4WFkLZmhTMjxnbX`, app root `apps/dreamscapes`. Deploy a public HTTPS PREVIEW, verify it and provide its direct Carnival link. Do not promote or assign production domains. Record all results, limitations, final commit and preview URL in the final delivery report; commit logical fixes before handing back.
+
+## Astra review follow-up
+
+Scene reflections now display the actual circle/star clues, with the discovered sequence visible at Zora. Dialogs retain readable equivalents. Added a per-key in-memory persistence fallback, preserved awakening for the original band when a tour returns after switching bands, and prevented focus restoration to a disabled source. These changes are untested. Sol should specifically exercise storage denied + band switch + late tour completion, and visually inspect clue legibility/overlap at both viewport sizes. The endings currently offer environmental variation and revisit dialogue; meaningful player enjoyment remains unestablished. No additional environment or replacement artwork was introduced.
