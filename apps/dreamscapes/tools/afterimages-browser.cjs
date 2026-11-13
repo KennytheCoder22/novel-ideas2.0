@@ -7,7 +7,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  const browser=await chromium.launch({executablePath:process.env.BROWSER_EXE});
  const out=process.env.AFTERIMAGES_EVIDENCE||path.join(app,'verification/afterimages');fs.mkdirSync(out,{recursive:true});const results=[];
  try{
-  for(const band of ['kids','pre-teens','teens','adults'])for(const mobile of [false,true]){
+  for(const band of (process.env.TEST_BANDS||'kids,pre-teens,teens,adults').split(','))for(const mobile of [false,true]){
    const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},hasTouch:mobile,isMobile:mobile,reducedMotion:'reduce'});
    const p=await context.newPage();p.setDefaultTimeout(120000);const errors=[];p.on('pageerror',e=>errors.push(e.message));
    await p.addInitScript(({band})=>{localStorage.setItem('dreamscapes.age-band',band);}, {band});
