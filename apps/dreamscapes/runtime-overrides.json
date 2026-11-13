@@ -1,7 +1,7 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 8761,
-    "sha256": "113c1da6c569009da0a81ddabc8b9c3c203f4b785afecea8d39fa5741fbcb12e"
+    "bytes": 8800,
+    "sha256": "27d528ebc82eb354a6206f2ede8fd90e3579ccb47fd349c1b9e38f08c09b65df"
   },
   "experiments/carnival/navigation.js": {
     "bytes": 11779,
@@ -528,8 +528,8 @@
     "sha256": "b7c90ffa4cdbaddef35f88d1b05be9537b565e0f62b40d61e3493ec5ec6f0676"
   },
   "cycle-eight/afterimages.js": {
-    "bytes": 10065,
-    "sha256": "844b1fa0924c15b65201ed7f372f623baf737bfd8825b1737151f308e45c55e5"
+    "bytes": 10038,
+    "sha256": "1db4e19649256830564dab7511fa8abffa37294491f9f0d5750678dd2f73022c"
   },
   "cycle-eight/afterimages.css": {
     "bytes": 4101,
@@ -540,11 +540,19 @@
     "sha256": "630aedf0c0145a79603e720d5dabc965b5ddee53f7a730a2d8fee21d8c384567"
   },
   "cycle-nine/encounter.js": {
-    "bytes": 6714,
-    "sha256": "98540fe1c0a9f63341a805a40ae232f9ad1b769f96f6fad6b61e77c672948f28"
+    "bytes": 7098,
+    "sha256": "14f85cb1efeafc823393d07eba02a9f9025306a3f6c9c46803dff483d6359c9d"
   },
   "cycle-nine/story.css": {
     "bytes": 1462,
     "sha256": "a0854ec63ab3a69f4b15079d569c54017055de0f4bf47ceea8d0daa39f619dda"
+  },
+  "cycle-ten/profile.mjs": {
+    "bytes": 2344,
+    "sha256": "dd8ab6eb12f0c86df61e89396569899df6ec01d3e05de62fe396f041cdb9892e"
+  },
+  "cycle-ten/reading.js": {
+    "bytes": 7132,
+    "sha256": "d7ad1ebc7c2ee116b9d95764dd9e2cbb47696691896330704619b6b65094f955"
   }
 }

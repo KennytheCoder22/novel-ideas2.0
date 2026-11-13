@@ -58,6 +58,7 @@ function drawZora(message=''){
    const b=control(label,()=>{save('home',choice);drawZora();});b.setAttribute('aria-pressed',String(state.home===choice));dialog.append(b);
   }
  }
+ if(state.home)window.DreamscapesReading?.offer(dialog,'afterimages');
  if(message){const notice=paragraph(message);notice.setAttribute('role','status');}
  footer();
  // Rebuilding a native dialog must leave keyboard focus inside it.

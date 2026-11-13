@@ -10,6 +10,7 @@ function button(text,fn){const b=document.createElement('button');b.type='button
 function close(){dialog.close();if(origin?.isConnected&&!origin.closest('[inert]'))origin.focus({preventScroll:true});}
 function paint(){
  const focus=document.activeElement?.textContent,focusKey=document.activeElement?.dataset.focusKey;dialog.replaceChildren();
+ if(view==='books'&&window.DreamscapesReading){window.DreamscapesReading.render(dialog,{close,back:()=>{view='story';paint();}});return;}
  const h=document.createElement('h2');h.textContent=view==='books'?'A story to take with you':view==='reaction'?'What would you want to read?':'The person between reflections';dialog.append(h);
  if(view==='story'){
   if(band==='kids')p('A make-believe mirror story. You can stop or come back whenever you like.');
@@ -23,7 +24,7 @@ function paint(){
   p('Your choice tells us what happened. This optional question tells us what you might enjoy reading. You can like a story without agreeing with its characters.');
   for(const [id,label]of Object.entries(interests)){
    const group=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent=label;group.append(legend);dialog.append(group);
-   for(const [value,label]of [['more','More of this'],['less','Less of this'],['unsure','Not sure']]){const b=button(label,()=>{state={...state,reactions:{...state.reactions,[id]:value}};save();});b.dataset.focusKey=id+'-'+value;b.setAttribute('aria-pressed',String(state.reactions[id]===value));group.append(b);}
+   for(const [value,label]of [['more','More of this'],['less','Less of this'],['unsure','Not sure']]){const b=button(label,()=>{state={...state,reactions:{...state.reactions,[id]:value}};document.dispatchEvent(new CustomEvent('dreamscapes-reading-reaction',{detail:{source:'kit',dimension:id,value,band}}));save();});b.dataset.focusKey=id+'-'+value;b.setAttribute('aria-pressed',String(state.reactions[id]===value));group.append(b);}
   }
   button('Show my book suggestions',()=>{view='books';paint();});button('Skip these questions',()=>{view='books';paint();});
  }else{
@@ -49,4 +50,5 @@ function mount(){
 }
 new MutationObserver(()=>{if(dialog.open&&(document.documentElement.dataset.location!=='fun-house'||document.documentElement.dataset.travelling||document.documentElement.dataset.chestTour))close();mount();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-location','data-travelling','data-chest-tour']});
 document.addEventListener('dreamscapes-age-band',()=>{close();band=getAgeBand().id;state=load(band);view='story';mount();});dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
+document.addEventListener('dreamscapes-reading-reset',e=>{if(e.detail?.band===band){state={...state,reactions:{}};save();}});
 window.DreamscapesCycleNine=Object.freeze({snapshot:()=>({band,...structuredClone(state),profile:{status:Object.values(state.reactions).some(v=>v!=='unsure')?'tentative':'insufficient',evidence:structuredClone(state.reactions),source:'explicit-reading-reaction',encounters:nodes[state.node].ending?1:0}})});mount();
