@@ -158,7 +158,7 @@ async function skeeCase({page,context,snap,result},mobile){
 }
 
 (async()=>{
-  host=await(await import(pathToFileURL(path.join(__dirname,'playtest-server.mjs')).href)).startPlaytestServer();
+  host=await(await import(pathToFileURL(path.join(__dirname,'playtest-server.mjs')).href)).startPlaytestServer({root:path.join(app,'dist')});
   browser=await chromium.launch({headless:!args.has('--headed'),...(process.env.BROWSER_EXE?{executablePath:process.env.BROWSER_EXE}:{})});
   const desktop={width:1440,height:900},phone={width:390,height:844};
   if(!args.has('--carousel-only')&&!args.has('--skip-changes'))for(const [name,viewport,mobile]of[['desktop',desktop,false],['mobile',phone,true]]){
