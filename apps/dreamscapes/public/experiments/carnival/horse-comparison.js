@@ -70,7 +70,7 @@ async function mount(){
  function renderNow(){
   if(!svg.isConnected){renderer.dispose();mounted=false;return;}
   const yaw=Number(assembly.dataset.yaw||0);
-  if(holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden&&!document.documentElement.hasAttribute('data-carousel-onboard')){
+  if(!svg.closest('.location-view')?.hidden&&holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden&&!document.documentElement.hasAttribute('data-carousel-onboard')){
    // SVG positive depth maps to +Z; Three Y rotation therefore reverses SVG yaw.
    carouselFrame.rotation.y=-yaw;
    const pose=window.CarnivalCarousel.pose(slotIndex,Number(svg.dataset.phase||0));

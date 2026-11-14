@@ -1,0 +1,445 @@
+{
+  "baseCommit": "8814524606dc690a0f3f6cb804d8232e1b42345d",
+  "browser": "Microsoft Edge headless; desktop 1440x900 and emulated mobile touch 390x844",
+  "unitTests": {
+    "passed": 41,
+    "failed": 0
+  },
+  "build": {
+    "runtimeFiles": 209,
+    "ornateMounts": 20,
+    "variantMounts": 40,
+    "hashValidation": "passed"
+  },
+  "baseline": [
+    {
+      "label": "carousel-before",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "ownerVisibility": "visible"
+    },
+    {
+      "label": "zora-after-carousel",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 20,
+      "ownerVisibility": "hidden"
+    }
+  ],
+  "sceneChecks": [
+    {
+      "layout": "desktop",
+      "label": "carousel-before",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "zora-after-carousel",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "zora-teens",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "plain",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "carousel-teens",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "plain",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "zora-kids",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "stuffed",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "carousel-kids",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "stuffed",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "zora-pre-teens",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "stuffed",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "carousel-pre-teens",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "stuffed",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "zora-adults",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "carousel-adults",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "hall-of-mirrors",
+      "scene": "fun-house",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "midway-return",
+      "scene": "midway",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "forest-edge",
+      "scene": "forest-edge",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "forest-preloaded",
+      "scene": "forest-edge",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "direct-fortune-teller",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "refresh-fortune-teller",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "direct-fun-house",
+      "scene": "fun-house",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "refresh-fun-house",
+      "scene": "fun-house",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "direct-midway",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "refresh-midway",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "direct-forest-edge",
+      "scene": "forest-edge",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "refresh-forest-edge",
+      "scene": "forest-edge",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "direct-rides-games",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "desktop",
+      "label": "refresh-rides-games",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "carousel-before",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "zora-after-carousel",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "zora-teens",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "plain",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "carousel-teens",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "plain",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "zora-kids",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "stuffed",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "carousel-kids",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "stuffed",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "zora-pre-teens",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "stuffed",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "carousel-pre-teens",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "stuffed",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "zora-adults",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "carousel-adults",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "hall-of-mirrors",
+      "scene": "fun-house",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "midway-return",
+      "scene": "midway",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "forest-edge",
+      "scene": "forest-edge",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "forest-preloaded",
+      "scene": "forest-edge",
+      "paintEligibleHolders": 0,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "direct-fortune-teller",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "refresh-fortune-teller",
+      "scene": "fortune-teller",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "direct-fun-house",
+      "scene": "fun-house",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "refresh-fun-house",
+      "scene": "fun-house",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "direct-midway",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "refresh-midway",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "direct-forest-edge",
+      "scene": "forest-edge",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "refresh-forest-edge",
+      "scene": "forest-edge",
+      "paintEligibleHolders": 0,
+      "selectedStyle": null,
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "direct-rides-games",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "ornate",
+      "passed": true
+    },
+    {
+      "layout": "mobile",
+      "label": "refresh-rides-games",
+      "scene": "rides-games",
+      "paintEligibleHolders": 20,
+      "selectedStyle": "ornate",
+      "passed": true
+    }
+  ],
+  "rideLifecycle": [
+    {
+      "name": "resume-reload-repeat",
+      "passed": true,
+      "details": {
+        "earlyStepOffIsNotCompletion": true,
+        "resumeKeepsChoice": true,
+        "reloadKeepsChoice": true,
+        "repeatedFamilySuppressed": true,
+        "duplicateRejected": true,
+        "transparentOutsideRestored": true
+      }
+    },
+    {
+      "name": "reduced-motion-pre-teens",
+      "passed": true,
+      "details": {
+        "still": true,
+        "falseTurnCompletions": 0,
+        "ageBand": "pre-teens"
+      }
+    }
+  ],
+  "chestTour": [
+    {
+      "band": "adults",
+      "mobile": false,
+      "passed": true
+    },
+    {
+      "band": "adults",
+      "mobile": true,
+      "passed": true
+    }
+  ]
+}

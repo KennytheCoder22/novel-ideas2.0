@@ -64,7 +64,7 @@ async function mount(svg,spec){
  const opacityChildren=[...slot.children].filter(child=>child!==anchor).map(child=>({child,shaft:child.matches('.carousel-pole-shaft')}));
  const assembly=svg.querySelector('.carousel-assembly');
  function renderNow(){if(!svg.isConnected){renderer.dispose();return;}const yaw=Number(assembly.dataset.yaw||0);
- if(holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden&&!document.documentElement.hasAttribute('data-carousel-onboard')){carouselFrame.rotation.y=-yaw;for(const {child,shaft} of opacityChildren){const opacity=shaft?'1':slot.getAttribute('opacity');if(child.style.opacity!==opacity)child.style.opacity=opacity;}renderer.render(scene,camera);previous=yaw;}
+ if(!svg.closest('.location-view')?.hidden&&holder.style.visibility!=='hidden'&&yaw!==previous&&!document.hidden&&!document.documentElement.hasAttribute('data-carousel-onboard')){carouselFrame.rotation.y=-yaw;for(const {child,shaft} of opacityChildren){const opacity=shaft?'1':slot.getAttribute('opacity');if(child.style.opacity!==opacity)child.style.opacity=opacity;}renderer.render(scene,camera);previous=yaw;}
  }
  function render(){renderNow();if(svg.isConnected)requestAnimationFrame(render);}
  document.addEventListener('carousel-external-refresh',renderNow);

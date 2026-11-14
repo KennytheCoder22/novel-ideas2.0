@@ -111,6 +111,7 @@
   "git": {
     "deploymentEnabled": {
       "codex/3d-normal-production": false,
+      "codex/dreamscapes-carousel-scene-ownership": false,
       "codex/dreamscapes-independent": false
     }
   }

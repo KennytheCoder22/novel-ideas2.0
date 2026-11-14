@@ -4,12 +4,12 @@
     "sha256": "ca4adb1ee5f305465fa3fcaafd7ba700c2d73c5c0a437c83d6f026abce229852"
   },
   "experiments/carnival/navigation.js": {
-    "bytes": 11779,
-    "sha256": "8a52a15009ede42e3b87be6f6c4421c99790eb745d1bc6b1135088935397ed7a"
+    "bytes": 12111,
+    "sha256": "11226bcf2f5a05d0772c1012bdf64f5ea2d85070414543fafc915593c712bea8"
   },
   "experiments/carnival/horse-comparison.js": {
-    "bytes": 6296,
-    "sha256": "a923d17390f2b206c49148720027e45f6e8400741a7254dc0758b78a6aa65929"
+    "bytes": 6336,
+    "sha256": "4b9288623e40aeef104843e007e88a3ae1f663f284da6955f49fc29402e818b0"
   },
   "experiments/carnival/exit-sign.js": {
     "bytes": 6626,
@@ -44,8 +44,8 @@
     "sha256": "b41b8d1c021eefeec30b90d7755e04e48c45bc63f1f681786d63d4355bbed0dc"
   },
   "experiments/carnival/animal-comparison.js": {
-    "bytes": 8012,
-    "sha256": "add0f13f1b0664f58c23cab96a80cb2c5b65204828019bd45a37494dbf26a173"
+    "bytes": 8052,
+    "sha256": "ad5f4516f0a2a1d36e26904fb1119f8c93516e719e0a47a92c38012decb80d99"
   },
   "experiments/carnival/carousel-variants.js": {
     "bytes": 9894,
@@ -364,8 +364,8 @@
     "sha256": "63bc1f0ce2035e243f0c6845a28070ec0d1aa97f285c1198d1107a7d7b3d1bb0"
   },
   "experiments/carnival/navigation.css": {
-    "bytes": 2087,
-    "sha256": "427fc6d86ffbabb9780678b9d50ea8751387724d877e90b71e8d0a26962c5198"
+    "bytes": 2165,
+    "sha256": "0693824e76ba500bc3ac82597ad6b218991001cc06e55ce9ddc9aa015b832bdd"
   },
   "observations.js": {
     "bytes": 25788,
