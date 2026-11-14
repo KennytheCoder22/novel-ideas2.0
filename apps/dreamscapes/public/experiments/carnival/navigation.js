@@ -42,7 +42,7 @@
     const view = document.createElement('section');
     view.className = 'location-view'; view.dataset.scene = id;
     view.setAttribute('aria-label', definition.name); view.tabIndex = -1;
-    view.style.visibility = 'hidden'; view.inert = true;
+    view.hidden = id === 'rides-games'; view.style.visibility = 'hidden'; view.inert = true;
     // One aspect-correct plane registers backgrounds and paths together;
     // platform dressing shares that plane without changing path geometry.
     const plane = document.createElement('div'); plane.className = 'location-plane';
@@ -147,7 +147,7 @@
       const duration = dissolve ? 700 : quiet ? 350 : kind === 'tour' ? 1900 : 2400;
       source.style.transformOrigin = `${x}px ${y}px`;
       const push = quiet ? 'none' : `translate(${(innerWidth*.5-x)*.22}px,${(innerHeight*.52-y)*.16}px) scale(${returning?1.16:1.42})`;
-      target.view.style.opacity = '0'; target.view.style.visibility = 'visible';
+      target.view.style.opacity = '0'; target.view.hidden = false; target.view.style.visibility = 'visible';
       if (dissolve) {
         animations.push(source.animate([{opacity:1},{opacity:0}],{duration,easing:'ease-in-out',fill:'forwards'}));
         animations.push(target.view.animate([{opacity:0},{opacity:1}],{duration,easing:'ease-in-out',fill:'forwards'}));
@@ -165,7 +165,9 @@
         ],{duration,easing:'ease-in-out',fill:'forwards'}));
       }
       await Promise.all(animations.map(animation=>animation.finished));
-      source.style.visibility = 'hidden';
+      // The cached carousel must leave the paint tree. Mount canvases explicitly set
+      // visibility:visible, which overrides an ancestor's visibility:hidden.
+      source.hidden = sourceId === 'rides-games'; source.style.visibility = 'hidden';
       target.view.style.opacity = ''; target.view.inert = false;
       current = id;
       const observations=window.DreamscapesObservations;
@@ -179,8 +181,8 @@
       else target.view.focus({preventScroll:true});
       return true;
     } catch (error) {
-      if (target) {target.view.style.visibility='hidden';target.view.inert=true;}
-      source.style.visibility='visible';source.inert=false;
+      if (target) {target.view.hidden=id==='rides-games';target.view.style.visibility='hidden';target.view.inert=true;}
+      source.hidden=false;source.style.visibility='visible';source.inert=false;
       // A failed decode must be retryable on the next visit.
       if (target && id !== 'midway') { target.dispose(); target.view.remove(); mounted.delete(id); }
       live.textContent = 'This location could not load. Please try again.';

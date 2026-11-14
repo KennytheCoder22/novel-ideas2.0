@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const out=path.resolve(process.env.DREAMSCAPES_LIFECYCLE_EVIDENCE_DIR||path.join(__dirname,'../playtest-artifacts/first-person/lifecycle')),results=[];
 (async()=>{
- const host=await import('./playtest-server.mjs').then(m=>m.startPlaytestServer()),browser=await chromium.launch(process.env.BROWSER_EXE?{executablePath:process.env.BROWSER_EXE}:{});
+ const host=await import('./playtest-server.mjs').then(m=>m.startPlaytestServer({root:path.join(__dirname,'../dist')})),browser=await chromium.launch(process.env.BROWSER_EXE?{executablePath:process.env.BROWSER_EXE}:{});
  async function run(name,still){
   const dir=path.join(out,name);fs.mkdirSync(dir,{recursive:true});const context=await browser.newContext({viewport:still?{width:390,height:844}:{width:1440,height:900},hasTouch:still,isMobile:still,reducedMotion:still?'reduce':'no-preference'});
   await context.addInitScript(()=>{window.__carouselTestTime=0;const raf=requestAnimationFrame.bind(window);window.requestAnimationFrame=fn=>raf(()=>fn(100000+window.__carouselTestTime));});
