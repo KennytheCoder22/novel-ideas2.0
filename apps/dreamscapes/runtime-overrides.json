@@ -1,11 +1,11 @@
 {
   "experiments/carnival/index.html": {
-    "bytes": 8800,
-    "sha256": "ca4adb1ee5f305465fa3fcaafd7ba700c2d73c5c0a437c83d6f026abce229852"
+    "bytes": 8720,
+    "sha256": "266a5d13e1dc766fd51a71ea66f076bad0389d58acc300b37cdaf5f9ca495e63"
   },
   "experiments/carnival/navigation.js": {
-    "bytes": 12111,
-    "sha256": "11226bcf2f5a05d0772c1012bdf64f5ea2d85070414543fafc915593c712bea8"
+    "bytes": 13003,
+    "sha256": "c1db091bf64268cb03c76f31bf13fe791be61a6bc55b735d5b1cc1f45f92dd42"
   },
   "experiments/carnival/horse-comparison.js": {
     "bytes": 6336,
@@ -364,8 +364,8 @@
     "sha256": "63bc1f0ce2035e243f0c6845a28070ec0d1aa97f285c1198d1107a7d7b3d1bb0"
   },
   "experiments/carnival/navigation.css": {
-    "bytes": 2165,
-    "sha256": "0693824e76ba500bc3ac82597ad6b218991001cc06e55ce9ddc9aa015b832bdd"
+    "bytes": 2674,
+    "sha256": "a0b3e6eea773b490c6cecd7dc9a6d0d88ab9dc75837c94364707d7c04efe9bcb"
   },
   "observations.js": {
     "bytes": 25788,
@@ -492,8 +492,8 @@
     "sha256": "9197fee4f89d903df860c95a5458af57ea6473373373bdcb0c00159cce38eda5"
   },
   "cycle-seven/echo.js": {
-    "bytes": 10043,
-    "sha256": "ff387e6bcb279ae0255416a41fc423650b806b121146f308995d4a1a77b7cd9a"
+    "bytes": 10156,
+    "sha256": "1326f5fb445856b29f13d9ee1fefb6bd8376658d937845d5a0511c7f3087b383"
   },
   "cycle-seven/echo.css": {
     "bytes": 3629,
@@ -516,8 +516,8 @@
     "sha256": "ea65163fdcff0973cd407951c478ae912321a9c5a28271b81cbadeee1f9c37ab"
   },
   "cycle-seven/trunk-renderer.mjs": {
-    "bytes": 5268,
-    "sha256": "970e0467dad9379af0d4159e18d647248793dd6e8ac46ac35d5d0ea9616a8d2a"
+    "bytes": 5321,
+    "sha256": "70fb17827cdd89473c9a1ea36002a7af03a76622fd64809d1d77fd0193d510e2"
   },
   "cycle-seven/trunk-reference.png": {
     "bytes": 2539952,
@@ -528,8 +528,8 @@
     "sha256": "b7c90ffa4cdbaddef35f88d1b05be9537b565e0f62b40d61e3493ec5ec6f0676"
   },
   "cycle-eight/afterimages.js": {
-    "bytes": 10038,
-    "sha256": "1db4e19649256830564dab7511fa8abffa37294491f9f0d5750678dd2f73022c"
+    "bytes": 10150,
+    "sha256": "ed773da021d88dfd57a42a67c3a32ede98f996a1719bcab8096f4c1190fc8b06"
   },
   "cycle-eight/afterimages.css": {
     "bytes": 4101,
@@ -554,5 +554,9 @@
   "cycle-ten/reading.js": {
     "bytes": 7915,
     "sha256": "db4a91b14f4b489d5a0fa4bbacc5389b5474da6424485bb60fcc0dc212c20379"
+  },
+  "zora-scene.js": {
+    "bytes": 3043,
+    "sha256": "3d609a120674d8d8662e3127dfd61952749a3d480dbeecd5329048ca3c7fe218"
   }
 }

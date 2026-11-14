@@ -30,11 +30,16 @@ function syncLock(){
 function render(){controls.forEach((b,i)=>{b.style.setProperty('--angle',wheels[i]*90+'deg');b.disabled=phase!=='puzzle';b.dataset.lit=String(wheels.slice(0,i+1).every(v=>v===0));b.setAttribute('aria-label',`Turn brass window ${i+1}, facing ${['right','down','left','up'][wheels[i]]}; also turns window ${(i+1)%3+1}`);});}
 function mount(){
  if(document.documentElement.dataset.location!=='fortune-teller'||document.documentElement.dataset.travelling)return;
- const target=document.querySelector('[data-scene="fortune-teller"] .location-plane');if(!target||target===plane)return;plane=target;
+ const target=document.querySelector('[data-scene="fortune-teller"] .location-plane');if(target)prepareChest(target).catch(()=>{});
+}
+export function prepareChest(target){
+ if(target===plane)return trunk.ready;
+ plane=target;
  trunk=createTrunk(plane);
  lock=button('','Examine the padlock on the wooden chest',openPuzzle);lock.className='chest-lock';lock.innerHTML='<svg viewBox="0 0 44 56" aria-hidden="true"><defs><linearGradient id="lock-brass"><stop stop-color="#b98a45"/><stop offset=".5" stop-color="#6b4825"/><stop offset="1" stop-color="#d2a357"/></linearGradient></defs><path class="chest-shackle" d="M11 27V15C11 2 33 2 33 15V27" fill="none" stroke="#372618" stroke-width="7"/><path class="chest-shackle" d="M11 27V15C11 2 33 2 33 15V27" fill="none" stroke="#c19b60" stroke-width="4"/><rect x="4" y="24" width="36" height="29" rx="5" fill="url(#lock-brass)" stroke="#352315" stroke-width="2"/><circle cx="22" cy="36" r="4" fill="#251a10"/><path d="M20 38L19 45H25L24 38" fill="#251a10"/></svg>';plane.append(lock);pose(0);
  lock.addEventListener('focus',()=>{if(!run){frameChest();requestAnimationFrame(frameChest);}});
  syncLock();
+ return trunk.ready;
 }
 function frameChest(){if(!plane)return;plane.parentElement.scrollLeft=0;const overflow=plane.offsetWidth-innerWidth;if(overflow>0)plane.style.left=-Math.max(0,Math.min(overflow,plane.offsetWidth*.70-innerWidth*.58))+'px';}
 function pose(p){trunk?.pose(p);}

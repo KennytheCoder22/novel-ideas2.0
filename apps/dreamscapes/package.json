@@ -21,7 +21,8 @@
     "review:first-person": "node tools/first-person-report.cjs && node tools/first-person-review.mjs",
     "test:onboard:lifecycle": "node tools/onboard-lifecycle.cjs",
     "test:carousel-scenes": "node tools/carousel-scene-ownership.cjs",
-    "test:chest": "node tools/chest-browser.cjs"
+    "test:chest": "node tools/chest-browser.cjs",
+    "test:zora-entry": "node tools/zora-entry-browser.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

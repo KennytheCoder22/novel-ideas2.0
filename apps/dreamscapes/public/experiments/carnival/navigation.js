@@ -15,6 +15,9 @@
   const live = document.createElement('span');
   live.className = 'sr-only'; live.setAttribute('role','status');
   document.body.append(live);
+  const loading=document.createElement('p');loading.className='location-loading';loading.hidden=true;
+  loading.setAttribute('role','status');loading.textContent='Following the lamplight…';document.body.append(loading);
+  function warmZora(){import('/zora-scene.js').then(module=>module.preloadZoraScene()).catch(()=>{});}
   function mountSigns(id, plane) {
     for (const sign of definitions[id].signs || []) {
       const to = sign.to || window.CarnivalSignDestinations[sign.label];
@@ -42,7 +45,7 @@
     const view = document.createElement('section');
     view.className = 'location-view'; view.dataset.scene = id;
     view.setAttribute('aria-label', definition.name); view.tabIndex = -1;
-    view.hidden = id === 'rides-games'; view.style.visibility = 'hidden'; view.inert = true;
+    view.hidden = id === 'rides-games' || id === 'fortune-teller'; view.style.visibility = 'hidden'; view.inert = true;
     // One aspect-correct plane registers backgrounds and paths together;
     // platform dressing shares that plane without changing path geometry.
     const plane = document.createElement('div'); plane.className = 'location-plane';
@@ -115,7 +118,8 @@
     const revealExit = () => { framing = definition.framing; layout(); };
     plane.addEventListener('carnival-exit-focus', revealExit);
     addEventListener('resize',layout); layout();
-    const entry = {view, ready:Promise.all([image.decode(), dressingReady]), dispose:()=>{removeEventListener('resize',layout);plane.removeEventListener('carnival-exit-focus',revealExit);disposeExit();disposeCoaster();disposePlay();cancelAnimationFrame(focusFrame);view.removeEventListener('focusin',revealControl);}};
+    const visualReady=id==='fortune-teller'?import('/zora-scene.js').then(module=>module.prepareZoraScene(plane)):Promise.resolve();
+    const entry = {view, ready:Promise.all([image.decode(), dressingReady, visualReady]), dispose:()=>{removeEventListener('resize',layout);plane.removeEventListener('carnival-exit-focus',revealExit);disposeExit();disposeCoaster();disposePlay();cancelAnimationFrame(focusFrame);view.removeEventListener('focusin',revealControl);}};
     mounted.set(id,entry);
     return entry;
   }
@@ -136,7 +140,9 @@
     try {
       target = mount(id);
       source.inert = true;
+      if(id==='fortune-teller'){loading.hidden=false;document.documentElement.dataset.loadingLocation=id;}
       await target.ready; // Keep the current location visible if an asset is slow.
+      loading.hidden=true;delete document.documentElement.dataset.loadingLocation;
       document.documentElement.dataset.travelling = 'true';
       source.inert = true;
       const rect = returning ? null : trigger?.getBoundingClientRect();
@@ -167,7 +173,7 @@
       await Promise.all(animations.map(animation=>animation.finished));
       // The cached carousel must leave the paint tree. Mount canvases explicitly set
       // visibility:visible, which overrides an ancestor's visibility:hidden.
-      source.hidden = sourceId === 'rides-games'; source.style.visibility = 'hidden';
+      source.hidden = sourceId === 'rides-games' || sourceId === 'fortune-teller'; source.style.visibility = 'hidden';
       target.view.style.opacity = ''; target.view.inert = false;
       current = id;
       const observations=window.DreamscapesObservations;
@@ -176,12 +182,13 @@
       if (returning || history.at(-1)?.id === id) history.pop();
       else history.push({id:sourceId,trigger});
       document.documentElement.dataset.location = id;
+      if(id==='rides-games'||id==='tent-row')warmZora();
       live.textContent = definitions[id].name;
       if (returning && trigger?.isConnected && !trigger.hidden) trigger.focus({preventScroll:true});
       else target.view.focus({preventScroll:true});
       return true;
     } catch (error) {
-      if (target) {target.view.hidden=id==='rides-games';target.view.style.visibility='hidden';target.view.inert=true;}
+      if (target) {target.view.hidden=id==='rides-games'||id==='fortune-teller';target.view.style.visibility='hidden';target.view.inert=true;}
       source.hidden=false;source.style.visibility='visible';source.inert=false;
       // A failed decode must be retryable on the next visit.
       if (target && id !== 'midway') { target.dispose(); target.view.remove(); mounted.delete(id); }
@@ -192,6 +199,7 @@
       animations.forEach(animation=>animation.cancel());
       source.style.transformOrigin = '';
       delete document.documentElement.dataset.travelling;
+      loading.hidden=true;delete document.documentElement.dataset.loadingLocation;
       busy = false;
     }
   }

@@ -1,8 +1,9 @@
 import {version,available} from './zora-contract.mjs';
 const api=window.DreamscapesCycleZora;
+export let prepareLiving;
 if(api){
  const scene='fortune-teller',ticket='/experiments/carnival/platform/loose-ticket.png',world='/experiments/carnival/dream-worlds/Moonlit%20(Griffin)%20Citadel%20Among%20Misty%20Peaks.png';
- let plane,ball,follow,first,second,lamp,veil,busy=false,timers=[],age;
+ let plane,ball,follow,first,second,lamp,veil,busy=false,timers=[],age,unbind=()=>{};
  const live=document.createElement('span');live.className='zt-status';live.setAttribute('role','status');document.body.append(live);
  function active(){return document.documentElement.dataset.location===scene&&!document.documentElement.dataset.travelling;}
  function record(action,selected=null,once=false){if(!active()||age!==api.store.snapshot().ageBand)return {accepted:false};return api.store.record({sceneId:scene,interactionId:version,category:action==='direction-pursued'?'gameplay':'exploration',action,selectedAlternative:selected,alternatives:available(api.state()),...(once?{occurrenceId:version+'-'+age+'-'+action}:{}),details:{examined:api.state().lit&&api.state().door,kind:matchMedia('(prefers-reduced-motion: reduce)').matches?'reduced-motion':'ordinary-motion'}});}
@@ -19,7 +20,11 @@ if(api){
  function mount(){
   if(!active()){const id=document.documentElement.dataset.location;if(id)api.store.enterScene(id);if(veil)end();return;}age=api.store.snapshot().ageBand;api.store.enterScene(scene);
   if(plane){render();return;}
-  plane=document.querySelector('[data-scene="fortune-teller"] .location-plane');if(!plane)return;
+  const target=document.querySelector('[data-scene="fortune-teller"] .location-plane');if(target)prepareLiving(target).catch(()=>{});
+ }
+ prepareLiving=async function(target){
+  if(plane===target){render();return;}
+  unbind();veil?.remove();plane=target;age=api.store.snapshot().ageBand;
   const z=document.createElement('img');z.className='zl-character';z.src='/cycle-zora/zora.png';z.alt='Madame Zora behind her table';plane.append(z);
   const cloth=document.createElement('img');cloth.className='zl-cloth';cloth.src='/experiments/carnival/locations/fortune-teller.png';cloth.alt='';plane.append(cloth);
   ball=button('zl-ball','Examine Madame Zora’s crystal ball');ball.innerHTML='<img src="/cycle-zora/ball.png" alt=""><span class="zl-light"></span><span class="zl-vision"></span>';
@@ -31,8 +36,10 @@ if(api){
   second=button('zt-ticket zt-second','Take the revealed ticket and pursue the hidden message');second.innerHTML='<img src="'+ticket+'" alt=""><span>07 · 24 · 13</span>';
   second.onclick=()=>{if(busy)return;if(record('direction-pursued','hidden-message',true).accepted){render();say('You take the matching ticket. The marks remain on the cloth, pointing toward Zora’s curtain.');}};
   veil=document.createElement('div');veil.className='zt-veil';veil.hidden=true;veil.innerHTML='<div class="zt-landscape"></div><img class="zt-kept-ticket" src="'+ticket+'" alt=""><button class="zt-return" aria-label="Return from the vision to Madame Zora">×</button>';document.body.append(veil);veil.querySelector('button').onclick=end;
-  document.addEventListener('keydown',e=>{if(e.key==='Tab'&&busy){e.preventDefault();veil.querySelector('button').focus();}if(e.key==='Escape'&&busy){e.preventDefault();end();}});render();
- }
+  const keydown=e=>{if(e.key==='Tab'&&busy){e.preventDefault();veil.querySelector('button').focus();}if(e.key==='Escape'&&busy){e.preventDefault();end();}};
+  document.addEventListener('keydown',keydown);unbind=()=>document.removeEventListener('keydown',keydown);render();
+  await Promise.all([...plane.querySelectorAll('.zl-character,.zl-cloth,.zl-ball img,.zt-ticket img')].map(image=>image.decode()));
+ };
  new MutationObserver(mount).observe(document.documentElement,{attributes:true,attributeFilter:['data-location','data-travelling']});
  document.addEventListener('dreamscapes-age-band',()=>{if(veil)end();age=api.store.snapshot().ageBand;render();});mount();
 }
