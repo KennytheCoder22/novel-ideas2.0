@@ -1,15 +1,125 @@
-const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');const app=path.resolve(__dirname,'..');
-(async()=>{const host=process.env.BASE_URL?{url:process.env.BASE_URL,close:async()=>{}}:await import('./playtest-server.mjs').then(m=>m.startPlaytestServer({root:path.join(app,'dist')}));const browser=await chromium.launch({executablePath:process.env.BROWSER_EXE});const out=process.env.CHEST_EVIDENCE||path.join(app,'verification/chest');fs.mkdirSync(out,{recursive:true});const results=[];
-try{for(const band of (process.env.TEST_BANDS||'adults,teens,pre-teens,kids').split(','))for(const mobile of [false,true]){const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},hasTouch:mobile,isMobile:mobile,reducedMotion:band==='pre-teens'?'reduce':'no-preference'});const p=await context.newPage();p.setDefaultTimeout(120000);await p.addInitScript(b=>localStorage.setItem('dreamscapes.age-band',b),band);const errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(host.url+'/carnival/?scene=fortune-teller');await p.locator('.chest-lock').waitFor();await p.waitForFunction(()=>!document.documentElement.dataset.travelling);await p.screenshot({path:path.join(out,`entry-${band}-${mobile}.png`)});
-// Keyboard discovery pans the original scene to the chest. Touch users pan using the existing look controls.
-if(mobile){for(let i=0;i<1;i++)await p.locator('[data-scene="fortune-teller"] [aria-label="Look right"]').click();await p.locator('.chest-lock').tap();}else{await p.locator('.chest-lock').focus();await p.locator('.chest-lock').press('Enter');}
-await p.locator('.chest-puzzle[open]').waitFor();await p.screenshot({path:path.join(out,`puzzle-${band}-${mobile}.png`)});for(const i of [0,2,2])await p.locator('.chest-gears button').nth(i).click();await p.waitForTimeout(2000);await p.screenshot({path:path.join(out,`opening-${band}-${mobile}.png`)});await p.waitForFunction(()=>DreamscapesCycleSeven.snapshot().phase==='tour');await p.screenshot({path:path.join(out,`tour-${band}-${mobile}.png`)});await p.waitForFunction(()=>DreamscapesCycleSeven.snapshot().phase==='idle'&&DreamscapesCycleSeven.snapshot().completed,{},{timeout:120000});await p.screenshot({path:path.join(out,`closed-${band}-${mobile}.png`)});assert.equal(await p.evaluate(()=>document.documentElement.dataset.location),'fortune-teller');assert.equal(await p.locator('.chest-puzzle').evaluate(e=>e.open),false);assert.equal(await p.evaluate(()=>DreamscapesCycleSeven.snapshot().fallen),true);assert.equal(await p.evaluate(()=>DreamscapesCycleEight.snapshot().awakened),true);// Leave by the normal route, return, and verify the saved closed chest.
-await p.locator('[data-scene="fortune-teller"] .room-route[data-to="rides-games"]').click();await p.waitForFunction(()=>document.documentElement.dataset.location==='rides-games'&&!document.documentElement.dataset.travelling);await p.locator('[data-scene="rides-games"] .room-route[data-to="fortune-teller"]').click();await p.waitForFunction(()=>document.documentElement.dataset.location==='fortune-teller'&&!document.documentElement.dataset.travelling);assert.equal(await p.locator('.chest-solid').getAttribute('data-progress'),'0');assert.equal(await p.evaluate(()=>DreamscapesCycleSeven.snapshot().completed),true);
-// Replay uses the alternate puzzle arrangement and exposes skip only after completion.
-await p.locator('.chest-lock').click();await p.locator('.chest-puzzle[open]').waitFor();
-const solution=await p.evaluate(()=>{const start=DreamscapesCycleSeven.snapshot().wheels,queue=[[start,[]]],seen=new Set;while(queue.length){const [w,path]=queue.shift();if(w.every(v=>v===0))return path;if(seen.has(w.join()))continue;seen.add(w.join());for(let i=0;i<3;i++)queue.push([w.map((v,j)=>(v+(j===i||j===(i+1)%3?1:0))%4),[...path,i]]);}});
-for(const i of solution)await p.locator('.chest-gears button').nth(i).click();await p.locator('.chest-skip:not([hidden])').click();await p.waitForFunction(()=>DreamscapesCycleSeven.snapshot().phase==='idle');assert.equal(await p.evaluate(()=>document.documentElement.dataset.location),'fortune-teller');assert.equal(await p.evaluate(()=>DreamscapesCycleSeven.snapshot().fallen),true);
-// Switching while the puzzle is open must close it and load a fresh age context.
-await p.locator('.chest-lock').click();await p.locator('.chest-puzzle[open]').waitFor();const other=band==='kids'?'adults':'kids';await p.evaluate(async b=>(await import('/age-band.js')).selectAgeBand(b),other);assert.equal(await p.locator('.chest-puzzle').evaluate(e=>e.open),false);assert.equal(await p.evaluate(()=>DreamscapesCycleSeven.snapshot().completed),false);assert.equal(await p.evaluate(()=>DreamscapesCycleSeven.snapshot().fallen),false);
-await p.evaluate(async b=>(await import('/age-band.js')).selectAgeBand(b),band);assert.equal(await p.evaluate(()=>DreamscapesCycleSeven.snapshot().completed),true);
-assert.deepEqual(errors,[]);results.push({band,mobile,passed:true});console.log('PASS full tour '+band+' '+mobile);await context.close();}}finally{await browser.close();await host.close();fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(results,null,2));}})().catch(e=>{console.error(e);process.exitCode=1});
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const app=path.resolve(__dirname,'..');
+(async()=>{
+ const host=process.env.BASE_URL?{url:process.env.BASE_URL,close:async()=>{}}:await import('./playtest-server.mjs').then(m=>m.startPlaytestServer({root:path.join(app,'dist')}));
+ const browser=await chromium.launch({executablePath:process.env.BROWSER_EXE});
+ const out=path.resolve(process.env.CHEST_EVIDENCE||path.join(app,'verification/chest'));
+ fs.mkdirSync(out,{recursive:true});const results=[];
+ try{for(const band of (process.env.TEST_BANDS||'adults,teens,pre-teens,kids').split(','))for(const mobile of [false,true]){
+  const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},hasTouch:mobile,isMobile:mobile,reducedMotion:band==='pre-teens'?'reduce':'no-preference'});
+  const p=await context.newPage();p.setDefaultTimeout(180000);
+  const errors=[],failed=[],result={band,mobile,passed:false};results.push(result);
+  p.on('pageerror',e=>errors.push(e.message));p.on('response',r=>{if(r.status()>=400)failed.push(r.status()+' '+r.url());});
+  await p.addInitScript(b=>{
+   localStorage.setItem('dreamscapes.age-band',b);
+   window.__padlockPuzzleOpenings=0;window.__lightReturns=0;window.__tourScenes=[];
+   const show=HTMLDialogElement.prototype.showModal;
+   HTMLDialogElement.prototype.showModal=function(){if(this.classList.contains('chest-puzzle'))window.__padlockPuzzleOpenings++;return show.call(this);};
+   document.addEventListener('dreamscapes-borrowed-light-returned',()=>window.__lightReturns++);
+   const observe=()=>new MutationObserver(()=>{if(document.documentElement.dataset.chestTour)window.__tourScenes.push(document.documentElement.dataset.location);}).observe(document.documentElement,{attributes:true,attributeFilter:['data-location']});
+   if(document.documentElement)observe();else document.addEventListener('DOMContentLoaded',observe,{once:true});
+  },band);
+  const snap=()=>p.evaluate(()=>DreamscapesCycleSeven.snapshot());
+  const ready=()=>p.waitForFunction(()=>window.DreamscapesCycleSeven&&document.documentElement.dataset.location==='fortune-teller'&&!document.documentElement.dataset.travelling&&document.querySelector('.chest-solid')?.dataset.lockState);
+  const shot=name=>p.screenshot({path:path.join(out,`${band}-${mobile?'mobile':'desktop'}-${name}.png`)});
+  const activate=async locator=>{await locator.focus();if(mobile)await locator.tap();else await locator.press('Enter');};
+  const assertLock=async unlocked=>{
+   assert.equal((await snap()).unlocked,unlocked);
+   assert.equal(await p.locator('.chest-lock').getAttribute('data-lock-state'),unlocked?'unlocked':'locked');
+   assert.equal(await p.locator('.chest-solid').getAttribute('data-lock-state'),unlocked?'unlocked':'locked');
+   assert.equal(await p.locator('.chest-lock').evaluate(e=>e.classList.contains('unlocked')),unlocked);
+   assert.match(await p.locator('.chest-lock').getAttribute('aria-label'),unlocked?/unlocked chest/:/Examine the padlock/);
+  };
+  const solve=async()=>{
+   const solution=await p.evaluate(()=>{
+    const queue=[[DreamscapesCycleSeven.snapshot().wheels,[]]],seen=new Set();
+    while(queue.length){const [w,steps]=queue.shift();if(w.every(v=>v===0))return steps;if(seen.has(w.join()))continue;seen.add(w.join());for(let i=0;i<3;i++)queue.push([w.map((v,j)=>(v+(j===i||j===(i+1)%3?1:0))%4),[...steps,i]]);}
+   });
+   assert(solution?.length);for(const i of solution)await activate(p.locator('.chest-gears button').nth(i));
+   await p.waitForFunction(()=>DreamscapesCycleSeven.snapshot().unlocked);
+  };
+  const idle=()=>p.waitForFunction(()=>DreamscapesCycleSeven.snapshot().phase==='idle'&&DreamscapesCycleSeven.snapshot().completed);
+  const replayAndSkip=async()=>{
+   const openings=await p.evaluate(()=>window.__padlockPuzzleOpenings),round=(await snap()).round;
+   await activate(p.locator('.chest-lock'));
+   await p.waitForFunction(()=>DreamscapesCycleSeven.snapshot().phase!=='idle');
+   await p.locator('.chest-skip:not([hidden])').waitFor();await activate(p.locator('.chest-skip'));
+   await idle();assert.equal((await snap()).round,round+1);
+   assert.equal(await p.evaluate(()=>window.__padlockPuzzleOpenings),openings,'Replay must never reopen the lock puzzle');
+   assert.equal(await p.locator('.chest-puzzle').evaluate(e=>e.open),false);await assertLock(true);
+  };
+  try{
+   await p.goto(host.url+'/carnival/?scene=fortune-teller');await ready();await assertLock(false);
+   await p.locator('.chest-lock').focus();await p.locator('.chest-lock').evaluate(e=>e.blur());await shot('initial-locked');
+   const hinge=await p.locator('.chest-solid').getAttribute('data-hinge');
+   await p.evaluate(()=>window.__lockedChestPixels=document.querySelector('.chest-solid').getContext('2d').getImageData(0,0,1672,941).data);
+   await activate(p.locator('.chest-lock'));await p.locator('.chest-puzzle[open]').waitFor();await assertLock(false);
+   await activate(p.getByRole('button',{name:'Reset the linked wheels',exact:true}));await assertLock(false);
+   await solve();await assertLock(true);
+   const released=await p.evaluate(b=>JSON.parse(sessionStorage.getItem('dreamscapes.chest.v1.'+b)),band);
+   assert.equal(released.unlocked,true);assert.equal(released.completed,false,'Unlock is saved before the journey completes');
+   await p.locator('.chest-puzzle[open]').waitFor({state:'hidden'});
+   await p.waitForFunction(()=>DreamscapesCycleSeven.snapshot().phase==='tour');
+   assert.equal(await p.locator('.chest-solid').getAttribute('data-hinge'),hinge);await shot('open-journey');
+   await idle();await assertLock(true);await shot('returned-unlocked');
+   assert.equal(await p.locator('.chest-solid').getAttribute('data-progress'),'0');
+   assert.equal(await p.locator('.chest-solid').getAttribute('data-hinge'),hinge);
+   assert.equal(await p.evaluate(()=>window.__lightReturns),1);
+   assert.equal(await p.evaluate(()=>DreamscapesCycleEight.snapshot().awakened),true);
+   const scenes=await p.evaluate(()=>window.__tourScenes);
+   for(const id of ['rides-games','skee-ball','ferris-platform','midway','tent-row','behind-carnival','forest-edge','fortune-teller'])assert(scenes.includes(id),'Tour preserved: '+id);
+   // Repeated unchanged canvas draws vary by one channel level on Edge. Larger
+   // differences must stay entirely inside the original lock patch.
+   result.lockPixelBounds=await p.evaluate(()=>{
+    const before=window.__lockedChestPixels,after=document.querySelector('.chest-solid').getContext('2d').getImageData(0,0,1672,941).data;
+    let minX=1672,minY=941,maxX=-1,maxY=-1,changed=0;
+    for(let i=0;i<before.length;i+=4)if(Math.max(Math.abs(before[i]-after[i]),Math.abs(before[i+1]-after[i+1]),Math.abs(before[i+2]-after[i+2]),Math.abs(before[i+3]-after[i+3]))>1){const x=(i/4)%1672,y=Math.floor(i/4/1672);minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);changed++;}
+    return {minX,minY,maxX,maxY,changed,channelTolerance:1};
+   });
+   const b=result.lockPixelBounds;assert(b.changed>0);assert(b.minX>=1100&&b.maxX<=1145&&b.minY>=718&&b.maxY<=769,JSON.stringify(b));
+   console.log('PASS full journey and artwork '+band+' '+(mobile?'mobile':'desktop'));
+   assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.carousel-horse-3d-comparison,.carousel-animal-3d-comparison')].some(e=>e.checkVisibility({visibilityProperty:true}))),false);
+   await replayAndSkip();await shot('replayed-unlocked');
+   await p.reload();await ready();await assertLock(true);await replayAndSkip();
+   await activate(p.locator('[data-scene="fortune-teller"] .room-route[data-to="rides-games"]'));
+   await p.waitForFunction(()=>document.documentElement.dataset.location==='rides-games'&&!document.documentElement.dataset.travelling);
+   await activate(p.locator('[data-scene="rides-games"] .room-route[data-to="fortune-teller"]'));
+   await ready();await assertLock(true);
+   // A different age still has its original lock and puzzle; returning restores this unlock.
+   const other=band==='kids'?'adults':'kids';
+   await p.evaluate(async b=>(await import('/age-band.js')).selectAgeBand(b),other);await assertLock(false);
+   await activate(p.locator('.chest-lock'));await p.locator('.chest-puzzle[open]').waitFor();
+   await p.evaluate(async b=>(await import('/age-band.js')).selectAgeBand(b),band);await assertLock(true);
+   assert.equal(await p.locator('.chest-puzzle').evaluate(e=>e.open),false);
+   // Existing completed saves migrate without requiring another solve.
+   await p.evaluate(b=>sessionStorage.setItem('dreamscapes.chest.v1.'+b,JSON.stringify({round:1,completed:true,fallen:true})),band);
+   await p.reload();await ready();await assertLock(true);
+   if(band==='pre-teens'&&mobile){
+    await activate(p.locator('.chest-lock'));await p.waitForFunction(()=>DreamscapesCycleSeven.snapshot().phase==='tour');
+    await p.evaluate(async b=>(await import('/age-band.js')).selectAgeBand(b),other);
+    await p.waitForFunction(b=>DreamscapesCycleSeven.snapshot().phase==='idle'&&DreamscapesCycleSeven.snapshot().age===b,other);
+    await assertLock(false);await p.evaluate(async b=>(await import('/age-band.js')).selectAgeBand(b),band);await assertLock(true);
+    result.ageSwitchDuringReplay=true;
+   }
+   // An intentional chest-save reset restores the original first-time interaction.
+   await p.evaluate(b=>sessionStorage.removeItem('dreamscapes.chest.v1.'+b),band);
+   await p.reload();await ready();await assertLock(false);assert.equal((await snap()).completed,false);
+   await activate(p.locator('.chest-lock'));await p.locator('.chest-puzzle[open]').waitFor();await shot('reset-locked-puzzle');
+   await activate(p.getByRole('button',{name:'Close the padlock puzzle',exact:true}));await assertLock(false);
+   if(band==='teens'&&!mobile){
+    await activate(p.locator('.chest-lock'));await p.locator('.chest-puzzle[open]').waitFor();await solve();
+    await p.reload();await ready();await assertLock(true);assert.equal((await snap()).completed,false);
+    await activate(p.locator('.chest-lock'));await p.waitForFunction(()=>DreamscapesCycleSeven.snapshot().phase==='tour');
+    assert.equal(await p.evaluate(()=>window.__padlockPuzzleOpenings),0);await idle();await assertLock(true);
+    result.reloadAfterReleaseBeforeCompletion=true;
+   }
+   assert.deepEqual(errors,[]);assert.deepEqual(failed,[]);
+   result.passed=true;result.fullJourney=true;result.puzzleFreeReplay=true;result.reload=true;result.reset=true;result.ageIsolation=true;result.legacySave=true;
+   console.log('PASS padlock '+band+' '+(mobile?'mobile':'desktop'));
+  }catch(e){result.error=e.stack;console.error(e.stack);try{await shot('FAILURE');}catch{}process.exitCode=1;}
+  finally{result.errors=errors;result.failedRequests=failed;await context.close();fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(results,null,2));}
+ }}finally{await browser.close();await host.close();}
+})().catch(e=>{console.error(e);process.exitCode=1});

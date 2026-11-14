@@ -9,6 +9,6 @@ export function propPose(progress,kind) {
  return {x:slide*(kind==='book'?-12:-18),y:-progress*38-slide*24+fall*fall*(kind==='book'?200:330),angle:progress*-10+slide*(kind==='book'?-17:38),hidden:fall===1};
 }
 export function readBand(storage,band) {
- try {const s=JSON.parse(storage.getItem('dreamscapes.chest.v1.'+band));if(s&&Number.isSafeInteger(s.round)&&s.round>=0)return {round:s.round,completed:s.completed===true,fallen:s.fallen===true};}catch{}
- return {round:0,completed:false,fallen:false};
+ try {const s=JSON.parse(storage.getItem('dreamscapes.chest.v1.'+band));if(s&&Number.isSafeInteger(s.round)&&s.round>=0)return {round:s.round,completed:s.completed===true,fallen:s.fallen===true,unlocked:s.unlocked===true||s.completed===true||s.fallen===true};}catch{}
+ return {round:0,completed:false,fallen:false,unlocked:false};
 }
