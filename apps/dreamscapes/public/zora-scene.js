@@ -5,6 +5,7 @@ const images=new Map(),styles=new Map(),scenes=new WeakMap();
 const artwork=[
  '/experiments/carnival/locations/fortune-teller.png',
  '/cycle-seven/trunk-reference.png','/cycle-seven/chest-clean-plate.png',
+ '/cycle-seven/lid-components-reference.png',
  '/cycle-zora/zora.png','/cycle-zora/ball.png',
  '/experiments/carnival/platform/loose-ticket.png',
  '/experiments/carnival/dream-worlds/Moonlit%20(Griffin)%20Citadel%20Among%20Misty%20Peaks.png'

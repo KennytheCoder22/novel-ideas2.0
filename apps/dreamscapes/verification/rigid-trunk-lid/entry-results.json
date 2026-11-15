@@ -1,0 +1,4683 @@
+{
+  "initialRun": {
+    "base": "http://127.0.0.1:64992",
+    "baseline": false,
+    "results": [
+      {
+        "layout": "desktop",
+        "cases": [
+          {
+            "name": "cold-empty-storage",
+            "audit": {
+              "stage": "entry",
+              "samples": [
+                {
+                  "stage": "entry",
+                  "at": 33974.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 34596.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 34824.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 35105.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36754.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36860.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36994.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 37823.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 37978.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 37992.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38008.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38025.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38041.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38049,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38065.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38084,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38099.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38117.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38143.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38150.199999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38165.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38184.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38235.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 38246.699999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "entry",
+                "at": 33974.5,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "completed-direct-refresh",
+            "audit": {
+              "stage": "entry",
+              "samples": [
+                {
+                  "stage": "entry",
+                  "at": 50651.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 50937.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 50950.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 50971.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51201.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51216.199999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51238.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51255.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51269.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51283.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51301.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51316.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51338.199999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51351.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51370.699999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51386.199999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51401.699999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51418.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51437.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51456.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51469.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51488.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51519.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 51957,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "entry",
+                "at": 50651.59999990463,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "unlocked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "unlocked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "delayed-script-and-styles",
+            "audit": {
+              "stage": "entry",
+              "samples": [
+                {
+                  "stage": "entry",
+                  "at": 58011.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58050.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58063.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58160.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58162.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58174,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58190.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58207.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58223,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58239.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58255.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58271.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58289.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58306.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58321.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58337.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58354.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58371.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58387.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58404.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58422.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58437.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58456.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58473.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "entry",
+                "at": 58011.200000047684,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "unlocked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "unlocked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "unrelated-scenes-during-prefetch",
+            "passed": true
+          },
+          {
+            "name": "normal-navigation-age-changed-while-loading",
+            "audit": {
+              "stage": "normal-navigation",
+              "samples": [
+                {
+                  "stage": "normal-navigation",
+                  "at": 35941,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36047.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36181.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36336.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36407.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36437.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36440.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36696.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36713.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36750.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36799,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36918,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36949.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36969.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 36978.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 37228.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 37330.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 37359.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 37390.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 37396.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 37411.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 37426.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 37445.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 37461.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "normal-navigation",
+                "at": 35941,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "age-adults",
+            "audit": {
+              "stage": "age-adults",
+              "samples": [
+                {
+                  "stage": "age-adults",
+                  "at": 47170.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 47219.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 47268.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 47516.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 47529.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 47564.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 47579.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 47595.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 47611.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 47638.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "age-adults",
+                "at": 47170.700000047684,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "unlocked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "unlocked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "age-teens",
+            "audit": {
+              "stage": "age-teens",
+              "samples": [
+                {
+                  "stage": "age-teens",
+                  "at": 48282.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 48388.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 48679.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 48687.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 48694.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 48711.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 48728.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 48745.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 48763.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 48781.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 48794.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "age-teens",
+                "at": 48282.59999990463,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "age-pre-teens",
+            "audit": {
+              "stage": "age-pre-teens",
+              "samples": [
+                {
+                  "stage": "age-pre-teens",
+                  "at": 49335,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 49370.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 49438.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 49545.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 49602.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 49653.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 49705.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 49714.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "age-pre-teens",
+                "at": 49335,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "age-kids",
+            "audit": {
+              "stage": "age-kids",
+              "samples": [
+                {
+                  "stage": "age-kids",
+                  "at": 50237.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50295.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50300.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50310.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50327.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50344.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50360.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50379.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50440.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50466.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50470.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50478.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50517.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50535.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50540.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50545.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50561.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50579.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50595.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50611.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 50627.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "age-kids",
+                "at": 50237.200000047684,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "repeat-return-0",
+            "audit": {
+              "stage": "return-0",
+              "samples": [
+                {
+                  "stage": "return-0",
+                  "at": 55846.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 55861.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 55888.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 55894.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 55911.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 55938.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 55944.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 55971.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 55978.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 55994.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56011.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56031.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56044.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56064.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56080.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56095.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56111.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56127.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56145.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56161.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56177.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56193.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56212.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 56227.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "return-0",
+                "at": 55846.299999952316,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "repeat-return-1",
+            "audit": {
+              "stage": "return-1",
+              "samples": [
+                {
+                  "stage": "return-1",
+                  "at": 60729.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60749.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60769.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60779.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60799.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60815.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60831.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60848.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60865.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60881.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60898.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60914.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60930.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60946.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60964,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60979.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 60995.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 61011.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 61027.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 61044.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 61061.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 61077.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 61094.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 61112.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "return-1",
+                "at": 60729.700000047684,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "repeat-return-2",
+            "audit": {
+              "stage": "return-2",
+              "samples": [
+                {
+                  "stage": "return-2",
+                  "at": 66496.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66511.20000004768,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66529.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66544.79999995232,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66562.70000004768,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66581.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66594.70000004768,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66611,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66627.79999995232,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66644.79999995232,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66664.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66679.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66700.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66712.79999995232,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66728.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66752.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66762.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66786.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66803.20000004768,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66816.70000004768,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66832.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66844.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66860.70000004768,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 66881.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "return-2",
+                "at": 66496.89999985695,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          }
+        ],
+        "passed": false,
+        "error": "page.goto: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:64992/carnival/?scene=tent-row\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at C:\\Users\\KenBR\\OneDrive\\Desktop\\NovelIdeas_2.0_v2 (1)\\.worktrees\\dreamscapes-independent\\apps\\dreamscapes\\tools\\zora-entry-browser.cjs:113:25)",
+        "errors": []
+      },
+      {
+        "layout": "mobile",
+        "cases": [
+          {
+            "name": "cold-empty-storage",
+            "audit": {
+              "stage": "entry",
+              "samples": [
+                {
+                  "stage": "entry",
+                  "at": 57090.199999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57383.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57438.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57602.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57727,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57730.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57749.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57765,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57780.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57810.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57817.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57839.699999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57848.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57863.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57883.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57897.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57914.199999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57930.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57948.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57965.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57981,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 57997.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58013.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 58030.699999809265,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "entry",
+                "at": 57090.199999809265,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "completed-direct-refresh",
+            "audit": {
+              "stage": "entry",
+              "samples": [
+                {
+                  "stage": "entry",
+                  "at": 26106.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26139.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26143.400000095367,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26149,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26165,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26184.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26197.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26214.400000095367,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26231.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26248.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26264,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26280.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26297.400000095367,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26314.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26330.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26347.400000095367,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26364.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26380.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26397.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26414.60000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26430.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26447.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26464.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 26480.900000095367,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "entry",
+                "at": 26106.10000014305,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "unlocked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "unlocked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "delayed-script-and-styles",
+            "audit": {
+              "stage": "entry",
+              "samples": [
+                {
+                  "stage": "entry",
+                  "at": 36580.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36689.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36694.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36708.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36725.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36740.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36758.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36775.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36791.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36808.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36824.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36841,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36858.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36874.40000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36891.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36908,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36924.59999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36941.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36957.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36975.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 36991.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 37007.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 37025.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "entry",
+                  "at": 37041.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "entry",
+                "at": 36580.700000047684,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "unlocked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "unlocked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "unrelated-scenes-during-prefetch",
+            "passed": true
+          },
+          {
+            "name": "normal-navigation-age-changed-while-loading",
+            "audit": {
+              "stage": "normal-navigation",
+              "samples": [
+                {
+                  "stage": "normal-navigation",
+                  "at": 43141.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43355.40000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43470.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43561.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43610.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43631.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43634.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43651.60000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43667.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43684.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43798.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 43914.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44041,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44052.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44055.40000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44067.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44148.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44155.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44157.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44167.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44471.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44773.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 44938.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "normal-navigation",
+                  "at": 45009.40000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "normal-navigation",
+                "at": 43141.700000047684,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "age-adults",
+            "audit": {
+              "stage": "age-adults",
+              "samples": [
+                {
+                  "stage": "age-adults",
+                  "at": 49852.60000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 49960.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 49964.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-adults",
+                  "at": 50134.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "unlocked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "age-adults",
+                "at": 49852.60000014305,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "unlocked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "unlocked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "age-teens",
+            "audit": {
+              "stage": "age-teens",
+              "samples": [
+                {
+                  "stage": "age-teens",
+                  "at": 50491.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 50534.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 50541.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-teens",
+                  "at": 50551.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "age-teens",
+                "at": 50491.200000047684,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "age-pre-teens",
+            "audit": {
+              "stage": "age-pre-teens",
+              "samples": [
+                {
+                  "stage": "age-pre-teens",
+                  "at": 50804.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 50821,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 50834.60000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 50851.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 50868,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-pre-teens",
+                  "at": 50888.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "age-pre-teens",
+                "at": 50804.90000009537,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "age-kids",
+            "audit": {
+              "stage": "age-kids",
+              "samples": [
+                {
+                  "stage": "age-kids",
+                  "at": 51209.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 51282.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 51342.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 51353.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 51399.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "age-kids",
+                  "at": 51414.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "age-kids",
+                "at": 51209.700000047684,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "repeat-return-0",
+            "audit": {
+              "stage": "return-0",
+              "samples": [
+                {
+                  "stage": "return-0",
+                  "at": 54302.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54318.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54335.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54353.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54369.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54387.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54401.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54419,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54437.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54453.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54470.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54486.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54502.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54519.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54535,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54551.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54568.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54584.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54601.40000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54618.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54635,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54651.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54668.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-0",
+                  "at": 54684.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "return-0",
+                "at": 54302.90000009537,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "repeat-return-1",
+            "audit": {
+              "stage": "return-1",
+              "samples": [
+                {
+                  "stage": "return-1",
+                  "at": 57984.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58001.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58017.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58034.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58051.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58067.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58084.40000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58101.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58117.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58134.40000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58151.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58168.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58185.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58201.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58217.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58234.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58251.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58267.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58284.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58301.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58317.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58334.60000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58351.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-1",
+                  "at": 58367.800000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "return-1",
+                "at": 57984.800000190735,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "repeat-return-2",
+            "audit": {
+              "stage": "return-2",
+              "samples": [
+                {
+                  "stage": "return-2",
+                  "at": 61634.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61651.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61667.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61684.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61701.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61718.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61735.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61751.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61768.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61784.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61801.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61818.300000190735,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61834.60000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61851.40000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61868,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61884.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61901.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61917.90000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61935.40000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61951,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61968.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 61984.40000009537,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 62001.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "return-2",
+                  "at": 62018.10000014305,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "return-2",
+                "at": 61634.5,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          },
+          {
+            "name": "failed-image-retry",
+            "audit": {
+              "stage": "failure-retry",
+              "samples": [
+                {
+                  "stage": "failure-retry",
+                  "at": 52781.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52826,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52831,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52843.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52860,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52875.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52893.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52909.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52927.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52943.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52960.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52979,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 52996.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53010.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53029.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53070.799999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53096.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53111.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53128.39999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53147.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53161.09999990463,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53176.89999985695,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53193.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 53210,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "failure-retry",
+                "at": 52781.09999990463,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          }
+        ],
+        "passed": true,
+        "errors": []
+      }
+    ]
+  },
+  "desktopFailureRetry": {
+    "base": "http://127.0.0.1:50765",
+    "baseline": false,
+    "results": [
+      {
+        "layout": "desktop",
+        "cases": [
+          {
+            "name": "failed-image-retry",
+            "audit": {
+              "stage": "failure-retry",
+              "samples": [
+                {
+                  "stage": "failure-retry",
+                  "at": 15849.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16027.399999856949,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16069.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16079.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16084.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16093.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16111.899999856949,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16126.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16142.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16159.099999904633,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16175.399999856949,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16192.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16208.899999856949,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16226.099999904633,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16242.099999904633,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16259.099999904633,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16275.599999904633,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16292.399999856949,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16308.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16325.700000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16342.099999904633,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16359.200000047684,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16376.299999952316,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                },
+                {
+                  "stage": "failure-retry",
+                  "at": 16392.5,
+                  "ready": true,
+                  "painted": true,
+                  "complete": true,
+                  "lock": "locked",
+                  "phase": "idle"
+                }
+              ],
+              "violations": [],
+              "firstExposed": {
+                "stage": "failure-retry",
+                "at": 15849.299999952316,
+                "ready": true,
+                "painted": true,
+                "complete": true,
+                "lock": "locked",
+                "phase": "idle"
+              }
+            },
+            "ready": "true",
+            "lock": "locked",
+            "canvases": 1,
+            "characters": 1,
+            "afterimages": true
+          }
+        ],
+        "passed": true,
+        "errors": []
+      }
+    ]
+  },
+  "resolved": "Desktop page-wide DOMContentLoaded wait timed out before the failure case. The targeted rerun waits for navigation commit and explicit scene readiness; all visibility and retry assertions pass."
+}

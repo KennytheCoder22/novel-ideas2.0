@@ -19,7 +19,7 @@ fs.mkdirSync(out,{recursive:true});
   const r=spawnSync('git',['show','e3d9c739:apps/dreamscapes/'+file],{cwd:app,encoding:'utf8',maxBuffer:2000000});
   assert.equal(r.status,0,r.stderr);baseline.set(url,r.stdout);
  }
- try{for(const mobile of (process.env.BASELINE?[false]:[false,true])){
+ try{for(const mobile of (process.env.TEST_LAYOUTS?process.env.TEST_LAYOUTS.split(',').map(x=>x==='mobile'):process.env.BASELINE?[false]:[false,true])){
   const label=mobile?'mobile':'desktop',dir=path.join(out,label);fs.mkdirSync(dir,{recursive:true});
   const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},isMobile:mobile,hasTouch:mobile});
   const p=await context.newPage();p.setDefaultTimeout(120000);const errors=[],result={layout:label,cases:[],passed:false};results.push(result);
@@ -80,6 +80,7 @@ fs.mkdirSync(out,{recursive:true});
    await p.locator(q).first().evaluate(el=>el.click());await arrive(to);
   };
   try{
+   if(!process.env.FAILURE_ONLY){
    arm();await p.goto(base+'/carnival/?scene=fortune-teller',{waitUntil:'domcontentloaded'});
    await p.waitForFunction(()=>document.querySelector('[data-scene="fortune-teller"]'));
    await requested();
@@ -108,9 +109,10 @@ fs.mkdirSync(out,{recursive:true});
     await p.evaluate(async b=>{const module=await import('/age-band.js');window.__zoraEntry={stage:'age-'+b,samples:[],violations:[],firstExposed:null};module.selectAgeBand(b);},band);await p.waitForTimeout(80);await inspect('age-'+band,band==='adults');
    }
    for(let i=0;i<3;i++){await route('fortune-teller','rides-games');await audit('return-'+i);await route('rides-games','fortune-teller');await inspect('repeat-return-'+i,false);}
+   }
    if(!process.env.SMOKE){
     // A rejected dependency must never expose the baked-in trunk; retry mounts cleanly.
-    failed=true;await p.goto(base+'/carnival/?scene=tent-row',{waitUntil:'domcontentloaded'});await arrive('tent-row');
+    failed=true;await p.goto(base+'/carnival/?scene=tent-row',{waitUntil:'commit'});await arrive('tent-row');
     await audit('failure-retry');await p.locator('[data-scene="tent-row"] [data-to="fortune-teller"]').evaluate(el=>el.click());
     await p.waitForFunction(()=>!document.querySelector('[data-scene="fortune-teller"]')&&document.querySelector('.location-loading')?.hidden===true);
     assert.equal(await p.evaluate(()=>document.documentElement.dataset.location),'tent-row');

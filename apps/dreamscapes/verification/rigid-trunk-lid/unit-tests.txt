@@ -1,0 +1,45 @@
+✔ kids: midway then forest-edge survives interruption and supports both outcomes (6.7005ms)
+✔ kids: forest-edge then midway survives interruption and supports both outcomes (0.795ms)
+✔ pre-teens: midway then forest-edge survives interruption and supports both outcomes (0.6925ms)
+✔ pre-teens: forest-edge then midway survives interruption and supports both outcomes (0.4834ms)
+✔ teens: midway then forest-edge survives interruption and supports both outcomes (0.4019ms)
+✔ teens: forest-edge then midway survives interruption and supports both outcomes (2.4509ms)
+✔ adults: midway then forest-edge survives interruption and supports both outcomes (1.0395ms)
+✔ adults: forest-edge then midway survives interruption and supports both outcomes (0.7104ms)
+✔ corrupt, blocked and inconsistent storage cannot fabricate an ending (0.994ms)
+✔ narrative observations are bounded raw actions without genre weights (4.1976ms)
+✔ all four age bands have genuine alternatives and separately tentative interpretations (15.1408ms)
+✔ only actually offered named tickets are included; preliminary changes are not decisions (2.6138ms)
+✔ callbacks, reload and rotation cannot create duplicate choices (39.9374ms)
+✔ later rides have new raw decisions; repeated mount/family does not multiply evidence (4.6952ms)
+✔ ordinary animals and insufficient comparisons remain gameplay (2.3653ms)
+✔ skip, changed age, malformed inputs and corrupt stored choices fail safely (2.6658ms)
+✔ reduced motion is explicitly a still ride, never a false revolution (7.1584ms)
+✔ storage byte budget preserves session and dedupe instead of overflowing its restore limit (5257.3829ms)
+✔ restored ride metadata cannot substitute another mount for the validated choice (1.2765ms)
+✔ onboard completion requires both full turns without another preference choice (0.9554ms)
+✔ paused positions survive reload; abandoning preserves all evidence and rejects stale callbacks (5.0228ms)
+✔ progress validation rejects corrupt saves and legacy active rides remain resumable (1.0143ms)
+✔ image choices identify their presentation while legacy observations and saved rides remain valid (1.9328ms)
+✔ both starting arrangements are solvable with linked neighbours (2.1503ms)
+✔ book and plant separate and descend behind the chest without fading (2.8678ms)
+✔ age-band completion and fallen props are isolated; corrupt storage is safe (3.6057ms)
+✔ unlocking persists in the existing save before completion and migrates completed journeys (1.8883ms)
+✔ unlocked saves remain age-specific and malformed values cannot release the lock (0.51ms)
+✔ Opening, clean Carnival route and relative assets match hosting aliases (1269.1179ms)
+✔ two independent stories accumulate without repeats or concealed conflict (7.4253ms)
+✔ actions behavior feedback and malformed values cannot become reading evidence (0.5084ms)
+✔ unsure and conflicts retain uncertainty and no unearned recommendations (0.7105ms)
+✔ adapter explicitly fails closed; established deck identities cannot be bypassed (570.8093ms)
+✔ valid evidence survives serialization and reset produces no suggestions (0.5877ms)
+✔ rear hinge remains fixed throughout opening and the reverse closing path (216.5312ms)
+✔ closed lid seals the mouth and open lid matches the reference registration (0.46ms)
+✔ boxed lid keeps perpendicular walls and constant rigid distances at every angle (60.1424ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 37
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5708.1346

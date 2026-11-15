@@ -512,12 +512,12 @@
     "sha256": "5537d5eeb7321117a358658e0e3d19092c89a4ce73ac3a6c92b0fa1a09b265ab"
   },
   "cycle-seven/trunk-geometry.mjs": {
-    "bytes": 2128,
-    "sha256": "ea65163fdcff0973cd407951c478ae912321a9c5a28271b81cbadeee1f9c37ab"
+    "bytes": 3144,
+    "sha256": "6eaf166131400de8e60ccfcf8745b15aeb680a88bf10cdeafd361ed887a392f6"
   },
   "cycle-seven/trunk-renderer.mjs": {
-    "bytes": 5321,
-    "sha256": "70fb17827cdd89473c9a1ea36002a7af03a76622fd64809d1d77fd0193d510e2"
+    "bytes": 6248,
+    "sha256": "3e7c05fbcd4fa89ff3a8c42d955bb4e12735ab3a8d5b5ee044cc2bec4e1f0824"
   },
   "cycle-seven/trunk-reference.png": {
     "bytes": 2539952,
@@ -556,7 +556,11 @@
     "sha256": "db4a91b14f4b489d5a0fa4bbacc5389b5474da6424485bb60fcc0dc212c20379"
   },
   "zora-scene.js": {
-    "bytes": 3043,
-    "sha256": "3d609a120674d8d8662e3127dfd61952749a3d480dbeecd5329048ca3c7fe218"
+    "bytes": 3089,
+    "sha256": "b13bd28f697a526aa913dc34d6c9ef24f4786f7fda93fb60e62fcf89e45fefc3"
+  },
+  "cycle-seven/lid-components-reference.png": {
+    "bytes": 2274787,
+    "sha256": "6757fda3bd06520359a3b4b2fbe28a4d56cb5e9956d56c6bb736e58996e9e51c"
   }
 }
