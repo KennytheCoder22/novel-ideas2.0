@@ -1,4 +1,4 @@
-import {lidVolume,homography} from './trunk-geometry.mjs';
+import {lidVolume,lidSideWalls,homography} from './trunk-geometry.mjs';
 const source='/cycle-seven/trunk-reference.png';
 function polygon(ctx,points){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();}
 function triangle(ctx,img,s,d){ctx.save();const center=d.reduce((a,p)=>[a[0]+p[0]/3,a[1]+p[1]/3],[0,0]);polygon(ctx,d.map(p=>{const dx=p[0]-center[0],dy=p[1]-center[1],r=Math.hypot(dx,dy);return [p[0]+dx/r*.7,p[1]+dy/r*.7];}));ctx.clip();const [a,b,c]=s,[u,v,w]=d;const det=(b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1]);if(Math.abs(det)<.00001){ctx.restore();return;}const A=((v[0]-u[0])*(c[1]-a[1])-(w[0]-u[0])*(b[1]-a[1]))/det,B=((v[1]-u[1])*(c[1]-a[1])-(w[1]-u[1])*(b[1]-a[1]))/det,C=((w[0]-u[0])*(b[0]-a[0])-(v[0]-u[0])*(c[0]-a[0]))/det,D=((w[1]-u[1])*(b[0]-a[0])-(v[1]-u[1])*(c[0]-a[0]))/det;ctx.transform(A,B,C,D,u[0]-A*a[0]-C*a[1],u[1]-B*a[0]-D*a[1]);ctx.drawImage(img,0,0);ctx.restore();}
@@ -26,15 +26,24 @@ export function createTrunk(plane){const canvas=document.createElement('canvas')
  // Opaque backing closes shared seams. The six connected faces rotate as one
  // solid; no image layer has its own pivot, translation or animation clock.
  if(!inside)warp(ctx,exterior,[[350,279],[753,315],[551,384],[146,330]],q);
+ // Retain the original underpainting beneath the approved top texture.
  for(const [a,b] of [[0,1],[0,3],[1,2]])warp(ctx,rim,[[90,622],[468,622],[468,668],[90,668]],[roof[a],roof[b],q[b],q[a]]);
- // Sample beside the generated clasp: retain only the original approved
- // fitting on the interior face, rather than adding a second piece of hardware.
  warp(ctx,rim,[[90,622],[468,622],[468,668],[90,668]],[roof[3],roof[2],q[2],q[3]]);
  warp(ctx,inside?img:exterior,inside?[[1167,342],[1616,381],[1581,139],[1159,123]]:[[350,279],[753,315],[551,384],[146,330]],inside?q:roof);
  // Original hinge knuckles and lid stays remain attached to the same endpoints.
  ctx.strokeStyle='#6c4825';ctx.lineWidth=8;ctx.lineCap='round';[[.12,.18],[.82,.9]].forEach(([a,b])=>{ctx.beginPath();ctx.moveTo(280+449*a,342+39*a);ctx.lineTo(280+449*b,342+39*b);ctx.stroke();});
  if(progress>.03){ctx.strokeStyle='#bd8a42';ctx.lineWidth=5;[0,1].forEach(i=>{const t=.47,A=q[i],B=q[3-i];ctx.beginPath();ctx.moveTo(i?690:175,i?404:393);ctx.lineTo(A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t);ctx.stroke();});}
- ctx.save();polygon(ctx,[[134,397],[517,445],[744,380],[741,735],[520,810],[132,712]]);ctx.clip();ctx.drawImage(img,-887,0);ctx.restore();if(progress<.015&&!unlocked){ctx.save();polygon(ctx,[[268,480],[324,475],[363,502],[362,594],[273,606],[250,575]]);ctx.clip();ctx.drawImage(img,1254,500,100,140,260,475,110,140);ctx.restore();ctx.save();ctx.translate(-40,55);polygon(ctx,[[326,434],[347,434],[357,450],[355,484],[366,487],[364,547],[299,539],[301,485],[310,481],[310,455]]);ctx.clip();ctx.drawImage(img,0,0);ctx.restore();}ctx.restore();canvas.dataset.lockState=unlocked?'unlocked':'locked';canvas.dataset.progress=String(progress);canvas.dataset.hinge=JSON.stringify(q.slice(0,2));}
+ ctx.save();polygon(ctx,[[134,397],[517,445],[744,380],[741,735],[520,810],[132,712]]);ctx.clip();ctx.drawImage(img,-887,0);ctx.restore();
+ // The stationary body must not cut a taper into the moving lid walls.
+ // Paint only camera-facing walls, excluding the unchanged top/interior plane.
+ for(const [edge,{quad}] of lidSideWalls(progress).entries()){
+  const facing=quad.reduce((s,p,i)=>{const n=quad[(i+1)%4];return s+p[0]*n[1]-n[0]*p[1];},0);
+  if(facing>=0)continue;
+  ctx.save();ctx.beginPath();ctx.rect(-2000,-2000,6000,6000);
+  (inside?q:roof).forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.clip('evenodd');
+  warp(ctx,rim,[[90,622],[468,622],[468,668],[90,668]],edge===2?[quad[1],quad[0],quad[3],quad[2]]:quad);ctx.restore();
+ }
+ if(progress<.015&&!unlocked){ctx.save();polygon(ctx,[[268,480],[324,475],[363,502],[362,594],[273,606],[250,575]]);ctx.clip();ctx.drawImage(img,1254,500,100,140,260,475,110,140);ctx.restore();ctx.save();ctx.translate(-40,55);polygon(ctx,[[326,434],[347,434],[357,450],[355,484],[366,487],[364,547],[299,539],[301,485],[310,481],[310,455]]);ctx.clip();ctx.drawImage(img,0,0);ctx.restore();}ctx.restore();canvas.dataset.lockState=unlocked?'unlocked':'locked';canvas.dataset.progress=String(progress);canvas.dataset.hinge=JSON.stringify(q.slice(0,2));}
  // The stationary reference already has a disengaged shackle. Keep that exact
  // artwork after release; the closed-lock patch is only for the initial lock.
  return {ready:loaded,pose(p){progress=p;draw();},setUnlocked(value){unlocked=value===true;draw();},canvas};}

@@ -32,3 +32,12 @@ export function lidVolume(progress){
  const innerWorld=interior.map(rotate),outerWorld=exterior.map(rotate);
  return {angle:a,innerWorld,outerWorld,inner:innerWorld.map(p=>project(...p)),outer:outerWorld.map(p=>project(...p))};
 }
+
+// Extrude the authoritative top perimeter along its rotated normal. These
+// faces are shared by the geometry checks and the painter's visibility pass.
+export function lidSideWalls(progress){
+ const v=lidVolume(progress),normal=[0,-Math.sin(v.angle),Math.cos(v.angle)];
+ const lowerWorld=v.outerWorld.map(p=>p.map((x,i)=>x-normal[i]*lidConstruction.thickness));
+ const lower=lowerWorld.map(p=>project(...p));
+ return [0,1,2,3].map(a=>{const b=(a+1)%4;return {world:[v.outerWorld[a],v.outerWorld[b],lowerWorld[b],lowerWorld[a]],quad:[v.outer[a],v.outer[b],lower[b],lower[a]]};});
+}

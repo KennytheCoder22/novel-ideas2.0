@@ -512,12 +512,12 @@
     "sha256": "5537d5eeb7321117a358658e0e3d19092c89a4ce73ac3a6c92b0fa1a09b265ab"
   },
   "cycle-seven/trunk-geometry.mjs": {
-    "bytes": 3144,
-    "sha256": "6eaf166131400de8e60ccfcf8745b15aeb680a88bf10cdeafd361ed887a392f6"
+    "bytes": 3727,
+    "sha256": "caaa0064523973a5f49e6e94d7c4c9dd8dffe90a6d9d2b51891578c9561a8c93"
   },
   "cycle-seven/trunk-renderer.mjs": {
-    "bytes": 6248,
-    "sha256": "3e7c05fbcd4fa89ff3a8c42d955bb4e12735ab3a8d5b5ee044cc2bec4e1f0824"
+    "bytes": 6808,
+    "sha256": "05a7f72c2f3a675569d8bafc1f1ecb60a2342e34022c24c49b6bd49c10c5286e"
   },
   "cycle-seven/trunk-reference.png": {
     "bytes": 2539952,
