@@ -1,0 +1,687 @@
+{
+  "baseMain": "bdbd16070a704aab764c9fd6511779f58367d799",
+  "previewDependency": "e3d9c739cd67e8a3075372620743e4adf733abc8",
+  "scope": "Development preview only; no main merge or production promotion",
+  "browser": "Microsoft Edge headless: desktop 1440x900 and emulated mobile touch 390x844",
+  "unitTests": {
+    "passed": 64,
+    "failed": 0
+  },
+  "build": {
+    "runtimeFiles": 218,
+    "ornateMounts": 20,
+    "variantMounts": 40,
+    "hashValidation": "passed"
+  },
+  "baseline": {
+    "reproduced": true,
+    "exposedUndrawnFrames": 29,
+    "source": "e3d9c739 runtime with held chest image dependencies"
+  },
+  "entryChecks": [
+    {
+      "layout": "desktop",
+      "passed": true,
+      "errors": [],
+      "cases": [
+        {
+          "name": "cold-empty-storage",
+          "passed": true,
+          "firstExposed": {
+            "stage": "entry",
+            "at": 19950,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "completed-direct-refresh",
+          "passed": true,
+          "firstExposed": {
+            "stage": "entry",
+            "at": 14808.299999952316,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "unlocked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "unlocked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "delayed-script-and-styles",
+          "passed": true,
+          "firstExposed": {
+            "stage": "entry",
+            "at": 30021.800000190735,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "unlocked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "unlocked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "unrelated-scenes-during-prefetch",
+          "passed": true,
+          "firstExposed": null,
+          "incompleteFrames": 0,
+          "lockAtArrival": null,
+          "canvases": null,
+          "characters": null,
+          "afterimages": null
+        },
+        {
+          "name": "normal-navigation-age-changed-while-loading",
+          "passed": true,
+          "firstExposed": {
+            "stage": "normal-navigation",
+            "at": 32698.700000047684,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "age-adults",
+          "passed": true,
+          "firstExposed": {
+            "stage": "age-adults",
+            "at": 48781.200000047684,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "unlocked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "unlocked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "age-teens",
+          "passed": true,
+          "firstExposed": {
+            "stage": "age-teens",
+            "at": 49381.800000190735,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "age-pre-teens",
+          "passed": true,
+          "firstExposed": {
+            "stage": "age-pre-teens",
+            "at": 49886.700000047684,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "age-kids",
+          "passed": true,
+          "firstExposed": {
+            "stage": "age-kids",
+            "at": 50960.40000009537,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "repeat-return-0",
+          "passed": true,
+          "firstExposed": {
+            "stage": "return-0",
+            "at": 55642.60000014305,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "repeat-return-1",
+          "passed": true,
+          "firstExposed": {
+            "stage": "return-1",
+            "at": 59904.700000047684,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "repeat-return-2",
+          "passed": true,
+          "firstExposed": {
+            "stage": "return-2",
+            "at": 63571.300000190735,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "failed-image-retry",
+          "passed": true,
+          "firstExposed": {
+            "stage": "failure-retry",
+            "at": 21436.599999904633,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        }
+      ]
+    },
+    {
+      "layout": "mobile",
+      "passed": true,
+      "errors": [],
+      "cases": [
+        {
+          "name": "cold-empty-storage",
+          "passed": true,
+          "firstExposed": {
+            "stage": "entry",
+            "at": 9465.899999856949,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "completed-direct-refresh",
+          "passed": true,
+          "firstExposed": {
+            "stage": "entry",
+            "at": 26618.599999904633,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "unlocked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "unlocked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "delayed-script-and-styles",
+          "passed": true,
+          "firstExposed": {
+            "stage": "entry",
+            "at": 9866,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "unlocked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "unlocked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "unrelated-scenes-during-prefetch",
+          "passed": true,
+          "firstExposed": null,
+          "incompleteFrames": 0,
+          "lockAtArrival": null,
+          "canvases": null,
+          "characters": null,
+          "afterimages": null
+        },
+        {
+          "name": "normal-navigation-age-changed-while-loading",
+          "passed": true,
+          "firstExposed": {
+            "stage": "normal-navigation",
+            "at": 39495,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "age-adults",
+          "passed": true,
+          "firstExposed": {
+            "stage": "age-adults",
+            "at": 48908,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "unlocked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "unlocked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "age-teens",
+          "passed": true,
+          "firstExposed": {
+            "stage": "age-teens",
+            "at": 49323,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "age-pre-teens",
+          "passed": true,
+          "firstExposed": {
+            "stage": "age-pre-teens",
+            "at": 49751.299999952316,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "age-kids",
+          "passed": true,
+          "firstExposed": {
+            "stage": "age-kids",
+            "at": 49939.59999990463,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "repeat-return-0",
+          "passed": true,
+          "firstExposed": {
+            "stage": "return-0",
+            "at": 54158.299999952316,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "repeat-return-1",
+          "passed": true,
+          "firstExposed": {
+            "stage": "return-1",
+            "at": 58033.700000047684,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "repeat-return-2",
+          "passed": true,
+          "firstExposed": {
+            "stage": "return-2",
+            "at": 61532.40000009537,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        },
+        {
+          "name": "failed-image-retry",
+          "passed": true,
+          "firstExposed": {
+            "stage": "failure-retry",
+            "at": 28848,
+            "ready": true,
+            "painted": true,
+            "complete": true,
+            "lock": "locked",
+            "phase": "idle"
+          },
+          "incompleteFrames": 0,
+          "lockAtArrival": "locked",
+          "canvases": 1,
+          "characters": 1,
+          "afterimages": true
+        }
+      ]
+    }
+  ],
+  "chestChecks": [
+    {
+      "band": "adults",
+      "mobile": false,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "band": "adults",
+      "mobile": true,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "band": "pre-teens",
+      "mobile": false,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "band": "pre-teens",
+      "mobile": true,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "ageSwitchDuringReplay": true,
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    }
+  ],
+  "carouselChecks": [
+    {
+      "mobile": false,
+      "label": "carousel-before",
+      "visibleMounts": 20,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "zora-after-carousel",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "carousel-return",
+      "visibleMounts": 20,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "direct-fortune-teller",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "refresh-fortune-teller",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "direct-fun-house",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "refresh-fun-house",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "direct-forest-edge",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "refresh-forest-edge",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "carousel-before",
+      "visibleMounts": 20,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "zora-after-carousel",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "carousel-return",
+      "visibleMounts": 20,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "direct-fortune-teller",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "refresh-fortune-teller",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "direct-fun-house",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "refresh-fun-house",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "direct-forest-edge",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "refresh-forest-edge",
+      "visibleMounts": 0,
+      "passed": true
+    }
+  ],
+  "screenshots": ".tmp/zora-entry-fixed/index.html"
+}

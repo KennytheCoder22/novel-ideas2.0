@@ -1,5 +1,9 @@
 # Madam Zora: hinged trunk repair
 
+For the later padlock refinement, see [persistent unlocked padlock](docs/UNLOCKED-PADLOCK.md).
+After the first release, the reference's open shackle remains visible and replay
+bypasses the lock puzzle until the chest experience is deliberately reset.
+
 The supplied combined open/closed reference is preserved in `public/cycle-seven/trunk-reference.png`. No new artwork was generated. The original scene remains the background; the existing clean plate is masked only over the old trunk and props.
 
 `trunk-geometry.mjs` registers the mouth and both lid faces to one stationary body. A projective camera is calibrated from the supplied views. Each frame rotates the rigid lid in 3D about the two fixed rear hinge endpoints, through 100 degrees. Small edge thickness and attached stays make the edge-on transition visible. The inside and outside are separate textured faces of that same lid. Closing reverses the same path with smooth easing.
@@ -17,4 +21,5 @@ The invisible padlock hit target is aligned with the supplied artwork and retain
 
 Browser scripts accept `PLAYWRIGHT_MODULE`, `BROWSER_EXE`, `CHEST_EVIDENCE`, and optional `BASE_URL` for an HTTPS preview. Otherwise they serve the verified local `dist` build.
 
-Deployment scope: push main and create a Vercel preview. Do not manually promote production.
+The padlock refinement uses a separate development branch and Vercel preview.
+It must not be merged or promoted before review approval.

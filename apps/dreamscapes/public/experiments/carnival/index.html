@@ -111,13 +111,9 @@
 <link rel="stylesheet" href="/cycle-zora/living.css">
 <link rel="stylesheet" href="/cycle-seven/echo.css">
 <script type="module">
-// Approved encounters are part of every Carnival visit.
-await import('/cycle-zora/zora-prototype.js');
-await import('/cycle-zora/living.js');
-await import('/cycle-seven/echo.js');
-await import('/cycle-eight/afterimages.js');
-await import('/cycle-ten/reading.js');
-await import('/cycle-nine/encounter.js');
+// The same bootstrap is shared with hidden scene preparation during navigation.
+import {initializeEncounters} from '/zora-scene.js';
+initializeEncounters().catch(error=>console.error('Carnival encounters unavailable',error));
 </script>
 </body>
 </html>

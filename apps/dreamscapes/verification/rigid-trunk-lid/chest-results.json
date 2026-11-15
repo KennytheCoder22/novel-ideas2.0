@@ -1,0 +1,172 @@
+[
+  {
+    "band": "adults",
+    "mobile": false,
+    "passed": true,
+    "lockPixelBounds": {
+      "minX": 1105,
+      "minY": 719,
+      "maxX": 1142,
+      "maxY": 766,
+      "changed": 1612,
+      "channelTolerance": 1
+    },
+    "fullJourney": true,
+    "puzzleFreeReplay": true,
+    "reload": true,
+    "reset": true,
+    "ageIsolation": true,
+    "legacySave": true,
+    "errors": [],
+    "failedRequests": []
+  },
+  {
+    "band": "adults",
+    "mobile": true,
+    "passed": true,
+    "lockPixelBounds": {
+      "minX": 1105,
+      "minY": 719,
+      "maxX": 1142,
+      "maxY": 766,
+      "changed": 1612,
+      "channelTolerance": 1
+    },
+    "fullJourney": true,
+    "puzzleFreeReplay": true,
+    "reload": true,
+    "reset": true,
+    "ageIsolation": true,
+    "legacySave": true,
+    "errors": [],
+    "failedRequests": []
+  },
+  {
+    "band": "teens",
+    "mobile": false,
+    "passed": true,
+    "lockPixelBounds": {
+      "minX": 1105,
+      "minY": 719,
+      "maxX": 1142,
+      "maxY": 766,
+      "changed": 1612,
+      "channelTolerance": 1
+    },
+    "reloadAfterReleaseBeforeCompletion": true,
+    "fullJourney": true,
+    "puzzleFreeReplay": true,
+    "reload": true,
+    "reset": true,
+    "ageIsolation": true,
+    "legacySave": true,
+    "errors": [],
+    "failedRequests": []
+  },
+  {
+    "band": "teens",
+    "mobile": true,
+    "passed": true,
+    "lockPixelBounds": {
+      "minX": 1105,
+      "minY": 719,
+      "maxX": 1142,
+      "maxY": 766,
+      "changed": 1612,
+      "channelTolerance": 1
+    },
+    "fullJourney": true,
+    "puzzleFreeReplay": true,
+    "reload": true,
+    "reset": true,
+    "ageIsolation": true,
+    "legacySave": true,
+    "errors": [],
+    "failedRequests": []
+  },
+  {
+    "band": "pre-teens",
+    "mobile": false,
+    "passed": true,
+    "lockPixelBounds": {
+      "minX": 1105,
+      "minY": 719,
+      "maxX": 1142,
+      "maxY": 766,
+      "changed": 1612,
+      "channelTolerance": 1
+    },
+    "fullJourney": true,
+    "puzzleFreeReplay": true,
+    "reload": true,
+    "reset": true,
+    "ageIsolation": true,
+    "legacySave": true,
+    "errors": [],
+    "failedRequests": []
+  },
+  {
+    "band": "pre-teens",
+    "mobile": true,
+    "passed": true,
+    "lockPixelBounds": {
+      "minX": 1105,
+      "minY": 719,
+      "maxX": 1142,
+      "maxY": 766,
+      "changed": 1612,
+      "channelTolerance": 1
+    },
+    "ageSwitchDuringReplay": true,
+    "fullJourney": true,
+    "puzzleFreeReplay": true,
+    "reload": true,
+    "reset": true,
+    "ageIsolation": true,
+    "legacySave": true,
+    "errors": [],
+    "failedRequests": []
+  },
+  {
+    "band": "kids",
+    "mobile": false,
+    "passed": true,
+    "lockPixelBounds": {
+      "minX": 1105,
+      "minY": 719,
+      "maxX": 1142,
+      "maxY": 766,
+      "changed": 1612,
+      "channelTolerance": 1
+    },
+    "fullJourney": true,
+    "puzzleFreeReplay": true,
+    "reload": true,
+    "reset": true,
+    "ageIsolation": true,
+    "legacySave": true,
+    "errors": [],
+    "failedRequests": []
+  },
+  {
+    "band": "kids",
+    "mobile": true,
+    "passed": true,
+    "lockPixelBounds": {
+      "minX": 1105,
+      "minY": 719,
+      "maxX": 1142,
+      "maxY": 766,
+      "changed": 1612,
+      "channelTolerance": 1
+    },
+    "fullJourney": true,
+    "puzzleFreeReplay": true,
+    "reload": true,
+    "reset": true,
+    "ageIsolation": true,
+    "legacySave": true,
+    "errors": [],
+    "failedRequests": []
+  }
+]

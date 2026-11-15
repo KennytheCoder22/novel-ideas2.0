@@ -14,3 +14,30 @@ export function lidGeometry(progress){const a=Math.max(0,Math.min(1,progress))*a
 export function mapQuad(q,u,v){const m=homography(q),d=m[6]*u+m[7]*v+1;return [(m[0]*u+m[1]*v+m[2])/d,(m[3]*u+m[4]*v+m[5])/d];}
 
 export function lidLowerGeometry(progress){const a=Math.max(0,Math.min(1,progress))*angle;return [[0,0],[1,0],[1,1],[0,1]].map(([x,y])=>project(x,y*Math.cos(a)+.035*Math.sin(a),y*Math.sin(a)-.035*Math.cos(a)));}
+
+// One closed, rectangular solid. All eight vertices share the rear hinge and the
+// exact same rotation. The wide inner frame is the approved lid silhouette;
+// the matching exterior footprint gives the rim constant perpendicular depth;
+// the original interior plane and rear hinge remain fixed.
+export const lidConstruction=Object.freeze({
+ thickness:.14,bevelWidth:0,bevelDepth:0,
+ hinge:Object.freeze([[0,0,0],[1,0,0]].map(Object.freeze))
+});
+export function lidVolume(progress){
+ const a=Math.max(0,Math.min(1,progress))*angle,c=Math.cos(a),s=Math.sin(a);
+ const {thickness,bevelWidth:bx,bevelDepth:by}=lidConstruction;
+ const interior=[[0,0,0],[1,0,0],[1,1,0],[0,1,0]];
+ const exterior=[[bx,by,thickness],[1-bx,by,thickness],[1-bx,1-by,thickness],[bx,1-by,thickness]];
+ const rotate=([x,y,z])=>[x,y*c-z*s,y*s+z*c];
+ const innerWorld=interior.map(rotate),outerWorld=exterior.map(rotate);
+ return {angle:a,innerWorld,outerWorld,inner:innerWorld.map(p=>project(...p)),outer:outerWorld.map(p=>project(...p))};
+}
+
+// Extrude the authoritative top perimeter along its rotated normal. These
+// faces are shared by the geometry checks and the painter's visibility pass.
+export function lidSideWalls(progress){
+ const v=lidVolume(progress),normal=[0,-Math.sin(v.angle),Math.cos(v.angle)];
+ const lowerWorld=v.outerWorld.map(p=>p.map((x,i)=>x-normal[i]*lidConstruction.thickness));
+ const lower=lowerWorld.map(p=>project(...p));
+ return [0,1,2,3].map(a=>{const b=(a+1)%4;return {world:[v.outerWorld[a],v.outerWorld[b],lowerWorld[b],lowerWorld[a]],quad:[v.outer[a],v.outer[b],lower[b],lower[a]]};});
+}

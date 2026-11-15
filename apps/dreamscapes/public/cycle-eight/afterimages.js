@@ -97,3 +97,5 @@ dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
 // Read-only diagnostics. Mutations go through actual interactions, not debug controls.
 window.DreamscapesCycleEight=Object.freeze({snapshot:()=>({age,...structuredClone(state)})});
 awaken();render();
+// Preparation paints restored controls without recording a scene visit.
+export {render as prepareAfterimages};

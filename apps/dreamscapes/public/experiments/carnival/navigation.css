@@ -1,5 +1,8 @@
 /* Navigation-only surfaces; the accepted Midway styles are untouched. */
 .location-view[data-scene="rides-games"][hidden] { display:none!important; }
+.location-view[data-scene="fortune-teller"][hidden],.location-view[data-scene="fortune-teller"]:not([data-zora-ready]) { display:none!important; }
+.location-loading{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:90;max-width:80vw;margin:0;padding:12px 20px;border:1px solid #b18b4c66;border-radius:8px;background:#181411ed;color:#ecd5a8;box-shadow:0 2px 20px #0008;font:15px/1.5 Georgia,serif;text-align:center;pointer-events:none}
+.location-loading[hidden]{display:none!important}
 .location-view { position:fixed; inset:0; overflow:hidden; background:#080e16; outline:none; }
 .location-plane { position:absolute; }
 .location-background { display:block; width:100%; height:100%; user-select:none; pointer-events:none; }

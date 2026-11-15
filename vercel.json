@@ -112,6 +112,9 @@
     "deploymentEnabled": {
       "codex/3d-normal-production": false,
       "codex/dreamscapes-carousel-scene-ownership": false,
+      "codex/borrowed-light-unlocked-padlock": false,
+      "codex/zora-scene-readiness": false,
+      "codex/zora-rigid-trunk-lid": false,
       "codex/dreamscapes-independent": false
     }
   }

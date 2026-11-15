@@ -1,0 +1,321 @@
+{
+  "baseCommit": "bdbd16070a704aab764c9fd6511779f58367d799",
+  "scope": "Development branch; preview review only",
+  "browser": "Microsoft Edge headless: 1440x900 desktop keyboard and emulated 390x844 mobile touch",
+  "unitTests": {
+    "passed": 64,
+    "failed": 0
+  },
+  "build": {
+    "runtimeFiles": 217,
+    "ornateMounts": 20,
+    "variantMounts": 40,
+    "hashValidation": "passed"
+  },
+  "preservation": {
+    "sourceArtworkUnchanged": true,
+    "hingeGeometryUnchanged": true,
+    "tourAndLightMotionUnchanged": true,
+    "laterStoryModulesUnchanged": true
+  },
+  "padlockCases": [
+    {
+      "band": "adults",
+      "mobile": false,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "band": "adults",
+      "mobile": true,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "band": "teens",
+      "mobile": false,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "reloadAfterReleaseBeforeCompletion": true,
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "band": "teens",
+      "mobile": true,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "band": "pre-teens",
+      "mobile": false,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "band": "pre-teens",
+      "mobile": true,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "ageSwitchDuringReplay": true,
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "band": "kids",
+      "mobile": false,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "band": "kids",
+      "mobile": true,
+      "passed": true,
+      "lockPixelBounds": {
+        "minX": 1105,
+        "minY": 719,
+        "maxX": 1142,
+        "maxY": 766,
+        "changed": 1607,
+        "channelTolerance": 1
+      },
+      "fullJourney": true,
+      "puzzleFreeReplay": true,
+      "reload": true,
+      "reset": true,
+      "ageIsolation": true,
+      "legacySave": true,
+      "errors": [],
+      "failedRequests": []
+    }
+  ],
+  "carouselChecks": [
+    {
+      "mobile": false,
+      "label": "carousel-before",
+      "scene": "rides-games",
+      "visibleMounts": 20,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "zora-after-carousel",
+      "scene": "fortune-teller",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "carousel-return",
+      "scene": "rides-games",
+      "visibleMounts": 20,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "direct-fortune-teller",
+      "scene": "fortune-teller",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "refresh-fortune-teller",
+      "scene": "fortune-teller",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "direct-fun-house",
+      "scene": "fun-house",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "refresh-fun-house",
+      "scene": "fun-house",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "direct-forest-edge",
+      "scene": "forest-edge",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": false,
+      "label": "refresh-forest-edge",
+      "scene": "forest-edge",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "carousel-before",
+      "scene": "rides-games",
+      "visibleMounts": 20,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "zora-after-carousel",
+      "scene": "fortune-teller",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "carousel-return",
+      "scene": "rides-games",
+      "visibleMounts": 20,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "direct-fortune-teller",
+      "scene": "fortune-teller",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "refresh-fortune-teller",
+      "scene": "fortune-teller",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "direct-fun-house",
+      "scene": "fun-house",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "refresh-fun-house",
+      "scene": "fun-house",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "direct-forest-edge",
+      "scene": "forest-edge",
+      "visibleMounts": 0,
+      "passed": true
+    },
+    {
+      "mobile": true,
+      "label": "refresh-forest-edge",
+      "scene": "forest-edge",
+      "visibleMounts": 0,
+      "passed": true
+    }
+  ]
+}
