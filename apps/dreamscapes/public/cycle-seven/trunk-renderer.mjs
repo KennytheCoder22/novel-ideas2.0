@@ -1,49 +1,43 @@
-import {lidVolume,lidSideWalls,homography} from './trunk-geometry.mjs';
-const source='/cycle-seven/trunk-reference.png';
-function polygon(ctx,points){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();}
-function triangle(ctx,img,s,d){ctx.save();const center=d.reduce((a,p)=>[a[0]+p[0]/3,a[1]+p[1]/3],[0,0]);polygon(ctx,d.map(p=>{const dx=p[0]-center[0],dy=p[1]-center[1],r=Math.hypot(dx,dy);return [p[0]+dx/r*.7,p[1]+dy/r*.7];}));ctx.clip();const [a,b,c]=s,[u,v,w]=d;const det=(b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1]);if(Math.abs(det)<.00001){ctx.restore();return;}const A=((v[0]-u[0])*(c[1]-a[1])-(w[0]-u[0])*(b[1]-a[1]))/det,B=((v[1]-u[1])*(c[1]-a[1])-(w[1]-u[1])*(b[1]-a[1]))/det,C=((w[0]-u[0])*(b[0]-a[0])-(v[0]-u[0])*(c[0]-a[0]))/det,D=((w[1]-u[1])*(b[0]-a[0])-(v[1]-u[1])*(c[0]-a[0]))/det;ctx.transform(A,B,C,D,u[0]-A*a[0]-C*a[1],u[1]-B*a[0]-D*a[1]);ctx.drawImage(img,0,0);ctx.restore();}
-function warp(ctx,img,from,to){
- ctx.save();polygon(ctx,to);ctx.clip();
- const m=homography(from),n=homography(to);
- const at=(h,u,v)=>{const d=h[6]*u+h[7]*v+1;return [(h[0]*u+h[1]*v+h[2])/d,(h[3]*u+h[4]*v+h[5])/d];};
- const columns=Array.from({length:25},(_,i)=>i/24);
- for(let y=0;y<16;y++)for(let x=0;x<columns.length-1;x++){
-  const uv=[[columns[x],y/16],[columns[x+1],y/16],[columns[x+1],(y+1)/16],[columns[x],(y+1)/16]];
-  const s=uv.map(([u,v])=>at(m,u,v)),d=uv.map(([u,v])=>at(n,u,v));
-  triangle(ctx,img,[s[0],s[1],s[2]],[d[0],d[1],d[2]]);triangle(ctx,img,[s[0],s[2],s[3]],[d[0],d[2],d[3]]);
- }
- ctx.restore();
+import * as T from '../experiments/carnival/vendor/three.module.js';
+import {GLTFLoader} from '../experiments/carnival/vendor/GLTFLoader.js';
+const MODEL='/cycle-seven/zora-trunk.glb';
+let prepared;
+export function preloadTrunk(){
+ if(!prepared)prepared=Promise.all([new GLTFLoader().loadAsync(MODEL),(async()=>{const image=new Image();image.src='/cycle-seven/chest-clean-plate.png';await image.decode();return image;})()]).catch(error=>{prepared=null;throw error;});
+ return prepared;
 }
-export function createTrunk(plane){const canvas=document.createElement('canvas');canvas.className='chest-art chest-solid';canvas.width=1672;canvas.height=941;canvas.setAttribute('aria-hidden','true');plane.append(canvas);const ctx=canvas.getContext('2d');const img=new Image(),clean=new Image(),components=new Image();let progress=0,ready=false,unlocked=false;const exterior=document.createElement('canvas');exterior.width=1774;exterior.height=887;
- const rim=document.createElement('canvas');rim.width=1774;rim.height=887;
- const loaded=Promise.all([new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src=source;}),new Promise((ok,no)=>{clean.onload=ok;clean.onerror=no;clean.src='/cycle-seven/chest-clean-plate.png';}),new Promise((ok,no)=>{components.onload=ok;components.onerror=no;components.src='/cycle-seven/lid-components-reference.png';})]).then(()=>Promise.all([img.decode(),clean.decode(),components.decode()])).then(()=>{const material=rim.getContext('2d',{alpha:false});material.fillStyle='#160d09';material.fillRect(0,0,rim.width,rim.height);material.drawImage(components,0,0);const e=exterior.getContext('2d');e.drawImage(img,0,0); // Remove the loose red book from the exterior texture using adjacent original lid wood.
- e.save();polygon(e,[[430,260],[666,260],[666,351],[430,351]]);e.clip();e.drawImage(img,245,292,190,60,430,260,236,91);e.restore();ready=true;draw();});
- function draw(){if(!ready)return;ctx.clearRect(0,0,1672,941);ctx.save();polygon(ctx,[[1052,650],[1139,650],[1139,614],[1160,610],[1158,555],[1180,515],[1220,488],[1261,518],[1287,600],[1290,845],[1052,845]]);ctx.clip();ctx.drawImage(clean,0,0,1672,941);ctx.restore();ctx.save();ctx.translate(1012,548);ctx.scale(.36,.36);
- // Cavity and contents are clipped to the mouth; the unchanged front wall is
- // drawn after them. Closed lid covers the complete opening, including contents.
- const mouth=[[280,342],[729,381],[517,445],[134,397]];ctx.save();polygon(ctx,mouth);ctx.clip();ctx.drawImage(img,-887,0);ctx.save();polygon(ctx,[[320,394],[445,401],[463,414],[340,408]]);ctx.clip();ctx.drawImage(img,435,260,222,85,320,385,150,35);ctx.restore();ctx.save();polygon(ctx,[[476,384],[483,373],[491,379],[501,369],[508,383],[517,375],[524,389],[518,411],[482,407]]);ctx.clip();ctx.drawImage(img,490,0,260,140,470,369,60,49);ctx.restore();ctx.restore();
- const volume=lidVolume(progress),q=volume.inner,roof=volume.outer,area=q.reduce((s,p,i)=>{const n=q[(i+1)%4];return s+p[0]*n[1]-n[0]*p[1];},0);const inside=area<0;
- // Opaque backing closes shared seams. The six connected faces rotate as one
- // solid; no image layer has its own pivot, translation or animation clock.
- if(!inside)warp(ctx,exterior,[[350,279],[753,315],[551,384],[146,330]],q);
- // Retain the original underpainting beneath the approved top texture.
- for(const [a,b] of [[0,1],[0,3],[1,2]])warp(ctx,rim,[[90,622],[468,622],[468,668],[90,668]],[roof[a],roof[b],q[b],q[a]]);
- warp(ctx,rim,[[90,622],[468,622],[468,668],[90,668]],[roof[3],roof[2],q[2],q[3]]);
- warp(ctx,inside?img:exterior,inside?[[1167,342],[1616,381],[1581,139],[1159,123]]:[[350,279],[753,315],[551,384],[146,330]],inside?q:roof);
- // Original hinge knuckles and lid stays remain attached to the same endpoints.
- ctx.strokeStyle='#6c4825';ctx.lineWidth=8;ctx.lineCap='round';[[.12,.18],[.82,.9]].forEach(([a,b])=>{ctx.beginPath();ctx.moveTo(280+449*a,342+39*a);ctx.lineTo(280+449*b,342+39*b);ctx.stroke();});
- if(progress>.03){ctx.strokeStyle='#bd8a42';ctx.lineWidth=5;[0,1].forEach(i=>{const t=.47,A=q[i],B=q[3-i];ctx.beginPath();ctx.moveTo(i?690:175,i?404:393);ctx.lineTo(A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t);ctx.stroke();});}
- ctx.save();polygon(ctx,[[134,397],[517,445],[744,380],[741,735],[520,810],[132,712]]);ctx.clip();ctx.drawImage(img,-887,0);ctx.restore();
- // The stationary body must not cut a taper into the moving lid walls.
- // Paint only camera-facing walls, excluding the unchanged top/interior plane.
- for(const [edge,{quad}] of lidSideWalls(progress).entries()){
-  const facing=quad.reduce((s,p,i)=>{const n=quad[(i+1)%4];return s+p[0]*n[1]-n[0]*p[1];},0);
-  if(facing>=0)continue;
-  ctx.save();ctx.beginPath();ctx.rect(-2000,-2000,6000,6000);
-  (inside?q:roof).forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.clip('evenodd');
-  warp(ctx,rim,[[90,622],[468,622],[468,668],[90,668]],edge===2?[quad[1],quad[0],quad[3],quad[2]]:quad);ctx.restore();
- }
- if(progress<.015&&!unlocked){ctx.save();polygon(ctx,[[268,480],[324,475],[363,502],[362,594],[273,606],[250,575]]);ctx.clip();ctx.drawImage(img,1254,500,100,140,260,475,110,140);ctx.restore();ctx.save();ctx.translate(-40,55);polygon(ctx,[[326,434],[347,434],[357,450],[355,484],[366,487],[364,547],[299,539],[301,485],[310,481],[310,455]]);ctx.clip();ctx.drawImage(img,0,0);ctx.restore();}ctx.restore();canvas.dataset.lockState=unlocked?'unlocked':'locked';canvas.dataset.progress=String(progress);canvas.dataset.hinge=JSON.stringify(q.slice(0,2));}
- // The stationary reference already has a disengaged shackle. Keep that exact
- // artwork after release; the closed-lock patch is only for the initial lock.
- return {ready:loaded,pose(p){progress=p;draw();},setUnlocked(value){unlocked=value===true;draw();},canvas};}
+function polygon(ctx,points){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();}
+export function createTrunk(plane){
+ const canvas=document.createElement('canvas');canvas.className='chest-art chest-solid';canvas.width=1672;canvas.height=941;canvas.setAttribute('aria-hidden','true');plane.append(canvas);
+ const cleanup=document.createElement('canvas');cleanup.className='chest-art chest-cleanup';cleanup.width=1672;cleanup.height=941;cleanup.setAttribute('aria-hidden','true');plane.insertBefore(cleanup,canvas);
+ const ctx=cleanup.getContext('2d');let progress=0,unlocked=false,render;
+ const ready=preloadTrunk().then(async([gltf,clean])=>{
+  const model=gltf.scene.clone(true),scene=new T.Scene();scene.add(model);
+  const lid=model.getObjectByName('Trunk_Lid'),padlock=model.getObjectByName('Trunk_Padlock');
+  for(const name of ['Trunk_Body','Trunk_Lid','Trunk_Stay_Left','Trunk_Stay_Right','Trunk_Padlock','Trunk_Shackle'])if(!model.getObjectByName(name))throw Error('Trunk component missing: '+name);
+  const motion=new T.AnimationMixer(model),lockMotion=new T.AnimationMixer(model);
+  for(const clip of gltf.animations){const action=(clip.name==='Trunk_Shackle'?lockMotion:motion).clipAction(clip);action.setLoop(T.LoopOnce);action.clampWhenFinished=true;action.play();}
+  const renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power'});
+  // No idle loop: only the existing story clock requests new poses.
+  renderer.setSize(480,600,false);renderer.setPixelRatio(1);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
+  scene.add(new T.HemisphereLight(0xffecd5,0x655040,2));
+  for(const [position,intensity,color] of [[[3,5,4],3,0xffdab0],[[-3,2,-2],1.4,0xffd6a6]]){const lamp=new T.DirectionalLight(color,intensity);lamp.position.set(...position);scene.add(lamp);}
+  const camera=new T.OrthographicCamera(-1.3,1.3,1.625,-1.625,.01,100);camera.position.set(2.6,1.9,3.7);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+  const patch={x:1000,y:496,w:320,h:400};
+  Object.assign(canvas.style,{left:`${patch.x/1672*100}%`,top:`${patch.y/941*100}%`,width:`${patch.w/1672*100}%`,height:`${patch.h/941*100}%`});
+  ctx.save();polygon(ctx,[[1052,650],[1139,650],[1139,614],[1160,610],[1158,555],[1180,515],[1220,488],[1261,518],[1287,600],[1290,845],[1052,845]]);ctx.clip();ctx.drawImage(clean,0,0,1672,941);ctx.restore();
+  const project=point=>{const p=point.clone().project(camera);return {x:patch.x+(p.x+1)*patch.w/2,y:patch.y+(1-p.y)*patch.h/2};};
+  model.updateMatrixWorld(true);canvas.dataset.hinge=JSON.stringify(lid.getWorldPosition(new T.Vector3()).toArray());canvas.dataset.model='Zora_Trunk_Prepared';
+  const lockPoint=project(new T.Box3().setFromObject(padlock).getCenter(new T.Vector3()));
+  plane.style.setProperty('--chest-lock-left',`${lockPoint.x/1672*100}%`);plane.style.setProperty('--chest-lock-top',`${lockPoint.y/941*100}%`);
+  render=()=>{
+   const start=performance.now();
+   // Sample the synchronized opening half backwards to close. The shackle has
+   // its own saved-state clock, so closing never relocks an already solved chest.
+   motion.setTime(1/30+2*progress);lockMotion.setTime(unlocked?8/30:1/30);renderer.render(scene,camera);
+   canvas.dataset.progress=String(progress);canvas.dataset.lockState=unlocked?'unlocked':'locked';canvas.dataset.triangles=String(renderer.info.render.triangles);canvas.dataset.drawMs=(performance.now()-start).toFixed(2);
+  };
+  if(renderer.compileAsync)await renderer.compileAsync(scene,camera);render();
+ });
+ return {ready,canvas,pose(value){const next=Math.max(0,Math.min(1,value));if(next!==progress){progress=next;render?.();}},setUnlocked(value){if(unlocked!==Boolean(value)){unlocked=Boolean(value);render?.();}}};
+}

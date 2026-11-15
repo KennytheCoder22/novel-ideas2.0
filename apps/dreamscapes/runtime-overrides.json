@@ -492,12 +492,12 @@
     "sha256": "9197fee4f89d903df860c95a5458af57ea6473373373bdcb0c00159cce38eda5"
   },
   "cycle-seven/echo.js": {
-    "bytes": 10156,
-    "sha256": "1326f5fb445856b29f13d9ee1fefb6bd8376658d937845d5a0511c7f3087b383"
+    "bytes": 9902,
+    "sha256": "f693f41efce71f6ee57d9a2cb77fc94374131569ddb3d17c29989ae451efe15f"
   },
   "cycle-seven/echo.css": {
-    "bytes": 3629,
-    "sha256": "699468cb27becaf30218c2a275d7477495675b2993fe7f4100e85967809cd789"
+    "bytes": 3670,
+    "sha256": "bb8c5639a567e38920e4d2b0e3354a18ed3c08bb53c0b058aa826be3115ef721"
   },
   "cycle-seven/chest-state.mjs": {
     "bytes": 1117,
@@ -516,8 +516,8 @@
     "sha256": "caaa0064523973a5f49e6e94d7c4c9dd8dffe90a6d9d2b51891578c9561a8c93"
   },
   "cycle-seven/trunk-renderer.mjs": {
-    "bytes": 6808,
-    "sha256": "05a7f72c2f3a675569d8bafc1f1ecb60a2342e34022c24c49b6bd49c10c5286e"
+    "bytes": 4330,
+    "sha256": "a08fb8b535b8201b2e658e555a8645117113e5270d2471a33e8c3c64eed75393"
   },
   "cycle-seven/trunk-reference.png": {
     "bytes": 2539952,
@@ -556,11 +556,15 @@
     "sha256": "db4a91b14f4b489d5a0fa4bbacc5389b5474da6424485bb60fcc0dc212c20379"
   },
   "zora-scene.js": {
-    "bytes": 3089,
-    "sha256": "b13bd28f697a526aa913dc34d6c9ef24f4786f7fda93fb60e62fcf89e45fefc3"
+    "bytes": 3101,
+    "sha256": "06834c7c578b7066b664b99c5a108b82e6984901405761579e7b01a8edc7b2c4"
   },
   "cycle-seven/lid-components-reference.png": {
     "bytes": 2274787,
     "sha256": "6757fda3bd06520359a3b4b2fbe28a4d56cb5e9956d56c6bb736e58996e9e51c"
+  },
+  "cycle-seven/zora-trunk.glb": {
+    "bytes": 17957844,
+    "sha256": "67c078daa22ceeaac2f9e518833ee6e6c1d2d780c4b85bc3d3970c6108f85825"
   }
 }

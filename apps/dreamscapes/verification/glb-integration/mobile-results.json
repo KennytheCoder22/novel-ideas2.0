@@ -1,0 +1,20 @@
+[
+  {
+    "mobile": true,
+    "passed": true,
+    "sceneReadyMs": 11476,
+    "performance": {
+      "samples": 275,
+      "frameMedianMs": 16.69999999999709,
+      "frameP95Ms": 16.80000000000291,
+      "drawP95Ms": 3.3
+    },
+    "downloadsBeforeRefresh": 1,
+    "fullJourney": true,
+    "replay": true,
+    "reset": true,
+    "savedStates": true,
+    "errors": [],
+    "failed": []
+  }
+]
