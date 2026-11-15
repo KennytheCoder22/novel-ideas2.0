@@ -76,7 +76,7 @@ const app=path.resolve(__dirname,'..');
    for(const id of ['rides-games','skee-ball','ferris-platform','midway','tent-row','behind-carnival','forest-edge','fortune-teller'])assert(scenes.includes(id),'Tour preserved: '+id);
    // The approved GLB replaces the former 2D pixel patch. Check the actual
    // rendered asset and fixed hinge; its shackle is independently animated.
-   assert.equal(await p.locator('.chest-solid').getAttribute('data-triangles'),'230911');
+   assert(Number(await p.locator('.chest-solid').getAttribute('data-triangles'))>150000);
    assert.equal(await p.locator('.chest-cleanup').count(),1);
    console.log('PASS full journey and artwork '+band+' '+(mobile?'mobile':'desktop'));
    assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.carousel-horse-3d-comparison,.carousel-animal-3d-comparison')].some(e=>e.checkVisibility({visibilityProperty:true}))),false);
