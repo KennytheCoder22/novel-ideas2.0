@@ -58,7 +58,7 @@ const app=path.resolve(__dirname,'..');
    await p.goto(host.url+'/carnival/?scene=fortune-teller',{waitUntil:'commit'});await ready();await assertLock(false);
    await p.locator('.chest-lock').focus();await p.locator('.chest-lock').evaluate(e=>e.blur());await shot('initial-locked');
    const hinge=await p.locator('.chest-solid').getAttribute('data-hinge');
-   await p.evaluate(()=>window.__lockedChestPixels=document.querySelector('.chest-solid').getContext('2d').getImageData(0,0,1672,941).data);
+   assert.equal(await p.locator('.chest-solid').getAttribute('data-model'),'Zora_Trunk_Prepared');
    await activate(p.locator('.chest-lock'));await p.locator('.chest-puzzle[open]').waitFor();await assertLock(false);
    await activate(p.getByRole('button',{name:'Reset the linked wheels',exact:true}));await assertLock(false);
    await solve();await assertLock(true);
@@ -74,15 +74,10 @@ const app=path.resolve(__dirname,'..');
    assert.equal(await p.evaluate(()=>DreamscapesCycleEight.snapshot().awakened),true);
    const scenes=await p.evaluate(()=>window.__tourScenes);
    for(const id of ['rides-games','skee-ball','ferris-platform','midway','tent-row','behind-carnival','forest-edge','fortune-teller'])assert(scenes.includes(id),'Tour preserved: '+id);
-   // Repeated unchanged canvas draws vary by one channel level on Edge. Larger
-   // differences must stay entirely inside the original lock patch.
-   result.lockPixelBounds=await p.evaluate(()=>{
-    const before=window.__lockedChestPixels,after=document.querySelector('.chest-solid').getContext('2d').getImageData(0,0,1672,941).data;
-    let minX=1672,minY=941,maxX=-1,maxY=-1,changed=0;
-    for(let i=0;i<before.length;i+=4)if(Math.max(Math.abs(before[i]-after[i]),Math.abs(before[i+1]-after[i+1]),Math.abs(before[i+2]-after[i+2]),Math.abs(before[i+3]-after[i+3]))>1){const x=(i/4)%1672,y=Math.floor(i/4/1672);minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);changed++;}
-    return {minX,minY,maxX,maxY,changed,channelTolerance:1};
-   });
-   const b=result.lockPixelBounds;assert(b.changed>0);assert(b.minX>=1100&&b.maxX<=1145&&b.minY>=718&&b.maxY<=769,JSON.stringify(b));
+   // The approved GLB replaces the former 2D pixel patch. Check the actual
+   // rendered asset and fixed hinge; its shackle is independently animated.
+   assert.equal(await p.locator('.chest-solid').getAttribute('data-triangles'),'230911');
+   assert.equal(await p.locator('.chest-cleanup').count(),1);
    console.log('PASS full journey and artwork '+band+' '+(mobile?'mobile':'desktop'));
    assert.equal(await p.evaluate(()=>[...document.querySelectorAll('.carousel-horse-3d-comparison,.carousel-animal-3d-comparison')].some(e=>e.checkVisibility({visibilityProperty:true}))),false);
    await replayAndSkip();await shot('replayed-unlocked');

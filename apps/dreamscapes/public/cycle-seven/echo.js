@@ -1,6 +1,5 @@
 import {createTrunk} from './trunk-renderer.mjs';
 import {initial,turn,solved,clamp,readBand} from './chest-state.mjs';
-const art='/experiments/carnival/locations/fortune-teller.png',base='/cycle-seven/';
 const safeStorage={getItem:key=>{try{return sessionStorage.getItem(key);}catch{return null;}}};
 const band=()=>window.DreamscapesObservations?.snapshot().ageBand||'adults';
 let age=band(),saved=readBand(safeStorage,age),wheels=initial(saved.round),phase='idle',plane,trunk,lock,opened=false,run=null,prepared;
@@ -47,7 +46,7 @@ function atChest(dx=0,dy=0){const r=plane.getBoundingClientRect();return {x:r.le
 function place(point){light.style.left=point.x+'px';light.style.top=point.y+'px';}
 async function animate(ms,fn,token,interruptible=true){const start=performance.now();return new Promise(resolve=>{function tick(now){if(token!==run||interruptible&&token.skip){resolve(false);return;}const t=clamp((now-start)/ms);fn(t);if(t===1)resolve(true);else requestAnimationFrame(tick);}requestAnimationFrame(tick);});}
 async function openPuzzle(){if(phase!=='idle'||run)return;phase='preparing';frameChest();say(saved.unlocked?'The borrowed light stirs inside…':'The brass lock catches the lamplight…');try{await prepare();if(phase!=='preparing')return;if(saved.unlocked){await sequence();return;}wheels=initial(saved.round);phase='puzzle';render();say('');panel.classList.remove('chest-solved');panel.showModal();controls[0].focus();}catch{phase='idle';say('The chest could not load. Try the lock again.');prepared=null;}}
-function prepare(){return prepared||=Promise.all([trunk.ready,...['chest-clean-plate.png','chest-bare.png'].map(name=>new Promise((resolve,reject)=>{const img=new Image();img.onload=resolve;img.onerror=reject;img.src=base+name;})),window.CarnivalNavigation.prepareTour(tour)]);}
+function prepare(){return prepared||=Promise.all([trunk.ready,window.CarnivalNavigation.prepareTour(tour)]);}
 async function sequence(){if(run||!(phase==='puzzle'||phase==='preparing'&&saved.unlocked))return;const firstUnlock=!saved.unlocked;saved.unlocked=true;persist();syncLock();const token=run={skip:false,age};phase='unlocking';render();panel.classList.add('chest-solved');reset.disabled=close.disabled=true;document.documentElement.dataset.chestTour='true';skip.hidden=!saved.completed;if(!skip.hidden)skip.focus();else status.focus();say(firstUnlock?'The lock yields. Something stirs inside.':'The borrowed light stirs inside the unlocked chest.');
  try{
  await animate(600,()=>{},token);panel.close();

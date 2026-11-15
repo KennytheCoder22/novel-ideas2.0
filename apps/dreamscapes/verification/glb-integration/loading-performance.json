@@ -1,0 +1,15 @@
+{
+  "hiddenUntilModelReady": true,
+  "puzzleGlyphs": true,
+  "staticControl": {
+    "samples": 15,
+    "medianMs": 49.900000000001455,
+    "p95Ms": 1716.7000000000007
+  },
+  "cpuThrottle": 4,
+  "samples": 143,
+  "medianFrameMs": 16.700000000000728,
+  "p95FrameMs": 16.80000000000291,
+  "p95DrawMs": 6.4,
+  "progress": "0"
+}

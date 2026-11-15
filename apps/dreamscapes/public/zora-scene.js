@@ -1,11 +1,11 @@
+import {preloadTrunk} from './cycle-seven/trunk-renderer.mjs';
 // A scene is ready only after its approved composite has been drawn, not merely
 // after the background (which still contains the original trunk) has downloaded.
 let encounters;
 const images=new Map(),styles=new Map(),scenes=new WeakMap();
 const artwork=[
  '/experiments/carnival/locations/fortune-teller.png',
- '/cycle-seven/trunk-reference.png','/cycle-seven/chest-clean-plate.png',
- '/cycle-seven/lid-components-reference.png',
+ '/cycle-seven/chest-clean-plate.png',
  '/cycle-zora/zora.png','/cycle-zora/ball.png',
  '/experiments/carnival/platform/loose-ticket.png',
  '/experiments/carnival/dream-worlds/Moonlit%20(Griffin)%20Citadel%20Among%20Misty%20Peaks.png'
@@ -46,12 +46,12 @@ function styleReady(url){
 }
 export function preloadZoraScene(){
  // Only nearby scenes call this. Other navigation never awaits these images.
- return Promise.all([initializeEncounters(),...artwork.map(url=>imageReady(url,true)),...sheets.map(styleReady)]);
+ return Promise.all([initializeEncounters(),preloadTrunk(),...artwork.map(url=>imageReady(url,true)),...sheets.map(styleReady)]);
 }
 export function prepareZoraScene(plane){
  if(!scenes.has(plane)){
   const ready=(async()=>{
-   const [modules]=await Promise.all([initializeEncounters(),...artwork.map(url=>imageReady(url,false)),...sheets.map(styleReady)]);
+   const [modules]=await Promise.all([initializeEncounters(),preloadTrunk(),...artwork.map(url=>imageReady(url,false)),...sheets.map(styleReady)]);
    await Promise.all([modules.living.prepareLiving(plane),modules.chest.prepareChest(plane)]);
    modules.afterimages.prepareAfterimages();
    // Both decoded textures and the saved lock state are now in the first frame.
