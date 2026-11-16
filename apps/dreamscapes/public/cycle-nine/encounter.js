@@ -18,6 +18,7 @@ function paint(){
   if(band==='kids'&&state.node==='memory')text='You trade the memory of a little song. Kit steps free and teaches you the tune again. The keeper hums along from behind the glass. You leave together, singing something new.';
   if(band==='kids'&&state.node==='bargain')text='The keeper asks for someone else to watch the hall. Kit shakes their head. You offer a little song you know, or ask the keeper to take a turn watching.';
   p(text);
+  if(state.node==='opening'&&window.DreamscapesCycleEleven?.snapshot().clues.includes('fun-house'))p(window.DreamscapesCycleEleven.kitContext());
   for(const [label,next]of nodes[state.node].choices||[])button(band==='kids'&&next==='memory'?'Offer the memory of a little song':label,()=>{state=choose(state,next);save();});
   if(nodes[state.node].ending){button('Reflect on this story',()=>{view='reaction';paint();});button('See book suggestions',()=>{view='books';paint();});button('Try another path',()=>{state={...state,node:'opening',actions:[]};save();});}
  }else if(view==='reaction'){

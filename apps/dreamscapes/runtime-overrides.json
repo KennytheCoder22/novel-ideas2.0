@@ -1,8 +1,4 @@
 {
-  "experiments/carnival/index.html": {
-    "bytes": 8720,
-    "sha256": "266a5d13e1dc766fd51a71ea66f076bad0389d58acc300b37cdaf5f9ca495e63"
-  },
   "experiments/carnival/navigation.js": {
     "bytes": 13003,
     "sha256": "c1db091bf64268cb03c76f31bf13fe791be61a6bc55b735d5b1cc1f45f92dd42"
@@ -451,7 +447,7 @@
     "bytes": 2952692,
     "sha256": "d0128ad831c2c1a6ae87e9b9d1754054e480a718d953b27b2b9541415a80ab9f"
   },
-  "experiments/carnival/dream-worlds/Retro Cat\u2019s-Eye Living Room(Cat).png": {
+  "experiments/carnival/dream-worlds/Retro Cat’s-Eye Living Room(Cat).png": {
     "bytes": 2961675,
     "sha256": "22606b74531fca672b834dfdf225da2d6a71f5f24b4e740bd75ee58037499485"
   },
@@ -539,10 +535,6 @@
     "bytes": 7022,
     "sha256": "630aedf0c0145a79603e720d5dabc965b5ddee53f7a730a2d8fee21d8c384567"
   },
-  "cycle-nine/encounter.js": {
-    "bytes": 7098,
-    "sha256": "14f85cb1efeafc823393d07eba02a9f9025306a3f6c9c46803dff483d6359c9d"
-  },
   "cycle-nine/story.css": {
     "bytes": 1462,
     "sha256": "a0854ec63ab3a69f4b15079d569c54017055de0f4bf47ceea8d0daa39f619dda"
@@ -566,5 +558,25 @@
   "cycle-seven/zora-trunk.glb": {
     "bytes": 17908160,
     "sha256": "ebe910f5e11369608ee9c96708831b60e1fe0207ffbb0316b9a5bfcceaf78e69"
+  },
+  "experiments/carnival/index.html": {
+    "bytes": 8844,
+    "sha256": "f8f41628a147af20469abf9f6c356e424aac6bc2446c9466fc70e6ecedbb496d"
+  },
+  "cycle-nine/encounter.js": {
+    "sha256": "993457fdbae2b36b967ba16c3f08822f0ef50b3ab9da1557ba1356305b8bd15d",
+    "bytes": 7244
+  },
+  "cycle-eleven/carnival.js": {
+    "bytes": 10280,
+    "sha256": "e1866c508402b6e370c457526284a7bd1f69c4bbbdbe4893f29224b8da0f8d0d"
+  },
+  "cycle-eleven/carnival.css": {
+    "bytes": 2282,
+    "sha256": "4e32ef78f0dabc3b141253796250ce800626451116332015077ce462f20b52ce"
+  },
+  "cycle-eleven/memory.mjs": {
+    "bytes": 1480,
+    "sha256": "1c8386270dc26ee57513b9a69e2539f4e9457679a9948b2ddbec92135e565c67"
   }
 }
