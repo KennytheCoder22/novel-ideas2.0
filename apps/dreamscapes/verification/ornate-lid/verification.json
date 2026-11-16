@@ -1,0 +1,7 @@
+{
+  "build": "PASS",
+  "allExistingMeshesAndUVsUnchanged": true,
+  "newDecoration": "Five flat brass star inlays, existing reinforcement bands now aged brass",
+  "textureChange": "Lid top color and metal/roughness atlas tile",
+  "interactions": "No application behavior changes"
+}
