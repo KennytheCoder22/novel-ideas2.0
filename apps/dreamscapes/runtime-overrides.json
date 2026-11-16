@@ -517,7 +517,7 @@
   },
   "cycle-seven/trunk-renderer.mjs": {
     "bytes": 4330,
-    "sha256": "a08fb8b535b8201b2e658e555a8645117113e5270d2471a33e8c3c64eed75393"
+    "sha256": "ce0e94631327c70610d3b972b357aba6bba1e52abe0509d942cdcc3aa8b6a94f"
   },
   "cycle-seven/trunk-reference.png": {
     "bytes": 2539952,
@@ -564,7 +564,7 @@
     "sha256": "6757fda3bd06520359a3b4b2fbe28a4d56cb5e9956d56c6bb736e58996e9e51c"
   },
   "cycle-seven/zora-trunk.glb": {
-    "bytes": 17957844,
-    "sha256": "67c078daa22ceeaac2f9e518833ee6e6c1d2d780c4b85bc3d3970c6108f85825"
+    "bytes": 16930056,
+    "sha256": "69eba95de0ee840631e09813d8106a315a70f209028d9ac79b4931b41c111a91"
   }
 }

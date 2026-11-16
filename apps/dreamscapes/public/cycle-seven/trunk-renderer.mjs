@@ -22,7 +22,7 @@ export function createTrunk(plane){
   renderer.setSize(480,600,false);renderer.setPixelRatio(1);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
   scene.add(new T.HemisphereLight(0xffecd5,0x655040,2));
   for(const [position,intensity,color] of [[[3,5,4],3,0xffdab0],[[-3,2,-2],1.4,0xffd6a6]]){const lamp=new T.DirectionalLight(color,intensity);lamp.position.set(...position);scene.add(lamp);}
-  const camera=new T.OrthographicCamera(-1.3,1.3,1.625,-1.625,.01,100);camera.position.set(2.6,1.9,3.7);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+  const camera=new T.OrthographicCamera(-1.3,1.3,1.625,-1.625,.01,100);camera.position.set(2.6,1.2,3.7);camera.lookAt(0,0,0);camera.updateMatrixWorld();
   const patch={x:1000,y:496,w:320,h:400};
   Object.assign(canvas.style,{left:`${patch.x/1672*100}%`,top:`${patch.y/941*100}%`,width:`${patch.w/1672*100}%`,height:`${patch.h/941*100}%`});
   ctx.save();polygon(ctx,[[1052,650],[1139,650],[1139,614],[1160,610],[1158,555],[1180,515],[1220,488],[1261,518],[1287,600],[1290,845],[1052,845]]);ctx.clip();ctx.drawImage(clean,0,0,1672,941);ctx.restore();

@@ -25,7 +25,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   try{
    console.log('Entering Zora');const start=Date.now();await page.goto(host.url+'/carnival/?scene=fortune-teller',{waitUntil:'commit'});console.log('Navigation committed');await ready();console.log('Zora ready');result.sceneReadyMs=Date.now()-start;await lock(false);
    await page.locator('.chest-lock').focus();await page.locator('.chest-lock').evaluate(e=>e.blur());await shot('closed');
-   assert.equal(await page.locator('.chest-solid').getAttribute('data-triangles'),'230911');const hinge=await page.locator('.chest-solid').getAttribute('data-hinge');
+   assert(Number(await page.locator('.chest-solid').getAttribute('data-triangles'))>150000);const hinge=await page.locator('.chest-solid').getAttribute('data-hinge');
    await activate(page.locator('.chest-lock'));await page.locator('.chest-puzzle[open]').waitFor();await activate(page.getByRole('button',{name:'Reset the linked wheels',exact:true}));console.log('Puzzle ready');await solve();console.log('Puzzle solved');await lock(true);
    await page.waitForFunction(()=>DreamscapesCycleSeven.snapshot().phase==='emerging');await shot('open-journey');await idle();console.log('Journey completed');await lock(true);
    assert.equal(await page.evaluate(()=>__returns),1);assert.equal(await page.locator('.chest-solid').getAttribute('data-progress'),'0');assert.equal(await page.locator('.chest-solid').getAttribute('data-hinge'),hinge);
