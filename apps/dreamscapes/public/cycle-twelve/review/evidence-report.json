@@ -1,0 +1,216 @@
+[
+  {
+    "route": [
+      "follow-clues",
+      "solve-rule"
+    ],
+    "outcome": "last-guest-released",
+    "discoveries": [
+      "last-guest-released"
+    ],
+    "evidence": [
+      {
+        "id": "kit-living-mirrors:opening:follow-clues",
+        "selected": "Follow its trail. I want to untangle the secret.",
+        "preferences": [
+          "mystery",
+          "investigation"
+        ],
+        "confidence": 0.6,
+        "consequence": "Kit reveals a ticket-shaped shadow with a missing last guest."
+      },
+      {
+        "id": "kit-living-mirrors:mystery:solve-rule",
+        "selected": "Work out the loophole, clue by clue.",
+        "preferences": [
+          "mystery",
+          "puzzle-solving",
+          "layered-complexity",
+          "measured-pacing"
+        ],
+        "confidence": 0.6,
+        "consequence": "A tiny mirror turns toward the exit; a paper door opens for the reflected guest."
+      }
+    ]
+  },
+  {
+    "route": [
+      "follow-clues",
+      "follow-impossible"
+    ],
+    "outcome": "impossible-route-saved",
+    "discoveries": [
+      "last-guest-released",
+      "impossible-route-saved"
+    ],
+    "evidence": [
+      {
+        "id": "kit-living-mirrors:opening:follow-clues",
+        "selected": "Follow its trail. I want to untangle the secret.",
+        "preferences": [
+          "mystery",
+          "investigation"
+        ],
+        "confidence": 0.6,
+        "consequence": "Kit reveals a ticket-shaped shadow with a missing last guest."
+      },
+      {
+        "id": "kit-living-mirrors:mystery:follow-impossible",
+        "selected": "Follow the guest into that impossible little room.",
+        "preferences": [
+          "wonder",
+          "adventure",
+          "discovery"
+        ],
+        "confidence": 0.6,
+        "consequence": "Kit opens a hidden room of unfinished carnival maps and saves a route fragment."
+      }
+    ]
+  },
+  {
+    "route": [
+      "hear-kit",
+      "hear-song"
+    ],
+    "outcome": "kits-song-remembered",
+    "discoveries": [
+      "last-guest-released",
+      "impossible-route-saved",
+      "kits-song-remembered"
+    ],
+    "evidence": [
+      {
+        "id": "kit-living-mirrors:opening:hear-kit",
+        "selected": "Stay with Kit. I want to hear her story.",
+        "preferences": [
+          "connection",
+          "character-history"
+        ],
+        "confidence": 0.6,
+        "consequence": "Kit opens a reflection of the evening she promised to watch the hall."
+      },
+      {
+        "id": "kit-living-mirrors:connection:hear-song",
+        "selected": "Share a gentle memory. Hear her sister’s song.",
+        "preferences": [
+          "connection",
+          "emotional-relationships",
+          "lighter-tone"
+        ],
+        "confidence": 0.6,
+        "consequence": "Kit shares a song from before the carnival; two warm reflections keep its rhythm."
+      }
+    ]
+  },
+  {
+    "route": [
+      "hear-kit",
+      "uncover-name"
+    ],
+    "outcome": "kits-name-anchored",
+    "discoveries": [
+      "last-guest-released",
+      "impossible-route-saved",
+      "kits-song-remembered",
+      "kits-name-anchored"
+    ],
+    "evidence": [
+      {
+        "id": "kit-living-mirrors:opening:hear-kit",
+        "selected": "Stay with Kit. I want to hear her story.",
+        "preferences": [
+          "connection",
+          "character-history"
+        ],
+        "confidence": 0.6,
+        "consequence": "Kit opens a reflection of the evening she promised to watch the hall."
+      },
+      {
+        "id": "kit-living-mirrors:connection:uncover-name",
+        "selected": "Discover why the hall forgot her name.",
+        "preferences": [
+          "connection",
+          "character-history",
+          "mystery"
+        ],
+        "confidence": 0.6,
+        "consequence": "Kit scratches her name beneath the keeper’s rule; the mirror can no longer erase it."
+      }
+    ]
+  },
+  {
+    "route": [
+      "face-shadow",
+      "hold-boundary"
+    ],
+    "outcome": "shadow-boundary-known",
+    "discoveries": [
+      "last-guest-released",
+      "impossible-route-saved",
+      "kits-song-remembered",
+      "kits-name-anchored",
+      "shadow-boundary-known"
+    ],
+    "evidence": [
+      {
+        "id": "kit-living-mirrors:opening:face-shadow",
+        "selected": "Let it come closer. I want to face the danger.",
+        "preferences": [
+          "suspense",
+          "danger"
+        ],
+        "confidence": 0.6,
+        "consequence": "Kit draws a circle of lamplight; the shadow approaches its edge."
+      },
+      {
+        "id": "kit-living-mirrors:suspense:hold-boundary",
+        "selected": "Wait in the dark. Let the suspense build slowly.",
+        "preferences": [
+          "suspense",
+          "measured-pacing",
+          "darker-tone"
+        ],
+        "confidence": 0.6,
+        "consequence": "The shadow tests the light three times. Kit learns its limit and marks a safe boundary."
+      }
+    ]
+  },
+  {
+    "route": [
+      "face-shadow",
+      "chase-reveal"
+    ],
+    "outcome": "paper-bird-returned",
+    "discoveries": [
+      "last-guest-released",
+      "impossible-route-saved",
+      "kits-song-remembered",
+      "kits-name-anchored",
+      "shadow-boundary-known",
+      "paper-bird-returned"
+    ],
+    "evidence": [
+      {
+        "id": "kit-living-mirrors:opening:face-shadow",
+        "selected": "Let it come closer. I want to face the danger.",
+        "preferences": [
+          "suspense",
+          "danger"
+        ],
+        "confidence": 0.6,
+        "consequence": "Kit draws a circle of lamplight; the shadow approaches its edge."
+      },
+      {
+        "id": "kit-living-mirrors:suspense:chase-reveal",
+        "selected": "Chase it into the light. I want a sudden, playful reveal.",
+        "preferences": [
+          "brisk-pacing",
+          "lighter-tone",
+          "mystery"
+        ],
+        "confidence": 0.6,
+        "consequence": "Kit chases the shadow into the lantern beam: it unfolds into her lost paper bird."
+      }
+    ]
+  }
+]

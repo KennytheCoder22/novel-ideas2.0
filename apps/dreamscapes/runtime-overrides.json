@@ -540,12 +540,12 @@
     "sha256": "a0854ec63ab3a69f4b15079d569c54017055de0f4bf47ceea8d0daa39f619dda"
   },
   "cycle-ten/profile.mjs": {
-    "bytes": 2344,
-    "sha256": "dd8ab6eb12f0c86df61e89396569899df6ec01d3e05de62fe396f041cdb9892e"
+    "bytes": 4402,
+    "sha256": "a32aa3976c0c74cd34f6bd1ce4a89c30cc19b0ed7ea004fdb3cb8f01ad375ec2"
   },
   "cycle-ten/reading.js": {
-    "bytes": 7915,
-    "sha256": "db4a91b14f4b489d5a0fa4bbacc5389b5474da6424485bb60fcc0dc212c20379"
+    "bytes": 8949,
+    "sha256": "3f3b802a6fb4ab919c22a6bc883b9aaedc2be0d2653ca30a18d95a4dd7f5844f"
   },
   "zora-scene.js": {
     "bytes": 3101,
@@ -560,8 +560,8 @@
     "sha256": "ebe910f5e11369608ee9c96708831b60e1fe0207ffbb0316b9a5bfcceaf78e69"
   },
   "experiments/carnival/index.html": {
-    "bytes": 8844,
-    "sha256": "f8f41628a147af20469abf9f6c356e424aac6bc2446c9466fc70e6ecedbb496d"
+    "bytes": 8968,
+    "sha256": "befd10e6ea56c36e7bd7e0646e242964c2a179457d4946219a1be6450839a982"
   },
   "cycle-nine/encounter.js": {
     "sha256": "993457fdbae2b36b967ba16c3f08822f0ef50b3ab9da1557ba1356305b8bd15d",
@@ -578,5 +578,73 @@
   "cycle-eleven/memory.mjs": {
     "bytes": 1480,
     "sha256": "1c8386270dc26ee57513b9a69e2539f4e9457679a9948b2ddbec92135e565c67"
+  },
+  "cycle-twelve/asset-report.json": {
+    "bytes": 1526,
+    "sha256": "c5d0d374961b7f0f07a9a5c58349bc25cae41873f719b201d97b86ee0ab27609"
+  },
+  "cycle-twelve/encounter.css": {
+    "bytes": 4405,
+    "sha256": "4afd189babc7996a22bbd4bfda6f188f503d3cfc27bd619b174149fc0f1ac6fb"
+  },
+  "cycle-twelve/encounter.js": {
+    "bytes": 11709,
+    "sha256": "83732b5e7d32e674c269e4050959d9485f01115f05da4688b6fe912fe5785d0f"
+  },
+  "cycle-twelve/hall-renderer.mjs": {
+    "bytes": 6397,
+    "sha256": "44dc7c24fe744bc66f2aa3e65719fea5929ffd4ed9b7c2e57bea21d121794e31"
+  },
+  "cycle-twelve/kit-renderer.mjs": {
+    "bytes": 6507,
+    "sha256": "df6e75cfa65739d8b4a9e392482a692f57fa800c507694007126f9535db9d59b"
+  },
+  "cycle-twelve/kit.glb": {
+    "bytes": 8542764,
+    "sha256": "3d7237a5dccc3162dec7db1a4444325537ca2c1bf2674510152434dbffb7730d"
+  },
+  "cycle-twelve/story.mjs": {
+    "bytes": 10846,
+    "sha256": "058114b8dba54d960041f95636978a21ec5c6d8141a25f28b7bec964884e677b"
+  },
+  "cycle-twelve/review/center.png": {
+    "bytes": 2315524,
+    "sha256": "3d0b8085245a670533e59670e0438095a31b1bf4a0b091a50f44c27712d67fea"
+  },
+  "cycle-twelve/review/connection.png": {
+    "bytes": 2254038,
+    "sha256": "ca229b7d7133e3cb4c8892d28bc7e450cbf3fe00106a1a0f06918797435cf96a"
+  },
+  "cycle-twelve/review/evidence-report.json": {
+    "bytes": 6036,
+    "sha256": "1fe1df43e0a729232349516b8d6e38898790b148de60302c25d40cc2d5e8941c"
+  },
+  "cycle-twelve/review/index.html": {
+    "bytes": 4094,
+    "sha256": "b9043eb328dacc3bb2d3a604418e2bbbf571beb67ad2ae9a84fe21ca64cb63c1"
+  },
+  "cycle-twelve/review/intro.webm": {
+    "bytes": 1623077,
+    "sha256": "0cb4ceff2f694a66cf6e115dc1a59e87678e4280758b7454fde49f1ff6776de0"
+  },
+  "cycle-twelve/review/left.png": {
+    "bytes": 2305203,
+    "sha256": "85f638568e45f596f53bd09efc62afd6877803bad3723ec227aea4aedf4b5981"
+  },
+  "cycle-twelve/review/mystery.png": {
+    "bytes": 2253132,
+    "sha256": "3b6cb76e478dd3eb8a7717cd5181bef2dcc01d889a5858a4a769edc835acb71d"
+  },
+  "cycle-twelve/review/peek.png": {
+    "bytes": 2316878,
+    "sha256": "ab16c8d3fa4e459d451fc16d2872657aed8d965722295915cfcdc5d54c571960"
+  },
+  "cycle-twelve/review/right.png": {
+    "bytes": 2317352,
+    "sha256": "2b43a7127800ac0b6b32484f1ca6e46f59455ad9e3963d5ff2c8fa1b44c4b4fa"
+  },
+  "cycle-twelve/review/suspense.png": {
+    "bytes": 2255920,
+    "sha256": "b442d38735e77bc9aabc45a300db3dfe62ea1c4c0e3602830c949c7510dacdfe"
   }
 }

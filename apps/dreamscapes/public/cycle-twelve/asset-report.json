@@ -1,0 +1,74 @@
+{
+  "sourceSha256": "29d2a7a2cd3fbf0a3131376624f2c08ed6964feca3ba1dea18af2af1d1ea0e95",
+  "sourceBytes": 53829748,
+  "preparedBytes": 8542764,
+  "vertices": 61224,
+  "triangles": 30255,
+  "skeletonJoints": 66,
+  "clips": [
+    {
+      "name": "Running",
+      "channels": 192,
+      "duration": 0.6333333253860474
+    },
+    {
+      "name": "Walking",
+      "channels": 192,
+      "duration": 1.0333333015441895
+    }
+  ],
+  "textures": [
+    {
+      "name": "normal",
+      "original": [
+        4096,
+        4096
+      ],
+      "prepared": [
+        1024,
+        1024
+      ],
+      "bytes": 2015677
+    },
+    {
+      "name": "texture_0",
+      "original": [
+        4096,
+        4096
+      ],
+      "prepared": [
+        1024,
+        1024
+      ],
+      "bytes": 1879482
+    },
+    {
+      "name": "texture_0_metallic_roughness",
+      "original": [
+        4096,
+        4096
+      ],
+      "prepared": [
+        1024,
+        1024
+      ],
+      "bytes": 987494
+    }
+  ],
+  "components": [
+    {
+      "vertices": 61224,
+      "min": [
+        -0.2606973946094513,
+        3.8909711008727754e-09,
+        -0.410698801279068
+      ],
+      "max": [
+        0.2606974244117737,
+        1.700000286102295,
+        0.410698801279068
+      ]
+    }
+  ],
+  "geometryPolicy": "Original vertex positions, skin weights, triangles, skeleton and animation channels preserved. Sampled original walk poses showed no detached leg artifact; large gestures use the free right hand to avoid the bind mesh left-hand/skirt contact."
+}

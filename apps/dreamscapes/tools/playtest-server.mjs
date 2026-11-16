@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const types = {'.html':'text/html', '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.png':'image/png', '.jpg':'image/jpeg', '.glb':'model/gltf-binary', '.bin':'application/octet-stream', '.json':'application/json'};
+const types = {'.html':'text/html', '.js':'text/javascript', '.mjs':'text/javascript', '.css':'text/css', '.png':'image/png', '.jpg':'image/jpeg', '.webm':'video/webm', '.glb':'model/gltf-binary', '.bin':'application/octet-stream', '.json':'application/json'};
 
 // Match the app's hosting aliases, including relative module/asset requests.
 export async function startPlaytestServer({port=0, root=path.join(appRoot,'public')}={}) {

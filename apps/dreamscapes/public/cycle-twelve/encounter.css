@@ -1,0 +1,35 @@
+/* The original artwork remains the room; only transparent reflected pixels are new. */
+.kit-hall{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+[data-kit-live] .story-nine-entry{display:none!important}
+[data-kit-live] .play-room-title{padding:8px 18px;background:#20120ead;border-color:#aa773e55}
+[data-kit-live] .play-room-title p{display:none}
+[data-kit-live] .play-room-status{max-width:220px;left:18px;bottom:100px;transform:none;font-size:12px}
+.kit-encounter{position:absolute;inset:0;z-index:15;pointer-events:none;color:#ffe8ba;font-family:Georgia,serif}
+.kit-encounter[hidden],.kit-encounter [hidden]{display:none!important}
+.kit-lines{position:absolute;left:50%;bottom:205px;transform:translateX(-50%);width:min(660px,88vw);text-align:center;font-size:clamp(14px,1.4vw,18px);line-height:1.45;text-shadow:0 2px 4px #000,0 0 10px #000;margin:0;padding:8px 12px;background:linear-gradient(90deg,transparent,#17100cd9 14%,#17100cd9 86%,transparent);box-sizing:border-box}
+.kit-lines:empty{display:none}
+.kit-context{display:block;font-size:.86em;color:#e9cda5;margin-top:5px}
+.kit-planks{position:absolute;left:50%;bottom:126px;transform:translateX(-50%);width:min(940px,94vw);display:flex;justify-content:center;gap:11px;pointer-events:auto}
+.kit-plank{position:relative;flex:1;max-width:360px;min-height:65px;padding:12px 22px;border:1px solid #a17a47;border-top-color:#c6a06a;border-bottom-color:#382211;border-radius:2px 6px 3px 1px;clip-path:polygon(1% 5%,29% 2%,31% 5%,72% 1%,98% 5%,100% 91%,68% 96%,45% 93%,2% 99%,0 69%);background:repeating-linear-gradient(2deg,#ffffff05 0 1px,transparent 1px 7px),repeating-linear-gradient(178deg,transparent 0 11px,#130c075c 12px 13px,transparent 14px 19px),linear-gradient(98deg,#51351f,#735032 26%,#53391f 52%,#68482b 80%,#402a1c);color:#ffe8b7;font:clamp(14px,1.3vw,17px)/1.3 Georgia,serif;text-shadow:0 1px 1px #130c07;cursor:pointer;box-shadow:inset 0 2px 0 #e7bd7040,inset 0 -4px 8px #130b085c,0 5px 8px #0008;touch-action:manipulation}
+.kit-plank:nth-child(2){transform:rotate(-.5deg)}.kit-plank:nth-child(3){transform:rotate(.4deg)}
+.kit-plank::before,.kit-plank::after{content:'';position:absolute;top:43%;width:5px;height:5px;border:1px solid #a77c4b;border-radius:50%;background:radial-gradient(circle at 32% 24%,#bd9863,#63482f 45%,#2c2017 70%);box-shadow:1px 2px 2px #160f0b;left:8px}.kit-plank::after{left:auto;right:8px}
+.kit-plank:hover{filter:brightness(1.17)}.kit-plank:focus-visible{outline:3px solid #ffedb9;outline-offset:-5px;filter:brightness(1.2)}
+.kit-small{pointer-events:auto;border:1px solid #ad895a80;border-radius:3px;background:#20170dde;color:#f8dfad;font:13px/1.3 Georgia,serif;min-height:40px;padding:7px 11px;cursor:pointer}
+.kit-small:focus-visible{outline:2px solid #ffe5ac;outline-offset:3px}
+.kit-toolbar{position:absolute;right:15px;top:15px;display:flex;gap:6px;flex-wrap:wrap;max-width:320px;justify-content:flex-end;pointer-events:auto}
+.kit-retry{position:absolute;top:100px;left:50%;transform:translateX(-50%)}
+.kit-live-caption{position:absolute;left:50%;top:85px;transform:translateX(-50%);max-width:75vw;padding:6px 10px;background:#20170dc9;text-align:center;font-size:13px}
+@media(max-width:600px){
+ [data-kit-live] .play-room-title{left:12px;transform:none;max-width:180px;padding:7px 11px}
+ [data-kit-live] .play-room-title h1{font-size:18px}
+ .kit-toolbar{right:9px;top:9px;max-width:170px;gap:4px}
+ .kit-small{font-size:11px;min-height:36px;padding:6px 8px}
+ .kit-planks{bottom:151px;flex-direction:column;align-items:stretch;width:min(420px,calc(100vw - 30px));gap:6px}
+ .kit-plank{max-width:none;min-height:48px;padding:9px 20px;font-size:14px;flex:none}
+ .kit-lines{bottom:320px;font-size:14px;padding:6px 12px;max-height:125px;overflow:auto;pointer-events:auto}
+ .kit-encounter[data-choice-count="2"] .kit-lines{bottom:265px}
+ .kit-encounter[data-choice-count="0"] .kit-lines{bottom:200px}
+ [data-kit-live] .play-room-status{bottom:91px;left:8px;max-width:120px;font-size:10px;padding:4px 6px}
+}
+@media(max-height:620px) and (min-width:601px){.kit-lines{bottom:156px;font-size:13px;width:min(600px,70vw)}.kit-planks{bottom:90px}.kit-plank{min-height:54px;font-size:13px}.kit-toolbar{max-width:350px}.kit-small{font-size:11px;min-height:34px}[data-kit-live] .location-look{bottom:39px;}}
+@media(prefers-reduced-motion:reduce){.kit-plank{transform:none!important}}
