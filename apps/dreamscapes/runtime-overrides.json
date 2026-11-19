@@ -608,8 +608,8 @@
     "sha256": "e275352ebbffbf9de0995c6c6e2e8cf1189fb56dc1919b57509c403560d4d87c"
   },
   "cycle-twelve/review/center.png": {
-    "bytes": 2311640,
-    "sha256": "1cee67cb838883c1809435c9e7916c49b42b352ff0a9ea5eae6a1073c6970fb8"
+    "bytes": 2311733,
+    "sha256": "d3aeb5e7855552417426048893efce26d1bbff8429e65f0b0bc4b104f7e58123"
   },
   "cycle-twelve/review/connection.png": {
     "bytes": 2252811,
@@ -620,12 +620,12 @@
     "sha256": "8dcdb9c898a9677862a1d38f46e6d9a935477f8d107fac4e3ee12279317025d4"
   },
   "cycle-twelve/review/index.html": {
-    "bytes": 4848,
-    "sha256": "288aaf5d2ef45f4403e14fd4b578a4e90b817dcb19011a9b442b02a02aed127a"
+    "bytes": 4856,
+    "sha256": "e0d5600ca172040ad2456b501e0476e619d32f2bf2598273b1e4f65ffda730dd"
   },
   "cycle-twelve/review/intro.webm": {
-    "bytes": 5130610,
-    "sha256": "fe4b2b08bd1981f1205354effe72e3178ab25136ba29d379df30ad19e5e726e9"
+    "bytes": 5000914,
+    "sha256": "1a3b3ae9eb91733c482b915c6895fd191bfbb8380dfd114e4382790e661751e6"
   },
   "cycle-twelve/review/left.png": {
     "bytes": 2304514,
@@ -636,12 +636,12 @@
     "sha256": "93c45bf2609141a2f2b408500b189d4d2ecef52780f60bdb6f972b62338ffbb7"
   },
   "cycle-twelve/review/peek.png": {
-    "bytes": 605842,
-    "sha256": "82b2a93a73e6319c19ff9af31aaabae1a763fda91953868b7426331876de9fc6"
+    "bytes": 605902,
+    "sha256": "84e673e4d39020acba5a9f0e6511886b0756724917b10e03070098bab5f9c538"
   },
   "cycle-twelve/review/right.png": {
-    "bytes": 2315483,
-    "sha256": "ff090ac252e27809d0f89e8829be654ba8c493941eb9ce7ef0d603197f5bac38"
+    "bytes": 2315631,
+    "sha256": "ba664636a0449533f72d04d8040021d5bb6fd710d73c62657e7a35efde20a656"
   },
   "cycle-twelve/review/suspense.png": {
     "bytes": 2253897,
@@ -652,8 +652,8 @@
     "sha256": "3e61ab5f1d700f25c027f2cdacf7f328e24532ce49ecae53cb6ad403deb4bde4"
   },
   "cycle-twelve/recognition-asset-report.json": {
-    "bytes": 28555,
-    "sha256": "0cedb25bc6942b5bed3bc1691a2b1be1eee25eea030cdfbe4ceb06d9d54d61eb"
+    "bytes": 27478,
+    "sha256": "36dbe1457bc2dad178ccf323732dbf2179696b6737791aafd4047d9569ea8ee3"
   },
   "cycle-twelve/recognition-space.mjs": {
     "bytes": 3704,
@@ -668,7 +668,7 @@
     "sha256": "c6b4715d7c1f1659760b983e413ac0887db9d20d6640527773f4df3d96cfd58f"
   },
   "cycle-twelve/review/rise.png": {
-    "bytes": 2304803,
-    "sha256": "08ad92695e5b3784c294a55cabbde9453b14fda96ddc3e3f61817f14b32a2768"
+    "bytes": 2304787,
+    "sha256": "e3265273c06b85fddc59205559f3e2c9fbbd067d9c095ae31d950266ff24e8ae"
   }
 }
