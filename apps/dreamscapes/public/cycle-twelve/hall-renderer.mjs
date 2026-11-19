@@ -13,8 +13,9 @@ export function createHall(plane,kit){
  const effects={cue:'',start:0};
  function draw(t,pose,cue='',cueTime=0){
   if(lost)return;kit.draw(t,pose);ink.clearRect(0,0,1671,941);
-  const h=pose.height/.85,width=h*.75;
-  ink.globalAlpha=.8;ink.drawImage(kit.canvas,pose.x-width/2,pose.feet-h*.925,width,h);ink.globalAlpha=1;
+  // The camera projects the fixed-size character and room together. No sprite
+  // translation, scale, phase masks or per-mirror character copies exist here.
+  ink.globalAlpha=.8;ink.drawImage(kit.canvas,0,0,1671,941);ink.globalAlpha=1;
   // Story marks are drawn in reflected space before the same optical distortion.
   paintStory(ink,cue,cueTime,pose);
   context.setTransform(surface.width/1671,0,0,surface.height/941,0,0);context.clearRect(0,0,1671,941);
@@ -34,21 +35,14 @@ export function createHall(plane,kit){
    context.save();context.clip(APERTURES[index]);
    context.filter=examined?['brightness(1.12) sepia(.10)','brightness(.9) hue-rotate(12deg)','contrast(1.12) brightness(.85)'][index]:'none';
    context.drawImage(warped,0,0);context.filter='none';
-   if(index===2&&pose.door){
-    // Registered foreground jamb and rail from the supplied artwork. Erase only
-    // our transparent overlay, leaving those untouched original pixels in front.
-    context.globalCompositeOperation='destination-out';context.fillStyle='#000';
-    context.beginPath();context.moveTo(1331,329);context.lineTo(1345,341);context.lineTo(1346,476);context.lineTo(1410,494);context.lineTo(1410,675);context.lineTo(1311,671);context.lineTo(1311,477);context.lineTo(1330,474);context.closePath();context.fill();
-    if(pose.phase==='behind-door'||pose.phase==='ducking')context.clearRect(1270,280,160,400);
-   }
    context.restore();
   });
-  surface.dataset.phase=pose.phase||'story';surface.dataset.worldX=pose.x.toFixed(1);surface.dataset.seconds=t.toFixed(3);surface.dataset.cue=cue;
+  surface.dataset.phase=pose.phase||'story';surface.dataset.worldX=pose.position[0].toFixed(3);surface.dataset.worldZ=pose.position[2].toFixed(3);surface.dataset.seconds=t.toFixed(3);surface.dataset.cue=cue;
  }
- function resize(){const width=Math.min(1280,Math.max(800,Math.round(plane.clientWidth)));if(surface.width!==width){surface.width=width;surface.height=Math.round(width*941/1671);}}
+ function resize(){const width=Math.min(1280,Math.max(800,Math.round(plane.clientWidth)));if(surface.width!==width){surface.width=width;surface.height=Math.round(width*941/1671);kit.resize(surface.width,surface.height);}}
  const observer=new ResizeObserver(resize);observer.observe(plane);resize();
  kit.canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();lost=true;surface.dispatchEvent(new CustomEvent('kit-render-unavailable',{bubbles:true}));});
- return {surface,draw,dispose(){observer.disconnect();surface.remove();kit.dispose();}};
+ return {surface,draw,project:kit.project,snapshot:kit.snapshot,dispose(){observer.disconnect();surface.remove();kit.dispose();}};
 }
 function paintStory(c,cue,t,pose){
  const p=ease(t/1.2);c.save();c.lineWidth=2;c.strokeStyle='#ffe0a8';c.fillStyle='#ffe0a8';c.globalAlpha=.82*p;
@@ -70,7 +64,5 @@ function paintStory(c,cue,t,pose){
  }
  if(cue==='kept-name'){c.font='28px Georgia';c.fillText('KIT',887,347);c.beginPath();c.moveTo(887,354);c.lineTo(942,354);c.stroke();}
  if(cue==='shadow-friend'&&t>=1.8){const x=775+70*(1-ease((t-1.8)/1.3)),y=420-25*Math.sin(ease((t-1.8)/1.3)*Math.PI);c.fillStyle='#f1dbb8';c.beginPath();c.moveTo(x-22,y-17);c.lineTo(x,y);c.lineTo(x+25,y-20);c.lineTo(x+11,y+9);c.lineTo(x,y+4);c.lineTo(x-12,y+9);c.closePath();c.fill();}
- // Hand-contact rings are transparent enough to retain the mirror surface.
- if(pose.tap>0){c.strokeStyle='#ffe6ba';c.globalAlpha=pose.tap*.6;c.beginPath();c.arc(pose.x-66,pose.feet-330,9+12*(1-pose.tap),0,7);c.stroke();}
  c.restore();
 }

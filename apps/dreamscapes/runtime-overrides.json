@@ -588,63 +588,87 @@
     "sha256": "4afd189babc7996a22bbd4bfda6f188f503d3cfc27bd619b174149fc0f1ac6fb"
   },
   "cycle-twelve/encounter.js": {
-    "bytes": 11709,
-    "sha256": "83732b5e7d32e674c269e4050959d9485f01115f05da4688b6fe912fe5785d0f"
+    "bytes": 11169,
+    "sha256": "45c93766a3dc9dacd683a35699883ef2c75641e6803ec37aace215ff59fb01ea"
   },
   "cycle-twelve/hall-renderer.mjs": {
-    "bytes": 6397,
-    "sha256": "44dc7c24fe744bc66f2aa3e65719fea5929ffd4ed9b7c2e57bea21d121794e31"
+    "bytes": 5779,
+    "sha256": "da006c35704699c507708a7397fc968edb90f0b315641d9ba0e25a7e0b62a09e"
   },
   "cycle-twelve/kit-renderer.mjs": {
-    "bytes": 6507,
-    "sha256": "df6e75cfa65739d8b4a9e392482a692f57fa800c507694007126f9535db9d59b"
+    "bytes": 8881,
+    "sha256": "d1d72dd9e23c73c05a583361affd0d29c7f8a13f96a828db96e357d2d1440d0a"
   },
   "cycle-twelve/kit.glb": {
     "bytes": 8542764,
     "sha256": "3d7237a5dccc3162dec7db1a4444325537ca2c1bf2674510152434dbffb7730d"
   },
   "cycle-twelve/story.mjs": {
-    "bytes": 10846,
-    "sha256": "058114b8dba54d960041f95636978a21ec5c6d8141a25f28b7bec964884e677b"
+    "bytes": 10917,
+    "sha256": "e275352ebbffbf9de0995c6c6e2e8cf1189fb56dc1919b57509c403560d4d87c"
   },
   "cycle-twelve/review/center.png": {
-    "bytes": 2315524,
-    "sha256": "3d0b8085245a670533e59670e0438095a31b1bf4a0b091a50f44c27712d67fea"
+    "bytes": 2311640,
+    "sha256": "1cee67cb838883c1809435c9e7916c49b42b352ff0a9ea5eae6a1073c6970fb8"
   },
   "cycle-twelve/review/connection.png": {
-    "bytes": 2254038,
-    "sha256": "ca229b7d7133e3cb4c8892d28bc7e450cbf3fe00106a1a0f06918797435cf96a"
+    "bytes": 2252811,
+    "sha256": "9c4e10b24208c193a375b6d1fd9ce342d7f1abd2b322fa700a49707e711c6fd0"
   },
   "cycle-twelve/review/evidence-report.json": {
-    "bytes": 6036,
-    "sha256": "1fe1df43e0a729232349516b8d6e38898790b148de60302c25d40cc2d5e8941c"
+    "bytes": 6035,
+    "sha256": "8dcdb9c898a9677862a1d38f46e6d9a935477f8d107fac4e3ee12279317025d4"
   },
   "cycle-twelve/review/index.html": {
-    "bytes": 4094,
-    "sha256": "b9043eb328dacc3bb2d3a604418e2bbbf571beb67ad2ae9a84fe21ca64cb63c1"
+    "bytes": 4848,
+    "sha256": "288aaf5d2ef45f4403e14fd4b578a4e90b817dcb19011a9b442b02a02aed127a"
   },
   "cycle-twelve/review/intro.webm": {
-    "bytes": 1623077,
-    "sha256": "0cb4ceff2f694a66cf6e115dc1a59e87678e4280758b7454fde49f1ff6776de0"
+    "bytes": 5130610,
+    "sha256": "fe4b2b08bd1981f1205354effe72e3178ab25136ba29d379df30ad19e5e726e9"
   },
   "cycle-twelve/review/left.png": {
-    "bytes": 2305203,
-    "sha256": "85f638568e45f596f53bd09efc62afd6877803bad3723ec227aea4aedf4b5981"
+    "bytes": 2304514,
+    "sha256": "74c4ac6a171e73a35960518edeebd84324231a75ada1965a2964b5485bfa1366"
   },
   "cycle-twelve/review/mystery.png": {
-    "bytes": 2253132,
-    "sha256": "3b6cb76e478dd3eb8a7717cd5181bef2dcc01d889a5858a4a769edc835acb71d"
+    "bytes": 2251193,
+    "sha256": "93c45bf2609141a2f2b408500b189d4d2ecef52780f60bdb6f972b62338ffbb7"
   },
   "cycle-twelve/review/peek.png": {
-    "bytes": 2316878,
-    "sha256": "ab16c8d3fa4e459d451fc16d2872657aed8d965722295915cfcdc5d54c571960"
+    "bytes": 605842,
+    "sha256": "82b2a93a73e6319c19ff9af31aaabae1a763fda91953868b7426331876de9fc6"
   },
   "cycle-twelve/review/right.png": {
-    "bytes": 2317352,
-    "sha256": "2b43a7127800ac0b6b32484f1ca6e46f59455ad9e3963d5ff2c8fa1b44c4b4fa"
+    "bytes": 2315483,
+    "sha256": "ff090ac252e27809d0f89e8829be654ba8c493941eb9ce7ef0d603197f5bac38"
   },
   "cycle-twelve/review/suspense.png": {
-    "bytes": 2255920,
-    "sha256": "b442d38735e77bc9aabc45a300db3dfe62ea1c4c0e3602830c949c7510dacdfe"
+    "bytes": 2253897,
+    "sha256": "7660e0d57ac779225d6302dff2f782de355537711eab36be804e2a4553a24ceb"
+  },
+  "cycle-twelve/kit-recognition.glb": {
+    "bytes": 12588288,
+    "sha256": "3e61ab5f1d700f25c027f2cdacf7f328e24532ce49ecae53cb6ad403deb4bde4"
+  },
+  "cycle-twelve/recognition-asset-report.json": {
+    "bytes": 28555,
+    "sha256": "0cedb25bc6942b5bed3bc1691a2b1be1eee25eea030cdfbe4ceb06d9d54d61eb"
+  },
+  "cycle-twelve/recognition-space.mjs": {
+    "bytes": 3704,
+    "sha256": "ed3367835a48487526e34af67ea9a1d52800b1431a41a614d6ee275e1fb6c7d3"
+  },
+  "cycle-twelve/review/mobile.png": {
+    "bytes": 554559,
+    "sha256": "e6a110187f6fa4af118afac7cb61583c2bd31d2e8ab117b47bcfc04c9cf22557"
+  },
+  "cycle-twelve/review/return.png": {
+    "bytes": 2315406,
+    "sha256": "c6b4715d7c1f1659760b983e413ac0887db9d20d6640527773f4df3d96cfd58f"
+  },
+  "cycle-twelve/review/rise.png": {
+    "bytes": 2304803,
+    "sha256": "08ad92695e5b3784c294a55cabbde9453b14fda96ddc3e3f61817f14b32a2768"
   }
 }

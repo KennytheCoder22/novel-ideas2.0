@@ -29,11 +29,11 @@ export const nodes={
 };
 const options=Object.entries(nodes).flatMap(([decision,node])=>(node.choices||[]).map(o=>({decision,...o})));
 export const preferenceLabels={mystery:'Mystery and secrets',investigation:'Investigation',connection:'Character-driven stories','character-history':'Personal histories',suspense:'Suspense',danger:'Threat and danger','puzzle-solving':'Puzzle-solving','layered-complexity':'Layered narrative complexity','measured-pacing':'Measured pacing',wonder:'Fantasy and surreal experiences',adventure:'Adventure',discovery:'Discovery','emotional-relationships':'Emotional relationships','lighter-tone':'Lighter storytelling','darker-tone':'Darker storytelling','brisk-pacing':'Brisk pacing'};
-export const fresh=()=>({version:1,node:'opening',introSeen:false,decisions:[],outcomes:[]});
+export const fresh=()=>({version:1,node:'opening',introSeen:false,recognitionSeen:false,decisions:[],outcomes:[]});
 export function normalize(raw){
  const state=fresh();if(raw?.version!==1)return state;
  if(Object.hasOwn(nodes,raw.node))state.node=raw.node;
- state.introSeen=raw.introSeen===true;
+ state.introSeen=raw.introSeen===true;state.recognitionSeen=raw.recognitionSeen===true;
  state.decisions=(Array.isArray(raw.decisions)?raw.decisions:[]).filter(d=>d&&options.some(o=>o.decision===d.decision&&o.id===d.option)).slice(-64).map(d=>({decision:d.decision,option:d.option,outcome:nodes[options.find(o=>o.decision===d.decision&&o.id===d.option).next].outcome||null}));
  state.outcomes=[...new Set((Array.isArray(raw.outcomes)?raw.outcomes:[]).filter(o=>Object.values(nodes).some(n=>n.outcome===o)))];return state;
 }
